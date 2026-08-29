@@ -9,24 +9,63 @@ import type { HttpTransport } from '../transport/types.js';
 import type {
   CreateUserInput,
   ETagResponse,
-  HistoryEntry,
+  HistoryResult,
   InviteUserInput,
-  ListParams,
+  InviteUserResult,
   PaginatedResponse,
   SetPasswordInput,
   UpdateUserInput,
   User,
   UserListParams,
 } from '../types/index.js';
-import { etagHeaders, toQueryParams, unwrapData, unwrapWithEtag } from './helpers.js';
+import { etagHeaders, unwrapData, unwrapWithEtag } from './helpers.js';
 
+/**
+ * Convert the closed user-list input into the query names accepted by the
+ * selected pagination strategy.
+ */
+function userListQuery(
+  params?: UserListParams,
+): Record<string, string | number | boolean> | undefined {
+  if (!params) return undefined;
+
+  const common = {
+    ...(params.search !== undefined ? { search: params.search } : {}),
+    ...(params.status !== undefined ? { status: params.status } : {}),
+    ...(params.sortBy !== undefined ? { sortBy: params.sortBy } : {}),
+    ...(params.sortOrder !== undefined ? { sortOrder: params.sortOrder } : {}),
+  };
+
+  if (params.cursor !== undefined) {
+    return {
+      cursor: params.cursor,
+      ...(params.pageSize !== undefined ? { limit: params.pageSize } : {}),
+      ...common,
+    };
+  }
+
+  const query = {
+    ...(params.page !== undefined ? { page: params.page } : {}),
+    ...(params.pageSize !== undefined ? { pageSize: params.pageSize } : {}),
+    ...common,
+  };
+  return Object.keys(query).length > 0 ? query : undefined;
+}
+
+/** Organization-scoped user administration operations. */
 export interface UsersDomain {
+  /** List users with offset or cursor pagination. */
   list(orgId: string, params?: UserListParams): Promise<PaginatedResponse<User>>;
+  /** Fetch every matching user across all available pages. */
   listAll(orgId: string, params?: Omit<UserListParams, 'page' | 'cursor'>): Promise<User[]>;
+  /** Fetch one user and its current ETag. */
   get(orgId: string, userId: string): Promise<ETagResponse<User>>;
+  /** Create a user in the organization named by the input. */
   create(input: CreateUserInput): Promise<User>;
+  /** Update mutable profile fields, optionally using optimistic concurrency. */
   update(orgId: string, userId: string, input: UpdateUserInput, etag?: string): Promise<User>;
-  invite(input: InviteUserInput): Promise<User>;
+  /** Invite a user and return the invitation outcome. */
+  invite(input: InviteUserInput): Promise<InviteUserResult>;
   /** Preview the invitation email without sending — POST .../invite/preview */
   invitePreview(input: InviteUserInput): Promise<InvitePreviewResult>;
   setPassword(orgId: string, userId: string, input: SetPasswordInput): Promise<void>;
@@ -38,14 +77,17 @@ export interface UsersDomain {
   exportData(orgId: string, userId: string): Promise<UserExportData>;
   /** GDPR data purge (Article 17) — POST .../:userId/purge (X-Confirm-Purge) */
   purge(orgId: string, userId: string): Promise<UserPurgeResult>;
-  suspend(orgId: string, userId: string): Promise<void>;
+  /** Suspend a user with an optional administrative reason. */
+  suspend(orgId: string, userId: string, reason?: string): Promise<void>;
   /** Unsuspend a user (suspended → active) — POST .../:userId/unsuspend */
   unsuspend(orgId: string, userId: string): Promise<void>;
-  lock(orgId: string, userId: string): Promise<void>;
+  /** Lock a user with the required administrative reason. */
+  lock(orgId: string, userId: string, reason: string): Promise<void>;
   unlock(orgId: string, userId: string): Promise<void>;
   deactivate(orgId: string, userId: string): Promise<void>;
   reactivate(orgId: string, userId: string): Promise<void>;
-  getHistory(orgId: string, userId: string, params?: ListParams): Promise<HistoryEntry[]>;
+  /** Fetch the first page of user history. */
+  getHistory(orgId: string, userId: string): Promise<HistoryResult>;
 }
 
 /** Rendered invitation email returned by `invitePreview()`. */
@@ -61,6 +103,12 @@ export type UserExportData = Record<string, unknown>;
 /** Result of a GDPR purge returned by `purge()`. */
 export type UserPurgeResult = Record<string, unknown>;
 
+/**
+ * Create organization-scoped user operations over an authenticated transport.
+ *
+ * @param transport - HTTP transport used for every request.
+ * @returns User operations bound to the supplied transport.
+ */
 export function createUsersDomain(transport: HttpTransport): UsersDomain {
   function userBase(orgId: string) {
     return `/organizations/${orgId}/users`;
@@ -71,13 +119,22 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
       const res = await transport.request({
         method: 'GET',
         path: userBase(orgId),
-        params: toQueryParams(params),
+        params: userListQuery(params),
       });
       return res.body as PaginatedResponse<User>;
     },
 
     listAll(orgId, params?) {
-      return listAll((p) => this.list(orgId, { ...params, ...p }), params);
+      return listAll(
+        (page) =>
+          this.list(orgId, {
+            ...params,
+            ...(page.page !== undefined ? { page: page.page } : {}),
+            ...(page.cursor !== undefined ? { cursor: page.cursor } : {}),
+            ...(page.limit !== undefined ? { pageSize: page.limit } : {}),
+          }),
+        params,
+      );
     },
 
     async get(orgId, userId) {
@@ -110,7 +167,7 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
         path: `${userBase(input.organizationId)}/invite`,
         body: input,
       });
-      return unwrapData<User>(res.body);
+      return unwrapData<InviteUserResult>(res.body);
     },
 
     async invitePreview(input) {
@@ -160,16 +217,24 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
       return unwrapData<UserPurgeResult>(res.body);
     },
 
-    async suspend(orgId, userId) {
-      await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/suspend` });
+    async suspend(orgId, userId, reason?) {
+      await transport.request({
+        method: 'POST',
+        path: `${userBase(orgId)}/${userId}/suspend`,
+        ...(reason !== undefined ? { body: { reason } } : {}),
+      });
     },
 
     async unsuspend(orgId, userId) {
       await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/unsuspend` });
     },
 
-    async lock(orgId, userId) {
-      await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/lock` });
+    async lock(orgId, userId, reason) {
+      await transport.request({
+        method: 'POST',
+        path: `${userBase(orgId)}/${userId}/lock`,
+        body: { reason },
+      });
     },
 
     async unlock(orgId, userId) {
@@ -184,13 +249,13 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
       await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/reactivate` });
     },
 
-    async getHistory(orgId, userId, params?) {
+    async getHistory(orgId, userId) {
       const res = await transport.request({
         method: 'GET',
         path: `${userBase(orgId)}/${userId}/history`,
-        params: toQueryParams(params),
+        params: undefined,
       });
-      return unwrapData<HistoryEntry[]>(res.body);
+      return res.body as HistoryResult;
     },
   };
 }
@@ -203,7 +268,7 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
  * Org-less user operations — mirrors the server `createStandaloneUserRouter`
  * (prefix `/api/admin/users`). These are used by the Admin GUI SPA, where the
  * user detail page only knows the `userId` (not the org). The org-scoped
- * `UsersDomain` remains the primary surface for listing/creating users (AR-12d).
+ * `UsersDomain` remains the primary surface for listing and creating users.
  */
 export interface StandaloneUsersDomain {
   /** Get a user by ID — GET /users/:userId */
@@ -223,17 +288,23 @@ export interface StandaloneUsersDomain {
   /** Activate a user (SPA alias for reactivate) — POST /users/:userId/activate */
   activate(userId: string): Promise<void>;
   /** Suspend a user — POST /users/:userId/suspend */
-  suspend(userId: string): Promise<void>;
+  suspend(userId: string, reason?: string): Promise<void>;
   /** Unsuspend a user — POST /users/:userId/unsuspend */
   unsuspend(userId: string): Promise<void>;
   /** Lock a user — POST /users/:userId/lock */
-  lock(userId: string): Promise<void>;
+  lock(userId: string, reason: string): Promise<void>;
   /** Unlock a user — POST /users/:userId/unlock */
   unlock(userId: string): Promise<void>;
   /** User change history — GET /users/:userId/history */
-  getHistory(userId: string, params?: ListParams): Promise<HistoryEntry[]>;
+  getHistory(userId: string): Promise<HistoryResult>;
 }
 
+/**
+ * Create standalone user operations over an authenticated transport.
+ *
+ * @param transport - HTTP transport used for every request.
+ * @returns Standalone user operations bound to the supplied transport.
+ */
 export function createStandaloneUsersDomain(transport: HttpTransport): StandaloneUsersDomain {
   const base = '/users';
 
@@ -277,29 +348,33 @@ export function createStandaloneUsersDomain(transport: HttpTransport): Standalon
       await transport.request({ method: 'POST', path: `${base}/${userId}/activate` });
     },
 
-    async suspend(userId) {
-      await transport.request({ method: 'POST', path: `${base}/${userId}/suspend` });
+    async suspend(userId, reason?) {
+      await transport.request({
+        method: 'POST',
+        path: `${base}/${userId}/suspend`,
+        ...(reason !== undefined ? { body: { reason } } : {}),
+      });
     },
 
     async unsuspend(userId) {
       await transport.request({ method: 'POST', path: `${base}/${userId}/unsuspend` });
     },
 
-    async lock(userId) {
-      await transport.request({ method: 'POST', path: `${base}/${userId}/lock` });
+    async lock(userId, reason) {
+      await transport.request({ method: 'POST', path: `${base}/${userId}/lock`, body: { reason } });
     },
 
     async unlock(userId) {
       await transport.request({ method: 'POST', path: `${base}/${userId}/unlock` });
     },
 
-    async getHistory(userId, params?) {
+    async getHistory(userId) {
       const res = await transport.request({
         method: 'GET',
         path: `${base}/${userId}/history`,
-        params: toQueryParams(params),
+        params: undefined,
       });
-      return unwrapData<HistoryEntry[]>(res.body);
+      return unwrapData<HistoryResult>(res.body);
     },
   };
 }

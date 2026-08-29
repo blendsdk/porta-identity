@@ -14,23 +14,37 @@ import type { PortaClient } from './client.js';
 // ---------------------------------------------------------------------------
 
 export interface ToolParameter {
+  /** Argument name passed to the executor. */
   name: string;
+  /** JSON-compatible argument category exposed to agent clients. */
   type: 'string' | 'number' | 'boolean' | 'object';
+  /** Human-readable explanation of the argument. */
   description: string;
+  /** Whether callers must provide the argument. */
   required: boolean;
+  /** Optional closed set of accepted string values. */
   enum?: string[];
 }
 
+/** Metadata that describes one callable SDK operation. */
 export interface ToolDefinition {
+  /** Dot-separated SDK domain and method name. */
   name: string;
+  /** Human-readable explanation of the operation. */
   description: string;
+  /** Ordered arguments forwarded to the SDK method. */
   parameters: ToolParameter[];
+  /** Human-readable TypeScript-style result description. */
   returns: string;
 }
 
+/** Result returned by the generic tool executor. */
 export interface ToolResult {
+  /** Whether the SDK method completed successfully. */
   success: boolean;
+  /** SDK result when the operation succeeds. */
   data?: unknown;
+  /** Safe error description when the operation fails. */
   error?: string;
 }
 
@@ -43,6 +57,7 @@ function param(name: string, type: ToolParameter['type'], description: string, r
 }
 
 const ID = (name: string, desc: string) => param(name, 'string', desc);
+const STR = (name: string, desc: string) => param(name, 'string', desc);
 const OPT_STR = (name: string, desc: string) => param(name, 'string', desc, false);
 const OPT_NUM = (name: string, desc: string) => param(name, 'number', desc, false);
 const OPT_OBJ = (name: string, desc: string) => param(name, 'object', desc, false);
@@ -86,21 +101,22 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'clients.generateSecret', description: 'Generate a new secret for a client', parameters: [ID('clientId', 'Client ID'), OPT_OBJ('input', 'GenerateSecretInput')], returns: 'GeneratedSecret' },
 
   // Users
-  { name: 'users.list', description: 'List users in an organization', parameters: [ID('orgId', 'Organization ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<User>' },
+  { name: 'users.list', description: 'List users in an organization', parameters: [ID('orgId', 'Organization ID'), OPT_OBJ('params', 'UserListParams')], returns: 'PaginatedResponse<User>' },
   { name: 'users.get', description: 'Get a user by ID', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: '{ data: User, etag: string | null }' },
   { name: 'users.create', description: 'Create a new user', parameters: [OBJ('input', 'CreateUserInput')], returns: 'User' },
-  { name: 'users.invite', description: 'Invite a user', parameters: [OBJ('input', 'InviteUserInput')], returns: 'User' },
+  { name: 'users.invite', description: 'Invite a user', parameters: [OBJ('input', 'InviteUserInput')], returns: 'InviteUserResult' },
   { name: 'users.invitePreview', description: 'Preview the invitation email without sending', parameters: [OBJ('input', 'InviteUserInput')], returns: 'InvitePreviewResult' },
-  { name: 'users.suspend', description: 'Suspend a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.suspend', description: 'Suspend a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), OPT_STR('reason', 'Administrative reason')], returns: 'void' },
   { name: 'users.unsuspend', description: 'Unsuspend a user (suspended → active)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.deactivate', description: 'Deactivate a user (active → inactive)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.reactivate', description: 'Reactivate a user (inactive → active)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.lock', description: 'Lock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
+  { name: 'users.lock', description: 'Lock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), STR('reason', 'Administrative reason')], returns: 'void' },
   { name: 'users.unlock', description: 'Unlock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.clearPassword', description: 'Clear a user password (make passwordless)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.verifyEmail', description: 'Mark a user email as verified', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.exportData', description: 'GDPR data export for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserExportData' },
   { name: 'users.purge', description: 'GDPR data purge for a user (irreversible)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserPurgeResult' },
+  { name: 'users.getHistory', description: 'Get user change history', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'HistoryResult' },
 
 
   // Roles

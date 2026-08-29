@@ -10,7 +10,7 @@
  *   porta user invite --org <id> --email <email> [--name "..."]
  *   porta user list --org <id> [--status active|invited|...] [--search "..."]
  *   porta user show --org <id> <user-id>
- *   porta user update --org <id> <user-id> [--name "..."] [--email "..."]
+ *   porta user update --org <id> <user-id> [--name "..."]
  *   porta user suspend/reactivate/lock/unlock/deactivate --org <id> <user-id>
  *   porta user set-password --org <id> <user-id> --password "..."
  *   porta user history --org <id> <user-id>
@@ -94,7 +94,14 @@ interface UserIdArgs extends OrgScopedArgs {
 
 interface UserUpdateArgs extends UserIdArgs {
   name?: string;
-  email?: string;
+}
+
+interface UserReasonArgs extends UserIdArgs {
+  reason?: string;
+}
+
+interface UserRequiredReasonArgs extends UserIdArgs {
+  reason: string;
 }
 
 interface SetPasswordArgs extends UserIdArgs {
@@ -192,16 +199,30 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              const user = await sdkClient.users.invite({
+              const invitation = await sdkClient.users.invite({
                 organizationId: argv.org,
                 email: argv.email,
                 ...splitName(argv.name),
               });
 
               if (argv.json) {
-                printJson(user);
+                printJson(invitation);
               } else {
-                success(`Invitation sent to ${user.email}`);
+                success(
+                  invitation.invitationSent
+                    ? `Invitation sent to ${invitation.email}`
+                    : `Invitation created for ${invitation.email}`,
+                );
+                printTable(
+                  ['Field', 'Value'],
+                  [
+                    ['User ID', invitation.userId],
+                    ['Email', invitation.email],
+                    ['Created', String(invitation.created)],
+                    ['invitationSent', String(invitation.invitationSent)],
+                    ['Expires', invitation.expiresAt],
+                  ],
+                );
               }
             } catch (err) {
               handleError(err, argv.verbose);
@@ -330,15 +351,10 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 demandOption: true,
                 description: 'User UUID',
               }),
-            )
-              .option('name', {
-                type: 'string',
-                description: 'New display name',
-              })
-              .option('email', {
-                type: 'string',
-                description: 'New email address',
-              }),
+            ).option('name', {
+              type: 'string',
+              description: 'New display name',
+            }),
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
@@ -349,7 +365,6 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 argv['user-id'],
                 {
                   ...splitName(argv.name),
-                  ...(argv.email ? { email: argv.email } : {}),
                 },
                 etag ?? undefined,
               );
@@ -366,7 +381,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         )
 
         // ── status lifecycle commands ───────────────────────────────────
-        .command<UserIdArgs>(
+        .command<UserReasonArgs>(
           'suspend <user-id>',
           'Suspend a user',
           (y) =>
@@ -376,11 +391,22 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 demandOption: true,
                 description: 'User UUID',
               }),
-            ),
+            ).option('reason', {
+              type: 'string',
+              description: 'Administrative reason (maximum 500 characters)',
+              coerce: (value: string) => {
+                if (value.length > 500) throw new Error('Reason must not exceed 500 characters');
+                return value;
+              },
+            }),
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.users.suspend(argv.org, argv['user-id']);
+              if (argv.reason === undefined) {
+                await sdkClient.users.suspend(argv.org, argv['user-id']);
+              } else {
+                await sdkClient.users.suspend(argv.org, argv['user-id'], argv.reason);
+              }
               success(`User suspended: ${argv['user-id']}`);
             } catch (err) {
               handleError(err, argv.verbose);
@@ -433,7 +459,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           },
         )
 
-        .command<UserIdArgs>(
+        .command<UserRequiredReasonArgs>(
           'lock <user-id>',
           'Lock a user account',
           (y) =>
@@ -443,11 +469,21 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 demandOption: true,
                 description: 'User UUID',
               }),
-            ),
+            ).option('reason', {
+              type: 'string',
+              demandOption: true,
+              description: 'Administrative reason (maximum 500 characters)',
+              coerce: (value: string) => {
+                if (value.length < 1 || value.length > 500) {
+                  throw new Error('Reason must contain 1 to 500 characters');
+                }
+                return value;
+              },
+            }),
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.users.lock(argv.org, argv['user-id']);
+              await sdkClient.users.lock(argv.org, argv['user-id'], argv.reason);
               success(`User locked: ${argv['user-id']}`);
             } catch (err) {
               handleError(err, argv.verbose);
@@ -555,7 +591,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const sdkClient = createClient(argv);
               const history = await sdkClient.users.getHistory(argv.org, argv['user-id']);
 
-              if (history.length === 0) {
+              if (history.data.length === 0) {
                 warn('No history entries found');
                 return;
               }
@@ -564,8 +600,9 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printJson(history);
               } else {
                 printTable(
-                  ['Date', 'Event', 'Actor', 'Metadata'],
-                  history.map((h) => [
+                  ['ID', 'Date', 'Event', 'Actor', 'Metadata'],
+                  history.data.map((h) => [
+                    h.id,
                     formatDate(h.createdAt),
                     h.eventType,
                     h.actorId ?? '—',

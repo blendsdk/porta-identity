@@ -10,6 +10,7 @@ export type {
   PaginatedResponse,
   ETagResponse,
   HistoryEntry,
+  HistoryResult,
 } from './common.js';
 
 // Organizations
@@ -52,9 +53,11 @@ export type {
 export type {
   User,
   UserStatus,
+  AddressInput,
   CreateUserInput,
   UpdateUserInput,
   InviteUserInput,
+  InviteUserResult,
   SetPasswordInput,
   UserListParams,
 } from './users.js';

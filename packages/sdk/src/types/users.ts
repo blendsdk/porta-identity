@@ -15,7 +15,7 @@ import type { TwoFactorMethod } from './two-factor.js';
  *
  * Lifecycle: active → inactive (deactivate) / suspended / locked, and back
  * to active via reactivate / unsuspend / unlock. There is no `invited` or
- * `deactivated` status on the server — those were SDK drift (AR-4).
+ * `deactivated` status on the server.
  */
 export type UserStatus = 'active' | 'inactive' | 'suspended' | 'locked';
 
@@ -88,26 +88,97 @@ export interface User {
 // ---------------------------------------------------------------------------
 
 /**
- * Input for creating a user — mirrors the server `createUserSchema`
- * (src/routes/users.ts). Only `email` is required by the server; the SDK
- * also threads `organizationId` to build the org-scoped route.
+ * Address fields accepted when creating or updating a user.
  */
-export interface CreateUserInput {
-  organizationId: string;
-  email: string;
-  givenName?: string;
-  familyName?: string;
-  password?: string;
+export interface AddressInput {
+  /** Street address, or null to clear it during an update. */
+  street?: string | null;
+  /** City or locality, or null to clear it during an update. */
+  locality?: string | null;
+  /** State, province, or region, or null to clear it during an update. */
+  region?: string | null;
+  /** Postal code, or null to clear it during an update. */
+  postalCode?: string | null;
+  /** Two-letter country code, or null to clear it during an update. */
+  country?: string | null;
 }
 
 /**
- * Input for updating a user profile — mirrors the server `updateUserSchema`.
- * `null` clears a field; `undefined` leaves it unchanged.
+ * Input for creating a user in an organization.
+ */
+export interface CreateUserInput {
+  /** Organization that will own the user. */
+  organizationId: string;
+  /** User's email address. */
+  email: string;
+  /** Optional initial password. */
+  password?: string;
+  /** OIDC given name. */
+  givenName?: string;
+  /** OIDC family name. */
+  familyName?: string;
+  /** OIDC middle name. */
+  middleName?: string;
+  /** OIDC nickname. */
+  nickname?: string;
+  /** OIDC preferred username. */
+  preferredUsername?: string;
+  /** OIDC profile URL. */
+  profileUrl?: string;
+  /** OIDC picture URL. */
+  pictureUrl?: string;
+  /** OIDC website URL. */
+  websiteUrl?: string;
+  /** OIDC gender value. */
+  gender?: string;
+  /** OIDC birthdate in YYYY-MM-DD form. */
+  birthdate?: string;
+  /** OIDC time-zone identifier. */
+  zoneinfo?: string;
+  /** OIDC locale. */
+  locale?: string;
+  /** OIDC phone number. */
+  phoneNumber?: string;
+  /** Structured OIDC address fields. */
+  address?: AddressInput;
+}
+
+/**
+ * Input for updating a user's mutable profile fields.
+ *
+ * `undefined` leaves a field unchanged. `null` clears a nullable field.
  */
 export interface UpdateUserInput {
-  email?: string;
+  /** OIDC given name. */
   givenName?: string | null;
+  /** OIDC family name. */
   familyName?: string | null;
+  /** OIDC middle name. */
+  middleName?: string | null;
+  /** OIDC nickname. */
+  nickname?: string | null;
+  /** OIDC preferred username. */
+  preferredUsername?: string | null;
+  /** OIDC profile URL. */
+  profileUrl?: string | null;
+  /** OIDC picture URL. */
+  pictureUrl?: string | null;
+  /** OIDC website URL. */
+  websiteUrl?: string | null;
+  /** OIDC gender value. */
+  gender?: string | null;
+  /** OIDC birthdate in YYYY-MM-DD form. */
+  birthdate?: string | null;
+  /** OIDC time-zone identifier. */
+  zoneinfo?: string | null;
+  /** OIDC locale. */
+  locale?: string | null;
+  /** OIDC phone number. */
+  phoneNumber?: string | null;
+  /** Whether the user's phone number has been verified. */
+  phoneNumberVerified?: boolean;
+  /** Structured address fields to update or clear individually. */
+  address?: AddressInput;
 }
 
 /**
@@ -127,6 +198,20 @@ export interface InviteUserInput {
   locale?: string;
 }
 
+/** Result returned after an invitation request is accepted. */
+export interface InviteUserResult {
+  /** ID of the invited user. */
+  userId: string;
+  /** Email address that received the invitation. */
+  email: string;
+  /** Whether the invitation created a new user. */
+  created: boolean;
+  /** Whether the invitation email was sent. */
+  invitationSent: boolean;
+  /** ISO 8601 expiration time for the invitation. */
+  expiresAt: string;
+}
+
 
 export interface SetPasswordInput {
   password: string;
@@ -137,13 +222,18 @@ export interface SetPasswordInput {
 // ---------------------------------------------------------------------------
 
 export interface UserListParams {
+  /** One-based page number for offset pagination. */
   page?: number;
+  /** Requested number of users. */
   pageSize?: number;
+  /** Opaque cursor for cursor pagination. */
   cursor?: string;
+  /** Email or profile search text. */
   search?: string;
-  sort?: string;
-  order?: 'asc' | 'desc';
+  /** User status filter. */
   status?: UserStatus;
-  organizationId?: string;
-  [key: string]: string | number | boolean | undefined | null;
+  /** API column used for sorting. */
+  sortBy?: 'email' | 'given_name' | 'family_name' | 'created_at' | 'last_login_at';
+  /** Sort direction. */
+  sortOrder?: 'asc' | 'desc';
 }

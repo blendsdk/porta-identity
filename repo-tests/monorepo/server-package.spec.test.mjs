@@ -365,12 +365,12 @@ test('should retain every behavioral and harness test file', () => {
     {
       label: 'SDK tests',
       paths: findPhysicalFiles('packages/sdk/tests', /\.test\.ts$/),
-      expectedCount: 33,
+      expectedCount: 36,
     },
     {
       label: 'CLI tests',
       paths: findPhysicalFiles('packages/cli/tests', /\.test\.ts$/),
-      expectedCount: 48,
+      expectedCount: 49,
     },
     {
       label: 'OIDC harness tests',

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-29 21:00
-> **Progress**: 0/46 tasks (0%)
+> **Last Updated**: 2026-08-30 01:33
+> **Progress**: 9/46 tasks (20%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -48,7 +48,7 @@ part of this plan (AR-1–AR-7).
 
 ## Phase 1: SDK Contracts and Current Consumers
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `2a4c1684d189f01ea2dcb9e4c20bb8f4ed49423a`
 > **Expected modification set**: `packages/sdk/src/{types/common,types/users,types/index,domains/users,agent}.ts`, `packages/sdk/tests/type-contracts/{users-contract.spec.test.ts,tsconfig.json}`, `packages/sdk/tests/{domains/users-contract.{spec,impl},domains/users,domains/standalone-users,agent/agent}.test.ts`, `packages/cli/src/commands/user.ts`, `packages/cli/tests/{commands/user-contract.spec,commands/user}.test.ts`, registered packed P1 requirement/probe files only if their current expectation needs alignment, test inventory, and execution evidence
 > **Scope mode**: strict — named current user contracts only; no shim, new endpoint, server change, or unrelated SDK cleanup
 
@@ -56,21 +56,21 @@ part of this plan (AR-1–AR-7).
 
 **Reference**: [03-01](03-01-sdk-user-contracts.md) · ST-01–ST-07 · AR-3
 
-- [ ] 1.1.1 [spec-author] Add SDK runtime contract specifications plus a tracked focused TypeScript oracle/config for exact closed create/update/address/list contracts and exact invite/reason/history result signatures — `packages/sdk/tests/domains/users-contract.spec.test.ts`, `packages/sdk/tests/type-contracts/{users-contract.spec.test.ts,tsconfig.json}`
-- [ ] 1.1.2 [spec-author] Add current `porta user` consumer specifications for update, invite, reasons, and history — `packages/cli/tests/commands/user-contract.spec.test.ts`
-- [ ] 1.1.3 Run both focused specification files plus `node_modules/@typescript/native/bin/tsc --project packages/sdk/tests/type-contracts/tsconfig.json --noEmit`; record already-correct preservation assertions as the green baseline and missing or mismatched behavior as expected red before production changes
+- [x] 1.1.1 [spec-author] Add SDK runtime contract specifications plus a tracked focused TypeScript oracle/config for exact closed create/update/address/list contracts and exact invite/reason/history result signatures — `packages/sdk/tests/domains/users-contract.spec.test.ts`, `packages/sdk/tests/type-contracts/{users-contract.spec.test.ts,tsconfig.json}` ✅ (completed: 2026-08-30 01:11)
+- [x] 1.1.2 [spec-author] Add current `porta user` consumer specifications for update, invite, reasons, and history — `packages/cli/tests/commands/user-contract.spec.test.ts` ✅ (completed: 2026-08-30 01:10)
+- [x] 1.1.3 Run both focused specification files plus `node_modules/@typescript/native/bin/tsc --project packages/sdk/tests/type-contracts/tsconfig.json --noEmit`; record already-correct preservation assertions as the green baseline and missing or mismatched behavior as expected red before production changes — expected red: SDK 4/7 failed, CLI 7/12 failed, and the focused TypeScript oracle reported missing/incorrect public contracts; preservation assertions remained green ✅ (completed: 2026-08-30 01:11)
 
 ### Step 1.2: Implementation and Green Phase
 
-- [ ] 1.2.1 Correct documented public user, address, invitation, list, and history types/exports — `packages/sdk/src/types/users.ts`, `packages/sdk/src/types/common.ts`, `packages/sdk/src/types/index.ts`
-- [ ] 1.2.2 Correct offset/cursor mapping, invite result, reason bodies, and history envelopes for both user domains — `packages/sdk/src/domains/users.ts`
-- [ ] 1.2.3 Align user-specific positional SDK agent metadata/executor tests, including history and reason parameters, and ordinary CLI user commands without changing shared list metadata — `packages/sdk/src/agent.ts`, `packages/cli/src/commands/user.ts`
-- [ ] 1.2.4 Run ST-01–ST-07, including the focused TypeScript oracle command, and make the implementation green without changing expectations
+- [x] 1.2.1 Correct documented public user, address, invitation, list, and history types/exports — `packages/sdk/src/types/users.ts`, `packages/sdk/src/types/common.ts`, `packages/sdk/src/types/index.ts` ✅ (completed: 2026-08-30 01:12)
+- [x] 1.2.2 Correct offset/cursor mapping, invite result, reason bodies, and history envelopes for both user domains — `packages/sdk/src/domains/users.ts` ✅ (completed: 2026-08-30 01:14)
+- [x] 1.2.3 Align user-specific positional SDK agent metadata/executor tests, including history and reason parameters, and ordinary CLI user commands without changing shared list metadata — `packages/sdk/src/agent.ts`, `packages/cli/src/commands/user.ts` ✅ (completed: 2026-08-30 01:17)
+- [x] 1.2.4 Run ST-01–ST-07, including the focused TypeScript oracle command, and make the implementation green without changing expectations ✅ (completed: 2026-08-30 01:17)
 
 ### Step 1.3: Implementation Tests and Verification
 
-- [ ] 1.3.1 Add query omission, route/header, standalone parity, agent, and current-command implementation regressions — `packages/sdk/tests/domains/users-contract.impl.test.ts`, affected existing SDK/CLI tests
-- [ ] 1.3.2 Run the focused TypeScript oracle, SDK and CLI package verification, then root `yarn verify` for the multi-workspace revision
+- [x] 1.3.1 Add query omission, route/header, standalone parity, agent, and current-command implementation regressions — `packages/sdk/tests/domains/users-contract.impl.test.ts`, affected existing SDK/CLI tests ✅ (completed: 2026-08-30 01:19)
+- [x] 1.3.2 Run the focused TypeScript oracle, SDK and CLI package verification, then root `yarn verify` for the multi-workspace revision ✅ (completed: 2026-08-30 01:33)
 
 **Deliverables:** truthful current user SDK, aligned current consumers, and no compatibility shim.
 

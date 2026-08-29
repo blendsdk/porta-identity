@@ -192,8 +192,14 @@ describe('user command', () => {
 
   describe('invite', () => {
     it('invites a user', async () => {
-      const bobUser = { ...sampleUser, email: 'bob@example.com' };
-      mockUsers.invite.mockResolvedValue(bobUser);
+      const invitation = {
+        userId: sampleUser.id,
+        email: 'bob@example.com',
+        created: true,
+        invitationSent: true,
+        expiresAt: '2026-09-01T12:00:00.000Z',
+      };
+      mockUsers.invite.mockResolvedValue(invitation);
 
       await invokeSubcommand('invite', { org: 'org-uuid', email: 'bob@example.com' });
 
@@ -204,11 +210,18 @@ describe('user command', () => {
     });
 
     it('invites with JSON output', async () => {
-      mockUsers.invite.mockResolvedValue(sampleUser);
+      const invitation = {
+        userId: sampleUser.id,
+        email: 'bob@example.com',
+        created: true,
+        invitationSent: true,
+        expiresAt: '2026-09-01T12:00:00.000Z',
+      };
+      mockUsers.invite.mockResolvedValue(invitation);
 
       await invokeSubcommand('invite', { org: 'org-uuid', email: 'bob@example.com', json: true });
 
-      expect(printJson).toHaveBeenCalledWith(sampleUser);
+      expect(printJson).toHaveBeenCalledWith(invitation);
     });
 
     it('handles invite errors', async () => {
@@ -364,7 +377,7 @@ describe('user command', () => {
   });
 
   describe('unsuspend', () => {
-    it('unsuspends a user (ST-23)', async () => {
+    it('unsuspends a user', async () => {
       await invokeSubcommand('unsuspend', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
       expect(mockUsers.unsuspend).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
@@ -384,9 +397,17 @@ describe('user command', () => {
 
   describe('lock', () => {
     it('locks a user', async () => {
-      await invokeSubcommand('lock', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
+      await invokeSubcommand('lock', {
+        org: 'org-uuid',
+        _pos_: 'user-uuid-1234',
+        reason: 'Repeated failures',
+      });
 
-      expect(mockUsers.lock).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
+      expect(mockUsers.lock).toHaveBeenCalledWith(
+        'org-uuid',
+        'user-uuid-1234',
+        'Repeated failures',
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('locked'));
     });
   });
@@ -466,9 +487,19 @@ describe('user command', () => {
   describe('history', () => {
     it('shows user history in table format', async () => {
       // Server HistoryEntry shape (src/lib/entity-history.ts).
-      mockUsers.getHistory.mockResolvedValue([
-        { id: 'h1', eventType: 'user.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' },
-      ]);
+      mockUsers.getHistory.mockResolvedValue({
+        data: [
+          {
+            id: 'h1',
+            eventType: 'user.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      });
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
@@ -477,7 +508,19 @@ describe('user command', () => {
     });
 
     it('shows history in JSON format', async () => {
-      const history = [{ id: 'h1', eventType: 'user.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' }];
+      const history = {
+        data: [
+          {
+            id: 'h1',
+            eventType: 'user.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      };
       mockUsers.getHistory.mockResolvedValue(history);
 
 
@@ -487,7 +530,7 @@ describe('user command', () => {
     });
 
     it('shows warning when no history found', async () => {
-      mockUsers.getHistory.mockResolvedValue([]);
+      mockUsers.getHistory.mockResolvedValue({ data: [], hasMore: false, nextCursor: null });
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 

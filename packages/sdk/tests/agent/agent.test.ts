@@ -40,6 +40,35 @@ describe('agent', () => {
       expect(names).toContain('audit.list');
     });
 
+    it('describes the exact user list, lifecycle, invitation, and history contracts', () => {
+      const tools = getToolDefinitions();
+      const byName = (name: string) => tools.find((tool) => tool.name === name);
+
+      expect(byName('users.list')?.parameters).toEqual([
+        expect.objectContaining({ name: 'orgId', required: true }),
+        expect.objectContaining({ name: 'params', type: 'object', required: false }),
+      ]);
+      expect(byName('users.invite')?.returns).toBe('InviteUserResult');
+      expect(byName('users.suspend')?.parameters.map((parameter) => parameter.name)).toEqual([
+        'orgId',
+        'userId',
+        'reason',
+      ]);
+      expect(byName('users.suspend')?.parameters.at(-1)?.required).toBe(false);
+      expect(byName('users.lock')?.parameters.at(-1)).toEqual(
+        expect.objectContaining({ name: 'reason', required: true }),
+      );
+      expect(byName('users.getHistory')).toEqual(
+        expect.objectContaining({
+          parameters: [
+            expect.objectContaining({ name: 'orgId' }),
+            expect.objectContaining({ name: 'userId' }),
+          ],
+          returns: 'HistoryResult',
+        }),
+      );
+    });
+
     it('parameters have required properties', () => {
       for (const tool of getToolDefinitions()) {
         for (const param of tool.parameters) {
@@ -57,6 +86,12 @@ describe('agent', () => {
     function mockClient(): PortaClient {
       return {
         organizations: { list: vi.fn().mockResolvedValue({ data: [], total: 0 }) },
+        users: {
+          list: vi.fn().mockResolvedValue({ data: [], total: 0 }),
+          suspend: vi.fn().mockResolvedValue(undefined),
+          lock: vi.fn().mockResolvedValue(undefined),
+          getHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
+        },
         stats: { get: vi.fn().mockResolvedValue({ orgs: 5 }) },
         config: { list: vi.fn().mockResolvedValue([]) },
       } as unknown as PortaClient;
@@ -73,6 +108,37 @@ describe('agent', () => {
       const client = mockClient();
       await executeTool(client, 'organizations.list', { page: 2, pageSize: 10 });
       expect((client.organizations.list as ReturnType<typeof vi.fn>)).toHaveBeenCalled();
+    });
+
+    it('passes user parameters as exact positional domain arguments', async () => {
+      const client = mockClient();
+      const params = { page: 2, pageSize: 10 };
+
+      await executeTool(client, 'users.list', { orgId: 'org-1', params });
+      await executeTool(client, 'users.suspend', {
+        orgId: 'org-1',
+        userId: 'user-1',
+        reason: 'Policy review',
+      });
+      await executeTool(client, 'users.lock', {
+        orgId: 'org-1',
+        userId: 'user-1',
+        reason: 'Repeated failures',
+      });
+      await executeTool(client, 'users.getHistory', { orgId: 'org-1', userId: 'user-1' });
+
+      expect(vi.mocked(client.users.list)).toHaveBeenCalledWith('org-1', params);
+      expect(vi.mocked(client.users.suspend)).toHaveBeenCalledWith(
+        'org-1',
+        'user-1',
+        'Policy review',
+      );
+      expect(vi.mocked(client.users.lock)).toHaveBeenCalledWith(
+        'org-1',
+        'user-1',
+        'Repeated failures',
+      );
+      expect(vi.mocked(client.users.getHistory)).toHaveBeenCalledWith('org-1', 'user-1');
     });
 
     it('returns error for invalid tool name', async () => {

@@ -96,7 +96,7 @@ describe('domains/users', () => {
       });
     });
 
-    it('unsuspend calls POST .../unsuspend (ST-11)', async () => {
+    it('unsuspend calls POST .../unsuspend', async () => {
       // Source: src/routes/users.ts — POST /organizations/:orgId/users/:userId/unsuspend
       const users = createUsersDomain(transport);
       await users.unsuspend('org-1', 'u1');
@@ -113,8 +113,8 @@ describe('domains/users', () => {
       });
     });
 
-    it('does not expose an org-scoped activate() (ST-10)', () => {
-      // Source: org-scoped router has no /activate route — removed (AR-9/PF-006).
+    it('does not expose an org-scoped activate method', () => {
+      // The organization-scoped router has no activate alias.
       const users = createUsersDomain(transport) as Record<string, unknown>;
       expect(users.activate).toBeUndefined();
     });
@@ -122,9 +122,10 @@ describe('domains/users', () => {
     it('lock calls POST .../lock', async () => {
 
       const users = createUsersDomain(transport);
-      await users.lock('org-1', 'u1');
+      await users.lock('org-1', 'u1', 'Repeated failures');
       expect(transport.request).toHaveBeenCalledWith({
         method: 'POST', path: '/organizations/org-1/users/u1/lock',
+        body: { reason: 'Repeated failures' },
       });
     });
 
@@ -150,8 +151,7 @@ describe('domains/users', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // Newly added methods (ST-10) — each must map to a real server route under
-  // /organizations/:orgId/users (src/routes/users.ts).
+  // Each method below maps to an existing organization-scoped server route.
   // ---------------------------------------------------------------------------
   describe('added user methods', () => {
     beforeEach(() => { transport = mockTransport(); });
@@ -204,4 +204,3 @@ describe('domains/users', () => {
     });
   });
 });
-
