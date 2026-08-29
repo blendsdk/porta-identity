@@ -3,7 +3,7 @@
 > **Feature-Set**: Porta Admin UI
 > **Status**: Active
 > **Created**: 2026-08-27
-> **Last Updated**: 2026-08-29 16:47
+> **Last Updated**: 2026-08-29 17:04
 > **Progress**: 2 / 9 (22%)
 > **CodeOps Artifact Schema**: 1
 
@@ -13,18 +13,18 @@
 
 ## Tracker
 
-| ID    | Title                                | RD                                                                 | Plan                                                                                 | Stage          | Status | Last Updated     | Depends-on / Blocker |
-| ----- | ------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | -------------- | ------ | ---------------- | -------------------- |
-| RD-01 | JSVision admin foundation            | [RD-01](requirements/RD-01-jsvision-admin-foundation.md)           | [jsvision-foundation](plans/jsvision-foundation/00-index.md)                         | Done           | ✅     | 2026-08-27 20:11 | —                    |
-| RD-02 | Organization context and navigation  | [RD-02](requirements/RD-02-organization-context-and-navigation.md) | [organization-context-navigation](plans/organization-context-navigation/00-index.md) | Done           | ✅     | 2026-08-29 00:17 | RD-01                |
-| T-01  | Unauthenticated authentication gate  | —                                                                  | [plan](plans/authentication-gate/99-execution-plan.md)                               | Done           | ✅     | 2026-08-29 12:36 | RD-01                |
-| RD-03 | User management                      | [RD-03](requirements/RD-03-user-management.md)                     | —                                                                                    | RD Preflighted | 🔎     | 2026-08-29 16:47 | RD-02                |
-| RD-04 | Applications and OIDC clients        | —                                                                  | —                                                                                    | Backlog        | ⬜     | 2026-08-29 13:13 | RD-02                |
-| RD-05 | Roles and permissions                | —                                                                  | —                                                                                    | Backlog        | ⬜     | 2026-08-29 13:13 | RD-03, RD-04         |
-| RD-06 | Organization settings and branding   | —                                                                  | —                                                                                    | Backlog        | ⬜     | 2026-08-29 13:13 | RD-02                |
-| RD-07 | Sessions and authentication security | —                                                                  | —                                                                                    | Backlog        | ⬜     | 2026-08-29 13:13 | RD-03                |
-| RD-08 | Audit and activity                   | —                                                                  | —                                                                                    | Backlog        | ⬜     | 2026-08-29 13:13 | RD-02                |
-| RD-09 | Advanced operational tools           | —                                                                  | —                                                                                    | Backlog        | ⬜     | 2026-08-29 13:13 | RD-06, RD-08         |
+| ID    | Title                                | RD                                                                 | Plan                                                                                 | Stage        | Status | Last Updated     | Depends-on / Blocker |
+| ----- | ------------------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ------------ | ------ | ---------------- | -------------------- |
+| RD-01 | JSVision admin foundation            | [RD-01](requirements/RD-01-jsvision-admin-foundation.md)           | [jsvision-foundation](plans/jsvision-foundation/00-index.md)                         | Done         | ✅     | 2026-08-27 20:11 | —                    |
+| RD-02 | Organization context and navigation  | [RD-02](requirements/RD-02-organization-context-and-navigation.md) | [organization-context-navigation](plans/organization-context-navigation/00-index.md) | Done         | ✅     | 2026-08-29 00:17 | RD-01                |
+| T-01  | Unauthenticated authentication gate  | —                                                                  | [plan](plans/authentication-gate/99-execution-plan.md)                               | Done         | ✅     | 2026-08-29 12:36 | RD-01                |
+| RD-03 | User management                      | [RD-03](requirements/RD-03-user-management.md)                     | [user-management](plans/user-management/00-index.md)                                 | Plan Created | 📋     | 2026-08-29 17:04 | RD-02                |
+| RD-04 | Applications and OIDC clients        | —                                                                  | —                                                                                    | Backlog      | ⬜     | 2026-08-29 13:13 | RD-02                |
+| RD-05 | Roles and permissions                | —                                                                  | —                                                                                    | Backlog      | ⬜     | 2026-08-29 13:13 | RD-03, RD-04         |
+| RD-06 | Organization settings and branding   | —                                                                  | —                                                                                    | Backlog      | ⬜     | 2026-08-29 13:13 | RD-02                |
+| RD-07 | Sessions and authentication security | —                                                                  | —                                                                                    | Backlog      | ⬜     | 2026-08-29 13:13 | RD-03                |
+| RD-08 | Audit and activity                   | —                                                                  | —                                                                                    | Backlog      | ⬜     | 2026-08-29 13:13 | RD-02                |
+| RD-09 | Advanced operational tools           | —                                                                  | —                                                                                    | Backlog      | ⬜     | 2026-08-29 13:13 | RD-06, RD-08         |
 
 Backlog rows intentionally describe capabilities only. Each item is scoped immediately before
 implementation so the Admin UI grows one useful feature at a time without speculative framework

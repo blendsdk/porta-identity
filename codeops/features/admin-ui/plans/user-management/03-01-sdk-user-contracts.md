@@ -1,0 +1,124 @@
+# SDK User Contracts: User Management
+
+> **Document**: 03-01-sdk-user-contracts.md
+> **Parent**: [Index](00-index.md)
+
+## Overview
+
+Correct only the current user-domain mismatches named by UM-15 so the Admin UI and existing current
+consumers share one truthful SDK. No server route, parallel transport, legacy alias, or unrelated SDK
+surface is added (AR-1, AR-3).
+
+## Architecture
+
+### Current Architecture
+
+`createUsersDomain()` delegates authenticated HTTP requests to the shared transport. Public types
+live in `types/users.ts` and `types/common.ts`; ordinary CLI commands and `agent.ts` consume the same
+domain. Query parameters currently pass through `toQueryParams()` without choosing offset versus
+cursor names.
+
+### Proposed Changes
+
+Keep that architecture and correct its existing contracts:
+
+1. complete persisted create/update profile inputs;
+2. select offset or cursor list query names explicitly;
+3. return the invitation result rather than a `User`;
+4. carry suspend and lock reasons;
+5. return the existing paginated history envelope for both user domains;
+6. update only affected current CLI commands, agent metadata, tests, docs, and packed P1 proof.
+
+## Public Contract
+
+### Input and result types
+
+`CreateUserInput` retains `organizationId`, required `email`, optional password, every persisted
+create profile/address field from the server schema, and excludes `phoneNumberVerified` while
+server issue #87 remains open. `UpdateUserInput` contains every nullable mutable profile/address
+field plus `phoneNumberVerified`; it contains no `email`. Address fields use their existing server
+names and null-clearing semantics.
+
+Add an exact invitation result:
+
+```ts
+export interface InviteUserResult {
+  userId: string;
+  email: string;
+  created: boolean;
+  invitationSent: boolean;
+  expiresAt: string;
+}
+```
+
+Add the existing history envelope to `types/common.ts` and export it through the existing index:
+
+```ts
+export interface HistoryResult {
+  data: HistoryEntry[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+```
+
+`InviteUserInput` retains server-supported role/claim fields for existing SDK consumers, while the
+Admin UI never supplies them. `InvitePreviewResult` remains subject/text/html because the SDK
+faithfully exposes the server; the terminal service projects only safe subject and text (AR-3,
+AR-5).
+
+### List parameters
+
+`UserListParams` exposes `page`, `pageSize`, `cursor`, `search`, `status`, `sortBy`, and `sortOrder`.
+It removes the user-specific `sort`/`order` names. Request mapping is deterministic:
+
+- when `cursor` is defined, send `cursor`, map `pageSize` to `limit`, and do not send `page` or
+  `pageSize`;
+- otherwise send offset `page` and `pageSize`;
+- pass `search`, `status`, `sortBy`, and `sortOrder` unchanged in either mode.
+
+The Admin UI supplies only offset `page`, `pageSize=20`, optional `search`, and optional `status`.
+No cursor control enters the Admin UI (AR-3).
+
+### Domain method signatures
+
+```ts
+invite(input: InviteUserInput): Promise<InviteUserResult>;
+suspend(orgId: string, userId: string, reason?: string): Promise<void>;
+lock(orgId: string, userId: string, reason: string): Promise<void>;
+getHistory(orgId: string, userId: string, params?: ListParams): Promise<HistoryResult>;
+```
+
+The standalone domain receives the equivalent reason and `HistoryResult` corrections. Existing
+route paths, ETag behavior, purge confirmation header, and one-time transport refresh remain
+unchanged.
+
+## Current Consumer Alignment
+
+- `porta user update` stops advertising or sending email updates.
+- `porta user suspend` accepts an optional bounded `--reason`; `porta user lock` requires a bounded
+  `--reason` and sends it.
+- `porta user invite` reads the invitation result fields rather than treating it as a user.
+- `porta user history` reads `result.data`; JSON output may print the full SDK envelope, while the
+  Admin UI projection remains metadata-free.
+- SDK agent definitions describe the exact list names, invitation result, reasons, and history
+  envelope. Existing exports are updated without an alias.
+- The packed P1 cursor consumer remains unchanged at its call site and proves `pageSize=2` becomes
+  `limit=2` in the request.
+
+## Error Handling
+
+| Error case                              | Handling strategy                                                              | AR Ref     |
+| --------------------------------------- | ------------------------------------------------------------------------------ | ---------- |
+| Offset list parameters supplied         | Send only offset names                                                         | AR-3       |
+| Cursor and `pageSize` supplied          | Send cursor plus mapped `limit`; omit offset fields                            | AR-3       |
+| Transport final `401` or failed refresh | Preserve existing SDK error after its single refresh attempt                   | AR-3       |
+| Malformed response                      | SDK returns the transport value; Admin UI service validates before publication | AR-3, AR-9 |
+| Existing consumer compile failure       | Update that current consumer; do not add a compatibility shim                  | AR-3       |
+
+## Testing Requirements
+
+- Public-type and domain specification tests cover every contract above before source changes.
+- Focused implementation tests cover query omission/mapping and unchanged route/header behavior.
+- Current CLI and agent tests cover corrected arguments and result handling.
+- The existing packed P1 current-SDK journey proves both cursor and offset raw requests.
+- SDK and CLI package verification plus clean `p1-admin` assurance are mandatory (AR-6).
