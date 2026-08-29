@@ -41,11 +41,13 @@ global audit, bulk operations, and import/export remain owned by their later roa
       login summary, and created/updated timestamps. Password hashes, tokens, recovery material,
       raw metadata, and raw server responses are never displayed. (AR-60, AR-61)
 - [ ] **UM-05 — Create user:** an independently authorized administrator can create a user using
-      required email, optional initial password, and every profile field currently accepted by the
-      server create schema. The form groups identity, contact, address, and credential fields into
-      focused sections. Password and confirmation are masked, must match, accept 8–128 characters,
-      and are cleared after submission or cancellation. Email and profile bounds match the existing
-      server contract. (AR-60, AR-62)
+      required email, optional initial password, and every profile field the current server create
+      path actually persists. `phoneNumberVerified` is excluded from creation because the server
+      currently accepts but silently discards it; the field remains available through profile edit.
+      The form groups identity, contact, address, and credential fields into focused sections.
+      Password and confirmation are masked, must match, accept 8–128 characters, and are cleared
+      after submission or cancellation. Email and profile bounds match the existing server contract.
+      (AR-60, AR-62)
 - [ ] **UM-06 — Invite user:** an independently authorized administrator can invite a new or
       existing user using required email and optional given name, family name, locale, and personal
       message. Names accept 1–255 characters, locale at most 10, and message at most 500. The dialog
@@ -134,13 +136,13 @@ global audit, bulk operations, and import/export remain owned by their later roa
 
 ### SDK contract corrections
 
-| SDK surface            | Required alignment with the existing Admin API                                                                                        |
-| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `UserListParams`       | Use `page`, `pageSize`, `search`, `status`, `sortBy`, and `sortOrder` names accepted by the server.                                   |
-| Create/update inputs   | Represent the server's existing supported profile, contact, locale, and address fields without advertising unsupported email editing. |
-| `invite()`             | Return the server's invitation result containing `userId`, `email`, `created`, `invitationSent`, and `expiresAt`.                     |
-| `suspend()` / `lock()` | Carry the optional suspend reason and required lock reason accepted by the server.                                                    |
-| History                | Preserve the existing bounded history contract; RD-03 does not expose arbitrary metadata.                                             |
+| SDK surface            | Required alignment with the existing Admin API                                                                                                                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UserListParams`       | Use `page`, `pageSize`, `search`, `status`, `sortBy`, and `sortOrder` names accepted by the server.                                                                                                                                                   |
+| Create/update inputs   | Represent fields the server actually persists; omit `phoneNumberVerified` from create until server defect [#87](https://github.com/blendsdk/porta-identity/issues/87) is fixed, retain it for update, and do not advertise unsupported email editing. |
+| `invite()`             | Return the server's invitation result containing `userId`, `email`, `created`, `invitationSent`, and `expiresAt`.                                                                                                                                     |
+| `suspend()` / `lock()` | Carry the optional suspend reason and required lock reason accepted by the server.                                                                                                                                                                    |
+| History                | Preserve the existing bounded history contract; RD-03 does not expose arbitrary metadata.                                                                                                                                                             |
 
 The corrections are public SDK contract changes and require focused SDK specifications,
 documentation, package verification, and clean compatibility assurance before completion.
@@ -232,10 +234,12 @@ server decision as authoritative, including a `403` after an action was displaye
 2. [ ] A list response containing a non-UUID ID, mismatched `organizationId`, unsupported status,
        duplicate ID, malformed total/page fields, or control-bearing displayed text produces one
        fixed invalid-response state and publishes none of that response as selectable data.
-3. [ ] Create accepts every field in the existing server create contract, including password
-       lengths 8 and 128, and rejects password lengths 7 and 129, mismatched confirmation, invalid
-       email, or out-of-range profile data before dispatch. Password buffers are cleared after
-       success, failure, and cancellation.
+3. [ ] Create accepts every profile field the existing server create path persists, excluding
+       `phoneNumberVerified` while server defect
+       [#87](https://github.com/blendsdk/porta-identity/issues/87) remains open. It accepts password lengths 8 and
+       128, and rejects password lengths 7 and 129, mismatched confirmation, invalid email, or
+       out-of-range profile data before dispatch. Password buffers are cleared after success,
+       failure, and cancellation. Edit continues to support `phoneNumberVerified`.
 4. [ ] Invite and preview accept email, names of 1 and 255 characters, message lengths 0 and 500,
        and locale lengths 0 and 10; longer values are rejected before dispatch. No role or claim
        assignment value can be submitted from RD-03.

@@ -1,9 +1,10 @@
 ## Preflight Report: RD-03 User Management
 
-> **Status**: ⛔ BLOCKED — 10 findings (0 critical, 5 major, 5 minor); one reserved product decision pending
+> **Status**: ⛔ BLOCKED — 10 findings (0 critical, 5 major, 5 minor); PF-004 fixed, remaining accepted corrections not yet applied
 > **Iteration**: 1 (first scan)
 > **Artifact**: Single requirement at `codeops/features/admin-ui/requirements/RD-03-user-management.md`
-> **Artifact SHA-256**: `763bcf8a4823f14a6e3388f1f5f25e1639a175b13c1771d3f85910bfa8a26aee`
+> **Initial Artifact SHA-256**: `763bcf8a4823f14a6e3388f1f5f25e1639a175b13c1771d3f85910bfa8a26aee`
+> **Current Artifact SHA-256 (pending re-scan)**: `550a750c49d0e1d748a34fb9f6925d3fcb6f482374d319338118d1b69d98d67f`
 > **Codebase Grounded**: 24 source, test, manifest, dependency, and requirements files examined; 15 contract references verified
 > **Last Updated**: 2026-08-29
 
@@ -63,12 +64,12 @@ new framework, package, endpoint, or server architecture is needed.
 
 ### Summary by Severity
 
-| Severity    | Count | Status                                                       |
-| ----------- | ----: | ------------------------------------------------------------ |
-| Critical    |     0 | None                                                         |
-| Major       |     5 | 4 in-scope resolutions selected; 1 reserved decision pending |
-| Minor       |     5 | In-scope resolutions selected                                |
-| Observation |     0 | None                                                         |
+| Severity    | Count | Status                                        |
+| ----------- | ----: | --------------------------------------------- |
+| Critical    |     0 | None                                          |
+| Major       |     5 | PF-004 fixed; 4 in-scope resolutions selected |
+| Minor       |     5 | In-scope resolutions selected                 |
+| Observation |     0 | None                                          |
 
 ---
 
@@ -209,8 +210,12 @@ behavior silently discards. The UI cannot honestly claim successful creation of 
 **Recommendation:** Option A. Fixing server persistence is technically possible but is outside this
 strict Admin UI/SDK modification boundary and would expand verification into server behavior.
 
-**User Decision:** Pending — this changes an approved acceptance statement and is reserved from
-`--auto-design` even though Option A is the smallest resolution.
+**User Decision:** Resolved — user directed filing the server defect and excluding
+`phoneNumberVerified` from Create while retaining it in Edit. Tracked as
+[`blendsdk/porta-identity#87`](https://github.com/blendsdk/porta-identity/issues/87).
+
+**Fix status:** Applied to UM-05, the SDK input alignment table, and AC-3 on 2026-08-29. A later
+preflight re-scan must verify the changed artifact before advancing the roadmap.
 
 **Confidence:** High. **Hardening:** Every grounding review and the independent challenger confirmed
 the mismatch; the challenger agreed Option A is the smallest in-scope correction.
@@ -392,6 +397,6 @@ Confidence: High; Hardening: independent fit auditor agreed; Policy version: 1; 
 
 ### Verdict
 
-RD-03 is feasible with the existing architecture and is appropriately bounded, but it cannot pass
-until PF-004 receives the reserved product ruling and the accepted in-scope corrections are applied
-and re-scanned. The roadmap remains at `RD Drafted`.
+RD-03 is feasible with the existing architecture and is appropriately bounded. PF-004 has been
+resolved and fixed, but the remaining accepted in-scope corrections have not been applied or
+re-scanned. The roadmap remains at `RD Drafted`.
