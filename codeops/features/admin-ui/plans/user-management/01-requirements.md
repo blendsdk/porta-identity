@@ -37,7 +37,7 @@
 | Delivery order  | SDK contracts before CLI user services and UI                     | AR-3, AR-7 |
 | State owner     | Organization/session-bound user controller and generation token   | AR-4       |
 | UI split        | Workspace for list/detail/history; dialogs for focused operations | AR-5       |
-| Verification    | Approved affected-package and compatibility gates                 | AR-6, AR-8 |
+| Verification    | Narrow feedback plus required root and compatibility gates        | AR-6, AR-8 |
 | Failures        | Existing fixed local vocabulary extended only where required      | AR-9       |
 
 ## Acceptance Criteria

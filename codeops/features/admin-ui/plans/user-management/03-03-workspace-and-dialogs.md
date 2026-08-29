@@ -27,7 +27,13 @@ unchanged.
 
 ## User Workspace
 
-`createAdminUserWorkspace()` returns a feature-specific surface with:
+`createAdminUserWorkspace()` receives one user-specific intent callback and returns a
+feature-specific surface. The callback accepts only the closed `AdminUserIntent` union:
+`search { value }`, `filter { status }`, `page { page }`, `select { userId }`, `history`, `retry`,
+`back`, or one named user action for the selected validated row. It is the narrow payload seam to
+the Phase-4 controller, not a generic event bus or reusable framework.
+
+The returned surface is:
 
 ```ts
 interface AdminUserWorkspace {
@@ -90,13 +96,17 @@ dialog-local values or cancellation; they contain no application state.
   becomes null. `phoneNumberVerified` remains editable.
 - Local validation preserves ordinary fields. Password and confirmation signals are overwritten
   with empty strings in a `finally` path after success, failure, or cancellation.
+- URL fields accept at most 2,048 characters and address street accepts at most 500; the remaining
+  fields use the exact bounds in the state/service contract. Every maximum and maximum-plus-one
+  boundary and every ASCII/C1 control is rejected before dispatch.
 
 ### Invite and preview
 
 - Collect required email plus optional names, locale, and personal message; no role/claim inputs
-  exist.
+  exist. ASCII/C1 controls in locally entered text are rejected before dispatch.
 - Preview dispatches the same non-assignment input and opens a bounded read-only subject/plain-text
-  dialog. HTML never reaches a control.
+  dialog. Subject is limited to 255 characters and plain text to 10,000; HTML never reaches a
+  control.
 - Closing preview returns to the populated invite dialog. Invalid preview preserves the invite
   fields and shows only the fixed invalid-response outcome.
 
@@ -104,20 +114,29 @@ dialog-local values or cancellation; they contain no application state.
 
 - Set password uses masked password/confirmation and the same unconditional clearing rule.
 - Clear password and verify email show exact email and require explicit confirmation.
-- Suspend optionally collects a reason; lock requires one. Suspend, lock, and deactivate show exact
-  email plus target state before dispatch.
+- Suspend optionally collects a reason; lock requires one. Control-bearing reasons are rejected.
+  Suspend, lock, and deactivate show exact email plus target state before dispatch.
 - Unsuspend, unlock, and reactivate require one deliberate activation without a second confirmation.
 - Purge shows exact email, a fixed irreversible warning, initially focuses Cancel, and labels the
   distinct action `Purge permanently`.
 
-Duplicate activation is disabled while one modal submission owns dispatch. Cancel before dispatch
-sends no request; cancel after dispatch invalidates presentation ownership but does not retry.
+Duplicate activation is disabled while one modal submission owns dispatch. Cancel before SDK
+invocation sends no request. Cancel after mutation SDK invocation immediately publishes fixed
+`outcome-unknown` over preserved validated state, invalidates presentation ownership, ignores the
+late result, and follows the deliberate reconciliation/new-action rule without retry.
+
+User dialogs and the existing authentication, organization, and Who Am I dialogs share one small
+bidirectional busy seam: a user dialog cannot open while an existing modal/operation owner is busy,
+and existing modal commands cannot open while a user dialog owns the host. Each side releases the
+seam on every exit. This extends the existing owner flags directly; it does not introduce a modal
+manager.
 
 ## Responsive and Focus Behavior
 
 - Normal and compact layouts remain usable with the existing thresholds.
-- Below the recovery threshold, mounted user dialogs are removed and their operation is cancelled;
-  the last validated same-context workspace state remains owned but hidden.
+- Below the recovery threshold, mounted user dialogs are removed and their operation is cancelled.
+  Before SDK invocation this is ordinary cancellation; after mutation SDK invocation it records
+  fixed `outcome-unknown`. The last validated same-context workspace state remains owned but hidden.
 - Recovery redraws that state without accepting a late cancelled result.
 - Cancellation or recoverable failure returns focus to the invoking row/action; context teardown
   clears the workspace and returns focus to the shell.
@@ -125,13 +144,15 @@ sends no request; cancel after dispatch invalidates presentation ownership but d
 
 ## Error Handling
 
-| Error case                     | Presentation                                                   | AR Ref     |
-| ------------------------------ | -------------------------------------------------------------- | ---------- |
-| Invalid local form             | Fixed validation label; preserve non-secret fields             | AR-5, AR-9 |
-| Forbidden/unavailable/conflict | Fixed label over unchanged validated view                      | AR-9       |
-| Invalid response               | Fixed invalid-response label; no remote value mounted          | AR-9       |
-| Final authentication failure   | Close user modal and yield to the existing authentication gate | AR-4, AR-9 |
-| Cancel/resize                  | Preserve validated view, remove modal, reject late result      | AR-4, AR-5 |
+| Error case                            | Presentation                                                             | AR Ref           |
+| ------------------------------------- | ------------------------------------------------------------------------ | ---------------- |
+| Invalid local form                    | Fixed validation label; preserve non-secret fields                       | AR-5, AR-9       |
+| Forbidden/unavailable/conflict        | Fixed label over unchanged validated view                                | AR-9             |
+| Invalid response                      | Fixed invalid-response label; no remote value mounted                    | AR-9             |
+| Unknown mutation outcome              | Fixed outcome-unknown label; unchanged validated view                    | AR-9             |
+| Final authentication failure          | Close user modal and yield to the existing authentication gate           | AR-4, AR-9       |
+| Cancel/resize before SDK call         | Preserve validated view, remove modal, dispatch nothing                  | AR-4, AR-5       |
+| Cancel/resize after mutation SDK call | Preserve view, publish outcome-unknown, remove modal, reject late result | AR-4, AR-5, AR-9 |
 
 ## Testing Requirements
 

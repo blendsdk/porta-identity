@@ -33,11 +33,22 @@ Keep that architecture and correct its existing contracts:
 
 ### Input and result types
 
-`CreateUserInput` retains `organizationId`, required `email`, optional password, every persisted
-create profile/address field from the server schema, and excludes `phoneNumberVerified` while
-server issue #87 remains open. `UpdateUserInput` contains every nullable mutable profile/address
-field plus `phoneNumberVerified`; it contains no `email`. Address fields use their existing server
-names and null-clearing semantics.
+The public inputs are exact rather than open-ended. `AddressInput` contains only optional
+`street`, `locality`, `region`, `postalCode`, and `country`, each `string | null`.
+
+`CreateUserInput` contains required `organizationId` and `email`, plus optional `password`,
+`givenName`, `familyName`, `middleName`, `nickname`, `preferredUsername`, `profileUrl`,
+`pictureUrl`, `websiteUrl`, `gender`, `birthdate`, `zoneinfo`, `locale`, `phoneNumber`, and
+`address`. Its profile fields are non-null strings when supplied. It excludes
+`phoneNumberVerified` while server issue #87 remains open.
+
+`UpdateUserInput` contains only optional `givenName`, `familyName`, `middleName`, `nickname`,
+`preferredUsername`, `profileUrl`, `pictureUrl`, `websiteUrl`, `gender`, `birthdate`, `zoneinfo`,
+`locale`, and `phoneNumber`, each `string | null`; optional boolean `phoneNumberVerified`; and
+optional `address` as `AddressInput`. It contains no `email`, `emailVerified`, password, status,
+organization, or index signature. `undefined` leaves a field unchanged. Clearing address data sends
+the intended nested address fields as `null`; top-level `address: null` is excluded because the
+current route normalizes it to no change.
 
 Add an exact invitation result:
 
@@ -68,8 +79,10 @@ AR-5).
 
 ### List parameters
 
-`UserListParams` exposes `page`, `pageSize`, `cursor`, `search`, `status`, `sortBy`, and `sortOrder`.
-It removes the user-specific `sort`/`order` names. Request mapping is deterministic:
+`UserListParams` is a closed interface with only `page`, `pageSize`, `cursor`, `search`, `status`,
+`sortBy`, and `sortOrder`. `sortBy` is exactly `email | given_name | family_name | created_at |
+last_login_at`; `sortOrder` is exactly `asc | desc`. It removes `sort`, `order`,
+`organizationId`, and the broad string index signature. Request mapping is deterministic:
 
 - when `cursor` is defined, send `cursor`, map `pageSize` to `limit`, and do not send `page` or
   `pageSize`;
@@ -85,12 +98,16 @@ No cursor control enters the Admin UI (AR-3).
 invite(input: InviteUserInput): Promise<InviteUserResult>;
 suspend(orgId: string, userId: string, reason?: string): Promise<void>;
 lock(orgId: string, userId: string, reason: string): Promise<void>;
-getHistory(orgId: string, userId: string, params?: ListParams): Promise<HistoryResult>;
+getHistory(orgId: string, userId: string): Promise<HistoryResult>;
 ```
 
-The standalone domain receives the equivalent reason and `HistoryResult` corrections. Existing
-route paths, ETag behavior, purge confirmation header, and one-time transport refresh remain
-unchanged.
+The organization-scoped domain returns the server's existing paginated history envelope. The
+standalone route wraps that same envelope as `{ data: HistoryResult }`; its SDK domain unwraps the
+outer `data` property and preserves the real `hasMore` and `nextCursor` values without a server
+change. RD-03 uses only the default first 20 history entries and does not expose history paging
+parameters or controls. The standalone domain also receives the equivalent reason corrections.
+Existing route paths, ETag behavior, purge confirmation header, and one-time transport refresh
+remain unchanged.
 
 ## Current Consumer Alignment
 
@@ -118,7 +135,20 @@ unchanged.
 ## Testing Requirements
 
 - Public-type and domain specification tests cover every contract above before source changes.
+- A tracked focused TypeScript oracle at
+  `packages/sdk/tests/type-contracts/users-contract.spec.test.ts` uses its own minimal
+  `tsconfig.json`, the repository's existing TypeScript binary, positive assignments, and
+  `@ts-expect-error` cases to prove every allowed create/update/address/list field, the exact
+  invite, reason-bearing action, and history result signatures, and rejection of removed fields,
+  top-level update `address: null`, invalid nullability, invalid sort values, and arbitrary keys.
+  Vitest runtime files do not substitute for this compile-time oracle because the SDK build
+  excludes `tests/`.
 - Focused implementation tests cover query omission/mapping and unchanged route/header behavior.
-- Current CLI and agent tests cover corrected arguments and result handling.
+- Current CLI and agent tests cover corrected arguments and result handling. User agent metadata
+  uses user-specific positional parameters matching `executeTool`: `users.list` declares
+  `orgId` followed by one optional `params` object; suspend declares optional `reason`; lock
+  declares required `reason`; and history is represented by a `users.getHistory` tool with only
+  `orgId` and `userId`. The shared `LIST_PARAMS` helper remains unchanged for unrelated domains.
+  Executor tests assert the exact positional calls.
 - The existing packed P1 current-SDK journey proves both cursor and offset raw requests.
 - SDK and CLI package verification plus clean `p1-admin` assurance are mandatory (AR-6).

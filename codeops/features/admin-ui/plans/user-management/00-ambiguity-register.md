@@ -62,8 +62,9 @@ P1 contract changes before execution.
 **AR-4 (state ownership):** Authority: AI — delegated by `--auto-design`. Eligibility: state and
 cancellation mechanism inside the approved single-operator behavior. Objective: preserve tenant
 isolation and deterministic redraw without persistence or locking machinery. Decision: one
-feature-specific controller owns immutable validated list/detail state, modal ownership, and a
-generation token tied to the selected organization and verified session. Context changes clear it;
+feature-specific controller owns immutable validated list/detail state, modal ownership, and an
+operation generation tied to the selected organization plus an explicit application-owned session
+epoch. Context changes clear it;
 operation cancellation invalidates only the operation and quarantines late results. Evidence:
 RD-02 already uses application-owned abort/generation handling, and UM-14 defines the exact clear
 versus preserve boundary. Rejected alternative: an application-global cache adds lifecycle and
@@ -87,12 +88,13 @@ renderer, or dependency. Policy version: 1. Root invocation ID:
 `make-plan-admin-ui-rd03-20260829`. Reopen triggers: direct implementation exceeds the documented
 file-size boundary.
 
-**AR-6 (verification):** User-owned through RD-03 AC-13 and prior explicit direction. Each phase
-uses the narrowest affected package verification. Completion requires CLI and SDK package verify,
-repository structure tests, docs build, the existing packed Admin UI journey on Node 24 LTS, and a
-clean committed `yarn assurance:compat --select p1-admin` result. Full unrelated Porta/server suites
-are not added when server implementation remains untouched. Any server change reopens this entry
-and activates the repository's full server/security verification policy.
+**AR-6 (verification):** User-owned through RD-03 AC-13 and current project guidance. Each phase
+uses the narrowest affected package verification for fast feedback; root `yarn verify` remains the
+required pre-commit gate. Completion also requires repository structure tests, docs build, the
+existing packed Admin UI journey on Node 24 LTS, and a clean committed
+`yarn assurance:compat --select p1-admin` result. No separate browser, protocol, or
+production-security harness is added while server/auth/protocol behavior remains untouched. Any
+such change reopens this entry and activates the applicable registered harness.
 
 **AR-7 (sequence):** Authority: AI — delegated by `--auto-design`. Eligibility: implementation
 sequencing. Objective: keep red/green evidence and commits bounded to one concern. Decision: five

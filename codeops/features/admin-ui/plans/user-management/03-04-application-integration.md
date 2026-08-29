@@ -16,11 +16,16 @@ It delegates only user-specific workflow behavior (AR-2, AR-4, AR-7).
 `organizations`. `session-service.ts` creates it from the selected authenticated client without
 constructing a second client or sending a request before a user command is activated.
 
+The production composition root in `packages/cli/src/commands/admin.ts` owns one memoized lazy
+`PortaClient` closure per selected server. The organization and user providers both read their
+narrow domain from that same closure, so neither provider creates an eager or duplicate client.
+Focused command specifications prove the production `porta admin` path supplies both providers.
+
 The controller is constructed only after the presentation, application, and dialog surface exist:
 
 ```ts
 interface AdminUserController {
-  readonly syncContext: (state: AdminConnectionState) => void;
+  readonly syncContext: (state: AdminConnectionState, sessionEpoch: number) => void;
   readonly handleCommand: (command: string) => boolean;
   readonly cancelActiveOperation: () => void;
   readonly handleRecoverableGeometry: (recoverable: boolean) => void;
@@ -34,8 +39,11 @@ value and adds no application-wide service locator.
 
 ## Context and Generation Ownership
 
-The controller retains one context key made from verified session generation and selected
-organization UUID. `syncContext()` behaves atomically:
+The application owns a monotonic `sessionEpoch`. It increments when a verified session is first
+established, replaced by reauthentication, or invalidated, including replacement by the same
+subject on the same organization. The controller receives that explicit epoch rather than
+inferring session identity from subject/organization equality. It retains one context key made
+from `sessionEpoch` and the selected organization UUID. `syncContext()` behaves atomically:
 
 - same verified context: update capabilities without discarding validated user state;
 - organization change, reauthentication, session invalidation, unauthorized/fatal state, or
@@ -67,7 +75,15 @@ One modal operation owns a submit guard. The controller:
 4. on definite success, reloads detail/page only when read capability exists;
 5. otherwise shows the fixed create/invite success projection;
 6. on fixed failure, leaves validated state unchanged;
-7. on `session-invalid`, closes user UI and invokes the existing authentication gate.
+7. on a genuinely indeterminate post-dispatch result, shows fixed `outcome-unknown`, leaves
+   validated state unchanged, and does not repeat or assume the mutation;
+8. on `session-invalid`, closes user UI and invokes the existing authentication gate.
+
+For an indeterminate target-user mutation in a read-capable session, a new mutation remains
+disabled until the operator deliberately activates the existing refresh/retry control and a
+successful read reconciles the target. Create/invite-only sessions cannot reconcile by reading;
+they show the same fixed outcome and require a new deliberate operator action before another
+request. There is no automatic retry, polling, or multi-operator lock.
 
 Purge success closes stale detail and refreshes the current page without guessing a replacement
 row or patching the page locally.
@@ -77,16 +93,17 @@ row or patching the page locally.
 - `presentation.ts`: build the Users menu from exact capabilities and mount either landing or user
   workspace content; do not absorb user workflow logic.
 - `application.ts`: construct the controller, forward user commands/cancel/resize/context changes,
-  and dispose it before terminal finalization. Existing organization and authentication handlers
-  remain semantically unchanged.
+  own and forward the session epoch, enforce bidirectional busy checks between user dialogs and the
+  existing authentication/organization/Who Am I owners, and dispose the controller before terminal
+  finalization. Existing handlers otherwise remain semantically unchanged.
 - `application-runtime.ts`: expose the current abortable-dialog helper rather than duplicating it.
 - `index.ts`: export only seams used by production wiring and focused tests.
 - `session-service.ts`: supply exact capabilities and a lazy current users domain.
 
 ## Interaction with Organization Workflows
 
-- A successful switch/create calls `syncContext()` with the newly selected organization before any
-  Users command can run.
+- A successful switch/create calls `syncContext()` with the current session epoch and newly
+  selected organization before any Users command can run.
 - Reauthentication clears user state before replacement login and does not restore it afterward.
 - Organization chooser cancellation preserves the current selected organization and current user
   view because no context changed.
@@ -95,20 +112,23 @@ row or patching the page locally.
 
 ## Error Handling
 
-| Error case                         | Controller behavior                                                      | AR Ref     |
-| ---------------------------------- | ------------------------------------------------------------------------ | ---------- |
-| Command lacks capability           | Dispatch nothing; retain fixed disabled reason                           | AR-4, AR-9 |
-| Operation cancelled before request | Dispatch nothing; restore invoking focus                                 | AR-4       |
-| Operation cancelled after request  | Ignore late result; no retry or local patch                              | AR-4       |
-| Final `401`                        | Clear user UI and enter existing authentication gate                     | AR-4, AR-9 |
-| `403` after enabled action         | Preserve state and show fixed unauthorized result                        | AR-9       |
-| Dispose/signal                     | Abort controller, remove modal/workspace, then existing terminal cleanup | AR-4       |
+| Error case                              | Controller behavior                                                                               | AR Ref     |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------- |
+| Command lacks capability                | Dispatch nothing; retain fixed disabled reason                                                    | AR-4, AR-9 |
+| Operation cancelled before request      | Dispatch nothing; restore invoking focus                                                          | AR-4       |
+| Mutation cancelled after SDK invocation | Publish outcome-unknown over preserved state, ignore late result, and require deliberate recovery | AR-4, AR-9 |
+| Final `401`                             | Clear user UI and enter existing authentication gate                                              | AR-4, AR-9 |
+| `403` after enabled action              | Preserve state and show fixed unauthorized result                                                 | AR-9       |
+| `404` from any user operation           | Preserve every validated user projection; only definite purge closes it                           | AR-9       |
+| Indeterminate post-dispatch result      | Preserve state, show fixed outcome, and require deliberate reconciliation                         | AR-9       |
+| Dispose/signal                          | Abort controller, remove modal/workspace, then existing terminal cleanup                          | AR-4       |
 
 ## Testing Requirements
 
 - Application specifications cover independent command enablement, no-read create/invite,
   list→detail→action flows, reconciliation, context clearing, resize preservation, late-result
-  quarantine, authentication gate handoff, and disposal ordering.
+  quarantine, same-subject/same-organization session replacement, bidirectional modal exclusion,
+  indeterminate mutation outcomes, authentication gate handoff, and disposal ordering.
 - Implementation tests cover command registration, generation increments, submit guards, focus, and
   lazy users-domain construction.
 - The packed playground proves authentication, organization selection, Users browse/detail, one

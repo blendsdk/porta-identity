@@ -28,6 +28,7 @@ history, and purge behavior; server implementation is not part of this plan (AR-
 | `packages/sdk/src/domains/users.ts`                           | User HTTP methods                         | Query mapping, invite result, reasons, history result                   |
 | `packages/sdk/src/agent.ts`                                   | Current SDK operation metadata            | Align user parameters and return descriptions                           |
 | `packages/cli/src/commands/user.ts`                           | Current non-interactive user CLI          | Remove email update drift; send reasons; consume invite/history results |
+| `packages/cli/src/commands/admin.ts`                          | Production Admin UI composition root      | Supply organization/users domains from one memoized lazy SDK client     |
 | `packages/cli/src/admin/state.ts`                             | Session and organization state            | Add exact user capability booleans only                                 |
 | `packages/cli/src/admin/session-service.ts`                   | Live UserInfo validation and lazy domains | Derive user capabilities and provide the current users domain           |
 | `packages/cli/src/admin/presentation.ts`                      | Shell menus and landing chrome            | Add independently enabled Users menu and workspace mounting seam        |
@@ -35,7 +36,9 @@ history, and purge behavior; server implementation is not part of this plan (AR-
 | `packages/cli/src/admin/application-runtime.ts`               | Modal/runtime helpers                     | Export the existing abortable-dialog behavior needed by user dialogs    |
 | `packages/cli/src/admin/index.ts`                             | Admin module exports                      | Export only production/test integration seams                           |
 | `docker/admin-playground/tests/support/admin-cli-journey.mjs` | Packed PTY journey                        | Add the bounded live Users proof and owned cleanup                      |
-| `docs/cli/{overview,users}.md`, `packages/cli/README.md`      | Public CLI guidance                       | Document Admin UI Users flow and corrected command/SDK behavior         |
+| `docs/guide/sdk.md`, `docs/cli/{overview,users}.md`           | Public SDK and CLI guidance               | Document corrected SDK contracts and Admin UI Users flow                |
+| `packages/sdk/README.md`                                      | Published SDK package examples            | Correct only directly stale user contract examples                      |
+| `packages/cli/README.md`                                      | Package CLI guidance                      | Keep embedded Admin UI and user command guidance truthful               |
 | `techdocs/guides/admin-playground.md`                         | Maintainer journey                        | Document the exact manual/live test path                                |
 
 ### Existing Reference Patterns

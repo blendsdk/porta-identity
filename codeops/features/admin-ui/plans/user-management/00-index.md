@@ -45,21 +45,21 @@ Select organization → Users → Browse users → User detail → focused actio
 
 ### Key Decisions
 
-| Decision        | Outcome                                                                                |
-| --------------- | -------------------------------------------------------------------------------------- |
-| Scope           | RD-03 only; later roadmap features remain excluded (AR-1)                              |
-| Code structure  | Five user-specific modules; no generalized UI framework (AR-2)                         |
-| Contract order  | Correct current SDK and consumers before UI integration (AR-3)                         |
-| State ownership | One organization/session-bound user controller (AR-4)                                  |
-| UI              | Direct JSVision workspace and focused modal dialogs (AR-5)                             |
-| Verification    | Affected packages, structure/docs, packed journey, and `p1-admin` compatibility (AR-6) |
+| Decision        | Outcome                                                                                        |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| Scope           | RD-03 only; later roadmap features remain excluded (AR-1)                                      |
+| Code structure  | Five user-specific modules; no generalized UI framework (AR-2)                                 |
+| Contract order  | Correct current SDK and consumers before UI integration (AR-3)                                 |
+| State ownership | One organization/session-bound user controller (AR-4)                                          |
+| UI              | Direct JSVision workspace and focused modal dialogs (AR-5)                                     |
+| Verification    | Narrow feedback plus required root/structure/docs, packed journey, and `p1-admin` gates (AR-6) |
 
 ## Related Files
 
 - `packages/sdk/src/types/{common,users}.ts`
 - `packages/sdk/src/domains/users.ts`
 - `packages/sdk/src/agent.ts`
-- `packages/cli/src/commands/user.ts`
+- `packages/cli/src/commands/{admin,user}.ts`
 - `packages/cli/src/admin/{state,session-service,presentation,application,application-runtime,index}.ts`
 - `packages/cli/src/admin/user-{state,service,dialogs,workspace,controller}.ts`
 - focused SDK, CLI Admin UI, compatibility, packed-playground, and documentation files listed in
