@@ -12,9 +12,10 @@ The Porta Admin UI is an authenticated terminal application embedded in the exis
 Its completed foundation owns server selection, secure OIDC login, credential continuity, terminal
 lifecycle, and the local maintainer playground.
 
-The next requirement introduces the first administration context: a permission-aware organization
-menu, creation and switching dialogs, and a small organization landing view. Later administration
-modules consume the selected organization but remain independently scoped.
+The completed organization context supplies the tenant boundary for administration modules. User
+management is the first such module: a familiar Users list and detail flow covering the existing
+core profile, invitation, credential, lifecycle, history, and purge operations. Later modules add
+roles, sessions, two-factor controls, audit exploration, and operational data tools.
 
 ## Selected Domain Lenses
 
@@ -33,6 +34,8 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | Organization             | Porta's domain and UI term for a tenant.                                            |
 | Active organization      | The session-memory working context selected for organization-scoped administration. |
 | UserInfo                 | The tenant-scoped OIDC `/me` response containing verified identity and RBAC claims. |
+| User                     | An identity account owned by exactly one Porta organization.                        |
+| User lifecycle           | Porta's active, inactive, suspended, and locked account states and transitions.     |
 
 ## Document Index
 
@@ -41,13 +44,15 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | **AR**    | [Ambiguity Register](00-ambiguity-register.md)                                      | Approved feature decisions                                             | —          |
 | **RD-01** | [JSVision admin foundation](RD-01-jsvision-admin-foundation.md)                     | Secure embedded shell, authentication, and playground                  | —          |
 | **RD-02** | [Organization context and navigation](RD-02-organization-context-and-navigation.md) | Global menu, identity dialog, and organization create/switch workflows | RD-01      |
+| **RD-03** | [User management](RD-03-user-management.md)                                         | Complete organization-scoped user administration                       | RD-02      |
 
 ## Dependency Graph
 
 ```text
 RD-01 Secure admin foundation
   └── RD-02 Organization context and navigation
-        └── Later organization-scoped administration modules
+        └── RD-03 User management
+              └── Later roles and authentication-security modules
 ```
 
 ## Suggested Implementation Order
@@ -56,6 +61,7 @@ RD-01 Secure admin foundation
 | -------------------- | --------- | ----------------------------------------------------------- |
 | Foundation           | RD-01     | Completed secure shell and live playground                  |
 | Organization context | RD-02     | Establish the selected tenant context used by later screens |
+| User administration  | RD-03     | Complete the core organization-scoped user workflows        |
 
 ## Key Architecture Decisions
 
@@ -66,6 +72,10 @@ RD-01 Secure admin foundation
 | Capability discovery   | Validate existing UserInfo `roles` and `permissions`       | Avoids a redundant server endpoint                     |
 | Selection lifetime     | Current application session only                           | Avoids stale persisted tenant context                  |
 | Organization loading   | One complete list through SDK `listAll`                    | Keeps the small-deployment UI simple                   |
+| User navigation        | Searchable list leading to detail and focused actions      | Familiar administration without a generated framework  |
+| User feature depth     | Complete existing core user-management surface             | Finishes one roadmap feature before starting another   |
+| Multi-user concurrency | No dedicated locking, merge, polling, or conflict workflow | Matches the expected single-operator terminal usage    |
+| Import and export      | Deferred to RD-09                                          | Keeps operational data tooling together                |
 
 ## How to Use These Documents
 
