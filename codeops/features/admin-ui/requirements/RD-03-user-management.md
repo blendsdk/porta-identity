@@ -23,9 +23,11 @@ global audit, bulk operations, and import/export remain owned by their later roa
 
 ### Must Have
 
-- [ ] **UM-01 — Users navigation:** when an organization is selected, a top-level `Users` menu
-      opens the user list. The action remains visible but disabled with a fixed reason when no
-      organization is selected or `admin:user:read` is unavailable. (AR-61, AR-65)
+- [ ] **UM-01 — Users navigation:** a top-level `Users` menu remains visible. Without a selected
+      organization it is disabled with a fixed reason. With a selected organization it is enabled
+      when any user capability is available and contains independently governed `Browse users…`,
+      `Create user…`, and `Invite user…` actions. Browse requires `admin:user:read`; unavailable
+      child actions remain visible with fixed reasons. (AR-61, AR-65)
 - [ ] **UM-02 — User list:** the list requests one server page of 20 users for the selected
       organization and displays email, given and family name when present, and textual status. It
       provides submitted search bounded to 255 characters, an optional status filter with the exact
@@ -38,8 +40,9 @@ global audit, bulk operations, and import/export remain owned by their later roa
 - [ ] **UM-04 — User detail:** selecting a validated row opens one user detail view containing the
       supported identity profile, address, locale, contact fields, email-verification and password
       presence indicators, textual lifecycle status, two-factor presence as read-only information,
-      login summary, and created/updated timestamps. Password hashes, tokens, recovery material,
-      raw metadata, and raw server responses are never displayed. (AR-60, AR-61)
+      a login summary limited to last-login timestamp and login count, and created/updated
+      timestamps. Failed-login fields and lockout analysis remain RD-07. Password hashes, tokens,
+      recovery material, raw metadata, and raw server responses are never displayed. (AR-60, AR-61)
 - [ ] **UM-05 — Create user:** an independently authorized administrator can create a user using
       required email, optional initial password, and every profile field the current server create
       path actually persists. `phoneNumberVerified` is excluded from creation because the server
@@ -51,8 +54,9 @@ global audit, bulk operations, and import/export remain owned by their later roa
 - [ ] **UM-06 — Invite user:** an independently authorized administrator can invite a new or
       existing user using required email and optional given name, family name, locale, and personal
       message. Names accept 1–255 characters, locale at most 10, and message at most 500. The dialog
-      can preview the rendered invitation before sending. Role and claim pre-assignment controls are
-      absent until RD-05. (AR-60, AR-63)
+      previews only the bounded, control-free subject and plain-text body before sending; HTML is
+      never rendered, and malformed preview output produces the fixed invalid-response outcome.
+      Role and claim pre-assignment controls are absent until RD-05. (AR-60, AR-63)
 - [ ] **UM-07 — Edit profile:** an administrator with update permission can edit every profile,
       contact, locale, and address field currently accepted by the server update schema. Email is
       read-only because the current server update contract does not accept it. Empty nullable fields
@@ -61,18 +65,18 @@ global audit, bulk operations, and import/export remain owned by their later roa
 - [ ] **UM-08 — Credentials and verification:** an administrator with update permission can set a
       new masked and confirmed 8–128-character password, clear an existing password after explicit
       confirmation, and mark an unverified email as verified after explicit confirmation. The UI
-      never reveals an existing password or automatically retries a credential mutation. (AR-60,
-      AR-64)
+      never reveals an existing password. A credential mutation follows the same one-logical-submit
+      rule as other mutations in UM-13. (AR-60, AR-64)
 - [ ] **UM-09 — Lifecycle actions:** the detail view exposes only valid actions for the current
       status: suspend, unsuspend, lock, unlock, deactivate, and reactivate. Suspend accepts an
       optional reason of at most 500 characters; lock requires a reason of 1–500 characters.
       Suspend, lock, and deactivate show the exact target email, resulting state, and an explicit
       confirmation. Recovery actions require one deliberate activation but no second confirmation.
       Existing super-admin protections remain authoritative. (AR-60, AR-64)
-- [ ] **UM-10 — User history:** an administrator with read permission can open a bounded,
-      newest-first list of the selected user's existing history entries. It shows event type, actor
-      identifier or `System`, and timestamp. Arbitrary metadata is not rendered in RD-03; global
-      audit exploration remains RD-08. (AR-60)
+- [ ] **UM-10 — User history:** an administrator with read permission can open the first 20 existing
+      history entries newest first. It shows event type, actor identifier or `System`, and timestamp,
+      plus a fixed indication when more entries exist. RD-03 adds no history paging or filtering UI
+      and never renders arbitrary metadata; global audit exploration remains RD-08. (AR-60)
 - [ ] **UM-11 — Permanent purge:** an administrator with archive permission can request the
       existing irreversible per-user purge. The confirmation shows the exact target email and a
       fixed irreversible warning, with `Cancel` focused initially and a distinct `Purge permanently`
@@ -85,19 +89,28 @@ global audit, bulk operations, and import/export remain owned by their later roa
       authentication, permission, organization-membership, or super-admin checks. (AR-65)
 - [ ] **UM-13 — Mutation results:** one modal operation owns submission at a time. Cancel before
       dispatch sends no request, and duplicate activation cannot send another request. A definite
-      success reloads the affected detail and current list. A validation error preserves editable
-      input; `401` returns to the existing authentication gate; `403`, `404`, `409`, transport,
-      `5xx`, and malformed-success responses produce only fixed local outcomes and never mutate the
-      last validated state. Mutations are not automatically retried. (AR-65, AR-66)
+      success reloads the affected detail and current list when read permission is available;
+      create or invite without read permission shows a fixed validated success outcome instead. A
+      validation error preserves non-secret editable input but always clears password and
+      confirmation fields. One logical submission may use the SDK's existing single refresh replay
+      only after a definite `401`; a final `401` or failed refresh returns to the authentication
+      gate. `403`, `404`, `409`, transport, `5xx`, malformed-success, and other indeterminate
+      outcomes produce only fixed local results, never mutate the last validated state, and are not
+      retried. (AR-65, AR-66)
 - [ ] **UM-14 — Context isolation:** every user request uses the selected organization UUID.
-      Explicit organization switching, reauthentication, session invalidation, cancellation, or
-      application disposal clears user views and invalidates their pending results. A late response
-      from a previous organization cannot redraw or become selectable. No polling or special flow is
-      added for rare external organization deletion. (AR-67)
-- [ ] **UM-15 — SDK alignment:** RD-03 corrects the SDK user inputs, invitation result, list
-      parameters, suspend/lock reason parameters, and other demonstrated mismatches required to
-      represent the existing Admin API faithfully. It does not add a parallel HTTP client or change
-      server behavior merely to suit the terminal UI. (AR-68)
+      Explicit organization switching, reauthentication, session invalidation, or application
+      disposal clears user views and invalidates their pending results. Cancelling an operation or
+      resizing below the recovery threshold invalidates that operation and quarantines late results
+      while preserving the last validated current-context view. A late response from a previous
+      organization cannot redraw or become selectable. No polling or special flow is added for rare
+      external organization deletion. (AR-67)
+- [ ] **UM-15 — SDK alignment:** RD-03 corrects only the named user-domain inputs, invitation result,
+      list parameters, history result, suspend/lock reason parameters, and directly blocking
+      mismatches proven by their focused specifications. The same change updates affected current
+      CLI user commands, SDK agent metadata, the existing packed P1 user-list cursor journey,
+      focused tests, and documentation without legacy shims. It does not add cursor controls to the
+      Admin UI, a parallel HTTP client, unrelated SDK cleanup, or server behavior merely to suit the
+      terminal UI. (AR-68)
 - [ ] **UM-16 — Terminal interaction:** list, detail, forms, actions, confirmations, errors, and
       navigation are keyboard complete and mouse usable. Focus returns to the invoking user view
       after cancellation or recoverable failure. The established normal, compact, resize-only,
@@ -138,14 +151,16 @@ global audit, bulk operations, and import/export remain owned by their later roa
 
 | SDK surface            | Required alignment with the existing Admin API                                                                                                                                                                                                        |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UserListParams`       | Use `page`, `pageSize`, `search`, `status`, `sortBy`, and `sortOrder` names accepted by the server.                                                                                                                                                   |
+| `UserListParams`       | Use `page`, `pageSize`, `search`, `status`, `sortBy`, and `sortOrder` for the Admin UI's offset requests. Preserve the current SDK `{ cursor, pageSize }` invocation and map `pageSize` to the server's `limit` only when cursor mode is selected.    |
 | Create/update inputs   | Represent fields the server actually persists; omit `phoneNumberVerified` from create until server defect [#87](https://github.com/blendsdk/porta-identity/issues/87) is fixed, retain it for update, and do not advertise unsupported email editing. |
 | `invite()`             | Return the server's invitation result containing `userId`, `email`, `created`, `invitationSent`, and `expiresAt`.                                                                                                                                     |
 | `suspend()` / `lock()` | Carry the optional suspend reason and required lock reason accepted by the server.                                                                                                                                                                    |
-| History                | Preserve the existing bounded history contract; RD-03 does not expose arbitrary metadata.                                                                                                                                                             |
+| History                | Return the existing `{ data, hasMore, nextCursor }` result with its default limit of 20 instead of unwrapping it as an array; RD-03 does not expose history paging, filtering, or arbitrary metadata.                                                 |
 
 The corrections are public SDK contract changes and require focused SDK specifications,
-documentation, package verification, and clean compatibility assurance before completion.
+documentation, package verification, and clean compatibility assurance before completion. Porta's
+current-triplet compatibility policy applies: current CLI consumers and SDK agent metadata are
+updated with the SDK, without preserving aliases for contracts that do not match the server.
 
 ### Authorization matrix
 
@@ -163,10 +178,12 @@ server decision as authoritative, including a `403` after an action was displaye
 
 ### Operation behavior
 
-- Read requests may be manually retried. Mutations are never automatically retried after transport,
-  `5xx`, cancellation-after-dispatch, or another indeterminate outcome.
-- A successful mutation is reconciled by reloading current server data rather than patching an
-  assumed local result. No background polling or general cache layer is added.
+- Read requests may be manually retried. One logical mutation submission may use the SDK's existing
+  single refresh replay only after a definite `401`; transport, `5xx`, cancellation-after-dispatch,
+  and other indeterminate outcomes are never retried.
+- A successful mutation is reconciled by reloading current server data when read permission is
+  available rather than patching an assumed local result. A create/invite-only administrator instead
+  receives a fixed validated success outcome. No background polling or general cache layer is added.
 - Password buffers exist only for the active dialog, are masked, are never copied into application
   state, and are cleared on every exit path.
 - Purge uses the SDK's explicit confirmation header only after the administrator activates the
@@ -241,8 +258,10 @@ server decision as authoritative, including a `403` after an action was displaye
        out-of-range profile data before dispatch. Password buffers are cleared after success,
        failure, and cancellation. Edit continues to support `phoneNumberVerified`.
 4. [ ] Invite and preview accept email, names of 1 and 255 characters, message lengths 0 and 500,
-       and locale lengths 0 and 10; longer values are rejected before dispatch. No role or claim
-       assignment value can be submitted from RD-03.
+       and locale lengths 0 and 10; longer values are rejected before dispatch. Preview displays
+       only a bounded, control-free subject and plain-text body, never HTML, and rejects malformed
+       output without replacing validated state. No role or claim assignment value can be submitted
+       from RD-03.
 5. [ ] User detail displays the validated supported profile and account indicators without password
        hashes, token values, recovery material, uncontrolled metadata, or raw errors. Edit can update
        and clear every server-supported mutable profile field but cannot edit email.
@@ -258,14 +277,24 @@ server decision as authoritative, including a `403` after an action was displaye
        stale detail and refreshes the list; server rejection leaves validated state intact.
 9. [ ] Each capability is independently enabled only by its exact validated permission or the exact
        legacy administrator role. Missing, malformed, unknown, or control-bearing claims fail closed,
-       and a server `403` never changes user state or exposes its raw body.
+       and a server `403` never changes user state or exposes its raw body. With a selected
+       organization, create-only and invite-only permissions keep their respective Users actions
+       reachable without dispatching a read request; their success outcome does not require read.
 10. [ ] Switching organization, reauthenticating, invalidating the session, cancelling, resizing
-        below the recovery threshold, or quitting invalidates active user operations. No late result
-        can display data from the prior organization or redraw after teardown.
+        below the recovery threshold, or quitting invalidates active user operations. Cancellation
+        and resize preserve the last validated current-context view, while context/session changes
+        clear it. No late result can display data from the prior organization or redraw after
+        teardown.
 11. [ ] The corrected SDK types and methods represent the existing server list, profile, invitation,
-        suspend, and lock contracts; focused SDK tests fail against the former mismatches and pass
-        against the corrected contracts without adding a server endpoint.
-12. [ ] Focused CLI and SDK specifications, relevant security tests, both affected package verify
+        history, suspend, and lock contracts. The current CLI user commands and SDK agent metadata
+        use the corrected contracts; focused tests fail against the former mismatches and pass
+        without compatibility shims or a new server endpoint. The existing packed P1 user-list
+        cursor journey proves `{ cursor, pageSize }` sends `cursor` plus `limit`, while the Admin UI
+        continues using offset pagination only.
+12. [ ] User history displays at most the first 20 validated entries newest first, shows event type,
+        actor or `System`, and timestamp without metadata, and indicates when more entries exist
+        without adding paging or filtering controls.
+13. [ ] Focused CLI and SDK specifications, relevant security tests, both affected package verify
         commands, repository structure tests, docs build, and the packed Admin UI playground journey
         pass on Node 24 LTS. Clean SDK compatibility assurance is required because public SDK contracts
         change. Full unrelated Porta/server suites are not required when server implementation is
@@ -273,6 +302,7 @@ server decision as authoritative, including a `403` after an action was displaye
 
 ## Technical Documentation Update
 
-Update public CLI Admin UI guidance and the maintainer playground journey with Users navigation and
-the supported actions. Document corrected public SDK user contracts in the existing SDK reference;
-no broad architecture regeneration is required.
+Update public CLI Admin UI guidance, affected current `porta user` command guidance, SDK agent
+metadata, and the maintainer playground journey with Users navigation and the supported actions.
+Document corrected public SDK user contracts in the existing SDK reference; no broad architecture
+regeneration is required.

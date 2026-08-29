@@ -1,10 +1,12 @@
 ## Preflight Report: RD-03 User Management
 
-> **Status**: ⛔ BLOCKED — 10 findings (0 critical, 5 major, 5 minor); PF-004 fixed, remaining accepted corrections not yet applied
-> **Iteration**: 1 (first scan)
+> **Status**: ✅ PASSED — all 10 findings fixed and verified; no new findings
+> **Iteration**: 3 (bounded final re-review)
+> **Previous Iteration**: Iteration 2 verified nine findings and partially reopened PF-005
+> **This Iteration**: PF-005 fixed and verified; zero new findings
 > **Artifact**: Single requirement at `codeops/features/admin-ui/requirements/RD-03-user-management.md`
 > **Initial Artifact SHA-256**: `763bcf8a4823f14a6e3388f1f5f25e1639a175b13c1771d3f85910bfa8a26aee`
-> **Current Artifact SHA-256 (pending re-scan)**: `550a750c49d0e1d748a34fb9f6925d3fcb6f482374d319338118d1b69d98d67f`
+> **Final Artifact SHA-256**: `f8566935854fc8e8a1b1af34f0f9464185fe08984410b262e09efd672e5af979`
 > **Codebase Grounded**: 24 source, test, manifest, dependency, and requirements files examined; 15 contract references verified
 > **Last Updated**: 2026-08-29
 
@@ -64,12 +66,12 @@ new framework, package, endpoint, or server architecture is needed.
 
 ### Summary by Severity
 
-| Severity    | Count | Status                                        |
-| ----------- | ----: | --------------------------------------------- |
-| Critical    |     0 | None                                          |
-| Major       |     5 | PF-004 fixed; 4 in-scope resolutions selected |
-| Minor       |     5 | In-scope resolutions selected                 |
-| Observation |     0 | None                                          |
+| Severity    | Count | Status                 |
+| ----------- | ----: | ---------------------- |
+| Critical    |     0 | None                   |
+| Major       |     5 | All fixed and verified |
+| Minor       |     5 | All fixed and verified |
+| Observation |     0 | None                   |
 
 ---
 
@@ -250,6 +252,14 @@ supports only the current server × current SDK/CLI triplet, not N/N-1 compatibi
 **Confidence:** High. **Hardening:** The independent challenger confirmed that current-consumer
 updates are required and compatibility shims would be overengineering.
 
+**Iteration 2 re-scan:** Partially reopened. The corrected list contract did not yet preserve the
+registered packed P1 compatibility journey's existing `{ cursor, pageSize }` input and its mapping
+to server `cursor` and `limit` query parameters.
+
+**Iteration 3 fix and verification:** UM-15, the SDK correction table, and AC-11 now preserve that
+current cursor contract while keeping the Admin UI offset-only. The bounded independent re-review
+found the correction complete and introduced no new machinery or findings.
+
 ### PF-006: User-history bound and continuation behavior are undefined 🟡 MINOR
 
 **Dimension:** Testability
@@ -395,8 +405,29 @@ Confidence: High; Hardening: independent fit auditor agreed; Policy version: 1; 
 
 ---
 
+### Re-scan Verification
+
+| Finding | Final status | Verification iteration |
+| ------- | ------------ | ---------------------- |
+| PF-001  | Fixed        | 2                      |
+| PF-002  | Fixed        | 2                      |
+| PF-003  | Fixed        | 2                      |
+| PF-004  | Fixed        | 2                      |
+| PF-005  | Fixed        | 3                      |
+| PF-006  | Fixed        | 2                      |
+| PF-007  | Fixed        | 2                      |
+| PF-008  | Fixed        | 2                      |
+| PF-009  | Fixed        | 2                      |
+| PF-010  | Fixed        | 2                      |
+| New     | None         | 2 and 3                |
+
+The final artifact remains within the approved Admin UI boundary: no generalized UI framework, new
+dependency, new server endpoint, cursor controls, compatibility shim, or unrelated SDK cleanup was
+added.
+
+---
+
 ### Verdict
 
-RD-03 is feasible with the existing architecture and is appropriately bounded. PF-004 has been
-resolved and fixed, but the remaining accepted in-scope corrections have not been applied or
-re-scanned. The roadmap remains at `RD Drafted`.
+RD-03 passed preflight. All ten findings are fixed and verified, the final bounded re-review found
+no new findings, and the roadmap advances to `RD Preflighted`.
