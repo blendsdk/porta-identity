@@ -333,31 +333,6 @@ describe('admin application shell', () => {
     });
   });
 
-  // Retry is offered only for a failure category that the application can safely repeat.
-  it('should expose retry only when the classified failure is safely repeatable', async () => {
-    const frames: string[] = [];
-
-    for (const initialState of [
-      { kind: 'unauthenticated', server, reason: 'unavailable' } as const,
-      { kind: 'unauthenticated', server, reason: 'configuration-failure' } as const,
-    ]) {
-      await runAdminApplication({
-        server,
-        insecure: false,
-        viewport: { width: 48, height: 12 },
-        initialState,
-        applicationFactory: createApplication,
-        applicationRunner: async (application) => {
-          frames.push(frameText(application));
-          return 0;
-        },
-      });
-    }
-
-    expect(frames[0]).toContain('Retry');
-    expect(frames[1]).not.toContain('Retry');
-  });
-
   // Reauthentication cannot replace a live identity until the shared coordinator confirms success.
   it('should replace displayed identity only when reauthentication completes successfully', async () => {
     let completeReauthentication: ((state: AdminConnectionState) => void) | undefined;

@@ -1,10 +1,10 @@
 # Roadmap: Porta Admin UI
 
 > **Feature-Set**: Porta Admin UI
-> **Status**: Done
+> **Status**: Active
 > **Created**: 2026-08-27
-> **Last Updated**: 2026-08-29 00:17
-> **Progress**: 2 / 2 (100%)
+> **Last Updated**: 2026-08-29 12:13
+> **Progress**: 2 / 3 items (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -13,7 +13,8 @@
 
 ## Tracker
 
-| ID    | Title                               | RD                                                                 | Plan                                                                                 | Stage | Status | Last Updated     | Depends-on / Blocker |
-| ----- | ----------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ----- | ------ | ---------------- | -------------------- |
-| RD-01 | JSVision admin foundation           | [RD-01](requirements/RD-01-jsvision-admin-foundation.md)           | [jsvision-foundation](plans/jsvision-foundation/00-index.md)                         | Done  | ✅     | 2026-08-27 20:11 | —                    |
-| RD-02 | Organization context and navigation | [RD-02](requirements/RD-02-organization-context-and-navigation.md) | [organization-context-navigation](plans/organization-context-navigation/00-index.md) | Done  | ✅     | 2026-08-29 00:17 | RD-01                |
+| ID    | Title                               | RD                                                                 | Plan                                                                                 | Stage     | Status | Last Updated     | Depends-on / Blocker |
+| ----- | ----------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | --------- | ------ | ---------------- | -------------------- |
+| RD-01 | JSVision admin foundation           | [RD-01](requirements/RD-01-jsvision-admin-foundation.md)           | [jsvision-foundation](plans/jsvision-foundation/00-index.md)                         | Done      | ✅     | 2026-08-27 20:11 | —                    |
+| RD-02 | Organization context and navigation | [RD-02](requirements/RD-02-organization-context-and-navigation.md) | [organization-context-navigation](plans/organization-context-navigation/00-index.md) | Done      | ✅     | 2026-08-29 00:17 | RD-01                |
+| T-01  | Unauthenticated authentication gate | —                                                                  | [plan](plans/authentication-gate/99-execution-plan.md)                               | Executing | 🔄     | 2026-08-29 12:13 | RD-01                |
