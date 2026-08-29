@@ -49,9 +49,7 @@ function frameText(application: ReturnType<typeof createApplication>): string {
 
 /** Allows promise continuations and their coalesced render to complete. */
 async function settleApplication(): Promise<void> {
-  await Promise.resolve();
-  await Promise.resolve();
-  await Promise.resolve();
+  for (let index = 0; index < 8; index += 1) await Promise.resolve();
 }
 
 /** Sends one decoded keyboard event through the real JSVision loop. */
@@ -314,6 +312,7 @@ describe('admin application shell', () => {
       session: { authenticate },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
+        await settleApplication();
         expect(frameText(application)).toContain('Authenticate');
 
         press(application, 'enter');

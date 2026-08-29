@@ -1,8 +1,8 @@
 # Task T-01: Unauthenticated authentication gate
 
 > **Type**: Task (lightweight) · **Feature**: admin-ui · **CodeOps Artifact Schema**: 1
-> **Progress**: 1/4 tasks (25%)
-> **Last Updated**: 2026-08-29 12:24
+> **Progress**: 2/4 tasks (50%)
+> **Last Updated**: 2026-08-29 12:25
 > **Phase baseline tree**: `a41ca3c6a388f03b652ae125ad08b7855b1ccd04`
 > **Scope mode**: strict
 > **Expected modification set**: `packages/cli/src/admin/{application,organization-dialogs,presentation}.ts`;
@@ -33,10 +33,11 @@ change, workflow, runtime matrix, or administrative screen.
       failure, session invalidation, and resize recovery reopen the gate; successful authentication
       proceeds to the existing organization chooser. ✅ (completed: 2026-08-29 12:24; expected red:
       5 failing, 1 passing)
-- [ ] T-01.2 Implement the gate in the existing dialog module and add the minimum application-owned
+- [x] T-01.2 Implement the gate in the existing dialog module and add the minimum application-owned
       modal lifecycle needed to open, close, and reopen it. Reuse the existing session operation and
       dialog surface, remove the superseded landing-view Enter affordance/focus code, and make the
-      focused specifications green without changing their expectations.
+      focused specifications green without changing their expectations. ✅ (completed:
+      2026-08-29 12:25)
 - [ ] T-01.3 Add focused implementation coverage for single-modal ownership, disposal, resize,
       cancellation, and late completion. Update the existing CLI and maintainer documentation to
       describe the automatic Authenticate/Quit gate.

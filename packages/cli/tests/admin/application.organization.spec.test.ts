@@ -146,7 +146,8 @@ describe('organization workflow ownership', () => {
       },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
-        application.loop.emitCommand(ADMIN_COMMANDS.authenticate);
+        await settleWorkflow();
+        press(application, 'enter');
         await settleWorkflow();
 
         expect(listAll).toHaveBeenCalledOnce();
@@ -544,7 +545,7 @@ describe('organization workflow ownership', () => {
         await submit('First Attempt');
         expect(frameText(application)).toContain('Authenticate');
 
-        application.loop.emitCommand(ADMIN_COMMANDS.authenticate);
+        press(application, 'enter');
         await settleWorkflow();
         expect(frameText(application)).toContain('Organization listing unavailable');
         press(application, 'c', { alt: true });

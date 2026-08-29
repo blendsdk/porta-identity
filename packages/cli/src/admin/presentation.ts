@@ -1,6 +1,6 @@
 /** JSVision presentation for the embedded Porta administration shell. */
 
-import type { DispatchEvent, DrawContext, Size2D, StatusLine } from '@jsvision/ui';
+import type { DrawContext, Size2D, StatusLine } from '@jsvision/ui';
 import {
   Commands,
   Group,
@@ -15,7 +15,7 @@ import {
   View,
 } from '@jsvision/ui';
 import { normalizeServerOrigin } from '../global-options.js';
-import { canRetryAdminState, type AdminConnectionState } from './state.js';
+import type { AdminConnectionState } from './state.js';
 
 /** Command names handled by the administration application. */
 export const ADMIN_COMMANDS = {
@@ -38,7 +38,7 @@ const COMPACT_HEIGHT = 8;
 
 /** Fixed public descriptions for failure categories. */
 const FAILURE_LABELS = {
-  unavailable: 'Unavailable. Retry is available.',
+  unavailable: 'Unavailable. Authenticate again.',
   unauthenticated: 'Authentication is required.',
   unauthorized: 'The verified identity is not authorized.',
   'configuration-failure': 'The local configuration is invalid.',
@@ -118,20 +118,6 @@ class AdminLandingView extends View {
   ) {
     super();
     this.focusable = true;
-  }
-
-  /** Keeps Enter authentication available without stealing Enter from an open menu. */
-  onEvent(event: DispatchEvent): void {
-    if (
-      event.event.type === 'key' &&
-      event.event.key === 'enter' &&
-      this.readState().kind === 'unauthenticated'
-    ) {
-      event.emit?.(ADMIN_COMMANDS.authenticate);
-      event.handled = true;
-      return;
-    }
-    super.onEvent(event);
   }
 
   /** Draws the responsive normal, compact, or resize-only presentation. */
@@ -215,10 +201,7 @@ class AdminLandingView extends View {
       return ['Esc Cancel', 'Alt-X Quit'];
     }
     if (state.kind === 'unauthenticated') {
-      const actions = ['Enter Authenticate'];
-      if (canRetryAdminState(state)) actions.push('Ctrl-T Retry');
-      actions.push('Alt-X Quit');
-      return actions;
+      return ['Alt-X Quit'];
     }
     return ['Alt-X Quit'];
   }

@@ -13,6 +13,7 @@ import {
 } from './application-runtime.js';
 import type { AdminApplicationInteraction } from './application-runtime.js';
 import {
+  showAuthenticationGate,
   showCreateOrganizationDialog,
   showOrganizationChooser,
   showWhoAmIDialog,
@@ -127,7 +128,6 @@ export async function runAdminApplication(
   let currentController: AbortController | undefined;
   let organizationDialogOpen = false;
   const standardKeymap = createKeymap({
-    'ctrl+t': ADMIN_COMMANDS.retry,
     'ctrl+r': ADMIN_COMMANDS.reauthenticate,
     'alt+x': Commands.quit,
   });
@@ -148,7 +148,7 @@ export async function runAdminApplication(
     caps,
     keymap: applicationKeymap,
   });
-  // The landing view owns the clean-start Enter action, so it must receive focus before input begins.
+  // Keep a stable background focus target so menus remain keyboard-accessible after a modal closes.
   application.loop.focusInto(presentation.content);
   const dialogSurface = createAdminDialogSurface(application, presentation);
   const dialogHost = dialogSurface.host;
@@ -156,7 +156,10 @@ export async function runAdminApplication(
 
   let disposed = false;
   let finalized = false;
+  let initialized = false;
   let currentOperationFallback: AdminConnectionState | undefined;
+  let authenticationGateOpen = false;
+  let authenticationGateGeneration = 0;
   let identityDialogOpen = false;
   let organizationGeneration = 0;
   let createRecoveryRequired = false;
@@ -193,6 +196,7 @@ export async function runAdminApplication(
       ADMIN_COMMANDS.cancel,
       currentController !== undefined || organizationDialogOpen,
     );
+    syncAuthenticationGate(state);
   };
 
   /** Builds authenticated state without retaining a stale organization failure. */
@@ -232,6 +236,15 @@ export async function runAdminApplication(
     setState(presentation.getState());
   };
 
+  /** Closes the authentication gate and rejects its pending continuation. */
+  const cancelAuthenticationGate = (): void => {
+    if (!authenticationGateOpen) return;
+    authenticationGateGeneration += 1;
+    authenticationGateOpen = false;
+    application.loop.endModal(Commands.cancel);
+    dialogSurface.removeAll();
+  };
+
   /** Aborts authentication and restores its safe fallback without leaving a mounted dialog. */
   const cancelSessionOperation = (): void => {
     if (!currentController) return;
@@ -247,10 +260,51 @@ export async function runAdminApplication(
 
   /** Cancels whichever single modal or operation currently owns the application surface. */
   const cancelModalWork = (): void => {
+    cancelAuthenticationGate();
     cancelIdentityDialog();
     cancelOrganizationWork();
     cancelSessionOperation();
   };
+
+  /** Opens the gate exactly once when the application is usable but not authenticated. */
+  function syncAuthenticationGate(state = presentation.getState()): void {
+    const recoverable =
+      presentation.content.bounds.width >= 32 && presentation.content.bounds.height >= 8;
+    if (
+      !initialized ||
+      disposed ||
+      state.kind !== 'unauthenticated' ||
+      !recoverable ||
+      currentController ||
+      authenticationGateOpen ||
+      organizationDialogOpen ||
+      identityDialogOpen
+    ) {
+      return;
+    }
+
+    const generation = ++authenticationGateGeneration;
+    authenticationGateOpen = true;
+    void showAuthenticationGate(dialogHost)
+      .then((choice) => {
+        if (disposed || !authenticationGateOpen || generation !== authenticationGateGeneration) {
+          return;
+        }
+        authenticationGateOpen = false;
+        if (choice === 'quit') {
+          application.loop.emitCommand(Commands.quit);
+          return;
+        }
+        if (session?.authenticate) startOperation(session.authenticate);
+        else syncAuthenticationGate();
+      })
+      .catch(() => {
+        if (generation === authenticationGateGeneration) {
+          authenticationGateOpen = false;
+          application.loop.emitCommand(Commands.quit);
+        }
+      });
+  }
 
   /** Enters the established unauthenticated state after a final organization 401. */
   const invalidateSession = (): void => {
@@ -270,6 +324,7 @@ export async function runAdminApplication(
       createRecoveryRequired ||
       !operations ||
       currentController ||
+      authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
       disposed
@@ -316,6 +371,7 @@ export async function runAdminApplication(
       state.kind !== 'authenticated' ||
       !operations ||
       currentController ||
+      authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
       disposed
@@ -371,7 +427,14 @@ export async function runAdminApplication(
     operation: ((signal: AbortSignal) => Promise<AdminConnectionState | undefined>) | undefined,
     preserveCurrentState = false,
   ): void => {
-    if (!operation || currentController || organizationDialogOpen || identityDialogOpen || disposed)
+    if (
+      !operation ||
+      currentController ||
+      authenticationGateOpen ||
+      organizationDialogOpen ||
+      identityDialogOpen ||
+      disposed
+    )
       return;
     const operationServer = server;
     if (!operationServer) return;
@@ -415,7 +478,14 @@ export async function runAdminApplication(
   /** Reauthenticates and reconciles an existing organization before releasing operation ownership. */
   function startReauthentication(): void {
     const operation = session?.reauthenticate;
-    if (!operation || currentController || organizationDialogOpen || identityDialogOpen || disposed)
+    if (
+      !operation ||
+      currentController ||
+      authenticationGateOpen ||
+      organizationDialogOpen ||
+      identityDialogOpen ||
+      disposed
+    )
       return;
     const operationServer = server;
     if (!operationServer) return;
@@ -505,6 +575,7 @@ export async function runAdminApplication(
       if (
         state.kind !== 'authenticated' ||
         currentController ||
+        authenticationGateOpen ||
         organizationDialogOpen ||
         identityDialogOpen ||
         disposed
@@ -540,6 +611,8 @@ export async function runAdminApplication(
     resizeApplication?.(size);
     if (presentation.content.bounds.width < 32 || presentation.content.bounds.height < 8) {
       cancelModalWork();
+    } else {
+      syncAuthenticationGate();
     }
   };
 
@@ -574,9 +647,15 @@ export async function runAdminApplication(
     else if (initialState.kind === 'selecting-server')
       setState({ kind: 'unauthenticated', server });
   };
-  void initialize().catch(() => {
-    if (!disposed) setState({ kind: 'fatal', failure: { kind: 'configuration-failure' } });
-  });
+  void initialize()
+    .then(() => {
+      initialized = true;
+      syncAuthenticationGate();
+    })
+    .catch(() => {
+      initialized = true;
+      if (!disposed) setState({ kind: 'fatal', failure: { kind: 'configuration-failure' } });
+    });
 
   const signalSource = options.signalSource ?? process;
   const signalListeners = new Map<NodeJS.Signals, () => void>();

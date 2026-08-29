@@ -49,8 +49,43 @@ export type CreateOrganizationDialogResult =
   | { readonly kind: 'create'; readonly input: CreateOrganizationInput }
   | { readonly kind: 'cancel' };
 
+/** Explicit choice returned by the blocking unauthenticated gate. */
+export type AuthenticationGateChoice = 'authenticate' | 'quit';
+
 /** Maximum number of terminal cells used for one organization row. */
 const ORGANIZATION_ROW_WIDTH = 68;
+
+/** Dialog that keeps an unauthenticated user inside the Authenticate-or-Quit decision. */
+class AuthenticationGateDialog extends Dialog {
+  /** Lets the global Quit shortcut close this modal before the application handles Quit. */
+  onEvent(event: DispatchEvent): void {
+    if (event.event.type === 'command' && event.event.command === Commands.quit && this.modalHost) {
+      this.modalHost.endModal(Commands.quit);
+      this.modalHost = null;
+      event.handled = true;
+      return;
+    }
+    super.onEvent(event);
+  }
+
+  /** Ignores Escape so the unusable application beneath the gate cannot be exposed. */
+  protected resolveCancel(event: DispatchEvent): void {
+    event.handled = true;
+  }
+}
+
+/** Quit button that treats Enter like Space while focused instead of invoking the default button. */
+class AuthenticationQuitButton extends Button {
+  /** Exits on focused Enter and delegates every other activation to the standard button. */
+  onEvent(event: DispatchEvent): void {
+    if (event.event.type === 'key' && event.event.key === 'enter' && this.state.focused) {
+      event.emit?.(Commands.no);
+      event.handled = true;
+      return;
+    }
+    super.onEvent(event);
+  }
+}
 
 /** Organization list that also accepts a literal decoded space key for activation. */
 class OrganizationListView extends ListView<AdminOrganizationContext> {
@@ -103,6 +138,41 @@ async function runDialog(host: ModalDialogHost, dialog: Dialog): Promise<string>
   } finally {
     host.desktop.removeWindow(dialog);
   }
+}
+
+/** Shows the mandatory authentication gate and returns one explicit user choice. */
+export async function showAuthenticationGate(
+  host: ModalDialogHost,
+): Promise<AuthenticationGateChoice> {
+  const { width, height } = dialogSize(host, 52, 10);
+  const dialog = new AuthenticationGateDialog({
+    title: 'Authentication required',
+    width,
+    height,
+    centered: true,
+  });
+  dialog.closable = false;
+  dialog.add(at(new Text('Authenticate with Porta to continue.'), 2, 1, Math.max(1, width - 6), 1));
+  dialog.add(
+    at(
+      new Button('~A~uthenticate', { command: Commands.ok, default: true }),
+      Math.max(2, width - 31),
+      Math.max(1, height - 5),
+      16,
+      2,
+    ),
+  );
+  dialog.add(
+    at(
+      new AuthenticationQuitButton('~Q~uit', { command: Commands.no }),
+      Math.max(2, width - 14),
+      Math.max(1, height - 5),
+      10,
+      2,
+    ),
+  );
+
+  return (await runDialog(host, dialog)) === Commands.ok ? 'authenticate' : 'quit';
 }
 
 /** Accepts a bounded, control-free identity value or returns a fixed fallback. */
