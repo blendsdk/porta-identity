@@ -252,6 +252,11 @@ optional slug, and optional default locale. Creation selects the returned organi
 The selected context is held only for the running shell and does not change authentication or grant
 permissions.
 
+When no verified session is available, the admin UI immediately opens an **Authentication
+required** dialog. Choose **Authenticate** (focused by default, so Enter works) to start the existing
+browser/manual OIDC flow, or choose **Quit**. The dialog returns after cancellation or a failed
+attempt, so the shell never leaves you on an unusable disabled screen.
+
 Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
 `Who am I…` shows the
 server-bound verified identity. Use `Ctrl-R` to reauthenticate; replacing credentials for a

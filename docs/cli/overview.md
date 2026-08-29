@@ -89,6 +89,11 @@ from its name, optional slug, and optional default locale. A successfully create
 selected immediately. The selection lasts only for the running shell and does not reauthenticate or
 grant additional access.
 
+Without a verified session, `porta admin` opens a blocking **Authentication required** dialog.
+**Authenticate** is focused and starts the existing browser/manual OIDC flow with Enter or a mouse
+click; **Quit** is the only alternative. Cancellation or a failed attempt returns to the same
+dialog.
+
 Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
 `Who am I…` shows the
 verified identity and server details. Use `Ctrl-R` to reauthenticate; changing to another server

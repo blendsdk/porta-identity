@@ -42,6 +42,10 @@ Open the administration shell after startup:
 porta admin --server https://porta-admin-playground.ci.portaidentity.com:3543
 ```
 
+The admin UI first opens a blocking `Authentication required` dialog. Activate `Authenticate` with
+Enter or the mouse to start the browser flow; `Quit` is the only alternative. Cancelling or failing
+authentication returns to this dialog.
+
 After browser authentication, the organization chooser opens automatically. Select `Porta Admin`
 and activate Switch to enter that context, or use Create to enter a name, optional slug, and optional
 default locale; a successful create selects the new organization. The Organizations menu can reopen
