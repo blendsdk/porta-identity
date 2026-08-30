@@ -66,7 +66,7 @@ export function completePackedP1ReadEvidence(): PackedP1ReadEvidence {
   return {
     version: 1,
     provenance: {
-      nodeVersion: 'v22.0.0',
+      nodeVersion: 'v24.0.0',
       nodeExecutableSha256: digestA,
       sourceRevision: 'c'.repeat(40),
       serverImageDigest: `sha256:${digestB}`,
