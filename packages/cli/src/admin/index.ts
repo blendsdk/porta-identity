@@ -93,14 +93,41 @@ export type {
 } from './application-controller.js';
 export type {
   AdminApplication,
+  AdminApplicationDetailProjection,
   AdminApplicationFailureKind,
+  AdminApplicationListProjection,
   AdminApplicationModule,
   AdminApplicationModuleStatus,
   AdminApplicationMutationResult,
+  AdminApplicationProjection,
   AdminApplicationReadResult,
   AdminApplicationStatus,
   AdminApplicationViewState,
 } from './application-state.js';
+export { createAdminApplicationWorkspace } from './application-workspace.js';
+export type {
+  AdminApplicationIntent,
+  AdminApplicationWorkspace,
+  AdminApplicationWorkspaceOptions,
+} from './application-workspace.js';
+export {
+  showApplicationLifecycleDialog,
+  showCreateApplicationDialog,
+  showCreateModuleDialog,
+  showEditApplicationDialog,
+  showEditModuleDialog,
+  showModuleDeactivationDialog,
+} from './application-dialogs.js';
+export type {
+  AdminApplicationDialogHost,
+  ApplicationLifecycleAction,
+  ApplicationLifecycleDialogResult,
+  CreateApplicationDialogResult,
+  CreateModuleDialogResult,
+  EditApplicationDialogResult,
+  EditModuleDialogResult,
+  ModuleDeactivationDialogResult,
+} from './application-dialogs.js';
 export { createAdminClientOperations } from './client-service.js';
 export type {
   AdminClientCreateResult,

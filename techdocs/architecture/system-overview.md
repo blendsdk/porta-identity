@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-08-28
+> **Last Updated**: 2026-08-30
 
 ## High-Level Architecture
 
@@ -79,6 +79,12 @@ Global application definitions and organization-bound OIDC clients use separate 
 service and controller boundaries. They validate complete remote projections before publication,
 recheck selected-organization ownership immediately before client mutations, and keep one-time
 client secrets inside an abortable presenter continuation without persisting them.
+The global Applications workspace composes a JSVision `DataGrid` and movable Layout DSL dialogs
+directly over its application controller. List and detail states always retain their
+deployment-global label, module mutations carry the selected application UUID, and every successful
+mutation reloads authoritative application or same-parent module data. Dialog cancellation,
+authentication replacement, and resize recovery release operation ownership so late results cannot
+repopulate a cleared view.
 
 ### Domain Modules
 

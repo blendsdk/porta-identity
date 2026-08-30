@@ -62,18 +62,38 @@ export type AdminApplicationMutationResult<T = void> =
   | { readonly kind: 'outcome-unknown' }
   | { readonly kind: 'failure'; readonly failure: AdminApplicationFailureKind };
 
+/** Validated application list retained for clean loading and failure replacement. */
+export interface AdminApplicationListProjection {
+  /** Makes deployment ownership explicit at every presentation boundary. */
+  readonly scope: 'global';
+  /** Complete validated deployment catalog. */
+  readonly applications: readonly AdminApplication[];
+}
+
+/** Validated application detail and same-parent modules retained together. */
+export interface AdminApplicationDetailProjection extends AdminApplicationListProjection {
+  /** Selected deployment-global application. */
+  readonly application: AdminApplication;
+  /** Update precondition returned with the selected application. */
+  readonly etag: string | null;
+  /** Complete validated module collection for the selected application. */
+  readonly modules: readonly AdminApplicationModule[];
+}
+
+/** Safe projection that may remain visible while a read is pending or fails. */
+export type AdminApplicationProjection =
+  | ({ readonly kind: 'list' } & AdminApplicationListProjection)
+  | ({ readonly kind: 'detail' } & AdminApplicationDetailProjection);
+
 /** Complete global application controller state. */
 export type AdminApplicationViewState =
   | { readonly kind: 'closed' }
-  | { readonly kind: 'loading'; readonly previous?: readonly AdminApplication[] }
-  | {
-      readonly kind: 'list';
-      readonly scope: 'global';
-      readonly applications: readonly AdminApplication[];
-    }
-  | { readonly kind: 'indeterminate'; readonly previous?: readonly AdminApplication[] }
+  | { readonly kind: 'loading'; readonly previous?: AdminApplicationProjection }
+  | ({ readonly kind: 'list' } & AdminApplicationListProjection)
+  | ({ readonly kind: 'detail' } & AdminApplicationDetailProjection)
+  | { readonly kind: 'indeterminate'; readonly previous?: AdminApplicationProjection }
   | {
       readonly kind: 'failure';
       readonly failure: AdminApplicationFailureKind;
-      readonly previous?: readonly AdminApplication[];
+      readonly previous?: AdminApplicationProjection;
     };

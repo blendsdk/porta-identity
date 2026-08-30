@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 16:42
-> **Progress**: 26/49 tasks (53%)
+> **Last Updated**: 2026-08-30 17:50
+> **Progress**: 33/49 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -193,26 +193,29 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ## Phase 4: Global Applications Workspace
 
-> **Phase baseline tree**: _(recorded by exec-plan at phase start)_
+> **Phase baseline tree**: `f694491ed00c8527ddbd9fdca1db82ff9a3e4d1c`
 > **Scope mode**: strict — Applications list/detail/modules/lifecycle UI using existing JSVision patterns
+> **Expected modification set**: application workspace/dialog/controller/state files and their focused
+> tests under `packages/cli/`; the CLI test-inventory structure assertion; this execution plan,
+> phase review evidence, and incremental maintainer architecture docs
 
 ### Step 4.1: Specification Tests
 
 **Reference**: [03-04](03-04-applications-workspace.md) · ST-32–ST-38, ST-50–ST-52 · AR-2
 
-- [ ] 4.1.1 [spec-author] Add application DataGrid, exact field-boundary, authoritative mutation reload/failure, detail, global notice, capability, module, lifecycle, focus, movement, resize, and redraw specifications — Admin workspace/dialog spec tests
-- [ ] 4.1.2 Run the focused Applications workspace/dialog specifications and record expected red
+- [x] 4.1.1 [spec-author] Add application DataGrid, exact field-boundary, authoritative mutation reload/failure, detail, global notice, capability, module, lifecycle, focus, movement, resize, and redraw specifications — Admin workspace/dialog spec tests ✅ (completed: 2026-08-30 17:00)
+- [x] 4.1.2 Run the focused Applications workspace/dialog specifications and record expected red ✅ (completed: 2026-08-30 17:00; expected red: missing application workspace/dialog modules)
 
 ### Step 4.2: Implementation and Green Phase
 
-- [ ] 4.2.1 Implement the full-height global application DataGrid, detail/module projection, and matching controller intents with Layout DSL — application workspace/controller files
-- [ ] 4.2.2 Implement movable create/edit and exact lifecycle confirmation dialogs with one-row inputs and visible-disabled controller actions — application dialog/controller files
-- [ ] 4.2.3 Implement movable module create/edit/deactivate dialogs and parent-safe controller intents — application dialog/workspace/controller files
-- [ ] 4.2.4 Run ST-32–ST-38 and applicable ST-50–ST-52 cases green without changing expectations
+- [x] 4.2.1 Implement the full-height global application DataGrid, detail/module projection, and matching controller intents with Layout DSL — application workspace/controller files ✅ (completed: 2026-08-30 17:34; review remediation verified)
+- [x] 4.2.2 Implement movable create/edit and exact lifecycle confirmation dialogs with one-row inputs and visible-disabled controller actions — application dialog/controller files ✅ (completed: 2026-08-30 17:34; review remediation verified)
+- [x] 4.2.3 Implement movable module create/edit/deactivate dialogs and parent-safe controller intents — application dialog/workspace/controller files ✅ (completed: 2026-08-30 17:34; review remediation verified)
+- [x] 4.2.4 Run ST-32–ST-38 and applicable ST-50–ST-52 cases green without changing expectations ✅ (completed: 2026-08-30 17:34; 87 focused application/state tests passing)
 
 ### Step 4.3: Implementation Tests and Verification
 
-- [ ] 4.3.1 Add geometry, DataGrid, focus, mouse, modal teardown, small-terminal, and artifact-free redraw implementation tests; run CLI verify and Node 24 LTS `yarn verify`
+- [x] 4.3.1 Add geometry, DataGrid, focus, mouse, modal teardown, small-terminal, and artifact-free redraw implementation tests; run CLI verify and Node 24 LTS `yarn verify` ✅ (completed: 2026-08-30 17:48; post-fix CLI 905 tests and full Node 24 verification passed)
 
 **Deliverables:** complete deployment-global Applications UI with no tenant mislabeling.
 

@@ -2,7 +2,7 @@
 
 > **Document**: 01-phase-reviews.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 16:42
+> **Last Updated**: 2026-08-30 17:50
 > **Scope mode**: strict
 
 ## Phase 1: Server Safety, Runtime, and Role Data
@@ -121,3 +121,42 @@ behavior beyond the approved organization-bound application/client administratio
 both reviewers reported no remaining critical or major finding. Final Node 24 `yarn verify` passed
 in 10m47s with SDK 455/455, CLI 873/873, server unit 2,913/2,913, integration 392/392, E2E
 128/128, pentest 224/224, and repository structure 96/96.
+
+## Phase 4: Global Applications Workspace
+
+**Baseline tree:** `f694491ed00c8527ddbd9fdca1db82ff9a3e4d1c`
+
+**Pre-review verification:** immutable workspace/dialog specifications 16/16; implementation
+diagnostics 7/7; CLI 899/899; Node 24 `yarn verify` passed, including server pentest 224/224.
+
+**Reviewers:** correctness/maintainability/standards reviewer; security and operation-ownership
+auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P4-001 | Major | Module deactivation is unreachable and archived module rows still emit edit intents. | Add explicit Edit/Deactivate module controls, disable every module mutation for archived parents, and recheck the retained same-parent non-archived projection in the controller. | Accepted — re-review passed |
+| RV-P4-002 | Major | Detail and mutation dialogs omit the required deployment-global/multi-organization warning. | Render one concise shared scope notice in detail and every application/module mutation dialog. | Accepted — re-review passed |
+| RV-P4-003 | Major | Failure/loading overlays obscure retained validated content and Retry cannot deterministically select list versus detail reload. | Render retained content with a bounded status row and add a controller reload operation that follows its retained projection. | Accepted — re-review passed |
+| P4-SEC-001 | Major | Cancellation after mutation dispatch releases ownership without requiring reconciliation, and confirmation dialogs do not receive the controller abort signal. | Track dispatch state, require reconciliation when cancellation follows dispatch, and pass the owned signal into confirmations so session/resize cancellation closes the modal. | Accepted — re-review passed |
+| RV-P4-004 | Minor | Detail actions lack fixed capability-denial reasons. | Add compact fixed denial text for update and archive capability gaps. | Accepted — fix verified |
+| RV-P4-005 | Minor | The recorded baseline used an invalid full hash. | Replace it with the actual Phase 3 commit hash. | Accepted — corrected |
+
+All resolutions are necessary corrections inside the approved Phase 4 behavior. Authority: AI —
+delegated by `--auto-design`; eligibility: internal UI routing, cancellation mechanics, retry
+mechanics, and required presentation fidelity. Objective: make the deployment-global Applications
+workspace complete without adding a framework, dependency, search, pagination, or shell/client
+scope. Rejected alternatives: defer the unreachable/unsafe actions to shell integration, or add a
+generic action framework; the first leaves approved behavior broken and the second adds needless
+architecture. Strongest counterargument: explicit module controls add a small amount of local UI
+state, but they are required for reachable keyboard/mouse actions and remain feature-specific.
+Confidence: High. Hardening: two independent reviewers converged on module reachability/read-only
+guarding and separately challenged operation ownership. Policy version: 1. Root invocation ID:
+`exec-rd04-20260830T1228`. Reopen trigger: a fix changes product scope or cannot preserve the
+immutable specification expectations.
+
+**Post-fix evidence before re-review:** focused application/state suites passed 87/87; CLI passed
+905/905; and Node 24 `yarn verify` passed in 11m35s, including server pentest 224/224.
+
+**Re-review evidence:** the correctness reviewer accepted RV-P4-001 through RV-P4-003, and the
+security auditor accepted P4-SEC-001 plus the overlapping parent/read-only guards. Neither found a
+remaining or newly introduced critical or major issue.
