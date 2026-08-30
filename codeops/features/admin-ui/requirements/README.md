@@ -17,6 +17,11 @@ management is the first such module: a familiar Users list and detail flow cover
 core profile, invitation, credential, lifecycle, history, and purge operations. Later modules add
 roles, sessions, two-factor controls, audit exploration, and operational data tools.
 
+Applications are global product and authorization definitions shared by organizations. OIDC clients
+are organization-specific deployments connected to those applications. The Admin UI must always
+present that ownership distinction explicitly: global application changes are never represented as
+changes confined to the active organization.
+
 ## Selected Domain Lenses
 
 | Lens            | Repository evidence                                                    | Requirement focus                                                             |
@@ -36,6 +41,21 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | UserInfo                 | The tenant-scoped OIDC `/me` response containing verified identity and RBAC claims. |
 | User                     | An identity account owned by exactly one Porta organization.                        |
 | User lifecycle           | Porta's active, inactive, suspended, and locked account states and transitions.     |
+| Application              | A global product, service, or authorization definition shared by organizations.     |
+| Application module       | A global feature grouping within an application and permission namespace.           |
+| OIDC client              | An organization-owned OIDC deployment connected to one global application.          |
+
+## Admin UI Presentation Directives
+
+These directives apply to every current and future Admin UI requirement:
+
+1. Use the JSVision Layout DSL for every screen and dialog unless a concrete JSVision limitation
+   makes the required layout impossible. Any exception must remain local and document that
+   limitation; ad hoc positioning is not a normal alternative.
+2. Use JSVision DataGrid for tabular collections when rows and columns are the natural presentation.
+   Small non-tabular choosers do not need to be forced into a grid.
+3. Keep every single-line input at its natural one-row height. A Layout DSL container must never
+   assign vertical growth or fill behavior that stretches a single-line input.
 
 ## Document Index
 
@@ -45,14 +65,16 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | **RD-01** | [JSVision admin foundation](RD-01-jsvision-admin-foundation.md)                     | Secure embedded shell, authentication, and playground                  | —          |
 | **RD-02** | [Organization context and navigation](RD-02-organization-context-and-navigation.md) | Global menu, identity dialog, and organization create/switch workflows | RD-01      |
 | **RD-03** | [User management](RD-03-user-management.md)                                         | Complete organization-scoped user administration                       | RD-02      |
+| **RD-04** | [Applications and OIDC clients](RD-04-applications-and-oidc-clients.md)             | Global applications and organization-owned OIDC clients                | RD-02      |
 
 ## Dependency Graph
 
 ```text
 RD-01 Secure admin foundation
   └── RD-02 Organization context and navigation
-        └── RD-03 User management
-              └── Later roles and authentication-security modules
+        ├── RD-03 User management
+        └── RD-04 Applications and OIDC clients
+              └── RD-05 Roles and permissions
 ```
 
 ## Suggested Implementation Order
@@ -62,6 +84,7 @@ RD-01 Secure admin foundation
 | Foundation           | RD-01     | Completed secure shell and live playground                  |
 | Organization context | RD-02     | Establish the selected tenant context used by later screens |
 | User administration  | RD-03     | Complete the core organization-scoped user workflows        |
+| Application clients  | RD-04     | Manage global products and tenant OIDC deployments          |
 
 ## Key Architecture Decisions
 
@@ -76,6 +99,10 @@ RD-01 Secure admin foundation
 | User feature depth     | Complete existing core user-management surface             | Finishes one roadmap feature before starting another   |
 | Multi-user concurrency | No dedicated locking, merge, polling, or conflict workflow | Matches the expected single-operator terminal usage    |
 | Import and export      | Deferred to RD-09                                          | Keeps operational data tooling together                |
+| Application ownership  | Global product definition                                  | Reused consistently by every related organization      |
+| Client ownership       | Selected organization                                      | Holds tenant-specific OIDC deployment configuration    |
+| UI layout              | JSVision Layout DSL                                        | Keeps sizing and redraw behavior deterministic         |
+| Tabular collections    | JSVision DataGrid where appropriate                        | Reuses the established accessible grid interaction     |
 
 ## How to Use These Documents
 
