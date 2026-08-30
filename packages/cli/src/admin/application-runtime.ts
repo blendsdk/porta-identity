@@ -131,10 +131,10 @@ export function createAdminDialogSurface(
       desktop: {
         addWindow: (window) => {
           windows.add(window);
-          presentation.content.add(window);
+          presentation.content.addWindow(window);
         },
         removeWindow: (window) => {
-          if (windows.delete(window)) presentation.content.remove(window);
+          if (windows.delete(window)) presentation.content.removeWindow(window);
         },
         get bounds() {
           return presentation.content.bounds;
@@ -142,7 +142,7 @@ export function createAdminDialogSurface(
       },
     },
     removeAll: () => {
-      for (const window of windows) presentation.content.remove(window);
+      for (const window of windows) presentation.content.removeWindow(window);
       windows.clear();
     },
   };

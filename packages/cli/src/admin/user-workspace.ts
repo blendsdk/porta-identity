@@ -3,15 +3,21 @@
 import {
   at,
   Button,
+  col,
   ComboBox,
+  cover,
   DataGrid,
+  fixed,
   Group,
+  grow,
   Input,
   Label,
   ListView,
   signal,
+  spacer,
   Text,
   View,
+  row,
 } from '@jsvision/ui';
 import type { Column, Signal } from '@jsvision/ui';
 import type { AdminCapabilities } from './state.js';
@@ -120,7 +126,7 @@ function previousState(previous: AdminUserProjection): AdminUserViewState {
 /** Builds the direct user workspace without a reusable screen abstraction. */
 export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): AdminUserWorkspace {
   const content = new Group();
-  content.background = 'window';
+  content.background = 'dialog';
   let currentState: AdminUserViewState = { kind: 'closed' };
   let currentFocus: View | null = null;
   let disposed = false;
@@ -154,26 +160,19 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
 
   /** Renders list browsing controls for one validated page. */
   const renderPage = (state: Extract<AdminUserViewState, { kind: 'page' }>): void => {
-    const { width, height, compact } = geometry();
+    const { compact } = geometry();
     const searchInput = new Input({ value: searchValue, maxLength: 255 });
-    const searchFieldWidth = compact ? Math.max(8, width - 20) : 28;
-    content.add(at(new Label('~S~earch', searchInput), 0, 1, 8, 1));
-    content.add(at(searchInput, 8, 1, searchFieldWidth, 1));
-    content.add(
-      at(
-        new Button('~S~earch', {
-          onClick: () =>
-            options.onIntent(
-              searchValue.peek()
-                ? { kind: 'search', value: searchValue.peek() }
-                : { kind: 'search' },
-            ),
-        }),
-        compact ? Math.max(8, width - 11) : 37,
-        0,
-        11,
-        2,
-      ),
+    const searchButton = new Button('~S~earch', {
+      onClick: () =>
+        options.onIntent(
+          searchValue.peek() ? { kind: 'search', value: searchValue.peek() } : { kind: 'search' },
+        ),
+    });
+    const searchBar = row(
+      { gap: 1 },
+      fixed(new Label('~S~earch', searchInput), 7),
+      grow(searchInput),
+      fixed(searchButton, 11),
     );
     currentFocus = searchInput;
 
@@ -184,6 +183,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       ['~S~uspended', 'suspended'],
       ['~L~ocked', 'locked'],
     ];
+    let filterBar: Group;
     if (compact) {
       const statuses = signal<Array<AdminUserStatus | null>>([
         null,
@@ -200,42 +200,35 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
         onSelect: (_index, status) =>
           options.onIntent(status ? { kind: 'filter', status } : { kind: 'filter' }),
       });
-      content.add(at(new Text('Status'), 0, 3, 7, 1));
-      content.add(at(filter, 7, 3, Math.max(12, width - 7), 1));
+      filterBar = row({ gap: 1 }, fixed(new Text('Status'), 6), grow(filter));
     } else {
-      let filterX = 0;
+      const filterControls: View[] = [];
       for (const [label, status] of filters) {
         const buttonWidth = label.replaceAll('~', '').length + 4;
-        content.add(
-          at(
+        filterControls.push(
+          fixed(
             new Button(label, {
               onClick: () => {
                 filterStatus.set(status ?? null);
                 options.onIntent(status ? { kind: 'filter', status } : { kind: 'filter' });
               },
             }),
-            filterX,
-            3,
             buttonWidth,
-            2,
           ),
         );
-        filterX += buttonWidth + 1;
       }
-      content.add(at(new Text(`Filter: ${filterStatus.peek() ?? 'All'}`), 58, 4, 16, 1));
+      filterBar = row(
+        { gap: 1 },
+        ...filterControls,
+        spacer(),
+        fixed(new Text(`Filter: ${filterStatus.peek() ?? 'All'}`), 16),
+      );
     }
 
-    const listY = compact ? 4 : 6;
-    const pagingY = compact ? Math.max(5, height - 2) : 16;
+    let gridArea: View;
     if (state.page.data.length === 0) {
-      content.add(
-        at(
-          new Text(searchValue.peek() || filterStatus.peek() ? 'No matching users' : 'No users'),
-          0,
-          listY,
-          width,
-          1,
-        ),
+      gridArea = new Text(
+        searchValue.peek() || filterStatus.peek() ? 'No matching users' : 'No users',
       );
     } else {
       const rows: Signal<AdminUserListItem[]> = signal([...state.page.data]);
@@ -255,7 +248,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
           options.onIntent({ kind: 'select', userId: user.id });
         },
       });
-      content.add(at(grid, 0, listY, width, compact ? Math.max(3, pagingY - listY) : 9));
+      gridArea = grid;
       currentFocus = grid.rows;
     }
 
@@ -267,28 +260,28 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       disabled: state.page.page >= state.page.totalPages,
       onClick: () => options.onIntent({ kind: 'page', page: state.page.page + 1 }),
     });
-    content.add(at(previous, 0, pagingY, 13, 2));
-    if (!compact)
-      content.add(
-        at(
-          new Text(`Page ${state.page.page} of ${Math.max(1, state.page.totalPages)}`),
-          15,
-          pagingY,
-          20,
-          1,
-        ),
-      );
-    content.add(at(next, compact ? Math.max(14, width - 10) : 36, pagingY, 9, 2));
-    if (state.outcome)
-      content.add(
-        at(
-          new Text(OUTCOME_LABELS[state.outcome]),
-          compact ? 0 : 48,
-          compact ? 0 : pagingY,
-          compact ? width : 26,
-          1,
-        ),
-      );
+    const pager = row(
+      { gap: 1 },
+      fixed(previous, 13),
+      !compact &&
+        fixed(new Text(`Page ${state.page.page} of ${Math.max(1, state.page.totalPages)}`), 20),
+      spacer(),
+      state.outcome && fixed(new Text(OUTCOME_LABELS[state.outcome]), compact ? 18 : 26),
+      fixed(next, 9),
+    );
+    const pageLayout = col(
+      {
+        background: 'dialog',
+        gap: compact ? 0 : 1,
+        padding: { top: 0, right: 1, bottom: 0, left: 1 },
+      },
+      fixed(new Text('Users'), 1),
+      fixed(searchBar, 2),
+      fixed(filterBar, compact ? 1 : 2),
+      grow(gridArea),
+      fixed(pager, 2),
+    );
+    content.add(cover(pageLayout));
   };
 
   /** Returns every action valid for the selected user and current capabilities. */
@@ -362,6 +355,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
             ({ intent }) => intent.kind === 'back' || intent.kind === 'history',
           )
         : detailActions(user);
+    content.add(at(new Text('Users'), 0, 0, 20, 1));
 
     if (compact) {
       const rows = signal<CompactDetailRow[]>([
@@ -404,6 +398,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
   const renderHistory = (state: Extract<AdminUserViewState, { kind: 'history' }>): void => {
     const { width, height, compact } = geometry();
     const backY = compact ? Math.max(2, height - 2) : 16;
+    content.add(at(new Text('Users'), 0, 0, 20, 1));
     content.add(at(new Text(`History for ${state.detail.email}`), 0, 1, width, 1));
     const entries = signal([...state.history.entries]);
     const list = new ListView({
@@ -427,8 +422,8 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     currentFocus = null;
     if (disposed || currentState.kind === 'closed') return;
     const { width, compact } = geometry();
-    content.add(at(new Text('Users'), 0, 0, 20, 1));
     if (currentState.kind === 'success') {
+      content.add(at(new Text('Users'), 0, 0, 20, 1));
       content.add(
         at(
           new Text(currentState.action === 'created' ? 'User created' : 'Invitation sent'),
@@ -441,6 +436,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       return;
     }
     if (currentState.kind === 'indeterminate') {
+      content.add(at(new Text('Users'), 0, 0, 20, 1));
       content.add(at(new Text(OUTCOME_LABELS['outcome-unknown']), 0, 2, width, 1));
       return;
     }
@@ -450,7 +446,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
         if (previous.kind === 'page') renderPage(previous);
         else if (previous.kind === 'detail') renderDetail(previous);
         else if (previous.kind === 'history') renderHistory(previous);
-      }
+      } else content.add(at(new Text('Users'), 0, 0, 20, 1));
       content.add(at(new Text('Loading users…'), compact ? Math.max(0, width - 15) : 50, 0, 15, 1));
       return;
     }
@@ -460,7 +456,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
         if (previous.kind === 'page') renderPage(previous);
         else if (previous.kind === 'detail') renderDetail(previous);
         else if (previous.kind === 'history') renderHistory(previous);
-      }
+      } else content.add(at(new Text('Users'), 0, 0, 20, 1));
       content.add(
         at(
           new Text(OUTCOME_LABELS[currentState.failure]),

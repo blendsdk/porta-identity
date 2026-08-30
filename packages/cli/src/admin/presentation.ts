@@ -3,8 +3,7 @@
 import type { DrawContext, Size2D, StatusLine } from '@jsvision/ui';
 import {
   Commands,
-  cover,
-  Group,
+  Desktop,
   grow,
   item,
   MenuBar,
@@ -38,7 +37,7 @@ const COMPACT_HEIGHT = 8;
 /** Presentation objects mounted into one JSVision application. */
 export interface AdminPresentation {
   /** Full-screen body mounted between the application chrome rows. */
-  readonly content: Group;
+  readonly content: Desktop;
   /** Global and organization menu bar. */
   readonly menu?: MenuBar;
   /** Keyboard shortcut bar. */
@@ -49,15 +48,6 @@ export interface AdminPresentation {
   readonly getState: () => AdminConnectionState;
   /** Mounts the selected-organization user workspace, or restores the landing view. */
   readonly setUserWorkspace: (workspace: View | null) => void;
-}
-
-/** Paints the standard JSVision desktop pattern behind every administration view. */
-class AdminBackgroundView extends View {
-  /** Fills the complete body with the active theme's ordinary desktop role. */
-  draw(context: DrawContext): void {
-    const role = context.role('desktop');
-    context.fill(role.pattern, context.color('desktop'));
-  }
 }
 
 /** Provides a stable focus target and the resize-only fallback over the desktop. */
@@ -183,8 +173,7 @@ export function createAdminPresentation(
     menu.setItems(recoverable ? fullMenuItems() : []);
     status.setItems(recoverable ? fullStatusItems() : quitStatusItems());
   });
-  const content = new Group();
-  content.add(cover(new AdminBackgroundView()));
+  const content = new Desktop();
   content.add(grow(landing));
   let userWorkspace: View | null = null;
 

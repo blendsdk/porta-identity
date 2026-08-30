@@ -111,6 +111,19 @@ describe('user workspace implementation', () => {
     expect(views.filter((view) => view instanceof Button).length).toBeGreaterThan(2);
     expect(grid).toBeInstanceOf(DataGrid);
     expect(mounted.application.loop.getFocused()).toBe((grid as DataGrid<unknown>).rows);
+    expect((grid as DataGrid<unknown>).layout.position).not.toBe('absolute');
+    expect((grid as DataGrid<unknown>).layout.size).toEqual({ kind: 'fr', weight: 1 });
+  });
+
+  it('should use the dialog surface color and let the grid consume tall viewports', async () => {
+    const mounted = mount(100, 35);
+    mounted.workspace.setState({ kind: 'page', page });
+    await settle();
+    const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    if (!(grid instanceof DataGrid)) throw new Error('User grid missing.');
+
+    expect(mounted.workspace.content.background).toBe('dialog');
+    expect(grid.bounds.height).toBeGreaterThan(9);
   });
 
   it('should keep the compact workspace bounded and keyboard controls mounted', async () => {

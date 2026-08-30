@@ -133,6 +133,11 @@ export async function runAdminApplication(
   let currentController: AbortController | undefined;
   let organizationDialogOpen = false;
   let userDialogOpen = false;
+  let authenticationGateOpen = false;
+  let identityDialogOpen = false;
+  let disposed = false;
+  let emitDeferredQuit = (): void => undefined;
+  let deferredQuit = false;
   let userController: AdminUserController | undefined;
   let userRecoveryRequired = false;
   let sessionEpoch = initialState.kind === 'authenticated' ? 1 : 0;
@@ -141,11 +146,31 @@ export async function runAdminApplication(
     'alt+x': Commands.quit,
   });
   const applicationKeymap: Keymap = {
-    // Escape remains a raw dialog key unless an application operation currently owns cancellation.
-    lookup: (event) =>
-      event.key === 'escape' && (currentController || organizationDialogOpen || userDialogOpen)
-        ? ADMIN_COMMANDS.cancel
-        : standardKeymap.lookup(event),
+    // Dialogs handle Cancel themselves, but not the global Quit command. Convert Alt-X to Cancel for
+    // the active modal, then re-emit Quit after that modal has left the event loop's modal scope.
+    lookup: (event) => {
+      const command = standardKeymap.lookup(event);
+      const modalWorkOpen =
+        currentController !== undefined ||
+        authenticationGateOpen ||
+        organizationDialogOpen ||
+        identityDialogOpen ||
+        userDialogOpen;
+      const cancellableWorkOpen =
+        currentController !== undefined || organizationDialogOpen || userDialogOpen;
+      if (command === Commands.quit && modalWorkOpen) {
+        if (!deferredQuit) {
+          deferredQuit = true;
+          queueMicrotask(() => {
+            deferredQuit = false;
+            if (!disposed) emitDeferredQuit();
+          });
+        }
+        return Commands.cancel;
+      }
+      // Escape remains a raw dialog key unless an application operation currently owns cancellation.
+      return event.key === 'escape' && cancellableWorkOpen ? ADMIN_COMMANDS.cancel : command;
+    },
   };
   const factory = options.applicationFactory ?? createApplication;
   const application = factory({
@@ -157,19 +182,17 @@ export async function runAdminApplication(
     caps,
     keymap: applicationKeymap,
   });
+  emitDeferredQuit = () => application.loop.emitCommand(Commands.quit);
   // Keep a stable background focus target so menus remain keyboard-accessible after a modal closes.
   application.loop.focusInto(presentation.content);
   const dialogSurface = createAdminDialogSurface(application, presentation);
   const dialogHost = dialogSurface.host;
   const interaction = createAdminInteraction(application, dialogHost);
 
-  let disposed = false;
   let finalized = false;
   let initialized = false;
   let currentOperationFallback: AdminConnectionState | undefined;
-  let authenticationGateOpen = false;
   let authenticationGateGeneration = 0;
-  let identityDialogOpen = false;
   let organizationGeneration = 0;
   let createRecoveryRequired = false;
   let session = options.session;

@@ -225,6 +225,35 @@ describe('admin application shell', () => {
     });
   });
 
+  it('should quit cleanly with Alt-X while a dialog is open', async () => {
+    const warnings = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      await runAdminApplication({
+        server,
+        insecure: false,
+        viewport: { width: 80, height: 24 },
+        initialState: authenticatedState(),
+        applicationFactory: createApplication,
+        applicationRunner: async (application) => {
+          press(application, 'f10');
+          press(application, 'enter');
+          await settleApplication();
+          expect(frameText(application)).toContain('Who am I');
+
+          press(application, 'x', { alt: true });
+          await settleApplication();
+
+          expect(warnings).not.toHaveBeenCalledWith(
+            expect.stringContaining("the command 'quit' was emitted but no view handled it"),
+          );
+          return 0;
+        },
+      });
+    } finally {
+      warnings.mockRestore();
+    }
+  });
+
   it.each([
     [80, 24],
     [48, 12],

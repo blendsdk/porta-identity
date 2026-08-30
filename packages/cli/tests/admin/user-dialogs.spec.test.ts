@@ -148,6 +148,70 @@ describe('user dialogs', () => {
     }
   });
 
+  it('should let a user drag a modal dialog by its title bar', async () => {
+    const server = new URL('https://porta.example.test');
+    const presentation = createAdminPresentation(
+      {
+        kind: 'authenticated',
+        server,
+        identity: { sub: 'subject-1', email: 'admin@example.test' },
+        capabilities: {
+          canReadOrganizations: true,
+          canCreateOrganizations: true,
+          canReadUsers: true,
+          canCreateUsers: true,
+          canInviteUsers: true,
+          canUpdateUsers: true,
+          canManageUserLifecycle: true,
+          canPurgeUsers: true,
+        },
+      },
+      false,
+      { width: 80, height: 24 },
+    );
+    const application = createApplication({
+      content: presentation.content,
+      menuBar: presentation.menu,
+      statusLine: presentation.status,
+      viewport: { width: 80, height: 24 },
+    });
+    const surface = createAdminDialogSurface(application, presentation);
+    const operation = showCreateUserDialog(surface.host, new AbortController().signal);
+    await settle();
+    const dialog = descendants(presentation.content).find((view) => view instanceof Dialog);
+    if (!(dialog instanceof Dialog)) throw new Error('Create-user dialog missing.');
+    const origin = application.loop.renderRoot.originOf(dialog);
+    if (!origin) throw new Error('Create-user dialog origin missing.');
+    const before = { ...dialog.bounds };
+
+    application.loop.dispatch({
+      type: 'mouse',
+      kind: 'down',
+      button: 0,
+      x: origin.x + 11,
+      y: origin.y + 1,
+    });
+    application.loop.dispatch({
+      type: 'mouse',
+      kind: 'drag',
+      button: 0,
+      x: origin.x + 15,
+      y: origin.y + 3,
+    });
+    application.loop.dispatch({
+      type: 'mouse',
+      kind: 'up',
+      button: 0,
+      x: origin.x + 15,
+      y: origin.y + 3,
+    });
+
+    expect(dialog.bounds.x).toBe(before.x + 4);
+    expect(dialog.bounds.y).toBe(before.y + 2);
+    application.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
+  });
+
   it('should map every editable field to its exact bound and control-free validator', async () => {
     const cases: ReadonlyArray<{
       readonly open: (application: ReturnType<typeof createApplication>) => Promise<unknown>;
