@@ -18,30 +18,101 @@ import type {
   HistoryEntry,
 } from '../types/index.js';
 import { listAll } from '../pagination/index.js';
-import { unwrapData, unwrapWithEtag, etagHeaders, toQueryParams } from './helpers.js';
+import {
+  etagHeaders,
+  isRecord,
+  requireData,
+  requireDataWithEtag,
+  requirePaginatedData,
+  toQueryParams,
+} from './helpers.js';
 
-export interface ApplicationsDomain {
-  list(params?: ListParams): Promise<PaginatedResponse<Application>>;
-  listAll(params?: Omit<ListParams, 'page' | 'cursor'>): Promise<Application[]>;
-  get(idOrSlug: string): Promise<ETagResponse<Application>>;
-  create(input: CreateApplicationInput): Promise<Application>;
-  update(idOrSlug: string, input: UpdateApplicationInput, etag?: string): Promise<Application>;
-  archive(idOrSlug: string): Promise<void>;
-  restore(idOrSlug: string): Promise<void>;
-  getHistory(idOrSlug: string, params?: ListParams): Promise<HistoryEntry[]>;
-  listModules(appId: string): Promise<ApplicationModule[]>;
-  addModule(appId: string, input: CreateModuleInput): Promise<ApplicationModule>;
-  updateModule(appId: string, moduleId: string, input: UpdateModuleInput): Promise<ApplicationModule>;
-  removeModule(appId: string, moduleId: string): Promise<void>;
+/** Validate one application returned by the Admin API. */
+function isApplication(value: unknown): value is Application {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.slug === 'string' &&
+    (typeof value.description === 'string' || value.description === null) &&
+    (value.status === 'active' || value.status === 'inactive' || value.status === 'archived') &&
+    typeof value.createdAt === 'string' &&
+    typeof value.updatedAt === 'string'
+  );
 }
 
+/** Validate one application module returned by the Admin API. */
+function isApplicationModule(value: unknown): value is ApplicationModule {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.applicationId === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.slug === 'string' &&
+    (typeof value.description === 'string' || value.description === null) &&
+    (value.status === 'active' || value.status === 'inactive') &&
+    typeof value.createdAt === 'string' &&
+    typeof value.updatedAt === 'string'
+  );
+}
+
+/** Validate one application history entry. */
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.eventType === 'string' &&
+    (typeof value.actorId === 'string' || value.actorId === null) &&
+    (isRecord(value.metadata) || value.metadata === null) &&
+    typeof value.createdAt === 'string'
+  );
+}
+
+export interface ApplicationsDomain {
+  /** List one page of global applications. */
+  list(params?: ListParams): Promise<PaginatedResponse<Application>>;
+  /** Load every global application page or reject without returning a partial collection. */
+  listAll(params?: Omit<ListParams, 'page' | 'cursor'>): Promise<Application[]>;
+  /** Get one application by internal UUID or slug. */
+  get(idOrSlug: string): Promise<ETagResponse<Application>>;
+  /** Create a global application definition. */
+  create(input: CreateApplicationInput): Promise<Application>;
+  /** Update mutable application fields. */
+  update(idOrSlug: string, input: UpdateApplicationInput, etag?: string): Promise<Application>;
+  /** Activate an inactive application. */
+  activate(id: string): Promise<void>;
+  /** Deactivate an active application. */
+  deactivate(id: string): Promise<void>;
+  /** Permanently archive an application. */
+  archive(idOrSlug: string): Promise<void>;
+  /** Read application audit history. */
+  getHistory(idOrSlug: string, params?: ListParams): Promise<HistoryEntry[]>;
+  /** List modules owned by an application. */
+  listModules(appId: string): Promise<ApplicationModule[]>;
+  /** Add a module under an application. */
+  addModule(appId: string, input: CreateModuleInput): Promise<ApplicationModule>;
+  /** Update a module through its parent-qualified route. */
+  updateModule(
+    appId: string,
+    moduleId: string,
+    input: UpdateModuleInput,
+  ): Promise<ApplicationModule>;
+  /** Deactivate a module through its parent-qualified route. */
+  deactivateModule(appId: string, moduleId: string): Promise<void>;
+}
+
+/** Create the application operations backed by one HTTP transport. */
 export function createApplicationsDomain(transport: HttpTransport): ApplicationsDomain {
   const base = '/applications';
 
   return {
     async list(params) {
-      const res = await transport.request({ method: 'GET', path: base, params: toQueryParams(params) });
-      return res.body as PaginatedResponse<Application>;
+      const res = await transport.request({
+        method: 'GET',
+        path: base,
+        params: toQueryParams(params),
+      });
+      return requirePaginatedData(res.body, isApplication);
     },
 
     listAll(params) {
@@ -50,51 +121,80 @@ export function createApplicationsDomain(transport: HttpTransport): Applications
 
     async get(idOrSlug) {
       const res = await transport.request({ method: 'GET', path: `${base}/${idOrSlug}` });
-      return unwrapWithEtag<Application>(res);
+      return requireDataWithEtag(res, isApplication);
     },
 
     async create(input) {
       const res = await transport.request({ method: 'POST', path: base, body: input });
-      return unwrapData<Application>(res.body);
+      return requireData(res.body, isApplication);
     },
 
     async update(idOrSlug, input, etag?) {
       const res = await transport.request({
-        method: 'PUT', path: `${base}/${idOrSlug}`, body: input, headers: etagHeaders(etag),
+        method: 'PUT',
+        path: `${base}/${idOrSlug}`,
+        body: input,
+        headers: etagHeaders(etag),
       });
-      return unwrapData<Application>(res.body);
+      return requireData(res.body, isApplication);
     },
 
     async archive(idOrSlug) {
       await transport.request({ method: 'POST', path: `${base}/${idOrSlug}/archive` });
     },
 
-    async restore(idOrSlug) {
-      await transport.request({ method: 'POST', path: `${base}/${idOrSlug}/restore` });
+    async activate(id) {
+      await transport.request({ method: 'POST', path: `${base}/${id}/activate` });
+    },
+
+    async deactivate(id) {
+      await transport.request({ method: 'POST', path: `${base}/${id}/deactivate` });
     },
 
     async getHistory(idOrSlug, params?) {
-      const res = await transport.request({ method: 'GET', path: `${base}/${idOrSlug}/history`, params: toQueryParams(params) });
-      return unwrapData<HistoryEntry[]>(res.body);
+      const res = await transport.request({
+        method: 'GET',
+        path: `${base}/${idOrSlug}/history`,
+        params: toQueryParams(params),
+      });
+      return requireData(
+        res.body,
+        (value): value is HistoryEntry[] => Array.isArray(value) && value.every(isHistoryEntry),
+      );
     },
 
     async listModules(appId) {
       const res = await transport.request({ method: 'GET', path: `${base}/${appId}/modules` });
-      return unwrapData<ApplicationModule[]>(res.body);
+      return requireData(
+        res.body,
+        (value): value is ApplicationModule[] =>
+          Array.isArray(value) && value.every(isApplicationModule),
+      );
     },
 
     async addModule(appId, input) {
-      const res = await transport.request({ method: 'POST', path: `${base}/${appId}/modules`, body: input });
-      return unwrapData<ApplicationModule>(res.body);
+      const res = await transport.request({
+        method: 'POST',
+        path: `${base}/${appId}/modules`,
+        body: input,
+      });
+      return requireData(res.body, isApplicationModule);
     },
 
     async updateModule(appId, moduleId, input) {
-      const res = await transport.request({ method: 'PUT', path: `${base}/${appId}/modules/${moduleId}`, body: input });
-      return unwrapData<ApplicationModule>(res.body);
+      const res = await transport.request({
+        method: 'PUT',
+        path: `${base}/${appId}/modules/${moduleId}`,
+        body: input,
+      });
+      return requireData(res.body, isApplicationModule);
     },
 
-    async removeModule(appId, moduleId) {
-      await transport.request({ method: 'DELETE', path: `${base}/${appId}/modules/${moduleId}` });
+    async deactivateModule(appId, moduleId) {
+      await transport.request({
+        method: 'POST',
+        path: `${base}/${appId}/modules/${moduleId}/deactivate`,
+      });
     },
   };
 }

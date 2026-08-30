@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 14:36
-> **Progress**: 10/49 tasks (20%)
+> **Last Updated**: 2026-08-30 15:42
+> **Progress**: 18/49 tasks (37%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -96,27 +96,51 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ## Phase 2: SDK and Conventional CLI Contracts
 
-> **Phase baseline tree**: _(recorded by exec-plan at phase start)_
+> **Phase baseline tree**: `605722dfa75b86fc94c52f2f1f45e7beff2eefe8`
 > **Scope mode**: strict — current application/client SDK and existing conventional CLI consumers only
+> **Expected modification set**: `packages/sdk/src/domains/applications.ts`,
+> `packages/sdk/src/domains/clients.ts`, their public application/client types and focused tests;
+> existing application/module/client/secret command files and focused tests under `packages/cli/`;
+> this execution plan and the phase review record
 
 ### Step 2.1: Specification Tests
 
 **Reference**: [03-02](03-02-sdk-and-cli-contracts.md) · ST-16–ST-23 · AR-1, AR-2
 
-- [ ] 2.1.1 [spec-author] Add immutable SDK application/client type and transport contract specifications, including a focused TypeScript oracle where exact absence matters — SDK tests
-- [ ] 2.1.2 [spec-author] Add conventional CLI contract specifications for every exact application, module, client, and secret command inventoried in 03-02 — CLI command tests
-- [ ] 2.1.3 Run ST-16–ST-23 against unchanged public contracts and record expected red
+- [x] 2.1.1 [spec-author] Add immutable SDK application/client type and transport contract specifications, including a focused TypeScript oracle where exact absence matters — SDK tests ✅ (completed: 2026-08-30 14:44)
+- [x] 2.1.2 [spec-author] Add conventional CLI contract specifications for every exact application, module, client, and secret command inventoried in 03-02 — CLI command tests ✅ (completed: 2026-08-30 14:43)
+- [x] 2.1.3 Run ST-16–ST-23 against unchanged public contracts and record expected red ✅ (completed: 2026-08-30 14:44)
+
+  Expected-red evidence: Node 24 focused Vitest collected 20 SDK cases (12 passed, 8 failed) and
+  23 conventional CLI cases (10 passed, 13 failed). The permanent SDK TypeScript oracle reported
+  20 diagnostics for the stale public shapes and absent/present operations. Failures were limited
+  to the approved lifecycle, nested-route, field-name, response-wrapper, and removed-surface gaps;
+  focused lint passed and no production expectation changed.
 
 ### Step 2.2: Implementation and Green Phase
 
-- [ ] 2.2.1 Correct documented public application/module types and domain operations — SDK types and `domains/applications.ts`
-- [ ] 2.2.2 Correct documented public client/secret types, response wrappers, and domain operations — SDK types and `domains/clients.ts`
-- [ ] 2.2.3 Align existing conventional application/client CLI commands and fixtures with the corrected SDK without adding command families — CLI commands/tests
-- [ ] 2.2.4 Run ST-16–ST-23 and make the implementation green without changing expectations
+- [x] 2.2.1 Correct documented public application/module types and domain operations — SDK types and `domains/applications.ts` ✅ (completed: 2026-08-30 14:49)
+- [x] 2.2.2 Correct documented public client/secret types, response wrappers, and domain operations — SDK types and `domains/clients.ts` ✅ (completed: 2026-08-30 14:49)
+- [x] 2.2.3 Align existing conventional application/client CLI commands and fixtures with the corrected SDK without adding command families — CLI commands/tests ✅ (completed: 2026-08-30 14:49)
+- [x] 2.2.4 Run ST-16–ST-23 and make the implementation green without changing expectations ✅ (completed: 2026-08-30 14:49)
+
+  Green evidence: Node 24 focused SDK specifications passed 20/20, conventional CLI
+  specifications passed 23/23, the permanent SDK TypeScript oracle passed, SDK and CLI lint passed,
+  and CLI typecheck passed after the ignored SDK build refreshed local declarations.
 
 ### Step 2.3: Implementation Tests and Verification
 
-- [ ] 2.3.1 Add SDK/CLI implementation regressions for serialization, pagination rejection, wrappers, IDs, optional secrets, and fixed output, then run both package verifies and Node 24 LTS `yarn verify`
+- [x] 2.3.1 Add SDK/CLI implementation regressions for serialization, pagination rejection, wrappers, IDs, optional secrets, and fixed output, then run both package verifies and Node 24 LTS `yarn verify` ✅ (completed: 2026-08-30 15:06)
+
+  Verification evidence: final SDK verify passed 455/455 tests; final CLI verify passed 792/792
+  tests; focused server route regressions passed 33/33; SDK, CLI, and server lint/typecheck passed;
+  repository structure passed 96/96 after its physical-file inventory was mechanically updated to
+  38 SDK and 59 CLI tests; final Node 24 root `yarn verify` passed in 11m39s. Independent review
+  fixes validated response envelopes and secret wrappers, internal UUID targeting, terminal-safe
+  human output and prompts, closed public aliases, empty JSON output, and complete client-list
+  projections. The permitted final re-review accepted every fix; no critical or major finding
+  remains. The incremental techdocs hook required no change because Phase 2 corrected existing
+  public contracts without changing system architecture.
 
 **Deliverables:** accurate public application/client contracts and aligned current CLI consumers.
 

@@ -9,5 +9,9 @@
     "types": ["node", "vitest/globals"]
   },
   "exclude": [],
-  "include": ["users-contract.spec.test.ts"]
+  "include": [
+    "users-contract.spec.test.ts",
+    "../applications-rd04.spec.test.ts",
+    "../clients-rd04.spec.test.ts"
+  ]
 }

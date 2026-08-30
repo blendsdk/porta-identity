@@ -278,7 +278,10 @@ export function createClientRouter(): Router {
       if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
         const query = listClientsCursorSchema.parse(ctx.query);
         const result = await clientService.listClientsCursor(query);
-        ctx.body = result;
+        ctx.body = {
+          ...result,
+          data: await Promise.all(result.data.map(withEffectiveLoginMethods)),
+        };
         return;
       }
       // Default: offset-based pagination (backward compatible)
@@ -287,7 +290,10 @@ export function createClientRouter(): Router {
         query.organizationId ?? '',
         query,
       );
-      ctx.body = result;
+      ctx.body = {
+        ...result,
+        data: await Promise.all(result.data.map(withEffectiveLoginMethods)),
+      };
     } catch (err) {
       handleError(ctx, err);
     }

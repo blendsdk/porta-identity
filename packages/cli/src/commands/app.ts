@@ -24,14 +24,12 @@ import { appClaimCommand } from './app-claim.js';
 // ---------------------------------------------------------------------------
 
 interface AppCreateArgs extends GlobalOptions {
-  'org-id': string;
   name: string;
   slug?: string;
   description?: string;
 }
 
 interface AppListArgs extends GlobalOptions {
-  'org-id'?: string;
   status?: string;
   page: number;
   'page-size': number;
@@ -61,11 +59,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           'Create a new application',
           (y) =>
             y
-              .option('org-id', {
-                type: 'string',
-                demandOption: true,
-                description: 'Organization ID the application belongs to',
-              })
               .option('name', {
                 type: 'string',
                 demandOption: true,
@@ -83,7 +76,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             try {
               const client = createClient(argv);
               const app = await client.applications.create({
-                organizationId: argv['org-id'],
                 name: argv.name,
                 slug: argv.slug,
                 description: argv.description,
@@ -100,7 +92,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     ['Name', app.name],
                     ['Slug', app.slug],
                     ['Status', app.status],
-                    ['Organization ID', app.organizationId],
                     ['Created', formatDate(app.createdAt)],
                   ],
                 );
@@ -116,10 +107,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           'List applications',
           (y) =>
             y
-              .option('org-id', {
-                type: 'string',
-                description: 'Filter by organization ID',
-              })
               .option('status', {
                 type: 'string',
                 choices: ['active', 'inactive', 'archived'],
@@ -142,11 +129,14 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 page: argv.page,
                 pageSize: argv['page-size'],
                 ...(argv.status && { status: argv.status }),
-                ...(argv['org-id'] && { organizationId: argv['org-id'] }),
               });
 
               if (result.data.length === 0) {
-                warn('No applications found');
+                if (argv.json) {
+                  printJson(result);
+                } else {
+                  warn('No applications found');
+                }
                 return;
               }
 
@@ -166,8 +156,8 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         )
 
         .command<AppIdArgs>(
-          'show <id-or-slug>',
-          'Show application details',
+          'get <id-or-slug>',
+          'Get application details',
           (y) =>
             y.positional('id-or-slug', {
               type: 'string',
@@ -190,7 +180,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     ['Slug', app.slug],
                     ['Status', app.status],
                     ['Description', app.description ?? '—'],
-                    ['Organization ID', app.organizationId],
                     ['Created', formatDate(app.createdAt)],
                     ['Updated', formatDate(app.updatedAt)],
                   ],
@@ -223,10 +212,10 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const client = createClient(argv);
-              const { etag } = await client.applications.get(argv['id-or-slug']);
+              const { data: application, etag } = await client.applications.get(argv['id-or-slug']);
 
               const updated = await client.applications.update(
-                argv['id-or-slug'],
+                application.id,
                 {
                   name: argv.name,
                   description: argv.description,
@@ -239,6 +228,57 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               } else {
                 success(`Application updated: ${updated.name} (${updated.slug})`);
               }
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+
+        .command<AppIdArgs>(
+          'activate <id-or-slug>',
+          'Activate an application',
+          (y) =>
+            y.positional('id-or-slug', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application UUID or slug',
+            }),
+          async (argv) => {
+            try {
+              const client = createClient(argv);
+              const { data: app } = await client.applications.get(argv['id-or-slug']);
+              await client.applications.activate(app.id);
+              success(`Application activated: ${app.name} (${app.slug})`);
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+
+        .command<AppIdArgs>(
+          'deactivate <id-or-slug>',
+          'Deactivate an application',
+          (y) =>
+            y.positional('id-or-slug', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application UUID or slug',
+            }),
+          async (argv) => {
+            try {
+              const client = createClient(argv);
+              const { data: app } = await client.applications.get(argv['id-or-slug']);
+              if (!argv.force) {
+                const confirmed = await confirm(
+                  `Deactivate application "${app.name}" (${app.slug})?`,
+                );
+                if (!confirmed) {
+                  warn('Operation cancelled');
+                  return;
+                }
+              }
+              await client.applications.deactivate(app.id);
+              success(`Application deactivated: ${app.name} (${app.slug})`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -276,28 +316,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         )
 
         .command<AppIdArgs>(
-          'restore <id-or-slug>',
-          'Restore an archived application',
-          (y) =>
-            y.positional('id-or-slug', {
-              type: 'string',
-              demandOption: true,
-              description: 'Application UUID or slug',
-            }),
-          async (argv) => {
-            try {
-              const client = createClient(argv);
-              const { data: app } = await client.applications.get(argv['id-or-slug']);
-
-              await client.applications.restore(app.id);
-              success(`Application restored: ${app.name} (${app.slug})`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
-        .command<AppIdArgs>(
           'history <id-or-slug>',
           'Show application change history',
           (y) =>
@@ -328,7 +346,6 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     h.metadata ? JSON.stringify(h.metadata) : '—',
                   ]),
                 );
-
               }
             } catch (err) {
               handleError(err, argv.verbose);

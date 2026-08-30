@@ -33,7 +33,7 @@ interface ModuleUpdateArgs extends GlobalOptions {
   description?: string;
 }
 
-interface ModuleRemoveArgs extends GlobalOptions {
+interface ModuleDeactivateArgs extends GlobalOptions {
   'app-id': string;
   'module-id': string;
 }
@@ -95,7 +95,11 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             const modules = await client.applications.listModules(argv['app-id']);
 
             if (modules.length === 0) {
-              warn('No modules found');
+              if (argv.json) {
+                printJson(modules);
+              } else {
+                warn('No modules found');
+              }
               return;
             }
 
@@ -103,14 +107,8 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               printJson(modules);
             } else {
               printTable(
-                ['ID', 'Name', 'Slug', 'Active', 'Created'],
-                modules.map((m) => [
-                  m.id,
-                  m.name,
-                  m.slug,
-                  String(m.isActive),
-                  formatDate(m.createdAt),
-                ]),
+                ['ID', 'Name', 'Slug', 'Status', 'Created'],
+                modules.map((m) => [m.id, m.name, m.slug, m.status, formatDate(m.createdAt)]),
               );
               info(`Total: ${modules.length} modules`);
             }
@@ -160,9 +158,9 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
-      .command<ModuleRemoveArgs>(
-        'remove <app-id> <module-id>',
-        'Remove a module from an application',
+      .command<ModuleDeactivateArgs>(
+        'deactivate <app-id> <module-id>',
+        'Deactivate a module',
         (y) =>
           y
             .positional('app-id', {
@@ -178,14 +176,14 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.applications.removeModule(argv['app-id'], argv['module-id']);
-            success('Module removed');
+            await client.applications.deactivateModule(argv['app-id'], argv['module-id']);
+            success('Module deactivated');
           } catch (err) {
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Specify a module subcommand: add, list, update, remove');
+      .demandCommand(1, 'Specify a module subcommand: add, list, update, deactivate');
   },
   handler: () => {},
 };

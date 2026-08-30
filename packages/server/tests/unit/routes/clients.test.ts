@@ -16,6 +16,7 @@ vi.mock('../../../src/clients/service.js', () => ({
   updateClient: vi.fn(),
   listClientsByOrganization: vi.fn(),
   listClientsByApplication: vi.fn(),
+  listClientsCursor: vi.fn(),
   deactivateClient: vi.fn(),
   activateClient: vi.fn(),
   revokeClient: vi.fn(),
@@ -411,6 +412,42 @@ describe('client routes', () => {
       expect(ctx.body).toEqual(result);
       expect(clientService.listClientsByOrganization).toHaveBeenCalled();
     });
+
+    it('should decorate every offset-paginated client with effective login methods', async () => {
+      const client = createTestClient({ loginMethods: null });
+      const result = { data: [client], total: 1, page: 1, pageSize: 20, totalPages: 1 };
+      (clientService.listClientsByOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        result,
+      );
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'GET', '/api/admin/clients');
+      const ctx = createMockCtx({ query: {} });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(ctx.body).toEqual({
+        ...result,
+        data: [{ ...client, effectiveLoginMethods: ['password', 'magic_link'] }],
+      });
+    });
+
+    it('should decorate every cursor-paginated client with effective login methods', async () => {
+      const client = createTestClient({ loginMethods: ['magic_link'] });
+      const result = { data: [client], total: 1, cursor: null, hasMore: false };
+      (clientService.listClientsCursor as ReturnType<typeof vi.fn>).mockResolvedValue(result);
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'GET', '/api/admin/clients');
+      const ctx = createMockCtx({ query: { limit: '20' } });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(ctx.body).toEqual({
+        ...result,
+        data: [{ ...client, effectiveLoginMethods: ['magic_link'] }],
+      });
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -721,10 +758,7 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(204);
-      expect(secretService.revoke).toHaveBeenCalledWith(
-        'client-db-uuid-1',
-        'secret-uuid-1',
-      );
+      expect(secretService.revoke).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
     });
 
     it('should throw 400 when secret already revoked', async () => {

@@ -8,10 +8,11 @@
  * Usage:
  *   porta client create --org <org-id> --app <app-id> --type confidential --redirect-uris "https://..." [--name "My Client"]
  *   porta client list --app <app-id> [--status active|revoked] [--page 1] [--page-size 20]
- *   porta client show <client-id>
+ *   porta client get <client-id>
  *   porta client update <client-id> --name "New Name" [--redirect-uris "..."]
  *   porta client revoke <client-id>
- *   porta client restore <client-id>
+ *   porta client activate <client-id>
+ *   porta client deactivate <client-id>
  *   porta client history <client-id>
  *   porta client login-methods get <client-id>
  *   porta client login-methods set <client-id> --methods "password,magic_link"
@@ -137,9 +138,11 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
 
               const result = await sdkClient.clients.create({
+                organizationId: argv.org,
                 applicationId: appId,
-                name: argv.name ?? 'Unnamed Client',
+                clientName: argv.name ?? 'Unnamed Client',
                 clientType: argv.type,
+                applicationType: argv['application-type'],
                 redirectUris: parseCommaSeparated(argv['redirect-uris']),
                 ...(loginMethods !== undefined && { loginMethods }),
               });
@@ -147,19 +150,27 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               if (argv.json) {
                 printJson(result);
               } else {
-                success(`Client created: ${result.name} (${result.clientId})`);
+                const created = result.client;
+                success(`Client created: ${created.clientName} (${created.clientId})`);
                 printTable(
                   ['Field', 'Value'],
                   [
-                    ['ID', result.id],
-                    ['Client ID', result.clientId],
-                    ['Name', result.name],
-                    ['Type', result.clientType],
-                    ['Status', result.status],
-                    ['Redirect URIs', result.redirectUris.join(', ')],
-                    ['Created', formatDate(result.createdAt)],
+                    ['ID', created.id],
+                    ['Client ID', created.clientId],
+                    ['Name', created.clientName],
+                    ['Type', created.clientType],
+                    ['Status', created.status],
+                    ['Redirect URIs', created.redirectUris.join(', ')],
+                    ['Created', formatDate(created.createdAt)],
                   ],
                 );
+                if (result.secret) {
+                  warn('Copy this initial secret now. It will not be shown again.');
+                  printTable(
+                    ['Secret ID', 'Label', 'Plaintext'],
+                    [[result.secret.id, result.secret.label ?? '—', result.secret.plaintext]],
+                  );
+                }
               }
             } catch (err) {
               handleError(err, argv.verbose);
@@ -176,11 +187,11 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               .option('app', {
                 type: 'string',
                 demandOption: true,
-                description: 'Application UUID or slug',
+                description: 'Application UUID',
               })
               .option('status', {
                 type: 'string',
-                choices: ['active', 'revoked'],
+                choices: ['active', 'inactive', 'revoked'],
                 description: 'Filter by status',
               })
               .option('page', {
@@ -204,7 +215,11 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               });
 
               if (result.data.length === 0) {
-                warn('No clients found');
+                if (argv.json) {
+                  printJson(result);
+                } else {
+                  warn('No clients found');
+                }
                 return;
               }
 
@@ -216,7 +231,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   result.data.map((c) => [
                     c.id,
                     c.clientId,
-                    c.name,
+                    c.clientName,
                     c.clientType,
                     c.status,
                     formatDate(c.createdAt),
@@ -230,15 +245,15 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           },
         )
 
-        // ── show ────────────────────────────────────────────────────────
+        // ── get ─────────────────────────────────────────────────────────
         .command<ClientIdArgs>(
-          'show <client-id>',
-          'Show client details',
+          'get <client-id>',
+          'Get client details',
           (y) =>
             y.positional('client-id', {
               type: 'string',
               demandOption: true,
-              description: 'Client internal UUID or client_id',
+              description: 'Client internal UUID',
             }),
           async (argv) => {
             try {
@@ -253,15 +268,25 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   [
                     ['ID', c.id],
                     ['Client ID', c.clientId],
-                    ['Name', c.name],
+                    ['Name', c.clientName],
+                    ['Organization ID', c.organizationId],
+                    ['Application ID', c.applicationId],
                     ['Type', c.clientType],
+                    ['Application Type', c.applicationType],
                     ['Status', c.status],
                     ['Redirect URIs', c.redirectUris.join(', ') || '—'],
+                    ['Post-logout Redirect URIs', c.postLogoutRedirectUris.join(', ') || '—'],
                     ['Grant Types', c.grantTypes.join(', ')],
+                    ['Response Types', c.responseTypes.join(', ')],
+                    ['Scope', c.scope],
+                    ['Token Endpoint Authentication', c.tokenEndpointAuthMethod],
+                    ['Allowed Origins', c.allowedOrigins.join(', ') || '—'],
+                    ['Require PKCE', String(c.requirePkce)],
                     [
-                      'Login Methods',
+                      'Login Method Override',
                       c.loginMethods === null ? 'inherit' : c.loginMethods.join(', '),
                     ],
+                    ['Effective Login Methods', c.effectiveLoginMethods.join(', ')],
                     ['Created', formatDate(c.createdAt)],
                     ['Updated', formatDate(c.updatedAt)],
                   ],
@@ -282,7 +307,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               .positional('client-id', {
                 type: 'string',
                 demandOption: true,
-                description: 'Client internal UUID or client_id',
+                description: 'Client internal UUID',
               })
               .option('name', {
                 type: 'string',
@@ -310,7 +335,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const updated = await sdkClient.clients.update(
                 current.id,
                 {
-                  name: argv.name,
+                  clientName: argv.name,
                   redirectUris: argv['redirect-uris']
                     ? parseCommaSeparated(argv['redirect-uris'])
                     : undefined,
@@ -322,8 +347,61 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               if (argv.json) {
                 printJson(updated);
               } else {
-                success(`Client updated: ${updated.name} (${updated.clientId})`);
+                success(`Client updated: ${updated.clientName} (${updated.clientId})`);
               }
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+
+        // ── activate ────────────────────────────────────────────────────
+        .command<ClientIdArgs>(
+          'activate <client-id>',
+          'Activate an OIDC client',
+          (y) =>
+            y.positional('client-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Client internal UUID',
+            }),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              const { data: current } = await sdkClient.clients.get(argv['client-id']);
+              await sdkClient.clients.activate(current.id);
+              success(`Client activated: ${current.clientName} (${current.clientId})`);
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+
+        // ── deactivate ──────────────────────────────────────────────────
+        .command<ClientIdArgs>(
+          'deactivate <client-id>',
+          'Deactivate an OIDC client',
+          (y) =>
+            y.positional('client-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Client internal UUID',
+            }),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              const { data: current } = await sdkClient.clients.get(argv['client-id']);
+              if (!argv.force) {
+                const confirmed = await confirm(
+                  `Deactivate client "${current.clientName}" (${current.clientId})?`,
+                );
+                if (!confirmed) {
+                  warn('Operation cancelled');
+                  return;
+                }
+              }
+              await sdkClient.clients.deactivate(current.id);
+              success(`Client deactivated: ${current.clientName} (${current.clientId})`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -338,7 +416,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             y.positional('client-id', {
               type: 'string',
               demandOption: true,
-              description: 'Client internal UUID or client_id',
+              description: 'Client internal UUID',
             }),
           async (argv) => {
             try {
@@ -347,7 +425,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
               if (!argv.force) {
                 const confirmed = await confirm(
-                  `Revoke client "${c.name}" (${c.clientId})? This is permanent and cannot be undone.`,
+                  `Revoke client "${c.clientName}" (${c.clientId})? This is permanent and cannot be undone.`,
                 );
                 if (!confirmed) {
                   warn('Operation cancelled');
@@ -356,30 +434,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
 
               await sdkClient.clients.revoke(c.id);
-              success(`Client revoked: ${c.name} (${c.clientId})`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
-        // ── restore (NEW) ───────────────────────────────────────────────
-        .command<ClientIdArgs>(
-          'restore <client-id>',
-          'Restore a revoked client',
-          (y) =>
-            y.positional('client-id', {
-              type: 'string',
-              demandOption: true,
-              description: 'Client internal UUID or client_id',
-            }),
-          async (argv) => {
-            try {
-              const sdkClient = createClient(argv);
-              const { data: c } = await sdkClient.clients.get(argv['client-id']);
-
-              await sdkClient.clients.restore(c.id);
-              success(`Client restored: ${c.name} (${c.clientId})`);
+              success(`Client revoked: ${c.clientName} (${c.clientId})`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -394,7 +449,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             y.positional('client-id', {
               type: 'string',
               demandOption: true,
-              description: 'Client internal UUID or client_id',
+              description: 'Client internal UUID',
             }),
           async (argv) => {
             try {
@@ -418,7 +473,6 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     h.metadata ? JSON.stringify(h.metadata) : '—',
                   ]),
                 );
-
               }
             } catch (err) {
               handleError(err, argv.verbose);
@@ -438,7 +492,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   y.positional('client-id', {
                     type: 'string',
                     demandOption: true,
-                    description: 'Client internal UUID or client_id',
+                    description: 'Client internal UUID',
                   }),
                 async (argv) => {
                   try {
@@ -455,7 +509,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                         c.loginMethods === null
                           ? 'inherit (using org default)'
                           : c.loginMethods.join(', ');
-                      info(`Login methods for ${c.name}: ${display}`);
+                      info(`Login methods for ${c.clientName}: ${display}`);
                     }
                   } catch (err) {
                     handleError(err, argv.verbose);
@@ -472,7 +526,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     .positional('client-id', {
                       type: 'string',
                       demandOption: true,
-                      description: 'Client internal UUID or client_id',
+                      description: 'Client internal UUID',
                     })
                     .option('methods', {
                       type: 'string',
@@ -491,7 +545,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       etag ?? undefined,
                     );
 
-                    success(`Login methods set for ${current.name}: ${argv.methods}`);
+                    success(`Login methods set for ${current.clientName}: ${argv.methods}`);
                   } catch (err) {
                     handleError(err, argv.verbose);
                   }
@@ -506,7 +560,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   y.positional('client-id', {
                     type: 'string',
                     demandOption: true,
-                    description: 'Client internal UUID or client_id',
+                    description: 'Client internal UUID',
                   }),
                 async (argv) => {
                   try {
@@ -519,7 +573,9 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       etag ?? undefined,
                     );
 
-                    success(`Login methods cleared for ${current.name} (will inherit from org)`);
+                    success(
+                      `Login methods cleared for ${current.clientName} (will inherit from org)`,
+                    );
                   } catch (err) {
                     handleError(err, argv.verbose);
                   }
@@ -533,7 +589,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(clientSecretCommand)
         .demandCommand(
           1,
-          'Specify a client subcommand: create, list, show, update, revoke, restore, history, login-methods, secret',
+          'Specify a client subcommand: create, list, get, update, activate, deactivate, revoke, history, login-methods, secret',
         )
     );
   },

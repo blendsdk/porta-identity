@@ -33,7 +33,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
-    "typecheck": "../../node_modules/@typescript/native/bin/tsc --noEmit",
+    "typecheck": "../../node_modules/@typescript/native/bin/tsc --noEmit && ../../node_modules/@typescript/native/bin/tsc --project tests/type-contracts/tsconfig.json",
     "verify": "yarn lint && yarn typecheck && yarn test && yarn build",
     "clean": "rm -rf dist"
   },

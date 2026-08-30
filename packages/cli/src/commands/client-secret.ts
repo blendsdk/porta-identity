@@ -17,7 +17,15 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import {
+  printTable,
+  printJson,
+  success,
+  warn,
+  info,
+  formatDate,
+  sanitizeTerminalText,
+} from '../output.js';
 
 import { confirm } from '../prompt.js';
 
@@ -80,9 +88,9 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
                 warn('⚠️  IMPORTANT: Copy this secret now. It will not be shown again!');
                 console.log('');
                 console.log('┌─────────────────────────────────────────────────────────────────┐');
-                console.log(`│ Secret: ${secret.secret.padEnd(55)}│`);
-                console.log(`│ Label:  ${(secret.label ?? '—').padEnd(55)}│`);
-                console.log(`│ ID:     ${secret.id.padEnd(55)}│`);
+                console.log(`│ Secret: ${sanitizeTerminalText(secret.plaintext).padEnd(55)}│`);
+                console.log(`│ Label:  ${sanitizeTerminalText(secret.label ?? '—').padEnd(55)}│`);
+                console.log(`│ ID:     ${sanitizeTerminalText(secret.id).padEnd(55)}│`);
 
                 console.log('└─────────────────────────────────────────────────────────────────┘');
                 console.log('');
@@ -109,7 +117,11 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
               const secrets = await sdkClient.clients.listSecrets(argv['client-id']);
 
               if (secrets.length === 0) {
-                warn('No secrets found');
+                if (argv.json) {
+                  printJson(secrets);
+                } else {
+                  warn('No secrets found');
+                }
                 return;
               }
 
@@ -117,10 +129,11 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
                 printJson(secrets);
               } else {
                 printTable(
-                  ['ID', 'Label', 'Last Used', 'Expires', 'Created'],
+                  ['ID', 'Label', 'Status', 'Last Used', 'Expires', 'Created'],
                   secrets.map((s) => [
                     s.id,
                     s.label ?? '—',
+                    s.status,
                     s.lastUsedAt ? formatDate(s.lastUsedAt) : '—',
                     s.expiresAt ? formatDate(s.expiresAt) : '—',
                     formatDate(s.createdAt),

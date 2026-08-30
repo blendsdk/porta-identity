@@ -15,13 +15,19 @@ export type ApplicationStatus = 'active' | 'inactive' | 'archived';
 // ---------------------------------------------------------------------------
 
 export interface Application {
+  /** Internal application UUID used by mutation routes. */
   id: string;
-  organizationId: string;
+  /** Deployment-global display name. */
   name: string;
+  /** Stable deployment-global slug. */
   slug: string;
+  /** Optional product description. */
   description: string | null;
+  /** Current application lifecycle state. */
   status: ApplicationStatus;
+  /** ISO timestamp for creation. */
   createdAt: string;
+  /** ISO timestamp for the latest change. */
   updatedAt: string;
 }
 
@@ -30,15 +36,18 @@ export interface Application {
 // ---------------------------------------------------------------------------
 
 export interface CreateApplicationInput {
-  organizationId: string;
+  /** Display name for the global application definition. */
   name: string;
+  /** Optional stable slug; the server derives one when omitted. */
   slug?: string;
+  /** Optional product description. */
   description?: string;
 }
 
 export interface UpdateApplicationInput {
+  /** Replacement display name. */
   name?: string;
-  slug?: string;
+  /** Replacement description, or null to clear it. */
   description?: string | null;
 }
 
@@ -47,24 +56,36 @@ export interface UpdateApplicationInput {
 // ---------------------------------------------------------------------------
 
 export interface ApplicationModule {
+  /** Internal module UUID. */
   id: string;
+  /** Internal UUID of the owning application. */
   applicationId: string;
+  /** Module display name. */
   name: string;
+  /** Stable slug within the owning application. */
   slug: string;
+  /** Optional module description. */
   description: string | null;
-  isActive: boolean;
+  /** Current module lifecycle state. */
+  status: 'active' | 'inactive';
+  /** ISO timestamp for creation. */
   createdAt: string;
+  /** ISO timestamp for the latest change. */
   updatedAt: string;
 }
 
 export interface CreateModuleInput {
+  /** Module display name. */
   name: string;
+  /** Optional stable slug; the server derives one when omitted. */
   slug?: string;
+  /** Optional module description. */
   description?: string;
 }
 
 export interface UpdateModuleInput {
+  /** Replacement display name. */
   name?: string;
+  /** Replacement description, or null to clear it. */
   description?: string | null;
-  isActive?: boolean;
 }

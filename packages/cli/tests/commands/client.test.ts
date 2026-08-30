@@ -13,8 +13,9 @@ const mockClients = {
   list: vi.fn(),
   get: vi.fn(),
   update: vi.fn(),
+  activate: vi.fn(),
+  deactivate: vi.fn(),
   revoke: vi.fn(),
-  restore: vi.fn(),
   getHistory: vi.fn(),
   listSecrets: vi.fn(),
   generateSecret: vi.fn(),
@@ -72,18 +73,23 @@ import { confirm } from '../../src/prompt.js';
 
 const sampleClient = {
   id: 'client-uuid-1234-5678-abcd',
+  organizationId: 'org-uuid-1234',
   applicationId: 'app-uuid-1234',
   clientId: 'porta_abc123def456',
-  name: 'My Web App',
-  description: null,
+  clientName: 'My Web App',
   clientType: 'confidential' as const,
+  applicationType: 'web' as const,
   status: 'active' as const,
   redirectUris: ['https://example.com/callback'],
   postLogoutRedirectUris: [],
   grantTypes: ['authorization_code' as const, 'refresh_token' as const],
   responseTypes: ['code' as const],
+  scope: 'openid profile',
   tokenEndpointAuthMethod: 'client_secret_post',
+  allowedOrigins: ['https://example.com'],
+  requirePkce: true,
   loginMethods: null,
+  effectiveLoginMethods: ['password' as const, 'magic_link' as const],
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z',
 };
@@ -91,7 +97,7 @@ const sampleClient = {
 const sampleSecret = {
   id: 'secret-uuid-1234',
   clientId: 'client-uuid-1234-5678-abcd',
-  secret: 'super-secret-value-that-should-be-copied',
+  plaintext: 'super-secret-value-that-should-be-copied',
   label: 'production',
   expiresAt: null,
   createdAt: '2024-01-01T00:00:00Z',
@@ -101,6 +107,7 @@ const sampleSecretListItem = {
   id: 'secret-uuid-1234',
   clientId: 'client-uuid-1234-5678-abcd',
   label: 'production',
+  status: 'active' as const,
   lastUsedAt: '2024-06-01T00:00:00Z',
   expiresAt: null,
   createdAt: '2024-01-01T00:00:00Z',
@@ -161,7 +168,7 @@ describe('client command', () => {
 
   describe('create', () => {
     it('creates a client and shows table output', async () => {
-      mockClients.create.mockResolvedValue(sampleClient);
+      mockClients.create.mockResolvedValue({ client: sampleClient, secret: sampleSecret });
 
       await invokeSubcommand('create', {
         org: 'org-uuid',
@@ -172,8 +179,10 @@ describe('client command', () => {
 
       expect(mockClients.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          name: 'Unnamed Client',
+          organizationId: 'org-uuid',
+          clientName: 'Unnamed Client',
           clientType: 'confidential',
+          applicationType: 'web',
           redirectUris: ['https://example.com/callback'],
         }),
       );
@@ -182,7 +191,7 @@ describe('client command', () => {
     });
 
     it('creates a client and outputs JSON', async () => {
-      mockClients.create.mockResolvedValue(sampleClient);
+      mockClients.create.mockResolvedValue({ client: sampleClient });
 
       await invokeSubcommand('create', {
         org: 'org-uuid',
@@ -193,12 +202,12 @@ describe('client command', () => {
         json: true,
       });
 
-      expect(printJson).toHaveBeenCalledWith(sampleClient);
+      expect(printJson).toHaveBeenCalledWith({ client: sampleClient });
     });
 
     it('resolves app slug to UUID when not a UUID', async () => {
       mockApplications.get.mockResolvedValue({ data: { id: 'resolved-app-uuid' } });
-      mockClients.create.mockResolvedValue(sampleClient);
+      mockClients.create.mockResolvedValue({ client: sampleClient, secret: sampleSecret });
 
       await invokeSubcommand('create', {
         org: 'org-uuid',
@@ -214,7 +223,7 @@ describe('client command', () => {
     });
 
     it('passes login-methods when provided', async () => {
-      mockClients.create.mockResolvedValue(sampleClient);
+      mockClients.create.mockResolvedValue({ client: sampleClient, secret: sampleSecret });
 
       await invokeSubcommand('create', {
         org: 'org-uuid',
@@ -282,14 +291,22 @@ describe('client command', () => {
       expect(warn).toHaveBeenCalledWith('No clients found');
     });
 
+    it('prints an empty client page as JSON', async () => {
+      const result = { data: [], total: 0, page: 1, pageSize: 20 };
+      mockClients.list.mockResolvedValue(result);
+
+      await invokeSubcommand('list', { app: 'app-uuid', json: true });
+
+      expect(printJson).toHaveBeenCalledWith(result);
+      expect(warn).not.toHaveBeenCalled();
+    });
+
     it('passes status filter', async () => {
       mockClients.list.mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 20 });
 
       await invokeSubcommand('list', { app: 'app-uuid', status: 'active' });
 
-      expect(mockClients.list).toHaveBeenCalledWith(
-        expect.objectContaining({ status: 'active' }),
-      );
+      expect(mockClients.list).toHaveBeenCalledWith(expect.objectContaining({ status: 'active' }));
     });
 
     it('handles list errors', async () => {
@@ -302,31 +319,31 @@ describe('client command', () => {
   });
 
   // =========================================================================
-  // client show
+  // client get
   // =========================================================================
 
-  describe('show', () => {
-    it('shows client details in table format', async () => {
+  describe('get', () => {
+    it('gets client details in table format', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
 
-      await invokeSubcommand('show', { _pos_: 'client-uuid-1234' });
+      await invokeSubcommand('get', { _pos_: 'client-uuid-1234' });
 
       expect(mockClients.get).toHaveBeenCalledWith('client-uuid-1234');
       expect(printTable).toHaveBeenCalled();
     });
 
-    it('shows client details in JSON format', async () => {
+    it('gets client details in JSON format', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
 
-      await invokeSubcommand('show', { _pos_: 'client-uuid-1234', json: true });
+      await invokeSubcommand('get', { _pos_: 'client-uuid-1234', json: true });
 
       expect(printJson).toHaveBeenCalledWith(sampleClient);
     });
 
-    it('handles show errors', async () => {
+    it('handles get errors', async () => {
       mockClients.get.mockRejectedValue(new Error('Not found'));
 
-      await invokeSubcommand('show', { _pos_: 'client-uuid-1234' });
+      await invokeSubcommand('get', { _pos_: 'client-uuid-1234' });
 
       expect(handleError).toHaveBeenCalled();
     });
@@ -339,13 +356,13 @@ describe('client command', () => {
   describe('update', () => {
     it('updates client name', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
-      mockClients.update.mockResolvedValue({ ...sampleClient, name: 'Updated App' });
+      mockClients.update.mockResolvedValue({ ...sampleClient, clientName: 'Updated App' });
 
       await invokeSubcommand('update', { _pos_: 'client-uuid-1234', name: 'Updated App' });
 
       expect(mockClients.update).toHaveBeenCalledWith(
         sampleClient.id,
-        expect.objectContaining({ name: 'Updated App' }),
+        expect.objectContaining({ clientName: 'Updated App' }),
         'etag-1',
       );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('Updated App'));
@@ -446,25 +463,26 @@ describe('client command', () => {
   });
 
   // =========================================================================
-  // client restore (NEW)
+  // client lifecycle
   // =========================================================================
 
-  describe('restore', () => {
-    it('restores a revoked client', async () => {
+  describe('lifecycle', () => {
+    it('activates an inactive client', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
 
-      await invokeSubcommand('restore', { _pos_: 'client-uuid-1234' });
+      await invokeSubcommand('activate', { _pos_: 'client-uuid-1234' });
 
-      expect(mockClients.restore).toHaveBeenCalledWith(sampleClient.id);
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('restored'));
+      expect(mockClients.activate).toHaveBeenCalledWith(sampleClient.id);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('activated'));
     });
 
-    it('handles restore errors', async () => {
-      mockClients.get.mockRejectedValue(new Error('Not found'));
+    it('deactivates a client with force', async () => {
+      mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
 
-      await invokeSubcommand('restore', { _pos_: 'client-uuid-1234' });
+      await invokeSubcommand('deactivate', { _pos_: 'client-uuid-1234', force: true });
 
-      expect(handleError).toHaveBeenCalled();
+      expect(mockClients.deactivate).toHaveBeenCalledWith(sampleClient.id);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('deactivated'));
     });
   });
 
@@ -493,10 +511,15 @@ describe('client command', () => {
 
     it('shows history in JSON format', async () => {
       const history = [
-        { id: 'h1', eventType: 'client.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' },
+        {
+          id: 'h1',
+          eventType: 'client.created',
+          actorId: 'admin',
+          metadata: null,
+          createdAt: '2024-01-01T00:00:00Z',
+        },
       ];
       mockClients.getHistory.mockResolvedValue(history);
-
 
       await invokeSubcommand('history', { _pos_: 'client-uuid-1234', json: true });
 
@@ -527,7 +550,10 @@ describe('client command', () => {
   describe('login-methods', () => {
     describe('get', () => {
       it('shows login methods (inherited)', async () => {
-        mockClients.get.mockResolvedValue({ data: { ...sampleClient, loginMethods: null }, etag: 'etag-1' });
+        mockClients.get.mockResolvedValue({
+          data: { ...sampleClient, loginMethods: null },
+          etag: 'etag-1',
+        });
 
         await invokeSubcommand('login-methods get', { _pos_: 'client-uuid-1234' });
 
@@ -550,9 +576,7 @@ describe('client command', () => {
 
         await invokeSubcommand('login-methods get', { _pos_: 'client-uuid-1234', json: true });
 
-        expect(printJson).toHaveBeenCalledWith(
-          expect.objectContaining({ loginMethods: null }),
-        );
+        expect(printJson).toHaveBeenCalledWith(expect.objectContaining({ loginMethods: null }));
       });
 
       it('handles get errors', async () => {
@@ -630,7 +654,9 @@ describe('client command', () => {
 
       await invokeSubcommand('secret generate', { _pos_: 'client-uuid-1234' });
 
-      expect(mockClients.generateSecret).toHaveBeenCalledWith('client-uuid-1234', { label: undefined });
+      expect(mockClients.generateSecret).toHaveBeenCalledWith('client-uuid-1234', {
+        label: undefined,
+      });
       expect(warn).toHaveBeenCalledWith(expect.stringContaining('IMPORTANT'));
       consoleSpy.mockRestore();
     });
@@ -644,7 +670,9 @@ describe('client command', () => {
         label: 'production',
       });
 
-      expect(mockClients.generateSecret).toHaveBeenCalledWith('client-uuid-1234', { label: 'production' });
+      expect(mockClients.generateSecret).toHaveBeenCalledWith('client-uuid-1234', {
+        label: 'production',
+      });
       consoleSpy.mockRestore();
     });
 
@@ -694,6 +722,15 @@ describe('client command', () => {
       await invokeSubcommand('secret list', { _pos_: 'client-uuid-1234' });
 
       expect(warn).toHaveBeenCalledWith('No secrets found');
+    });
+
+    it('prints an empty secret list as JSON', async () => {
+      mockClients.listSecrets.mockResolvedValue([]);
+
+      await invokeSubcommand('secret list', { _pos_: 'client-uuid-1234', json: true });
+
+      expect(printJson).toHaveBeenCalledWith([]);
+      expect(warn).not.toHaveBeenCalled();
     });
 
     it('handles list errors', async () => {

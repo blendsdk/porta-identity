@@ -13,13 +13,14 @@ const mockApplications = {
   list: vi.fn(),
   get: vi.fn(),
   update: vi.fn(),
+  activate: vi.fn(),
+  deactivate: vi.fn(),
   archive: vi.fn(),
-  restore: vi.fn(),
   getHistory: vi.fn(),
   listModules: vi.fn(),
   addModule: vi.fn(),
   updateModule: vi.fn(),
-  removeModule: vi.fn(),
+  deactivateModule: vi.fn(),
 };
 
 const mockRoles = {
@@ -84,7 +85,6 @@ import { confirm } from '../../src/prompt.js';
 
 const sampleApp = {
   id: 'app-uuid-1234',
-  organizationId: 'org-uuid-5678',
   name: 'My App',
   slug: 'my-app',
   description: 'A test app',
@@ -130,7 +130,7 @@ const sampleModule = {
   name: 'CRM',
   slug: 'crm',
   description: null,
-  isActive: true,
+  status: 'active',
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z',
 };
@@ -178,21 +178,28 @@ describe('app command', () => {
   describe('create', () => {
     it('creates an application', async () => {
       mockApplications.create.mockResolvedValue(sampleApp);
-      await invokeSubcommand(['create'], { 'org-id': 'org-1', name: 'My App' });
-      expect(mockApplications.create).toHaveBeenCalledWith(expect.objectContaining({ name: 'My App' }));
+      await invokeSubcommand(['create'], { name: 'My App' });
+      expect(mockApplications.create).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'My App' }),
+      );
       expect(success).toHaveBeenCalledWith(expect.stringContaining('My App'));
     });
 
     it('outputs JSON', async () => {
       mockApplications.create.mockResolvedValue(sampleApp);
-      await invokeSubcommand(['create'], { 'org-id': 'org-1', name: 'My App', json: true });
+      await invokeSubcommand(['create'], { name: 'My App', json: true });
       expect(printJson).toHaveBeenCalledWith(sampleApp);
     });
   });
 
   describe('list', () => {
     it('lists applications', async () => {
-      mockApplications.list.mockResolvedValue({ data: [sampleApp], total: 1, page: 1, pageSize: 20 });
+      mockApplications.list.mockResolvedValue({
+        data: [sampleApp],
+        total: 1,
+        page: 1,
+        pageSize: 20,
+      });
       await invokeSubcommand(['list'], {});
       expect(printTable).toHaveBeenCalled();
       expect(info).toHaveBeenCalledWith('Total: 1 applications');
@@ -203,12 +210,20 @@ describe('app command', () => {
       await invokeSubcommand(['list'], {});
       expect(warn).toHaveBeenCalledWith('No applications found');
     });
+
+    it('prints an empty page as JSON', async () => {
+      const result = { data: [], total: 0, page: 1, pageSize: 20 };
+      mockApplications.list.mockResolvedValue(result);
+      await invokeSubcommand(['list'], { json: true });
+      expect(printJson).toHaveBeenCalledWith(result);
+      expect(warn).not.toHaveBeenCalled();
+    });
   });
 
-  describe('show', () => {
+  describe('get', () => {
     it('shows application details', async () => {
       mockApplications.get.mockResolvedValue({ data: sampleApp, etag: '"v1"' });
-      await invokeSubcommand(['show', 'my-app'], {});
+      await invokeSubcommand(['get', 'my-app'], {});
       expect(mockApplications.get).toHaveBeenCalledWith('my-app');
       expect(printTable).toHaveBeenCalled();
     });
@@ -219,7 +234,11 @@ describe('app command', () => {
       mockApplications.get.mockResolvedValue({ data: sampleApp, etag: '"v1"' });
       mockApplications.update.mockResolvedValue({ ...sampleApp, name: 'New Name' });
       await invokeSubcommand(['update', 'my-app'], { name: 'New Name' });
-      expect(mockApplications.update).toHaveBeenCalledWith('my-app', expect.objectContaining({ name: 'New Name' }), '"v1"');
+      expect(mockApplications.update).toHaveBeenCalledWith(
+        sampleApp.id,
+        expect.objectContaining({ name: 'New Name' }),
+        '"v1"',
+      );
     });
   });
 
@@ -239,20 +258,32 @@ describe('app command', () => {
     });
   });
 
-  describe('restore', () => {
-    it('restores an application', async () => {
+  describe('status changes', () => {
+    it('activates an application', async () => {
       mockApplications.get.mockResolvedValue({ data: sampleApp, etag: '"v1"' });
-      await invokeSubcommand(['restore', 'my-app'], {});
-      expect(mockApplications.restore).toHaveBeenCalledWith(sampleApp.id);
+      await invokeSubcommand(['activate', 'my-app'], {});
+      expect(mockApplications.activate).toHaveBeenCalledWith(sampleApp.id);
+    });
+
+    it('deactivates an application with force', async () => {
+      mockApplications.get.mockResolvedValue({ data: sampleApp, etag: '"v1"' });
+      await invokeSubcommand(['deactivate', 'my-app'], { force: true });
+      expect(mockApplications.deactivate).toHaveBeenCalledWith(sampleApp.id);
     });
   });
 
   describe('history', () => {
     it('shows history', async () => {
       // Server HistoryEntry shape (src/lib/entity-history.ts).
-      mockApplications.getHistory.mockResolvedValue([{
-        id: 'h1', eventType: 'app.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z',
-      }]);
+      mockApplications.getHistory.mockResolvedValue([
+        {
+          id: 'h1',
+          eventType: 'app.created',
+          actorId: 'admin',
+          metadata: null,
+          createdAt: '2024-01-01T00:00:00Z',
+        },
+      ]);
 
       await invokeSubcommand(['history', 'my-app'], {});
       expect(printTable).toHaveBeenCalled();
@@ -266,7 +297,10 @@ describe('app module command', () => {
   it('adds a module', async () => {
     mockApplications.addModule.mockResolvedValue(sampleModule);
     await invokeSubcommand(['module', 'add', 'app-1'], { name: 'CRM' });
-    expect(mockApplications.addModule).toHaveBeenCalledWith('app-1', expect.objectContaining({ name: 'CRM' }));
+    expect(mockApplications.addModule).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({ name: 'CRM' }),
+    );
     expect(success).toHaveBeenCalled();
   });
 
@@ -276,9 +310,16 @@ describe('app module command', () => {
     expect(printTable).toHaveBeenCalled();
   });
 
-  it('removes a module', async () => {
-    await invokeSubcommand(['module', 'remove', 'app-1', 'mod-1'], {});
-    expect(mockApplications.removeModule).toHaveBeenCalledWith('app-1', 'mod-1');
+  it('prints an empty module list as JSON', async () => {
+    mockApplications.listModules.mockResolvedValue([]);
+    await invokeSubcommand(['module', 'list', 'app-1'], { json: true });
+    expect(printJson).toHaveBeenCalledWith([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('deactivates a module', async () => {
+    await invokeSubcommand(['module', 'deactivate', 'app-1', 'mod-1'], {});
+    expect(mockApplications.deactivateModule).toHaveBeenCalledWith('app-1', 'mod-1');
   });
 });
 
@@ -288,7 +329,10 @@ describe('app role command', () => {
   it('creates a role', async () => {
     mockRoles.create.mockResolvedValue(sampleRole);
     await invokeSubcommand(['role', 'create', 'app-1'], { name: 'Admin' });
-    expect(mockRoles.create).toHaveBeenCalledWith('app-1', expect.objectContaining({ name: 'Admin' }));
+    expect(mockRoles.create).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({ name: 'Admin' }),
+    );
   });
 
   it('lists roles', async () => {
@@ -325,7 +369,10 @@ describe('app permission command', () => {
   it('creates a permission', async () => {
     mockPermissions.create.mockResolvedValue(samplePerm);
     await invokeSubcommand(['permission', 'create', 'app-1'], { name: 'Read Users' });
-    expect(mockPermissions.create).toHaveBeenCalledWith('app-1', expect.objectContaining({ name: 'Read Users' }));
+    expect(mockPermissions.create).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({ name: 'Read Users' }),
+    );
   });
 
   it('lists permissions', async () => {
@@ -346,7 +393,10 @@ describe('app claim command', () => {
   it('creates a claim', async () => {
     mockCustomClaims.create.mockResolvedValue(sampleClaim);
     await invokeSubcommand(['claim', 'create', 'app-1'], { name: 'Department', type: 'string' });
-    expect(mockCustomClaims.create).toHaveBeenCalledWith('app-1', expect.objectContaining({ name: 'Department' }));
+    expect(mockCustomClaims.create).toHaveBeenCalledWith(
+      'app-1',
+      expect.objectContaining({ name: 'Department' }),
+    );
   });
 
   it('lists claims', async () => {
