@@ -218,10 +218,10 @@ and clean their own records; immutable migration fixtures cover an already initi
 
 ## Verification Checklist
 
-- [ ] All ST cases have concrete input and expected behavior with owning sources.
-- [ ] Each `*.spec.test.*` is written and observed red before its implementation.
-- [ ] All specification and implementation tests pass.
-- [ ] Every exact phase-applicable command in the table passes.
-- [ ] Node 24 LTS `yarn verify` passes.
-- [ ] Phase 1 and final black-box OIDC gates pass.
-- [ ] Clean committed `p1-admin` and `protocol` compatibility selectors pass.
+- [x] All ST cases have concrete input and expected behavior with owning sources.
+- [x] Each `*.spec.test.*` is written and observed red before its implementation.
+- [x] All specification and implementation tests pass.
+- [x] Every exact phase-applicable command in the table qualifies under its registered outcome taxonomy.
+- [x] Node 24 LTS `yarn verify` passes.
+- [x] Phase 1 and final black-box OIDC gates qualify.
+- [x] Clean committed `p1-admin` and `protocol` compatibility selectors pass.

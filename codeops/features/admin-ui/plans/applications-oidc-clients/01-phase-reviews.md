@@ -2,7 +2,7 @@
 
 > **Document**: 01-phase-reviews.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 21:27
+> **Last Updated**: 2026-08-30 21:58
 > **Scope mode**: strict
 
 ## Phase 1: Server Safety, Runtime, and Role Data
@@ -226,4 +226,7 @@ preserve the immutable specifications.
 **Post-fix evidence:** focused shell/runtime suites passed 95/95; CLI verification passed 992/992;
 the packed Admin UI journey passed 4/4 after the final ownership fixes. Both reviewers accepted the
 duplicate-preload and independent-session-invalidation corrections and reported no remaining or
-newly introduced critical or major finding.
+newly introduced critical or major finding. Final Node 24 root verification passed in 11m23s.
+Clean-revision production-security retained only its registered pre-existing exit-40 observations;
+`p1-admin` and `protocol` compatibility both passed with revision-bound provenance, complete cleanup,
+and no RD-04 application/client failure.

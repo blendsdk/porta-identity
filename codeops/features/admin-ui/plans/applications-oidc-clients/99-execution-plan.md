@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 21:40
-> **Progress**: 48/49 tasks (98%)
+> **Last Updated**: 2026-08-30 21:58
+> **Progress**: 49/49 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -298,7 +298,17 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
   SDK 455/455; CLI 992/992; packed Admin UI 4/4; public docs build passed; Node 24 root
   `yarn verify` passed in 11m23s. Production-security is intentionally sequenced with the clean
   committed revision because its provenance collector rejects a dirty source tree.
-- [ ] 6.3.2 Using the git-commit skill in the execution-selected commit mode, obtain a clean committed revision; run `yarn assurance:compat --select p1-admin` and `yarn assurance:compat --select protocol`, review their result taxonomy/provenance, update execution evidence and roadmap, and complete only if every required gate qualifies
+- [x] 6.3.2 Using the git-commit skill in the execution-selected commit mode, obtain a clean committed revision; run `yarn assurance:compat --select p1-admin` and `yarn assurance:compat --select protocol`, review their result taxonomy/provenance, update execution evidence and roadmap, and complete only if every required gate qualifies ✅ (completed: 2026-08-30 21:58)
+
+  Clean-revision evidence: implementation commit `e94d4d05a94069a9dae5ccda1fd54e7cd57bc83c`
+  was pushed to `origin/feat/admin-ui`. Production-security run
+  `cee6ae2a-4899-489b-a533-9ef49f405eef` retained the registered truthful exit 40 for the
+  pre-existing forwarding-context observation gap and known production-exposure defects while all
+  human-auth 7/7, second-factor 4/4, and tenant/admin 17/17 suites passed. Compatibility run
+  `c2d148c5-a58e-46f7-86a2-0a816570daa7` (`p1-admin`) passed with clean provenance and cleanup,
+  retaining its two previously registered unrelated product observations. Compatibility run
+  `57352921-2ba5-4881-95ed-ccee9c89a1b9` (`protocol`) passed with packed dist-only SDK/CLI
+  resolution, PKCE login, refresh rotation, redaction, cleanup, and an unchanged primary tree.
 
 **Deliverables:** fully integrated workspaces, packed proof, truthful docs, clean compatibility evidence, and synchronized roadmap.
 
