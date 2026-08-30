@@ -95,11 +95,12 @@ click; **Quit** is the only alternative. Cancellation or a failed attempt return
 dialog.
 
 Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
-`Who am I…` shows the
-verified identity and server details. Use `Ctrl-R` to reauthenticate; changing to another server
-requires explicit credential-replacement confirmation. Later administration data screens are not
-included yet. Using `--insecure` disables TLS certificate validation and leaves a persistent warning
-in the shell.
+`Who am I…` shows the verified identity and server details. The Users menu becomes available after
+an organization is selected. It supports browsing, searching, filtering, creating, and inviting
+users; selecting a row opens profile, account, history, credential, and lifecycle actions allowed by
+the verified permissions. Use `Ctrl-R` to reauthenticate; changing to another server requires
+explicit credential-replacement confirmation. Using `--insecure` disables TLS certificate
+validation and leaves a persistent warning in the shell.
 
 ## Global Options
 

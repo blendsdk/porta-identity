@@ -205,6 +205,7 @@ export function createAdminUserController(
       } else if (result.kind === 'success') {
         if (reconcilesMutation) setRecoveryRequired(false);
         publish(accept(result.value));
+        if (visible && recoverable) workspace?.focusCurrent();
       } else {
         publish(
           operationPrevious
@@ -548,7 +549,11 @@ export function createAdminUserController(
     connection: Extract<AdminConnectionState, { kind: 'authenticated' }>,
   ): void => {
     workspace?.dispose();
-    workspace = makeWorkspace({ capabilities: connection.capabilities, onIntent: handleIntent });
+    workspace = makeWorkspace({
+      capabilities: connection.capabilities,
+      onIntent: handleIntent,
+      focusView: (view) => options.host.loop.focusView(view),
+    });
     workspace.setState(state);
     syncMount();
   };

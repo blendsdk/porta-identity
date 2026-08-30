@@ -72,7 +72,7 @@ export type PurgeUserDialogResult = { readonly kind: 'purge' } | { readonly kind
 /** Modal host used by user dialogs, including synchronous abort-driven closure. */
 export interface AdminUserDialogHost extends ModalDialogHost {
   /** Event loop that can close the currently owned modal when its operation is aborted. */
-  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal'>;
+  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal' | 'focusView'>;
 }
 
 /** Returns a dialog size capped to the current terminal surface. */

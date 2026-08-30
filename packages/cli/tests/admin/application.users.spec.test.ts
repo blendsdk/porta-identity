@@ -159,6 +159,7 @@ describe('admin user workflow', () => {
     await settle();
     expect(mounted.list).toHaveBeenCalledWith(organizationId, { page: 1 });
     expect(mounted.states.at(-1)).toEqual({ kind: 'page', page });
+    expect(mounted.workspace.focusCurrent).toHaveBeenCalledTimes(2);
 
     mounted.getIntent()?.({ kind: 'search', value: 'alice' });
     await settle();

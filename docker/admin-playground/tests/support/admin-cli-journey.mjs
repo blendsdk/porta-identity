@@ -16,8 +16,8 @@ const email = 'admin@playground.porta.test';
 const enterAlternateScreen = '\u001b[?1049h';
 const leaveAlternateScreen = '\u001b[?1049l';
 const f10 = '\u001b[21~';
-const arrowDown = '\u001b[B';
 const altOrganizations = '\u001bo';
+const altUsers = '\u001bu';
 /** Fixed child program that uses only the SDK installed in the temporary packed consumer. */
 const packedOrganizationScript = String.raw`
 import { readFile } from 'node:fs/promises';
@@ -31,12 +31,14 @@ const issuer = process.env.PORTA_ADMIN_TEST_ISSUER;
 const name = process.env.PORTA_ADMIN_TEST_NAME;
 const nonce = process.env.PORTA_ADMIN_TEST_NONCE;
 const slug = process.env.PORTA_ADMIN_TEST_SLUG;
+const userEmail = process.env.PORTA_ADMIN_TEST_USER_EMAIL;
 if (
-  !['assert-absent', 'cleanup'].includes(action) ||
+  !['assert-absent', 'wait-for-user', 'cleanup'].includes(action) ||
   issuer !== 'https://porta-admin-playground.ci.portaidentity.com:3543' ||
   !/^[a-f0-9]{24}$/.test(nonce ?? '') ||
   slug !== 'porta-admin-e2e-' + nonce ||
-  name !== 'Admin UI E2E ' + nonce
+  name !== 'Admin UI E2E ' + nonce ||
+  userEmail !== 'admin-ui-e2e-' + nonce + '@porta.test'
 ) {
   throw new Error('Packed organization cleanup input is invalid.');
 }
@@ -72,20 +74,63 @@ if (action === 'assert-absent') {
   if (matches.length !== 1 || matches[0].name !== name) {
     throw new Error('Test organization ownership could not be proved.');
   }
-  const unrelatedIds = before
-    .filter((organization) => organization.slug !== slug)
-    .map((organization) => organization.id)
-    .sort();
-  await client.organizations.destroy(matches[0].id);
-  const after = await client.organizations.listAll();
-  if (after.some((organization) => organization.slug === slug)) {
-    throw new Error('Test organization remains after cleanup.');
+  if (action === 'wait-for-user') {
+    let users = await client.users.list(matches[0].id, { page: 1, pageSize: 20 });
+    let userMatches = users.data.filter((user) => user.email === userEmail);
+    const userDeadline = Date.now() + 5_000;
+    while (userMatches.length === 0 && Date.now() < userDeadline) {
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+      users = await client.users.list(matches[0].id, { page: 1, pageSize: 20 });
+      userMatches = users.data.filter((user) => user.email === userEmail);
+    }
+    if (userMatches.length !== 1 || userMatches[0].organizationId !== matches[0].id) {
+      throw new Error('Test user creation could not be proved.');
+    }
+    console.log(JSON.stringify({ userPresent: true }));
+  } else {
+    const usersBefore = await client.users.list(matches[0].id, { page: 1, pageSize: 20 });
+    const userMatches = usersBefore.data.filter((user) => user.email === userEmail);
+    if (userMatches.length > 1) throw new Error('More than one nonce-owned test user exists.');
+    const unrelatedUserIds = usersBefore.data
+      .filter((user) => user.email !== userEmail)
+      .map((user) => user.id)
+      .sort();
+    if (unrelatedUserIds.length > 0) {
+      throw new Error('Test organization contains an unrelated user.');
+    }
+    let userOwnershipVerified = false;
+    if (userMatches.length === 1) {
+      if (userMatches[0].organizationId !== matches[0].id) {
+        throw new Error('Test user organization ownership could not be proved.');
+      }
+      userOwnershipVerified = true;
+    }
+    const unrelatedIds = before
+      .filter((organization) => organization.slug !== slug)
+      .map((organization) => organization.id)
+      .sort();
+    await client.organizations.destroy(matches[0].id);
+    const after = await client.organizations.listAll();
+    if (after.some((organization) => organization.slug === slug)) {
+      throw new Error('Test organization remains after cleanup.');
+    }
+    const usersAfter = await client.users.list(matches[0].id, { page: 1, pageSize: 20 });
+    if (usersAfter.data.some((user) => user.email === userEmail)) {
+      throw new Error('Test user remains after organization cleanup.');
+    }
+    const remainingIds = after.map((organization) => organization.id).sort();
+    if (JSON.stringify(remainingIds) !== JSON.stringify(unrelatedIds)) {
+      throw new Error('Cleanup changed an unrelated organization.');
+    }
+    console.log(
+      JSON.stringify({
+        absent: true,
+        ownershipVerified: true,
+        userAbsent: true,
+        userOwnershipVerified,
+      }),
+    );
   }
-  const remainingIds = after.map((organization) => organization.id).sort();
-  if (JSON.stringify(remainingIds) !== JSON.stringify(unrelatedIds)) {
-    throw new Error('Cleanup changed an unrelated organization.');
-  }
-  console.log(JSON.stringify({ absent: true, ownershipVerified: true }));
 }
 `;
 
@@ -197,7 +242,15 @@ async function preparePackedConsumer(temporaryRoot) {
 }
 
 /** Runs one bounded organization check through the SDK installed in the packed consumer. */
-async function runPackedOrganizationCheck({ action, consumerDirectory, home, name, nonce, slug }) {
+async function runPackedOrganizationCheck({
+  action,
+  consumerDirectory,
+  home,
+  name,
+  nonce,
+  slug,
+  userEmail,
+}) {
   const result = await execFile(
     process.execPath,
     ['--input-type=module', '--eval', packedOrganizationScript],
@@ -213,6 +266,7 @@ async function runPackedOrganizationCheck({ action, consumerDirectory, home, nam
         PORTA_ADMIN_TEST_NAME: name,
         PORTA_ADMIN_TEST_NONCE: nonce,
         PORTA_ADMIN_TEST_SLUG: slug,
+        PORTA_ADMIN_TEST_USER_EMAIL: userEmail,
       },
       timeout: 30_000,
     },
@@ -301,8 +355,11 @@ async function runPackedAdmin(
   consumerDirectory,
   home,
   organization,
+  user,
   onCreateDispatch,
+  onUserCreateDispatch,
   afterCreateDispatch,
+  afterUserCreateDispatch,
 ) {
   const command = `stty columns 80 rows 24; exec ${shellPath(process.execPath)} ${shellPath(cliBin)} admin --server ${shellPath(issuer)}`;
   const child = spawn('/usr/bin/script', ['-qfec', command, '/dev/null'], {
@@ -363,8 +420,12 @@ async function runPackedAdmin(
 
     offset = observeAfter();
     child.stdin.write(altOrganizations);
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    offset = observeAfter();
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'witch organization'),
+      'Organizations menu for switching',
+    );
     child.stdin.write('s');
     await waitForOutput(
       child,
@@ -383,8 +444,12 @@ async function runPackedAdmin(
 
     offset = observeAfter();
     child.stdin.write(altOrganizations);
-    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
-    offset = observeAfter();
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'reate organization'),
+      'Organizations menu for creation',
+    );
     child.stdin.write('c');
     await waitForOutput(
       child,
@@ -392,22 +457,84 @@ async function runPackedAdmin(
       () => includesAfter(offset, 'efault locale'),
       'Create organization dialog',
     );
+    offset = observeAfter();
     child.stdin.write(`${organization.name}\t${organization.slug}\t\t\r`);
     onCreateDispatch();
-    offset = observeAfter();
-    const nonce = organization.slug.slice(-24);
-    // The fixed 80x24 PTY renders the selected name and slug on landing rows 6 and 7.
-    // Requiring both row updates avoids matching the same nonce while it is typed in the dialog.
     await waitForOutput(
       child,
       captured.output,
-      () =>
-        includesAfter(offset, `\u001b[6;30H${nonce}`) &&
-        includesAfter(offset, `\u001b[7;20H-e2e-${nonce}`),
-      'Created and selected organization',
+      () => includesAfter(offset, 'active'),
+      'Landing view after organization creation',
     );
     await afterCreateDispatch?.();
-    child.stdin.write(`${f10}${arrowDown}${arrowDown}\r`);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+
+    offset = observeAfter();
+    child.stdin.write(altUsers);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'reate user'),
+      'Users menu',
+    );
+    offset = observeAfter();
+    child.stdin.write('c');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'onfirm'),
+      'Create user dialog',
+    );
+    offset = observeAfter();
+    child.stdin.write('\t');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write(`${user.email}\tE2E\tUser\t\t`);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write('\r');
+    onUserCreateDispatch();
+    await afterUserCreateDispatch();
+    // The SDK observation proves the server mutation completed. The user workspace is still hidden,
+    // so the row can only appear below after the enabled Browse command successfully dispatches.
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+
+    offset = observeAfter();
+    child.stdin.write(altUsers);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'rowse users'),
+      'Restored Users menu',
+    );
+    offset = observeAfter();
+    child.stdin.write('b');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, user.email) && includesAfter(offset, '[active]'),
+      'Users browse result',
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Password: not set') && includesAfter(offset, 'erify email'),
+      'Created user detail',
+    );
+
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    offset = observeAfter();
+    child.stdin.write(altUsers);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'rowse users'),
+      'Users menu after detail',
+    );
+    child.stdin.write('\u001b');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    child.stdin.write('\u001bx');
     child.stdin.end();
     const result = await captured.result;
     return {
@@ -416,6 +543,10 @@ async function runPackedAdmin(
       whoAmIProvedVerifiedEmail: true,
       organizationWasExplicitlySwitched: true,
       highEntropyOrganizationWasCreatedAndAutoSelected: true,
+      usersWereBrowsed: true,
+      userDetailWasOpened: true,
+      nonceUserWasCreated: true,
+      usersMenuWasRestored: true,
     };
   } finally {
     if (child.exitCode === null && child.signalCode === null) {
@@ -444,6 +575,7 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
     name: `Admin UI E2E ${nonce}`,
     slug: `porta-admin-e2e-${nonce}`,
   };
+  const testUser = { userEmail: `admin-ui-e2e-${nonce}@porta.test` };
   await mkdir(home, { mode: 0o700 });
   const beforeVolumes = (await execFile('docker', ['volume', 'ls', '--format', '{{.Name}}']))
     .stdout;
@@ -464,9 +596,11 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
       consumerDirectory,
       home,
       ...testOrganization,
+      ...testUser,
       nonce,
     });
     let createWasDispatched = false;
+    let userCreateWasDispatched = false;
     let admin;
     let primaryFailure;
     let cleanupFailure;
@@ -477,10 +611,23 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
         consumerDirectory,
         home,
         testOrganization,
+        { email: testUser.userEmail },
         () => {
           createWasDispatched = true;
         },
+        () => {
+          userCreateWasDispatched = true;
+        },
         afterCreateDispatch,
+        () =>
+          runPackedOrganizationCheck({
+            action: 'wait-for-user',
+            consumerDirectory,
+            home,
+            ...testOrganization,
+            ...testUser,
+            nonce,
+          }),
       );
     } catch (error) {
       primaryFailure = error;
@@ -492,6 +639,7 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
             consumerDirectory,
             home,
             ...testOrganization,
+            ...testUser,
             nonce,
           });
         } catch (error) {
@@ -522,14 +670,21 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
       organizationWasExplicitlySwitched: admin.organizationWasExplicitlySwitched,
       highEntropyOrganizationWasCreatedAndAutoSelected:
         admin.highEntropyOrganizationWasCreatedAndAutoSelected,
+      usersWereBrowsed: admin.usersWereBrowsed,
+      userDetailWasOpened: admin.userDetailWasOpened,
+      nonceUserWasCreated: userCreateWasDispatched && admin.nonceUserWasCreated,
+      usersMenuWasRestored: admin.usersMenuWasRestored,
       testOrganizationWasProvenAbsentBeforeCreate: absentBeforeCreate.absent === true,
       cleanupUsedIsolatedPackedSdkContext: true,
       cleanupVerifiedNonceOwnership: cleanup.ownershipVerified === true,
+      cleanupVerifiedNonceUserOwnership: cleanup.userOwnershipVerified === true,
+      testUserWasAbsentAfterCleanup: cleanup.userAbsent === true,
       testOrganizationWasAbsentAfterCleanup: cleanup.absent === true,
       exitCode: admin.exitCode,
       terminalWasRestored:
         admin.output.includes(enterAlternateScreen) &&
-        admin.output.lastIndexOf(leaveAlternateScreen) > admin.output.indexOf(enterAlternateScreen),
+        admin.output.lastIndexOf(leaveAlternateScreen) >
+          admin.output.lastIndexOf(enterAlternateScreen),
       cleanedOnlyPlaygroundResources: beforeVolumes === afterVolumes && login.exitCode === 0,
     };
   } finally {

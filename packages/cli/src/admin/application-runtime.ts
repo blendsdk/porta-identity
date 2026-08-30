@@ -106,7 +106,7 @@ export interface AdminDialogSurface {
   /** Host passed to ordinary JSVision dialog helpers. */
   readonly host: ModalDialogHost & {
     /** Event loop that also supports synchronous abort-driven modal closure. */
-    readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal'>;
+    readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal' | 'focusView'>;
   };
   /** Immediately removes every mounted dialog before a terminal redraw. */
   readonly removeAll: () => void;

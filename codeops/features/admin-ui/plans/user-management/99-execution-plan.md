@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 04:19
-> **Progress**: 39/46 tasks (85%)
+> **Last Updated**: 2026-08-30 05:41
+> **Progress**: 45/46 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -212,7 +212,7 @@ part of this plan (AR-1–AR-7).
 
 ## Phase 5: Packed Journey, Documentation, and Completion
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `45d1673671f6a8e92ccc5fd4dad6a01ef404acc0`
 > **Expected modification set**: `docker/admin-playground/tests/{admin-cli.e2e.spec.test.mjs,support/admin-cli-journey.mjs}`, `docs/guide/sdk.md`, `docs/cli/{overview,users}.md`, `packages/{sdk,cli}/README.md`, `techdocs/guides/admin-playground.md`, affected test inventory, this plan/review, and the admin-ui roadmap
 > **Scope mode**: strict — existing Node 24 playground and current documentation only; no new playground, workflow, matrix, dependency, server implementation, or broad techdocs regeneration
 
@@ -220,23 +220,32 @@ part of this plan (AR-1–AR-7).
 
 **Reference**: ST-36 · EV-01 · AR-1, AR-6
 
-- [ ] 5.1.1 [spec-author] Extend the packed Admin UI specification with bounded Users browse/detail, one nonce-owned create/invite, exact cleanup, and terminal restoration — `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs`
-- [ ] 5.1.2 Run the packed specification against the unchanged journey and record the expected red observation
+- [x] 5.1.1 [spec-author] Extend the packed Admin UI specification with bounded Users browse/detail, one nonce-owned create/invite, exact cleanup, and terminal restoration — `docker/admin-playground/tests/admin-cli.e2e.spec.test.mjs` ✅ (completed: 2026-08-30 04:21)
+- [x] 5.1.2 Run the packed specification against the unchanged journey and record the expected red observation — expected red: the prior row-specific created-organization observation no longer matched the current landing layout, before the new Users evidence could be returned ✅ (completed: 2026-08-30 04:21)
 
 ### Step 5.2: Journey Implementation and Green Phase
 
-- [ ] 5.2.1 Extend the existing PTY journey and inner cleanup path without adding a second harness — `docker/admin-playground/tests/support/admin-cli-journey.mjs`
-- [ ] 5.2.2 Run ST-36 on Node 24 LTS and make the packed journey green without changing expectations
+- [x] 5.2.1 Extend the existing PTY journey and inner cleanup path without adding a second harness — `docker/admin-playground/tests/support/admin-cli-journey.mjs` ✅ (completed: 2026-08-30 05:10)
+- [x] 5.2.2 Run ST-36 on Node 24 LTS and make the packed journey green without changing expectations — packed install, authentication, organization/user create, browse/detail, nonce-only cleanup, and terminal restoration passed 4/4 ✅ (completed: 2026-08-30 05:10)
 
 ### Step 5.3: Documentation and Completion Gates
 
-- [ ] 5.3.1 Update only directly affected user examples in the public SDK reference/package README, Admin UI Users guidance, corrected current `porta user` guidance, and maintainer playground steps — `docs/guide/sdk.md`, `packages/sdk/README.md`, `docs/cli/{overview,users}.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md`
-- [ ] 5.3.2 Run affected SDK/CLI package verifies, root `yarn verify`, repository structure tests, docs build, Prettier/diff checks, and the packed Node 24 journey; confirm no server/dependency/workflow/matrix or sensitive/generated file changed. Record security/protocol harness as N/A only while server/auth/protocol/production-security behavior remains unchanged.
+- [x] 5.3.1 Update only directly affected user examples in the public SDK reference/package README, Admin UI Users guidance, corrected current `porta user` guidance, and maintainer playground steps — `docs/guide/sdk.md`, `packages/sdk/README.md`, `docs/cli/{overview,users}.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md` ✅ (completed: 2026-08-30 05:29)
+- [x] 5.3.2 Run affected SDK/CLI package verifies, root `yarn verify`, repository structure tests, docs build, Prettier/diff checks, and the packed Node 24 journey; confirm no server/dependency/workflow/matrix or sensitive/generated file changed. Record security/protocol harness as N/A only while server/auth/protocol/production-security behavior remains unchanged — SDK 429, CLI 756, structure 96, packed journey 4/4, docs build, and full root verification passed; scope and file checks clean; security/protocol harness N/A because server, authentication, protocol, and production-security behavior are unchanged ✅ (completed: 2026-08-30 05:29)
 - [ ] 5.3.3 From the clean committed Phase 5 revision, run `yarn assurance:compat --select p1-admin`, review its registered outcome taxonomy, and record EV-01
 
 **Deliverables:** live packed proof, exact owned cleanup, truthful docs, and clean current compatibility evidence.
 
 **Verify:** `yarn workspace @portaidentity/sdk verify` · `yarn workspace @portaidentity/cli verify` · `yarn verify` · `yarn test:structure` · `yarn docs:build` · existing packed Admin UI journey on Node 24 LTS · clean committed `yarn assurance:compat --select p1-admin`
+
+> **Phase review**: completed 2026-08-30 05:41 against baseline tree
+> `45d1673671f6a8e92ccc5fd4dad6a01ef404acc0`. Initial correctness review found a packed
+> Browse-command race, incomplete alternate-screen restoration ordering, and incorrect current CLI
+> and SDK examples. Auto-design resolved them with an exact packed-SDK user-visibility check,
+> post-command UI evidence, final-enter/final-leave ordering, and truthful existing-contract docs.
+> Correctness and security re-reviews reported no remaining findings. Security/protocol harness is
+> N/A because no server, authentication, OIDC, cookie, TLS-policy, or production-security behavior
+> changed. Focused documentation was updated directly; no broad techdocs regeneration was needed.
 
 ---
 

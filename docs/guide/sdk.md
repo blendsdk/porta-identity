@@ -55,12 +55,12 @@ const stats = await porta.stats.get();
 
 ## Entrypoints
 
-| Import Path | Purpose | Environment |
-|---|---|---|
-| `@portaidentity/sdk` | Client factory, types, errors, pagination | Universal |
-| `@portaidentity/sdk/node` | Node.js transport, all auth providers | Node.js |
-| `@portaidentity/sdk/browser` | Fetch-based transport, token auth | Browser |
-| `@portaidentity/sdk/agent` | AI agent tool definitions & executor | AI agents |
+| Import Path                  | Purpose                                   | Environment |
+| ---------------------------- | ----------------------------------------- | ----------- |
+| `@portaidentity/sdk`         | Client factory, types, errors, pagination | Universal   |
+| `@portaidentity/sdk/node`    | Node.js transport, all auth providers     | Node.js     |
+| `@portaidentity/sdk/browser` | Fetch-based transport, token auth         | Browser     |
+| `@portaidentity/sdk/agent`   | AI agent tool definitions & executor      | AI agents   |
 
 ## Authentication Providers
 
@@ -97,28 +97,28 @@ const auth = createCliAuth({
 
 The `PortaClient` provides 20 domain namespaces:
 
-| Namespace | Description | Key Methods |
-|---|---|---|
-| `organizations` | Org CRUD, status lifecycle, destroy | `list`, `get`, `create`, `update`, `suspend`, `activate`, `archive`, `destroy` |
-| `applications` | App CRUD, modules | `list`, `get`, `create`, `update`, `archive`, `listModules`, `addModule` |
-| `clients` | Client CRUD, secrets | `list`, `get`, `create`, `update`, `revoke`, `generateSecret` |
-| `users` | Org-scoped user CRUD, invite, password, status, GDPR | `list`, `get`, `create`, `invite`, `invitePreview`, `setPassword`, `clearPassword`, `verifyEmail`, `suspend`, `unsuspend`, `deactivate`, `reactivate`, `lock`, `unlock`, `exportData`, `purge` |
-| `usersById` | Organization-independent user operations | `get`, `update`, `suspend`, `unsuspend`, `activate`, `verifyEmail`, `getHistory` |
-| `roles` | Application roles, permission mapping | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission` |
-| `permissions` | Application permissions | `list`, `get`, `create`, `archive` |
-| `userRoles` | User-role assignments | `list`, `assign`, `remove` |
-| `customClaims` | Claim definitions | `list`, `get`, `create`, `update`, `archive` |
-| `userClaims` | User claim values | `list`, `set`, `remove` |
-| `config` | System configuration | `list`, `get`, `set` |
-| `keys` | Signing key management | `list`, `generate`, `rotate` |
-| `audit` | Audit log | `list`, `listAll` |
-| `stats` | Dashboard statistics | `get`, `getOrganizationStats` |
-| `sessions` | Session management | `list`, `revoke`, `revokeForUser` |
-| `bulk` | Bulk status operations | `execute` |
-| `branding` | Org branding & assets | `getSettings`, `updateSettings`, `uploadAsset` |
-| `exports` | CSV/JSON data export | `download` |
-| `twoFactor` | 2FA admin management (user + org) | `getStatus`, `disable`, `reset`, `regenerateRecoveryCodes`, `getPolicy`, `setPolicy`, `getSummary` |
-| `imports` | Declarative provisioning | `provision` |
+| Namespace       | Description                                          | Key Methods                                                                                                                                                                                    |
+| --------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `organizations` | Org CRUD, status lifecycle, destroy                  | `list`, `get`, `create`, `update`, `suspend`, `activate`, `archive`, `destroy`                                                                                                                 |
+| `applications`  | App CRUD, modules                                    | `list`, `get`, `create`, `update`, `archive`, `listModules`, `addModule`                                                                                                                       |
+| `clients`       | Client CRUD, secrets                                 | `list`, `get`, `create`, `update`, `revoke`, `generateSecret`                                                                                                                                  |
+| `users`         | Org-scoped user CRUD, invite, password, status, GDPR | `list`, `get`, `create`, `invite`, `invitePreview`, `setPassword`, `clearPassword`, `verifyEmail`, `suspend`, `unsuspend`, `deactivate`, `reactivate`, `lock`, `unlock`, `exportData`, `purge` |
+| `usersById`     | Organization-independent user operations             | `get`, `update`, `suspend`, `unsuspend`, `activate`, `verifyEmail`, `getHistory`                                                                                                               |
+| `roles`         | Application roles, permission mapping                | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission`                                                                                                                      |
+| `permissions`   | Application permissions                              | `list`, `get`, `create`, `archive`                                                                                                                                                             |
+| `userRoles`     | User-role assignments                                | `list`, `assign`, `remove`                                                                                                                                                                     |
+| `customClaims`  | Claim definitions                                    | `list`, `get`, `create`, `update`, `archive`                                                                                                                                                   |
+| `userClaims`    | User claim values                                    | `list`, `set`, `remove`                                                                                                                                                                        |
+| `config`        | System configuration                                 | `list`, `get`, `set`                                                                                                                                                                           |
+| `keys`          | Signing key management                               | `list`, `generate`, `rotate`                                                                                                                                                                   |
+| `audit`         | Audit log                                            | `list`, `listAll`                                                                                                                                                                              |
+| `stats`         | Dashboard statistics                                 | `get`, `getOrganizationStats`                                                                                                                                                                  |
+| `sessions`      | Session management                                   | `list`, `revoke`, `revokeForUser`                                                                                                                                                              |
+| `bulk`          | Bulk status operations                               | `execute`                                                                                                                                                                                      |
+| `branding`      | Org branding & assets                                | `getSettings`, `updateSettings`, `uploadAsset`                                                                                                                                                 |
+| `exports`       | CSV/JSON data export                                 | `download`                                                                                                                                                                                     |
+| `twoFactor`     | 2FA admin management (user + org)                    | `getStatus`, `disable`, `reset`, `regenerateRecoveryCodes`, `getPolicy`, `setPolicy`, `getSummary`                                                                                             |
+| `imports`       | Declarative provisioning                             | `provision`                                                                                                                                                                                    |
 
 The `users` domain mirrors the org-scoped user routes; `usersById` mirrors the
 organization-independent user routes used by administrative clients. `stats.get()` returns
@@ -148,19 +148,29 @@ const page1 = await porta.organizations.list({ page: 1, pageSize: 10 });
 const allOrgs = await porta.organizations.listAll();
 ```
 
+For organization-scoped users, offset pagination uses `page` and `pageSize`. Cursor pagination uses
+`cursor`; the SDK sends `pageSize` as the server's `limit` for that mode.
+
+## User Administration Contracts
+
+Create and invite calls carry `organizationId` in the input object. `users.invite()` returns the
+invitation outcome (`userId`, `email`, `created`, `invitationSent`, and `expiresAt`), not a full user.
+`users.suspend()` accepts an optional reason, while `users.lock()` requires one. `users.getHistory()`
+returns the server's first-page history envelope with `data`, `hasMore`, and `nextCursor`.
+
 ## Error Handling
 
 All API errors throw typed error classes:
 
-| Error Class | HTTP Status | Description |
-|---|---|---|
-| `PortaAuthenticationError` | 401 | Invalid or expired credentials |
-| `PortaForbiddenError` | 403 | Insufficient permissions |
-| `PortaNotFoundError` | 404 | Resource not found |
-| `PortaValidationError` | 422 | Invalid input (with field details) |
-| `PortaConflictError` | 409 | ETag mismatch or duplicate |
-| `PortaRateLimitError` | 429 | Rate limit exceeded |
-| `PortaServerError` | 5xx | Server error |
+| Error Class                | HTTP Status | Description                        |
+| -------------------------- | ----------- | ---------------------------------- |
+| `PortaAuthenticationError` | 401         | Invalid or expired credentials     |
+| `PortaForbiddenError`      | 403         | Insufficient permissions           |
+| `PortaNotFoundError`       | 404         | Resource not found                 |
+| `PortaValidationError`     | 422         | Invalid input (with field details) |
+| `PortaConflictError`       | 409         | ETag mismatch or duplicate         |
+| `PortaRateLimitError`      | 429         | Rate limit exceeded                |
+| `PortaServerError`         | 5xx         | Server error                       |
 
 ```typescript
 import { PortaNotFoundError, PortaValidationError } from '@portaidentity/sdk';

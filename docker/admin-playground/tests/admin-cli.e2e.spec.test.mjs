@@ -45,9 +45,15 @@ test('should authenticate the packed CLI and restore its terminal when the isola
   assert.equal(result.whoAmIProvedVerifiedEmail, true);
   assert.equal(result.organizationWasExplicitlySwitched, true);
   assert.equal(result.highEntropyOrganizationWasCreatedAndAutoSelected, true);
+  assert.equal(result.usersWereBrowsed, true);
+  assert.equal(result.userDetailWasOpened, true);
+  assert.equal(result.nonceUserWasCreated, true);
+  assert.equal(result.usersMenuWasRestored, true);
   assert.equal(result.testOrganizationWasProvenAbsentBeforeCreate, true);
   assert.equal(result.cleanupUsedIsolatedPackedSdkContext, true);
   assert.equal(result.cleanupVerifiedNonceOwnership, true);
+  assert.equal(result.cleanupVerifiedNonceUserOwnership, true);
+  assert.equal(result.testUserWasAbsentAfterCleanup, true);
   assert.equal(result.testOrganizationWasAbsentAfterCleanup, true);
   assert.equal(result.exitCode, 0);
   assert.equal(result.terminalWasRestored, true);

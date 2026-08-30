@@ -60,12 +60,12 @@ Every command supports these flags:
 
 ### Authentication
 
-| Command        | Description                                              |
-| -------------- | -------------------------------------------------------- |
-| `porta login`  | Authenticate via OIDC (Auth Code + PKCE) — opens browser |
-| `porta logout` | Clear stored credentials                                 |
-| `porta whoami` | Display current identity (no network call)               |
-| `porta admin`  | Open the interactive administration shell foundation     |
+| Command        | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| `porta login`  | Authenticate via OIDC (Auth Code + PKCE) — opens browser        |
+| `porta logout` | Clear stored credentials                                        |
+| `porta whoami` | Display current identity (no network call)                      |
+| `porta admin`  | Open the interactive organization and user administration shell |
 
 ### Organizations
 
@@ -258,10 +258,10 @@ browser/manual OIDC flow, or choose **Quit**. The dialog returns after cancellat
 attempt, so the shell never leaves you on an unusable disabled screen.
 
 Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
-`Who am I…` shows the
-server-bound verified identity. Use `Ctrl-R` to reauthenticate; replacing credentials for a
-different server requires explicit confirmation. Administration data screens beyond the current
-organization landing view are not included yet.
+`Who am I…` shows the server-bound verified identity. After selecting an organization, the Users
+menu supports browse, search, status filters, create, invite, detail, history, profile, credentials,
+and lifecycle actions according to the verified permissions. Use `Ctrl-R` to reauthenticate;
+replacing credentials for a different server requires explicit confirmation.
 
 Use `--insecure` only for deliberate local testing. The shell displays a persistent warning because
 that flag disables TLS certificate validation.

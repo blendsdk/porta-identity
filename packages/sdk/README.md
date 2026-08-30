@@ -30,10 +30,10 @@ yarn add @portaidentity/sdk
 import { createPortaClient, createBrowserTransport } from '@portaidentity/sdk/browser';
 
 const transport = createBrowserTransport({
-  baseUrl: '/api/admin',    // BFF proxy path
-  csrfCookieName: '_csrf',  // CSRF cookie name
+  baseUrl: '/api/admin', // BFF proxy path
+  csrfCookieName: '_csrf', // CSRF cookie name
   csrfHeaderName: 'x-csrf-token',
-  on401: () => window.location.href = '/login',
+  on401: () => (window.location.href = '/login'),
 });
 
 const client = createPortaClient(transport);
@@ -42,7 +42,8 @@ const client = createPortaClient(transport);
 const orgs = await client.organizations.list({ page: 1, pageSize: 20 });
 
 // Create a user
-const user = await client.users.create('org-id', {
+const user = await client.users.create({
+  organizationId: 'org-id',
   email: 'user@example.com',
   givenName: 'Jane',
   familyName: 'Doe',
@@ -76,7 +77,11 @@ await client.userRoles.assign('org-id', 'user-id', { roleId: 'role-id' });
 ### Client Credentials (Server-to-Server)
 
 ```typescript
-import { createPortaClient, createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import {
+  createPortaClient,
+  createNodeTransport,
+  createClientCredentialsAuth,
+} from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
   tokenUrl: 'https://porta.local:3443/super-admin/oidc/token',
@@ -105,7 +110,7 @@ const tools = getToolDefinitions();
 
 // Execute a tool call from an AI agent
 const client = createPortaClient(
-  createNodeTransport({ baseUrl: '...', auth: createTokenAuth('...') })
+  createNodeTransport({ baseUrl: '...', auth: createTokenAuth('...') }),
 );
 
 const result = await executeTool(client, 'organizations.list', { page: 1 });
@@ -113,35 +118,35 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 
 ## Domain Namespaces
 
-| Namespace | Methods | Description |
-|-----------|---------|-------------|
-| `organizations` | 12 | CRUD, status lifecycle, slug validation, history |
-| `applications` | 13 | CRUD, status, modules management, history |
-| `clients` | 12 | CRUD, status, secret management, history |
-| `users` | 19 | CRUD, 6 status transitions, password, email, export, purge |
-| `roles` | 9 | CRUD, archive, permission assignment |
-| `permissions` | 6 | CRUD, archive |
-| `userRoles` | 3 | List, assign, remove role assignments |
-| `userClaims` | 3 | List, set, remove claim values |
-| `customClaims` | 6 | Claim definitions CRUD, archive |
-| `config` | 3 | System configuration get/set/list |
-| `keys` | 3 | Signing key list/generate/rotate |
-| `audit` | 1 | Audit log listing with filters |
-| `stats` | 1 | Dashboard statistics |
-| `sessions` | 3 | Session listing and revocation |
-| `bulk` | 1 | Bulk status operations |
-| `branding` | 5 | Org branding settings and asset management |
-| `exports` | 1 | CSV/JSON data export |
-| `twoFactor` | 3 | 2FA status, disable, reset |
-| `imports` | 1 | Declarative provisioning |
+| Namespace       | Methods | Description                                                |
+| --------------- | ------- | ---------------------------------------------------------- |
+| `organizations` | 12      | CRUD, status lifecycle, slug validation, history           |
+| `applications`  | 13      | CRUD, status, modules management, history                  |
+| `clients`       | 12      | CRUD, status, secret management, history                   |
+| `users`         | 19      | CRUD, 6 status transitions, password, email, export, purge |
+| `roles`         | 9       | CRUD, archive, permission assignment                       |
+| `permissions`   | 6       | CRUD, archive                                              |
+| `userRoles`     | 3       | List, assign, remove role assignments                      |
+| `userClaims`    | 3       | List, set, remove claim values                             |
+| `customClaims`  | 6       | Claim definitions CRUD, archive                            |
+| `config`        | 3       | System configuration get/set/list                          |
+| `keys`          | 3       | Signing key list/generate/rotate                           |
+| `audit`         | 1       | Audit log listing with filters                             |
+| `stats`         | 1       | Dashboard statistics                                       |
+| `sessions`      | 3       | Session listing and revocation                             |
+| `bulk`          | 1       | Bulk status operations                                     |
+| `branding`      | 5       | Org branding settings and asset management                 |
+| `exports`       | 1       | CSV/JSON data export                                       |
+| `twoFactor`     | 3       | 2FA status, disable, reset                                 |
+| `imports`       | 1       | Declarative provisioning                                   |
 
 ## Auth Providers
 
-| Provider | Use Case |
-|----------|----------|
-| `createTokenAuth(token)` | Static Bearer token (scripts, testing) |
-| `createClientCredentialsAuth(opts)` | Server-to-server OAuth2 (with caching and concurrent dedup) |
-| `createCliAuth(opts)` | CLI credentials file (`~/.porta/credentials.json`) with auto-refresh |
+| Provider                            | Use Case                                                             |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| `createTokenAuth(token)`            | Static Bearer token (scripts, testing)                               |
+| `createClientCredentialsAuth(opts)` | Server-to-server OAuth2 (with caching and concurrent dedup)          |
+| `createCliAuth(opts)`               | CLI credentials file (`~/.porta/credentials.json`) with auto-refresh |
 
 ## Error Handling
 
@@ -173,6 +178,10 @@ const allUsers = await client.users.listAll('org-id');
 // → User[]
 ```
 
+`users.invite()` returns an `InviteUserResult`. Suspension accepts an optional reason;
+`users.lock()` requires a reason. `users.getHistory()` returns the first-page
+`{ data, hasMore, nextCursor }` history envelope.
+
 ## Architecture
 
 ```
@@ -199,12 +208,12 @@ const allUsers = await client.users.listAll('org-id');
 
 ## Entrypoints
 
-| Import Path | Includes | Excludes |
-|------------|----------|----------|
-| `@portaidentity/sdk` | Types, errors, pagination, client factory | Transport, auth (bring your own) |
-| `@portaidentity/sdk/browser` | + BrowserTransport | NodeTransport, auth providers |
-| `@portaidentity/sdk/node` | + NodeTransport, all auth providers | BrowserTransport |
-| `@portaidentity/sdk/agent` | + Tool definitions, executeTool | Transports, auth |
+| Import Path                  | Includes                                  | Excludes                         |
+| ---------------------------- | ----------------------------------------- | -------------------------------- |
+| `@portaidentity/sdk`         | Types, errors, pagination, client factory | Transport, auth (bring your own) |
+| `@portaidentity/sdk/browser` | + BrowserTransport                        | NodeTransport, auth providers    |
+| `@portaidentity/sdk/node`    | + NodeTransport, all auth providers       | BrowserTransport                 |
+| `@portaidentity/sdk/agent`   | + Tool definitions, executeTool           | Transports, auth                 |
 
 ## Testing
 
