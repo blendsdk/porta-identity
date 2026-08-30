@@ -84,3 +84,40 @@ export type {
   AdminUserWorkspace,
   AdminUserWorkspaceOptions,
 } from './user-workspace.js';
+export { createAdminApplicationOperations } from './application-service.js';
+export type { AdminApplicationOperations } from './application-service.js';
+export { createAdminApplicationController } from './application-controller.js';
+export type {
+  AdminApplicationController,
+  AdminApplicationControllerOptions,
+} from './application-controller.js';
+export type {
+  AdminApplication,
+  AdminApplicationFailureKind,
+  AdminApplicationModule,
+  AdminApplicationModuleStatus,
+  AdminApplicationMutationResult,
+  AdminApplicationReadResult,
+  AdminApplicationStatus,
+  AdminApplicationViewState,
+} from './application-state.js';
+export { createAdminClientOperations } from './client-service.js';
+export type {
+  AdminClientCreateResult,
+  AdminClientOperations,
+} from './client-service.js';
+export { createAdminClientController } from './client-controller.js';
+export type {
+  AdminClientController,
+  AdminClientControllerOptions,
+} from './client-controller.js';
+export type {
+  AdminClient,
+  AdminClientFailureKind,
+  AdminClientMutationResult,
+  AdminClientReadResult,
+  AdminClientSecret,
+  AdminClientStatus,
+  AdminClientViewState,
+  AdminGeneratedClientSecret,
+} from './client-state.js';

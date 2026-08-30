@@ -2,7 +2,7 @@
 
 > **Document**: 01-phase-reviews.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 15:42
+> **Last Updated**: 2026-08-30 16:42
 > **Scope mode**: strict
 
 ## Phase 1: Server Safety, Runtime, and Role Data
@@ -88,3 +88,36 @@ added, focused CLI tests passed 124/124, and the permitted final re-review accep
 critical or major finding remains. The final Node 24 root `yarn verify` passed in 11m39s with SDK
 455/455, CLI 792/792, server unit 2,913/2,913, integration 392/392, E2E 128/128, pentest 224/224,
 and repository structure 96/96.
+
+## Phase 3: Admin State, Services, and Controllers
+
+**Baseline tree:** `b6ab2c17fdc06bdc250f6d7e1acfcf39ea01c7fd`
+
+**Pre-review verification:** immutable specifications 58/58; focused implementation/specification
+suite 63/63; CLI 855/855; repository structure 96/96; Node 24 `yarn verify` passed.
+
+**Reviewers:** correctness/maintainability/plan reviewer; security, tenant-context, and plaintext
+ownership auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P3-001 / P3-SEC-001 | Major | Client and secret operations accepted an organization UUID but could dispatch a foreign client UUID. | Resolve and validate the client against the selected organization before every existing-client operation, then add a no-dispatch table across all operation families. | Accepted — final re-review passed |
+| RV-P3-002 / P3-SEC-003 | Major | Missing or failed one-time-secret presentation could silently lose plaintext, and controller continuations retained the create result during presentation. | Treat missing/failed presentation and malformed post-mutation responses as reconciliation-required; synchronously hand plaintext to a separate presenter continuation without retaining the result frame. | Accepted — final re-review passed |
+| RV-P3-003 | Major | Phase 3 marked speculative detail/action controller APIs complete even though concrete view intents are defined in Phases 4 and 5. | Correct the design and execution tasks so Phase 3 owns list/context/reconciliation foundations and Phases 4/5 add exact controller intents beside their real views. | Accepted — final re-review passed |
+| RV-P3-004 / P3-SEC-002 | Major | Retained client responses admitted incompatible protocol combinations, malformed URI/origin shapes, normalized timestamps, and arbitrary ETags. | Mirror the approved protocol relationships and safe URI/origin shapes; require canonical UTC instants and the server's exact weak-ETag format. | Accepted — final re-review passed |
+| RV-P3-R001 | Major | Organization context could change while ownership preflight awaited, allowing a later mutation dispatch whose result was only quarantined afterward. | Carry the controller abort signal through mutation operations and check it after ownership preflight immediately before dispatch. | Accepted — final re-review passed |
+
+All resolutions are narrow corrections inside the confirmed Phase 3 security and workflow
+boundary. Authority: AI — delegated by `--auto-design`; category: response validation,
+organization-context integrity, transient-secret ownership, and plan precision. No generalized UI
+framework, dependency, persistence, polling, search, pagination control, or multi-operator behavior
+was added. Two existing specification fixtures were corrected additively for the expanded exact
+capability shape and the new lifecycle abort signal; no approved expectation was weakened.
+Confidence: High. Hardening: two independent reviewers and two bounded re-review rounds. Policy
+version: 1. Root invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: a fix changes product
+behavior beyond the approved organization-bound application/client administration contract.
+
+**Re-review evidence:** final focused Phase 3 tests passed 84/84, CLI typecheck/lint passed, and
+both reviewers reported no remaining critical or major finding. Final Node 24 `yarn verify` passed
+in 10m47s with SDK 455/455, CLI 873/873, server unit 2,913/2,913, integration 392/392, E2E
+128/128, pentest 224/224, and repository structure 96/96.

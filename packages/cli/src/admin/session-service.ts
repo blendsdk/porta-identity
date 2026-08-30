@@ -15,6 +15,8 @@ import { normalizeServerOrigin } from '../global-options.js';
 import type { AdminApplicationSession } from './application.js';
 import { createAdminOrganizationOperations } from './organization-service.js';
 import { createAdminUserOperations } from './user-service.js';
+import { createAdminApplicationOperations } from './application-service.js';
+import { createAdminClientOperations } from './client-service.js';
 import type { AdminCapabilities, AdminConnectionState } from './state.js';
 
 /** Lazy SDK organization-domain input retained until verified UI work requests it. */
@@ -22,6 +24,12 @@ type AdminOrganizationDomainFactory = Parameters<typeof createAdminOrganizationO
 
 /** Lazy SDK user-domain input retained until verified UI work requests it. */
 type AdminUserDomainFactory = Parameters<typeof createAdminUserOperations>[0];
+
+/** Lazy SDK application-domain input retained until verified UI work requests it. */
+type AdminApplicationDomainFactory = Parameters<typeof createAdminApplicationOperations>[0];
+
+/** Lazy SDK client-domain input retained until verified UI work requests it. */
+type AdminClientDomainFactory = Parameters<typeof createAdminClientOperations>[0];
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -129,6 +137,8 @@ export function prepareAdminSession(
   interaction: LoginInteraction,
   organizationDomain?: AdminOrganizationDomainFactory,
   userDomain?: AdminUserDomainFactory,
+  applicationDomain?: AdminApplicationDomainFactory,
+  clientDomain?: AdminClientDomainFactory,
 ): PreparedAdminSession {
   const server = normalizeServerOrigin(serverInput);
 
@@ -213,6 +223,10 @@ export function prepareAdminSession(
         ? { organizations: createAdminOrganizationOperations(organizationDomain) }
         : {}),
       ...(userDomain ? { users: createAdminUserOperations(userDomain) } : {}),
+      ...(applicationDomain
+        ? { applications: createAdminApplicationOperations(applicationDomain) }
+        : {}),
+      ...(clientDomain ? { clients: createAdminClientOperations(clientDomain) } : {}),
     },
   };
 }
@@ -262,6 +276,17 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
     canManageUserLifecycle:
       isLegacyAdministrator || validPermissions.includes('admin:user:suspend'),
     canPurgeUsers: isLegacyAdministrator || validPermissions.includes('admin:user:archive'),
+    canReadApplications: isLegacyAdministrator || validPermissions.includes('admin:app:read'),
+    canCreateApplications: isLegacyAdministrator || validPermissions.includes('admin:app:create'),
+    canUpdateApplications: isLegacyAdministrator || validPermissions.includes('admin:app:update'),
+    canArchiveApplications: isLegacyAdministrator || validPermissions.includes('admin:app:archive'),
+    canReadClients: isLegacyAdministrator || validPermissions.includes('admin:client:read'),
+    canCreateClients:
+      isLegacyAdministrator ||
+      (validPermissions.includes('admin:client:create') &&
+        validPermissions.includes('admin:app:read')),
+    canUpdateClients: isLegacyAdministrator || validPermissions.includes('admin:client:update'),
+    canRevokeClients: isLegacyAdministrator || validPermissions.includes('admin:client:revoke'),
   };
 }
 

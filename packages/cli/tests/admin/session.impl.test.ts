@@ -28,12 +28,24 @@ const noUserCapabilities = {
   canPurgeUsers: false,
 };
 
+const noApplicationClientCapabilities = {
+  canReadApplications: false,
+  canCreateApplications: false,
+  canUpdateApplications: false,
+  canArchiveApplications: false,
+  canReadClients: false,
+  canCreateClients: false,
+  canUpdateClients: false,
+  canRevokeClients: false,
+};
+
 describe('admin session implementation edges', () => {
   it('treats malformed authorization arrays as least-privileged values', () => {
     expect(validateAdminCapabilities(['porta-admin', 'bad\u0000role'], undefined)).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: false,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
     expect(
       validateAdminCapabilities(['porta-user-admin'], ['admin:org:read', 'bad\u0085permission']),
@@ -41,6 +53,7 @@ describe('admin session implementation edges', () => {
       canReadOrganizations: false,
       canCreateOrganizations: false,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
   });
 
@@ -52,6 +65,7 @@ describe('admin session implementation edges', () => {
       canReadOrganizations: true,
       canCreateOrganizations: false,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
   });
 

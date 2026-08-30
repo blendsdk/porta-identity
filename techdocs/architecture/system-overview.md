@@ -75,6 +75,10 @@ trusted identity details and bounded organization choice/create inputs using the
 Organization SDK access is constructed lazily only when verified organization work begins. Logical
 operation generations quarantine late list/create results, and reauthentication retains a selected
 organization after transient reconciliation failure only when the verified subject is unchanged.
+Global application definitions and organization-bound OIDC clients use separate feature-specific
+service and controller boundaries. They validate complete remote projections before publication,
+recheck selected-organization ownership immediately before client mutations, and keep one-time
+client secrets inside an abortable presenter continuation without persisting them.
 
 ### Domain Modules
 

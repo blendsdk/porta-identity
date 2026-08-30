@@ -22,6 +22,28 @@ const allUserCapabilities = {
   canPurgeUsers: true,
 };
 
+const noApplicationClientCapabilities = {
+  canReadApplications: false,
+  canCreateApplications: false,
+  canUpdateApplications: false,
+  canArchiveApplications: false,
+  canReadClients: false,
+  canCreateClients: false,
+  canUpdateClients: false,
+  canRevokeClients: false,
+};
+
+const allApplicationClientCapabilities = {
+  canReadApplications: true,
+  canCreateApplications: true,
+  canUpdateApplications: true,
+  canArchiveApplications: true,
+  canReadClients: true,
+  canCreateClients: true,
+  canUpdateClients: true,
+  canRevokeClients: true,
+};
+
 const credentials = {
   server: 'https://porta-a.example.test/',
   orgSlug: 'porta-admin',
@@ -146,6 +168,7 @@ describe('stored CLI session verification', () => {
         canReadOrganizations: false,
         canCreateOrganizations: false,
         ...noUserCapabilities,
+        ...noApplicationClientCapabilities,
       },
     });
   });
@@ -252,6 +275,7 @@ describe('live administration capabilities', () => {
       canReadOrganizations: true,
       canCreateOrganizations: false,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
   });
 
@@ -263,6 +287,7 @@ describe('live administration capabilities', () => {
       canReadOrganizations: false,
       canCreateOrganizations: true,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
   });
 
@@ -276,6 +301,7 @@ describe('live administration capabilities', () => {
         canReadOrganizations: true,
         canCreateOrganizations: true,
         ...allUserCapabilities,
+        ...allApplicationClientCapabilities,
       });
     },
   );
@@ -288,6 +314,7 @@ describe('live administration capabilities', () => {
       canReadOrganizations: true,
       canCreateOrganizations: false,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
   });
 
@@ -310,6 +337,7 @@ describe('live administration capabilities', () => {
       canReadOrganizations: false,
       canCreateOrganizations: false,
       ...noUserCapabilities,
+      ...noApplicationClientCapabilities,
     });
     expect(JSON.stringify(capabilities)).not.toContain('admin:org');
     expect(JSON.stringify(capabilities)).not.toContain('porta-admin');
@@ -347,6 +375,7 @@ describe('live administration capabilities', () => {
         canReadOrganizations: true,
         canCreateOrganizations: false,
         ...noUserCapabilities,
+        ...noApplicationClientCapabilities,
       },
     });
     expect(credentials).toEqual(storedBeforeVerification);

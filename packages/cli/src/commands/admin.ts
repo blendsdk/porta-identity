@@ -112,6 +112,8 @@ export async function runAdminCommand(
             interaction,
             () => selectedClient(selectedServer).organizations,
             () => selectedClient(selectedServer).users,
+            () => selectedClient(selectedServer).applications,
+            () => selectedClient(selectedServer).clients,
           ),
       });
     };

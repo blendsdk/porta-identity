@@ -20,6 +20,8 @@ import {
 } from './organization-dialogs.js';
 import type { AdminOrganizationOperations } from './organization-service.js';
 import type { AdminUserOperations } from './user-service.js';
+import type { AdminApplicationOperations } from './application-service.js';
+import type { AdminClientOperations } from './client-service.js';
 import { createAdminUserController } from './user-controller.js';
 import type { AdminUserController } from './user-controller.js';
 import { ADMIN_COMMANDS, createAdminPresentation } from './presentation.js';
@@ -47,6 +49,10 @@ export interface AdminApplicationSession {
   readonly organizations?: AdminOrganizationOperations;
   /** User operations bound lazily to the verified server session. */
   readonly users?: AdminUserOperations;
+  /** Global application operations bound lazily to the verified server session. */
+  readonly applications?: AdminApplicationOperations;
+  /** Selected-organization client operations bound lazily to the verified server session. */
+  readonly clients?: AdminClientOperations;
 }
 
 /** State and operations prepared after the application has a selected server. */

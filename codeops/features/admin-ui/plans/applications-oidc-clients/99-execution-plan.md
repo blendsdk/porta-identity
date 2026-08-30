@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 15:42
-> **Progress**: 18/49 tasks (37%)
+> **Last Updated**: 2026-08-30 16:42
+> **Progress**: 26/49 tasks (53%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -150,7 +150,7 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ## Phase 3: Admin State, Services, and Controllers
 
-> **Phase baseline tree**: _(recorded by exec-plan at phase start)_
+> **Phase baseline tree**: `b6ab2c17fdc06bdc250f6d7e1acfcf39ea01c7fd`
 > **Scope mode**: strict — two feature-specific immutable workflows; no generalized framework,
 > persistence, polling, or multi-operator coordination
 
@@ -158,20 +158,32 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 **Reference**: [03-03](03-03-admin-state-services.md) · ST-24–ST-31 · AR-2
 
-- [ ] 3.1.1 [spec-author] Add immutable application/client validation, all-or-nothing list, fixed-failure, context ownership, capability parsing, production SDK injection, and session-operation specifications — Admin service/state spec tests
-- [ ] 3.1.2 [spec-author] Add controller specifications for capability recheck, duplicate activation, refresh replay, indeterminate reconciliation, late results, and plaintext disposal — Admin controller spec tests
-- [ ] 3.1.3 Run ST-24–ST-31 against unchanged Admin UI and record expected red
+- [x] 3.1.1 [spec-author] Add immutable application/client validation, all-or-nothing list, fixed-failure, context ownership, capability parsing, production SDK injection, and session-operation specifications — Admin service/state spec tests ✅ (completed: 2026-08-30 15:51)
+- [x] 3.1.2 [spec-author] Add controller specifications for capability recheck, duplicate activation, refresh replay, indeterminate reconciliation, late results, and plaintext disposal — Admin controller spec tests ✅ (completed: 2026-08-30 15:51)
+- [x] 3.1.3 Run ST-24–ST-31 against unchanged Admin UI and record expected red ✅ (completed: 2026-08-30 15:51)
+
+  Expected-red evidence: Node 24 focused Vitest collected 58 immutable cases and failed all 58
+  against unchanged Phase 3 production code. Fifty-four failures identify the four absent
+  feature-local service/controller modules, two identify absent application/client capability
+  parsing, and two identify absent production session-domain injection. Focused ESLint and diff
+  checks passed; no expectation changed.
 
 ### Step 3.2: Implementation and Green Phase
 
-- [ ] 3.2.1 Add immutable application/client projections, bounded validators, fixed failures, and the minimal feature-local workspace/dialog contracts controllers require — Admin state/type and contract files
-- [ ] 3.2.2 Add thin SDK services plus production capability parsing, application/client domain injection, and session operations with whole-response validation — Admin service/session files
-- [ ] 3.2.3 Add feature-specific application and client controllers with generation, dialog, capability, context, and reconciliation ownership — Admin controller files
-- [ ] 3.2.4 Run ST-24–ST-31 and make the implementation green without changing expectations
+- [x] 3.2.1 Add immutable application/client projections, bounded validators, fixed failures, and the minimal feature-local workspace/dialog contracts controllers require — Admin state/type and contract files ✅ (completed: 2026-08-30 16:03)
+- [x] 3.2.2 Add thin SDK services plus production capability parsing, application/client domain injection, and session operations with whole-response validation — Admin service/session files ✅ (completed: 2026-08-30 16:03)
+- [x] 3.2.3 Add the feature-specific application and client controller foundations for list loading, generation, dialog, capability, context, and reconciliation ownership; add intent-specific methods with their concrete Phase 4/5 views — Admin controller files ✅ (completed: 2026-08-30 16:03)
+- [x] 3.2.4 Run ST-24–ST-31 and make the implementation green without changing expectations ✅ (completed: 2026-08-30 16:03)
 
 ### Step 3.3: Implementation Tests and Verification
 
-- [ ] 3.3.1 Add implementation regressions for hostile responses, generation races, aborts, refresh, retained projections, and every plaintext terminal transition; run CLI verify and Node 24 LTS `yarn verify`
+- [x] 3.3.1 Add implementation regressions for hostile responses, generation races, aborts, refresh, retained projections, and every plaintext terminal transition; run CLI verify and Node 24 LTS `yarn verify` ✅ (completed: 2026-08-30 16:42)
+
+  Verification evidence: the immutable Phase 3 oracle passed 58/58 and the combined focused suite
+  passed 84/84 after independent-review fixes. CLI verify passed 873/873; repository structure
+  passed 96/96; final Node 24 `yarn verify` passed with SDK 455/455, CLI 873/873, server unit
+  2,913/2,913, integration 392/392, E2E 128/128, and pentest 224/224. Correctness and security
+  re-review accepted every fix; no critical or major finding remains.
 
 **Deliverables:** validated global application and organization client workflows independent of rendering.
 
@@ -193,9 +205,9 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ### Step 4.2: Implementation and Green Phase
 
-- [ ] 4.2.1 Implement the full-height global application DataGrid and detail/module projection with Layout DSL — application workspace files
-- [ ] 4.2.2 Implement movable create/edit and exact lifecycle confirmation dialogs with one-row inputs and visible-disabled actions — application dialog files
-- [ ] 4.2.3 Implement movable module create/edit/deactivate dialogs and parent-safe intents — application dialog/workspace files
+- [ ] 4.2.1 Implement the full-height global application DataGrid, detail/module projection, and matching controller intents with Layout DSL — application workspace/controller files
+- [ ] 4.2.2 Implement movable create/edit and exact lifecycle confirmation dialogs with one-row inputs and visible-disabled controller actions — application dialog/controller files
+- [ ] 4.2.3 Implement movable module create/edit/deactivate dialogs and parent-safe controller intents — application dialog/workspace/controller files
 - [ ] 4.2.4 Run ST-32–ST-38 and applicable ST-50–ST-52 cases green without changing expectations
 
 ### Step 4.3: Implementation Tests and Verification
@@ -223,9 +235,9 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ### Step 5.2: Implementation and Green Phase
 
-- [ ] 5.2.1 Implement the full-height organization client DataGrid and complete client detail with application-name/ID fallback — client workspace files
-- [ ] 5.2.2 Implement the movable Layout DSL `TabView` dialog with explicit entry tabs, vertical `Scroller`, and DataGrid-backed URI/origin Add/Edit/Remove actions — client dialog files
-- [ ] 5.2.3 Implement lifecycle, metadata-only secret management, rotation/revoke, legacy transition, and non-editable one-time warning dialogs without an application Copy action — client dialog/workspace files
+- [ ] 5.2.1 Implement the full-height organization client DataGrid, complete client detail with application-name/ID fallback, and matching controller intents — client workspace/controller files
+- [ ] 5.2.2 Implement the movable Layout DSL `TabView` dialog with explicit entry tabs, vertical `Scroller`, DataGrid-backed URI/origin Add/Edit/Remove actions, and bounded update intents — client dialog/controller files
+- [ ] 5.2.3 Implement lifecycle, metadata-only secret management, rotation/revoke, legacy transition, and non-editable one-time warning dialogs with their controller intents and without an application Copy action — client dialog/workspace/controller files
 - [ ] 5.2.4 Run ST-39–ST-52 green without changing expectations
 
 ### Step 5.3: Implementation Tests and Verification

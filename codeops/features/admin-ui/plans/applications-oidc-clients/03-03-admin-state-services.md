@@ -29,10 +29,12 @@ by both features; no entity abstraction is introduced (AR-2).
 
 ### Validated State
 
-State admits only allowlisted, bounded, control-free remote fields and closed enum values. It uses
-discriminated immutable unions for closed/loading/list/detail/failure/indeterminate states. A failed
-read retains only a previously validated projection and never a partial page. Secret plaintext is
-not a state field.
+State admits only allowlisted, bounded, control-free remote fields and closed enum values. Phase 3
+uses discriminated immutable unions for closed/loading/list/failure/indeterminate states. The
+detail and selected-entity states are added with their concrete workspaces in 03-04 and 03-05 so
+the controller contracts follow real view intents instead of speculative generic operations. A
+failed read retains only a previously validated projection and never a partial page. Secret
+plaintext is not a state field.
 
 Application state holds the complete global catalog and selected application/module projection.
 Client state carries its owning organization ID on every collection/detail/secret projection and
@@ -52,11 +54,14 @@ production injection before controller behavior is implemented.
 
 ### Controllers and Ownership
 
-Each controller owns at most one dialog or network operation. It rechecks capability, session, and
-the relevant organization immediately before mutation dispatch. Operation/session generations
-discard late results. Organization changes clear only client state; authentication replacement or
-invalidation clears both controllers. After an indeterminate mutation, another mutation stays
-blocked until deliberate reload reconciles the entity.
+Each controller owns at most one dialog or network operation. Phase 3 establishes list loading,
+context transitions, reconciliation, and representative mutation ownership. Intent-specific detail,
+module, lifecycle, update, and secret methods are added beside the concrete views in 03-04 and
+03-05, reusing the same ownership rules. Every mutation rechecks capability, session, and the
+relevant organization immediately before dispatch. Operation/session generations discard late
+results. Organization changes clear only client state; authentication replacement or invalidation
+clears both controllers. After an indeterminate mutation, another mutation stays blocked until
+deliberate reload reconciles the entity.
 
 The one-time plaintext returned by client/secret creation remains in the current synchronous
 controller continuation only long enough to populate a non-editable warning view. It is never

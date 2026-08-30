@@ -20,6 +20,22 @@ export interface AdminCapabilities {
   readonly canManageUserLifecycle: boolean;
   /** Whether a user may be permanently purged. */
   readonly canPurgeUsers: boolean;
+  /** Whether global applications and modules may be inspected. */
+  readonly canReadApplications: boolean;
+  /** Whether a global application may be created. */
+  readonly canCreateApplications: boolean;
+  /** Whether applications, modules, and application lifecycle may be updated. */
+  readonly canUpdateApplications: boolean;
+  /** Whether a global application may be permanently archived. */
+  readonly canArchiveApplications: boolean;
+  /** Whether organization clients and secret metadata may be inspected. */
+  readonly canReadClients: boolean;
+  /** Whether a client may be created when application read is also granted. */
+  readonly canCreateClients: boolean;
+  /** Whether client configuration, lifecycle, and secrets may be updated. */
+  readonly canUpdateClients: boolean;
+  /** Whether clients and client secrets may be permanently revoked. */
+  readonly canRevokeClients: boolean;
 }
 
 /** The bounded organization projection retained by the terminal application. */
