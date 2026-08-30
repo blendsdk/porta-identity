@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 01:36
-> **Progress**: 9/46 tasks (20%)
+> **Last Updated**: 2026-08-30 02:30
+> **Progress**: 18/46 tasks (39%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -86,7 +86,7 @@ part of this plan (AR-1–AR-7).
 
 ## Phase 2: Validated User State and Service
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `378dd8ecd4df2d823e635e2e8ea71d619170fba1`
 > **Expected modification set**: `packages/cli/src/admin/{state,session-service,user-state,user-service,presentation,application,index}.ts`, `packages/cli/tests/admin/{session,user-service,application,application.authentication-gate,application.organization,organization-dialogs}.{spec,impl}.test.ts`, test inventory, and execution evidence
 > **Scope mode**: strict — immutable user projections and lazy current SDK operations only; no JSVision UI, cache, persistence, polling, or lock subsystem
 
@@ -94,25 +94,35 @@ part of this plan (AR-1–AR-7).
 
 **Reference**: [03-02](03-02-user-state-and-service.md) · ST-08–ST-17 and ST-35 · AR-4, AR-9
 
-- [ ] 2.1.1 [spec-author] Add exact capability, input, page/detail/history/preview, hostile-response, and fixed-failure specifications — `packages/cli/tests/admin/user-service.spec.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`
-- [ ] 2.1.2 Run the focused service/session specifications and record expected red failures
+- [x] 2.1.1 [spec-author] Add exact capability, input, page/detail/history/preview, hostile-response, and fixed-failure specifications — `packages/cli/tests/admin/user-service.spec.test.ts`, `packages/cli/tests/admin/session.spec.test.ts` ✅ (completed: 2026-08-30 01:46)
+- [x] 2.1.2 Run the focused service/session specifications and record expected red failures — expected red: 98/124 failed because the user service module and live user capability derivation were not implemented; 26 preservation assertions remained green ✅ (completed: 2026-08-30 01:46)
 
 ### Step 2.2: Implementation and Green Phase
 
-- [ ] 2.2.1 Add documented user capabilities and exact immutable page/detail/history/view-state projections; mechanically update existing presentation fallbacks, application/session constructors, and typed fixtures with fail-closed user capability defaults — `packages/cli/src/admin/{state,user-state,presentation,application}.ts`, affected existing Admin UI tests
-- [ ] 2.2.2 Implement list/detail/history/preview validation and fixed read operations — `packages/cli/src/admin/user-service.ts`
-- [ ] 2.2.3 Implement local mutation input conversion, fixed mutation results, and no-secret-state handling — `packages/cli/src/admin/user-service.ts`
-- [ ] 2.2.4 Derive exact live UserInfo capabilities and expose lazy authenticated user operations — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/index.ts`
-- [ ] 2.2.5 Run ST-08–ST-17 and ST-35 and make the implementation green without changing expectations
+- [x] 2.2.1 Add documented user capabilities and exact immutable page/detail/history/view-state projections; mechanically update existing presentation fallbacks, application/session constructors, and typed fixtures with fail-closed user capability defaults — `packages/cli/src/admin/{state,user-state,presentation,application}.ts`, affected existing Admin UI tests ✅ (completed: 2026-08-30 01:56)
+- [x] 2.2.2 Implement list/detail/history/preview validation and fixed read operations — `packages/cli/src/admin/user-service.ts` ✅ (completed: 2026-08-30 01:56)
+- [x] 2.2.3 Implement local mutation input conversion, fixed mutation results, and no-secret-state handling — `packages/cli/src/admin/user-service.ts` ✅ (completed: 2026-08-30 01:56)
+- [x] 2.2.4 Derive exact live UserInfo capabilities and expose lazy authenticated user operations — `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-08-30 01:56)
+- [x] 2.2.5 Run ST-08–ST-17 and ST-35 and make the implementation green without changing expectations — 124/124 focused specifications passed ✅ (completed: 2026-08-30 01:56)
 
 ### Step 2.3: Implementation Tests and Verification
 
-- [ ] 2.3.1 Add validator, ETag, whole-response rejection, no-secret-state, and lazy-domain implementation tests — `packages/cli/tests/admin/user-service.impl.test.ts`, `packages/cli/tests/admin/session.impl.test.ts`
-- [ ] 2.3.2 Run complete CLI package verification for the finished service/state boundary
+- [x] 2.3.1 Add validator, ETag, whole-response rejection, no-secret-state, and lazy-domain implementation tests — `packages/cli/tests/admin/user-service.impl.test.ts`, `packages/cli/tests/admin/session.impl.test.ts` ✅ (completed: 2026-08-30 01:56)
+- [x] 2.3.2 Run complete CLI package verification for the finished service/state boundary — final CLI verify passed: 51 files, 688 tests; final root verify passed including structure 96, server unit 2,863, integration 363, E2E 128, and pentest 224 ✅ (completed: 2026-08-30 02:30)
 
 **Deliverables:** exact user capabilities and a UI-neutral validated user service boundary.
 
 **Verify:** `yarn workspace @portaidentity/cli verify` · `yarn test:structure`; run root `yarn verify` before commit
+
+> **Phase review**: completed 2026-08-30 02:18 against baseline tree
+> `378dd8ecd4df2d823e635e2e8ea71d619170fba1`. Initial correctness and security review found
+> runtime extra-property tenant/assignment injection, non-exact update payloads, missing requested-user
+> response correlation, permissive timestamp/integer validation, and insufficient hostile-input
+> regressions. Auto-design resolved them with explicit payload allowlists, strict projection validation,
+> response correlation, and focused tests. Both reviewers then reported no remaining findings. A purge
+> response schema was not invented: the immutable specification defines resolved `{}` as definite
+> success and no purge response field enters application state. Incremental techdocs are N/A because
+> this phase adds the already planned internal validation boundary; Phase 5 owns focused documentation.
 
 ---
 

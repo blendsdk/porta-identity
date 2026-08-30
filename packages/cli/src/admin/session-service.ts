@@ -14,10 +14,14 @@ import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
 import type { AdminApplicationSession } from './application.js';
 import { createAdminOrganizationOperations } from './organization-service.js';
+import { createAdminUserOperations } from './user-service.js';
 import type { AdminCapabilities, AdminConnectionState } from './state.js';
 
 /** Lazy SDK organization-domain input retained until verified UI work requests it. */
 type AdminOrganizationDomainFactory = Parameters<typeof createAdminOrganizationOperations>[0];
+
+/** Lazy SDK user-domain input retained until verified UI work requests it. */
+type AdminUserDomainFactory = Parameters<typeof createAdminUserOperations>[0];
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -124,6 +128,7 @@ export function prepareAdminSession(
   serverInput: URL,
   interaction: LoginInteraction,
   organizationDomain?: AdminOrganizationDomainFactory,
+  userDomain?: AdminUserDomainFactory,
 ): PreparedAdminSession {
   const server = normalizeServerOrigin(serverInput);
 
@@ -207,6 +212,7 @@ export function prepareAdminSession(
       ...(organizationDomain
         ? { organizations: createAdminOrganizationOperations(organizationDomain) }
         : {}),
+      ...(userDomain ? { users: createAdminUserOperations(userDomain) } : {}),
     },
   };
 }
@@ -236,7 +242,7 @@ function isValidAuthorizationArray(
  *
  * @param roles - Untrusted UserInfo role claim.
  * @param permissions - Untrusted UserInfo permission claim.
- * @returns Two fixed capability booleans.
+ * @returns Fixed organization and user capability booleans.
  * @example
  * ```ts
  * const capabilities = validateAdminCapabilities([], ['admin:org:read']);
@@ -249,6 +255,13 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
   return {
     canReadOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:read'),
     canCreateOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:create'),
+    canReadUsers: isLegacyAdministrator || validPermissions.includes('admin:user:read'),
+    canCreateUsers: isLegacyAdministrator || validPermissions.includes('admin:user:create'),
+    canInviteUsers: isLegacyAdministrator || validPermissions.includes('admin:user:invite'),
+    canUpdateUsers: isLegacyAdministrator || validPermissions.includes('admin:user:update'),
+    canManageUserLifecycle:
+      isLegacyAdministrator || validPermissions.includes('admin:user:suspend'),
+    canPurgeUsers: isLegacyAdministrator || validPermissions.includes('admin:user:archive'),
   };
 }
 

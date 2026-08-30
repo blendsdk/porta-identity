@@ -8,6 +8,18 @@ export interface AdminCapabilities {
   readonly canReadOrganizations: boolean;
   /** Whether organization creation may be offered. */
   readonly canCreateOrganizations: boolean;
+  /** Whether users in the selected organization may be listed and inspected. */
+  readonly canReadUsers: boolean;
+  /** Whether a user may be created in the selected organization. */
+  readonly canCreateUsers: boolean;
+  /** Whether an invitation may be sent in the selected organization. */
+  readonly canInviteUsers: boolean;
+  /** Whether user profiles and credentials may be updated. */
+  readonly canUpdateUsers: boolean;
+  /** Whether user lifecycle transitions may be performed. */
+  readonly canManageUserLifecycle: boolean;
+  /** Whether a user may be permanently purged. */
+  readonly canPurgeUsers: boolean;
 }
 
 /** The bounded organization projection retained by the terminal application. */

@@ -19,17 +19,28 @@ const credentials = {
   userInfo: { sub: 'subject-1', email: 'admin@example.test' },
 };
 
+const noUserCapabilities = {
+  canReadUsers: false,
+  canCreateUsers: false,
+  canInviteUsers: false,
+  canUpdateUsers: false,
+  canManageUserLifecycle: false,
+  canPurgeUsers: false,
+};
+
 describe('admin session implementation edges', () => {
   it('treats malformed authorization arrays as least-privileged values', () => {
     expect(validateAdminCapabilities(['porta-admin', 'bad\u0000role'], undefined)).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: false,
+      ...noUserCapabilities,
     });
     expect(
       validateAdminCapabilities(['porta-user-admin'], ['admin:org:read', 'bad\u0085permission']),
     ).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: false,
+      ...noUserCapabilities,
     });
   });
 
@@ -40,6 +51,7 @@ describe('admin session implementation edges', () => {
     expect(validateAdminCapabilities([], ['admin:org:read', longPermission])).toEqual({
       canReadOrganizations: true,
       canCreateOrganizations: false,
+      ...noUserCapabilities,
     });
   });
 

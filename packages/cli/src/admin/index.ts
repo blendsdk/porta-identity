@@ -26,3 +26,29 @@ export type {
   AdminOrganizationFailureKind,
   AdminPublicFailure,
 } from './state.js';
+export { createAdminUserOperations } from './user-service.js';
+export type {
+  AdminCreateUserInput,
+  AdminInviteUserInput,
+  AdminInvitedUser,
+  AdminSetPasswordInput,
+  AdminUserDetailResult,
+  AdminUserListRequest,
+  AdminUserMutationResult,
+  AdminUserOperations,
+  AdminUserReadResult,
+} from './user-service.js';
+export type {
+  AdminInvitationPreview,
+  AdminUserDetail,
+  AdminUserFailureKind,
+  AdminUserHistory,
+  AdminUserHistoryEntry,
+  AdminUserListItem,
+  AdminUserOutcome,
+  AdminUserPage,
+  AdminUserProjection,
+  AdminUserSelection,
+  AdminUserStatus,
+  AdminUserViewState,
+} from './user-state.js';

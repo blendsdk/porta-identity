@@ -1,6 +1,7 @@
 /** Focused implementation tests for the admin session production wiring. */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { UsersDomain } from '@portaidentity/sdk';
 
 const credentialStore = vi.hoisted(() => ({
   createCliCredentialPersistence: vi.fn(() => ({
@@ -112,5 +113,45 @@ describe('admin session production wiring', () => {
     });
     expect(organizationDomain).toHaveBeenCalledOnce();
     expect(listAll).toHaveBeenCalledOnce();
+  });
+
+  it('should defer the user domain until a validated operation requests it', async () => {
+    const list = vi
+      .fn()
+      .mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
+    const unused = vi.fn();
+    const users: UsersDomain = {
+      list,
+      listAll: unused,
+      get: unused,
+      create: unused,
+      update: unused,
+      invite: unused,
+      invitePreview: unused,
+      setPassword: unused,
+      clearPassword: unused,
+      verifyEmail: unused,
+      exportData: unused,
+      purge: unused,
+      suspend: unused,
+      unsuspend: unused,
+      lock: unused,
+      unlock: unused,
+      deactivate: unused,
+      reactivate: unused,
+      getHistory: unused,
+    };
+    const userDomain = vi.fn(() => users);
+    const prepared = prepareAdminSession(server, interaction, undefined, userDomain);
+
+    expect(userDomain).not.toHaveBeenCalled();
+    await expect(
+      prepared.session.users?.list('11111111-1111-4111-8111-111111111111', { page: 1 }),
+    ).resolves.toEqual({
+      kind: 'success',
+      value: { data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 },
+    });
+    expect(userDomain).toHaveBeenCalledOnce();
+    expect(list).toHaveBeenCalledOnce();
   });
 });

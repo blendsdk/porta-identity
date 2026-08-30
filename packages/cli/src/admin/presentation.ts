@@ -224,8 +224,23 @@ export function createAdminPresentation(
         ? (currentState.capabilities ?? {
             canReadOrganizations: false,
             canCreateOrganizations: false,
+            canReadUsers: false,
+            canCreateUsers: false,
+            canInviteUsers: false,
+            canUpdateUsers: false,
+            canManageUserLifecycle: false,
+            canPurgeUsers: false,
           })
-        : { canReadOrganizations: false, canCreateOrganizations: false };
+        : {
+            canReadOrganizations: false,
+            canCreateOrganizations: false,
+            canReadUsers: false,
+            canCreateUsers: false,
+            canInviteUsers: false,
+            canUpdateUsers: false,
+            canManageUserLifecycle: false,
+            canPurgeUsers: false,
+          };
     return [
       subMenu(utf8 ? '≡' : '[=]', [
         item('~W~ho am I…', ADMIN_COMMANDS.whoAmI),

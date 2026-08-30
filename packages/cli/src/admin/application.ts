@@ -19,6 +19,7 @@ import {
   showWhoAmIDialog,
 } from './organization-dialogs.js';
 import type { AdminOrganizationOperations } from './organization-service.js';
+import type { AdminUserOperations } from './user-service.js';
 import { ADMIN_COMMANDS, createAdminPresentation } from './presentation.js';
 import {
   canRetryAdminState,
@@ -42,6 +43,8 @@ export interface AdminApplicationSession {
   readonly reauthenticate?: (signal: AbortSignal) => Promise<AdminConnectionState | undefined>;
   /** Organization operations bound lazily to the verified server session. */
   readonly organizations?: AdminOrganizationOperations;
+  /** User operations bound lazily to the verified server session. */
+  readonly users?: AdminUserOperations;
 }
 
 /** State and operations prepared after the application has a selected server. */

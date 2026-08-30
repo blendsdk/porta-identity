@@ -4,6 +4,24 @@
 
 import { describe, expect, it, vi } from 'vitest';
 
+const noUserCapabilities = {
+  canReadUsers: false,
+  canCreateUsers: false,
+  canInviteUsers: false,
+  canUpdateUsers: false,
+  canManageUserLifecycle: false,
+  canPurgeUsers: false,
+};
+
+const allUserCapabilities = {
+  canReadUsers: true,
+  canCreateUsers: true,
+  canInviteUsers: true,
+  canUpdateUsers: true,
+  canManageUserLifecycle: true,
+  canPurgeUsers: true,
+};
+
 const credentials = {
   server: 'https://porta-a.example.test/',
   orgSlug: 'porta-admin',
@@ -127,6 +145,7 @@ describe('stored CLI session verification', () => {
       capabilities: {
         canReadOrganizations: false,
         canCreateOrganizations: false,
+        ...noUserCapabilities,
       },
     });
   });
@@ -232,6 +251,7 @@ describe('live administration capabilities', () => {
     expect(validateAdminCapabilities([], ['admin:org:read'])).toEqual({
       canReadOrganizations: true,
       canCreateOrganizations: false,
+      ...noUserCapabilities,
     });
   });
 
@@ -242,6 +262,7 @@ describe('live administration capabilities', () => {
     expect(validateAdminCapabilities([], ['admin:org:create'])).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: true,
+      ...noUserCapabilities,
     });
   });
 
@@ -254,6 +275,7 @@ describe('live administration capabilities', () => {
       expect(validateAdminCapabilities(['porta-admin'], permissions)).toEqual({
         canReadOrganizations: true,
         canCreateOrganizations: true,
+        ...allUserCapabilities,
       });
     },
   );
@@ -265,6 +287,7 @@ describe('live administration capabilities', () => {
     expect(validateAdminCapabilities({ unexpected: 'shape' }, ['admin:org:read'])).toEqual({
       canReadOrganizations: true,
       canCreateOrganizations: false,
+      ...noUserCapabilities,
     });
   });
 
@@ -286,6 +309,7 @@ describe('live administration capabilities', () => {
     expect(capabilities).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: false,
+      ...noUserCapabilities,
     });
     expect(JSON.stringify(capabilities)).not.toContain('admin:org');
     expect(JSON.stringify(capabilities)).not.toContain('porta-admin');
@@ -322,11 +346,91 @@ describe('live administration capabilities', () => {
       capabilities: {
         canReadOrganizations: true,
         canCreateOrganizations: false,
+        ...noUserCapabilities,
       },
     });
     expect(credentials).toEqual(storedBeforeVerification);
     expect('capabilities' in credentials).toBe(false);
   });
+
+  it.each([
+    ['admin:user:read', 'canReadUsers'],
+    ['admin:user:create', 'canCreateUsers'],
+    ['admin:user:invite', 'canInviteUsers'],
+    ['admin:user:update', 'canUpdateUsers'],
+    ['admin:user:suspend', 'canManageUserLifecycle'],
+    ['admin:user:archive', 'canPurgeUsers'],
+  ])('should map exact %s permission to only %s', async (permission, enabledCapability) => {
+    // Each exact user permission enables one independently evaluated application capability.
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+    const userCapabilities = {
+      canReadUsers: false,
+      canCreateUsers: false,
+      canInviteUsers: false,
+      canUpdateUsers: false,
+      canManageUserLifecycle: false,
+      canPurgeUsers: false,
+      [enabledCapability]: true,
+    };
+
+    expect(validateAdminCapabilities([], [permission])).toMatchObject(userCapabilities);
+  });
+
+  it('should grant every user capability for the exact Porta administrator role', async () => {
+    // The exact administrator role grants all user actions without requiring a permissions claim.
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+    expect(validateAdminCapabilities(['porta-admin'], undefined)).toMatchObject({
+      canReadUsers: true,
+      canCreateUsers: true,
+      canInviteUsers: true,
+      canUpdateUsers: true,
+      canManageUserLifecycle: true,
+      canPurgeUsers: true,
+    });
+  });
+
+  it.each([
+    ['unknown permission', [], ['admin:user:delete'], {}],
+    ['control-bearing permission', [], ['admin:user:\u0000read'], {}],
+    [
+      'malformed permissions claim',
+      ['porta-admin'],
+      { unexpected: 'shape' },
+      {
+        canReadUsers: true,
+        canCreateUsers: true,
+        canInviteUsers: true,
+        canUpdateUsers: true,
+        canManageUserLifecycle: true,
+        canPurgeUsers: true,
+      },
+    ],
+    [
+      'malformed roles claim',
+      { unexpected: 'shape' },
+      ['admin:user:invite'],
+      { canInviteUsers: true },
+    ],
+  ])(
+    'should reject %s while preserving independently valid authorization arrays',
+    async (_label, roles, permissions, granted) => {
+      // Invalid claim entries grant nothing, while a separate valid claim remains independently effective.
+      const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+      const capabilities = validateAdminCapabilities(roles, permissions);
+
+      expect(capabilities).toMatchObject({
+        canReadUsers: false,
+        canCreateUsers: false,
+        canInviteUsers: false,
+        canUpdateUsers: false,
+        canManageUserLifecycle: false,
+        canPurgeUsers: false,
+        ...granted,
+      });
+    },
+  );
 });
 
 describe('organization request replay boundary', () => {

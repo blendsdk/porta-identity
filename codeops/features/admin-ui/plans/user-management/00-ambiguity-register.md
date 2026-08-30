@@ -1,7 +1,7 @@
 ## Ambiguity Register: RD-03 User Management Implementation Plan
 
-> **Status**: ✅ GATE PASSED — all 9 items resolved
-> **Last Updated**: 2026-08-29 16:54
+> **Status**: ✅ GATE PASSED — all 10 items resolved
+> **Last Updated**: 2026-08-30 01:37
 > **Mode**: `--auto-design`
 > **Root Invocation ID**: `make-plan-admin-ui-rd03-20260829`
 
@@ -9,17 +9,18 @@ The systematic review covered feature, behavioral, scope, technical, edge-case, 
 security, non-functional, UX, stakeholder, and naming categories. RD-03 and its three-iteration
 preflight own the product behavior; this register resolves only plan-local implementation choices.
 
-|   # | Category          | Ambiguity / Gap                                                            | Options Presented                                                               | Decision                                       | Status      |
-| --: | ----------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- | ----------- |
-|   1 | Scope             | Which behavior may this plan implement?                                    | Approved RD-03 only / expand into later Admin UI RDs                            | Approved RD-03 only                            | ✅ Resolved |
-|   2 | Technical         | How should the sizeable CLI feature be divided without adding a framework? | Feature-specific modules / grow existing coordinators / generic admin framework | Feature-specific modules                       | ✅ Resolved |
-|   3 | Integration       | When should the required SDK corrections land?                             | Correct SDK contracts first / patch around them in the UI                       | Correct SDK contracts first                    | ✅ Resolved |
-|   4 | Data & state      | Who owns user view state and late-result rejection?                        | One user workflow controller / application-global cache                         | One user workflow controller                   | ✅ Resolved |
-|   5 | UX & presentation | How should direct JSVision code be separated?                              | Workspace plus modal dialogs / generated screens                                | Workspace plus modal dialogs                   | ✅ Resolved |
-|   6 | Testing           | Which completion gates apply?                                              | RD-03 affected-package and compatibility gates / unrelated full server suites   | RD-03 affected-package and compatibility gates | ✅ Resolved |
-|   7 | Ordering          | What is the smallest safe execution sequence?                              | SDK → service → UI → wiring → journey/docs / one cross-cutting phase            | Five bounded phases                            | ✅ Resolved |
-|   8 | Non-functional    | Is a new numeric coverage target required?                                 | Behavioral ST completion / invented percentage target                           | Behavioral ST completion                       | ✅ Resolved |
-|   9 | Behavioral        | How are safe user-operation failures presented?                            | Reuse fixed local categories / expose remote messages                           | Reuse fixed local categories                   | ✅ Resolved |
+|   # | Category            | Ambiguity / Gap                                                            | Options Presented                                                               | Decision                                       | Status      |
+| --: | ------------------- | -------------------------------------------------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------- | ----------- |
+|   1 | Scope               | Which behavior may this plan implement?                                    | Approved RD-03 only / expand into later Admin UI RDs                            | Approved RD-03 only                            | ✅ Resolved |
+|   2 | Technical           | How should the sizeable CLI feature be divided without adding a framework? | Feature-specific modules / grow existing coordinators / generic admin framework | Feature-specific modules                       | ✅ Resolved |
+|   3 | Integration         | When should the required SDK corrections land?                             | Correct SDK contracts first / patch around them in the UI                       | Correct SDK contracts first                    | ✅ Resolved |
+|   4 | Data & state        | Who owns user view state and late-result rejection?                        | One user workflow controller / application-global cache                         | One user workflow controller                   | ✅ Resolved |
+|   5 | UX & presentation   | How should direct JSVision code be separated?                              | Workspace plus modal dialogs / generated screens                                | Workspace plus modal dialogs                   | ✅ Resolved |
+|   6 | Testing             | Which completion gates apply?                                              | RD-03 affected-package and compatibility gates / unrelated full server suites   | RD-03 affected-package and compatibility gates | ✅ Resolved |
+|   7 | Ordering            | What is the smallest safe execution sequence?                              | SDK → service → UI → wiring → journey/docs / one cross-cutting phase            | Five bounded phases                            | ✅ Resolved |
+|   8 | Non-functional      | Is a new numeric coverage target required?                                 | Behavioral ST completion / invented percentage target                           | Behavioral ST completion                       | ✅ Resolved |
+|   9 | Behavioral          | How are safe user-operation failures presented?                            | Reuse fixed local categories / expose remote messages                           | Reuse fixed local categories                   | ✅ Resolved |
+|  10 | Technical (runtime) | Which exact internal service seam should Phase 2 specifications target?    | One flat user-specific operations boundary / raw SDK calls in the controller    | One flat user-specific operations boundary     | ✅ Resolved |
 
 ### Resolution Notes
 
@@ -131,3 +132,21 @@ provide less diagnosis, but detailed remote errors are unsafe in this terminal s
 High. Hardening: the server remains authoritative and logs are not copied into the UI. Policy
 version: 1. Root invocation ID: `make-plan-admin-ui-rd03-20260829`. Reopen triggers: an approved
 diagnostics feature defines a separate sanitized detail channel.
+
+**AR-10 (runtime service seam):** Authority: AI — delegated by `--auto-design`. Eligibility:
+internal interface design inside the approved user service boundary. Objective: make Phase 2
+specifications independent of SDK response shapes while keeping Phase 4 orchestration simple.
+Decision: expose one `createAdminUserOperations()` factory with flat user-specific list, detail,
+history, preview, create, invite, update, credential, lifecycle, and purge methods. Every method
+receives the selected organization UUID exactly once; local create/invite/password inputs exclude
+SDK organization and assignment fields; reads and mutations use separate fixed result unions.
+Evidence: `organization-service.ts` already uses one lazy operations factory and fixed results, and
+the approved plan explicitly forbids a second organization source, service locator, cache, or UI
+framework. Rejected alternatives: raw SDK calls in the controller would bypass the required
+validation boundary; multiple per-action service classes would add unnecessary structure.
+Strongest counterargument: one interface has many methods, but it directly reflects the already
+approved operations and avoids extra layers. Confidence: High. Hardening: the choice was reduced to
+the current organization-service pattern and introduces no dependency, persistence, retry, or
+generalized abstraction. Policy version: 1. Root invocation ID:
+`exec-plan-admin-ui-rd03-20260830`. Reopen triggers: an approved operation cannot be expressed
+without a second organization source or the interface exceeds the existing file-size boundary.
