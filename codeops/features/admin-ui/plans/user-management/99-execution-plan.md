@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 05:41
-> **Progress**: 45/46 tasks (98%)
+> **Last Updated**: 2026-08-30 06:23
+> **Progress**: 46/46 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -232,7 +232,7 @@ part of this plan (AR-1–AR-7).
 
 - [x] 5.3.1 Update only directly affected user examples in the public SDK reference/package README, Admin UI Users guidance, corrected current `porta user` guidance, and maintainer playground steps — `docs/guide/sdk.md`, `packages/sdk/README.md`, `docs/cli/{overview,users}.md`, `packages/cli/README.md`, `techdocs/guides/admin-playground.md` ✅ (completed: 2026-08-30 05:29)
 - [x] 5.3.2 Run affected SDK/CLI package verifies, root `yarn verify`, repository structure tests, docs build, Prettier/diff checks, and the packed Node 24 journey; confirm no server/dependency/workflow/matrix or sensitive/generated file changed. Record security/protocol harness as N/A only while server/auth/protocol/production-security behavior remains unchanged — SDK 429, CLI 756, structure 96, packed journey 4/4, docs build, and full root verification passed; scope and file checks clean; security/protocol harness N/A because server, authentication, protocol, and production-security behavior are unchanged ✅ (completed: 2026-08-30 05:29)
-- [ ] 5.3.3 From the clean committed Phase 5 revision, run `yarn assurance:compat --select p1-admin`, review its registered outcome taxonomy, and record EV-01
+- [x] 5.3.3 From the clean committed Phase 5 revision, run `yarn assurance:compat --select p1-admin`, review its registered outcome taxonomy, and record EV-01 — Node 24 run `0eed4d34-4b38-4b67-bdfc-b8e51c491553` passed from revision `c00a0d402c082b72682299a3f11c84c140c86ef2`; four journeys passed and two existing observations were admitted as `product-failure` (cursor user page has no total; unrelated session output matched the credential-output class); package/source provenance and cleanup were fully clean ✅ (completed: 2026-08-30 06:23)
 
 **Deliverables:** live packed proof, exact owned cleanup, truthful docs, and clean current compatibility evidence.
 
@@ -246,6 +246,12 @@ part of this plan (AR-1–AR-7).
 > Correctness and security re-reviews reported no remaining findings. Security/protocol harness is
 > N/A because no server, authentication, OIDC, cookie, TLS-policy, or production-security behavior
 > changed. Focused documentation was updated directly; no broad techdocs regeneration was needed.
+> The clean compatibility gate initially classified its stale Node 22-only provenance validator as
+> setup failure. The focused P1 validator and synthetic fixture were aligned to the required Node 24
+> LTS workflow, with 16/16 focused assurance tests and full verification green. The final admitted
+> EV-01 artifact is
+> `test-harness/.assurance-results/0eed4d34-4b38-4b67-bdfc-b8e51c491553/compat/p1-admin/result.json`;
+> it preserves the two product-failure classifications described in 5.3.3 rather than hiding them.
 
 ---
 
