@@ -27,6 +27,26 @@ export type {
   AdminPublicFailure,
 } from './state.js';
 export { createAdminUserOperations } from './user-service.js';
+export {
+  showCreateUserDialog,
+  showEditUserDialog,
+  showInviteUserDialog,
+  showPurgeUserDialog,
+  showSetUserPasswordDialog,
+  showUserConfirmationDialog,
+  showUserReasonDialog,
+} from './user-dialogs.js';
+export type {
+  AdminUserDialogHost,
+  CreateUserDialogResult,
+  EditUserDialogResult,
+  InviteUserDialogResult,
+  PurgeUserDialogResult,
+  SetUserPasswordDialogResult,
+  UserConfirmationAction,
+  UserConfirmationDialogResult,
+  UserReasonDialogResult,
+} from './user-dialogs.js';
 export type {
   AdminCreateUserInput,
   AdminInviteUserInput,
@@ -52,3 +72,9 @@ export type {
   AdminUserStatus,
   AdminUserViewState,
 } from './user-state.js';
+export { createAdminUserWorkspace } from './user-workspace.js';
+export type {
+  AdminUserIntent,
+  AdminUserWorkspace,
+  AdminUserWorkspaceOptions,
+} from './user-workspace.js';

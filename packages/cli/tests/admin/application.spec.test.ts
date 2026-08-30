@@ -134,7 +134,8 @@ describe('admin application shell', () => {
         expect(landing).toContain('Choose or create an organization.');
         expect(landing).not.toContain('Verified Admin');
         expect(landing).not.toContain('admin@example.test');
-        expect(landing).not.toMatch(/Applications|Clients|Users|Signing Keys|Dashboard|Metrics/);
+        expect(landing).toContain('Users (organization required)');
+        expect(landing).not.toMatch(/Applications|Clients|Signing Keys|Dashboard|Metrics/);
 
         press(application, 'f10');
         await settleApplication();
@@ -246,7 +247,8 @@ describe('admin application shell', () => {
         expect(frame).toContain('porta.example.test');
         expect(frame).not.toContain('Verified Admin');
         expect(frame).not.toContain('admin@example.test');
-        expect(frame).not.toMatch(/Dashboard|Metrics|Applications|Clients|Users|Signing Keys/);
+        expect(frame).toContain('Users');
+        expect(frame).not.toMatch(/Dashboard|Metrics|Applications|Clients|Signing Keys/);
         expect(frame.length).toBeLessThanOrEqual(width * height + height - 1);
         return 0;
       },
@@ -456,4 +458,81 @@ describe('admin application shell', () => {
       },
     });
   });
+
+  it('should keep Users visible but unavailable until an organization is selected', async () => {
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: {
+        ...authenticatedState(),
+        capabilities: {
+          ...noOrganizationCapabilities,
+          canReadUsers: true,
+          canCreateUsers: true,
+          canInviteUsers: true,
+          canUpdateUsers: true,
+          canManageUserLifecycle: true,
+          canPurgeUsers: true,
+        },
+      },
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        expect(frameText(application)).toContain('Users (organization required)');
+        const browse = vi.fn();
+        application.onCommand('browse-users', browse);
+        press(application, 'u', { alt: true });
+        press(application, 'enter');
+        expect(browse).not.toHaveBeenCalled();
+        return 0;
+      },
+    });
+  });
+
+  it.each([
+    ['create', 'create-user', 'c'],
+    ['invite', 'invite-user', 'i'],
+    ['read', 'browse-users', 'b'],
+  ])(
+    'should emit only the independently authorized %s user command',
+    async (capability, command, hotkey) => {
+      const userCapabilities = {
+        ...noOrganizationCapabilities,
+        canReadUsers: capability === 'read',
+        canCreateUsers: capability === 'create',
+        canInviteUsers: capability === 'invite',
+        canUpdateUsers: false,
+        canManageUserLifecycle: false,
+        canPurgeUsers: false,
+      };
+      const calls: string[] = [];
+
+      await runAdminApplication({
+        server,
+        insecure: false,
+        viewport: { width: 80, height: 24 },
+        initialState: {
+          ...authenticatedState(verifiedIdentity, {
+            id: '11111111-1111-4111-8111-111111111111',
+            name: 'Selected Organization',
+            slug: 'selected-organization',
+            status: 'active',
+          }),
+          capabilities: userCapabilities,
+        },
+        applicationFactory: createApplication,
+        applicationRunner: async (application) => {
+          for (const candidate of ['browse-users', 'create-user', 'invite-user']) {
+            application.onCommand(candidate, () => calls.push(candidate));
+          }
+          press(application, 'u', { alt: true });
+          await settleApplication();
+          expect(frameText(application)).toContain('Users');
+          press(application, hotkey);
+          expect(calls).toEqual([command]);
+          return 0;
+        },
+      });
+    },
+  );
 });

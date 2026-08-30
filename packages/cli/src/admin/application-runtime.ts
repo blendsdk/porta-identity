@@ -3,7 +3,7 @@
 import { createHost, cursor } from '@jsvision/core';
 import type { CapabilityProfile } from '@jsvision/core';
 import { Commands, confirm, inputBox, signal } from '@jsvision/ui';
-import type { Application, ModalDialogHost, Validator } from '@jsvision/ui';
+import type { Application, EventLoop, ModalDialogHost, Validator } from '@jsvision/ui';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
 import type { createAdminPresentation } from './presentation.js';
@@ -20,13 +20,13 @@ function cancelledInteraction(): DOMException {
 }
 
 /** Closes an active modal promptly when its owning operation is cancelled. */
-async function runAbortableDialog<T>(
-  application: Application,
+export async function runAbortableAdminDialog<T>(
+  loop: Pick<EventLoop, 'endModal'>,
   signal_: AbortSignal,
   open: () => Promise<T>,
 ): Promise<T> {
   if (signal_.aborted) throw cancelledInteraction();
-  const abort = (): void => application.loop.endModal(Commands.cancel);
+  const abort = (): void => loop.endModal(Commands.cancel);
   signal_.addEventListener('abort', abort, { once: true });
   try {
     return await open();
@@ -56,7 +56,7 @@ export function createAdminInteraction(
   return {
     selectServer: async (operationSignal) => {
       const value = signal('https://');
-      const selected = await runAbortableDialog(application, operationSignal, () =>
+      const selected = await runAbortableAdminDialog(application.loop, operationSignal, () =>
         inputBox(dialogHost, {
           title: 'Select Porta Server',
           label: '~S~erver origin',
@@ -69,7 +69,7 @@ export function createAdminInteraction(
     },
     presentAuthorizationUrl: async (url, operationSignal) => {
       const value = signal(url.toString());
-      const acknowledged = await runAbortableDialog(application, operationSignal, () =>
+      const acknowledged = await runAbortableAdminDialog(application.loop, operationSignal, () =>
         inputBox(dialogHost, {
           title: 'Open Authorization URL',
           label: '~U~RL',
@@ -80,7 +80,7 @@ export function createAdminInteraction(
     },
     requestManualCallback: async (operationSignal) => {
       const value = signal('');
-      const callback = await runAbortableDialog(application, operationSignal, () =>
+      const callback = await runAbortableAdminDialog(application.loop, operationSignal, () =>
         inputBox(dialogHost, {
           title: 'Complete Authentication',
           label: '~C~allback URL',
@@ -92,7 +92,7 @@ export function createAdminInteraction(
       return callback;
     },
     confirmCredentialReplacement: (currentServer, nextServer, operationSignal) =>
-      runAbortableDialog(application, operationSignal, () =>
+      runAbortableAdminDialog(application.loop, operationSignal, () =>
         confirm(
           dialogHost,
           `Replace credentials for ${currentServer.origin} with ${nextServer.origin}?`,

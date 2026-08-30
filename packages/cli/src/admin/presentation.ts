@@ -25,6 +25,10 @@ export const ADMIN_COMMANDS = {
   whoAmI: 'who-am-i',
   createOrganization: 'create-organization',
   switchOrganization: 'switch-organization',
+  browseUsers: 'browse-users',
+  createUser: 'create-user',
+  inviteUser: 'invite-user',
+  unavailableUser: 'user-action-unavailable',
   cancel: 'cancel',
 } as const;
 
@@ -241,6 +245,35 @@ export function createAdminPresentation(
             canManageUserLifecycle: false,
             canPurgeUsers: false,
           };
+    const hasOrganization = currentState.kind === 'authenticated' && currentState.organization;
+    const hasUserCapability =
+      capabilities.canReadUsers ||
+      capabilities.canCreateUsers ||
+      capabilities.canInviteUsers ||
+      capabilities.canUpdateUsers ||
+      capabilities.canManageUserLifecycle ||
+      capabilities.canPurgeUsers;
+    const usersTitle = !hasOrganization
+      ? 'Users (organization required)'
+      : hasUserCapability
+        ? '~U~sers'
+        : 'Users (user permission required)';
+    const unavailableUserItem = (label: string, reason: string) =>
+      item(`${label} (${reason})`, ADMIN_COMMANDS.unavailableUser);
+    const usersMenu =
+      hasOrganization && hasUserCapability
+        ? subMenu(usersTitle, [
+            capabilities.canReadUsers
+              ? item('~B~rowse users…', ADMIN_COMMANDS.browseUsers)
+              : unavailableUserItem('Browse users…', 'requires user read'),
+            capabilities.canCreateUsers
+              ? item('~C~reate user…', ADMIN_COMMANDS.createUser)
+              : unavailableUserItem('Create user…', 'requires user create'),
+            capabilities.canInviteUsers
+              ? item('~I~nvite user…', ADMIN_COMMANDS.inviteUser)
+              : unavailableUserItem('Invite user…', 'requires user invite'),
+          ])
+        : item(usersTitle, ADMIN_COMMANDS.unavailableUser);
     return [
       subMenu(utf8 ? '≡' : '[=]', [
         item('~W~ho am I…', ADMIN_COMMANDS.whoAmI),
@@ -261,6 +294,7 @@ export function createAdminPresentation(
           ADMIN_COMMANDS.switchOrganization,
         ),
       ]),
+      usersMenu,
     ];
   };
   const fullStatusItems = () => [

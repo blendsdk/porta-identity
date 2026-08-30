@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 02:30
-> **Progress**: 18/46 tasks (39%)
+> **Last Updated**: 2026-08-30 03:29
+> **Progress**: 31/46 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -128,7 +128,7 @@ part of this plan (AR-1–AR-7).
 
 ## Phase 3: Users Workspace and Dialogs
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `14a00da42280f3218807bb8a9ac03fe0e4d594c2`
 > **Expected modification set**: `packages/cli/src/admin/{user-workspace,user-dialogs,presentation,application-runtime,index}.ts`, `packages/cli/tests/admin/{user-workspace,user-dialogs}.{spec,impl}.test.ts`, `packages/cli/tests/admin/application.spec.test.ts`, test inventory, and execution evidence
 > **Scope mode**: strict — direct user-specific JSVision composition; no form/table generator, new shortcut, dependency, or generic screen abstraction
 
@@ -136,29 +136,37 @@ part of this plan (AR-1–AR-7).
 
 **Reference**: [03-03](03-03-workspace-and-dialogs.md) · ST-18–ST-29 · AR-5, AR-9
 
-- [ ] 3.1.1 [spec-author] Add real JSVision Users menu and workspace rendering/typed-intent specifications for browse/search/filter/navigation/empty, detail, history, focus, and fixed states without SDK dispatch assertions — `packages/cli/tests/admin/user-workspace.spec.test.ts`, `packages/cli/tests/admin/application.spec.test.ts`
-- [ ] 3.1.2 [spec-author] Add create, invite/preview, edit, credentials, lifecycle, and purge dialog-result specifications without application reconciliation assertions — `packages/cli/tests/admin/user-dialogs.spec.test.ts`
-- [ ] 3.1.3 Run workspace/dialog specifications and record expected red failures
+- [x] 3.1.1 [spec-author] Add real JSVision Users menu and workspace rendering/typed-intent specifications for browse/search/filter/navigation/empty, detail, history, focus, and fixed states without SDK dispatch assertions — `packages/cli/tests/admin/user-workspace.spec.test.ts`, `packages/cli/tests/admin/application.spec.test.ts` ✅ (completed: 2026-08-30 02:39)
+- [x] 3.1.2 [spec-author] Add create, invite/preview, edit, credentials, lifecycle, and purge dialog-result specifications without application reconciliation assertions — `packages/cli/tests/admin/user-dialogs.spec.test.ts` ✅ (completed: 2026-08-30 02:39)
+- [x] 3.1.3 Run workspace/dialog specifications and record expected red failures — two missing feature modules and four missing Users-menu expectations failed while 14 retained application specifications passed ✅ (completed: 2026-08-30 02:39)
 
 ### Step 3.2: Implementation and Green Phase
 
-- [ ] 3.2.1 Implement list, detail, history, fixed states, selection, pagination, focus, and the closed user-specific intent callback — `packages/cli/src/admin/user-workspace.ts`
-- [ ] 3.2.2 Implement the create dialog with profile sections, local bounds, and secret cleanup — `packages/cli/src/admin/user-dialogs.ts`
-- [ ] 3.2.3 Implement invite and safe plain-text preview dialogs without assignment controls — `packages/cli/src/admin/user-dialogs.ts`
-- [ ] 3.2.4 Implement read-only-email profile editing with touched/clear semantics — `packages/cli/src/admin/user-dialogs.ts`
-- [ ] 3.2.5 Implement set/clear password and verify-email dialogs with unconditional secret cleanup — `packages/cli/src/admin/user-dialogs.ts`
-- [ ] 3.2.6 Implement lifecycle and explicit purge dialogs; apply only a mechanical user-specific split if AR-5's file-size trigger fires — `packages/cli/src/admin/user-dialogs.ts`
-- [ ] 3.2.7 Add independently governed Users menu/chrome mounting and reuse the abortable modal helper — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application-runtime.ts`, `packages/cli/src/admin/index.ts`
-- [ ] 3.2.8 Run ST-18–ST-29 and make the implementation green without changing expectations
+- [x] 3.2.1 Implement list, detail, history, fixed states, selection, pagination, focus, and the closed user-specific intent callback — `packages/cli/src/admin/user-workspace.ts` ✅ (completed: 2026-08-30 02:47)
+- [x] 3.2.2 Implement the create dialog with profile sections, local bounds, and secret cleanup — `packages/cli/src/admin/user-dialogs.ts` ✅ (completed: 2026-08-30 02:47)
+- [x] 3.2.3 Implement invite and safe plain-text preview dialogs without assignment controls — `packages/cli/src/admin/user-dialogs.ts` ✅ (completed: 2026-08-30 02:47)
+- [x] 3.2.4 Implement read-only-email profile editing with touched/clear semantics — `packages/cli/src/admin/user-dialogs.ts` ✅ (completed: 2026-08-30 02:47)
+- [x] 3.2.5 Implement set/clear password and verify-email dialogs with unconditional secret cleanup — `packages/cli/src/admin/user-dialogs.ts` ✅ (completed: 2026-08-30 02:47)
+- [x] 3.2.6 Implement lifecycle and explicit purge dialogs; apply only a mechanical user-specific split if AR-5's file-size trigger fires — `packages/cli/src/admin/user-dialogs.ts`, `packages/cli/src/admin/user-dialog-fields.ts` ✅ (completed: 2026-08-30 02:49)
+- [x] 3.2.7 Add independently governed Users menu/chrome mounting and reuse the abortable modal helper — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application-runtime.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-08-30 02:50)
+- [x] 3.2.8 Run ST-18–ST-29 and make the implementation green without changing expectations — 33/33 specification tests green ✅ (completed: 2026-08-30 02:52)
 
 ### Step 3.3: Implementation Tests and Verification
 
-- [ ] 3.3.1 Add geometry, control, signal, focus, password-clearing, modal teardown, and no-HTML implementation tests — `packages/cli/tests/admin/user-workspace.impl.test.ts`, `packages/cli/tests/admin/user-dialogs.impl.test.ts`
-- [ ] 3.3.2 Run complete CLI package verification for the finished workspace/dialog boundary
+- [x] 3.3.1 Add geometry, control, signal, focus, password-clearing, modal teardown, and no-HTML implementation tests — `packages/cli/tests/admin/user-workspace.impl.test.ts`, `packages/cli/tests/admin/user-dialogs.impl.test.ts` ✅ (completed: 2026-08-30 02:52)
+- [x] 3.3.2 Run complete CLI package verification for the finished workspace/dialog boundary — final CLI verify passed: 55 files, 734 tests; structure 96 and root verification passed ✅ (completed: 2026-08-30 03:29)
 
 **Deliverables:** keyboard/mouse-complete Users UI using only existing JSVision components.
 
 **Verify:** `yarn workspace @portaidentity/cli verify` · `yarn test:structure`; run root `yarn verify` before commit
+
+> **Phase review**: completed 2026-08-30 03:29 against baseline tree
+> `14a00da42280f3218807bb8a9ac03fe0e4d594c2`. Initial correctness and security reviews found
+> compact geometry/action reachability, retained query/focus state, detail projection, unavailable-menu,
+> preview-ownership, lifecycle-copy, and focused-boundary coverage gaps. Auto-design resolved those
+> findings directly with responsive user-specific composition and focused regressions. Both reviewers
+> reported no remaining findings. Resize-driven workflow ownership remains in its approved Phase 4
+> task. Incremental techdocs are N/A because Phase 5 owns the focused Admin UI documentation update.
 
 ---
 
