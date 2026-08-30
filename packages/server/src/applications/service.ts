@@ -265,10 +265,7 @@ async function loadAppForStatusChange(id: string): Promise<Application> {
  * @throws ApplicationNotFoundError if not found
  * @throws ApplicationValidationError if not currently active
  */
-export async function deactivateApplication(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function deactivateApplication(id: string, actorId?: string): Promise<void> {
   const app = await loadAppForStatusChange(id);
 
   if (app.status !== 'active') {
@@ -296,16 +293,11 @@ export async function deactivateApplication(
  * @throws ApplicationNotFoundError if not found
  * @throws ApplicationValidationError if not currently inactive
  */
-export async function activateApplication(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function activateApplication(id: string, actorId?: string): Promise<void> {
   const app = await loadAppForStatusChange(id);
 
   if (app.status !== 'inactive') {
-    throw new ApplicationValidationError(
-      `Cannot activate application from status: ${app.status}`,
-    );
+    throw new ApplicationValidationError(`Cannot activate application from status: ${app.status}`);
   }
 
   await repoUpdateApp(id, { status: 'active' });
@@ -330,10 +322,7 @@ export async function activateApplication(
  * @throws ApplicationNotFoundError if not found
  * @throws ApplicationValidationError if already archived
  */
-export async function archiveApplication(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function archiveApplication(id: string, actorId?: string): Promise<void> {
   const app = await loadAppForStatusChange(id);
 
   if (app.status === 'archived') {
@@ -418,6 +407,7 @@ export async function createModule(
 /**
  * Update a module's basic fields (name, description).
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param moduleId - Module UUID
  * @param input - Fields to update
  * @param actorId - UUID of the user performing the action
@@ -425,10 +415,15 @@ export async function createModule(
  * @throws ApplicationNotFoundError if module not found
  */
 export async function updateModule(
+  applicationId: string,
   moduleId: string,
   input: UpdateModuleInput,
   actorId?: string,
 ): Promise<ApplicationModule> {
+  const ownedModule = await findModuleById(applicationId, moduleId);
+  if (!ownedModule || ownedModule.applicationId !== applicationId) {
+    throw new ApplicationNotFoundError(moduleId);
+  }
   // Build update data from input
   const updateData: Record<string, unknown> = {};
   if (input.name !== undefined) updateData.name = input.name;
@@ -436,7 +431,7 @@ export async function updateModule(
 
   let mod: ApplicationModule;
   try {
-    mod = await repoUpdateModule(moduleId, updateData);
+    mod = await repoUpdateModule(applicationId, moduleId, updateData);
   } catch (err) {
     if (err instanceof Error && err.message === 'Module not found') {
       throw new ApplicationNotFoundError(moduleId);
@@ -449,7 +444,11 @@ export async function updateModule(
     eventType: 'app.module.updated',
     eventCategory: 'admin',
     actorId,
-    metadata: { moduleId: mod.id, applicationId: mod.applicationId, fields: Object.keys(updateData) },
+    metadata: {
+      moduleId: mod.id,
+      applicationId: mod.applicationId,
+      fields: Object.keys(updateData),
+    },
   });
 
   return mod;
@@ -458,25 +457,27 @@ export async function updateModule(
 /**
  * Deactivate a module (set status to inactive).
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param moduleId - Module UUID
  * @param actorId - UUID of the user performing the action
  * @throws ApplicationNotFoundError if module not found
  * @throws ApplicationValidationError if not currently active
  */
 export async function deactivateModule(
+  applicationId: string,
   moduleId: string,
   actorId?: string,
 ): Promise<void> {
-  const mod = await findModuleById(moduleId);
-  if (!mod) throw new ApplicationNotFoundError(moduleId);
-
-  if (mod.status !== 'active') {
-    throw new ApplicationValidationError(
-      `Cannot deactivate module from status: ${mod.status}`,
-    );
+  const mod = await findModuleById(applicationId, moduleId);
+  if (!mod || mod.applicationId !== applicationId) {
+    throw new ApplicationNotFoundError(moduleId);
   }
 
-  await repoUpdateModule(moduleId, { status: 'inactive' });
+  if (mod.status !== 'active') {
+    throw new ApplicationValidationError(`Cannot deactivate module from status: ${mod.status}`);
+  }
+
+  await repoUpdateModule(applicationId, moduleId, { status: 'inactive' });
 
   await writeAuditLog({
     eventType: 'app.module.deactivated',

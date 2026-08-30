@@ -167,7 +167,7 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
     await createTestClientWithSecret(alpha.id, alphaApplication.id, {
       clientName: existingClientName,
       grantTypes: ['authorization_code'],
-      redirectUris: [],
+      redirectUris: ['https://client.example.test/callback'],
       responseTypes: ['code'],
       scope: 'openid',
       tokenEndpointAuthMethod: 'client_secret_post',

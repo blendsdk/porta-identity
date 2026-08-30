@@ -176,6 +176,7 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
     name: 'Application Admin',
     description: 'Manage applications, clients, RBAC definitions',
     permissions: [
+      ADMIN_PERMISSIONS.ORG_READ,
       ADMIN_PERMISSIONS.APP_CREATE,
       ADMIN_PERMISSIONS.APP_READ,
       ADMIN_PERMISSIONS.APP_UPDATE,

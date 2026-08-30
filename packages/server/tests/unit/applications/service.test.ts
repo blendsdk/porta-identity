@@ -443,9 +443,15 @@ describe('application service', () => {
   describe('updateModule', () => {
     it('should update module via repo and write audit log', async () => {
       const mod = createTestModule({ name: 'Updated CRM' });
+      (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
       (repoUpdateModule as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
 
-      const result = await updateModule('mod-uuid-1', { name: 'Updated CRM' }, 'actor-1');
+      const result = await updateModule(
+        'app-uuid-1',
+        'mod-uuid-1',
+        { name: 'Updated CRM' },
+        'actor-1',
+      );
 
       expect(result.name).toBe('Updated CRM');
       expect(writeAuditLog).toHaveBeenCalledWith(
@@ -459,7 +465,7 @@ describe('application service', () => {
       );
 
       await expect(
-        updateModule('nonexistent', { name: 'Test' }),
+        updateModule('app-uuid-1', 'nonexistent', { name: 'Test' }),
       ).rejects.toThrow(ApplicationNotFoundError);
     });
   });
@@ -474,9 +480,13 @@ describe('application service', () => {
       (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
       (repoUpdateModule as ReturnType<typeof vi.fn>).mockResolvedValue({ ...mod, status: 'inactive' });
 
-      await deactivateModule('mod-uuid-1', 'actor-1');
+      await deactivateModule('app-uuid-1', 'mod-uuid-1', 'actor-1');
 
-      expect(repoUpdateModule).toHaveBeenCalledWith('mod-uuid-1', { status: 'inactive' });
+      expect(repoUpdateModule).toHaveBeenCalledWith(
+        'app-uuid-1',
+        'mod-uuid-1',
+        { status: 'inactive' },
+      );
       expect(writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'app.module.deactivated' }),
       );
@@ -486,7 +496,7 @@ describe('application service', () => {
       (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
       await expect(
-        deactivateModule('nonexistent'),
+        deactivateModule('app-uuid-1', 'nonexistent'),
       ).rejects.toThrow(ApplicationNotFoundError);
     });
 
@@ -495,7 +505,7 @@ describe('application service', () => {
       (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
 
       await expect(
-        deactivateModule('mod-uuid-1'),
+        deactivateModule('app-uuid-1', 'mod-uuid-1'),
       ).rejects.toThrow('Cannot deactivate module');
     });
   });

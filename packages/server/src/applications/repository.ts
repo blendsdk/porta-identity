@@ -80,10 +80,7 @@ export async function insertApplication(data: InsertApplicationData): Promise<Ap
 export async function findApplicationById(id: string): Promise<Application | null> {
   const pool = getPool();
 
-  const result = await pool.query<ApplicationRow>(
-    'SELECT * FROM applications WHERE id = $1',
-    [id],
-  );
+  const result = await pool.query<ApplicationRow>('SELECT * FROM applications WHERE id = $1', [id]);
 
   if (result.rows.length === 0) return null;
   return mapRowToApplication(result.rows[0]);
@@ -101,10 +98,9 @@ export async function findApplicationById(id: string): Promise<Application | nul
 export async function findApplicationBySlug(slug: string): Promise<Application | null> {
   const pool = getPool();
 
-  const result = await pool.query<ApplicationRow>(
-    'SELECT * FROM applications WHERE slug = $1',
-    [slug],
-  );
+  const result = await pool.query<ApplicationRow>('SELECT * FROM applications WHERE slug = $1', [
+    slug,
+  ]);
 
   if (result.rows.length === 0) return null;
   return mapRowToApplication(result.rows[0]);
@@ -299,7 +295,9 @@ export async function listApplicationsCursor(
     const decoded = decodeCursor(options.cursor);
     if (decoded) {
       if (decoded.s === null) {
-        conditions.push(`(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`);
+        conditions.push(
+          `(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`,
+        );
         params.push(decoded.i);
         paramIndex++;
       } else {
@@ -332,7 +330,7 @@ export async function listApplicationsCursor(
   return buildCursorResult(
     rows,
     limit,
-    (app) => sortColumn === 'name' ? app.name : app.createdAt.toISOString(),
+    (app) => (sortColumn === 'name' ? app.name : app.createdAt.toISOString()),
     (app) => app.id,
   );
 }
@@ -415,15 +413,19 @@ export async function insertModule(data: InsertModuleData): Promise<ApplicationM
 /**
  * Find a module by its UUID.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param id - Module UUID
  * @returns ApplicationModule or null if not found
  */
-export async function findModuleById(id: string): Promise<ApplicationModule | null> {
+export async function findModuleById(
+  applicationId: string,
+  id: string,
+): Promise<ApplicationModule | null> {
   const pool = getPool();
 
   const result = await pool.query<ApplicationModuleRow>(
-    'SELECT * FROM application_modules WHERE id = $1',
-    [id],
+    'SELECT * FROM application_modules WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
   );
 
   if (result.rows.length === 0) return null;
@@ -457,12 +459,14 @@ const MODULE_FIELD_TO_COLUMN: Record<string, string> = {
  * Only explicitly provided fields (not undefined) are included in the
  * UPDATE statement. The `updated_at` column is handled by the DB trigger.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param id - Module UUID
  * @param data - Fields to update (only non-undefined fields are applied)
  * @returns Updated module
  * @throws Error if module not found or no fields provided
  */
 export async function updateModule(
+  applicationId: string,
   id: string,
   data: UpdateModuleData,
 ): Promise<ApplicationModule> {
@@ -470,8 +474,8 @@ export async function updateModule(
 
   // Build dynamic SET clause from provided fields
   const setClauses: string[] = [];
-  const values: unknown[] = [id]; // $1 is always the ID
-  let paramIndex = 2;
+  const values: unknown[] = [applicationId, id];
+  let paramIndex = 3;
 
   for (const [field, column] of Object.entries(MODULE_FIELD_TO_COLUMN)) {
     const value = data[field as keyof UpdateModuleData];
@@ -486,7 +490,9 @@ export async function updateModule(
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE application_modules SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`;
+  const sql = `UPDATE application_modules SET ${setClauses.join(', ')}
+    WHERE application_id = $1 AND id = $2
+    RETURNING *`;
   const result = await pool.query<ApplicationModuleRow>(sql, values);
 
   if (result.rows.length === 0) {

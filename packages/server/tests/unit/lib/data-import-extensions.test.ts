@@ -332,8 +332,19 @@ describe('importManifestSchema — client login_methods + token_endpoint_auth_me
     application_slug: 'app',
     organization_slug: 'org',
     client_type: 'public' as const,
+    redirect_uris: ['https://example.com/callback'],
     scope: 'openid',
   };
+
+  it('should reject a client without redirect_uris', () => {
+    const { redirect_uris: _redirectUris, ...clientWithoutRedirects } = baseClient;
+    const result = importManifestSchema.safeParse({
+      version: '1.0',
+      clients: [clientWithoutRedirects],
+    });
+
+    expect(result.success).toBe(false);
+  });
 
   it('should accept client with login_methods array', () => {
     const input = {
@@ -516,6 +527,7 @@ describe('importManifestSchema — Phase 2 client fields', () => {
     application_slug: 'app',
     organization_slug: 'org',
     client_type: 'confidential' as const,
+    redirect_uris: ['https://example.com/callback'],
     scope: 'openid',
   };
 
@@ -641,6 +653,7 @@ describe('importManifestSchema — secret config (flat manifest)', () => {
     application_slug: 'app',
     organization_slug: 'org',
     client_type: 'confidential' as const,
+    redirect_uris: ['https://example.com/callback'],
     scope: 'openid',
   };
 
@@ -1134,6 +1147,7 @@ describe('closed import prevalidation and planning', () => {
           organization_slug: 'alpha',
           application_slug: 'existing-app',
           client_type: 'confidential',
+          redirect_uris: ['https://portal.example.test/callback'],
         },
       ],
     });

@@ -406,7 +406,7 @@ describe('application repository', () => {
       const row = createModuleRow();
       mockPool([row]);
 
-      const mod = await findModuleById('mod-uuid-1');
+      const mod = await findModuleById('app-uuid-1', 'mod-uuid-1');
 
       expect(mod).not.toBeNull();
       expect(mod!.id).toBe('mod-uuid-1');
@@ -416,7 +416,7 @@ describe('application repository', () => {
     it('should return null when not found', async () => {
       mockPool([]);
 
-      const mod = await findModuleById('nonexistent');
+      const mod = await findModuleById('app-uuid-1', 'nonexistent');
 
       expect(mod).toBeNull();
     });
@@ -431,12 +431,12 @@ describe('application repository', () => {
       const row = createModuleRow({ name: 'Updated CRM' });
       const mockQuery = mockPool([row]);
 
-      await updateModule('mod-uuid-1', { name: 'Updated CRM' });
+      await updateModule('app-uuid-1', 'mod-uuid-1', { name: 'Updated CRM' });
 
       const sql = mockQuery.mock.calls[0][0] as string;
       expect(sql).toContain('UPDATE application_modules SET');
-      expect(sql).toContain('name = $2');
-      expect(sql).toContain('WHERE id = $1');
+      expect(sql).toContain('name = $3');
+      expect(sql).toContain('WHERE application_id = $1 AND id = $2');
       expect(sql).toContain('RETURNING *');
     });
 
@@ -444,7 +444,7 @@ describe('application repository', () => {
       mockPool([]);
 
       await expect(
-        updateModule('nonexistent', { name: 'Test' }),
+        updateModule('app-uuid-1', 'nonexistent', { name: 'Test' }),
       ).rejects.toThrow('Module not found');
     });
 
@@ -452,7 +452,7 @@ describe('application repository', () => {
       mockPool([]);
 
       await expect(
-        updateModule('mod-uuid-1', {}),
+        updateModule('app-uuid-1', 'mod-uuid-1', {}),
       ).rejects.toThrow('No fields to update');
     });
   });

@@ -89,13 +89,15 @@ describe('secret service', () => {
       expect(hashSecret).toHaveBeenCalledWith('generated-plaintext-secret-abc');
 
       // Should insert with both hashes
-      expect(insertSecret).toHaveBeenCalledWith({
-        clientId: 'client-db-uuid-1',
-        secretHash: '$argon2id$hashed-secret',
-        secretSha256: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
-        label: 'production key',
-        expiresAt: null,
-      });
+      expect(insertSecret).toHaveBeenCalledWith(
+        {
+          clientId: 'client-db-uuid-1',
+          secretHash: '$argon2id$hashed-secret',
+          secretSha256: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890',
+          label: 'production key',
+          expiresAt: null,
+        },
+      );
 
       // Should return plaintext
       expect(result.plaintext).toBe('generated-plaintext-secret-abc');
@@ -233,10 +235,14 @@ describe('secret service', () => {
     it('should revoke an active secret', async () => {
       const secret = createTestSecret({ status: 'active' });
       (findSecretById as ReturnType<typeof vi.fn>).mockResolvedValue(secret);
+      (repoRevokeSecret as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...secret,
+        status: 'revoked',
+      });
 
-      await revoke('secret-uuid-1', 'actor-1');
+      await revoke('client-db-uuid-1', 'secret-uuid-1', 'actor-1');
 
-      expect(repoRevokeSecret).toHaveBeenCalledWith('secret-uuid-1');
+      expect(repoRevokeSecret).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
       expect(writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
           eventType: 'client.secret.revoked',
@@ -249,14 +255,18 @@ describe('secret service', () => {
     it('should throw ClientNotFoundError when secret not found', async () => {
       (findSecretById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
-      await expect(revoke('nonexistent')).rejects.toThrow(ClientNotFoundError);
+      await expect(revoke('client-db-uuid-1', 'nonexistent')).rejects.toThrow(
+        ClientNotFoundError,
+      );
     });
 
     it('should throw ClientValidationError when already revoked', async () => {
       const secret = createTestSecret({ status: 'revoked' });
       (findSecretById as ReturnType<typeof vi.fn>).mockResolvedValue(secret);
 
-      await expect(revoke('secret-uuid-1')).rejects.toThrow('Secret is already revoked');
+      await expect(revoke('client-db-uuid-1', 'secret-uuid-1')).rejects.toThrow(
+        'Secret is already revoked',
+      );
     });
   });
 

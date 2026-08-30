@@ -168,12 +168,14 @@ describe('administrative data implementation', () => {
           application_slug: 'alpha-app',
           organization_slug: 'alpha',
           client_type: 'confidential',
+          redirect_uris: ['https://confidential.example.test/callback'],
         },
         {
           client_name: 'public-client',
           application_slug: 'alpha-app',
           organization_slug: 'alpha',
           client_type: 'public',
+          redirect_uris: ['https://public.example.test/callback'],
         },
       ],
     });

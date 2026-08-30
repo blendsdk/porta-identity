@@ -23,6 +23,7 @@ vi.mock('../../../src/clients/crypto.js', () => ({
 
 vi.mock('../../../src/clients/validators.js', () => ({
   validateRedirectUris: vi.fn().mockReturnValue({ isValid: true }),
+  validateClientProtocolCompatibility: vi.fn().mockReturnValue({ isValid: true, errors: [] }),
   getDefaultGrantTypes: vi.fn().mockReturnValue(['authorization_code', 'refresh_token']),
   getDefaultTokenEndpointAuthMethod: vi.fn().mockReturnValue('client_secret_basic'),
   getDefaultResponseTypes: vi.fn().mockReturnValue(['code']),
@@ -864,4 +865,3 @@ describe('client service', () => {
     });
   });
 });
-

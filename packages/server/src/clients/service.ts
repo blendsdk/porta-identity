@@ -53,6 +53,7 @@ import {
   getDefaultTokenEndpointAuthMethod,
   getDefaultResponseTypes,
   getDefaultScope,
+  validateClientProtocolCompatibility,
 } from './validators.js';
 import { normalizeLoginMethods } from './resolve-login-methods.js';
 
@@ -91,20 +92,42 @@ function validateClientLoginMethods(
   if (methods === undefined) return undefined;
   if (methods === null) return null;
   if (!Array.isArray(methods) || methods.length === 0) {
-    throw new ClientValidationError(
-      'loginMethods: must be a non-empty array, null, or omitted',
-    );
+    throw new ClientValidationError('loginMethods: must be a non-empty array, null, or omitted');
   }
   for (const m of methods) {
     if (!LOGIN_METHODS.includes(m)) {
-      throw new ClientValidationError(
-        `loginMethods: invalid method "${String(m)}"`,
-      );
+      throw new ClientValidationError(`loginMethods: invalid method "${String(m)}"`);
     }
   }
   return normalizeLoginMethods(methods);
 }
 
+/** Validate a complete protocol configuration and map failures to the client domain error. */
+function requireCompatibleProtocol(configuration: {
+  clientType: Client['clientType'];
+  redirectUris: readonly string[];
+  postLogoutRedirectUris: readonly string[];
+  grantTypes: readonly string[];
+  responseTypes: readonly string[];
+  tokenEndpointAuthMethod: string;
+  requirePkce: boolean;
+  allowedOrigins: readonly string[];
+}): void {
+  if (
+    configuration.tokenEndpointAuthMethod !== 'client_secret_basic' &&
+    configuration.tokenEndpointAuthMethod !== 'client_secret_post' &&
+    configuration.tokenEndpointAuthMethod !== 'none'
+  ) {
+    throw new ClientValidationError('Unsupported token endpoint authentication method');
+  }
+  const result = validateClientProtocolCompatibility({
+    ...configuration,
+    tokenEndpointAuthMethod: configuration.tokenEndpointAuthMethod,
+  });
+  if (!result.isValid) {
+    throw new ClientValidationError(result.errors.join('; '));
+  }
+}
 
 // ===========================================================================
 // Client CRUD
@@ -162,19 +185,28 @@ export async function createClient(
   // is done at the API layer based on environment config)
   const uriValidation = validateRedirectUris(input.redirectUris, false);
   if (!uriValidation.isValid) {
-    throw new ClientValidationError(
-      `Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`,
-    );
+    throw new ClientValidationError(`Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`);
   }
 
   // Apply defaults for optional fields
-  const grantTypes = input.grantTypes ??
-    getDefaultGrantTypes(input.clientType, input.applicationType);
+  const grantTypes =
+    input.grantTypes ?? getDefaultGrantTypes(input.clientType, input.applicationType);
   const responseTypes = input.responseTypes ?? getDefaultResponseTypes();
   const scope = input.scope ?? getDefaultScope();
-  const tokenEndpointAuthMethod = input.tokenEndpointAuthMethod ??
-    getDefaultTokenEndpointAuthMethod(input.clientType);
+  const tokenEndpointAuthMethod =
+    input.tokenEndpointAuthMethod ?? getDefaultTokenEndpointAuthMethod(input.clientType);
   const requirePkce = input.requirePkce ?? true;
+
+  requireCompatibleProtocol({
+    clientType: input.clientType,
+    redirectUris: input.redirectUris,
+    postLogoutRedirectUris: input.postLogoutRedirectUris ?? [],
+    grantTypes,
+    responseTypes,
+    tokenEndpointAuthMethod,
+    requirePkce,
+    allowedOrigins: input.allowedOrigins ?? [],
+  });
 
   // Validate + normalize the login-method override (may throw). Three-state
   // input: undefined → column omitted → DB DEFAULT NULL → inherit.
@@ -230,7 +262,6 @@ export async function createClient(
   // Return without secret — caller must use secret service for confidential clients
   return { client, secret: null };
 }
-
 
 // ---------------------------------------------------------------------------
 // Read
@@ -301,21 +332,45 @@ export async function updateClient(
   if (input.redirectUris) {
     const uriValidation = validateRedirectUris(input.redirectUris, false);
     if (!uriValidation.isValid) {
-      throw new ClientValidationError(
-        `Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`,
-      );
+      throw new ClientValidationError(`Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`);
     }
+  }
+
+  const changesProtocol = [
+    input.redirectUris,
+    input.postLogoutRedirectUris,
+    input.grantTypes,
+    input.responseTypes,
+    input.tokenEndpointAuthMethod,
+    input.allowedOrigins,
+    input.requirePkce,
+  ].some((value) => value !== undefined);
+  if (changesProtocol) {
+    const existing = await getClientById(id);
+    if (!existing) throw new ClientNotFoundError(id);
+    requireCompatibleProtocol({
+      clientType: existing.clientType,
+      redirectUris: input.redirectUris ?? existing.redirectUris,
+      postLogoutRedirectUris: input.postLogoutRedirectUris ?? existing.postLogoutRedirectUris,
+      grantTypes: input.grantTypes ?? existing.grantTypes,
+      responseTypes: input.responseTypes ?? existing.responseTypes,
+      tokenEndpointAuthMethod: input.tokenEndpointAuthMethod ?? existing.tokenEndpointAuthMethod,
+      requirePkce: input.requirePkce ?? existing.requirePkce,
+      allowedOrigins: input.allowedOrigins ?? existing.allowedOrigins,
+    });
   }
 
   // Build update data from input
   const updateData: Record<string, unknown> = {};
   if (input.clientName !== undefined) updateData.clientName = input.clientName;
   if (input.redirectUris !== undefined) updateData.redirectUris = input.redirectUris;
-  if (input.postLogoutRedirectUris !== undefined) updateData.postLogoutRedirectUris = input.postLogoutRedirectUris;
+  if (input.postLogoutRedirectUris !== undefined)
+    updateData.postLogoutRedirectUris = input.postLogoutRedirectUris;
   if (input.grantTypes !== undefined) updateData.grantTypes = input.grantTypes;
   if (input.responseTypes !== undefined) updateData.responseTypes = input.responseTypes;
   if (input.scope !== undefined) updateData.scope = input.scope;
-  if (input.tokenEndpointAuthMethod !== undefined) updateData.tokenEndpointAuthMethod = input.tokenEndpointAuthMethod;
+  if (input.tokenEndpointAuthMethod !== undefined)
+    updateData.tokenEndpointAuthMethod = input.tokenEndpointAuthMethod;
   if (input.allowedOrigins !== undefined) updateData.allowedOrigins = input.allowedOrigins;
   if (input.requirePkce !== undefined) updateData.requirePkce = input.requirePkce;
 
@@ -374,7 +429,6 @@ export async function updateClient(
 
   return client;
 }
-
 
 // ---------------------------------------------------------------------------
 // List
@@ -443,16 +497,11 @@ async function loadClientForStatusChange(id: string): Promise<Client> {
  * @throws ClientNotFoundError if not found
  * @throws ClientValidationError if not currently active
  */
-export async function deactivateClient(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function deactivateClient(id: string, actorId?: string): Promise<void> {
   const client = await loadClientForStatusChange(id);
 
   if (client.status !== 'active') {
-    throw new ClientValidationError(
-      `Cannot deactivate client from status: ${client.status}`,
-    );
+    throw new ClientValidationError(`Cannot deactivate client from status: ${client.status}`);
   }
 
   await repoUpdateClient(id, { status: 'inactive' });
@@ -475,16 +524,11 @@ export async function deactivateClient(
  * @throws ClientNotFoundError if not found
  * @throws ClientValidationError if not currently inactive
  */
-export async function activateClient(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function activateClient(id: string, actorId?: string): Promise<void> {
   const client = await loadClientForStatusChange(id);
 
   if (client.status !== 'inactive') {
-    throw new ClientValidationError(
-      `Cannot activate client from status: ${client.status}`,
-    );
+    throw new ClientValidationError(`Cannot activate client from status: ${client.status}`);
   }
 
   await repoUpdateClient(id, { status: 'active' });
@@ -510,10 +554,7 @@ export async function activateClient(
  * @throws ClientNotFoundError if not found
  * @throws ClientValidationError if already revoked
  */
-export async function revokeClient(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function revokeClient(id: string, actorId?: string): Promise<void> {
   const client = await loadClientForStatusChange(id);
 
   if (client.status === 'revoked') {
@@ -553,9 +594,7 @@ export async function revokeClient(
  * @param clientId - OIDC client_id
  * @returns OIDC client metadata object, or undefined if not found/inactive
  */
-export async function findForOidc(
-  clientId: string,
-): Promise<Record<string, unknown> | undefined> {
+export async function findForOidc(clientId: string): Promise<Record<string, unknown> | undefined> {
   const client = await getClientByClientId(clientId);
 
   // Client must exist and be active for OIDC operations
@@ -573,9 +612,8 @@ export async function findForOidc(
     grant_types: client.grantTypes,
     response_types: client.responseTypes,
     scope: client.scope,
-    token_endpoint_auth_method: client.clientType === 'public'
-      ? 'none'
-      : client.tokenEndpointAuthMethod,
+    token_endpoint_auth_method:
+      client.clientType === 'public' ? 'none' : client.tokenEndpointAuthMethod,
     // Porta uses ES256 signing keys — must declare this explicitly
     // or oidc-provider defaults to RS256 and rejects the client.
     id_token_signed_response_alg: 'ES256',
@@ -583,6 +621,9 @@ export async function findForOidc(
     'urn:porta:allowed_origins': client.allowedOrigins,
     // Client type for internal use
     'urn:porta:client_type': client.clientType,
+    // Public authorization-code clients always require PKCE. Confidential clients preserve the
+    // administrator's persisted choice and the provider reads it through registered metadata.
+    'urn:porta:require_pkce': client.requirePkce,
     // Per-client login-methods override. Null means "inherit org default";
     // a non-null array is the validated override. The OIDC configuration
     // layer registers this URN under `extraClientMetadata.properties` so
@@ -594,7 +635,6 @@ export async function findForOidc(
     // identify first-party clients (same org → skip consent screen)
     organizationId: client.organizationId,
   };
-
 
   // For confidential clients, include the SHA-256 hash as client_secret.
   // oidc-provider will compare this against the SHA-256 of the presented
@@ -623,10 +663,7 @@ export async function findForOidc(
  * @param plaintext - The presented secret to verify
  * @returns true if secret matches any active hash, false otherwise
  */
-export async function verifyClientSecret(
-  clientId: string,
-  plaintext: string,
-): Promise<boolean> {
+export async function verifyClientSecret(clientId: string, plaintext: string): Promise<boolean> {
   const client = await getClientByClientId(clientId);
 
   // Client must exist and be active

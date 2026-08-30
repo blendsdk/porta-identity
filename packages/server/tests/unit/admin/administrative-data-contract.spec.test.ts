@@ -48,6 +48,7 @@ function clientManifest(
       application_slug: fixture.alphaApplicationSlug,
       organization_slug: fixture.alphaOrganizationSlug,
       client_type: 'confidential',
+      redirect_uris: ['https://client.example.test/callback'],
     })),
   };
 }
@@ -335,6 +336,7 @@ if (capability.available) {
               application_slug: fixture.alphaApplicationSlug,
               organization_slug: fixture.alphaOrganizationSlug,
               client_type: 'confidential',
+              redirect_uris: ['https://client.example.test/callback'],
             },
           ],
         };
@@ -454,6 +456,7 @@ if (capability.available) {
                 application_slug: 'missing-parent',
                 organization_slug: fixture.alphaOrganizationSlug,
                 client_type: 'confidential',
+                redirect_uris: ['https://client.example.test/callback'],
               },
             ],
           },
@@ -492,6 +495,7 @@ if (capability.available) {
                 application_slug: fixture.bravoApplicationSlug,
                 organization_slug: fixture.bravoOrganizationSlug,
                 client_type: 'confidential',
+                redirect_uris: ['https://client.example.test/callback'],
               },
             ],
           },

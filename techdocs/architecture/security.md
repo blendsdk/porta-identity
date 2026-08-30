@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-08-30
 
 ## Overview
 
@@ -81,6 +81,16 @@ Client secrets use a two-layer hashing strategy:
 
 1. **SHA-256 pre-hash** — Computed at registration, stored in `secret_sha256` column for `client_secret_post` authentication (node-oidc-provider uses SHA-256 for comparison)
 2. **Argon2id full hash** — Stored in `secret_hash` column for offline verification
+
+Modern rows use the SHA-256 index to select one Argon2id candidate. Legacy rows without that index
+are checked sequentially with a maximum of 10 candidates, one admitted verification batch per
+process, and the existing issuer/client Redis rate limit. Admission ends before control returns to
+`node-oidc-provider`. This bounds expensive hashing while keeping the provider responsible for the
+actual protocol authentication result.
+
+Rotation supports at most 10 active secrets for an eligible confidential client. The bound and the
+client lifecycle check are enforced atomically under the parent row lock; revocation updates only an
+active row so concurrent requests cannot both report the same transition.
 
 ### 2FA Secret Encryption: AES-256-GCM
 

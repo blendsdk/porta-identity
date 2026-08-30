@@ -1,8 +1,9 @@
 ## Ambiguity Register: RD-04 Applications and OIDC Clients Implementation Plan
 
-> **Status**: ✅ GATE PASSED — all 8 items resolved
-> **Last Updated**: 2026-08-30 10:47
-> **Mode**: normal
+> **Status**: ✅ GATE PASSED — all 9 items resolved
+> **Last Updated**: 2026-08-30 12:44
+> **Mode**: auto-design during execution
+> **Root invocation ID**: `exec-rd04-20260830T1228`
 
 The systematic review covered feature, behavioral, scope, technical, edge-case, integration, data,
 security, non-functional, UX, stakeholder, and naming categories. RD-04, AR-71–AR-84, and its
@@ -18,6 +19,7 @@ three-iteration preflight own product behavior. This register contains only plan
 | AR-6 | Integration   | Which commands constitute the plan's completion gate?                                                        | Focused package/spec/integration/pentest checks, packed Admin UI journey, Node 24 LTS root verify, docs build, protocol and production-security harnesses, and clean committed SDK/CLI compatibility selectors / a reduced UI-only gate | Use the complete focused gate, with Node 24 LTS                                           | ✅ Resolved |
 | AR-7 | Compatibility | What should happen to secrets created before migration 013, which have no provider-compatible SHA-256 value? | Require rotation of legacy-only clients before they can authenticate, while legacy secrets remain valid during an overlap after a modern secret is generated / add request-scoped provider metadata plumbing for legacy-only secrets    | Require one modern-secret generation; legacy secrets then remain valid during overlap     | ✅ Resolved |
 | AR-8 | Concurrency   | What revocation guarantee applies to a request already authenticating?                                       | Revocation blocks subsequent requests, while one request that already validated may finish / replace provider authentication for linearizable revocation                                                                                | Subsequent requests fail; an already validated in-flight request may complete             | ✅ Resolved |
+| AR-9 | Technical (runtime) | What exact deterministic test seam represents the approved validation-to-provider handoff?              | An optional credential-free async callback awaited after successful validation and before middleware continuation / expose credential or repository data to the test / use timing-based coordination                                      | `afterCredentialValidation?: () => Promise<void>` callback; AI delegated by `--auto-design` | ✅ Resolved |
 
 ### Resolution Notes
 
@@ -66,6 +68,23 @@ one-time transition instead of adding request-local metadata infrastructure sole
 validated just before revocation may complete. Subsequent requests reload active secrets and fail.
 Making revocation linearizable across that boundary requires replacing provider authentication and
 is disproportionate for this single-operator administration product.
+
+**AR-9:** Authority: AI — delegated by `--auto-design`. Eligibility: internal testing interface
+inside the already approved deterministic handoff seam; it changes no product behavior, access
+policy, or public compatibility. Objective: prove the accepted in-flight revocation boundary
+without timing-dependent tests or credential exposure. Decision: accept an optional
+`afterCredentialValidation?: () => Promise<void>` dependency that receives no arguments and is
+awaited only after successful active-secret validation, immediately before middleware
+continuation; production omits it. Evidence: the middleware otherwise proceeds directly to
+`next()`, while ST-14 requires deterministic coordination at that exact boundary. Rejected
+alternatives: exposing credential/repository details enlarges the security-sensitive test API;
+timing or polling is nondeterministic. Strongest counterargument: any seam increases middleware
+surface, but this optional no-argument callback is smaller and safer than probabilistic race
+orchestration. Confidence: High — reopen if the middleware no longer owns this handoff. Hardening:
+the preflight challenger required a deterministic barrier, and the spec author independently
+converged on the credential-free callback. Policy version: 1. Root invocation ID:
+`exec-rd04-20260830T1228`. Reopen triggers: provider handoff moves outside this middleware or an
+existing repository-standard barrier supersedes it.
 
 ## Confirmation
 

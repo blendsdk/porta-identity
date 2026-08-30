@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 10:47
-> **Progress**: 0/49 tasks (0%)
+> **Last Updated**: 2026-08-30 14:36
+> **Progress**: 10/49 tasks (20%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -48,30 +48,45 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ## Phase 1: Server Safety, Runtime, and Role Data
 
-> **Phase baseline tree**: _(recorded by exec-plan at phase start)_
+> **Phase baseline tree**: `69319bb66147243e3a4b8b4bf3f253d04f34c88f`
 > **Scope mode**: strict — focused RD-04 validation, nested ownership, App Admin permission, PKCE,
 > and overlapping-secret corrections only
+> **Expected modification set**: `packages/server/src/`, `packages/server/tests/`,
+> `packages/server/migrations/`, the server test-inventory structure assertion, this execution plan,
+> and incremental maintainer architecture docs
 
 ### Step 1.1: Specification Tests
 
 **Reference**: [03-01](03-01-server-safety-and-data.md) · server ST-01–ST-15B · AR-4, AR-5, AR-7, AR-8
 
-- [ ] 1.1.1 [spec-author] Add immutable validation, dual-permission, secret parent/state and 10-active bound, migration-precondition, lifecycle-runtime, and PKCE specifications — focused server `*.spec.test.ts` files
-- [ ] 1.1.2 [spec-author] Add real-provider Basic/post overlap, legacy, revocation, expiry, and failure specifications plus the focused deterministic middleware handoff specification — named integration files from 07
-- [ ] 1.1.3 Run every server ST case against unchanged production code and record the expected-red boundary without changing expectations
+- [x] 1.1.1 [spec-author] Add immutable validation, dual-permission, secret parent/state and 10-active bound, migration-precondition, lifecycle-runtime, and PKCE specifications — focused server `*.spec.test.ts` files ✅ (completed: 2026-08-30 12:50)
+- [x] 1.1.2 [spec-author] Add real-provider Basic/post overlap, legacy, revocation, expiry, and failure specifications plus the focused deterministic middleware handoff specification — named integration files from 07 ✅ (completed: 2026-08-30 12:52)
+- [x] 1.1.3 Run every server ST case against unchanged production code and record the expected-red boundary without changing expectations ✅ (completed: 2026-08-30 12:54)
+
+  Expected-red evidence: Node 24 focused Vitest collected 50 cases across all nine Phase 1
+  specification files; 38 failed on the missing approved behavior and 12 passed against unchanged
+  production code. ESLint and server typecheck passed. No expectation changed.
 
 ### Step 1.2: Implementation and Green Phase
 
-- [ ] 1.2.1 Share the protocol/URI/origin compatibility validator between Admin routes and import, and align provider PKCE metadata — client validators, Admin routes, import, OIDC configuration
-- [ ] 1.2.2 Enforce client-create's two permissions; confidential/non-revoked secret list/mutation state; the atomic 10-active-secret bound in a short parent-row-lock transaction; and parent-qualified module/secret operations — application/client modules
-- [ ] 1.2.3 Add `admin:org:read` to App Admin and add the ordered idempotent migration with the no-mutation over-10 active-secret precondition — admin permissions and migration
-- [ ] 1.2.4 Implement indexed modern matching, at-most-10 sequential legacy checks, non-queuing single-batch admission, the existing 30-per-5-minute issuer/client Redis limit, fixed 429/Retry-After denial without credential classification, and canonicalization without replacing provider authentication — secret service/repository, post-parse guard, and middleware
-- [ ] 1.2.5 Run every server ST case and make the implementation green without changing expectations
+- [x] 1.2.1 Share the protocol/URI/origin compatibility validator between Admin routes and import, and align provider PKCE metadata — client validators, Admin routes, import, OIDC configuration ✅ (completed: 2026-08-30 12:58)
+- [x] 1.2.2 Enforce client-create's two permissions; confidential/non-revoked secret list/mutation state; the atomic 10-active-secret bound in a short parent-row-lock transaction; and parent-qualified module/secret operations — application/client modules ✅ (completed: 2026-08-30 13:17)
+- [x] 1.2.3 Add `admin:org:read` to App Admin and add the ordered idempotent migration with the no-mutation over-10 active-secret precondition — admin permissions and migration ✅ (completed: 2026-08-30 13:01)
+- [x] 1.2.4 Implement indexed modern matching, at-most-10 sequential legacy checks, non-queuing single-batch admission, the existing 30-per-5-minute issuer/client Redis limit, fixed 429/Retry-After denial without credential classification, and canonicalization without replacing provider authentication — secret service/repository, post-parse guard, and middleware ✅ (completed: 2026-08-30 13:17)
+- [x] 1.2.5 Run every server ST case and make the implementation green without changing expectations ✅ (completed: 2026-08-30 13:18)
 
 ### Step 1.3: Implementation Tests and Verification
 
-- [ ] 1.3.1 Add focused implementation tests for validator branches, parent-qualified SQL, migration idempotency, indexed/legacy verification work bounds, fail-closed dependencies, and AR-8's deferred-dependency middleware handoff
-- [ ] 1.3.2 Run the exact Phase 1 commands in 07, including browser, retained OIDC, protocol assurance, and Node 24 LTS `yarn verify`
+- [x] 1.3.1 Add focused implementation tests for validator branches, parent-qualified SQL, migration idempotency, indexed/legacy verification work bounds, fail-closed dependencies, and AR-8's deferred-dependency middleware handoff ✅ (completed: 2026-08-30 13:23)
+- [x] 1.3.2 Run the exact Phase 1 commands in 07, including browser, retained OIDC, protocol assurance, and Node 24 LTS `yarn verify` ✅ (completed: 2026-08-30 13:52)
+
+  Verification evidence: unit 2,904/2,904; integration 386/386; E2E 128/128; pentest 224/224;
+  browser 132/132; retained SPA/BFF harness 6/6; protocol assurance 15/15; Node 24 root
+  `yarn verify` passed after the server test-inventory assertion was mechanically updated from 253
+  to 266 files. The initial unit rerun exposed 35 compatibility/mock regressions; all were fixed
+  without changing immutable expectations before the complete gate sequence passed. After the
+  independent phase review, focused fixes passed 150 tests, a final Node 24 `yarn verify`, the
+  retained harness 6/6, and operational protocol assurance 15/15.
 
 **Deliverables:** truthful protocol validation, parent integrity, usable App Admin, and safe overlapping-secret runtime.
 

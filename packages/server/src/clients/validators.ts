@@ -13,6 +13,37 @@
 
 import type { ClientType, ApplicationType } from './types.js';
 
+/** Closed token endpoint authentication methods supported by Porta clients. */
+export type TokenEndpointAuthMethod = 'client_secret_basic' | 'client_secret_post' | 'none';
+
+/** Values needed to validate one complete OIDC client protocol configuration. */
+export interface ClientProtocolConfiguration {
+  /** Whether the client is public or confidential. */
+  clientType: ClientType;
+  /** Exact redirect destinations accepted after authorization. */
+  redirectUris: readonly string[];
+  /** OAuth grant types enabled for the client. */
+  grantTypes: readonly string[];
+  /** OIDC response types enabled for the client. */
+  responseTypes: readonly string[];
+  /** Authentication method used at the token endpoint. */
+  tokenEndpointAuthMethod: TokenEndpointAuthMethod;
+  /** Whether authorization-code requests require PKCE. */
+  requirePkce: boolean;
+  /** Exact browser origins allowed to call applicable OIDC endpoints. */
+  allowedOrigins: readonly string[];
+  /** Optional exact redirect destinations accepted after logout. */
+  postLogoutRedirectUris?: readonly string[];
+}
+
+/** Result returned by the shared client protocol validator. */
+export interface ClientProtocolValidationResult {
+  /** Whether every protocol relationship is supported. */
+  isValid: boolean;
+  /** Finite validation failures suitable for mapping to bounded domain errors. */
+  errors: readonly string[];
+}
+
 // ===========================================================================
 // Redirect URI Validation
 // ===========================================================================
@@ -73,8 +104,7 @@ export function validateRedirectUri(
 
   // HTTPS required in production (except localhost)
   if (isProduction) {
-    const isLocalhost =
-      parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
+    const isLocalhost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1';
     if (parsed.protocol !== 'https:' && !isLocalhost) {
       return {
         isValid: false,
@@ -125,6 +155,92 @@ export function validateRedirectUris(
   }
 
   return { isValid: true };
+}
+
+/** Return whether a value contains ASCII control characters. */
+function containsControlCharacters(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined && (codePoint < 32 || codePoint === 127);
+  });
+}
+
+/** Validate that a CORS entry is an exact HTTP(S) origin. */
+function validateAllowedOrigin(origin: string): boolean {
+  if (containsControlCharacters(origin) || origin.includes('*')) return false;
+  try {
+    const parsed = new URL(origin);
+    return (
+      (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
+      parsed.username === '' &&
+      parsed.password === '' &&
+      parsed.pathname === '/' &&
+      parsed.search === '' &&
+      parsed.hash === '' &&
+      parsed.origin === origin
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Validate the complete protocol relationship for an OIDC client.
+ *
+ * This validator is deliberately transport-neutral so Admin requests, imports, and service calls
+ * enforce the same public/confidential rules and URI restrictions.
+ *
+ * @param configuration - Complete client protocol configuration after defaults are applied
+ * @returns A finite list of compatibility errors
+ */
+export function validateClientProtocolCompatibility(
+  configuration: ClientProtocolConfiguration,
+): ClientProtocolValidationResult {
+  const errors: string[] = [];
+  const supportedGrants = new Set(['authorization_code', 'refresh_token', 'client_credentials']);
+  if (
+    configuration.redirectUris.length < 1 ||
+    configuration.redirectUris.length > DEFAULT_MAX_REDIRECT_URIS ||
+    !validateRedirectUris([...configuration.redirectUris], false).isValid ||
+    configuration.redirectUris.some(containsControlCharacters)
+  ) {
+    errors.push('redirectUris must contain 1 to 10 safe redirect URIs');
+  }
+  if (
+    (configuration.postLogoutRedirectUris?.length ?? 0) > DEFAULT_MAX_REDIRECT_URIS ||
+    configuration.postLogoutRedirectUris?.some(
+      (uri) => containsControlCharacters(uri) || !validateRedirectUris([uri], false).isValid,
+    )
+  ) {
+    errors.push('postLogoutRedirectUris must contain safe redirect URIs');
+  }
+  if (
+    configuration.allowedOrigins.length > DEFAULT_MAX_REDIRECT_URIS ||
+    configuration.allowedOrigins.some((origin) => !validateAllowedOrigin(origin))
+  ) {
+    errors.push('allowedOrigins must contain exact HTTP or HTTPS origins');
+  }
+  if (
+    configuration.grantTypes.length < 1 ||
+    configuration.grantTypes.some((grant) => !supportedGrants.has(grant))
+  ) {
+    errors.push('grantTypes contains an unsupported value');
+  }
+  if (configuration.responseTypes.length !== 1 || configuration.responseTypes[0] !== 'code') {
+    errors.push('responseTypes must contain only code');
+  }
+  if (configuration.clientType === 'public') {
+    if (configuration.tokenEndpointAuthMethod !== 'none') {
+      errors.push('public clients cannot authenticate with a secret');
+    }
+    if (!configuration.requirePkce) errors.push('public clients require PKCE');
+    if (configuration.grantTypes.includes('client_credentials')) {
+      errors.push('public clients cannot use client_credentials');
+    }
+  } else if (configuration.tokenEndpointAuthMethod === 'none') {
+    errors.push('confidential clients require token endpoint authentication');
+  }
+  return { isValid: errors.length === 0, errors };
 }
 
 // ===========================================================================

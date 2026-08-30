@@ -270,7 +270,7 @@ export function createApplicationRouter(): Router {
     async (ctx) => {
       try {
         const body = updateModuleSchema.parse(ctx.request.body);
-        const mod = await applicationService.updateModule(ctx.params.moduleId, body);
+        const mod = await applicationService.updateModule(ctx.params.id, ctx.params.moduleId, body);
         ctx.body = { data: mod };
       } catch (err) {
         handleError(ctx, err);
@@ -299,7 +299,7 @@ export function createApplicationRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.APP_UPDATE),
     async (ctx) => {
       try {
-        await applicationService.deactivateModule(ctx.params.moduleId);
+        await applicationService.deactivateModule(ctx.params.id, ctx.params.moduleId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);

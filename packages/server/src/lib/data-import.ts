@@ -32,7 +32,10 @@ import {
 } from './data-import-plan.js';
 import { generateClientId, generateSecret, hashSecret, sha256Secret } from '../clients/crypto.js';
 import { LOGIN_METHODS } from '../clients/types.js';
-import { validateRedirectUris } from '../clients/validators.js';
+import {
+  getDefaultGrantTypes,
+  validateClientProtocolCompatibility,
+} from '../clients/validators.js';
 import { validateSlug as validateOrganizationSlug } from '../organizations/slugs.js';
 import { validateSlug as validateApplicationSlug } from '../applications/slugs.js';
 import { validatePermissionSlug, validateRoleSlug } from '../rbac/slugs.js';
@@ -199,7 +202,7 @@ const clientSchema = z
       .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
       .min(1)
       .optional(),
-    redirect_uris: z.array(z.string()).min(1).max(10).optional(),
+    redirect_uris: z.array(z.string()).min(1).max(10),
     response_types: z.array(z.literal('code')).min(1).max(1).optional(),
     scope: z.string().optional(),
     login_methods: z.array(z.enum(LOGIN_METHODS)).min(1).optional().nullable(),
@@ -216,56 +219,22 @@ const clientSchema = z
   })
   .strict()
   .superRefine((value, context) => {
-    if (
-      value.redirect_uris !== undefined &&
-      !validateRedirectUris(value.redirect_uris, false).isValid
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Invalid redirect URI',
-        path: ['redirect_uris'],
-      });
-    }
-    if (
-      value.post_logout_redirect_uris?.some((uri) => !validateRedirectUris([uri], false).isValid)
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Invalid post-logout redirect URI',
-        path: ['post_logout_redirect_uris'],
-      });
-    }
-    if (
-      value.allowed_origins?.some((origin) => {
-        const parsed = new URL(origin);
-        return (
-          parsed.pathname !== '/' ||
-          parsed.search !== '' ||
-          parsed.hash !== '' ||
-          origin.includes('*')
-        );
-      })
-    ) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Invalid allowed origin',
-        path: ['allowed_origins'],
-      });
-    }
     const authMethod =
       value.token_endpoint_auth_method ??
       (value.client_type === 'public' ? 'none' : 'client_secret_post');
-    if (value.client_type === 'public' && (authMethod !== 'none' || value.require_pkce === false)) {
-      context.addIssue({
-        code: 'custom',
-        message: 'Public clients require PKCE and no client secret authentication',
-      });
-    }
-    if (value.client_type === 'public' && value.grant_types?.includes('client_credentials')) {
-      context.addIssue({ code: 'custom', message: 'Public clients cannot use client credentials' });
-    }
-    if (value.client_type === 'confidential' && authMethod === 'none') {
-      context.addIssue({ code: 'custom', message: 'Confidential clients require authentication' });
+    const applicationType = value.application_type ?? 'web';
+    const result = validateClientProtocolCompatibility({
+      clientType: value.client_type,
+      redirectUris: value.redirect_uris,
+      postLogoutRedirectUris: value.post_logout_redirect_uris,
+      grantTypes: value.grant_types ?? getDefaultGrantTypes(value.client_type, applicationType),
+      responseTypes: value.response_types ?? ['code'],
+      tokenEndpointAuthMethod: authMethod,
+      requirePkce: value.require_pkce ?? true,
+      allowedOrigins: value.allowed_origins ?? [],
+    });
+    for (const message of result.errors) {
+      context.addIssue({ code: 'custom', message });
     }
   });
 
@@ -1218,7 +1187,7 @@ async function processClient(
           clientDef.client_type,
           clientDef.application_type ?? 'web',
           clientDef.grant_types ?? ['authorization_code'],
-          clientDef.redirect_uris ?? [],
+          clientDef.redirect_uris,
           clientDef.response_types ?? ['code'],
           clientDef.scope ?? 'openid',
           clientDef.login_methods ?? null,

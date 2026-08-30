@@ -122,10 +122,7 @@ export async function generateAndStore(
  * @param plaintext - The secret to verify
  * @returns true if the secret matches any active secret
  */
-export async function verify(
-  clientDbId: string,
-  plaintext: string,
-): Promise<boolean> {
+export async function verify(clientDbId: string, plaintext: string): Promise<boolean> {
   try {
     // Load all active, non-expired secret hashes
     const activeSecrets = await getActiveSecretHashes(clientDbId);
@@ -179,28 +176,29 @@ export async function verify(
  * reactivated. The revoked secret remains in the database for
  * audit trail purposes until cleanup removes it.
  *
+ * @param clientDbId - Authoritative parent client UUID
  * @param secretId - Secret UUID
  * @param actorId - UUID of the user performing the action
  * @throws ClientNotFoundError if secret not found
  * @throws ClientValidationError if secret already revoked
  */
 export async function revoke(
+  clientDbId: string,
   secretId: string,
   actorId?: string,
 ): Promise<void> {
-  // Validate secret exists
-  const secret = await findSecretById(secretId);
-  if (!secret) {
-    throw new ClientNotFoundError(secretId);
-  }
-
-  // Validate secret is not already revoked
-  if (secret.status === 'revoked') {
+  const existing = await findSecretById(clientDbId, secretId);
+  if (!existing || existing.clientId !== clientDbId) throw new ClientNotFoundError(secretId);
+  if (existing.status === 'revoked') {
     throw new ClientValidationError('Secret is already revoked');
   }
 
-  // Revoke in database
-  await repoRevokeSecret(secretId);
+  const secret = await repoRevokeSecret(clientDbId, secretId);
+  if (!secret) {
+    const current = await findSecretById(clientDbId, secretId);
+    if (!current || current.clientId !== clientDbId) throw new ClientNotFoundError(secretId);
+    throw new ClientValidationError('Secret is already revoked');
+  }
 
   // Audit log (fire-and-forget)
   await writeAuditLog({

@@ -43,6 +43,10 @@ import { LOGIN_METHODS } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
+import {
+  getDefaultGrantTypes,
+  validateClientProtocolCompatibility,
+} from '../clients/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -68,23 +72,43 @@ const loginMethodSchema = z.enum(LOGIN_METHODS);
 const clientLoginMethodsSchema = z.array(loginMethodSchema).min(1).nullable();
 
 /** Schema for creating a new client */
-const createClientSchema = z.object({
-  organizationId: z.string().uuid(),
-  applicationId: z.string().uuid(),
-  clientName: z.string().min(1).max(255),
-  clientType: z.enum(['confidential', 'public']),
-  applicationType: z.enum(['web', 'native', 'spa']),
-  redirectUris: z.array(z.string().url()).min(1).max(10),
-  postLogoutRedirectUris: z.array(z.string().url()).max(10).optional(),
-  grantTypes: z.array(z.string()).optional(),
-  responseTypes: z.array(z.string()).optional(),
-  scope: z.string().optional(),
-  tokenEndpointAuthMethod: z.enum(['client_secret_basic', 'client_secret_post', 'none']).optional(),
-  allowedOrigins: z.array(z.string().url()).optional(),
-  requirePkce: z.boolean().optional(),
-  loginMethods: clientLoginMethodsSchema.optional(),
-  secretLabel: z.string().max(255).optional(),
-});
+const createClientSchema = z
+  .object({
+    organizationId: z.string().uuid(),
+    applicationId: z.string().uuid(),
+    clientName: z.string().min(1).max(255),
+    clientType: z.enum(['confidential', 'public']),
+    applicationType: z.enum(['web', 'native', 'spa']),
+    redirectUris: z.array(z.string().url()).min(1).max(10),
+    postLogoutRedirectUris: z.array(z.string().url()).max(10).optional(),
+    grantTypes: z
+      .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
+      .optional(),
+    responseTypes: z.array(z.literal('code')).optional(),
+    scope: z.string().optional(),
+    tokenEndpointAuthMethod: z
+      .enum(['client_secret_basic', 'client_secret_post', 'none'])
+      .optional(),
+    allowedOrigins: z.array(z.string().url()).max(10).optional(),
+    requirePkce: z.boolean().optional(),
+    loginMethods: clientLoginMethodsSchema.optional(),
+    secretLabel: z.string().max(255).optional(),
+  })
+  .superRefine((value, context) => {
+    const result = validateClientProtocolCompatibility({
+      clientType: value.clientType,
+      redirectUris: value.redirectUris,
+      postLogoutRedirectUris: value.postLogoutRedirectUris,
+      grantTypes: value.grantTypes ?? getDefaultGrantTypes(value.clientType, value.applicationType),
+      responseTypes: value.responseTypes ?? ['code'],
+      tokenEndpointAuthMethod:
+        value.tokenEndpointAuthMethod ??
+        (value.clientType === 'public' ? 'none' : 'client_secret_basic'),
+      requirePkce: value.requirePkce ?? true,
+      allowedOrigins: value.allowedOrigins ?? [],
+    });
+    for (const message of result.errors) context.addIssue({ code: 'custom', message });
+  });
 
 /** Schema for updating a client (all fields optional) */
 const updateClientSchema = z.object({
@@ -212,34 +236,38 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create client
   // -------------------------------------------------------------------------
-  router.post('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_CREATE), async (ctx) => {
-    try {
-      const body = createClientSchema.parse(ctx.request.body);
+  router.post(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.CLIENT_CREATE, ADMIN_PERMISSIONS.APP_READ),
+    async (ctx) => {
+      try {
+        const body = createClientSchema.parse(ctx.request.body);
 
-      // Create client (returns ClientWithSecret — secret is null here)
-      const result = await clientService.createClient(body);
+        // Create client (returns ClientWithSecret — secret is null here)
+        const result = await clientService.createClient(body);
 
-      // For confidential clients, generate the initial secret automatically
-      let secret = result.secret;
-      if (body.clientType === 'confidential') {
-        secret = await secretService.generateAndStore(result.client.id, {
-          label: body.secretLabel,
-        });
+        // For confidential clients, generate the initial secret automatically
+        let secret = result.secret;
+        if (body.clientType === 'confidential') {
+          secret = await secretService.generateAndStore(result.client.id, {
+            label: body.secretLabel,
+          });
+        }
+
+        // Decorate the client with its resolved `effectiveLoginMethods` so
+        // API consumers get both the raw override and the effective value.
+        const decoratedClient = await withEffectiveLoginMethods(result.client);
+
+        ctx.status = 201;
+        ctx.body = {
+          data: { client: decoratedClient, secret },
+          ...(secret ? { warning: 'Store the secret securely. It will not be shown again.' } : {}),
+        };
+      } catch (err) {
+        handleError(ctx, err);
       }
-
-      // Decorate the client with its resolved `effectiveLoginMethods` so
-      // API consumers get both the raw override and the effective value.
-      const decoratedClient = await withEffectiveLoginMethods(result.client);
-
-      ctx.status = 201;
-      ctx.body = {
-        data: { client: decoratedClient, secret },
-        ...(secret ? { warning: 'Store the secret securely. It will not be shown again.' } : {}),
-      };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET / — List clients (paginated)
@@ -339,6 +367,8 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   router.post('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
+      const client = await requireEligibleSecretParent(ctx.params.id);
+      if (!client) ctx.throw(404, 'Client not found');
       const body = createSecretSchema.parse(ctx.request.body);
       const secret = await secretService.generateAndStore(ctx.params.id, body);
       ctx.status = 201;
@@ -355,6 +385,8 @@ export function createClientRouter(): Router {
   // GET /:id/secrets — List secrets (no hashes)
   // -------------------------------------------------------------------------
   router.get('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
+    const client = await requireEligibleSecretParent(ctx.params.id);
+    if (!client) ctx.throw(404, 'Client not found');
     const secrets = await secretService.listByClient(ctx.params.id);
     ctx.body = { data: secrets };
   });
@@ -380,7 +412,9 @@ export function createClientRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE),
     async (ctx) => {
       try {
-        await secretService.revoke(ctx.params.secretId);
+        const client = await requireEligibleSecretParent(ctx.params.id);
+        if (!client) ctx.throw(404, 'Client not found');
+        await secretService.revoke(ctx.params.id, ctx.params.secretId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -389,4 +423,11 @@ export function createClientRouter(): Router {
   );
 
   return router;
+}
+
+/** Return a client only when its secret collection is administratively available. */
+async function requireEligibleSecretParent(id: string): Promise<Client | null> {
+  const client = await clientService.getClientById(id);
+  if (!client || client.clientType !== 'confidential' || client.status === 'revoked') return null;
+  return client;
 }

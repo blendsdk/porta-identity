@@ -486,10 +486,10 @@ export function createApp(oidcProvider?: Provider): Koa {
     // origin checks. OPTIONS preflights are short-circuited here with 204.
     oidcRouter.use(oidcPreflightCors());
 
-    // Pre-hash client secrets with SHA-256 before oidc-provider processes them.
-    // This enables secure secret storage: we store SHA-256 hashes in the DB,
-    // the middleware hashes the presented secret, and oidc-provider compares them.
-    // Requires body parser above so ctx.request.body.client_secret is available.
+    // Validate active confidential-client credentials before oidc-provider processes them, then
+    // replace a proven credential with the canonical SHA-256 value stored in provider metadata.
+    // Provider parsing and authentication-method checks remain authoritative. The body parser above
+    // makes client_secret_post available to this bounded bridge.
     oidcRouter.use(clientSecretHash());
 
     // Delegate all OIDC requests to node-oidc-provider's callback handler.

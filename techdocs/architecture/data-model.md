@@ -1,10 +1,10 @@
 # Data Model
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-08-30
 
 ## Overview
 
-Porta's data model is defined across 23 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
+Porta's data model is defined across 24 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
 
 ## Entity Relationship Diagram
 
@@ -108,6 +108,11 @@ Hashed client secrets with lifecycle management.
 | `status`        | VARCHAR(20)  | `active`, `revoked`                       |
 | `expires_at`    | TIMESTAMPTZ  | Optional expiry                           |
 | `last_used_at`  | TIMESTAMPTZ  | Usage tracking                            |
+
+Confidential clients can keep overlapping active secrets during rotation, with a hard maximum of
+10 active secrets per client. Secret creation locks the parent client row, rechecks that the client
+is still confidential and non-revoked, then counts and inserts within the same short transaction.
+Secret list and mutation queries always qualify both the client and secret identifiers.
 
 ### Users
 

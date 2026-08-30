@@ -158,7 +158,7 @@ describe('Client Repository (Integration)', () => {
     expect(secrets).toHaveLength(1);
 
     // Revoke secret
-    await revokeSecret(secret.id);
+    await revokeSecret(client.id, secret.id);
     const afterRevoke = await listSecretsByClient(client.id);
     expect(afterRevoke[0].status).toBe('revoked');
   });

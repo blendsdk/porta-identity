@@ -4,7 +4,10 @@ import type { ClientSecretRow } from '../../../src/clients/types.js';
 // Mock the database module
 const mockQuery = vi.fn();
 vi.mock('../../../src/lib/database.js', () => ({
-  getPool: () => ({ query: mockQuery }),
+  getPool: () => ({
+    query: mockQuery,
+  }),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
 }));
 
 import {
@@ -43,7 +46,12 @@ describe('secret repository', () => {
   describe('insertSecret', () => {
     it('should insert and return mapped secret (without hash)', async () => {
       const row = createSecretRow();
-      mockQuery.mockResolvedValue({ rows: [row] });
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 'client-uuid-1', client_type: 'confidential', status: 'active' }],
+        })
+        .mockResolvedValueOnce({ rows: [{ count: '0' }] })
+        .mockResolvedValueOnce({ rows: [row] });
 
       const result = await insertSecret({
         clientId: 'client-uuid-1',
@@ -56,7 +64,50 @@ describe('secret repository', () => {
       expect(result.id).toBe('secret-uuid-1');
       expect(result.label).toBe('production-key');
       expect(result).not.toHaveProperty('secretHash');
-      expect(mockQuery.mock.calls[0][0]).toContain('INSERT INTO client_secrets');
+      expect(
+        mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO client_secrets')),
+      ).toBe(true);
+    });
+
+    it.each([
+      ['public', 'active'],
+      ['confidential', 'revoked'],
+    ])('should reject an ineligible %s/%s parent before counting', async (clientType, status) => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ id: 'client-uuid-1', client_type: clientType, status }],
+      });
+
+      await expect(
+        insertSecret({
+          clientId: 'client-uuid-1',
+          secretHash: '$argon2id$hash',
+          secretSha256: 'a'.repeat(64),
+          label: null,
+          expiresAt: null,
+        }),
+      ).rejects.toMatchObject({ name: 'ClientNotFoundError' });
+      expect(mockQuery).toHaveBeenCalledOnce();
+    });
+
+    it('should reject the active cap with a bounded validation error', async () => {
+      mockQuery
+        .mockResolvedValueOnce({
+          rows: [{ id: 'client-uuid-1', client_type: 'confidential', status: 'active' }],
+        })
+        .mockResolvedValueOnce({ rows: [{ count: '10' }] });
+
+      await expect(
+        insertSecret({
+          clientId: 'client-uuid-1',
+          secretHash: '$argon2id$hash',
+          secretSha256: 'a'.repeat(64),
+          label: null,
+          expiresAt: null,
+        }),
+      ).rejects.toMatchObject({ name: 'ClientValidationError' });
+      expect(
+        mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO client_secrets')),
+      ).toBe(false);
     });
   });
 
@@ -92,7 +143,7 @@ describe('secret repository', () => {
     it('should return secret when found', async () => {
       mockQuery.mockResolvedValue({ rows: [createSecretRow()] });
 
-      const result = await findSecretById('secret-uuid-1');
+      const result = await findSecretById('client-uuid-1', 'secret-uuid-1');
 
       expect(result).not.toBeNull();
       expect(result!.id).toBe('secret-uuid-1');
@@ -101,7 +152,7 @@ describe('secret repository', () => {
     it('should return null when not found', async () => {
       mockQuery.mockResolvedValue({ rows: [] });
 
-      const result = await findSecretById('nonexistent');
+      const result = await findSecretById('client-uuid-1', 'nonexistent');
 
       expect(result).toBeNull();
     });
@@ -148,16 +199,17 @@ describe('secret repository', () => {
       const row = createSecretRow({ status: 'revoked' });
       mockQuery.mockResolvedValue({ rows: [row] });
 
-      const result = await revokeSecret('secret-uuid-1');
+      const result = await revokeSecret('client-uuid-1', 'secret-uuid-1');
 
       expect(result).not.toBeNull();
       expect(result!.status).toBe('revoked');
+      expect(String(mockQuery.mock.calls[0][0])).toContain("status = 'active'");
     });
 
     it('should return null when not found', async () => {
       mockQuery.mockResolvedValue({ rows: [] });
 
-      const result = await revokeSecret('nonexistent');
+      const result = await revokeSecret('client-uuid-1', 'nonexistent');
 
       expect(result).toBeNull();
     });

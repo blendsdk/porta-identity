@@ -1,230 +1,67 @@
-import { describe, it, expect, vi } from 'vitest';
-import { createHash } from 'node:crypto';
+import { describe, expect, it, vi } from 'vitest';
 
 import { clientSecretHash } from '../../../src/middleware/client-secret-hash.js';
 
-/** Compute expected SHA-256 hex hash */
-function sha256(input: string): string {
-  return createHash('sha256').update(input).digest('hex');
-}
-
-/** Minimal Koa-like context shape for testing the client-secret-hash middleware. */
-interface MockKoaCtx {
-  headers: Record<string, string | undefined>;
-  req: { headers: Record<string, string | undefined> };
-  request: { body: Record<string, unknown> };
-}
-
-/** Create a mock Koa context */
-function createMockContext(overrides: {
+/** Create the minimal untrusted context used to verify safe provider delegation. */
+function context(options: {
   authorization?: string;
   body?: Record<string, unknown>;
-} = {}): { ctx: MockKoaCtx; next: ReturnType<typeof vi.fn> } {
-  const reqHeaders: Record<string, string | undefined> = {};
-  if (overrides.authorization) {
-    reqHeaders.authorization = overrides.authorization;
-  }
-
-  const headers: Record<string, string | undefined> = { ...reqHeaders };
-  const req = { headers: { ...reqHeaders } };
-  const body = overrides.body ?? {};
-  const request = { body };
-
-  const ctx: MockKoaCtx = { headers, req, request };
-  const next = vi.fn().mockResolvedValue(undefined);
-
-  return { ctx, next };
+}) {
+  const headers: Record<string, string | undefined> = {
+    authorization: options.authorization,
+  };
+  return {
+    headers,
+    req: { headers: { ...headers } },
+    request: { body: options.body ?? {} },
+    state: {},
+  };
 }
 
-describe('client-secret-hash middleware', () => {
-  const middleware = clientSecretHash();
+describe('client-secret bridge provider delegation', () => {
+  it('should leave Basic credentials untouched without resolved tenant authority', async () => {
+    const authorization = `Basic ${Buffer.from('client:secret').toString('base64')}`;
+    const ctx = context({ authorization });
+    const next = vi.fn().mockResolvedValue(undefined);
 
-  describe('client_secret_basic (Authorization: Basic header)', () => {
-    it('hashes the secret in a Basic auth header', async () => {
-      const clientId = 'my-client-id';
-      const secret = 'my-super-secret-value';
-      const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
-      const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
+    await clientSecretHash()(ctx as never, next);
 
-      await middleware(ctx as never, next);
-
-      const expectedHash = sha256(secret);
-      const expectedEncoded = Buffer.from(`${clientId}:${expectedHash}`).toString('base64');
-      expect(ctx.headers.authorization).toBe(`Basic ${expectedEncoded}`);
-      expect(ctx.req.headers.authorization).toBe(`Basic ${expectedEncoded}`);
-      expect(next).toHaveBeenCalledOnce();
-    });
-
-    it('preserves the client_id in Basic auth', async () => {
-      const clientId = 'test-client-abc123';
-      const secret = 'some-secret';
-      const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
-      const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
-
-      await middleware(ctx as never, next);
-
-      const decoded = Buffer.from(
-        ctx.headers.authorization!.slice(6),
-        'base64',
-      ).toString('utf8');
-      const colonIndex = decoded.indexOf(':');
-      expect(decoded.slice(0, colonIndex)).toBe(clientId);
-    });
-
-    it('does not modify header when secret is empty', async () => {
-      const clientId = 'my-client';
-      const encoded = Buffer.from(`${clientId}:`).toString('base64');
-      const original = `Basic ${encoded}`;
-      const { ctx, next } = createMockContext({ authorization: original });
-
-      await middleware(ctx as never, next);
-
-      expect(ctx.headers.authorization).toBe(original);
-      expect(next).toHaveBeenCalledOnce();
-    });
-
-    it('handles URL-encoded characters in client_id', async () => {
-      const clientId = 'client%20with%20spaces';
-      const secret = 'secret123';
-      const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
-      const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
-
-      await middleware(ctx as never, next);
-
-      const decoded = Buffer.from(
-        ctx.headers.authorization!.slice(6),
-        'base64',
-      ).toString('utf8');
-      const colonIndex = decoded.indexOf(':');
-      expect(decoded.slice(0, colonIndex)).toBe(clientId);
-      expect(decoded.slice(colonIndex + 1)).toBe(sha256(secret));
-    });
-
-    it('handles secrets containing colons', async () => {
-      const clientId = 'my-client';
-      const secret = 'secret:with:colons';
-      const encoded = Buffer.from(`${clientId}:${secret}`).toString('base64');
-      const { ctx, next } = createMockContext({ authorization: `Basic ${encoded}` });
-
-      await middleware(ctx as never, next);
-
-      const decoded = Buffer.from(
-        ctx.headers.authorization!.slice(6),
-        'base64',
-      ).toString('utf8');
-      const colonIndex = decoded.indexOf(':');
-      expect(decoded.slice(0, colonIndex)).toBe(clientId);
-      expect(decoded.slice(colonIndex + 1)).toBe(sha256(secret));
-    });
-
-    it('handles malformed Basic auth gracefully', async () => {
-      const { ctx, next } = createMockContext({ authorization: 'Basic not-valid-base64!!!' });
-
-      // Should not throw — let oidc-provider handle the error
-      await middleware(ctx as never, next);
-      expect(next).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe('non-Basic auth schemes', () => {
-    it('does not modify Bearer auth headers', async () => {
-      const original = 'Bearer some-token-value';
-      const { ctx, next } = createMockContext({ authorization: original });
-
-      await middleware(ctx as never, next);
-
-      expect(ctx.headers.authorization).toBe(original);
-      expect(next).toHaveBeenCalledOnce();
-    });
-
-    it('passes through requests without Authorization header', async () => {
-      const { ctx, next } = createMockContext();
-
-      await middleware(ctx as never, next);
-
-      expect(ctx.headers.authorization).toBeUndefined();
-      expect(next).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe('client_secret_post (body parameter)', () => {
-    it('hashes client_secret in POST body', async () => {
-      const secret = 'my-post-secret';
-      const body = { client_id: 'my-client', client_secret: secret, grant_type: 'authorization_code' };
-      const { ctx, next } = createMockContext({ body });
-
-      await middleware(ctx as never, next);
-
-      expect(body.client_secret).toBe(sha256(secret));
-      expect(body.client_id).toBe('my-client'); // unchanged
-      expect(next).toHaveBeenCalledOnce();
-    });
-
-    it('does not modify body when client_secret is missing', async () => {
-      const body = { client_id: 'my-client', grant_type: 'authorization_code' };
-      const { ctx, next } = createMockContext({ body });
-
-      await middleware(ctx as never, next);
-
-      expect(body).toEqual({ client_id: 'my-client', grant_type: 'authorization_code' });
-      expect(next).toHaveBeenCalledOnce();
-    });
-
-    it('does not modify body when client_secret is empty string', async () => {
-      const body = { client_id: 'my-client', client_secret: '' };
-      const { ctx, next } = createMockContext({ body });
-
-      await middleware(ctx as never, next);
-
-      expect(body.client_secret).toBe('');
-      expect(next).toHaveBeenCalledOnce();
-    });
-
-    it('does not modify body when client_secret is not a string', async () => {
-      const body = { client_id: 'my-client', client_secret: 12345 };
-      const { ctx, next } = createMockContext({ body: body as Record<string, unknown> });
-
-      await middleware(ctx as never, next);
-
-      expect(body.client_secret).toBe(12345); // unchanged
-      expect(next).toHaveBeenCalledOnce();
-    });
-  });
-
-  describe('combined Basic + body', () => {
-    it('hashes both Basic auth and body secret when both present', async () => {
-      const basicSecret = 'basic-secret';
-      const postSecret = 'post-secret';
-      const encoded = Buffer.from(`client-id:${basicSecret}`).toString('base64');
-      const body = { client_secret: postSecret };
-      const { ctx, next } = createMockContext({
-        authorization: `Basic ${encoded}`,
-        body,
-      });
-
-      await middleware(ctx as never, next);
-
-      // Both should be hashed
-      const decoded = Buffer.from(
-        ctx.headers.authorization!.slice(6),
-        'base64',
-      ).toString('utf8');
-      expect(decoded.split(':')[1]).toBe(sha256(basicSecret));
-      expect(body.client_secret).toBe(sha256(postSecret));
-      expect(next).toHaveBeenCalledOnce();
-    });
-  });
-
-  it('always calls next()', async () => {
-    const { ctx, next } = createMockContext();
-    await middleware(ctx as never, next);
+    expect(ctx.headers.authorization).toBe(authorization);
+    expect(ctx.req.headers.authorization).toBe(authorization);
     expect(next).toHaveBeenCalledOnce();
   });
 
-  it('SHA-256 hash is 64-character hex string', async () => {
-    const secret = 'test-secret-for-hash-length';
-    const hash = sha256(secret);
-    expect(hash).toHaveLength(64);
-    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+  it('should leave post credentials untouched without resolved tenant authority', async () => {
+    const body = { client_id: 'client', client_secret: 'secret' };
+    const ctx = context({ body });
+    const next = vi.fn().mockResolvedValue(undefined);
+
+    await clientSecretHash()(ctx as never, next);
+
+    expect(body.client_secret).toBe('secret');
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it('should leave malformed Basic credentials to oidc-provider', async () => {
+    const ctx = context({ authorization: 'Basic !!!not-base64!!!' });
+    const next = vi.fn().mockResolvedValue(undefined);
+
+    await clientSecretHash()(ctx as never, next);
+
+    expect(ctx.headers.authorization).toBe('Basic !!!not-base64!!!');
+    expect(next).toHaveBeenCalledOnce();
+  });
+
+  it('should leave simultaneous Basic and post mechanisms untouched', async () => {
+    const authorization = `Basic ${Buffer.from('client:basic-secret').toString('base64')}`;
+    const body = { client_id: 'client', client_secret: 'post-secret' };
+    const ctx = context({ authorization, body });
+    const next = vi.fn().mockResolvedValue(undefined);
+
+    await clientSecretHash()(ctx as never, next);
+
+    expect(ctx.headers.authorization).toBe(authorization);
+    expect(body.client_secret).toBe('post-secret');
+    expect(next).toHaveBeenCalledOnce();
   });
 });

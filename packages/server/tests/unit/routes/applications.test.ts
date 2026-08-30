@@ -384,7 +384,7 @@ describe('application routes', () => {
 
       expect(ctx.body).toEqual({ data: mod });
       // Verify moduleId is used (not the app id)
-      expect(applicationService.updateModule).toHaveBeenCalledWith('mod-uuid-1', {
+      expect(applicationService.updateModule).toHaveBeenCalledWith('app-uuid-1', 'mod-uuid-1', {
         name: 'Updated CRM',
       });
     });
@@ -407,7 +407,10 @@ describe('application routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(204);
-      expect(applicationService.deactivateModule).toHaveBeenCalledWith('mod-uuid-1');
+      expect(applicationService.deactivateModule).toHaveBeenCalledWith(
+        'app-uuid-1',
+        'mod-uuid-1',
+      );
     });
   });
 

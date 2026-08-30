@@ -184,9 +184,24 @@ describe('buildProviderConfiguration', () => {
 
     it('requires PKCE with S256 only', () => {
       const cfg = buildProviderConfiguration(createTestParams());
-      const pkce = cfg.pkce as { required: () => boolean; methods: string[] };
+      const pkce = cfg.pkce as {
+        required: (ctx: unknown, client: Record<string, unknown>) => boolean;
+        methods: string[];
+      };
 
-      expect(pkce.required()).toBe(true);
+      expect(pkce.required(undefined, { 'urn:porta:client_type': 'public' })).toBe(true);
+      expect(
+        pkce.required(undefined, {
+          'urn:porta:client_type': 'confidential',
+          'urn:porta:require_pkce': true,
+        }),
+      ).toBe(true);
+      expect(
+        pkce.required(undefined, {
+          'urn:porta:client_type': 'confidential',
+          'urn:porta:require_pkce': false,
+        }),
+      ).toBe(false);
       expect(pkce.methods).toEqual(['S256']);
     });
 

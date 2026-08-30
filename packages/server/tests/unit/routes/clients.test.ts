@@ -200,6 +200,7 @@ describe('client routes', () => {
     (organizationService.getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(
       createTestOrg(),
     );
+    (clientService.getClientById as ReturnType<typeof vi.fn>).mockResolvedValue(createTestClient());
   });
 
   // -------------------------------------------------------------------------
@@ -668,6 +669,18 @@ describe('client routes', () => {
 
       expect(ctx.status).toBe(201);
     });
+
+    it('should map the active-secret cap to the fixed client-validation response', async () => {
+      (secretService.generateAndStore as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ClientValidationError('Client secret active limit reached'),
+      );
+      const router = createClientRouter();
+      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets');
+      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' }, body: {} });
+
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
+      expect(ctx.throw).toHaveBeenCalledWith(400, 'Client request is invalid');
+    });
   });
 
   describe('GET /:id/secrets — List secrets', () => {
@@ -708,8 +721,10 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(204);
-      // Verify secretId is used (not the client id)
-      expect(secretService.revoke).toHaveBeenCalledWith('secret-uuid-1');
+      expect(secretService.revoke).toHaveBeenCalledWith(
+        'client-db-uuid-1',
+        'secret-uuid-1',
+      );
     });
 
     it('should throw 400 when secret already revoked', async () => {
