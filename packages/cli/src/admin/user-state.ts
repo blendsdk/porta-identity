@@ -139,6 +139,8 @@ export type AdminUserProjection =
 /** Complete user workspace state for one selected organization and session. */
 export type AdminUserViewState =
   | { readonly kind: 'closed' }
+  | { readonly kind: 'success'; readonly action: 'created' | 'invited' }
+  | { readonly kind: 'indeterminate' }
   | { readonly kind: 'loading'; readonly previous?: AdminUserProjection }
   | { readonly kind: 'page'; readonly page: AdminUserPage; readonly outcome?: AdminUserOutcome }
   | ({ readonly kind: 'detail'; readonly outcome?: AdminUserOutcome } & AdminUserSelection)

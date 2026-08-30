@@ -280,11 +280,17 @@ describe('admin command surface', () => {
     );
   });
 
-  it('should construct organization SDK access lazily against the normalized selected server', async () => {
-    // Command startup and verification do not create an SDK client; the first verified organization request binds the selected origin.
+  it('should lazily share one normalized SDK client across organization and user providers', async () => {
+    // Command startup and verification do not create an SDK client; the first verified request binds the selected origin.
     const { runAdminCommand } = await import('../../src/commands/admin.js');
     const listAll = vi.fn().mockResolvedValue([]);
-    clientFactory.createClient.mockReturnValue({ organizations: { listAll, create: vi.fn() } });
+    const listUsers = vi
+      .fn()
+      .mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
+    clientFactory.createClient.mockReturnValue({
+      organizations: { listAll, create: vi.fn() },
+      users: { list: listUsers },
+    });
     const runApplication = vi.fn(async (options) => {
       expect(clientFactory.createClient).not.toHaveBeenCalled();
       const prepared = options.prepareSession(new URL('https://SELECTED.example.test:443/'), {
@@ -301,6 +307,9 @@ describe('admin command surface', () => {
         server: 'https://selected.example.test',
       });
       expect(listAll).toHaveBeenCalledOnce();
+      await prepared.session.users.list('11111111-1111-4111-8111-111111111111', { page: 1 });
+      expect(clientFactory.createClient).toHaveBeenCalledOnce();
+      expect(listUsers).toHaveBeenCalledOnce();
       return 0;
     });
     const dependencies = commandDependencies({ runApplication });

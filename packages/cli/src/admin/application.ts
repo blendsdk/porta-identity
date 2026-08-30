@@ -20,6 +20,8 @@ import {
 } from './organization-dialogs.js';
 import type { AdminOrganizationOperations } from './organization-service.js';
 import type { AdminUserOperations } from './user-service.js';
+import { createAdminUserController } from './user-controller.js';
+import type { AdminUserController } from './user-controller.js';
 import { ADMIN_COMMANDS, createAdminPresentation } from './presentation.js';
 import {
   canRetryAdminState,
@@ -130,6 +132,10 @@ export async function runAdminApplication(
   );
   let currentController: AbortController | undefined;
   let organizationDialogOpen = false;
+  let userDialogOpen = false;
+  let userController: AdminUserController | undefined;
+  let userRecoveryRequired = false;
+  let sessionEpoch = initialState.kind === 'authenticated' ? 1 : 0;
   const standardKeymap = createKeymap({
     'ctrl+r': ADMIN_COMMANDS.reauthenticate,
     'alt+x': Commands.quit,
@@ -137,7 +143,7 @@ export async function runAdminApplication(
   const applicationKeymap: Keymap = {
     // Escape remains a raw dialog key unless an application operation currently owns cancellation.
     lookup: (event) =>
-      event.key === 'escape' && (currentController || organizationDialogOpen)
+      event.key === 'escape' && (currentController || organizationDialogOpen || userDialogOpen)
         ? ADMIN_COMMANDS.cancel
         : standardKeymap.lookup(event),
   };
@@ -173,6 +179,7 @@ export async function runAdminApplication(
   const setState = (state: AdminConnectionState): void => {
     if (disposed) return;
     presentation.setState(state);
+    userController?.syncContext(state, sessionEpoch);
     application.loop.enableCommand(ADMIN_COMMANDS.authenticate, state.kind === 'unauthenticated');
     application.loop.enableCommand(ADMIN_COMMANDS.retry, canRetryAdminState(state));
     application.loop.enableCommand(
@@ -186,18 +193,49 @@ export async function runAdminApplication(
         state.capabilities.canCreateOrganizations &&
         !createRecoveryRequired &&
         !organizationDialogOpen &&
-        !currentController,
+        !currentController &&
+        !userDialogOpen,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.switchOrganization,
       state.kind === 'authenticated' &&
         state.capabilities.canReadOrganizations &&
         !organizationDialogOpen &&
+        !currentController &&
+        !userDialogOpen,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.browseUsers,
+      state.kind === 'authenticated' &&
+        Boolean(state.organization) &&
+        state.capabilities.canReadUsers &&
+        !userDialogOpen &&
+        !organizationDialogOpen &&
         !currentController,
     );
     application.loop.enableCommand(
+      ADMIN_COMMANDS.createUser,
+      state.kind === 'authenticated' &&
+        Boolean(state.organization) &&
+        state.capabilities.canCreateUsers &&
+        !userDialogOpen &&
+        !organizationDialogOpen &&
+        !currentController &&
+        !userRecoveryRequired,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.inviteUser,
+      state.kind === 'authenticated' &&
+        Boolean(state.organization) &&
+        state.capabilities.canInviteUsers &&
+        !userDialogOpen &&
+        !organizationDialogOpen &&
+        !currentController &&
+        !userRecoveryRequired,
+    );
+    application.loop.enableCommand(
       ADMIN_COMMANDS.cancel,
-      currentController !== undefined || organizationDialogOpen,
+      currentController !== undefined || organizationDialogOpen || userDialogOpen,
     );
     syncAuthenticationGate(state);
   };
@@ -267,6 +305,8 @@ export async function runAdminApplication(
     cancelIdentityDialog();
     cancelOrganizationWork();
     cancelSessionOperation();
+    userController?.cancelActiveOperation();
+    dialogSurface.removeAll();
   };
 
   /** Opens the gate exactly once when the application is usable but not authenticated. */
@@ -281,7 +321,8 @@ export async function runAdminApplication(
       currentController ||
       authenticationGateOpen ||
       organizationDialogOpen ||
-      identityDialogOpen
+      identityDialogOpen ||
+      userDialogOpen
     ) {
       return;
     }
@@ -311,6 +352,7 @@ export async function runAdminApplication(
 
   /** Enters the established unauthenticated state after a final organization 401. */
   const invalidateSession = (): void => {
+    sessionEpoch += 1;
     createRecoveryRequired = false;
     cancelOrganizationWork();
     const operationServer = server;
@@ -330,6 +372,7 @@ export async function runAdminApplication(
       authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
+      userDialogOpen ||
       disposed
     ) {
       return;
@@ -377,6 +420,7 @@ export async function runAdminApplication(
       authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
+      userDialogOpen ||
       disposed
     ) {
       return;
@@ -436,6 +480,7 @@ export async function runAdminApplication(
       authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
+      userDialogOpen ||
       disposed
     )
       return;
@@ -453,6 +498,7 @@ export async function runAdminApplication(
     void operation(controller.signal)
       .then((state) => {
         if (state && !disposed && currentController === controller && !controller.signal.aborted) {
+          if (state.kind === 'authenticated') sessionEpoch += 1;
           setState(state);
           openOrganizationChoice = state.kind === 'authenticated' && !state.organization;
         }
@@ -487,6 +533,7 @@ export async function runAdminApplication(
       authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
+      userDialogOpen ||
       disposed
     )
       return;
@@ -514,10 +561,12 @@ export async function runAdminApplication(
           return;
         }
         if (state.kind !== 'authenticated') {
+          sessionEpoch += 1;
           setState(state);
           release();
           return;
         }
+        sessionEpoch += 1;
         if (previous.kind !== 'authenticated' || !previous.organization) {
           setState(state);
           openOrganizationChoice = !state.organization;
@@ -569,6 +618,26 @@ export async function runAdminApplication(
       .finally(release);
   }
 
+  userController = createAdminUserController({
+    host: dialogHost,
+    readState: () => presentation.getState(),
+    readOperations: () => session?.users,
+    mountWorkspace: presentation.setUserWorkspace,
+    isApplicationBusy: () =>
+      Boolean(
+        currentController || authenticationGateOpen || organizationDialogOpen || identityDialogOpen,
+      ),
+    setDialogBusy: (busy) => {
+      userDialogOpen = busy;
+      setState(presentation.getState());
+    },
+    requestAuthentication: invalidateSession,
+    setRecoveryRequired: (required) => {
+      userRecoveryRequired = required;
+      setState(presentation.getState());
+    },
+  });
+
   const unregisterCommands = [
     application.onCommand(ADMIN_COMMANDS.authenticate, () => startOperation(session?.authenticate)),
     application.onCommand(ADMIN_COMMANDS.retry, () => startOperation(session?.retry)),
@@ -581,6 +650,7 @@ export async function runAdminApplication(
         authenticationGateOpen ||
         organizationDialogOpen ||
         identityDialogOpen ||
+        userDialogOpen ||
         disposed
       )
         return;
@@ -593,7 +663,20 @@ export async function runAdminApplication(
     }),
     application.onCommand(ADMIN_COMMANDS.createOrganization, startCreateOrganization),
     application.onCommand(ADMIN_COMMANDS.switchOrganization, startOrganizationChooser),
+    application.onCommand(ADMIN_COMMANDS.browseUsers, () =>
+      userController?.handleCommand(ADMIN_COMMANDS.browseUsers),
+    ),
+    application.onCommand(ADMIN_COMMANDS.createUser, () =>
+      userController?.handleCommand(ADMIN_COMMANDS.createUser),
+    ),
+    application.onCommand(ADMIN_COMMANDS.inviteUser, () =>
+      userController?.handleCommand(ADMIN_COMMANDS.inviteUser),
+    ),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
+      if (userDialogOpen) {
+        userController?.cancelActiveOperation();
+        return;
+      }
       if (identityDialogOpen) {
         cancelIdentityDialog();
         return;
@@ -612,7 +695,10 @@ export async function runAdminApplication(
   const resizeApplication = application.loop.onResize;
   application.loop.onResize = (size) => {
     resizeApplication?.(size);
-    if (presentation.content.bounds.width < 32 || presentation.content.bounds.height < 8) {
+    const recoverable =
+      presentation.content.bounds.width >= 32 && presentation.content.bounds.height >= 8;
+    userController?.handleRecoverableGeometry(recoverable);
+    if (!recoverable) {
       cancelModalWork();
     } else {
       syncAuthenticationGate();
@@ -684,6 +770,8 @@ export async function runAdminApplication(
     if (finalized) return;
     finalized = true;
     cancelModalWork();
+    userController?.dispose();
+    userController = undefined;
     disposed = true;
     for (const [signal, listener] of signalListeners) signalSource.off(signal, listener);
     for (const unregister of unregisterCommands) unregister();

@@ -104,7 +104,10 @@ export function createAdminInteraction(
 /** Shared modal surface plus synchronous removal used during resize and shutdown. */
 export interface AdminDialogSurface {
   /** Host passed to ordinary JSVision dialog helpers. */
-  readonly host: ModalDialogHost;
+  readonly host: ModalDialogHost & {
+    /** Event loop that also supports synchronous abort-driven modal closure. */
+    readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal'>;
+  };
   /** Immediately removes every mounted dialog before a terminal redraw. */
   readonly removeAll: () => void;
 }

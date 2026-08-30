@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 03:29
-> **Progress**: 31/46 tasks (67%)
+> **Last Updated**: 2026-08-30 04:19
+> **Progress**: 39/46 tasks (85%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -172,7 +172,7 @@ part of this plan (AR-1–AR-7).
 
 ## Phase 4: Application Workflow Integration
 
-> **Phase baseline tree**: _(recorded by exec-plan)_
+> **Phase baseline tree**: `eb749b259ef590a3d31bb1bbd5377403bd229a5e`
 > **Expected modification set**: `packages/cli/src/admin/{user-controller,application,session-service,presentation,index}.ts`, `packages/cli/src/commands/admin.ts`, `packages/cli/tests/admin/{application.users,application,session-wiring,command}.{spec,impl}.test.ts`, test inventory, and execution evidence
 > **Scope mode**: strict — one in-memory selected-organization workflow; no application cache, background refresh, multi-operator conflict handling, or server change
 
@@ -180,24 +180,33 @@ part of this plan (AR-1–AR-7).
 
 **Reference**: [03-04](03-04-application-integration.md) · ST-30–ST-34 · AR-4, AR-7, AR-9
 
-- [ ] 4.1.1 [spec-author] Add exact selected-organization SDK dispatch for workspace intents, table-driven mutation outcome/reconciliation, bidirectional modal ownership, no-read mutation, explicit session-epoch context clearing including same-subject reauthentication, resize, final-401, late-result, and production command-provider specifications — `packages/cli/tests/admin/{application.users,session-wiring,command}.spec.test.ts`
-- [ ] 4.1.2 Run focused application/session specifications and record expected red failures
+- [x] 4.1.1 [spec-author] Add exact selected-organization SDK dispatch for workspace intents, table-driven mutation outcome/reconciliation, bidirectional modal ownership, no-read mutation, explicit session-epoch context clearing including same-subject reauthentication, resize, final-401, late-result, and production command-provider specifications — `packages/cli/tests/admin/{application.users,session-wiring,command}.spec.test.ts` ✅ (completed: 2026-08-30 03:34)
+- [x] 4.1.2 Run focused application/session specifications and record expected red failures — expected red: missing user-controller module and production command omitted the shared lazy Users provider; existing session provider preservation remained green ✅ (completed: 2026-08-30 03:34)
 
 ### Step 4.2: Implementation and Green Phase
 
-- [ ] 4.2.1 Implement user command routing, read state, retry, selection, context generation, and focus ownership — `packages/cli/src/admin/user-controller.ts`
-- [ ] 4.2.2 Implement modal submit guards, fixed indeterminate outcomes, deliberate reconciliation/new-action release, fixed no-read success, and authentication-gate handoff — `packages/cli/src/admin/user-controller.ts`
-- [ ] 4.2.3 Wire application-owned session epoch, bidirectional existing/user modal busy seam, controller command/cancel/resize/context forwarding, lazy session operations, disposal, and one memoized lazy production client feeding both organization and user providers — `packages/cli/src/admin/{application,session-service,presentation}.ts`, `packages/cli/src/commands/admin.ts`
-- [ ] 4.2.4 Run ST-30–ST-34 plus retained authentication/organization/terminal specifications and make the implementation green without changing expectations
+- [x] 4.2.1 Implement user command routing, read state, retry, selection, context generation, and focus ownership — `packages/cli/src/admin/user-controller.ts` ✅ (completed: 2026-08-30 03:49)
+- [x] 4.2.2 Implement modal submit guards, fixed indeterminate outcomes, deliberate reconciliation/new-action release, fixed no-read success, and authentication-gate handoff — `packages/cli/src/admin/user-controller.ts` ✅ (completed: 2026-08-30 03:49)
+- [x] 4.2.3 Wire application-owned session epoch, bidirectional existing/user modal busy seam, controller command/cancel/resize/context forwarding, lazy session operations, disposal, and one memoized lazy production client feeding both organization and user providers — `packages/cli/src/admin/{application,session-service,presentation}.ts`, `packages/cli/src/commands/admin.ts` ✅ (completed: 2026-08-30 03:49)
+- [x] 4.2.4 Run ST-30–ST-34 plus retained authentication/organization/terminal specifications and make the implementation green without changing expectations — 58 files and 756 CLI tests passed ✅ (completed: 2026-08-30 04:19)
 
 ### Step 4.3: Implementation Tests and Verification
 
-- [ ] 4.3.1 Add generation, duplicate-submit, command registration, lazy wiring, resize, and disposal implementation tests — `packages/cli/tests/admin/application.users.impl.test.ts`, `packages/cli/tests/admin/session-wiring.impl.test.ts`
-- [ ] 4.3.2 Run complete CLI package verification for the finished user workflow
+- [x] 4.3.1 Add generation, duplicate-submit, command registration, lazy wiring, resize, and disposal implementation tests — `packages/cli/tests/admin/application.users.impl.test.ts`, retained application and command implementation tests ✅ (completed: 2026-08-30 03:49)
+- [x] 4.3.2 Run complete CLI package verification for the finished user workflow — CLI verification passed with 58 files and 756 tests; structure verification and root verification passed ✅ (completed: 2026-08-30 04:19)
 
 **Deliverables:** complete organization/session-isolated user workflow with unchanged existing shell behavior.
 
 **Verify:** `yarn workspace @portaidentity/cli verify` · `yarn test:structure`; run root `yarn verify` before commit
+
+> **Phase review**: completed 2026-08-30 04:19 against baseline tree
+> `eb749b259ef590a3d31bb1bbd5377403bd229a5e`. Initial correctness and security reviews found
+> reentrant modal cleanup, reconciliation ownership, hidden/indeterminate outcomes, replaceable-read,
+> resize/focus, capability-revocation, stale-preview, and focused-coverage gaps. Auto-design resolved
+> them inside the direct controller/application boundary with generation and signal quarantine plus
+> focused regressions. Both reviewers reported no remaining findings. Final root verification passed:
+> structure 96; SDK 429; CLI 756; server unit 2,863, integration 363, E2E 128, and pentest 224.
+> Incremental techdocs remain owned by Phase 5.
 
 ---
 

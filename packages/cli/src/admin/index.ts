@@ -27,6 +27,12 @@ export type {
   AdminPublicFailure,
 } from './state.js';
 export { createAdminUserOperations } from './user-service.js';
+export { createAdminUserController } from './user-controller.js';
+export type {
+  AdminUserController,
+  AdminUserControllerDialogs,
+  AdminUserControllerOptions,
+} from './user-controller.js';
 export {
   showCreateUserDialog,
   showEditUserDialog,

@@ -348,7 +348,12 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       `Created: ${user.createdAt}`,
       `Updated: ${user.updatedAt}`,
     ];
-    const actions = detailActions(user);
+    const actions =
+      state.outcome === 'outcome-unknown'
+        ? detailActions(user).filter(
+            ({ intent }) => intent.kind === 'back' || intent.kind === 'history',
+          )
+        : detailActions(user);
 
     if (compact) {
       const rows = signal<CompactDetailRow[]>([
@@ -415,6 +420,22 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     if (disposed || currentState.kind === 'closed') return;
     const { width, compact } = geometry();
     content.add(at(new Text('Users'), 0, 0, 20, 1));
+    if (currentState.kind === 'success') {
+      content.add(
+        at(
+          new Text(currentState.action === 'created' ? 'User created' : 'Invitation sent'),
+          0,
+          2,
+          width,
+          1,
+        ),
+      );
+      return;
+    }
+    if (currentState.kind === 'indeterminate') {
+      content.add(at(new Text(OUTCOME_LABELS['outcome-unknown']), 0, 2, width, 1));
+      return;
+    }
     if (currentState.kind === 'loading') {
       if (currentState.previous) {
         const previous = previousState(currentState.previous);

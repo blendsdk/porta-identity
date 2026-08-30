@@ -70,6 +70,8 @@ export interface AdminPresentation {
   readonly setState: (state: AdminConnectionState) => void;
   /** Returns the state currently owned by the view. */
   readonly getState: () => AdminConnectionState;
+  /** Mounts the selected-organization user workspace, or restores the landing view. */
+  readonly setUserWorkspace: (workspace: View | null) => void;
 }
 
 /** Clips a control-free value to the available terminal display width. */
@@ -319,6 +321,7 @@ export function createAdminPresentation(
   );
   const content = new Group();
   content.add(grow(landing));
+  let userWorkspace: View | null = null;
 
   return {
     content,
@@ -330,5 +333,13 @@ export function createAdminPresentation(
       landing.invalidate();
     },
     getState: () => currentState,
+    setUserWorkspace: (workspace) => {
+      if (workspace === userWorkspace) return;
+      if (userWorkspace) content.remove(userWorkspace);
+      userWorkspace = workspace;
+      landing.state.visible = workspace === null;
+      if (workspace) content.add(grow(workspace));
+      content.invalidateLayout();
+    },
   };
 }

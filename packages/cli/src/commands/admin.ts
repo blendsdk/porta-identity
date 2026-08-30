@@ -93,8 +93,16 @@ export async function runAdminCommand(
 
   if (arguments_.insecure) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   try {
-    const runApplication = () =>
-      dependencies.runApplication({
+    const runApplication = () => {
+      let client: ReturnType<typeof createClient> | undefined;
+      const selectedClient = (selectedServer: URL): ReturnType<typeof createClient> => {
+        client ??= createClient({
+          ...arguments_,
+          server: selectedServer.origin,
+        });
+        return client;
+      };
+      return dependencies.runApplication({
         server,
         insecure: arguments_.insecure,
         showInsecureWarning: arguments_.insecure,
@@ -102,13 +110,11 @@ export async function runAdminCommand(
           prepareAdminSession(
             selectedServer,
             interaction,
-            () =>
-              createClient({
-                ...arguments_,
-                server: selectedServer.origin,
-              }).organizations,
+            () => selectedClient(selectedServer).organizations,
+            () => selectedClient(selectedServer).users,
           ),
       });
+    };
     return await (arguments_.insecure
       ? withoutInsecureTlsRuntimeWarning(runApplication)
       : runApplication());
