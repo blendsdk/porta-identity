@@ -92,7 +92,7 @@ beforeEach(() => {
 });
 
 describe('admin application shell', () => {
-  // The established shell keeps its theme, normalized server, state, and shortcut evidence.
+  // The main surface is the ordinary JSVision desktop; session details live in dialogs, not the body.
   it('should retain the authenticated foundation invariants at 80x24', async () => {
     await runAdminApplication({
       server,
@@ -104,10 +104,13 @@ describe('admin application shell', () => {
         const buffer = application.loop.renderRoot.buffer();
         const frame = frameText(application);
 
-        expect(buffer.get(0, 1)?.bg).toBe(defaultTheme.window.bg);
-        expect(buffer.get(2, 1)?.bg).toBe(defaultTheme.window.bg);
-        expect(frame).toContain('https://porta.example.test');
-        expect(frame).toContain('Authenticated');
+        expect(buffer.get(0, 1)?.char).toBe(defaultTheme.desktop.pattern);
+        expect(buffer.get(0, 1)?.bg).toBe(defaultTheme.desktop.bg);
+        expect(buffer.get(2, 1)?.char).toBe(defaultTheme.desktop.pattern);
+        expect(buffer.get(2, 1)?.bg).toBe(defaultTheme.desktop.bg);
+        expect(frame).not.toContain('https://porta.example.test');
+        expect(frame).not.toContain('Authenticated');
+        expect(frame).not.toContain('Porta Administration');
         press(application, 'f10');
         await settleApplication();
         expect(frameText(application)).toMatch(/Who am I(?:…|\.\.\.)/);
@@ -116,7 +119,7 @@ describe('admin application shell', () => {
     });
   });
 
-  // Authenticated navigation presents organization work without exposing identity on the landing area.
+  // Authenticated navigation stays in the menus without duplicating organization state in the body.
   it('should render UTF-8 navigation and an unselected organization landing at 80x24', async () => {
     await runAdminApplication({
       server,
@@ -131,7 +134,7 @@ describe('admin application shell', () => {
         expect(landing.split('\n')[0]).not.toContain('F10');
         expect(landing).not.toContain('☰ Menu');
         expect(landing).toContain('Organizations');
-        expect(landing).toContain('Choose or create an organization.');
+        expect(landing).not.toContain('Choose or create an organization.');
         expect(landing).not.toContain('Verified Admin');
         expect(landing).not.toContain('admin@example.test');
         expect(landing).toContain('Users (organization required)');
@@ -225,38 +228,41 @@ describe('admin application shell', () => {
   it.each([
     [80, 24],
     [48, 12],
-  ])('should render only selected organization context at %ix%i', async (width, height) => {
-    // A selected organization landing shows bounded tenant context and no identity or future modules.
-    await runAdminApplication({
-      server,
-      insecure: false,
-      viewport: { width, height },
-      initialState: authenticatedState(verifiedIdentity, {
-        id: '11111111-1111-4111-8111-111111111111',
-        name: 'Selected Organization',
-        slug: 'selected-organization',
-        status: 'suspended',
-      }),
-      applicationFactory: createApplication,
-      applicationRunner: async (application) => {
-        const frame = frameText(application);
+  ])(
+    'should keep selected organization context out of the landing body at %ix%i',
+    async (width, height) => {
+      // Organization context drives the menus but is not duplicated on the blank landing surface.
+      await runAdminApplication({
+        server,
+        insecure: false,
+        viewport: { width, height },
+        initialState: authenticatedState(verifiedIdentity, {
+          id: '11111111-1111-4111-8111-111111111111',
+          name: 'Selected Organization',
+          slug: 'selected-organization',
+          status: 'suspended',
+        }),
+        applicationFactory: createApplication,
+        applicationRunner: async (application) => {
+          const frame = frameText(application);
 
-        expect(frame).toContain('Selected Organization');
-        expect(frame).toContain('selected-organization');
-        expect(frame).toContain('suspended');
-        expect(frame).toContain('porta.example.test');
-        expect(frame).not.toContain('Verified Admin');
-        expect(frame).not.toContain('admin@example.test');
-        expect(frame).toContain('Users');
-        expect(frame).not.toMatch(/Dashboard|Metrics|Applications|Clients|Signing Keys/);
-        expect(frame.length).toBeLessThanOrEqual(width * height + height - 1);
-        return 0;
-      },
-    });
-  });
+          expect(frame).not.toContain('Selected Organization');
+          expect(frame).not.toContain('selected-organization');
+          expect(frame).not.toContain('suspended');
+          expect(frame).not.toContain('porta.example.test');
+          expect(frame).not.toContain('Verified Admin');
+          expect(frame).not.toContain('admin@example.test');
+          expect(frame).toContain('Users');
+          expect(frame).not.toMatch(/Dashboard|Metrics|Applications|Clients|Signing Keys/);
+          expect(frame.length).toBeLessThanOrEqual(width * height + height - 1);
+          return 0;
+        },
+      });
+    },
+  );
 
-  // A compact terminal preserves every required action and conveys security state in plain text.
-  it('should keep required state actions and warning text visible when the viewport is 48x12', async () => {
+  // Security and identity details remain available from Who am I at compact usable geometry.
+  it('should keep required actions and warning details available when the viewport is 48x12', async () => {
     await runAdminApplication({
       server,
       insecure: true,
@@ -265,6 +271,7 @@ describe('admin application shell', () => {
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
         press(application, 'f10');
+        press(application, 'enter');
         await settleApplication();
         const frame = frameText(application);
         const plainAscii = frame.replace(/[^\x20-\x7e\n]/g, '');
@@ -356,7 +363,6 @@ describe('admin application shell', () => {
         await settleApplication();
 
         expect(reauthenticate).toHaveBeenCalledOnce();
-        expect(frameText(application)).toContain('Authenticated');
         expect(frameText(application)).not.toContain('admin@example.test');
         expect(frameText(application)).not.toContain('replacement@example.test');
 
@@ -448,7 +454,7 @@ describe('admin application shell', () => {
         await settleApplication();
         const frame = frameText(application);
 
-        expect(frame).toMatch(/Unavailable|Authentication failed|Storage failure/);
+        expect(frame).toContain('Authentication required');
         expect(frame).not.toContain('secret-access-token');
         expect(frame).not.toContain('/home/operator');
         expect(frame).not.toContain('internal.ts');

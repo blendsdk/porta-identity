@@ -236,8 +236,7 @@ export async function showWhoAmIDialog(
   const { width, height } = dialogSize(host, 58, 12);
   const lines = [
     `Server: ${normalizeServerOrigin(state.server).origin}`,
-    'State: Authenticated',
-    `Name: ${safeIdentityText(state.identity.name, 'Verified administrator')}`,
+    `Authenticated — Name: ${safeIdentityText(state.identity.name, 'Verified administrator')}`,
     `Email: ${safeIdentityText(state.identity.email, 'Not provided')}`,
   ];
   if (insecure) lines.push('Warning: insecure TLS verification is enabled.');

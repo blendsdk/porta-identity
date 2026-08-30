@@ -1,8 +1,11 @@
 /** Observable specifications for focused user administration dialogs. */
 
+import { defaultTheme } from '@jsvision/core';
 import { Button, CheckGroup, createApplication, Dialog, Group, Input, View } from '@jsvision/ui';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
+import { createAdminDialogSurface } from '../../src/admin/application-runtime.js';
+import { createAdminPresentation } from '../../src/admin/presentation.js';
 import type { AdminUserDetail } from '../../src/admin/user-state.js';
 import {
   showCreateUserDialog,
@@ -92,6 +95,59 @@ function frameText(application: ReturnType<typeof createApplication>): string {
 }
 
 describe('user dialogs', () => {
+  it('should repaint the desktop and restore a focusable leaf after create is cancelled', async () => {
+    const server = new URL('https://porta.example.test');
+    const presentation = createAdminPresentation(
+      {
+        kind: 'authenticated',
+        server,
+        identity: { sub: 'subject-1', email: 'admin@example.test' },
+        capabilities: {
+          canReadOrganizations: true,
+          canCreateOrganizations: true,
+          canReadUsers: true,
+          canCreateUsers: true,
+          canInviteUsers: true,
+          canUpdateUsers: true,
+          canManageUserLifecycle: true,
+          canPurgeUsers: true,
+        },
+      },
+      false,
+      { width: 80, height: 24 },
+    );
+    const application = createApplication({
+      content: presentation.content,
+      menuBar: presentation.menu,
+      statusLine: presentation.status,
+      viewport: { width: 80, height: 24 },
+    });
+    application.loop.focusInto(presentation.content);
+    const surface = createAdminDialogSurface(application, presentation);
+    const focusWarnings = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    try {
+      const operation = showCreateUserDialog(surface.host, new AbortController().signal);
+      await settle();
+      expect(frameText(application)).toContain('Create user');
+
+      application.loop.endModal('cancel');
+      await expect(operation).resolves.toEqual({ kind: 'cancel' });
+      await settle();
+
+      const buffer = application.loop.renderRoot.buffer();
+      expect(frameText(application)).not.toContain('Create user');
+      expect(buffer.get(20, 10)?.char).toBe(defaultTheme.desktop.pattern);
+      expect(buffer.get(20, 10)?.bg).toBe(defaultTheme.desktop.bg);
+      expect(application.loop.getFocused()).not.toBeInstanceOf(Group);
+      expect(focusWarnings).not.toHaveBeenCalledWith(
+        expect.stringContaining('focusView(Group) did nothing'),
+      );
+    } finally {
+      focusWarnings.mockRestore();
+    }
+  });
+
   it('should map every editable field to its exact bound and control-free validator', async () => {
     const cases: ReadonlyArray<{
       readonly open: (application: ReturnType<typeof createApplication>) => Promise<unknown>;

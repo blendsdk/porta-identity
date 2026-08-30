@@ -154,7 +154,7 @@ describe('organization workflow ownership', () => {
         expect(frameText(application)).toContain('Only Organization');
         press(application, 'escape');
         await settleWorkflow();
-        expect(frameText(application)).toContain('Choose or create an organization.');
+        expect(frameText(application)).not.toContain('Choose or create an organization.');
         expect(frameText(application)).not.toContain('Only Organization');
         return 0;
       },
@@ -194,10 +194,9 @@ describe('organization workflow ownership', () => {
           await settleWorkflow();
 
           const frame = frameText(application);
-          expect(frame).toContain(`${status} Organization`);
-          expect(frame).toContain(`${status}-organization`);
-          expect(frame).toContain(status);
-          expect(frame).toContain('https://porta.example.test');
+          expect(frame).not.toContain(`${status} Organization`);
+          expect(frame).not.toContain(`${status}-organization`);
+          expect(frame).not.toContain('https://porta.example.test');
           expect(listAll).toHaveBeenCalledOnce();
           return 0;
         },
@@ -235,7 +234,7 @@ describe('organization workflow ownership', () => {
         press(application, 'escape');
         await settleWorkflow();
 
-        expect(frameText(application)).toContain('Selected Organization');
+        expect(frameText(application)).not.toContain('Selected Organization');
         expect(listAll).toHaveBeenCalledOnce();
         return 0;
       },
@@ -286,8 +285,8 @@ describe('organization workflow ownership', () => {
         expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.switchOrganization)).toBe(false);
         finishCreate?.({ kind: 'success', value: created });
         await settleWorkflow();
-        expect(frameText(application)).toContain('Created Organization');
-        expect(frameText(application)).toContain('created-organization');
+        expect(frameText(application)).not.toContain('Created Organization');
+        expect(frameText(application)).not.toContain('created-organization');
         return 0;
       },
     });
@@ -337,7 +336,7 @@ describe('organization workflow ownership', () => {
         await settleWorkflow();
         await submit();
         expect(create).toHaveBeenCalledTimes(2);
-        expect(frameText(application)).toContain('Recovered Create');
+        expect(frameText(application)).not.toContain('Recovered Create');
         return 0;
       },
     });
@@ -382,7 +381,7 @@ describe('organization workflow ownership', () => {
         });
         await settleWorkflow();
 
-        expect(frameText(application)).toContain('Selected Organization');
+        expect(frameText(application)).not.toContain('Selected Organization');
         expect(frameText(application)).not.toContain('Late Created Organization');
         expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.createOrganization)).toBe(false);
         return 0;
@@ -456,10 +455,12 @@ describe('organization workflow ownership', () => {
           await settleWorkflow();
 
           expect(reconcile).toHaveBeenCalledWith(selectedOrganization.id);
-          expect(frameText(application)).toContain(expectedText);
-          if (opensChoice) expect(listAll).toHaveBeenCalledOnce();
-          else if (reconciliation.kind !== 'match') {
-            expect(frameText(application)).toContain('Selected Organization');
+          if (opensChoice) {
+            expect(frameText(application)).toContain(expectedText);
+            expect(listAll).toHaveBeenCalledOnce();
+          } else {
+            expect(frameText(application)).not.toContain(expectedText);
+            expect(frameText(application)).not.toContain('Selected Organization');
           }
           return 0;
         },
@@ -499,7 +500,7 @@ describe('organization workflow ownership', () => {
           await settleWorkflow();
 
           expect(reconcile).not.toHaveBeenCalled();
-          expect(frameText(application)).toContain('Selected Organization');
+          expect(frameText(application)).not.toContain('Selected Organization');
           return 0;
         },
       });
@@ -553,7 +554,7 @@ describe('organization workflow ownership', () => {
         await submit('Created After Reauthentication');
 
         expect(create).toHaveBeenCalledTimes(2);
-        expect(frameText(application)).toContain('Created After Reauthentication');
+        expect(frameText(application)).not.toContain('Created After Reauthentication');
         return 0;
       },
     });

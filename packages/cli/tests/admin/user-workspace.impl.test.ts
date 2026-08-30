@@ -1,6 +1,16 @@
 /** Implementation diagnostics for the direct user workspace. */
 
-import { at, Button, createApplication, Group, Input, ListView, View, Window } from '@jsvision/ui';
+import {
+  at,
+  Button,
+  createApplication,
+  DataGrid,
+  Group,
+  Input,
+  ListView,
+  View,
+  Window,
+} from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
 
 import { createAdminUserWorkspace } from '../../src/admin/user-workspace.js';
@@ -89,18 +99,18 @@ async function settle(): Promise<void> {
 }
 
 describe('user workspace implementation', () => {
-  it('should use ordinary bounded controls and focus the list after a page mounts', async () => {
+  it('should use a bounded data grid and focus its rows after a page mounts', async () => {
     const mounted = mount();
     mounted.workspace.setState({ kind: 'page', page });
     await settle();
     mounted.workspace.focusCurrent();
     const views = descendants(mounted.window);
-    const list = views.find((view) => view instanceof ListView);
+    const grid = views.find((view) => view instanceof DataGrid);
 
     expect(views.some((view) => view instanceof Input)).toBe(true);
     expect(views.filter((view) => view instanceof Button).length).toBeGreaterThan(2);
-    expect(list).toBeInstanceOf(ListView);
-    expect(mounted.application.loop.getFocused()).toBe((list as ListView<unknown>).rows);
+    expect(grid).toBeInstanceOf(DataGrid);
+    expect(mounted.application.loop.getFocused()).toBe((grid as DataGrid<unknown>).rows);
   });
 
   it('should keep the compact workspace bounded and keyboard controls mounted', async () => {
@@ -112,7 +122,7 @@ describe('user workspace implementation', () => {
 
     expect(frame.width).toBe(48);
     expect(frame.height).toBe(12);
-    expect(views.some((view) => view instanceof ListView)).toBe(true);
+    expect(views.some((view) => view instanceof DataGrid)).toBe(true);
     expect(views.some((view) => view instanceof Button)).toBe(true);
   });
 
@@ -155,7 +165,7 @@ describe('user workspace implementation', () => {
     mounted.workspace.dispose();
     mounted.workspace.setState({ kind: 'page', page });
     await settle();
-    expect(descendants(mounted.window).some((view) => view instanceof ListView)).toBe(false);
+    expect(descendants(mounted.window).some((view) => view instanceof DataGrid)).toBe(false);
   });
 
   it.each([

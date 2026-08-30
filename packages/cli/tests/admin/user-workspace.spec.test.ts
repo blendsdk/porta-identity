@@ -1,6 +1,16 @@
 /** Observable specifications for the user administration workspace. */
 
-import { at, Button, createApplication, Group, Input, ListView, View, Window } from '@jsvision/ui';
+import {
+  at,
+  Button,
+  createApplication,
+  DataGrid,
+  Group,
+  Input,
+  ListView,
+  View,
+  Window,
+} from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
 
 import type { AdminCapabilities } from '../../src/admin/state.js';
@@ -232,13 +242,13 @@ describe('user workspace', () => {
     const buttons = views.filter((view) => view instanceof Button);
     const previous = buttons.find((button) => button.activation.label === 'Previous');
     const next = buttons.find((button) => button.activation.label === 'Next');
-    const list = views.find((view) => view instanceof ListView);
-    if (!previous || !next || !(list instanceof ListView))
-      throw new Error('List controls missing.');
+    const grid = views.find((view) => view instanceof DataGrid);
+    if (!previous || !next || !(grid instanceof DataGrid))
+      throw new Error('Grid controls missing.');
 
     click(mounted.application, next);
     activate(mounted.application, next);
-    mounted.application.loop.focusView(list.rows);
+    mounted.application.loop.focusView(grid.rows);
     mounted.application.loop.dispatch({
       type: 'key',
       key: 'enter',
@@ -258,10 +268,10 @@ describe('user workspace', () => {
     const twoRows = { ...page, data: [page.data[0]!, secondUser], total: 2, totalPages: 1 };
     const mounted = mount({ kind: 'page', page: twoRows });
     await settle();
-    let list = descendants(mounted.window).find((view) => view instanceof ListView);
-    if (!(list instanceof ListView)) throw new Error('User list missing.');
-    list.focused.set(1);
-    mounted.application.loop.focusView(list.rows);
+    let grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    if (!(grid instanceof DataGrid)) throw new Error('User grid missing.');
+    grid.focused.set(1);
+    mounted.application.loop.focusView(grid.rows);
     mounted.application.loop.dispatch({
       type: 'key',
       key: 'enter',
@@ -271,9 +281,9 @@ describe('user workspace', () => {
     });
     mounted.workspace.setState({ kind: 'page', page: twoRows });
     await settle();
-    list = descendants(mounted.window).find((view) => view instanceof ListView);
-    if (!(list instanceof ListView)) throw new Error('Rebuilt user list missing.');
-    expect(list.focused.peek()).toBe(1);
+    grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    if (!(grid instanceof DataGrid)) throw new Error('Rebuilt user grid missing.');
+    expect(grid.focused.peek()).toBe(1);
 
     mounted.workspace.setState({
       kind: 'page',

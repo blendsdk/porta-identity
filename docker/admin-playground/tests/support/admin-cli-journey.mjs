@@ -396,8 +396,8 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Choose or create an organization.'),
-      'Landing view after chooser cancellation',
+      () => includesAfter(offset, '░░░░'),
+      'JSVision desktop repaint after chooser cancellation',
     );
 
     offset = observeAfter();
@@ -438,8 +438,8 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'porta-admin'),
-      'Explicitly selected organization',
+      () => includesAfter(offset, '░░░░'),
+      'Desktop repaint after explicit organization selection',
     );
 
     offset = observeAfter();
@@ -463,8 +463,8 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'active'),
-      'Landing view after organization creation',
+      () => includesAfter(offset, '░░░░'),
+      'Desktop repaint after organization creation',
     );
     await afterCreateDispatch?.();
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
@@ -507,10 +507,11 @@ async function runPackedAdmin(
     );
     offset = observeAfter();
     child.stdin.write('b');
+    const userEmailLocalPart = user.email.slice(0, user.email.indexOf('@'));
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, user.email) && includesAfter(offset, '[active]'),
+      () => includesAfter(offset, userEmailLocalPart) && includesAfter(offset, 'active'),
       'Users browse result',
     );
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));

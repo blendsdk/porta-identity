@@ -85,11 +85,11 @@ describe('admin application implementation', () => {
       },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
-        expect(frameText(application)).toContain('Porta Administration');
+        expect(frameText(application)).not.toContain('Porta Administration');
 
         application.loop.resize({ width: 48, height: 12 });
-        expect(frameText(application)).toContain('Porta Admin');
-        expect(frameText(application)).toContain('Reauthenticate');
+        expect(frameText(application)).not.toContain('Porta Admin');
+        expect(frameText(application)).not.toContain('Selected Organization');
 
         application.loop.resize({ width: 24, height: 6 });
         expect(frameText(application)).toContain('Terminal too small');
@@ -139,7 +139,7 @@ describe('admin application implementation', () => {
         await settle();
         expect(operationSignal?.aborted).toBe(true);
         expect(frameText(application)).not.toContain('admin@example.test');
-        expect(frameText(application)).toContain('Authenticated');
+        expect(frameText(application)).not.toContain('Authenticated');
         return 0;
       },
     });
@@ -161,7 +161,7 @@ describe('admin application implementation', () => {
 
         expect(reauthenticate).toHaveBeenCalledOnce();
         expect(frameText(application)).not.toContain('admin@example.test');
-        expect(frameText(application)).toContain('Authenticated');
+        expect(frameText(application)).not.toContain('Authenticated');
         return 0;
       },
     });
@@ -361,7 +361,7 @@ describe('admin application implementation', () => {
       applicationRunner: async (application) => {
         application.loop.emitCommand('reauthenticate');
         await settleWorkflow();
-        expect(frameText(application)).toContain('Service unavailable');
+        expect(frameText(application)).not.toContain('Service unavailable');
         expect(frameText(application)).not.toContain(selected.name);
         return 0;
       },

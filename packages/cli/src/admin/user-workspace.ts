@@ -4,6 +4,7 @@ import {
   at,
   Button,
   ComboBox,
+  DataGrid,
   Group,
   Input,
   Label,
@@ -12,7 +13,7 @@ import {
   Text,
   View,
 } from '@jsvision/ui';
-import type { Signal } from '@jsvision/ui';
+import type { Column, Signal } from '@jsvision/ui';
 import type { AdminCapabilities } from './state.js';
 import type {
   AdminUserDetail,
@@ -87,11 +88,17 @@ interface CompactDetailRow {
   readonly intent?: AdminUserIntent;
 }
 
-/** Formats one validated row for the bounded list control. */
-function rowText(user: AdminUserListItem): string {
-  const name = [user.givenName, user.familyName].filter(Boolean).join(' ');
-  return `${user.email}${name ? ` — ${name}` : ''} [${user.status}]`;
-}
+/** Columns shown in the user browser's standard JSVision data grid. */
+const USER_COLUMNS: Column<AdminUserListItem>[] = [
+  { title: 'Email', accessor: (user) => user.email, width: '2fr', minWidth: 18 },
+  {
+    title: 'Name',
+    accessor: (user) => [user.givenName, user.familyName].filter(Boolean).join(' '),
+    width: '1fr',
+    minWidth: 12,
+  },
+  { title: 'Status', accessor: (user) => user.status, width: 11 },
+];
 
 /** Converts a nullable validated value to readable terminal text. */
 function optional(value: string | null): string {
@@ -113,6 +120,7 @@ function previousState(previous: AdminUserProjection): AdminUserViewState {
 /** Builds the direct user workspace without a reusable screen abstraction. */
 export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): AdminUserWorkspace {
   const content = new Group();
+  content.background = 'window';
   let currentState: AdminUserViewState = { kind: 'closed' };
   let currentFocus: View | null = null;
   let disposed = false;
@@ -237,18 +245,18 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
           state.page.data.findIndex((user) => user.id === focusedUserId),
         ),
       );
-      const list = new ListView({
-        items: rows,
-        getText: rowText,
+      const grid = new DataGrid({
+        rows,
+        columns: USER_COLUMNS,
         focused,
-        sorted: false,
+        zebra: true,
         onSelect: (_index, user) => {
           focusedUserId = user.id;
           options.onIntent({ kind: 'select', userId: user.id });
         },
       });
-      content.add(at(list, 0, listY, width, compact ? Math.max(1, pagingY - listY) : 9));
-      currentFocus = list.rows;
+      content.add(at(grid, 0, listY, width, compact ? Math.max(3, pagingY - listY) : 9));
+      currentFocus = grid.rows;
     }
 
     const previous = new Button('~P~revious', {
