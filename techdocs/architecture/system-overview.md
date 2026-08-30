@@ -85,6 +85,12 @@ deployment-global label, module mutations carry the selected application UUID, a
 mutation reloads authoritative application or same-parent module data. Dialog cancellation,
 authentication replacement, and resize recovery release operation ownership so late results cannot
 repopulate a cleared view.
+The organization OIDC Clients workspace follows the same direct pattern with a full-height client
+`DataGrid`, complete detail, and metadata-only secret projection. One movable Layout DSL dialog owns
+the Basic, Redirects, Protocol, and Login tabs; its long pages use vertical scrolling and its URI and
+origin collections use local `DataGrid` row editors. Client and nested-secret mutations recheck the
+selected organization and retained parent immediately before dispatch. Generated plaintext is handed
+straight to one abortable, non-editable warning dialog and never enters retained application state.
 
 ### Domain Modules
 

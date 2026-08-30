@@ -451,6 +451,7 @@ async function readOwnedClient(
   try {
     const response = await remote.get(clientId);
     const value = clientValue(response.data, organizationId);
+    if (value?.id !== clientId) return { kind: 'failure', failure: 'invalid-response' };
     return value
       ? { kind: 'success', value }
       : { kind: 'failure', failure: 'invalid-response' };
@@ -503,7 +504,7 @@ export function createAdminClientOperations(
       try {
         const response = await domain().get(clientId);
         const value = clientValue(response.data, organizationId);
-        if (!value || !isEtag(response.etag)) {
+        if (!value || value.id !== clientId || !isEtag(response.etag)) {
           return { kind: 'failure', failure: 'invalid-response' };
         }
         return { kind: 'success', value: { client: value, etag: response.etag } };

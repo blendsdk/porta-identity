@@ -81,6 +81,14 @@ export interface AdminGeneratedClientSecret {
   readonly createdAt: string;
 }
 
+/** Transient secret presentation value enriched with safe client display identity. */
+export interface AdminClientSecretPresentation extends AdminGeneratedClientSecret {
+  /** Administrative client name returned by the same authoritative workflow. */
+  readonly clientName: string;
+  /** Generated OIDC client identifier shown to the operator. */
+  readonly oidcClientId: string;
+}
+
 /** Fixed client failure categories safe to display. */
 export type AdminClientFailureKind =
   'validation' | 'unauthorized' | 'conflict' | 'unavailable' | 'invalid-response';
@@ -99,27 +107,49 @@ export type AdminClientMutationResult<T = void> =
   | { readonly kind: 'outcome-unknown' }
   | { readonly kind: 'failure'; readonly failure: AdminClientFailureKind };
 
+/** Validated complete catalog for one selected organization. */
+export interface AdminClientListProjection {
+  /** Internal UUID of the selected organization. */
+  readonly organizationId: string;
+  /** Complete validated organization-owned client catalog. */
+  readonly clients: readonly AdminClient[];
+}
+
+/** Validated selected-client detail retained with its catalog. */
+export interface AdminClientDetailProjection extends AdminClientListProjection {
+  /** Selected organization-owned client. */
+  readonly client: AdminClient;
+  /** Resolved global application name when application read is available. */
+  readonly applicationName?: string;
+  /** Update precondition returned with the selected client. */
+  readonly etag?: string | null;
+  /** Metadata-only secrets already loaded for the selected client. */
+  readonly secrets: readonly AdminClientSecret[];
+}
+
+/** Safe client projection that may remain visible while an operation is pending or fails. */
+export type AdminClientProjection =
+  | ({ readonly kind: 'list' } & AdminClientListProjection)
+  | ({ readonly kind: 'detail' } & AdminClientDetailProjection)
+  | ({ readonly kind: 'secrets'; readonly legacyOnly?: boolean } & AdminClientDetailProjection);
+
 /** Complete selected-organization client controller state. */
 export type AdminClientViewState =
   | { readonly kind: 'closed' }
   | {
       readonly kind: 'loading';
       readonly organizationId: string;
-      readonly previous?: readonly AdminClient[];
+      readonly previous?: AdminClientProjection | readonly AdminClient[];
     }
-  | {
-      readonly kind: 'list';
-      readonly organizationId: string;
-      readonly clients: readonly AdminClient[];
-    }
+  | AdminClientProjection
   | {
       readonly kind: 'indeterminate';
       readonly organizationId: string;
-      readonly previous?: readonly AdminClient[];
+      readonly previous?: AdminClientProjection | readonly AdminClient[];
     }
   | {
       readonly kind: 'failure';
       readonly organizationId: string;
       readonly failure: AdminClientFailureKind;
-      readonly previous?: readonly AdminClient[];
+      readonly previous?: AdminClientProjection | readonly AdminClient[];
     };

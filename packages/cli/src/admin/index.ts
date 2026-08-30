@@ -140,11 +140,37 @@ export type {
 } from './client-controller.js';
 export type {
   AdminClient,
+  AdminClientDetailProjection,
   AdminClientFailureKind,
+  AdminClientListProjection,
   AdminClientMutationResult,
+  AdminClientProjection,
   AdminClientReadResult,
   AdminClientSecret,
+  AdminClientSecretPresentation,
   AdminClientStatus,
   AdminClientViewState,
   AdminGeneratedClientSecret,
 } from './client-state.js';
+export { createAdminClientWorkspace } from './client-workspace.js';
+export type {
+  AdminClientConfigurationTab,
+  AdminClientIntent,
+  AdminClientWorkspace,
+  AdminClientWorkspaceOptions,
+} from './client-workspace.js';
+export {
+  showClientConfigurationDialog,
+  showClientLifecycleDialog,
+  showGenerateClientSecretDialog,
+  showOneTimeClientSecretDialog,
+  showRevokeClientSecretDialog,
+} from './client-dialogs.js';
+export type {
+  AdminClientDialogHost,
+  ClientConfigurationDialogOptions,
+  ClientConfigurationDialogResult,
+  ClientLifecycleDialogResult,
+  GenerateClientSecretDialogResult,
+  RevokeClientSecretDialogResult,
+} from './client-dialogs.js';

@@ -267,6 +267,30 @@ describe('application and client adapter implementation edges', () => {
     });
   });
 
+  it('should reject a same-organization response whose internal client ID differs from the request', async () => {
+    const { createAdminClientOperations } = await import('../../src/admin/client-service.js');
+    const update = vi.fn();
+    const operations = createAdminClientOperations(() =>
+      clientDomain({
+        get: vi.fn().mockResolvedValue({
+          data: client({ id: '66666666-6666-4666-8666-666666666666' }),
+          etag: null,
+        }),
+        update,
+      }),
+    );
+
+    await expect(operations.get(organizationId, clientId)).resolves.toEqual({
+      kind: 'failure',
+      failure: 'invalid-response',
+    });
+    await expect(operations.update(organizationId, clientId, {})).resolves.toEqual({
+      kind: 'failure',
+      failure: 'invalid-response',
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
   it.each([
     [
       'update',

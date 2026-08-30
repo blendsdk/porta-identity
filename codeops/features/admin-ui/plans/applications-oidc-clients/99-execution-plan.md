@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 17:50
-> **Progress**: 33/49 tasks (67%)
+> **Last Updated**: 2026-08-30 18:38
+> **Progress**: 41/49 tasks (84%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -225,27 +225,36 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ## Phase 5: Organization OIDC Clients Workspace
 
-> **Phase baseline tree**: _(recorded by exec-plan at phase start)_
+> **Phase baseline tree**: `89940b63fbdbf443746d8877bd46699f48bf8755`
 > **Scope mode**: strict — selected-organization clients, configuration, lifecycle, and secrets only
+> **Expected modification set**: client workspace/dialog/controller/state files and their focused
+> tests under `packages/cli/`; the CLI test-inventory structure assertion; this execution plan,
+> phase review evidence, and incremental maintainer architecture docs
 
 ### Step 5.1: Specification Tests
 
 **Reference**: [03-05](03-05-oidc-clients-workspace.md) · ST-39–ST-52 · AR-3, AR-7
 
-- [ ] 5.1.1 [spec-author] Add client list/detail/context/capability and lifecycle workspace specifications — Admin client workspace spec tests
-- [ ] 5.1.2 [spec-author] Add entry-tab, vertical Scroller, collection DataGrid row-action, exact field-boundary, server-default, mutation reload/failure, secret metadata, and non-editable one-time plaintext specifications — Admin client dialog spec tests
-- [ ] 5.1.3 Run ST-39–ST-52 against unchanged client UI and record expected red
+- [x] 5.1.1 [spec-author] Add client list/detail/context/capability and lifecycle workspace specifications — Admin client workspace spec tests ✅ (completed: 2026-08-30 17:56)
+- [x] 5.1.2 [spec-author] Add entry-tab, vertical Scroller, collection DataGrid row-action, exact field-boundary, server-default, mutation reload/failure, secret metadata, and non-editable one-time plaintext specifications — Admin client dialog spec tests ✅ (completed: 2026-08-30 17:56)
+- [x] 5.1.3 Run ST-39–ST-52 against unchanged client UI and record expected red ✅ (completed: 2026-08-30 17:56; 55 expected-red failures: 9 missing client workspace, 46 missing client dialogs)
 
 ### Step 5.2: Implementation and Green Phase
 
-- [ ] 5.2.1 Implement the full-height organization client DataGrid, complete client detail with application-name/ID fallback, and matching controller intents — client workspace/controller files
-- [ ] 5.2.2 Implement the movable Layout DSL `TabView` dialog with explicit entry tabs, vertical `Scroller`, DataGrid-backed URI/origin Add/Edit/Remove actions, and bounded update intents — client dialog/controller files
-- [ ] 5.2.3 Implement lifecycle, metadata-only secret management, rotation/revoke, legacy transition, and non-editable one-time warning dialogs with their controller intents and without an application Copy action — client dialog/workspace/controller files
-- [ ] 5.2.4 Run ST-39–ST-52 green without changing expectations
+- [x] 5.2.1 Implement the full-height organization client DataGrid, complete client detail with application-name/ID fallback, and matching controller intents — client workspace/controller files ✅ (completed: 2026-08-30 18:38)
+- [x] 5.2.2 Implement the movable Layout DSL `TabView` dialog with explicit entry tabs, vertical `Scroller`, DataGrid-backed URI/origin Add/Edit/Remove actions, and bounded update intents — client dialog/controller files ✅ (completed: 2026-08-30 18:38)
+- [x] 5.2.3 Implement lifecycle, metadata-only secret management, rotation/revoke, legacy transition, and non-editable one-time warning dialogs with their controller intents and without an application Copy action — client dialog/workspace/controller files ✅ (completed: 2026-08-30 18:38)
+- [x] 5.2.4 Run ST-39–ST-52 green without changing expectations ✅ (completed: 2026-08-30 18:38; 156 focused client/state tests passed)
 
 ### Step 5.3: Implementation Tests and Verification
 
-- [ ] 5.3.1 Add tabs, bounds, protocol combinations, single-line geometry, secret cleanup, focus, mouse, resize, modal teardown, and redraw implementation tests; run CLI verify and Node 24 LTS `yarn verify`
+- [x] 5.3.1 Add tabs, bounds, protocol combinations, single-line geometry, secret cleanup, focus, mouse, resize, modal teardown, and redraw implementation tests; run CLI verify and Node 24 LTS `yarn verify` ✅ (completed: 2026-08-30 18:38; CLI 977 tests and full verification passed)
+
+  Verification evidence: focused client/state suites passed 156/156; CLI verify passed 977/977;
+  repository structure passed 96/96; final Node 24 `yarn verify` passed in 11m49s with SDK
+  455/455, server unit 2,913/2,913, integration 392/392, E2E 128/128, and pentest 224/224.
+  Independent correctness and security re-review accepted every fix with no remaining critical or
+  major finding.
 
 **Deliverables:** complete selected-organization OIDC Clients UI and one-time secret handling.
 

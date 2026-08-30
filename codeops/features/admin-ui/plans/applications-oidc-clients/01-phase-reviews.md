@@ -2,7 +2,7 @@
 
 > **Document**: 01-phase-reviews.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 17:50
+> **Last Updated**: 2026-08-30 18:38
 > **Scope mode**: strict
 
 ## Phase 1: Server Safety, Runtime, and Role Data
@@ -160,3 +160,36 @@ immutable specification expectations.
 **Re-review evidence:** the correctness reviewer accepted RV-P4-001 through RV-P4-003, and the
 security auditor accepted P4-SEC-001 plus the overlapping parent/read-only guards. Neither found a
 remaining or newly introduced critical or major issue.
+
+## Phase 5: Organization OIDC Clients Workspace
+
+**Baseline tree:** `89940b63fbdbf443746d8877bd46699f48bf8755`
+
+**Pre-review verification:** focused client/state suites 147/147; CLI 968/968; Node 24 CLI lint,
+typecheck, test, and build passed.
+
+**Reviewers:** correctness/maintainability/standards reviewer; security, organization-context, and
+plaintext-ownership auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P5-001 / P5-SEC-005 | Major | Collection Edit/Remove actions did not share the DataGrid's keyboard or mouse-focused row. | Bind collection actions and the DataGrid to one focused-row signal and cover both input paths. | Accepted — re-review passed |
+| RV-P5-002 / P5-SEC-002 / P5-SEC-003 | Major | One-time-secret presentation omitted safe client metadata and could release operation ownership during presentation or reload. | Carry client name and generated OIDC client ID in the transient handoff, retain mutation ownership through presentation and authoritative reload, and require reconciliation after cancellation. | Accepted — re-review passed |
+| RV-P5-003 / P5-SEC-001 / P5-SEC-007 | Major | Client, secret, and create actions could dispatch without rechecking the exact retained parent and eligible active state. | Fail closed on mismatched or absent projections, require active organization/application context, and recheck confidential, non-revoked client and active-secret eligibility. | Accepted — re-review passed |
+| RV-P5-004 | Major | Application names could be resolved without application-read permission. | Gate name resolution on the exact capability and otherwise display only the immutable application UUID. | Accepted — re-review passed |
+| RV-P5-005 | Major | Detail retrieval did not reject a response for a different requested internal client ID. | Require exact requested-ID equality in the service ownership preflight and add a regression. | Accepted — re-review passed |
+| RV-P5-006 / P5-SEC-004 | Major | Expiry validation accepted normalized but non-canonical timestamps. | Require canonical UTC instant equality after parsing and test both offset and fractional normalization cases. | Accepted — re-review passed |
+| P5-SEC-006 / RV-P5-008 | Minor | Legacy guidance claimed a current secret classification the API does not expose. | Use conditional migration guidance without classifying stored secret hashes. | Accepted — re-review passed |
+
+All resolutions are narrow corrections inside the approved organization-scoped client workflow.
+Authority: AI — delegated by `--auto-design`; eligibility: operation ownership, response validation,
+parent integrity, capability-safe rendering, and transient-secret handling. No generalized UI
+framework, dependency, search, pagination, polling, persistence, or multi-operator behavior was
+added. Confidence: High. Hardening: two independent reviewers and focused post-fix verification.
+Policy version: 1. Root invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: a fix changes the
+approved selected-organization client scope or cannot preserve the immutable specifications.
+
+**Post-fix evidence:** focused client/state suites passed 156/156; CLI verify passed 977/977; both
+reviewers accepted every fix with no remaining or newly introduced critical or major finding. Final
+Node 24 `yarn verify` passed in 11m49s with repository structure 96/96, SDK 455/455, server unit
+2,913/2,913, integration 392/392, E2E 128/128, and pentest 224/224.
