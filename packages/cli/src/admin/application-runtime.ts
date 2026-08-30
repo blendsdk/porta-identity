@@ -3,7 +3,7 @@
 import { createHost, cursor } from '@jsvision/core';
 import type { CapabilityProfile } from '@jsvision/core';
 import { Commands, confirm, inputBox, signal } from '@jsvision/ui';
-import type { Application, EventLoop, ModalDialogHost, Validator } from '@jsvision/ui';
+import type { Application, DispatchEvent, EventLoop, ModalDialogHost, Validator } from '@jsvision/ui';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
 import type { createAdminPresentation } from './presentation.js';
@@ -110,6 +110,8 @@ export interface AdminDialogSurface {
   };
   /** Immediately removes every mounted dialog before a terminal redraw. */
   readonly removeAll: () => void;
+  /** Handles a shell command inside the otherwise isolated active modal subtree. */
+  readonly setModalCommandHandler: (handler: ((command: string) => boolean) | undefined) => void;
 }
 
 /**
@@ -124,6 +126,7 @@ export function createAdminDialogSurface(
   presentation: ReturnType<typeof createAdminPresentation>,
 ): AdminDialogSurface {
   const windows = new Set<Parameters<ModalDialogHost['desktop']['addWindow']>[0]>();
+  let modalCommandHandler: ((command: string) => boolean) | undefined;
   return {
     host: {
       i18n: application.i18n,
@@ -131,6 +134,17 @@ export function createAdminDialogSurface(
       desktop: {
         addWindow: (window) => {
           windows.add(window);
+          const route = window.onEvent.bind(window);
+          window.onEvent = (event: DispatchEvent) => {
+            if (
+              event.event.type === 'command' &&
+              modalCommandHandler?.(event.event.command)
+            ) {
+              event.handled = true;
+              return;
+            }
+            route(event);
+          };
           presentation.content.addWindow(window);
         },
         removeWindow: (window) => {
@@ -144,6 +158,9 @@ export function createAdminDialogSurface(
     removeAll: () => {
       for (const window of windows) presentation.content.removeWindow(window);
       windows.clear();
+    },
+    setModalCommandHandler: (handler) => {
+      modalCommandHandler = handler;
     },
   };
 }

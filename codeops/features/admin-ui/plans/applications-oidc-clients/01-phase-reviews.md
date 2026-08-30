@@ -2,7 +2,7 @@
 
 > **Document**: 01-phase-reviews.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 18:38
+> **Last Updated**: 2026-08-30 21:27
 > **Scope mode**: strict
 
 ## Phase 1: Server Safety, Runtime, and Role Data
@@ -193,3 +193,37 @@ approved selected-organization client scope or cannot preserve the immutable spe
 reviewers accepted every fix with no remaining or newly introduced critical or major finding. Final
 Node 24 `yarn verify` passed in 11m49s with repository structure 96/96, SDK 455/455, server unit
 2,913/2,913, integration 392/392, E2E 128/128, and pentest 224/224.
+
+## Phase 6: Shell Integration, Packed Journey, Docs, and Assurance
+
+**Baseline tree:** `5bd034a36a1420be298a99586c0e85ea62dbbd21`
+
+**Pre-review verification:** focused shell/runtime suites 93/93; packed Admin UI journey 4/4;
+CLI verification passed before review remediation.
+
+**Reviewers:** correctness/maintainability/standards reviewer; security, organization-context, and
+plaintext-ownership auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P6-001 | Major | One-time plaintext dialog ownership could end before the shell finished displaying the secret. | Keep the presentation lifetime shell-owned and release it only after modal teardown. | Accepted — re-review passed |
+| RV-P6-002 | Major | A late organization result could reopen a dialog after the selected organization changed. | Tie dialog ownership to the current organization and workflow generation and discard stale completion. | Accepted — re-review passed |
+| RV-P6-003 | Major | Shell composition exposed duplicate top-level client navigation and an incorrect Users availability reason. | Keep one organization-scoped OIDC Clients entry and one truthful Users denial reason. | Accepted — re-review passed |
+| RV-P6-004 | Major | The packed journey created its fixtures through the SDK instead of proving application, module, client, and secret operations through the PTY UI. | Drive every approved creation and lifecycle step through the packed Admin UI; use the SDK only for observation and owned cleanup. | Accepted — re-review passed |
+| RV-P6-005 | Major | Public documentation described module activation more broadly than the implemented lifecycle permits. | Align the module lifecycle wording with the actual create, edit, and deactivate behavior. | Accepted — re-review passed |
+| RV-P6-R001 | Major | Repeated client-create activation while application preload was pending could issue duplicate list requests and open duplicate dialogs. | Give preload one controller-owned promise and ignore duplicate activation until it settles. | Accepted — final re-review passed |
+| P6-SEC-002 | Major | Independent session invalidation could leave a stale feature dialog and in-flight operation alive. | Cancel feature-owned dialogs and controllers whenever the synchronized session or organization epoch changes. | Accepted — final re-review passed |
+
+All resolutions are necessary corrections inside the approved Phase 6 integration and proof
+boundary. Authority: AI — delegated by `--auto-design`; eligibility: shell ownership, stale-result
+suppression, focused navigation, and faithful end-to-end verification. No generalized UI framework,
+dependency, additional harness, search, pagination, polling, persistence, or multi-operator
+coordination was added. Confidence: High. Hardening: independent correctness and security reviews
+plus the permitted focused re-review. Policy version: 1. Root invocation ID:
+`exec-rd04-20260830T1228`. Reopen trigger: a correction changes approved product behavior or cannot
+preserve the immutable specifications.
+
+**Post-fix evidence:** focused shell/runtime suites passed 95/95; CLI verification passed 992/992;
+the packed Admin UI journey passed 4/4 after the final ownership fixes. Both reviewers accepted the
+duplicate-preload and independent-session-invalidation corrections and reported no remaining or
+newly introduced critical or major finding.

@@ -1,7 +1,7 @@
 ## Ambiguity Register: RD-04 Applications and OIDC Clients Implementation Plan
 
-> **Status**: ✅ GATE PASSED — all 9 items resolved
-> **Last Updated**: 2026-08-30 12:44
+> **Status**: ✅ GATE PASSED — all 10 items resolved
+> **Last Updated**: 2026-08-30 21:27
 > **Mode**: auto-design during execution
 > **Root invocation ID**: `exec-rd04-20260830T1228`
 
@@ -20,6 +20,7 @@ three-iteration preflight own product behavior. This register contains only plan
 | AR-7 | Compatibility | What should happen to secrets created before migration 013, which have no provider-compatible SHA-256 value? | Require rotation of legacy-only clients before they can authenticate, while legacy secrets remain valid during an overlap after a modern secret is generated / add request-scoped provider metadata plumbing for legacy-only secrets    | Require one modern-secret generation; legacy secrets then remain valid during overlap     | ✅ Resolved |
 | AR-8 | Concurrency   | What revocation guarantee applies to a request already authenticating?                                       | Revocation blocks subsequent requests, while one request that already validated may finish / replace provider authentication for linearizable revocation                                                                                | Subsequent requests fail; an already validated in-flight request may complete             | ✅ Resolved |
 | AR-9 | Technical (runtime) | What exact deterministic test seam represents the approved validation-to-provider handoff?              | An optional credential-free async callback awaited after successful validation and before middleware continuation / expose credential or repository data to the test / use timing-based coordination                                      | `afterCredentialValidation?: () => Promise<void>` callback; AI delegated by `--auto-design` | ✅ Resolved |
+| AR-10 | Technical (runtime) | When can the production-security assurance gate run if its provenance collector requires a clean source tree? | Run it after the implementation commit with the clean compatibility selectors / weaken or bypass provenance / omit the required gate | Run it immediately after the implementation commit; AI delegated by `--auto-design` | ✅ Resolved |
 
 ### Resolution Notes
 
@@ -85,6 +86,18 @@ the preflight challenger required a deterministic barrier, and the spec author i
 converged on the credential-free callback. Policy version: 1. Root invocation ID:
 `exec-rd04-20260830T1228`. Reopen triggers: provider handoff moves outside this middleware or an
 existing repository-standard barrier supersedes it.
+
+**AR-10:** Authority: AI — delegated by `--auto-design`. Eligibility: verification sequencing
+inside the already approved gate set; product behavior, scope, security policy, and acceptance
+criteria are unchanged. Objective: obtain qualified production-security evidence from the exact
+required command. Decision: run production-security from the same clean implementation revision as
+the two compatibility selectors. Evidence: the assurance provenance collector rejects a dirty
+source tree before executing the project. Rejected alternatives: bypassing provenance weakens the
+gate, while omission contradicts AR-6. Strongest counterargument: this delays one gate until after
+the first commit, but that clean commit is already required for compatibility. Confidence: High.
+Hardening: the command's collector result and source-provenance implementation agree. Policy
+version: 1. Root invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: the assurance collector
+supports qualified dirty-tree provenance.
 
 ## Confirmation
 

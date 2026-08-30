@@ -27,6 +27,11 @@ export const ADMIN_COMMANDS = {
   createUser: 'create-user',
   inviteUser: 'invite-user',
   unavailableUser: 'user-action-unavailable',
+  browseApplications: 'browse-applications',
+  createApplication: 'create-application',
+  browseClients: 'browse-clients',
+  createClient: 'create-client',
+  unavailableClient: 'client-action-unavailable',
   cancel: 'cancel',
 } as const;
 
@@ -46,7 +51,9 @@ export interface AdminPresentation {
   readonly setState: (state: AdminConnectionState) => void;
   /** Returns the state currently owned by the view. */
   readonly getState: () => AdminConnectionState;
-  /** Mounts the selected-organization user workspace, or restores the landing view. */
+  /** Mounts exactly one feature workspace, or restores the landing view. */
+  readonly setWorkspace: (workspace: View | null) => void;
+  /** Compatibility alias used by the existing user controller. */
   readonly setUserWorkspace: (workspace: View | null) => void;
 }
 
@@ -94,6 +101,14 @@ export function createAdminPresentation(
             canUpdateUsers: false,
             canManageUserLifecycle: false,
             canPurgeUsers: false,
+            canReadApplications: false,
+            canCreateApplications: false,
+            canUpdateApplications: false,
+            canArchiveApplications: false,
+            canReadClients: false,
+            canCreateClients: false,
+            canUpdateClients: false,
+            canRevokeClients: false,
           })
         : {
             canReadOrganizations: false,
@@ -104,6 +119,14 @@ export function createAdminPresentation(
             canUpdateUsers: false,
             canManageUserLifecycle: false,
             canPurgeUsers: false,
+            canReadApplications: false,
+            canCreateApplications: false,
+            canUpdateApplications: false,
+            canArchiveApplications: false,
+            canReadClients: false,
+            canCreateClients: false,
+            canUpdateClients: false,
+            canRevokeClients: false,
           };
     const hasOrganization = currentState.kind === 'authenticated' && currentState.organization;
     const hasUserCapability =
@@ -113,16 +136,11 @@ export function createAdminPresentation(
       capabilities.canUpdateUsers ||
       capabilities.canManageUserLifecycle ||
       capabilities.canPurgeUsers;
-    const usersTitle = !hasOrganization
-      ? 'Users (organization required)'
-      : hasUserCapability
-        ? '~U~sers'
-        : 'Users (user permission required)';
     const unavailableUserItem = (label: string, reason: string) =>
       item(`${label} (${reason})`, ADMIN_COMMANDS.unavailableUser);
     const usersMenu =
       hasOrganization && hasUserCapability
-        ? subMenu(usersTitle, [
+        ? subMenu('~U~sers', [
             capabilities.canReadUsers
               ? item('~B~rowse users…', ADMIN_COMMANDS.browseUsers)
               : unavailableUserItem('Browse users…', 'requires user read'),
@@ -133,7 +151,42 @@ export function createAdminPresentation(
               ? item('~I~nvite user…', ADMIN_COMMANDS.inviteUser)
               : unavailableUserItem('Invite user…', 'requires user invite'),
           ])
-        : item(usersTitle, ADMIN_COMMANDS.unavailableUser);
+        : subMenu('~U~sers', [
+            unavailableUserItem(
+              'Users',
+              hasOrganization ? 'user permission required' : 'organization required',
+            ),
+          ]);
+    const applicationsMenu = capabilities.canReadApplications
+      ? subMenu('~A~pplications', [
+          item('~B~rowse applications…', ADMIN_COMMANDS.browseApplications),
+          capabilities.canCreateApplications
+            ? item('~C~reate application…', ADMIN_COMMANDS.createApplication)
+            : item(
+                'Create application… (requires application create)',
+                ADMIN_COMMANDS.createApplication,
+              ),
+        ])
+      : item('Applications (application read required)', ADMIN_COMMANDS.browseApplications);
+    const clientsMenu =
+      hasOrganization && capabilities.canReadClients
+        ? subMenu('OIDC ~C~lients', [
+            item('~B~rowse clients…', ADMIN_COMMANDS.browseClients),
+            capabilities.canCreateClients && capabilities.canReadApplications
+              ? item('~C~reate client…', ADMIN_COMMANDS.createClient)
+              : item(
+                  'Create client… (requires client create and application read)',
+                  ADMIN_COMMANDS.createClient,
+                ),
+          ])
+        : subMenu('OIDC ~C~lients', [
+            item(
+              hasOrganization
+                ? 'OIDC Clients (client read required)'
+                : 'OIDC Clients (organization required)',
+              ADMIN_COMMANDS.unavailableClient,
+            ),
+          ]);
     return [
       subMenu(utf8 ? '≡' : '[=]', [
         item('~W~ho am I…', ADMIN_COMMANDS.whoAmI),
@@ -155,6 +208,8 @@ export function createAdminPresentation(
         ),
       ]),
       usersMenu,
+      applicationsMenu,
+      clientsMenu,
     ];
   };
   const fullStatusItems = () => [
@@ -175,7 +230,17 @@ export function createAdminPresentation(
   });
   const content = new Desktop();
   content.add(grow(landing));
-  let userWorkspace: View | null = null;
+  let workspace: View | null = null;
+
+  /** Replaces the complete main surface without retaining covered feature content. */
+  const setWorkspace = (next: View | null): void => {
+    if (next === workspace) return;
+    if (workspace) content.remove(workspace);
+    workspace = next;
+    landing.state.visible = next === null;
+    if (next) content.add(grow(next));
+    content.invalidateLayout();
+  };
 
   return {
     content,
@@ -187,13 +252,7 @@ export function createAdminPresentation(
       landing.invalidate();
     },
     getState: () => currentState,
-    setUserWorkspace: (workspace) => {
-      if (workspace === userWorkspace) return;
-      if (userWorkspace) content.remove(userWorkspace);
-      userWorkspace = workspace;
-      landing.state.visible = workspace === null;
-      if (workspace) content.add(grow(workspace));
-      content.invalidateLayout();
-    },
+    setWorkspace,
+    setUserWorkspace: setWorkspace,
   };
 }

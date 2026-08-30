@@ -166,6 +166,11 @@ export {
   showOneTimeClientSecretDialog,
   showRevokeClientSecretDialog,
 } from './client-dialogs.js';
+export { createAdminApplicationClientFeatures } from './application-client-features.js';
+export type {
+  AdminApplicationClientFeatures,
+  AdminApplicationClientFeaturesOptions,
+} from './application-client-features.js';
 export type {
   AdminClientDialogHost,
   ClientConfigurationDialogOptions,

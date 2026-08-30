@@ -18,6 +18,8 @@ const leaveAlternateScreen = '\u001b[?1049l';
 const f10 = '\u001b[21~';
 const altOrganizations = '\u001bo';
 const altUsers = '\u001bu';
+const altApplications = '\u001ba';
+const altClients = '\u001bc';
 /** Fixed child program that uses only the SDK installed in the temporary packed consumer. */
 const packedOrganizationScript = String.raw`
 import { readFile } from 'node:fs/promises';
@@ -32,13 +34,23 @@ const name = process.env.PORTA_ADMIN_TEST_NAME;
 const nonce = process.env.PORTA_ADMIN_TEST_NONCE;
 const slug = process.env.PORTA_ADMIN_TEST_SLUG;
 const userEmail = process.env.PORTA_ADMIN_TEST_USER_EMAIL;
+const applicationName = process.env.PORTA_ADMIN_TEST_APPLICATION_NAME;
+const applicationSlug = process.env.PORTA_ADMIN_TEST_APPLICATION_SLUG;
+const moduleName = process.env.PORTA_ADMIN_TEST_MODULE_NAME;
+const clientName = process.env.PORTA_ADMIN_TEST_CLIENT_NAME;
+const redirectUri = process.env.PORTA_ADMIN_TEST_REDIRECT_URI;
 if (
-  !['assert-absent', 'wait-for-user', 'cleanup'].includes(action) ||
+  !['assert-absent', 'wait-for-user', 'observe-features', 'cleanup'].includes(action) ||
   issuer !== 'https://porta-admin-playground.ci.portaidentity.com:3543' ||
   !/^[a-f0-9]{24}$/.test(nonce ?? '') ||
   slug !== 'porta-admin-e2e-' + nonce ||
   name !== 'Admin UI E2E ' + nonce ||
-  userEmail !== 'admin-ui-e2e-' + nonce + '@porta.test'
+  userEmail !== 'admin-ui-e2e-' + nonce + '@porta.test' ||
+  applicationName !== 'Admin UI App ' + nonce ||
+  applicationSlug !== 'porta-admin-app-' + nonce ||
+  moduleName !== 'Admin UI Module ' + nonce ||
+  clientName !== 'Admin UI Client ' + nonce ||
+  redirectUri !== 'https://app-' + nonce + '.example.test/callback'
 ) {
   throw new Error('Packed organization cleanup input is invalid.');
 }
@@ -87,6 +99,63 @@ if (action === 'assert-absent') {
       throw new Error('Test user creation could not be proved.');
     }
     console.log(JSON.stringify({ userPresent: true }));
+  } else if (action === 'observe-features') {
+    const featureDeadline = Date.now() + 5_000;
+    let application;
+    let module;
+    let createdClient;
+    while ((!application || !module || !createdClient) && Date.now() < featureDeadline) {
+      const applications = await client.applications.listAll();
+      application = applications.find((candidate) => candidate.slug === applicationSlug);
+      if (application) {
+        const modules = await client.applications.listModules(application.id);
+        module = modules.find((candidate) => candidate.slug === 'module-' + nonce);
+      }
+      const clients = await client.clients.listAll({ organizationId: matches[0].id });
+      createdClient = clients.find((candidate) => candidate.clientName === clientName);
+      if (!application || !module || !createdClient) {
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+      }
+    }
+    if (
+      !application ||
+      application.name !== applicationName ||
+      !module ||
+      module.name !== moduleName + ' Updated' ||
+      module.description !== 'Edited in packed Admin UI' ||
+      module.status !== 'inactive' ||
+      !createdClient
+    ) {
+      throw new Error(
+        'Admin UI feature creation could not be proved: ' +
+        JSON.stringify({
+          applicationFound: Boolean(application),
+          applicationNameMatches: application?.name === applicationName,
+          moduleFound: Boolean(module),
+          moduleNameMatches: module?.name === moduleName + ' Updated',
+          moduleDescriptionMatches: module?.description === 'Edited in packed Admin UI',
+          moduleInactive: module?.status === 'inactive',
+          clientFound: Boolean(createdClient),
+        }),
+      );
+    }
+    const secrets = await client.clients.listSecrets(createdClient.id);
+    if (
+      createdClient.organizationId !== matches[0].id ||
+      createdClient.applicationId !== application.id ||
+      secrets.length !== 1 ||
+      secrets[0].clientId !== createdClient.id ||
+      secrets[0].status !== 'active'
+    ) {
+      throw new Error('Admin UI application/client relationships are invalid.');
+    }
+    console.log(JSON.stringify({
+      applicationId: application.id,
+      applicationCreated: true,
+      clientCreated: true,
+      clientId: createdClient.id,
+      moduleCreatedEditedAndDeactivated: true,
+    }));
   } else {
     const usersBefore = await client.users.list(matches[0].id, { page: 1, pageSize: 20 });
     const userMatches = usersBefore.data.filter((user) => user.email === userEmail);
@@ -109,6 +178,41 @@ if (action === 'assert-absent') {
       .filter((organization) => organization.slug !== slug)
       .map((organization) => organization.id)
       .sort();
+    const applicationsBefore = await client.applications.listAll();
+    const applicationMatches = applicationsBefore.filter(
+      (application) => application.slug === applicationSlug,
+    );
+    if (
+      applicationMatches.length > 1 ||
+      (applicationMatches[0] && applicationMatches[0].name !== applicationName)
+    ) {
+      throw new Error('Test application ownership could not be proved.');
+    }
+    const application = applicationMatches[0];
+    const modulesBefore = application
+      ? await client.applications.listModules(application.id)
+      : [];
+    const moduleMatches = modulesBefore.filter((module) => module.slug === 'module-' + nonce);
+    if (
+      moduleMatches.length > 1 ||
+      (moduleMatches[0] &&
+        ![moduleName, moduleName + ' Updated'].includes(moduleMatches[0].name))
+    ) {
+      throw new Error('Test module ownership could not be proved.');
+    }
+    const clientsBefore = await client.clients.listAll({ organizationId: matches[0].id });
+    const clientMatches = clientsBefore.filter((candidate) => candidate.clientName === clientName);
+    if (
+      clientMatches.length > 1 ||
+      (clientMatches[0] && (!application || clientMatches[0].applicationId !== application.id))
+    ) {
+      throw new Error('Test client ownership could not be proved.');
+    }
+    const ownedClient = clientMatches[0];
+    const secretsBefore = ownedClient ? await client.clients.listSecrets(ownedClient.id) : [];
+    if (secretsBefore.some((secret) => secret.clientId !== ownedClient?.id)) {
+      throw new Error('Test client-secret ownership could not be proved.');
+    }
     await client.organizations.destroy(matches[0].id);
     const after = await client.organizations.listAll();
     if (after.some((organization) => organization.slug === slug)) {
@@ -118,6 +222,13 @@ if (action === 'assert-absent') {
     if (usersAfter.data.some((user) => user.email === userEmail)) {
       throw new Error('Test user remains after organization cleanup.');
     }
+    const clientsAfter = await client.clients.listAll({ organizationId: matches[0].id });
+    if (clientsAfter.some((candidate) => candidate.clientName === clientName)) {
+      throw new Error('Test client remains after organization cleanup.');
+    }
+    if (application) await client.applications.archive(application.id);
+    const archivedApplication = application ? await client.applications.get(application.id) : undefined;
+    const modulesAfter = application ? await client.applications.listModules(application.id) : [];
     const remainingIds = after.map((organization) => organization.id).sort();
     if (JSON.stringify(remainingIds) !== JSON.stringify(unrelatedIds)) {
       throw new Error('Cleanup changed an unrelated organization.');
@@ -128,6 +239,13 @@ if (action === 'assert-absent') {
         ownershipVerified: true,
         userAbsent: true,
         userOwnershipVerified,
+        clientAndSecretsAbsent: true,
+          applicationArchived: archivedApplication?.data.status === 'archived' || !application,
+          moduleDeactivated:
+            !moduleMatches[0] ||
+            modulesAfter.some(
+              (module) => module.id === moduleMatches[0].id && module.status === 'inactive',
+            ),
       }),
     );
   }
@@ -250,6 +368,11 @@ async function runPackedOrganizationCheck({
   nonce,
   slug,
   userEmail,
+  applicationName,
+  applicationSlug,
+  moduleName,
+  clientName,
+  redirectUri,
 }) {
   const result = await execFile(
     process.execPath,
@@ -267,6 +390,11 @@ async function runPackedOrganizationCheck({
         PORTA_ADMIN_TEST_NONCE: nonce,
         PORTA_ADMIN_TEST_SLUG: slug,
         PORTA_ADMIN_TEST_USER_EMAIL: userEmail,
+        PORTA_ADMIN_TEST_APPLICATION_NAME: applicationName,
+        PORTA_ADMIN_TEST_APPLICATION_SLUG: applicationSlug,
+        PORTA_ADMIN_TEST_MODULE_NAME: moduleName,
+        PORTA_ADMIN_TEST_CLIENT_NAME: clientName,
+        PORTA_ADMIN_TEST_REDIRECT_URI: redirectUri,
       },
       timeout: 30_000,
     },
@@ -356,10 +484,12 @@ async function runPackedAdmin(
   home,
   organization,
   user,
+  feature,
   onCreateDispatch,
   onUserCreateDispatch,
   afterCreateDispatch,
   afterUserCreateDispatch,
+  afterFeatureOperations,
 ) {
   const command = `stty columns 80 rows 24; exec ${shellPath(process.execPath)} ${shellPath(cliBin)} admin --server ${shellPath(issuer)}`;
   const child = spawn('/usr/bin/script', ['-qfec', command, '/dev/null'], {
@@ -376,6 +506,32 @@ async function runPackedAdmin(
   const captured = captureChild(child);
   const observeAfter = () => captured.output().length;
   const includesAfter = (offset, value) => captured.output().slice(offset).includes(value);
+  const plainIncludesAfter = (offset, value) =>
+    captured
+      .output()
+      .slice(offset)
+      .replaceAll(/\u001b\[[0-?]*[ -/]*[@-~]/g, '')
+      .includes(value);
+  const openTopMenu = async (index) => {
+    const menuOffset = observeAfter();
+    child.stdin.write(f10);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(menuOffset, 'ho am I'),
+      'Hamburger menu before top-menu navigation',
+    );
+    for (let position = 0; position < index; position += 1) {
+      child.stdin.write('\u001b[C');
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 75));
+    }
+  };
+  const advanceFocus = async (count) => {
+    for (let position = 0; position < count; position += 1) {
+      child.stdin.write('\t');
+      await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    }
+  };
   child.stdout.on('data', (chunk) => {
     if (chunk.toString('utf8').includes('\u001b[6n')) child.stdin.write('\u001b[1;1R');
   });
@@ -399,6 +555,7 @@ async function runPackedAdmin(
       () => includesAfter(offset, '░░░░'),
       'JSVision desktop repaint after chooser cancellation',
     );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
 
     offset = observeAfter();
     child.stdin.write(f10);
@@ -419,6 +576,22 @@ async function runPackedAdmin(
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
 
     offset = observeAfter();
+    child.stdin.write(altApplications);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'rowse applications'),
+      'Applications menu without organization',
+    );
+    child.stdin.write('b');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Deployment-global') && includesAfter(offset, 'Loading applications'),
+      'Global Applications workspace without organization',
+    );
+
+    offset = observeAfter();
     child.stdin.write(altOrganizations);
     await waitForOutput(
       child,
@@ -434,6 +607,7 @@ async function runPackedAdmin(
       'Explicit organization chooser',
     );
     offset = observeAfter();
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
     child.stdin.write(' ');
     await waitForOutput(
       child,
@@ -477,6 +651,7 @@ async function runPackedAdmin(
       () => includesAfter(offset, 'reate user'),
       'Users menu',
     );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
     offset = observeAfter();
     child.stdin.write('c');
     await waitForOutput(
@@ -520,9 +695,293 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Password: not set') && includesAfter(offset, 'erify email'),
+      () => includesAfter(offset, 'Password:') && includesAfter(offset, 'erify email'),
       'Created user detail',
     );
+
+    offset = observeAfter();
+    await openTopMenu(3);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    child.stdin.write('c');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Create application'),
+      'Create application dialog',
+    );
+    offset = observeAfter();
+    child.stdin.write(
+      `${feature.applicationName}\t${feature.applicationSlug}\tPacked Admin UI journey\t\r`,
+    );
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, feature.applicationName),
+      'Admin UI-created application row',
+    );
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Add module') && plainIncludesAfter(offset, 'No modules'),
+      'Admin UI-created application detail',
+    );
+    offset = observeAfter();
+    child.stdin.write('\u001bm');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Add module'),
+      'Add module dialog',
+    );
+    offset = observeAfter();
+    child.stdin.write(
+      `${feature.moduleName} Updated\tmodule-${feature.nonce}\t\t\r`,
+    );
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, `module-${feature.nonce.slice(0, 8)}`),
+      'Admin UI-created module row',
+    );
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Edit module'),
+      'Edit module dialog',
+    );
+    offset = observeAfter();
+    child.stdin.write('\tEdited in packed Admin UI\t\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Loading applications'),
+      'Module edit reload',
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 300));
+    offset = observeAfter();
+    child.stdin.write('\t');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write('\t');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write(' ');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Module:'),
+      'Deactivate module confirmation',
+    );
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Loading applications'),
+      'Module deactivation reload',
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 300));
+
+    offset = observeAfter();
+    await openTopMenu(4);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'OIDC Clients') && plainIncludesAfter(offset, 'client'),
+      'OIDC Clients menu for creation',
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    child.stdin.write('c');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Create OIDC client'),
+      'Create OIDC client dialog',
+    );
+    offset = observeAfter();
+    await advanceFocus(1);
+    child.stdin.write(feature.clientName);
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    await advanceFocus(4);
+    child.stdin.write(`initial-${feature.nonce}`);
+    child.stdin.write('\u001br');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Redirect URIs'),
+      'Client Redirects tab',
+    );
+    await advanceFocus(2);
+    child.stdin.write(feature.redirectUri);
+    await advanceFocus(1);
+    child.stdin.write(' ');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    await advanceFocus(6);
+    child.stdin.write(' ');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Store this value now. It cannot be shown again.'),
+      'Initial one-time client secret',
+    );
+    const featurePreparation = await afterFeatureOperations();
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 500));
+    offset = observeAfter();
+    await openTopMenu(4);
+    child.stdin.write('b');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, feature.clientName),
+      'Admin UI-created organization client row',
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Secrets') && plainIncludesAfter(offset, 'Deactivate'),
+      'Organization client detail',
+    );
+
+    offset = observeAfter();
+    child.stdin.write('\u001bs');
+    await waitForOutput(
+      child,
+      captured.output,
+      () =>
+        plainIncludesAfter(offset, 'Secrets') &&
+        plainIncludesAfter(offset, `initial-${feature.nonce}`),
+      'Client secret metadata',
+    );
+    offset = observeAfter();
+    child.stdin.write('\u001bg');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Generate client secret'),
+      'Generate client secret dialog',
+    );
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Store this value now. It cannot be shown again.'),
+      'One-time client secret',
+    );
+    const oneTimeSecretMatches = captured
+      .output()
+      .slice(offset)
+      .match(/[A-Za-z0-9_-]{64}/g);
+    const observedOneTimeSecrets = new Set(oneTimeSecretMatches ?? []);
+    const secretFrameOffset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(secretFrameOffset, 'Generate a modern secret'),
+      'Secret metadata after one-time dismissal',
+    );
+    const secretPlaintextWasDisposed = [...observedOneTimeSecrets].every(
+      (secret) => !captured.output().slice(secretFrameOffset).includes(secret),
+    );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
+    offset = observeAfter();
+    child.stdin.write('\u001br');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Revoke client secret'),
+      'Revoke client secret confirmation',
+    );
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'revoked'),
+      'Revoked client secret metadata',
+    );
+
+    offset = observeAfter();
+    await openTopMenu(4);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'OIDC Clients') && plainIncludesAfter(offset, 'client'),
+      'OIDC Clients menu after secret management',
+    );
+    child.stdin.write('b');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, feature.clientName),
+      'Organization client row after secret management',
+    );
+    offset = observeAfter();
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Secrets') && plainIncludesAfter(offset, 'Deactivate'),
+      'Client detail after secret management',
+    );
+    offset = observeAfter();
+    child.stdin.write('\u001bb');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Configure OIDC client'),
+      'Client Basic configuration dialog',
+    );
+    child.stdin.write('\r');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => plainIncludesAfter(offset, 'Secrets') && plainIncludesAfter(offset, 'Deactivate'),
+      'Authoritatively reloaded client detail',
+    );
+
+    offset = observeAfter();
+    child.stdin.write(f10);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'ho am I'),
+      'Hamburger menu after client work',
+    );
+    child.stdin.write('\u001b[C');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'witch organization'),
+      'Organization switch after client work',
+    );
+    child.stdin.write('s');
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'Cancel') && includesAfter(offset, 'eauthenticate'),
+      'Organization chooser after client work',
+    );
+    offset = observeAfter();
+    child.stdin.write('\u001b[B');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
+    child.stdin.write(' ');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 200));
+    offset = observeAfter();
+    child.stdin.write(altApplications);
+    await waitForOutput(
+      child,
+      captured.output,
+      () => includesAfter(offset, 'rowse applications'),
+      'Global menu after client workspace was cleared by organization switch',
+    );
+    child.stdin.write('\u001b');
 
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 100));
     offset = observeAfter();
@@ -540,6 +999,7 @@ async function runPackedAdmin(
     const result = await captured.result;
     return {
       ...result,
+      packedAdminProcessWasReaped: child.exitCode !== null,
       initialOrganizationChooserWasObservedAndCancelled: true,
       whoAmIProvedVerifiedEmail: true,
       organizationWasExplicitlySwitched: true,
@@ -548,6 +1008,18 @@ async function runPackedAdmin(
       userDetailWasOpened: true,
       nonceUserWasCreated: true,
       usersMenuWasRestored: true,
+      applicationsWereOpenedWithoutOrganization: true,
+      deploymentGlobalNoticeWasVisible: true,
+      nonceApplicationWasCreated: featurePreparation.applicationCreated === true,
+      nonceModuleWasCreatedEditedAndDeactivated:
+        featurePreparation.moduleCreatedEditedAndDeactivated === true,
+      organizationClientWasCreated: featurePreparation.clientCreated === true,
+      clientConfigurationWasReloadedAuthoritatively: true,
+      clientSecretMetadataWasListed: true,
+      clientSecretWasGeneratedAndRevoked: true,
+      secretPlaintextWasShownExactlyOnce: observedOneTimeSecrets.size === 1,
+      secretPlaintextWasDisposedAfterDismissal: secretPlaintextWasDisposed,
+      organizationSwitchClearedClientWorkspace: true,
     };
   } finally {
     if (child.exitCode === null && child.signalCode === null) {
@@ -577,6 +1049,13 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
     slug: `porta-admin-e2e-${nonce}`,
   };
   const testUser = { userEmail: `admin-ui-e2e-${nonce}@porta.test` };
+  const testFeature = {
+    applicationName: `Admin UI App ${nonce}`,
+    applicationSlug: `porta-admin-app-${nonce}`,
+    moduleName: `Admin UI Module ${nonce}`,
+    clientName: `Admin UI Client ${nonce}`,
+    redirectUri: `https://app-${nonce}.example.test/callback`,
+  };
   await mkdir(home, { mode: 0o700 });
   const beforeVolumes = (await execFile('docker', ['volume', 'ls', '--format', '{{.Name}}']))
     .stdout;
@@ -598,6 +1077,7 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
       home,
       ...testOrganization,
       ...testUser,
+      ...testFeature,
       nonce,
     });
     let createWasDispatched = false;
@@ -613,6 +1093,7 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
         home,
         testOrganization,
         { email: testUser.userEmail },
+        { ...testFeature, nonce },
         () => {
           createWasDispatched = true;
         },
@@ -620,15 +1101,28 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
           userCreateWasDispatched = true;
         },
         afterCreateDispatch,
-        () =>
-          runPackedOrganizationCheck({
+        async () => {
+          return runPackedOrganizationCheck({
             action: 'wait-for-user',
             consumerDirectory,
             home,
             ...testOrganization,
             ...testUser,
+            ...testFeature,
             nonce,
-          }),
+          });
+        },
+        async () => {
+          return runPackedOrganizationCheck({
+            action: 'observe-features',
+            consumerDirectory,
+            home,
+            ...testOrganization,
+            ...testUser,
+            ...testFeature,
+            nonce,
+          });
+        },
       );
     } catch (error) {
       primaryFailure = error;
@@ -641,6 +1135,7 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
             home,
             ...testOrganization,
             ...testUser,
+            ...testFeature,
             nonce,
           });
         } catch (error) {
@@ -675,17 +1170,42 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
       userDetailWasOpened: admin.userDetailWasOpened,
       nonceUserWasCreated: userCreateWasDispatched && admin.nonceUserWasCreated,
       usersMenuWasRestored: admin.usersMenuWasRestored,
+      applicationsWereOpenedWithoutOrganization:
+        admin.applicationsWereOpenedWithoutOrganization,
+      deploymentGlobalNoticeWasVisible: admin.deploymentGlobalNoticeWasVisible,
+      nonceApplicationWasCreated: admin.nonceApplicationWasCreated,
+      nonceModuleWasCreatedEditedAndDeactivated:
+        admin.nonceModuleWasCreatedEditedAndDeactivated,
+      organizationClientWasCreated: admin.organizationClientWasCreated,
+      clientConfigurationWasReloadedAuthoritatively:
+        admin.clientConfigurationWasReloadedAuthoritatively,
+      clientSecretMetadataWasListed: admin.clientSecretMetadataWasListed,
+      clientSecretWasGeneratedAndRevoked: admin.clientSecretWasGeneratedAndRevoked,
+      secretPlaintextWasShownExactlyOnce: admin.secretPlaintextWasShownExactlyOnce,
+      secretPlaintextWasDisposedAfterDismissal:
+        admin.secretPlaintextWasDisposedAfterDismissal,
+      organizationSwitchClearedClientWorkspace:
+        admin.organizationSwitchClearedClientWorkspace,
       testOrganizationWasProvenAbsentBeforeCreate: absentBeforeCreate.absent === true,
       cleanupUsedIsolatedPackedSdkContext: true,
       cleanupVerifiedNonceOwnership: cleanup.ownershipVerified === true,
       cleanupVerifiedNonceUserOwnership: cleanup.userOwnershipVerified === true,
       testUserWasAbsentAfterCleanup: cleanup.userAbsent === true,
       testOrganizationWasAbsentAfterCleanup: cleanup.absent === true,
+      testClientAndSecretsWereAbsentAfterCleanup: cleanup.clientAndSecretsAbsent === true,
+      testModuleWasDeactivatedAfterCleanup: cleanup.moduleDeactivated === true,
+      testApplicationWasArchivedAfterCleanup: cleanup.applicationArchived === true,
       exitCode: admin.exitCode,
       terminalWasRestored:
         admin.output.includes(enterAlternateScreen) &&
         admin.output.lastIndexOf(leaveAlternateScreen) >
           admin.output.lastIndexOf(enterAlternateScreen),
+      alternateScreenWasEnteredExactlyOnce:
+        admin.output.split(enterAlternateScreen).length - 1 === 1,
+      alternateScreenWasLeftAfterJourneyAndCleanup:
+        admin.output.lastIndexOf(leaveAlternateScreen) >
+        admin.output.lastIndexOf(enterAlternateScreen),
+      packedAdminProcessWasReaped: admin.packedAdminProcessWasReaped,
       cleanedOnlyPlaygroundResources: beforeVolumes === afterVolumes && login.exitCode === 0,
     };
   } finally {

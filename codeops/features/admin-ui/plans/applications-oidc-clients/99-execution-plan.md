@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-08-30 18:38
-> **Progress**: 41/49 tasks (84%)
+> **Last Updated**: 2026-08-30 21:40
+> **Progress**: 48/49 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -264,26 +264,40 @@ prove the packed journey. Every phase stays feature-specific (AR-1, AR-2).
 
 ## Phase 6: Shell Integration, Packed Journey, Docs, and Assurance
 
-> **Phase baseline tree**: _(recorded by exec-plan at phase start)_
+> **Phase baseline tree**: `5bd034a36a1420be298a99586c0e85ea62dbbd21`
 > **Scope mode**: strict — existing shell, playground, public docs, and registered gates only
+> **Expected modification set**: the feature-specific Admin composition module and existing shell,
+> presentation, runtime, and export files; focused shell tests; the existing packed playground spec
+> and journey support; focused public and maintainer docs; execution/roadmap evidence
 
 ### Step 6.1: Specification Tests
 
 **Reference**: [03-06](03-06-application-integration.md) · ST-25–ST-27, ST-39, ST-50–ST-53 · AR-6
 
-- [ ] 6.1.1 [spec-author] Add the named shell/runtime specification for navigation, exact control inventory, organization/session transition, command ownership, focus, resize, reauthentication, and quit — `packages/cli/tests/admin/application-client-runtime.spec.test.ts`
-- [ ] 6.1.2 [spec-author] Extend the packed Admin UI specification through application/module and organization client/secret operations with exact cleanup and terminal restoration — playground E2E spec
-- [ ] 6.1.3 Run the focused shell and packed specifications against unchanged integration and record expected red
+- [x] 6.1.1 [spec-author] Add the named shell/runtime specification for navigation, exact control inventory, organization/session transition, command ownership, focus, resize, reauthentication, and quit — `packages/cli/tests/admin/application-client-runtime.spec.test.ts` ✅ (completed: 2026-08-30 18:54)
+- [x] 6.1.2 [spec-author] Extend the packed Admin UI specification through application/module and organization client/secret operations with exact cleanup and terminal restoration — playground E2E spec ✅ (completed: 2026-08-30 18:54)
+- [x] 6.1.3 Run the focused shell and packed specifications against unchanged integration and record expected red ✅ (completed: 2026-08-30 18:54)
+
+  Expected-red evidence: Node 24 runtime specifications collected 11 cases; 2 passed against the
+  unchanged shell and 9 failed on missing menu, workspace, transition, modal/resize, and disposal
+  integration. The packed Node test collected 4 cases; its three cleanup-order specifications passed
+  and the live journey stopped at the required local-password precondition before its new assertions.
 
 ### Step 6.2: Implementation and Green Phase
 
-- [ ] 6.2.1 Add the small feature-specific `application-client-features.ts` composition module and wire commands, permission-aware menus, controllers, workspace mounting, transitions, dialog ownership, focus, resize, reauthentication, quit, and disposal without further growing the shell entrypoint
-- [ ] 6.2.2 Extend the existing packed PTY journey and owned cleanup without adding another harness — playground journey support
-- [ ] 6.2.3 Run shell specifications and ST-53 on Node 24 LTS; make them green without changing expectations
+- [x] 6.2.1 Add the small feature-specific `application-client-features.ts` composition module and wire commands, permission-aware menus, controllers, workspace mounting, transitions, dialog ownership, focus, resize, reauthentication, quit, and disposal without further growing the shell entrypoint ✅ (completed: 2026-08-30 20:12)
+- [x] 6.2.2 Extend the existing packed PTY journey and owned cleanup without adding another harness — playground journey support ✅ (completed: 2026-08-30 20:12)
+- [x] 6.2.3 Run shell specifications and ST-53 on Node 24 LTS; make them green without changing expectations ✅ (completed: 2026-08-30 20:12; shell 93/93, packed 4/4)
 
 ### Step 6.3: Implementation Tests and Completion Gates
 
-- [ ] 6.3.1 Update focused public Admin UI/operator/SDK/CLI documentation, including global ownership, the 10-active-secret safety bound and upgrade precondition, and AR-7's legacy transition; run every exact final command in 07 except clean-commit compatibility
+- [x] 6.3.1 Update focused public Admin UI/operator/SDK/CLI documentation, including global ownership, the 10-active-secret safety bound and upgrade precondition, and AR-7's legacy transition; run every exact final command in 07 except clean-commit compatibility ✅ (completed: 2026-08-30 21:40; production-security runs after the clean implementation commit per AR-10)
+
+  Final pre-commit evidence: server unit 2,913/2,913; integration 392/392; E2E 128/128;
+  pentest 224/224; browser 132/132; retained SPA/BFF harness 6/6; protocol assurance 15/15;
+  SDK 455/455; CLI 992/992; packed Admin UI 4/4; public docs build passed; Node 24 root
+  `yarn verify` passed in 11m23s. Production-security is intentionally sequenced with the clean
+  committed revision because its provenance collector rejects a dirty source tree.
 - [ ] 6.3.2 Using the git-commit skill in the execution-selected commit mode, obtain a clean committed revision; run `yarn assurance:compat --select p1-admin` and `yarn assurance:compat --select protocol`, review their result taxonomy/provenance, update execution evidence and roadmap, and complete only if every required gate qualifies
 
 **Deliverables:** fully integrated workspaces, packed proof, truthful docs, clean compatibility evidence, and synchronized roadmap.

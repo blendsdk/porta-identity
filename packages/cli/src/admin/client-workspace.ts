@@ -207,6 +207,7 @@ export function createAdminClientWorkspace(
     const applicationSummary = firstClient
       ? `Application: ${applicationLabel(firstClient, options)}`
       : undefined;
+    const clientSummary = firstClient ? `Client: ${firstClient.clientName}` : undefined;
     content.add(
       cover(
         col(
@@ -214,6 +215,7 @@ export function createAdminClientWorkspace(
           fixed(heading, 2),
           statusRow(status),
           denial && fixed(new Text(denial), 1),
+          clientSummary ? fixed(new Text(clientSummary), 1) : undefined,
           applicationSummary ? fixed(new Text(applicationSummary), 1) : undefined,
           grow(body),
         ),
@@ -239,9 +241,9 @@ export function createAdminClientWorkspace(
     const configuration = row(
       { gap: 1 },
       ...(['Basic', 'Redirects', 'Protocol', 'Login'] as const).map((tab) =>
-        action(tab, { kind: 'edit', clientId: selected.id, tab }, tab.length + 4, !canUpdate),
+        action(`~${tab[0]}~${tab.slice(1)}`, { kind: 'edit', clientId: selected.id, tab }, tab.length + 4, !canUpdate),
       ),
-      action('Secrets', { kind: 'secrets', clientId: selected.id }, 11, revoked || selected.clientType === 'public'),
+      action('~S~ecrets', { kind: 'secrets', clientId: selected.id }, 11, revoked || selected.clientType === 'public'),
     );
     const controls = row(
       { gap: 1 },

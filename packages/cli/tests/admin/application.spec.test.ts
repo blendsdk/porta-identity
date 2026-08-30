@@ -137,8 +137,9 @@ describe('admin application shell', () => {
         expect(landing).not.toContain('Choose or create an organization.');
         expect(landing).not.toContain('Verified Admin');
         expect(landing).not.toContain('admin@example.test');
-        expect(landing).toContain('Users (organization required)');
-        expect(landing).not.toMatch(/Applications|Clients|Signing Keys|Dashboard|Metrics/);
+        expect(landing).toContain('Users');
+        expect(landing).toContain('Applications');
+        expect(landing).not.toMatch(/Signing Keys|Dashboard|Metrics/);
 
         press(application, 'f10');
         await settleApplication();
@@ -282,7 +283,10 @@ describe('admin application shell', () => {
           expect(frame).not.toContain('Verified Admin');
           expect(frame).not.toContain('admin@example.test');
           expect(frame).toContain('Users');
-          expect(frame).not.toMatch(/Dashboard|Metrics|Applications|Clients|Signing Keys/);
+          if (width >= 80) {
+            expect(frame).toContain('Applications');
+          }
+          expect(frame).not.toMatch(/Dashboard|Metrics|Signing Keys/);
           expect(frame.length).toBeLessThanOrEqual(width * height + height - 1);
           return 0;
         },
@@ -513,7 +517,7 @@ describe('admin application shell', () => {
       },
       applicationFactory: createApplication,
       applicationRunner: async (application) => {
-        expect(frameText(application)).toContain('Users (organization required)');
+        expect(frameText(application)).toContain('Users');
         const browse = vi.fn();
         application.onCommand('browse-users', browse);
         press(application, 'u', { alt: true });

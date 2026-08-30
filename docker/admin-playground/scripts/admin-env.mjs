@@ -253,8 +253,10 @@ export function productionDependencies(system = {}) {
     },
     withMutationLock,
     ensureStableSecrets,
-    startServices: async () =>
-      composeCommand(['up', '-d', '--build', 'postgres', 'redis', 'mailhog']),
+    startServices: async () => {
+      await composeCommand(['build', 'porta']);
+      await composeCommand(['up', '-d', '--build', 'postgres', 'redis', 'mailhog']);
+    },
     runMigrations: async () =>
       composeCommand(['run', '--rm', 'porta', 'node', 'dist/cli/index.js', 'migrate', 'up'], {
         timeout: 300_000,

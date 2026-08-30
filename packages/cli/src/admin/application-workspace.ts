@@ -257,7 +257,7 @@ export function createAdminApplicationWorkspace(
     const moduleActions = row(
       { gap: 1 },
       moduleAction('~E~dit module', 'edit-module', 14),
-      moduleAction('Deactivate module', 'deactivate-module', 20),
+      moduleAction('Deacti~v~ate module', 'deactivate-module', 20),
       spacer(),
     );
     let modules: View;

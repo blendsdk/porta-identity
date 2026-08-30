@@ -4,6 +4,17 @@ Manage applications, modules, roles, permissions, and claim definitions via the 
 
 **Mode:** HTTP (requires `porta login`)
 
+Applications are deployment-global product definitions. They are shared across organizations;
+organization-specific OIDC registrations belong under Clients instead.
+
+## Interactive Admin UI
+
+Run `porta admin`, authenticate, and open **Applications**. No organization selection is required.
+The workspace lists every application, opens application details, and supports application creation,
+editing, archival, and module creation, editing, and deactivation according to the
+administrator's permissions. The global warning in the workspace is intentional: changing an
+application or module can affect clients in multiple organizations.
+
 ## Application CRUD
 
 ### `porta app create`

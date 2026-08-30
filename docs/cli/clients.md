@@ -4,6 +4,15 @@ Manage OIDC clients and client secrets via the `porta client` command.
 
 **Mode:** HTTP (requires `porta login`)
 
+OIDC clients belong to one organization and reference one deployment-global application. In
+`porta admin`, select the organization first, then open **OIDC Clients**. Switching organizations
+closes the prior client workspace so client data is never carried into the new context.
+
+The interactive workspace uses a DataGrid for the selected organization's clients. Client details
+provide Basic, Redirects, Protocol, Login, and Secrets actions plus activation, deactivation, and
+permanent revocation. Configuration dialogs keep the client name as a normal one-line field and
+reload authoritative server state after saving.
+
 ## Client CRUD
 
 ### `porta client create`
@@ -77,6 +86,15 @@ porta client deactivate --id <client-id>
 
 Manage secrets for confidential clients. Supports multiple active secrets for zero-downtime rotation.
 
+At most 10 active, unexpired secrets are allowed for one client. Revoke an old secret before
+generating another when that limit is reached. An upgrade stops safely if existing data already has
+more than 10; revoke excess secrets with the previous Porta version, then retry the upgrade.
+
+Clients retained from versions that stored only legacy Argon2 secret hashes must generate one
+modern secret before legacy overlap authentication can transition. During the overlap, a valid
+active legacy credential may be canonicalized to the modern value; expired, revoked, or invalid
+credentials are never canonicalized.
+
 ### `porta client secret generate`
 
 ```bash
@@ -94,6 +112,9 @@ porta client secret list --client-id <id>
 ```
 
 Shows secret metadata (ID, label, creation date) without plaintext values.
+
+The Admin UI follows the same rule: generated plaintext appears in one transient dialog and is
+discarded when that dialog closes. Later views show metadata only.
 
 ### `porta client secret revoke`
 

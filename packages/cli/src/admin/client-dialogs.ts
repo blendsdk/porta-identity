@@ -378,9 +378,17 @@ function collectionEditor(
   return { content, grid };
 }
 
+/** Keeps JSVision's owned vertical bar explicit during its initial Layout DSL pass. */
+class ClientFormScroller extends Scroller {
+  constructor(options: ConstructorParameters<typeof Scroller>[0]) {
+    super(options);
+    this.vbar?.setLayout({ size: { kind: 'fixed', cells: 1 } });
+  }
+}
+
 /** Wraps one tab page in the required vertical Scroller. */
 function scrollPage(content: Group, width: number, height: number): Scroller {
-  return new Scroller({
+  return new ClientFormScroller({
     content,
     extent: { width: Math.max(1, width - 2), height },
     scrollbars: 'vertical',

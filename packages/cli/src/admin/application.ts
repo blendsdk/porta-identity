@@ -22,6 +22,8 @@ import type { AdminOrganizationOperations } from './organization-service.js';
 import type { AdminUserOperations } from './user-service.js';
 import type { AdminApplicationOperations } from './application-service.js';
 import type { AdminClientOperations } from './client-service.js';
+import { createAdminApplicationClientFeatures } from './application-client-features.js';
+import type { AdminApplicationClientFeatures } from './application-client-features.js';
 import { createAdminUserController } from './user-controller.js';
 import type { AdminUserController } from './user-controller.js';
 import { ADMIN_COMMANDS, createAdminPresentation } from './presentation.js';
@@ -145,7 +147,9 @@ export async function runAdminApplication(
   let emitDeferredQuit = (): void => undefined;
   let deferredQuit = false;
   let userController: AdminUserController | undefined;
+  let applicationClientFeatures: AdminApplicationClientFeatures | undefined;
   let userRecoveryRequired = false;
+  let featureDialogOpen = false;
   let sessionEpoch = initialState.kind === 'authenticated' ? 1 : 0;
   const standardKeymap = createKeymap({
     'ctrl+r': ADMIN_COMMANDS.reauthenticate,
@@ -161,9 +165,10 @@ export async function runAdminApplication(
         authenticationGateOpen ||
         organizationDialogOpen ||
         identityDialogOpen ||
-        userDialogOpen;
+        userDialogOpen ||
+        featureDialogOpen;
       const cancellableWorkOpen =
-        currentController !== undefined || organizationDialogOpen || userDialogOpen;
+        currentController !== undefined || organizationDialogOpen || userDialogOpen || featureDialogOpen;
       if (command === Commands.quit && modalWorkOpen) {
         if (!deferredQuit) {
           deferredQuit = true;
@@ -201,6 +206,7 @@ export async function runAdminApplication(
   let authenticationGateGeneration = 0;
   let organizationGeneration = 0;
   let createRecoveryRequired = false;
+  let deferAuthenticationGateOnce = false;
   let session = options.session;
   let signalExitCode: AdminExitCode | undefined;
 
@@ -209,6 +215,7 @@ export async function runAdminApplication(
     if (disposed) return;
     presentation.setState(state);
     userController?.syncContext(state, sessionEpoch);
+    applicationClientFeatures?.syncContext(state, sessionEpoch);
     application.loop.enableCommand(ADMIN_COMMANDS.authenticate, state.kind === 'unauthenticated');
     application.loop.enableCommand(ADMIN_COMMANDS.retry, canRetryAdminState(state));
     application.loop.enableCommand(
@@ -264,7 +271,36 @@ export async function runAdminApplication(
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.cancel,
-      currentController !== undefined || organizationDialogOpen || userDialogOpen,
+      currentController !== undefined || organizationDialogOpen || userDialogOpen || featureDialogOpen,
+    );
+    const featureIdle =
+      !currentController &&
+      !organizationDialogOpen &&
+      !identityDialogOpen &&
+      !userDialogOpen &&
+      !featureDialogOpen;
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.browseApplications,
+      state.kind === 'authenticated' && state.capabilities.canReadApplications && featureIdle,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.createApplication,
+      state.kind === 'authenticated' && state.capabilities.canCreateApplications && featureIdle,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.browseClients,
+      state.kind === 'authenticated' &&
+        Boolean(state.organization) &&
+        state.capabilities.canReadClients &&
+        featureIdle,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.createClient,
+      state.kind === 'authenticated' &&
+        Boolean(state.organization) &&
+        state.capabilities.canCreateClients &&
+        state.capabilities.canReadApplications &&
+        featureIdle,
     );
     syncAuthenticationGate(state);
   };
@@ -335,6 +371,7 @@ export async function runAdminApplication(
     cancelOrganizationWork();
     cancelSessionOperation();
     userController?.cancelActiveOperation();
+    applicationClientFeatures?.cancelActiveOperation();
     dialogSurface.removeAll();
   };
 
@@ -351,8 +388,14 @@ export async function runAdminApplication(
       authenticationGateOpen ||
       organizationDialogOpen ||
       identityDialogOpen ||
-      userDialogOpen
+      userDialogOpen ||
+      featureDialogOpen
     ) {
+      return;
+    }
+    if (deferAuthenticationGateOnce) {
+      deferAuthenticationGateOnce = false;
+      setTimeout(() => syncAuthenticationGate(), 0);
       return;
     }
 
@@ -555,6 +598,7 @@ export async function runAdminApplication(
 
   /** Reauthenticates and reconciles an existing organization before releasing operation ownership. */
   function startReauthentication(): void {
+    applicationClientFeatures?.cancelActiveOperation();
     const operation = session?.reauthenticate;
     if (
       !operation ||
@@ -591,6 +635,7 @@ export async function runAdminApplication(
         }
         if (state.kind !== 'authenticated') {
           sessionEpoch += 1;
+          deferAuthenticationGateOnce = state.kind === 'unauthenticated';
           setState(state);
           release();
           return;
@@ -667,6 +712,25 @@ export async function runAdminApplication(
     },
   });
 
+  applicationClientFeatures = createAdminApplicationClientFeatures({
+    dialogs: dialogSurface,
+    readState: () => presentation.getState(),
+    readSession: () => session,
+    mountWorkspace: presentation.setWorkspace,
+    focusView: (view) => application.loop.focusInto(view),
+    setDialogBusy: (busy) => {
+      featureDialogOpen = busy;
+      setState(presentation.getState());
+    },
+    requestAuthentication: invalidateSession,
+  });
+  dialogSurface.setModalCommandHandler((command) => {
+    if (command !== ADMIN_COMMANDS.reauthenticate) return false;
+    cancelModalWork();
+    queueMicrotask(startReauthentication);
+    return true;
+  });
+
   const unregisterCommands = [
     application.onCommand(ADMIN_COMMANDS.authenticate, () => startOperation(session?.authenticate)),
     application.onCommand(ADMIN_COMMANDS.retry, () => startOperation(session?.retry)),
@@ -688,6 +752,7 @@ export async function runAdminApplication(
         .catch(() => undefined)
         .finally(() => {
           identityDialogOpen = false;
+          if (!disposed) setState(presentation.getState());
         });
     }),
     application.onCommand(ADMIN_COMMANDS.createOrganization, startCreateOrganization),
@@ -701,9 +766,25 @@ export async function runAdminApplication(
     application.onCommand(ADMIN_COMMANDS.inviteUser, () =>
       userController?.handleCommand(ADMIN_COMMANDS.inviteUser),
     ),
+    application.onCommand(ADMIN_COMMANDS.browseApplications, () =>
+      applicationClientFeatures?.handleCommand(ADMIN_COMMANDS.browseApplications),
+    ),
+    application.onCommand(ADMIN_COMMANDS.createApplication, () =>
+      applicationClientFeatures?.handleCommand(ADMIN_COMMANDS.createApplication),
+    ),
+    application.onCommand(ADMIN_COMMANDS.browseClients, () =>
+      applicationClientFeatures?.handleCommand(ADMIN_COMMANDS.browseClients),
+    ),
+    application.onCommand(ADMIN_COMMANDS.createClient, () =>
+      applicationClientFeatures?.handleCommand(ADMIN_COMMANDS.createClient),
+    ),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
       if (userDialogOpen) {
         userController?.cancelActiveOperation();
+        return;
+      }
+      if (featureDialogOpen) {
+        applicationClientFeatures?.cancelActiveOperation();
         return;
       }
       if (identityDialogOpen) {
@@ -727,6 +808,7 @@ export async function runAdminApplication(
     const recoverable =
       presentation.content.bounds.width >= 32 && presentation.content.bounds.height >= 8;
     userController?.handleRecoverableGeometry(recoverable);
+    applicationClientFeatures?.handleRecoverableGeometry(recoverable);
     if (!recoverable) {
       cancelModalWork();
     } else {
@@ -799,9 +881,12 @@ export async function runAdminApplication(
     if (finalized) return;
     finalized = true;
     cancelModalWork();
+    disposed = true;
     userController?.dispose();
     userController = undefined;
-    disposed = true;
+    applicationClientFeatures?.dispose();
+    applicationClientFeatures = undefined;
+    dialogSurface.setModalCommandHandler(undefined);
     for (const [signal, listener] of signalListeners) signalSource.off(signal, listener);
     for (const unregister of unregisterCommands) unregister();
     const finalizer = options.applicationFinalizer ?? ((target) => target.loop.dispose());
