@@ -78,12 +78,12 @@
     "@types/koa-session": "^6.4.5",
     "@types/koa-static": "^4.0.4",
     "@types/koa__router": "^12.0.5",
-    "@types/node": "26.2.0",
+    "@types/node": "26.4.0",
     "@typescript/native": "npm:typescript@^7.0.2",
     "acorn": "8.18.0",
     "ast-v8-to-istanbul": "1.0.5",
     "dotenv": "17.4.2",
-    "eslint": "10.8.1",
+    "eslint": "10.9.1",
     "eslint-config-prettier": "10.1.8",
     "koa": "^3.2.1",
     "koa-session": "^7.0.2",
@@ -100,7 +100,7 @@
     "typescript-eslint": "8.66.0",
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "zod": "4.4.3"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
