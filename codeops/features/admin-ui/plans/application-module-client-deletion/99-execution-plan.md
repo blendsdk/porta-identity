@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-09-06 17:23
-> **Progress**: 22/40 tasks (55%)
+> **Progress**: 23/40 tasks (58%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -107,7 +107,7 @@ its existing retention policy.
 ### Session 1 — Specification Tests
 
 - [x] 3.1 [spec-author] Add `packages/sdk/tests/resource-deletion-rd10.spec.test.ts` for eight exact paths, bodyless void results, fixed errors, status unions, agent tools, and removed aliases — ST-28–ST-29 ✅ (completed: 2026-09-06 17:23; 27 immutable cases authored; expected red recorded in Task 3.3)
-- [ ] 3.2 [spec-author] Add `packages/cli/tests/commands/resource-deletion.spec.test.ts` for eight registrations, Keep/Delete-name confirmation, exact one-call dispatch, force rejection, help, and hostile-name safety — ST-29–ST-31
+- [x] 3.2 [spec-author] Add `packages/cli/tests/commands/resource-deletion.spec.test.ts` for eight registrations, Keep/Delete-name confirmation, exact one-call dispatch, force rejection, help, and hostile-name safety — ST-29–ST-31 ✅ (completed: 2026-09-06 17:23; 34 immutable cases authored; expected red recorded in Task 3.3)
 - [ ] 3.3 Run the two exact Phase 3 commands from 07 and record the expected-red boundary
 
 ### Session 2 — Implementation
