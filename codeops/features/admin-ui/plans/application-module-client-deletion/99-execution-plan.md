@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 03:51
-> **Progress**: 7/40 tasks (18%)
+> **Last Updated**: 2026-09-06 04:05
+> **Progress**: 8/40 tasks (20%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -52,7 +52,7 @@ otherwise the first `[ ]`. Use `[!]` only with a concise blocker on the task lin
 ### Session 3 — Implementation Tests and Gate
 
 - [x] 1.7 Add implementation tests for tracking order/failure, extracted OIDC reference sets, all adapter methods, and direct query behavior ✅ (completed: 2026-09-06 03:51)
-- [ ] 1.8 Run the two Phase 1 selectors, `yarn test:unit`, `yarn test:integration`, and `yarn test:structure`; update this plan, maintainer authority docs, and the roadmap
+- [x] 1.8 Run the two Phase 1 selectors, `yarn test:unit`, `yarn test:integration`, and `yarn test:structure`; update this plan, maintainer authority docs, and the roadmap ✅ (completed: 2026-09-06 04:05)
 
 **Deliverable:** Redis cannot publish an untracked Session and cached server-backed artifacts cannot
 bypass live PostgreSQL authority. The existing lifecycle remains coherent until Phase 2 performs one

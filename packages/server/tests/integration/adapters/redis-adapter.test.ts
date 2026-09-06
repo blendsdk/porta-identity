@@ -27,7 +27,6 @@ describe('Redis Adapter (Integration)', () => {
   it('should upsert and find a Session with TTL', async () => {
     const adapter = new RedisAdapter('Session');
     const payload: AdapterPayload = {
-      accountId: 'user-session-1',
       uid: 'uid-session-1',
       iat: Math.floor(Date.now() / 1000),
       kind: 'Session',
@@ -37,7 +36,6 @@ describe('Redis Adapter (Integration)', () => {
     const found = await adapter.find('sess-001');
 
     expect(found).toBeDefined();
-    expect(found!.accountId).toBe('user-session-1');
     expect(found!.uid).toBe('uid-session-1');
     expect(found!.kind).toBe('Session');
   });
@@ -112,7 +110,6 @@ describe('Redis Adapter (Integration)', () => {
   it('should destroy an artifact and clean up index keys', async () => {
     const adapter = new RedisAdapter('Session');
     const payload: AdapterPayload = {
-      accountId: 'user-destroy',
       uid: 'uid-destroy',
       iat: Math.floor(Date.now() / 1000),
       kind: 'Session',
@@ -142,27 +139,39 @@ describe('Redis Adapter (Integration)', () => {
     const sharedGrantId = 'grant-redis-revoke';
 
     // Insert two artifacts with the same grantId
-    await adapter.upsert('ac-revoke-1', {
-      accountId: 'user-1',
-      clientId: 'client-1',
-      grantId: sharedGrantId,
-      kind: 'AuthorizationCode',
-    }, 600);
+    await adapter.upsert(
+      'ac-revoke-1',
+      {
+        accountId: 'user-1',
+        clientId: 'client-1',
+        grantId: sharedGrantId,
+        kind: 'AuthorizationCode',
+      },
+      600,
+    );
 
-    await adapter.upsert('ac-revoke-2', {
-      accountId: 'user-1',
-      clientId: 'client-1',
-      grantId: sharedGrantId,
-      kind: 'AuthorizationCode',
-    }, 600);
+    await adapter.upsert(
+      'ac-revoke-2',
+      {
+        accountId: 'user-1',
+        clientId: 'client-1',
+        grantId: sharedGrantId,
+        kind: 'AuthorizationCode',
+      },
+      600,
+    );
 
     // Insert an artifact with a DIFFERENT grantId — should survive
-    await adapter.upsert('ac-keep', {
-      accountId: 'user-2',
-      clientId: 'client-2',
-      grantId: 'grant-other',
-      kind: 'AuthorizationCode',
-    }, 600);
+    await adapter.upsert(
+      'ac-keep',
+      {
+        accountId: 'user-2',
+        clientId: 'client-2',
+        grantId: 'grant-other',
+        kind: 'AuthorizationCode',
+      },
+      600,
+    );
 
     // Revoke all artifacts for the shared grantId
     await adapter.revokeByGrantId(sharedGrantId);
@@ -180,10 +189,14 @@ describe('Redis Adapter (Integration)', () => {
     const adapter = new RedisAdapter('AuthorizationCode');
 
     // Use a very short TTL (1 second) to test expiration
-    await adapter.upsert('ac-expire', {
-      accountId: 'user-expire',
-      kind: 'AuthorizationCode',
-    }, 1);
+    await adapter.upsert(
+      'ac-expire',
+      {
+        accountId: 'user-expire',
+        kind: 'AuthorizationCode',
+      },
+      1,
+    );
 
     // Should exist immediately
     const before = await adapter.find('ac-expire');
@@ -203,7 +216,6 @@ describe('Redis Adapter (Integration)', () => {
     const adapter = new RedisAdapter('Session');
     const uid = 'uid-lookup-test';
     const payload: AdapterPayload = {
-      accountId: 'user-uid-lookup',
       uid,
       iat: Math.floor(Date.now() / 1000),
       kind: 'Session',
@@ -214,7 +226,6 @@ describe('Redis Adapter (Integration)', () => {
     // findByUid should resolve the UID index → main key → full payload
     const found = await adapter.findByUid(uid);
     expect(found).toBeDefined();
-    expect(found!.accountId).toBe('user-uid-lookup');
     expect(found!.uid).toBe(uid);
   });
 

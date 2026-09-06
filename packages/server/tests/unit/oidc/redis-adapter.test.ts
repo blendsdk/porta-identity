@@ -15,7 +15,7 @@ vi.mock('../../../src/lib/session-tracking.js', () => ({
 }));
 
 import { getRedis } from '../../../src/lib/redis.js';
-import { getSession, upsertSession } from '../../../src/lib/session-tracking.js';
+import { getSession, revokeSession, upsertSession } from '../../../src/lib/session-tracking.js';
 import { RedisAdapter } from '../../../src/oidc/redis-adapter.js';
 
 /** Return a live tracking record for Redis-backed Session tests. */
@@ -74,6 +74,7 @@ describe('RedisAdapter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(getSession).mockResolvedValue(createLiveTracking());
+    vi.mocked(revokeSession).mockResolvedValue(undefined);
     vi.mocked(upsertSession).mockResolvedValue(undefined);
     adapter = new RedisAdapter('Session');
   });

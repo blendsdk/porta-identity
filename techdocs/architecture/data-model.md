@@ -1,6 +1,6 @@
 # Data Model
 
-> **Last Updated**: 2026-08-30
+> **Last Updated**: 2026-09-06
 
 ## Overview
 
@@ -344,20 +344,24 @@ Binary storage for organization logos and favicons.
 
 OIDC session tracking for the admin session viewer and revocation UI.
 
-| Column             | Type         | Description                    |
-| ------------------ | ------------ | ------------------------------ |
-| `id`               | UUID         | Primary key                    |
-| `session_uid`      | VARCHAR(255) | OIDC session unique identifier |
-| `user_id`          | UUID         | FK → users (nullable)          |
-| `organization_id`  | UUID         | FK → organizations (nullable)  |
-| `client_id`        | VARCHAR(64)  | OIDC client identifier         |
-| `ip_address`       | INET         | Client IP address              |
-| `user_agent`       | TEXT         | Client user-agent string       |
-| `last_activity_at` | TIMESTAMPTZ  | Last session activity          |
-| `expires_at`       | TIMESTAMPTZ  | Session expiry time            |
-| `created_at`       | TIMESTAMPTZ  | Session creation time          |
+| Column             | Type                   | Description                                       |
+| ------------------ | ---------------------- | ------------------------------------------------- |
+| `session_id`       | VARCHAR(128)           | OIDC Session identifier and primary key           |
+| `user_id`          | UUID, nullable         | FK → users, cascading on user deletion            |
+| `client_id`        | UUID, nullable         | FK → clients; not a complete multi-client mapping |
+| `organization_id`  | UUID, nullable         | FK → organizations                                |
+| `grant_id`         | VARCHAR(128), nullable | Grant captured when available                     |
+| `ip_address`       | INET, nullable         | Client IP address                                 |
+| `user_agent`       | TEXT, nullable         | Client user-agent string                          |
+| `last_activity_at` | TIMESTAMPTZ            | Last tracking update                              |
+| `expires_at`       | TIMESTAMPTZ            | Absolute Session authority expiry                 |
+| `revoked_at`       | TIMESTAMPTZ, nullable  | Revocation time; null while live                  |
+| `created_at`       | TIMESTAMPTZ            | Tracking-row creation time                        |
 
-Mirrors Redis session data to PostgreSQL for admin viewing and revocation.
+The row is an authority dependency for a Redis Session, not only an administrative mirror. Porta
+persists it before publishing the Redis payload and rejects cached Sessions whose row is missing,
+expired, or revoked. The nullable `client_id` is informational because one Session can authorize
+several clients through its Redis payload.
 
 ### Invitation Details (Migration 019)
 

@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-09-06
 
 ## Overview
 
@@ -72,11 +72,13 @@ This page tracks all significant architecture decisions made during Porta's deve
 **Consequences**:
 
 - ✅ Fast session lookups via Redis
+- ✅ PostgreSQL tracking is created before a Redis Session is published
+- ✅ Cached OIDC references are accepted only while their PostgreSQL authority remains live
 - ✅ Durable tokens survive cache eviction
 - ✅ Session `destroy()` cascades grant/token deletion across both stores
 - ✅ Natural session expiry preserves tokens (enables refresh flows)
 - ⚠️ Two adapter implementations to maintain
-- ⚠️ Cascade deletion requires cross-store coordination
+- ⚠️ Session creation and cached authority reads depend on PostgreSQL availability
 
 ---
 

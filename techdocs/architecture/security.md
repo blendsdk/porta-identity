@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-08-30
+> **Last Updated**: 2026-09-06
 
 ## Overview
 
@@ -349,6 +349,8 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 
 - **New session on authentication** — prevents session fixation
 - **Configurable TTLs** — stored in `system_config` table
+- **Database-backed authority** — PostgreSQL tracking is persisted before Redis publication; missing, expired, or revoked tracking invalidates the cached Session
+- **Live reference checks** — cached OIDC artifacts are rejected when their referenced client, account, grant, or Session authorization is no longer live in PostgreSQL
 - **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
 

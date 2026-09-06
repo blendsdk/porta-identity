@@ -1,6 +1,6 @@
 # Integrations Reference
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-09-06
 
 ## Overview
 
@@ -132,6 +132,11 @@ oidc:user_code:{userCode}    → UID lookup (device flow)
 
 Models stored in Redis: `Session`, `Interaction`, `AuthorizationCode`, `ReplayDetection`, `ClientCredentials`, `PushedAuthorizationRequest`.
 
+Redis storage is not sufficient authority by itself. Session publication first persists its
+PostgreSQL tracking row. Cached adapter reads validate every referenced active client, active user,
+and live grant against PostgreSQL; Session reads also require live tracking. OIDC Client and account
+lookup, plus token role and permission claims, bypass entity caches.
+
 #### Tenant Cache
 
 ```
@@ -153,7 +158,8 @@ Sliding window implementation using Redis `INCR` and `EXPIRE`.
 
 - **On write**: Service layer invalidates cache after successful DB writes
 - **Graceful degradation**: Cache miss falls through to PostgreSQL
-- **Never block**: Cache operations don't fail requests
+- **Ordinary cache degradation**: Non-authoritative entity cache misses fall through to PostgreSQL
+- **Authority failure**: Session tracking or live-reference validation failure stops the OIDC operation
 
 ### Data Persistence
 
