@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 18:18
-> **Progress**: 38/40 tasks (95%)
+> **Last Updated**: 2026-09-06 21:54
+> **Progress**: 40/40 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -121,7 +121,7 @@ its existing retention policy.
 ### Session 3 — Implementation Tests and Gate
 
 - [x] 3.8 Add implementation tests for SDK serialization, parser/help wiring, cancellation, safe labels, and exactly-once calls ✅ (completed: 2026-09-06 17:38; aligned superseded lifecycle tests, added module Delete dispatch coverage, SDK 475 passed, CLI command suites 126 passed, CLI full run reached 1,021 passed/5 skipped before its compiled Admin UI dependency failed on Phase 4 lifecycle types; SDK/CLI lint and SDK typecheck passed)
-- [ ] 3.9 Run the focused SDK/CLI commands, `yarn workspace @portaidentity/sdk verify`, `yarn workspace @portaidentity/cli verify`, and `yarn test:structure`; from a clean committed revision run unchanged `yarn assurance:compat --select tenant-admin`; update public API/SDK/CLI docs and roadmap
+- [x] 3.9 Run the focused SDK/CLI commands, `yarn workspace @portaidentity/sdk verify`, `yarn workspace @portaidentity/cli verify`, and `yarn test:structure`; from a clean committed revision run unchanged `yarn assurance:compat --select tenant-admin`; update public API/SDK/CLI docs and roadmap ✅ (completed: 2026-09-06 21:54; SDK 475, CLI 1,056, and structure 97 passed; clean committed tenant-admin compatibility passed with artifact `d1d6428c-e235-421b-984f-481fcde7a995`)
 
 Task 3.9's CLI typecheck compiles the embedded Admin UI adapters. Those adapters intentionally
 remain on the old lifecycle SDK vocabulary until Phase 4 specifications are written. Therefore the
@@ -159,7 +159,7 @@ vocabulary and direct confirmation.
 
 - [x] 4.8 Add implementation tests for capability derivation, mutation ownership, generation races, dialog teardown, focus, measurement, resize, and redraw ✅ (completed: 2026-09-06 18:13; focused and full CLI suites passed with 1,045 tests)
 - [x] 4.9 Update public API/SDK/CLI/Admin UI docs and maintainer security/data/migration/playground docs; remove obsolete lifecycle vocabulary ✅ (completed: 2026-09-06 18:18; public lifecycle scan, docs build, and 96 structure checks passed)
-- [ ] 4.10 Run the focused and broader Phase 4 gates from 07 plus all repository-required final gates; separately run `yarn admin:env reset`, `yarn admin:env up`, and `yarn admin` for the five-surface manual oracle; update plan and roadmap only after all evidence qualifies
+- [x] 4.10 Run the focused and broader Phase 4 gates from 07 plus all repository-required final gates; separately run `yarn admin:env reset`, `yarn admin:env up`, and `yarn admin` for the five-surface manual oracle; update plan and roadmap only after all evidence qualifies ✅ (completed: 2026-09-06 21:54; CLI 1,056, SDK 475, structure 97, browser 132, packed Admin CLI 6, server unit 2,906, integration 422, E2E 127, and pentest 223 passed; the reset playground was healthy and all five live deletion journeys passed; root `yarn verify` was omitted under the user's explicit experiment constraint)
 
 **Deliverable:** a consistent capability-safe Delete experience on the five existing Admin UI
 surfaces, with public-contract, compiled-terminal, security, and manual evidence kept distinct.

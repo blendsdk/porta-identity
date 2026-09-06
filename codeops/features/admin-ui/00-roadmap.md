@@ -3,8 +3,8 @@
 > **Feature-Set**: Porta Admin UI
 > **Status**: Active
 > **Created**: 2026-08-27
-> **Last Updated**: 2026-09-06 17:14
-> **Progress**: 4 / 10 (40%)
+> **Last Updated**: 2026-09-06 21:54
+> **Progress**: 5 / 10 (50%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -25,7 +25,7 @@
 | RD-07 | Sessions and authentication security         | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-03                |
 | RD-08 | Audit and activity                           | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-02                |
 | RD-09 | Advanced operational tools                   | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-06, RD-08         |
-| RD-10 | Record deletion and lifecycle simplification | [RD-10](requirements/RD-10-application-module-client-deletion.md)  | [plan](plans/application-module-client-deletion/00-index.md)                         | Executing | 🔄     | 2026-09-06 17:14 | RD-02, RD-03, RD-04  |
+| RD-10 | Record deletion and lifecycle simplification | [RD-10](requirements/RD-10-application-module-client-deletion.md)  | [plan](plans/application-module-client-deletion/00-index.md)                         | Done      | ✅     | 2026-09-06 21:54 | RD-02, RD-03, RD-04  |
 
 Backlog rows intentionally describe capabilities only. Each item is scoped immediately before
 implementation so the Admin UI grows one useful feature at a time without speculative framework
