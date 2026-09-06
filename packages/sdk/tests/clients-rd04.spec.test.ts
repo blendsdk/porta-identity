@@ -65,7 +65,7 @@ type ExpectedClient = {
   requirePkce: boolean;
   loginMethods: Array<'password' | 'magic_link'> | null;
   effectiveLoginMethods: Array<'password' | 'magic_link'>;
-  status: 'active' | 'inactive' | 'revoked';
+  status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
 };
@@ -161,7 +161,6 @@ describe('RD-04 OIDC client SDK contract', () => {
   it.each([
     ['activate', 'activate'],
     ['deactivate', 'deactivate'],
-    ['revoke', 'revoke'],
   ] as const)(
     'ST-20 sends %s through the internal client UUID POST route',
     async (method, path) => {
@@ -287,6 +286,6 @@ describe('RD-04 OIDC client SDK contract', () => {
     expectTypeOf<ClientsDomain['create']>().toEqualTypeOf<
       (input: CreateClientInput) => Promise<{ client: Client; secret?: GeneratedSecret }>
     >();
-    expectTypeOf<Extract<keyof ClientsDomain, 'restore'>>().toEqualTypeOf<never>();
+    expectTypeOf<Extract<keyof ClientsDomain, 'revoke' | 'restore'>>().toEqualTypeOf<never>();
   });
 });

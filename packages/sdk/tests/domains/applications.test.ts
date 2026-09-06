@@ -160,12 +160,12 @@ describe('domains/applications', () => {
       transport = mockTransport();
     });
 
-    it('archive calls POST /applications/:id/archive', async () => {
+    it('delete calls DELETE /applications/:id', async () => {
       const apps = createApplicationsDomain(transport);
-      await apps.archive('app-1');
+      await apps.delete('app-1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST',
-        path: '/applications/app-1/archive',
+        method: 'DELETE',
+        path: '/applications/app-1',
       });
     });
 
@@ -251,6 +251,16 @@ describe('domains/applications', () => {
       expect(transport.request).toHaveBeenCalledWith({
         method: 'POST',
         path: '/applications/app-1/modules/m2/deactivate',
+      });
+    });
+
+    it('deleteModule calls the nested DELETE route', async () => {
+      transport = mockTransport();
+      const apps = createApplicationsDomain(transport);
+      await apps.deleteModule('app-1', 'm2');
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'DELETE',
+        path: '/applications/app-1/modules/m2',
       });
     });
   });

@@ -44,7 +44,7 @@ describe('domains/bulk', () => {
         total: 2, succeeded: 1, failed: 1,
         results: [
           { id: 'o1', success: true, previousStatus: 'active', newStatus: 'suspended' },
-          { id: 'o2', success: false, error: 'Cannot suspend from status \'archived\'' },
+          { id: 'o2', success: false, error: 'Cannot suspend from status \'suspended\'' },
         ],
       };
       const transport = mockTransport({ body });
@@ -56,18 +56,6 @@ describe('domains/bulk', () => {
       expect(result.results[1].error).toContain('Cannot suspend');
     });
 
-    it('supports archive action', async () => {
-      const input = { ids: ['o1'], action: 'archive' as const };
-      const body = {
-        total: 1, succeeded: 1, failed: 0,
-        results: [{ id: 'o1', success: true, previousStatus: 'active', newStatus: 'archived' }],
-      };
-      const transport = mockTransport({ body });
-      const bulk = createBulkDomain(transport);
-      const result = await bulk.organizationStatus(input);
-
-      expect(result.results[0].newStatus).toBe('archived');
-    });
   });
 
   // ── userStatus ──────────────────────────────────────────────

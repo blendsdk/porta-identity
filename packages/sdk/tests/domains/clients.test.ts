@@ -221,12 +221,12 @@ describe('domains/clients', () => {
       transport = mockTransport();
     });
 
-    it('revoke calls POST /clients/:id/revoke', async () => {
+    it('delete calls DELETE /clients/:id', async () => {
       const clients = createClientsDomain(transport);
-      await clients.revoke('c1');
+      await clients.delete('c1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST',
-        path: '/clients/c1/revoke',
+        method: 'DELETE',
+        path: '/clients/c1',
       });
     });
 

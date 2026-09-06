@@ -15,9 +15,7 @@ const mockOrganizations = {
   update: vi.fn(),
   suspend: vi.fn(),
   activate: vi.fn(),
-  archive: vi.fn(),
-  restore: vi.fn(),
-  destroy: vi.fn(),
+  delete: vi.fn(),
   getHistory: vi.fn(),
 };
 
@@ -57,8 +55,8 @@ vi.mock('../../src/parsers.js', () => ({
 }));
 
 import { handleError } from '../../src/error-handler.js';
-import { printTable, printJson, success, warn, error, info } from '../../src/output.js';
-import { confirm, question } from '../../src/prompt.js';
+import { printTable, printJson, success, warn, info } from '../../src/output.js';
+import { confirm } from '../../src/prompt.js';
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -318,35 +316,25 @@ describe('org command', () => {
     });
   });
 
-  describe('archive', () => {
-    it('archives organization after confirmation', async () => {
+  describe('delete', () => {
+    it('deletes organization after confirmation', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       vi.mocked(confirm).mockResolvedValue(true);
 
-      await invokeSubcommand('archive', { _pos_: 'acme-corp' });
+      await invokeSubcommand('delete', { _pos_: 'acme-corp' });
 
       expect(confirm).toHaveBeenCalled();
-      expect(mockOrganizations.archive).toHaveBeenCalledWith(sampleOrg.id);
+      expect(mockOrganizations.delete).toHaveBeenCalledWith('acme-corp');
     });
 
-    it('skips confirmation with --force', async () => {
+    it('still confirms with --force', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
+      vi.mocked(confirm).mockResolvedValue(true);
 
-      await invokeSubcommand('archive', { _pos_: 'acme-corp', force: true });
+      await invokeSubcommand('delete', { _pos_: 'acme-corp', force: true });
 
-      expect(confirm).not.toHaveBeenCalled();
-      expect(mockOrganizations.archive).toHaveBeenCalledWith(sampleOrg.id);
-    });
-  });
-
-  describe('restore', () => {
-    it('restores an archived organization', async () => {
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-
-      await invokeSubcommand('restore', { _pos_: 'acme-corp' });
-
-      expect(mockOrganizations.restore).toHaveBeenCalledWith(sampleOrg.id);
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('restored'));
+      expect(confirm).toHaveBeenCalled();
+      expect(mockOrganizations.delete).toHaveBeenCalledWith('acme-corp');
     });
   });
 
@@ -422,47 +410,4 @@ describe('org command', () => {
     });
   });
 
-  describe('destroy', () => {
-    it('shows preview and destroys after type confirmation', async () => {
-      mockOrganizations.destroy
-        .mockResolvedValueOnce({ deleted: false, counts: { applications: 2, users: 5 } })
-        .mockResolvedValueOnce({ deleted: true });
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-      vi.mocked(question).mockResolvedValue('acme-corp');
-
-      await invokeSubcommand('destroy', { _pos_: 'acme-corp' });
-
-      // First call is dry-run
-      expect(mockOrganizations.destroy).toHaveBeenCalledWith('acme-corp', { dryRun: true });
-      // Type confirmation
-      expect(question).toHaveBeenCalled();
-      // Second call is actual destroy
-      expect(mockOrganizations.destroy).toHaveBeenCalledWith('acme-corp');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('permanently destroyed'));
-    });
-
-    it('cancels when slug does not match', async () => {
-      mockOrganizations.destroy.mockResolvedValue({ deleted: false, counts: {} });
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-      vi.mocked(question).mockResolvedValue('wrong-slug');
-
-      await invokeSubcommand('destroy', { _pos_: 'acme-corp' });
-
-      expect(error).toHaveBeenCalledWith(expect.stringContaining('does not match'));
-      // Only dry-run call, no actual destroy
-      expect(mockOrganizations.destroy).toHaveBeenCalledTimes(1);
-    });
-
-    it('skips confirmation with --force', async () => {
-      mockOrganizations.destroy
-        .mockResolvedValueOnce({ deleted: false, counts: {} })
-        .mockResolvedValueOnce({ deleted: true });
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-
-      await invokeSubcommand('destroy', { _pos_: 'acme-corp', force: true });
-
-      expect(question).not.toHaveBeenCalled();
-      expect(mockOrganizations.destroy).toHaveBeenCalledTimes(2);
-    });
-  });
 });

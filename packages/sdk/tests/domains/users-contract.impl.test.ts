@@ -29,12 +29,12 @@ describe('user domain contract implementation', () => {
     });
   });
 
-  it('keeps update ETags and purge confirmation headers unchanged', async () => {
+  it('keeps update ETags and sends deletion without a request body', async () => {
     const transport = mockTransport({ body: { data: { id: 'user-1' } } });
     const users = createUsersDomain(transport);
 
     await users.update('org-1', 'user-1', { givenName: 'Ada' }, '"version-2"');
-    await users.purge('org-1', 'user-1');
+    await users.delete('org-1', 'user-1');
 
     expect(transport.request).toHaveBeenNthCalledWith(1, {
       method: 'PUT',
@@ -43,9 +43,8 @@ describe('user domain contract implementation', () => {
       headers: { 'If-Match': '"version-2"' },
     });
     expect(transport.request).toHaveBeenNthCalledWith(2, {
-      method: 'POST',
-      path: '/organizations/org-1/users/user-1/purge',
-      headers: { 'X-Confirm-Purge': 'true' },
+      method: 'DELETE',
+      path: '/organizations/org-1/users/user-1',
     });
   });
 

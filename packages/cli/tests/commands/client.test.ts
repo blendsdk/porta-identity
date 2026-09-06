@@ -15,7 +15,7 @@ const mockClients = {
   update: vi.fn(),
   activate: vi.fn(),
   deactivate: vi.fn(),
-  revoke: vi.fn(),
+  delete: vi.fn(),
   getHistory: vi.fn(),
   listSecrets: vi.fn(),
   generateSecret: vi.fn(),
@@ -419,44 +419,45 @@ describe('client command', () => {
   });
 
   // =========================================================================
-  // client revoke
+  // client delete
   // =========================================================================
 
-  describe('revoke', () => {
-    it('revokes a client after confirmation', async () => {
+  describe('delete', () => {
+    it('deletes a client after confirmation', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
       (confirm as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
-      await invokeSubcommand('revoke', { _pos_: 'client-uuid-1234' });
+      await invokeSubcommand('delete', { _pos_: 'client-uuid-1234' });
 
       expect(confirm).toHaveBeenCalled();
-      expect(mockClients.revoke).toHaveBeenCalledWith(sampleClient.id);
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('revoked'));
+      expect(mockClients.delete).toHaveBeenCalledWith(sampleClient.id);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('deleted'));
     });
 
-    it('cancels revoke when not confirmed', async () => {
+    it('cancels deletion when not confirmed', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
       (confirm as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
-      await invokeSubcommand('revoke', { _pos_: 'client-uuid-1234' });
+      await invokeSubcommand('delete', { _pos_: 'client-uuid-1234' });
 
-      expect(mockClients.revoke).not.toHaveBeenCalled();
+      expect(mockClients.delete).not.toHaveBeenCalled();
       expect(warn).toHaveBeenCalledWith('Operation cancelled');
     });
 
-    it('skips confirmation with --force', async () => {
+    it('still confirms with --force', async () => {
       mockClients.get.mockResolvedValue({ data: sampleClient, etag: 'etag-1' });
+      (confirm as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
-      await invokeSubcommand('revoke', { _pos_: 'client-uuid-1234', force: true });
+      await invokeSubcommand('delete', { _pos_: 'client-uuid-1234', force: true });
 
-      expect(confirm).not.toHaveBeenCalled();
-      expect(mockClients.revoke).toHaveBeenCalledWith(sampleClient.id);
+      expect(confirm).toHaveBeenCalled();
+      expect(mockClients.delete).toHaveBeenCalledWith(sampleClient.id);
     });
 
-    it('handles revoke errors', async () => {
+    it('handles delete errors', async () => {
       mockClients.get.mockRejectedValue(new Error('Not found'));
 
-      await invokeSubcommand('revoke', { _pos_: 'client-uuid-1234', force: true });
+      await invokeSubcommand('delete', { _pos_: 'client-uuid-1234', force: true });
 
       expect(handleError).toHaveBeenCalled();
     });

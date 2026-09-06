@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 17:31
-> **Progress**: 28/40 tasks (70%)
+> **Last Updated**: 2026-09-06 17:38
+> **Progress**: 29/40 tasks (72.5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -100,6 +100,7 @@ its existing retention policy.
 
 ## Phase 3: SDK and Conventional CLI
 
+> **Phase baseline tree**: 906e09336920d28c3499e896011a445a4ce84145
 > **Scope mode**: Strict — 03-03 §SDK Contracts/Conventional CLI/Confirmation; ST-28–ST-31
 > **Expected modification set**: SDK domains/types/agent descriptors, conventional CLI parsers/help/
 > confirmation, the two named specification files, public docs, and evidence
@@ -119,8 +120,13 @@ its existing retention policy.
 
 ### Session 3 — Implementation Tests and Gate
 
-- [ ] 3.8 Add implementation tests for SDK serialization, parser/help wiring, cancellation, safe labels, and exactly-once calls
+- [x] 3.8 Add implementation tests for SDK serialization, parser/help wiring, cancellation, safe labels, and exactly-once calls ✅ (completed: 2026-09-06 17:38; aligned superseded lifecycle tests, added module Delete dispatch coverage, SDK 475 passed, CLI command suites 126 passed, CLI full run reached 1,021 passed/5 skipped before its compiled Admin UI dependency failed on Phase 4 lifecycle types; SDK/CLI lint and SDK typecheck passed)
 - [ ] 3.9 Run the focused SDK/CLI commands, `yarn workspace @portaidentity/sdk verify`, `yarn workspace @portaidentity/cli verify`, and `yarn test:structure`; from a clean committed revision run unchanged `yarn assurance:compat --select tenant-admin`; update public API/SDK/CLI docs and roadmap
+
+Task 3.9's CLI typecheck compiles the embedded Admin UI adapters. Those adapters intentionally
+remain on the old lifecycle SDK vocabulary until Phase 4 specifications are written. Therefore the
+CLI verification part of Task 3.9 runs after Phase 4's specification-first cutover; this is a build
+dependency only and does not widen either phase's scope.
 
 **Deliverable:** all first-party programmatic and conventional command surfaces use the same Delete
 vocabulary and direct confirmation.

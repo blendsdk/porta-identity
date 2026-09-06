@@ -15,12 +15,13 @@ const mockApplications = {
   update: vi.fn(),
   activate: vi.fn(),
   deactivate: vi.fn(),
-  archive: vi.fn(),
+  delete: vi.fn(),
   getHistory: vi.fn(),
   listModules: vi.fn(),
   addModule: vi.fn(),
   updateModule: vi.fn(),
   deactivateModule: vi.fn(),
+  deleteModule: vi.fn(),
 };
 
 const mockRoles = {
@@ -28,7 +29,7 @@ const mockRoles = {
   list: vi.fn(),
   get: vi.fn(),
   update: vi.fn(),
-  archive: vi.fn(),
+  delete: vi.fn(),
   assignPermission: vi.fn(),
   removePermission: vi.fn(),
 };
@@ -37,14 +38,14 @@ const mockPermissions = {
   create: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
-  archive: vi.fn(),
+  delete: vi.fn(),
 };
 
 const mockCustomClaims = {
   create: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
-  archive: vi.fn(),
+  delete: vi.fn(),
 };
 
 vi.mock('../../src/client-factory.js', () => ({
@@ -242,19 +243,20 @@ describe('app command', () => {
     });
   });
 
-  describe('archive', () => {
-    it('archives after confirmation', async () => {
+  describe('delete', () => {
+    it('deletes after confirmation', async () => {
       mockApplications.get.mockResolvedValue({ data: sampleApp, etag: '"v1"' });
       vi.mocked(confirm).mockResolvedValue(true);
-      await invokeSubcommand(['archive', 'my-app'], {});
-      expect(mockApplications.archive).toHaveBeenCalledWith(sampleApp.id);
+      await invokeSubcommand(['delete', 'my-app'], {});
+      expect(mockApplications.delete).toHaveBeenCalledWith(sampleApp.id);
     });
 
-    it('skips with --force', async () => {
+    it('still confirms with --force', async () => {
       mockApplications.get.mockResolvedValue({ data: sampleApp, etag: '"v1"' });
-      await invokeSubcommand(['archive', 'my-app'], { force: true });
-      expect(confirm).not.toHaveBeenCalled();
-      expect(mockApplications.archive).toHaveBeenCalled();
+      vi.mocked(confirm).mockResolvedValue(true);
+      await invokeSubcommand(['delete', 'my-app'], { force: true });
+      expect(confirm).toHaveBeenCalled();
+      expect(mockApplications.delete).toHaveBeenCalledWith(sampleApp.id);
     });
   });
 
@@ -321,6 +323,13 @@ describe('app module command', () => {
     await invokeSubcommand(['module', 'deactivate', 'app-1', 'mod-1'], {});
     expect(mockApplications.deactivateModule).toHaveBeenCalledWith('app-1', 'mod-1');
   });
+
+  it('deletes a module after confirmation', async () => {
+    mockApplications.listModules.mockResolvedValue([sampleModule]);
+    vi.mocked(confirm).mockResolvedValue(true);
+    await invokeSubcommand(['module', 'delete', 'app-1', sampleModule.id], {});
+    expect(mockApplications.deleteModule).toHaveBeenCalledWith('app-1', sampleModule.id);
+  });
 });
 
 describe('app role command', () => {
@@ -347,9 +356,11 @@ describe('app role command', () => {
     expect(printTable).toHaveBeenCalled();
   });
 
-  it('archives a role', async () => {
-    await invokeSubcommand(['role', 'archive', 'app-1', 'role-1'], {});
-    expect(mockRoles.archive).toHaveBeenCalledWith('app-1', 'role-1');
+  it('deletes a role', async () => {
+    mockRoles.get.mockResolvedValue(sampleRole);
+    vi.mocked(confirm).mockResolvedValue(true);
+    await invokeSubcommand(['role', 'delete', 'app-1', 'role-1'], {});
+    expect(mockRoles.delete).toHaveBeenCalledWith('app-1', 'role-1');
   });
 
   it('assigns a permission', async () => {
@@ -381,9 +392,11 @@ describe('app permission command', () => {
     expect(printTable).toHaveBeenCalled();
   });
 
-  it('archives a permission', async () => {
-    await invokeSubcommand(['permission', 'archive', 'app-1', 'perm-1'], {});
-    expect(mockPermissions.archive).toHaveBeenCalledWith('app-1', 'perm-1');
+  it('deletes a permission', async () => {
+    mockPermissions.get.mockResolvedValue(samplePerm);
+    vi.mocked(confirm).mockResolvedValue(true);
+    await invokeSubcommand(['permission', 'delete', 'app-1', 'perm-1'], {});
+    expect(mockPermissions.delete).toHaveBeenCalledWith('app-1', 'perm-1');
   });
 });
 
@@ -411,8 +424,10 @@ describe('app claim command', () => {
     expect(printTable).toHaveBeenCalled();
   });
 
-  it('archives a claim', async () => {
-    await invokeSubcommand(['claim', 'archive', 'app-1', 'claim-1'], {});
-    expect(mockCustomClaims.archive).toHaveBeenCalledWith('app-1', 'claim-1');
+  it('deletes a claim', async () => {
+    mockCustomClaims.get.mockResolvedValue(sampleClaim);
+    vi.mocked(confirm).mockResolvedValue(true);
+    await invokeSubcommand(['claim', 'delete', 'app-1', 'claim-1'], {});
+    expect(mockCustomClaims.delete).toHaveBeenCalledWith('app-1', 'claim-1');
   });
 });

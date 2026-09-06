@@ -14,12 +14,13 @@ const applications = {
   update: vi.fn(),
   activate: vi.fn(),
   deactivate: vi.fn(),
-  archive: vi.fn(),
+  delete: vi.fn(),
   restore: vi.fn(),
   addModule: vi.fn(),
   listModules: vi.fn(),
   updateModule: vi.fn(),
   deactivateModule: vi.fn(),
+  deleteModule: vi.fn(),
   removeModule: vi.fn(),
 };
 
@@ -30,7 +31,7 @@ const clients = {
   update: vi.fn(),
   activate: vi.fn(),
   deactivate: vi.fn(),
-  revoke: vi.fn(),
+  delete: vi.fn(),
   restore: vi.fn(),
   generateSecret: vi.fn(),
   listSecrets: vi.fn(),
@@ -199,11 +200,12 @@ describe('ST-23 bounded conventional CLI inventory', () => {
     applications.update.mockResolvedValue(application);
     applications.activate.mockResolvedValue(undefined);
     applications.deactivate.mockResolvedValue(undefined);
-    applications.archive.mockResolvedValue(undefined);
+    applications.delete.mockResolvedValue(undefined);
     applications.addModule.mockResolvedValue(applicationModule);
     applications.listModules.mockResolvedValue([applicationModule]);
     applications.updateModule.mockResolvedValue(applicationModule);
     applications.deactivateModule.mockResolvedValue(undefined);
+    applications.deleteModule.mockResolvedValue(undefined);
 
     clients.create.mockResolvedValue({ client: oidcClient, secret: generatedSecret });
     clients.list.mockResolvedValue({ data: [oidcClient], total: 1, page: 1, pageSize: 20 });
@@ -211,7 +213,7 @@ describe('ST-23 bounded conventional CLI inventory', () => {
     clients.update.mockResolvedValue(oidcClient);
     clients.activate.mockResolvedValue(undefined);
     clients.deactivate.mockResolvedValue(undefined);
-    clients.revoke.mockResolvedValue(undefined);
+    clients.delete.mockResolvedValue(undefined);
     clients.generateSecret.mockResolvedValue(generatedSecret);
     clients.listSecrets.mockResolvedValue([secretMetadata]);
     clients.revokeSecret.mockResolvedValue(undefined);
@@ -268,7 +270,7 @@ describe('ST-23 bounded conventional CLI inventory', () => {
     it.each([
       ['activate', applications.activate, 'activated'],
       ['deactivate', applications.deactivate, 'deactivated'],
-      ['archive', applications.archive, 'archived'],
+      ['delete', applications.delete, 'deleted'],
     ] as const)('maps application %s to the internal ID', async (operation, sdkMethod, output) => {
       await invoke('app', [operation, 'payments'], { force: true });
 
@@ -321,6 +323,13 @@ describe('ST-23 bounded conventional CLI inventory', () => {
 
       expect(applications.deactivateModule).toHaveBeenCalledWith(applicationId, moduleId);
       expect(success).toHaveBeenCalledWith(expect.stringContaining('deactivated'));
+    });
+
+    it('maps module delete argv with both internal IDs', async () => {
+      await invoke('app', ['module', 'delete', applicationId, moduleId]);
+
+      expect(applications.deleteModule).toHaveBeenCalledWith(applicationId, moduleId);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('deleted'));
     });
   });
 
@@ -393,7 +402,7 @@ describe('ST-23 bounded conventional CLI inventory', () => {
     it.each([
       ['activate', clients.activate, 'activated'],
       ['deactivate', clients.deactivate, 'deactivated'],
-      ['revoke', clients.revoke, 'revoked'],
+      ['delete', clients.delete, 'deleted'],
     ] as const)(
       'maps client %s to the resolved internal ID',
       async (operation, sdkMethod, output) => {

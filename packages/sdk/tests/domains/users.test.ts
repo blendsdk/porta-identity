@@ -182,13 +182,12 @@ describe('domains/users', () => {
       expect(result).toEqual({ user: { id: 'u1' } });
     });
 
-    it('purge calls POST .../purge with X-Confirm-Purge header', async () => {
-      transport = mockTransport({ body: { data: { purged: true } } });
+    it('delete calls DELETE /organizations/:orgId/users/:userId', async () => {
+      transport = mockTransport();
       const users = createUsersDomain(transport);
-      await users.purge('org-1', 'u1');
+      await users.delete('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/purge',
-        headers: { 'X-Confirm-Purge': 'true' },
+        method: 'DELETE', path: '/organizations/org-1/users/u1',
       });
     });
 

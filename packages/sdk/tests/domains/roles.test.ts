@@ -80,35 +80,14 @@ describe('domains/roles', () => {
     });
   });
 
-  // ── archive ─────────────────────────────────────────────────
-  describe('archive', () => {
-    it('calls POST /applications/:appId/roles/:roleId/archive', async () => {
-      transport = mockTransport();
-      const roles = createRolesDomain(transport);
-      await roles.archive(appId, 'r1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/applications/app-1/roles/r1/archive',
-      });
-    });
-  });
-
-  // ── remove ──────────────────────────────────────────────────
-  describe('remove', () => {
+  // ── delete ──────────────────────────────────────────────────
+  describe('delete', () => {
     it('calls DELETE /applications/:appId/roles/:roleId', async () => {
       transport = mockTransport();
       const roles = createRolesDomain(transport);
-      await roles.remove(appId, 'r1');
+      await roles.delete(appId, 'r1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/applications/app-1/roles/r1', params: undefined,
-      });
-    });
-
-    it('passes ?force=true', async () => {
-      transport = mockTransport();
-      const roles = createRolesDomain(transport);
-      await roles.remove(appId, 'r1', true);
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/applications/app-1/roles/r1', params: { force: 'true' },
+        method: 'DELETE', path: '/applications/app-1/roles/r1',
       });
     });
   });

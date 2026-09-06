@@ -37,7 +37,7 @@ type ExpectedApplication = {
   name: string;
   slug: string;
   description: string | null;
-  status: 'active' | 'inactive' | 'archived';
+  status: 'active' | 'inactive';
   createdAt: string;
   updatedAt: string;
 };
@@ -57,7 +57,6 @@ describe('RD-04 application SDK contract', () => {
   it.each([
     ['activate', 'activate'],
     ['deactivate', 'deactivate'],
-    ['archive', 'archive'],
   ] as const)(
     'ST-16 sends %s through the internal application UUID POST route',
     async (method, path) => {
@@ -127,7 +126,7 @@ describe('RD-04 application SDK contract', () => {
     });
   });
 
-  it('ST-18 deactivates a module through both internal UUIDs and exposes no delete operation', async () => {
+  it('ST-18 deactivates a module through both internal UUIDs', async () => {
     const transport = transportWith();
     const applications = createApplicationsDomain(transport);
 
@@ -138,7 +137,6 @@ describe('RD-04 application SDK contract', () => {
       method: 'POST',
       path: `/applications/${APPLICATION_ID}/modules/${MODULE_ID}/deactivate`,
     });
-    expect('removeModule' in applications).toBe(false);
   });
 
   it('ST-22 rejects listAll when a later application page fails', async () => {
@@ -174,7 +172,7 @@ describe('RD-04 application SDK contract', () => {
       description?: string | null;
     }>();
     expectTypeOf<
-      Extract<keyof ApplicationsDomain, 'restore' | 'removeModule'>
+      Extract<keyof ApplicationsDomain, 'archive' | 'restore' | 'removeModule'>
     >().toEqualTypeOf<never>();
   });
 });

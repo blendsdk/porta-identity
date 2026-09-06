@@ -66,14 +66,14 @@ describe('domains/permissions', () => {
     });
   });
 
-  // ── archive ─────────────────────────────────────────────────
-  describe('archive', () => {
-    it('calls POST /applications/:appId/permissions/:id/archive', async () => {
+  // ── delete ──────────────────────────────────────────────────
+  describe('delete', () => {
+    it('calls DELETE /applications/:appId/permissions/:id', async () => {
       transport = mockTransport();
       const perms = createPermissionsDomain(transport);
-      await perms.archive(appId, 'p1');
+      await perms.delete(appId, 'p1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/applications/app-1/permissions/p1/archive',
+        method: 'DELETE', path: '/applications/app-1/permissions/p1',
       });
     });
   });
