@@ -1,14 +1,13 @@
 /**
  * Session tracking repository.
  *
- * PostgreSQL mirror of Redis OIDC sessions for admin listing, filtering,
- * and revocation. All operations are fire-and-forget — tracking failures
- * must NEVER break the OIDC flow.
+ * PostgreSQL authority record for Redis-backed OIDC sessions. Session
+ * publication waits for this record so a Redis payload cannot outlive the
+ * database state used to revoke it.
  *
  * The Redis adapter calls these hooks when modelName === 'Session'.
  *
  * @module session-tracking
- * @see 05-dashboard-sessions-history.md
  */
 
 import { getPool } from './database.js';
@@ -18,40 +17,65 @@ import { logger } from './logger.js';
 // Types
 // ============================================================================
 
-/** Input for creating/upserting a session tracking record */
+/** Input for creating or updating a session tracking record. */
 export interface SessionTrackingInput {
+  /** OIDC Session identifier, shared with the Redis payload key. */
   sessionId: string;
+  /** User that authenticated the Session, when authentication has completed. */
   userId?: string;
+  /** Internal client UUID when a single client can be identified. */
   clientId?: string;
+  /** Organization that owns the authenticated user. */
   organizationId?: string;
+  /** Current grant identifier when one is available at publication time. */
   grantId?: string;
+  /** Source IP address retained for administrative session inspection. */
   ipAddress?: string;
+  /** Source user agent retained for administrative session inspection. */
   userAgent?: string;
+  /** Absolute time after which the Session no longer has authority. */
   expiresAt: Date;
 }
 
-/** A tracked session record */
+/** A tracked session record returned from PostgreSQL. */
 export interface TrackedSession {
+  /** OIDC Session identifier. */
   sessionId: string;
+  /** Authenticated user UUID, or null before authentication completes. */
   userId: string | null;
+  /** Internal client UUID when the Session has one tracked client. */
   clientId: string | null;
+  /** Organization UUID associated with the Session. */
   organizationId: string | null;
+  /** Grant identifier captured for administrative inspection. */
   grantId: string | null;
+  /** Source IP address, when captured. */
   ipAddress: string | null;
+  /** Source user agent, when captured. */
   userAgent: string | null;
+  /** Time the tracking row was first created. */
   createdAt: Date;
+  /** Absolute authority expiry. */
   expiresAt: Date;
+  /** Time the tracking row was last refreshed. */
   lastActivityAt: Date;
+  /** Revocation time, or null while the Session remains live. */
   revokedAt: Date | null;
 }
 
-/** Options for listing sessions */
+/** Filters and pagination controls for session listing. */
 export interface ListSessionsOptions {
+  /** Limit results to one user UUID. */
   userId?: string;
+  /** Limit results to one organization UUID. */
   organizationId?: string;
+  /** Limit results to one internal client UUID. */
   clientId?: string;
+  /** Include revoked and expired rows when false. Defaults to true. */
   activeOnly?: boolean;
+  /** One-based result page. */
   page?: number;
+  /** Number of rows per page, clamped to 1 through 100. */
   pageSize?: number;
 }
 
@@ -60,40 +84,45 @@ export interface ListSessionsOptions {
 // ============================================================================
 
 /**
- * Upsert a session tracking record (called on session create/update).
- * Fire-and-forget — errors are logged but never thrown.
+ * Create or update the authority record for an OIDC Session.
+ *
+ * The caller must await this operation before publishing the corresponding
+ * Redis payload. Database errors intentionally propagate because an
+ * untracked Session could otherwise continue after administrative revocation.
+ *
+ * @param input - Session identifiers and absolute expiry.
+ * @throws The PostgreSQL error when the authority record cannot be persisted.
  */
 export async function upsertSession(input: SessionTrackingInput): Promise<void> {
-  try {
-    const pool = getPool();
-    await pool.query(
-      `INSERT INTO admin_sessions (session_id, user_id, client_id, organization_id, grant_id, ip_address, user_agent, expires_at, last_activity_at)
+  const pool = getPool();
+  await pool.query(
+    `INSERT INTO admin_sessions (session_id, user_id, client_id, organization_id, grant_id, ip_address, user_agent, expires_at, last_activity_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
        ON CONFLICT (session_id) DO UPDATE SET
          user_id = COALESCE(EXCLUDED.user_id, admin_sessions.user_id),
          client_id = COALESCE(EXCLUDED.client_id, admin_sessions.client_id),
          organization_id = COALESCE(EXCLUDED.organization_id, admin_sessions.organization_id),
          grant_id = COALESCE(EXCLUDED.grant_id, admin_sessions.grant_id),
+         expires_at = EXCLUDED.expires_at,
          last_activity_at = NOW()`,
-      [
-        input.sessionId,
-        input.userId ?? null,
-        input.clientId ?? null,
-        input.organizationId ?? null,
-        input.grantId ?? null,
-        input.ipAddress ?? null,
-        input.userAgent ?? null,
-        input.expiresAt,
-      ],
-    );
-  } catch (err) {
-    logger.warn({ err, sessionId: input.sessionId }, 'Failed to upsert session tracking record');
-  }
+    [
+      input.sessionId,
+      input.userId ?? null,
+      input.clientId ?? null,
+      input.organizationId ?? null,
+      input.grantId ?? null,
+      input.ipAddress ?? null,
+      input.userAgent ?? null,
+      input.expiresAt,
+    ],
+  );
 }
 
 /**
  * Mark a session as revoked (called on session destroy).
  * Fire-and-forget — errors are logged but never thrown.
+ *
+ * @param sessionId - OIDC Session identifier.
  */
 export async function revokeSession(sessionId: string): Promise<void> {
   try {
@@ -109,7 +138,10 @@ export async function revokeSession(sessionId: string): Promise<void> {
 
 /**
  * Revoke all active sessions for a user.
+ *
+ * @param userId - User UUID whose active tracking rows are revoked.
  * Returns the number of sessions revoked.
+ * @returns Number of rows changed by PostgreSQL.
  */
 export async function revokeUserSessions(userId: string): Promise<number> {
   const pool = getPool();
@@ -122,6 +154,9 @@ export async function revokeUserSessions(userId: string): Promise<number> {
 
 /**
  * Get a single tracked session by ID.
+ *
+ * @param sessionId - OIDC Session identifier.
+ * @returns The tracking record, or null when no record exists.
  */
 export async function getSession(sessionId: string): Promise<TrackedSession | null> {
   const pool = getPool();
@@ -139,6 +174,9 @@ export async function getSession(sessionId: string): Promise<TrackedSession | nu
 
 /**
  * List tracked sessions with filtering and pagination.
+ *
+ * @param options - Optional filters and bounded pagination controls.
+ * @returns Matching tracking rows and pagination metadata.
  */
 export async function listSessions(options: ListSessionsOptions = {}): Promise<{
   data: TrackedSession[];
@@ -176,7 +214,10 @@ export async function listSessions(options: ListSessionsOptions = {}): Promise<{
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const [countResult, dataResult] = await Promise.all([
-    pool.query<{ count: string }>(`SELECT COUNT(*)::text AS count FROM admin_sessions ${where}`, params),
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM admin_sessions ${where}`,
+      params,
+    ),
     pool.query<TrackedSession>(
       `SELECT session_id AS "sessionId", user_id AS "userId", client_id AS "clientId",
               organization_id AS "organizationId", grant_id AS "grantId",
@@ -202,6 +243,8 @@ export async function listSessions(options: ListSessionsOptions = {}): Promise<{
  * Clean up expired session tracking records older than 7 days.
  * Keeps revoked sessions for audit purposes for 7 days.
  * Fire-and-forget — designed to be called periodically.
+ *
+ * @returns Number of expired rows removed, or zero when cleanup fails.
  */
 export async function purgeExpiredSessions(): Promise<number> {
   try {

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 03:41
-> **Progress**: 3/40 tasks (8%)
+> **Last Updated**: 2026-09-06 03:44
+> **Progress**: 4/40 tasks (10%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -45,7 +45,7 @@ otherwise the first `[ ]`. Use `[!]` only with a concise blocker on the task lin
 
 ### Session 2 — Implementation
 
-- [ ] 1.4 Make Redis Session publication depend on successful PostgreSQL tracking and make Session reads reject missing, expired, or revoked live tracking — 03-02 §Reliable Session Tracking; ST-20–ST-21
+- [x] 1.4 Make Redis Session publication depend on successful PostgreSQL tracking and make Session reads reject missing, expired, or revoked live tracking — 03-02 §Reliable Session Tracking; ST-20–ST-21 ✅ (completed: 2026-09-06 03:44)
 - [ ] 1.5 Add the focused post-read validator to `find`, `findByUid`, and `findByUserCode`; make `findForOidc`, OIDC account lookup, RBAC, and claim issuance read PostgreSQL directly — 03-02 §OIDC Post-Read Validator; ST-22–ST-24
 - [ ] 1.6 Run the Phase 1 specifications and make them green without changing their expectations
 

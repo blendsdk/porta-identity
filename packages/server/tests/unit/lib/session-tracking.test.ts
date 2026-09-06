@@ -49,12 +49,14 @@ describe('session-tracking', () => {
       expect(params[1]).toBe('user-1');
     });
 
-    it('should not throw on database error (fire-and-forget)', async () => {
+    it('should reject when the authority record cannot be persisted', async () => {
       mockPool.query.mockRejectedValue(new Error('connection refused'));
-      await expect(upsertSession({
-        sessionId: 'sess-fail',
-        expiresAt: new Date(),
-      })).resolves.toBeUndefined();
+      await expect(
+        upsertSession({
+          sessionId: 'sess-fail',
+          expiresAt: new Date(),
+        }),
+      ).rejects.toThrow('connection refused');
     });
   });
 
@@ -86,19 +88,21 @@ describe('session-tracking', () => {
     it('should return a session by ID', async () => {
       const now = new Date();
       mockPool.query.mockResolvedValue({
-        rows: [{
-          sessionId: 'sess-1',
-          userId: 'u1',
-          clientId: 'c1',
-          organizationId: 'org1',
-          grantId: 'g1',
-          ipAddress: '1.2.3.4',
-          userAgent: 'Mozilla',
-          createdAt: now,
-          expiresAt: new Date(now.getTime() + 3600000),
-          lastActivityAt: now,
-          revokedAt: null,
-        }],
+        rows: [
+          {
+            sessionId: 'sess-1',
+            userId: 'u1',
+            clientId: 'c1',
+            organizationId: 'org1',
+            grantId: 'g1',
+            ipAddress: '1.2.3.4',
+            userAgent: 'Mozilla',
+            createdAt: now,
+            expiresAt: new Date(now.getTime() + 3600000),
+            lastActivityAt: now,
+            revokedAt: null,
+          },
+        ],
       });
 
       const session = await getSession('sess-1');
@@ -116,13 +120,23 @@ describe('session-tracking', () => {
 
   describe('listSessions', () => {
     it('should return paginated sessions with total count', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ count: '5' }] })
-        .mockResolvedValueOnce({
-          rows: [
-            { sessionId: 'sess-1', userId: 'u1', clientId: null, organizationId: null, grantId: null, ipAddress: null, userAgent: null, createdAt: new Date(), expiresAt: new Date(), lastActivityAt: new Date(), revokedAt: null },
-          ],
-        });
+      mockPool.query.mockResolvedValueOnce({ rows: [{ count: '5' }] }).mockResolvedValueOnce({
+        rows: [
+          {
+            sessionId: 'sess-1',
+            userId: 'u1',
+            clientId: null,
+            organizationId: null,
+            grantId: null,
+            ipAddress: null,
+            userAgent: null,
+            createdAt: new Date(),
+            expiresAt: new Date(),
+            lastActivityAt: new Date(),
+            revokedAt: null,
+          },
+        ],
+      });
 
       const result = await listSessions({ page: 1, pageSize: 10 });
       expect(result.total).toBe(5);

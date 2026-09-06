@@ -14,7 +14,7 @@
 
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
-import { upsertSession, revokeSession } from '../lib/session-tracking.js';
+import { getSession, upsertSession, revokeSession } from '../lib/session-tracking.js';
 import type { AdapterPayload } from './postgres-adapter.js';
 
 /**
@@ -83,6 +83,20 @@ export class RedisAdapter {
     const redis = getRedis();
     const mainKey = this.key(id);
 
+    // PostgreSQL is the revocation authority for Session payloads. Persist it
+    // before preparing or executing Redis writes so a tracking failure cannot
+    // publish a Session that administrative deletion is unable to revoke.
+    if (this.name === 'Session') {
+      const expiresAt = new Date(Date.now() + expiresIn * 1000);
+      await upsertSession({
+        sessionId: id,
+        userId: typeof payload.accountId === 'string' ? payload.accountId : undefined,
+        organizationId: typeof payload.orgId === 'string' ? payload.orgId : undefined,
+        grantId: typeof payload.grantId === 'string' ? payload.grantId : undefined,
+        expiresAt,
+      });
+    }
+
     // Use pipeline for atomic multi-key operations
     const pipeline = redis.pipeline();
 
@@ -123,23 +137,6 @@ export class RedisAdapter {
     }
 
     await pipeline.exec();
-
-    // Fire-and-forget: mirror session data to PostgreSQL for admin listing.
-    // Only Session model needs tracking — other models (Interaction, AuthorizationCode, etc.)
-    // are short-lived artifacts that don't need admin visibility.
-    if (this.name === 'Session') {
-      const expiresAt = new Date(Date.now() + expiresIn * 1000);
-      upsertSession({
-        sessionId: id,
-        userId: payload.accountId as string | undefined,
-        organizationId: payload.orgId as string | undefined,
-        grantId: payload.grantId as string | undefined,
-        expiresAt,
-      }).catch(() => {
-        // Intentionally swallowed — tracking must never break the OIDC flow.
-        // upsertSession already logs warnings internally.
-      });
-    }
   }
 
   /**
@@ -155,6 +152,13 @@ export class RedisAdapter {
     const data = await redis.get(this.key(id));
 
     if (!data) return undefined;
+
+    if (this.name === 'Session') {
+      const tracking = await getSession(id);
+      if (!tracking || tracking.revokedAt !== null || tracking.expiresAt.getTime() <= Date.now()) {
+        return undefined;
+      }
+    }
 
     try {
       return JSON.parse(data) as AdapterPayload;
@@ -368,6 +372,9 @@ export async function cleanupRedisGrants(grantIds: string[]): Promise<void> {
     }
   } catch (err) {
     // Best-effort — Redis keys have TTLs and will expire naturally
-    logger.warn({ err, grantIds }, 'Failed to clean up Redis grant keys (keys will expire via TTL)');
+    logger.warn(
+      { err, grantIds },
+      'Failed to clean up Redis grant keys (keys will expire via TTL)',
+    );
   }
 }
