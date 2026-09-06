@@ -437,7 +437,7 @@ async function applyPreAssignments(
       try {
         // Verify claim definition still exists
         const defCheck = await pool.query(
-          `SELECT id FROM claim_definitions WHERE id = $1 AND application_id = $2`,
+          `SELECT id FROM custom_claim_definitions WHERE id = $1 AND application_id = $2`,
           [claim.claimDefinitionId, claim.applicationId],
         );
         if (defCheck.rows.length === 0) {
@@ -450,9 +450,9 @@ async function applyPreAssignments(
 
         // Upsert user claim value
         await pool.query(
-          `INSERT INTO user_claim_values (user_id, claim_definition_id, value)
+          `INSERT INTO custom_claim_values (user_id, claim_id, value)
            VALUES ($1, $2, $3)
-           ON CONFLICT (user_id, claim_definition_id) DO UPDATE SET value = EXCLUDED.value`,
+           ON CONFLICT (user_id, claim_id) DO UPDATE SET value = EXCLUDED.value`,
           [userId, claim.claimDefinitionId, JSON.stringify(claim.value)],
         );
 

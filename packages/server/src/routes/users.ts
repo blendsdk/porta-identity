@@ -576,7 +576,12 @@ export function createUserRouter(): Router {
 
       // Validate referenced applicationIds, roleIds, claimDefinitionIds exist
       if (body.roles?.length || body.claims?.length) {
-        await validatePreAssignments(orgId, body.roles, body.claims);
+        const preAssignmentErrors = await validatePreAssignments(body.roles, body.claims);
+        if (preAssignmentErrors.length > 0) {
+          ctx.status = 400;
+          ctx.body = { error: 'User request is invalid' };
+          return;
+        }
       }
 
       // Find or create the user
@@ -797,21 +802,18 @@ const invitePreviewSchema = z.object({
 /**
  * Validate that referenced roles and claims exist in the database.
  *
- * Checks that all applicationIds are valid within the org, all roleIds
+ * Checks that all deployment-global applicationIds exist, all roleIds
  * belong to their specified application, and all claimDefinitionIds
- * belong to their specified application. Throws a ZodError-like 400
- * on validation failure.
+ * belong to their specified application.
  *
- * @param orgId - Organization ID for scoping
  * @param roles - Array of role pre-assignments to validate
  * @param claims - Array of claim pre-assignments to validate
- * @throws Error with 400 status if any reference is invalid
+ * @returns Validation errors; an empty array means every reference is valid
  */
 async function validatePreAssignments(
-  orgId: string,
   roles?: Array<{ applicationId: string; roleId: string }>,
   claims?: Array<{ applicationId: string; claimDefinitionId: string; value: unknown }>,
-): Promise<void> {
+): Promise<string[]> {
   const pool = getPool();
   const errors: string[] = [];
 
@@ -820,16 +822,15 @@ async function validatePreAssignments(
   roles?.forEach((r) => appIds.add(r.applicationId));
   claims?.forEach((c) => appIds.add(c.applicationId));
 
-  // Verify all applications exist within the org
+  // Applications are deployment-global definitions and are not organization-scoped.
   if (appIds.size > 0) {
-    const appResult = await pool.query(
-      `SELECT id FROM applications WHERE id = ANY($1) AND organization_id = $2`,
-      [Array.from(appIds), orgId],
-    );
+    const appResult = await pool.query(`SELECT id FROM applications WHERE id = ANY($1::uuid[])`, [
+      Array.from(appIds),
+    ]);
     const foundIds = new Set(appResult.rows.map((r: { id: string }) => r.id));
     for (const appId of appIds) {
       if (!foundIds.has(appId)) {
-        errors.push(`Application ${appId} not found in this organization`);
+        errors.push(`Application ${appId} not found`);
       }
     }
   }
@@ -851,7 +852,7 @@ async function validatePreAssignments(
   if (claims?.length) {
     for (const claim of claims) {
       const result = await pool.query(
-        `SELECT id FROM claim_definitions WHERE id = $1 AND application_id = $2`,
+        `SELECT id FROM custom_claim_definitions WHERE id = $1 AND application_id = $2`,
         [claim.claimDefinitionId, claim.applicationId],
       );
       if (result.rows.length === 0) {
@@ -862,11 +863,7 @@ async function validatePreAssignments(
     }
   }
 
-  if (errors.length > 0) {
-    const err = new Error(`Pre-assignment validation failed: ${errors.join('; ')}`);
-    (err as Error & { status: number }).status = 400;
-    throw err;
-  }
+  return errors;
 }
 
 // ---------------------------------------------------------------------------

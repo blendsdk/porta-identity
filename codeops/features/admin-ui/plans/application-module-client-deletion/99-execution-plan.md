@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 10:16
-> **Progress**: 16/40 tasks (40%)
+> **Last Updated**: 2026-09-06 10:19
+> **Progress**: 17/40 tasks (43%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -83,7 +83,7 @@ complete cutover.
 - [x] 2.6 Implement per-domain set-based capture and physical cascade services, including the control-plane organization guard and organization-row-serialized exact-role survivor check — 03-01 §Transaction Sequence/Graphs/Guards; ST-08–ST-16, ST-19 ✅ (completed: 2026-09-06 09:52; 170 affected tests, typecheck, and 96 structure checks passed; deletion integration 4 passed/7 expected red)
 - [x] 2.7 Make resource audit, affected-session revocation, protocol cleanup, target deletion, and post-commit descriptor registration atomic; resolve a deleted generic audit actor through a nullable live subquery — 03-01 §Transaction Sequence/Audit; ST-16–ST-18, ST-20, ST-27 ✅ (completed: 2026-09-06 10:09; 436 affected tests, typecheck, and 96 structure checks passed; route spec 4 passed/13 expected red; deletion integration 9 passed/2 expected red)
 - [x] 2.8 Implement one immutable post-commit descriptor and detached `setImmediate` Redis-only pass through existing hooks/adapters, with no wait, retry, identifier logging, or new support machinery — 03-02 §Detached Redis Cleanup; ST-25–ST-26 ✅ (completed: 2026-09-06 10:16; Redis/cache unit 107 passed, typecheck and 96 structure checks passed; route spec 5 passed/12 expected red; deletion integration 10 passed/1 migration-owned expected red)
-- [ ] 2.9 Correct invitation creation in `routes/users.ts` and acceptance in `routes/invitation.ts` directly, including deployment-global application validation, without a shared helper or stored-payload rewrite — 03-04 §Pending Invitations; ST-40–ST-41
+- [x] 2.9 Correct invitation creation in `routes/users.ts` and acceptance in `routes/invitation.ts` directly, including deployment-global application validation, without a shared helper or stored-payload rewrite — 03-04 §Pending Invitations; ST-40–ST-41 ✅ (completed: 2026-09-06 10:19; invitation specification 4 passed, related integration 9 passed, route unit 32 passed, typecheck and 96 structure checks passed)
 - [ ] 2.10 Only after Tasks 2.6–2.9 are complete, perform one coherent lifecycle cutover: apply retained status/public types, the lifecycle/module-cascade migration, init-owned delete permissions/mappings, all eight mounted/normalized DELETE routes, and obsolete endpoint/permission removal — 03-01 §Lifecycle/API/Permission/Migration; ST-01–ST-07
 - [ ] 2.11 Run the Phase 2 specifications and make them green without changing their expectations
 
