@@ -12,10 +12,33 @@
  *   oidc:{type}:grant:{grantId}     — Grant set of primary IDs (for revocation)
  */
 
+import { errors } from 'oidc-provider';
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
 import { getSession, upsertSession, revokeSession } from '../lib/session-tracking.js';
 import type { AdapterPayload } from './postgres-adapter.js';
+
+/**
+ * Atomically marks one Redis-backed OIDC artifact as consumed without changing its expiry.
+ *
+ * A separate read and write permits concurrent requests to consume the same single-use artifact.
+ * Redis executes this script as one operation, so only the first request can add `consumed`.
+ */
+const CONSUME_UNCONSUMED_ARTIFACT = `
+local payloadJson = redis.call('GET', KEYS[1])
+if not payloadJson then
+  return 0
+end
+
+local payload = cjson.decode(payloadJson)
+if payload.consumed ~= nil then
+  return 0
+end
+
+payload.consumed = tonumber(ARGV[1])
+redis.call('SET', KEYS[1], cjson.encode(payload), 'KEEPTTL')
+return 1
+`;
 
 /**
  * Redis adapter implementing the node-oidc-provider storage interface.
@@ -210,34 +233,21 @@ export class RedisAdapter {
   /**
    * Mark an artifact as consumed.
    *
-   * Reads the current payload, adds a `consumed` timestamp (epoch seconds),
-   * and writes it back with the remaining TTL preserved. This is used for
-   * authorization code replay detection.
+   * Atomically adds a `consumed` timestamp while preserving the existing TTL. A missing or already
+   * consumed artifact is rejected so concurrent authorization-code requests cannot both succeed.
    *
    * @param id - Artifact ID to mark as consumed
    */
   async consume(id: string): Promise<void> {
     const redis = getRedis();
     const mainKey = this.key(id);
-
-    const data = await redis.get(mainKey);
-    if (!data) return;
-
-    try {
-      const payload = JSON.parse(data) as AdapterPayload;
-      payload.consumed = Math.floor(Date.now() / 1000);
-
-      // Preserve the remaining TTL when updating the payload
-      const ttl = await redis.ttl(mainKey);
-      if (ttl > 0) {
-        await redis.set(mainKey, JSON.stringify(payload), 'EX', ttl);
-      } else {
-        // No TTL set (or key is expiring imminently) — just update
-        await redis.set(mainKey, JSON.stringify(payload));
-      }
-    } catch (error) {
-      logger.warn({ key: mainKey, error }, 'Failed to consume OIDC artifact in Redis');
-    }
+    const consumed = await redis.eval(
+      CONSUME_UNCONSUMED_ARTIFACT,
+      1,
+      mainKey,
+      Math.floor(Date.now() / 1000),
+    );
+    if (consumed !== 1) throw new errors.InvalidGrant();
   }
 
   /**

@@ -105,6 +105,32 @@ describe('Redis Adapter (Integration)', () => {
     expect(found!.consumed).toBeGreaterThan(0);
   });
 
+  it('should allow exactly one concurrent consumer', async () => {
+    const adapter = new RedisAdapter('AuthorizationCode');
+    await adapter.upsert(
+      'ac-concurrent-consume',
+      {
+        accountId: 'user-concurrent-consume',
+        clientId: 'client-concurrent-consume',
+        kind: 'AuthorizationCode',
+      },
+      600,
+    );
+
+    const outcomes = await Promise.allSettled([
+      adapter.consume('ac-concurrent-consume'),
+      adapter.consume('ac-concurrent-consume'),
+    ]);
+
+    expect(outcomes.filter(({ status }) => status === 'fulfilled')).toHaveLength(1);
+    const rejected = outcomes.find(({ status }) => status === 'rejected');
+    expect(rejected).toMatchObject({
+      status: 'rejected',
+      reason: { error: 'invalid_grant', status: 400 },
+    });
+    expect(await getRedis().ttl('oidc:AuthorizationCode:ac-concurrent-consume')).toBeGreaterThan(0);
+  });
+
   // ── Destroy ────────────────────────────────────────────────────
 
   it('should destroy an artifact and clean up index keys', async () => {

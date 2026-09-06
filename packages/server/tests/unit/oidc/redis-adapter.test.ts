@@ -58,6 +58,7 @@ function createMockRedis() {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue('OK'),
     del: vi.fn().mockResolvedValue(1),
+    eval: vi.fn().mockResolvedValue(1),
     ttl: vi.fn().mockResolvedValue(300),
     smembers: vi.fn().mockResolvedValue([]),
     sadd: vi.fn().mockResolvedValue(1),
@@ -188,28 +189,27 @@ describe('RedisAdapter', () => {
   });
 
   describe('consume', () => {
-    it('reads payload, adds consumed timestamp, writes back with remaining TTL', async () => {
+    it('atomically consumes the artifact while preserving its TTL', async () => {
       const { redis } = createMockRedis();
-      const payload = { accountId: 'user-1' };
-      redis.get.mockResolvedValue(JSON.stringify(payload));
-      redis.ttl.mockResolvedValue(1800);
 
       await adapter.consume('sess-1');
 
-      expect(redis.get).toHaveBeenCalledWith('oidc:Session:sess-1');
-      expect(redis.ttl).toHaveBeenCalledWith('oidc:Session:sess-1');
-      expect(redis.set).toHaveBeenCalledWith(
+      expect(redis.eval).toHaveBeenCalledWith(
+        expect.stringContaining("'KEEPTTL'"),
+        1,
         'oidc:Session:sess-1',
-        expect.stringContaining('"consumed"'),
-        'EX',
-        1800,
+        expect.any(Number),
       );
     });
 
-    it('does nothing when key not found', async () => {
+    it('rejects an artifact that another request already consumed', async () => {
       const { redis } = createMockRedis();
-      await adapter.consume('missing');
-      expect(redis.set).not.toHaveBeenCalled();
+      redis.eval.mockResolvedValue(0);
+
+      await expect(adapter.consume('sess-1')).rejects.toMatchObject({
+        error: 'invalid_grant',
+        status: 400,
+      });
     });
   });
 
