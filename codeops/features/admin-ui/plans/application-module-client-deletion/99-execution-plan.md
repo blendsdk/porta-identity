@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 03:34
-> **Progress**: 1/40 tasks (2%)
+> **Last Updated**: 2026-09-06 03:39
+> **Progress**: 2/40 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -40,7 +40,7 @@ otherwise the first `[ ]`. Use `[!]` only with a concise blocker on the task lin
 ### Session 1 — Specification Tests
 
 - [x] 1.1 [spec-author] Add `packages/server/tests/unit/oidc/deleted-authority.spec.test.ts` for Session tracking-before-publication, all three read methods, direct Client lookup, reference validation, and RBAC/claim authority — ST-20–ST-24 ✅ (completed: 2026-09-06 03:34)
-- [ ] 1.2 [spec-author] Add `packages/server/tests/integration/oidc/deletion-authority.spec.test.ts` for live PostgreSQL Session/client/grant/account authority and unrelated preservation — ST-20–ST-24
+- [x] 1.2 [spec-author] Add `packages/server/tests/integration/oidc/deletion-authority.spec.test.ts` for live PostgreSQL Session/client/grant/account authority and unrelated preservation — ST-20–ST-24 ✅ (completed: 2026-09-06 03:39)
 - [ ] 1.3 Run the two Phase 1 files with `yarn workspace @portaidentity/server test:unit -- tests/unit/oidc/deleted-authority.spec.test.ts` and `yarn workspace @portaidentity/server test:integration -- tests/integration/oidc/deletion-authority.spec.test.ts`; record the expected-red boundary
 
 ### Session 2 — Implementation
