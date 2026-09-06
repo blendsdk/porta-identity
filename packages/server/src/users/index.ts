@@ -63,6 +63,7 @@ export {
 } from './password.js';
 export type { PasswordValidationResult } from './password.js';
 
-// GDPR export/purge (Article 17 + Article 20)
-export { exportUserData, purgeUserData } from './gdpr.js';
-export type { UserDataExport, PurgeResult } from './gdpr.js';
+// User data export
+export { exportUserData } from './gdpr.js';
+export { deleteUser } from './service.js';
+export type { UserDataExport } from './gdpr.js';

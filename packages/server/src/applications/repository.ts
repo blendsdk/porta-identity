@@ -89,7 +89,7 @@ export async function findApplicationById(id: string): Promise<Application | nul
 /**
  * Find an application by its slug.
  *
- * Returns applications of any status (active, inactive, archived).
+ * Returns applications of any retained status (active or inactive).
  * The caller (service layer) is responsible for status-based access control.
  *
  * @param slug - Application slug
@@ -342,7 +342,7 @@ export async function listApplicationsCursor(
 /**
  * Check if an application slug is already taken in the database.
  *
- * Checks across all statuses (active, inactive, archived) because
+ * Checks across all retained statuses because
  * slugs must be globally unique regardless of application status.
  *
  * @param slug - Slug to check

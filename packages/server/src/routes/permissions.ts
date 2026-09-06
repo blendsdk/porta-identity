@@ -10,7 +10,7 @@
  *   GET    /                — List permissions (optional ?moduleId filter)
  *   GET    /:permId         — Get a permission by ID
  *   PUT    /:permId         — Update a permission (name/description only)
- *   DELETE /:permId         — Delete a permission (?force=true)
+ *   DELETE /:permissionId   — Delete a permission
  *   GET    /:permId/roles   — List roles that have this permission
  *
  * Error mapping:
@@ -48,6 +48,12 @@ const updatePermissionSchema = z.object({
 /** Schema for filtering permissions by module */
 const listPermissionsSchema = z.object({
   moduleId: z.string().uuid().optional(),
+});
+
+/** Parent-qualified parameters accepted by permission deletion. */
+const identifierSchema = z.object({
+  appId: z.string().uuid(),
+  permissionId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -154,16 +160,19 @@ export function createPermissionRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // DELETE /:permId — Delete permission
-  // Supports ?force=true to delete even when roles reference it
+  // DELETE /:permissionId — Delete permission
   // -------------------------------------------------------------------------
   router.delete(
-    '/:permId',
-    requirePermission(ADMIN_PERMISSIONS.PERMISSION_ARCHIVE),
+    '/:permissionId',
+    requirePermission(ADMIN_PERMISSIONS.PERMISSION_DELETE),
     async (ctx) => {
       try {
-        const force = ctx.query.force === 'true';
-        await permissionService.deletePermission(ctx.params.permId, force);
+        identifierSchema.parse(ctx.params);
+        await permissionService.deletePermission(
+          ctx.params.appId,
+          ctx.params.permissionId,
+          ctx.state.adminUser?.id,
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);

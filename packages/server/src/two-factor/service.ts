@@ -792,8 +792,7 @@ export async function getTwoFactorSummary(orgId: string): Promise<TwoFactorSumma
        COUNT(*) FILTER (WHERE two_factor_method = 'totp')::text AS totp_count,
        COUNT(*) FILTER (WHERE two_factor_method = 'email')::text AS email_count
      FROM users
-     WHERE organization_id = $1
-       AND status != 'archived'`,
+     WHERE organization_id = $1`,
     [orgId],
   );
 
@@ -804,7 +803,7 @@ export async function getTwoFactorSummary(orgId: string): Promise<TwoFactorSumma
   const totpCount = parseInt(row.totp_count, 10);
   const emailCount = parseInt(row.email_count, 10);
 
-  // Compliance rate: percentage of non-archived users with 2FA enabled (AR #92)
+  // Compliance rate: percentage of users with 2FA enabled.
   const complianceRate = totalUsers > 0
     ? Math.round((enabledCount / totalUsers) * 10000) / 10000
     : 0;

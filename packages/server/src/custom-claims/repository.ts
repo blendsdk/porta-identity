@@ -189,37 +189,14 @@ export async function updateDefinition(
 // Delete
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a definition by ID, or lock and capture it through its application parent.
- *
- * Both forms rely on the claim-value FK cascade. The parent-qualified form
- * also returns authority captured immediately before deletion.
- *
- * @param applicationIdOrId - Parent application UUID, or definition UUID for ID-only deletion.
- * @param id - Child definition UUID for parent-qualified deletion.
- * @returns Deletion status, or the captured parent-qualified authority.
- */
-export function deleteDefinition(id: string): Promise<boolean>;
-export function deleteDefinition(
+/** Lock, capture, and delete a claim definition through its application parent. */
+export async function deleteDefinition(
   applicationId: string,
   id: string,
-): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null>;
-export async function deleteDefinition(
-  applicationIdOrId: string,
-  id?: string,
-): Promise<
-  boolean | { definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null
-> {
-  const pool = getPool();
-  if (id === undefined) {
-    const deleted = await pool.query('DELETE FROM custom_claim_definitions WHERE id = $1', [
-      applicationIdOrId,
-    ]);
-    return (deleted.rowCount ?? 0) > 0;
-  }
-  const capture = await captureDefinitionForDeletion(applicationIdOrId, id);
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null> {
+  const capture = await captureDefinitionForDeletion(applicationId, id);
   if (!capture) return null;
-  await deleteCapturedDefinition(applicationIdOrId, id);
+  await deleteCapturedDefinition(applicationId, id);
   return capture;
 }
 

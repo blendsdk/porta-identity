@@ -23,7 +23,7 @@ export type { PaginatedResult } from '../organizations/types.js';
 // ---------------------------------------------------------------------------
 
 /** Application status values — matches the DB CHECK constraint */
-export type ApplicationStatus = 'active' | 'inactive' | 'archived';
+export type ApplicationStatus = 'active' | 'inactive';
 
 /** Module status values — matches the DB CHECK constraint */
 export type ModuleStatus = 'active' | 'inactive';

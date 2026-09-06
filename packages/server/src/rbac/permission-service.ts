@@ -21,15 +21,12 @@ import {
   findPermissionById as repoFindPermissionById,
   findPermissionBySlug as repoFindPermissionBySlug,
   updatePermission as repoUpdatePermission,
-  deletePermission as repoDeletePermission,
   capturePermissionForDeletion,
   deleteCapturedPermission,
   listPermissionsByApplication as repoListPermissionsByApplication,
   permissionSlugExists,
-  countRolesWithPermission,
 } from './permission-repository.js';
 import { getRolesWithPermission as repoGetRolesWithPermission } from './mapping-repository.js';
-import { invalidateAllUserRbacCaches } from './cache.js';
 import { validatePermissionSlug } from './slugs.js';
 import { PermissionNotFoundError, RbacValidationError } from './errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -177,63 +174,27 @@ export async function updatePermission(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a permission using either the current force-aware call or a parent-qualified call.
+ * Delete a permission through its authoritative application parent.
  *
- * The ID/force form preserves the mounted API behavior, including cache invalidation and audit.
- * The application/permission form captures authority before applying the physical cascade.
- *
- * @param applicationIdOrId - Parent application UUID, or permission UUID for the force-aware call.
- * @param permissionIdOrForce - Child permission UUID, or force flag for the force-aware call.
+ * @param applicationId - Parent application UUID.
+ * @param permissionId - Child permission UUID.
  * @param actorId - Actor identifier used for audit attribution when applicable.
- * @returns Nothing for the force-aware call, otherwise the captured authority identifiers.
+ * @returns The captured authority identifiers.
  * @throws PermissionNotFoundError when the permission is absent from the requested boundary.
  */
-export function deletePermission(id: string, force?: boolean, actorId?: string): Promise<void>;
-export function deletePermission(
+export async function deletePermission(
   applicationId: string,
   permissionId: string,
   actorId?: string,
-): Promise<{ permission: Permission; userIds: string[]; roleIds: string[]; grantIds: string[] }>;
-export async function deletePermission(
-  applicationIdOrId: string,
-  permissionIdOrForce: string | boolean = false,
-  actorId?: string,
-): Promise<void | {
+): Promise<{
   permission: Permission;
   userIds: string[];
   roleIds: string[];
   grantIds: string[];
 }> {
-  if (typeof permissionIdOrForce === 'boolean') {
-    const existing = await repoFindPermissionById(applicationIdOrId);
-    if (!existing) throw new PermissionNotFoundError(applicationIdOrId);
-    if (!permissionIdOrForce) {
-      const roleCount = await countRolesWithPermission(applicationIdOrId);
-      if (roleCount > 0) {
-        throw new RbacValidationError(
-          `Cannot delete permission "${existing.slug}": assigned to ${roleCount} role(s). Use force=true to override.`,
-        );
-      }
-    }
-    await repoDeletePermission(applicationIdOrId);
-    if (permissionIdOrForce) await invalidateAllUserRbacCaches();
-    void writeAuditLog({
-      eventType: PERMISSION_DELETED_EVENT,
-      eventCategory: 'admin',
-      actorId,
-      metadata: {
-        permissionId: applicationIdOrId,
-        slug: existing.slug,
-        force: permissionIdOrForce,
-      },
-    });
-    return;
-  }
-
   const transaction = getDatabaseTransactionClient();
   if (!transaction) throw new Error('Permission deletion requires an active database transaction');
-  const capture = await capturePermissionForDeletion(applicationIdOrId, permissionIdOrForce);
-  const permissionId = permissionIdOrForce;
+  const capture = await capturePermissionForDeletion(applicationId, permissionId);
   if (!capture) throw new PermissionNotFoundError(permissionId);
   await transaction.query(
     `UPDATE admin_sessions SET revoked_at = NOW()
@@ -251,16 +212,16 @@ export async function deletePermission(
     eventType: PERMISSION_DELETED_EVENT,
     eventCategory: 'admin',
     metadata: {
-      applicationId: applicationIdOrId,
+      applicationId,
       permissionId,
       slug: capture.permission.slug,
     },
   });
-  await deleteCapturedPermission(applicationIdOrId, permissionId);
+  await deleteCapturedPermission(applicationId, permissionId);
   await registerDeletionCleanup({
     resource: 'permission',
     targetId: permissionId,
-    parentId: applicationIdOrId,
+    parentId: applicationId,
     userIds: capture.userIds,
     clientIds: [],
     publicClientIds: [],
@@ -268,7 +229,7 @@ export async function deletePermission(
     roleIds: capture.roleIds,
     permissionIds: [permissionId],
     claimIds: [],
-    applicationIds: [applicationIdOrId],
+    applicationIds: [applicationId],
   });
   return capture;
 }

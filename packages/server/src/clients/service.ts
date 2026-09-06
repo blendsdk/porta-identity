@@ -548,40 +548,6 @@ export async function activateClient(id: string, actorId?: string): Promise<void
   });
 }
 
-/**
- * Revoke a client (active or inactive → revoked).
- *
- * Revocation is permanent — revoked clients cannot be reactivated.
- * This effectively disables the client for all OIDC operations.
- *
- * @param id - Client internal UUID
- * @param actorId - UUID of the user performing the action
- * @throws ClientNotFoundError if not found
- * @throws ClientValidationError if already revoked
- */
-export async function revokeClient(id: string, actorId?: string): Promise<void> {
-  const client = await loadClientForStatusChange(id);
-
-  if (client.status === 'revoked') {
-    throw new ClientValidationError('Client is already revoked');
-  }
-
-  await repoUpdateClient(id, { status: 'revoked' });
-  await invalidateClientCache(client.clientId, client.id);
-
-  await writeAuditLog({
-    organizationId: client.organizationId,
-    eventType: 'client.revoked',
-    eventCategory: 'admin',
-    actorId,
-    metadata: {
-      clientDbId: client.id,
-      clientId: client.clientId,
-      previousStatus: client.status,
-    },
-  });
-}
-
 // ===========================================================================
 // OIDC integration
 // ===========================================================================

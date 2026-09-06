@@ -17,7 +17,7 @@ import { writeAuditLogInTransaction } from './audit-log.js';
 export type BulkEntityType = 'organization' | 'user';
 
 /** Supported actions across both bulk entity types. */
-export type BulkAction = 'activate' | 'suspend' | 'deactivate' | 'lock' | 'unlock' | 'archive';
+export type BulkAction = 'activate' | 'suspend' | 'deactivate' | 'lock' | 'unlock';
 
 /** Closed public outcome for one requested item. */
 export type BulkItemOutcome = 'succeeded' | 'failed' | 'not_attempted';
@@ -66,7 +66,6 @@ interface StatusTransition {
 const ORGANIZATION_TRANSITIONS: Readonly<Record<string, StatusTransition>> = Object.freeze({
   activate: { from: ['suspended'], to: 'active' },
   suspend: { from: ['active'], to: 'suspended' },
-  archive: { from: ['active', 'suspended'], to: 'archived' },
 });
 
 const USER_TRANSITIONS: Readonly<Record<string, StatusTransition>> = Object.freeze({

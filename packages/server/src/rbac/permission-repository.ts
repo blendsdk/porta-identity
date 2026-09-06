@@ -153,18 +153,8 @@ export async function updatePermission(
 // Delete
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a permission by ID, or lock and capture it through its application parent.
- *
- * The ID-only form returns whether a row was removed. The parent-qualified
- * form returns authority captured immediately before the same FK cascade.
- *
- * @param applicationIdOrId - Parent application UUID, or permission UUID for ID-only deletion.
- * @param permissionId - Child permission UUID for parent-qualified deletion.
- * @returns Deletion status, or the captured parent-qualified authority.
- */
-export function deletePermission(id: string): Promise<boolean>;
-export function deletePermission(
+/** Lock, capture, and delete a permission through its authoritative application parent. */
+export async function deletePermission(
   applicationId: string,
   permissionId: string,
 ): Promise<{
@@ -172,23 +162,10 @@ export function deletePermission(
   userIds: string[];
   roleIds: string[];
   grantIds: string[];
-} | null>;
-export async function deletePermission(
-  applicationIdOrId: string,
-  permissionId?: string,
-): Promise<
-  | boolean
-  | { permission: Permission; userIds: string[]; roleIds: string[]; grantIds: string[] }
-  | null
-> {
-  const pool = getPool();
-  if (permissionId === undefined) {
-    const deleted = await pool.query('DELETE FROM permissions WHERE id = $1', [applicationIdOrId]);
-    return (deleted.rowCount ?? 0) > 0;
-  }
-  const capture = await capturePermissionForDeletion(applicationIdOrId, permissionId);
+} | null> {
+  const capture = await capturePermissionForDeletion(applicationId, permissionId);
   if (!capture) return null;
-  await deleteCapturedPermission(applicationIdOrId, permissionId);
+  await deleteCapturedPermission(applicationId, permissionId);
   return capture;
 }
 
@@ -312,28 +289,4 @@ export async function permissionSlugExists(
     [applicationId, slug],
   );
   return result.rows[0].exists;
-}
-
-// ---------------------------------------------------------------------------
-// Role count (deletion guard)
-// ---------------------------------------------------------------------------
-
-/**
- * Count roles that have a specific permission assigned.
- *
- * Used by the service layer as a deletion guard: if roles have this
- * permission, it cannot be deleted without force=true.
- *
- * @param permissionId - Permission UUID
- * @returns Number of roles with this permission
- */
-export async function countRolesWithPermission(permissionId: string): Promise<number> {
-  const pool = getPool();
-
-  const result = await pool.query<{ count: string }>(
-    'SELECT COUNT(*)::int as count FROM role_permissions WHERE permission_id = $1',
-    [permissionId],
-  );
-
-  return parseInt(result.rows[0].count, 10);
 }

@@ -21,12 +21,10 @@ import {
   findRoleById as repoFindRoleById,
   findRoleBySlug as repoFindRoleBySlug,
   updateRole as repoUpdateRole,
-  deleteRole as repoDeleteRole,
   captureRoleForDeletion,
   deleteCapturedRole,
   listRolesByApplication as repoListRolesByApplication,
   roleSlugExists,
-  countUsersWithRole,
 } from './role-repository.js';
 import {
   assignPermissionsToRole as repoAssignPermissions,
@@ -214,55 +212,22 @@ export async function updateRole(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a role using either the current force-aware call or a parent-qualified call.
+ * Delete a role through its authoritative application parent.
  *
- * The ID/force form preserves the mounted API behavior, including cache invalidation and audit.
- * The application/role form captures authority before applying the same physical cascade.
- *
- * @param applicationIdOrId - Parent application UUID, or role UUID for the force-aware call.
- * @param roleIdOrForce - Child role UUID, or the force flag for the force-aware call.
+ * @param applicationId - Parent application UUID.
+ * @param roleId - Child role UUID.
  * @param actorId - Actor identifier used for audit attribution when applicable.
- * @returns Nothing for the force-aware call, otherwise the captured authority identifiers.
+ * @returns The captured authority identifiers.
  * @throws RoleNotFoundError when the selected role does not exist within the requested boundary.
  */
-export function deleteRole(id: string, force?: boolean, actorId?: string): Promise<void>;
-export function deleteRole(
+export async function deleteRole(
   applicationId: string,
   roleId: string,
   actorId?: string,
-): Promise<{ role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }>;
-export async function deleteRole(
-  applicationIdOrId: string,
-  roleIdOrForce: string | boolean = false,
-  actorId?: string,
-): Promise<void | { role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }> {
-  if (typeof roleIdOrForce === 'boolean') {
-    const existing = await repoFindRoleById(applicationIdOrId);
-    if (!existing) throw new RoleNotFoundError(applicationIdOrId);
-    if (!roleIdOrForce) {
-      const userCount = await countUsersWithRole(applicationIdOrId);
-      if (userCount > 0) {
-        throw new RbacValidationError(
-          `Cannot delete role "${existing.slug}": ${userCount} user(s) still assigned. Use force=true to override.`,
-        );
-      }
-    }
-    await repoDeleteRole(applicationIdOrId);
-    await invalidateRoleCache(applicationIdOrId);
-    if (roleIdOrForce) await invalidateAllUserRbacCaches();
-    void writeAuditLog({
-      eventType: ROLE_DELETED_EVENT,
-      eventCategory: 'admin',
-      actorId,
-      metadata: { roleId: applicationIdOrId, slug: existing.slug, force: roleIdOrForce },
-    });
-    return;
-  }
-
+): Promise<{ role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }> {
   const transaction = getDatabaseTransactionClient();
   if (!transaction) throw new Error('Role deletion requires an active database transaction');
-  const capture = await captureRoleForDeletion(applicationIdOrId, roleIdOrForce);
-  const roleId = roleIdOrForce;
+  const capture = await captureRoleForDeletion(applicationId, roleId);
   if (!capture) throw new RoleNotFoundError(roleId);
   await transaction.query(
     `UPDATE admin_sessions SET revoked_at = NOW()
@@ -280,16 +245,16 @@ export async function deleteRole(
     eventType: ROLE_DELETED_EVENT,
     eventCategory: 'admin',
     metadata: {
-      applicationId: applicationIdOrId,
+      applicationId,
       roleId,
       slug: capture.role.slug,
     },
   });
-  await deleteCapturedRole(applicationIdOrId, roleId);
+  await deleteCapturedRole(applicationId, roleId);
   await registerDeletionCleanup({
     resource: 'role',
     targetId: roleId,
-    parentId: applicationIdOrId,
+    parentId: applicationId,
     userIds: capture.userIds,
     clientIds: [],
     publicClientIds: [],
@@ -297,7 +262,7 @@ export async function deleteRole(
     roleIds: [roleId],
     permissionIds: capture.permissionIds,
     claimIds: [],
-    applicationIds: [applicationIdOrId],
+    applicationIds: [applicationId],
   });
   return capture;
 }

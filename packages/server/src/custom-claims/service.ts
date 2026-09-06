@@ -23,7 +23,6 @@ import {
   insertDefinition as repoInsertDefinition,
   findDefinitionById as repoFindDefinitionById,
   updateDefinition as repoUpdateDefinition,
-  deleteDefinition as repoDeleteDefinition,
   captureDefinitionForDeletion,
   deleteCapturedDefinition,
   listDefinitionsByApplication as repoListDefinitions,
@@ -152,48 +151,22 @@ export async function updateDefinition(
 }
 
 /**
- * Delete a claim definition by ID or through its authoritative application parent.
+ * Delete a claim definition through its authoritative application parent.
  *
- * The ID-only form preserves cache invalidation and audit behavior. The parent-qualified form
- * captures authority before applying the same physical cascade.
- *
- * @param applicationIdOrId - Parent application UUID, or definition UUID for the ID-only call.
- * @param id - Child definition UUID for a parent-qualified call.
+ * @param applicationId - Parent application UUID.
+ * @param id - Child definition UUID.
  * @param actorId - Actor identifier available for audit attribution.
- * @returns Nothing for ID-only deletion, otherwise the captured authority identifiers.
+ * @returns The captured authority identifiers.
  * @throws ClaimNotFoundError when the definition is absent from the requested boundary.
  */
-export function deleteDefinition(id: string): Promise<void>;
-export function deleteDefinition(
+export async function deleteDefinition(
   applicationId: string,
   id: string,
   actorId?: string,
-): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] }>;
-export async function deleteDefinition(
-  applicationIdOrId: string,
-  id?: string,
-  actorId?: string,
-): Promise<void | { definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] }> {
-  if (id === undefined) {
-    const existing = await repoFindDefinitionById(applicationIdOrId);
-    if (!existing) throw new ClaimNotFoundError(applicationIdOrId);
-    await repoDeleteDefinition(applicationIdOrId);
-    await invalidateDefinitionsCache(existing.applicationId);
-    void writeAuditLog({
-      eventType: CLAIM_DELETED_EVENT,
-      eventCategory: 'admin',
-      metadata: {
-        definitionId: applicationIdOrId,
-        applicationId: existing.applicationId,
-        claimName: existing.claimName,
-      },
-    });
-    return;
-  }
-
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] }> {
   const transaction = getDatabaseTransactionClient();
   if (!transaction) throw new Error('Claim deletion requires an active database transaction');
-  const capture = await captureDefinitionForDeletion(applicationIdOrId, id);
+  const capture = await captureDefinitionForDeletion(applicationId, id);
   if (!capture) throw new ClaimNotFoundError(id);
   await transaction.query(
     `UPDATE admin_sessions SET revoked_at = NOW()
@@ -211,17 +184,17 @@ export async function deleteDefinition(
     eventType: CLAIM_DELETED_EVENT,
     eventCategory: 'admin',
     metadata: {
-      applicationId: applicationIdOrId,
+      applicationId,
       definitionId: id,
       claimName: capture.definition.claimName,
       claimType: capture.definition.claimType,
     },
   });
-  await deleteCapturedDefinition(applicationIdOrId, id);
+  await deleteCapturedDefinition(applicationId, id);
   await registerDeletionCleanup({
     resource: 'claim',
     targetId: id,
-    parentId: applicationIdOrId,
+    parentId: applicationId,
     userIds: capture.userIds,
     clientIds: [],
     publicClientIds: [],
@@ -229,7 +202,7 @@ export async function deleteDefinition(
     roleIds: [],
     permissionIds: [],
     claimIds: [id],
-    applicationIds: [applicationIdOrId],
+    applicationIds: [applicationId],
   });
   return capture;
 }

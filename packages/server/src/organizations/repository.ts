@@ -124,7 +124,7 @@ export async function findOrganizationById(id: string): Promise<Organization | n
 /**
  * Find an organization by its slug.
  *
- * Returns organizations of any status (active, suspended, archived).
+ * Returns organizations of any retained status (active or suspended).
  * The caller (service/middleware) is responsible for status-based access control.
  *
  * @param slug - Organization slug
@@ -416,7 +416,7 @@ export async function listOrganizationsCursor(
 /**
  * Check if a slug is already taken in the database.
  *
- * Checks across all statuses (active, suspended, archived) because
+ * Checks across all retained statuses because
  * slugs must be globally unique regardless of organization status.
  *
  * @param slug - Slug to check
@@ -439,34 +439,6 @@ export async function slugExists(slug: string, excludeId?: string): Promise<bool
     [slug],
   );
   return result.rows[0].exists;
-}
-
-// ---------------------------------------------------------------------------
-// Hard delete
-// ---------------------------------------------------------------------------
-
-/**
- * Hard-delete an organization from the database.
- *
- * PostgreSQL CASCADE foreign keys automatically delete organization-owned
- * entities such as clients, users, user claim values, user roles, branding
- * assets, and admin sessions. Applications, roles, permissions, and claim
- * definitions are global definitions and are not deleted.
- * Audit log entries have their organization_id set to NULL (ON DELETE SET NULL).
- *
- * The `AND is_super_admin = FALSE` clause is a database-level safety check —
- * even if application code has a bug, the super-admin org cannot be deleted.
- *
- * @param id - Organization UUID
- * @returns true if the row was deleted, false if not found or super-admin
- */
-export async function hardDeleteOrganization(id: string): Promise<boolean> {
-  const pool = getPool();
-  const result = await pool.query(
-    'DELETE FROM organizations WHERE id = $1 AND is_super_admin = FALSE RETURNING id',
-    [id],
-  );
-  return (result.rowCount ?? 0) > 0;
 }
 
 /** Authority identifiers captured before an organization cascade runs. */
@@ -563,37 +535,4 @@ export async function deleteOrganization(
   if (!capture) return null;
   await deleteOrganizationCaptured(capture.organization.id);
   return capture;
-}
-
-/**
- * Count all child entities that will be cascade-deleted with an organization.
- * Used for dry-run display and confirmation prompts.
- *
- * Runs all counts in a single query using scalar subqueries. Applications,
- * roles, permissions, and claim definitions are global definitions, so they
- * are not deleted with one organization and their counts remain zero.
- *
- * @param orgId - Organization UUID
- * @returns Counts of each child entity type
- */
-export async function getCascadeCounts(orgId: string): Promise<{
-  applications: number;
-  clients: number;
-  users: number;
-  roles: number;
-  permissions: number;
-  claim_definitions: number;
-}> {
-  const pool = getPool();
-  const result = await pool.query(
-    `SELECT
-       0::int AS applications,
-       (SELECT COUNT(*) FROM clients WHERE organization_id = $1)::int AS clients,
-       (SELECT COUNT(*) FROM users WHERE organization_id = $1)::int AS users,
-       0::int AS roles,
-       0::int AS permissions,
-       0::int AS claim_definitions`,
-    [orgId],
-  );
-  return result.rows[0];
 }

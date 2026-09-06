@@ -3,7 +3,7 @@
  *
  * All routes are under `/api/admin/clients` and require
  * admin authentication (Bearer JWT). Provides CRUD for clients,
- * status lifecycle (activate, deactivate, revoke), and nested
+ * status lifecycle (activate, deactivate), and nested
  * secret management (generate, list, revoke).
  *
  * Route structure:
@@ -11,12 +11,12 @@
  *   GET    /                               — List clients (paginated)
  *   GET    /:id                            — Get client by ID
  *   PUT    /:id                            — Update client
- *   POST   /:id/revoke                     — Revoke client (permanent)
+ *   DELETE /:id                            — Delete client
  *   POST   /:id/activate                   — Activate client
  *   POST   /:id/deactivate                 — Deactivate client
  *   POST   /:id/secrets                    — Generate new secret
  *   GET    /:id/secrets                    — List secrets (no hashes)
- *   POST   /:id/secrets/:secretId/revoke   — Revoke a secret
+ *   DELETE /:id/secrets/:secretId          — Revoke a secret
  *
  * Error mapping:
  *   ClientNotFoundError → 404
@@ -130,7 +130,7 @@ const listClientsSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   organizationId: z.string().uuid().optional(),
   applicationId: z.string().uuid().optional(),
-  status: z.enum(['active', 'inactive', 'revoked']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['client_name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -142,7 +142,7 @@ const listClientsCursorSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   organizationId: z.string().uuid().optional(),
   applicationId: z.string().uuid().optional(),
-  status: z.enum(['active', 'inactive', 'revoked']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['client_name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -153,6 +153,9 @@ const createSecretSchema = z.object({
   label: z.string().max(255).optional(),
   expiresAt: z.coerce.date().optional(),
 });
+
+/** Parameters accepted by client deletion. */
+const identifierSchema = z.object({ id: z.string().uuid() });
 
 // ---------------------------------------------------------------------------
 // Response decoration helper
@@ -329,11 +332,12 @@ export function createClientRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/revoke — Revoke client (permanent)
+  // DELETE /:id — Delete client
   // -------------------------------------------------------------------------
-  router.post('/:id/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
+  router.delete('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_DELETE), async (ctx) => {
     try {
-      await clientService.revokeClient(ctx.params.id);
+      const { id } = identifierSchema.parse(ctx.params);
+      await clientService.deleteClient(id, ctx.state.adminUser?.id);
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);
@@ -411,10 +415,10 @@ export function createClientRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/secrets/:secretId/revoke — Revoke a secret
+  // DELETE /:id/secrets/:secretId — Revoke a secret
   // -------------------------------------------------------------------------
-  router.post(
-    '/:id/secrets/:secretId/revoke',
+  router.delete(
+    '/:id/secrets/:secretId',
     requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE),
     async (ctx) => {
       try {
@@ -434,6 +438,6 @@ export function createClientRouter(): Router {
 /** Return a client only when its secret collection is administratively available. */
 async function requireEligibleSecretParent(id: string): Promise<Client | null> {
   const client = await clientService.getClientById(id);
-  if (!client || client.clientType !== 'confidential' || client.status === 'revoked') return null;
+  if (!client || client.clientType !== 'confidential') return null;
   return client;
 }

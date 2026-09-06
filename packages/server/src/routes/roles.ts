@@ -11,7 +11,7 @@
  *   GET    /                       — List all roles for an application
  *   GET    /:roleId                — Get a role by ID
  *   PUT    /:roleId                — Update a role
- *   DELETE /:roleId                — Delete a role (?force=true)
+ *   DELETE /:roleId                — Delete a role
  *   GET    /:roleId/permissions    — List permissions for a role
  *   PUT    /:roleId/permissions    — Assign permissions to a role
  *   DELETE /:roleId/permissions    — Remove permissions from a role
@@ -60,6 +60,12 @@ const listUsersWithRoleSchema = z.object({
   orgId: z.string().uuid(),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+
+/** Parent-qualified parameters accepted by role deletion. */
+const identifierSchema = z.object({
+  appId: z.string().uuid(),
+  roleId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -166,12 +172,11 @@ export function createRoleRouter(): Router {
 
   // -------------------------------------------------------------------------
   // DELETE /:roleId — Delete role
-  // Supports ?force=true to delete even when users are assigned
   // -------------------------------------------------------------------------
-  router.delete('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_ARCHIVE), async (ctx) => {
+  router.delete('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_DELETE), async (ctx) => {
     try {
-      const force = ctx.query.force === 'true';
-      await roleService.deleteRole(ctx.params.roleId, force);
+      identifierSchema.parse(ctx.params);
+      await roleService.deleteRole(ctx.params.appId, ctx.params.roleId, ctx.state.adminUser?.id);
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);

@@ -14,8 +14,6 @@
  * Status lifecycle rules:
  *   - suspend: active → suspended (super-admin blocked)
  *   - activate: suspended → active
- *   - archive: active|suspended → archived (super-admin blocked)
- *   - restore: archived → active
  */
 
 import type {
@@ -25,8 +23,6 @@ import type {
   BrandingInput,
   ListOrganizationsOptions,
   PaginatedResult,
-  CascadeCounts,
-  DestroyResult,
 } from './types.js';
 import {
   insertOrganization,
@@ -36,10 +32,8 @@ import {
   listOrganizations as repoList,
   listOrganizationsCursor as repoListCursor,
   slugExists,
-  hardDeleteOrganization,
   captureOrganizationForDeletion,
   deleteOrganizationCaptured,
-  getCascadeCounts as repoGetCascadeCounts,
 } from './repository.js';
 import type { OrganizationDeletionCapture } from './repository.js';
 import { getDatabaseTransactionClient } from '../lib/database.js';
@@ -369,7 +363,7 @@ async function loadOrgForStatusChange(id: string): Promise<Organization> {
  * @param reason - Optional reason for suspension
  * @param actorId - UUID of the user performing the action
  * @throws OrganizationNotFoundError if not found
- * @throws OrganizationValidationError if super-admin, already suspended, or archived
+ * @throws OrganizationValidationError if super-admin or not active
  */
 export async function suspendOrganization(
   id: string,
@@ -425,68 +419,6 @@ export async function activateOrganization(
     organizationId: org.id,
     actorId,
     eventType: 'org.activated',
-    eventCategory: 'admin',
-  });
-}
-
-/**
- * Archive an organization (soft-delete).
- * Super-admin organization cannot be archived.
- *
- * @param id - Organization UUID
- * @param actorId - UUID of the user performing the action
- * @throws OrganizationNotFoundError if not found
- * @throws OrganizationValidationError if super-admin or already archived
- */
-export async function archiveOrganization(
-  id: string,
-  actorId?: string,
-): Promise<void> {
-  const org = await loadOrgForStatusChange(id);
-
-  if (org.isSuperAdmin) {
-    throw new OrganizationValidationError('Super-admin organization cannot be archived');
-  }
-  if (org.status === 'archived') {
-    throw new OrganizationValidationError('Organization is already archived');
-  }
-
-  await repoUpdate(id, { status: 'archived' });
-  await invalidateOrganizationCache(org.slug, org.id);
-
-  await writeAuditLog({
-    organizationId: org.id,
-    actorId,
-    eventType: 'org.archived',
-    eventCategory: 'admin',
-  });
-}
-
-/**
- * Restore an archived organization (archived → active).
- *
- * @param id - Organization UUID
- * @param actorId - UUID of the user performing the action
- * @throws OrganizationNotFoundError if not found
- * @throws OrganizationValidationError if not currently archived
- */
-export async function restoreOrganization(
-  id: string,
-  actorId?: string,
-): Promise<void> {
-  const org = await loadOrgForStatusChange(id);
-
-  if (org.status !== 'archived') {
-    throw new OrganizationValidationError(`Cannot restore organization from status: ${org.status}`);
-  }
-
-  await repoUpdate(id, { status: 'active' });
-  await invalidateOrganizationCache(org.slug, org.id);
-
-  await writeAuditLog({
-    organizationId: org.id,
-    actorId,
-    eventType: 'org.restored',
     eventCategory: 'admin',
   });
 }
@@ -551,87 +483,6 @@ export async function validateSlugAvailability(
   }
 
   return { isValid: true };
-}
-
-// ---------------------------------------------------------------------------
-// Destroy (hard delete)
-// ---------------------------------------------------------------------------
-
-/**
- * Get cascade counts for an organization (preview of what will be deleted).
- *
- * @param orgId - Organization UUID
- * @returns Counts of each child entity type
- */
-export async function getCascadeCounts(orgId: string): Promise<CascadeCounts> {
-  return repoGetCascadeCounts(orgId);
-}
-
-/**
- * Destroy an organization and all its child entities via CASCADE.
- *
- * Safety checks:
- * 1. Organization must exist
- * 2. Organization must NOT be the super-admin org (application-level check)
- * 3. Cascade counts are calculated before deletion (for audit trail)
- * 4. Audit log is written BEFORE deletion (org_id becomes NULL after DELETE)
- * 5. Hard-delete with SQL-level super-admin guard (defense in depth)
- * 6. Cache invalidated after successful deletion
- *
- * @param idOrSlug - Organization ID or slug
- * @param actorId - ID of the admin performing the destruction (for audit log)
- * @returns Object with the deleted org and cascade counts
- * @throws OrganizationNotFoundError if org doesn't exist
- * @throws OrganizationValidationError if org is super-admin
- */
-export async function destroyOrganization(
-  idOrSlug: string,
-  actorId?: string,
-): Promise<DestroyResult> {
-  // 1. Resolve org (try by ID first, then by slug)
-  let org = await findOrganizationById(idOrSlug);
-  if (!org) {
-    org = await findOrganizationBySlug(idOrSlug);
-  }
-  if (!org) {
-    throw new OrganizationNotFoundError(idOrSlug);
-  }
-
-  // 2. Super-admin protection (application-level check)
-  if (org.isSuperAdmin) {
-    throw new OrganizationValidationError(
-      'Cannot destroy the super-admin organization',
-    );
-  }
-
-  // 3. Count cascade targets (for audit trail and response)
-  const cascadeCounts = await repoGetCascadeCounts(org.id);
-
-  // 4. Write audit log BEFORE deletion (org_id will be SET NULL after delete)
-  await writeAuditLog({
-    organizationId: org.id,
-    actorId,
-    eventType: 'org.destroyed',
-    eventCategory: 'admin',
-    metadata: {
-      name: org.name,
-      slug: org.slug,
-      cascadeCounts,
-    },
-  });
-
-  // 5. Hard-delete (CASCADE handles children)
-  const deleted = await hardDeleteOrganization(org.id);
-  if (!deleted) {
-    throw new OrganizationValidationError(
-      'Failed to delete organization — it may be the super-admin org',
-    );
-  }
-
-  // 6. Invalidate cache
-  await invalidateOrganizationCache(org.slug, org.id);
-
-  return { organization: org, cascadeCounts };
 }
 
 /**

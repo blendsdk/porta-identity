@@ -14,7 +14,6 @@
  * Status lifecycle rules (different from organizations):
  *   - deactivate: active → inactive
  *   - activate:   inactive → active
- *   - archive:    active|inactive → archived (permanent, cannot be restored)
  *
  * Module management:
  *   - Modules belong to an application (parent must exist)
@@ -319,35 +318,6 @@ export async function activateApplication(id: string, actorId?: string): Promise
     eventCategory: 'admin',
     actorId,
     metadata: { applicationId: app.id },
-  });
-}
-
-/**
- * Archive an application (active or inactive → archived).
- *
- * Archive is a permanent soft-delete — archived applications cannot
- * be restored (unlike organizations which support restore).
- *
- * @param id - Application UUID
- * @param actorId - UUID of the user performing the action
- * @throws ApplicationNotFoundError if not found
- * @throws ApplicationValidationError if already archived
- */
-export async function archiveApplication(id: string, actorId?: string): Promise<void> {
-  const app = await loadAppForStatusChange(id);
-
-  if (app.status === 'archived') {
-    throw new ApplicationValidationError('Application is already archived');
-  }
-
-  await repoUpdateApp(id, { status: 'archived' });
-  await invalidateApplicationCache(app.slug, app.id);
-
-  await writeAuditLog({
-    eventType: 'app.archived',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { applicationId: app.id, previousStatus: app.status },
   });
 }
 

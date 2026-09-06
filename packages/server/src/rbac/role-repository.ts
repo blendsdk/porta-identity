@@ -157,18 +157,8 @@ export async function updateRole(id: string, input: UpdateRoleInput): Promise<Ro
 // Delete
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a role by ID, or lock and capture it through its application parent.
- *
- * The ID-only form returns whether a row was removed. The parent-qualified
- * form returns authority captured immediately before the same FK cascade.
- *
- * @param applicationIdOrId - Parent application UUID, or role UUID for ID-only deletion.
- * @param roleId - Child role UUID for parent-qualified deletion.
- * @returns Deletion status, or the captured parent-qualified authority.
- */
-export function deleteRole(id: string): Promise<boolean>;
-export function deleteRole(
+/** Lock, capture, and delete a role through its authoritative application parent. */
+export async function deleteRole(
   applicationId: string,
   roleId: string,
 ): Promise<{
@@ -176,23 +166,10 @@ export function deleteRole(
   userIds: string[];
   permissionIds: string[];
   grantIds: string[];
-} | null>;
-export async function deleteRole(
-  applicationIdOrId: string,
-  roleId?: string,
-): Promise<
-  | boolean
-  | { role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }
-  | null
-> {
-  const pool = getPool();
-  if (roleId === undefined) {
-    const deleted = await pool.query('DELETE FROM roles WHERE id = $1', [applicationIdOrId]);
-    return (deleted.rowCount ?? 0) > 0;
-  }
-  const capture = await captureRoleForDeletion(applicationIdOrId, roleId);
+} | null> {
+  const capture = await captureRoleForDeletion(applicationId, roleId);
   if (!capture) return null;
-  await deleteCapturedRole(applicationIdOrId, roleId);
+  await deleteCapturedRole(applicationId, roleId);
   return capture;
 }
 
@@ -311,28 +288,4 @@ export async function roleSlugExists(
     [applicationId, slug],
   );
   return result.rows[0].exists;
-}
-
-// ---------------------------------------------------------------------------
-// User count (deletion guard)
-// ---------------------------------------------------------------------------
-
-/**
- * Count users assigned to a role.
- *
- * Used by the service layer as a deletion guard: if users are assigned,
- * the role cannot be deleted without force=true.
- *
- * @param roleId - Role UUID
- * @returns Number of users with this role
- */
-export async function countUsersWithRole(roleId: string): Promise<number> {
-  const pool = getPool();
-
-  const result = await pool.query<{ count: string }>(
-    'SELECT COUNT(*)::int as count FROM user_roles WHERE role_id = $1',
-    [roleId],
-  );
-
-  return parseInt(result.rows[0].count, 10);
 }

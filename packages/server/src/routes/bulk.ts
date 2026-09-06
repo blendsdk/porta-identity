@@ -30,7 +30,7 @@ export const bulkOrgStatusSchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, {
       message: 'Bulk entity identifiers must be unique',
     }),
-  action: z.enum(['activate', 'suspend', 'archive']),
+  action: z.enum(['activate', 'suspend']),
   reason: z.string().max(500).optional(),
 });
 

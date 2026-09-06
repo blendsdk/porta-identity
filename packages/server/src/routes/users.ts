@@ -21,7 +21,7 @@
  *   DELETE /:userId/password     — Clear password (passwordless)
  *   POST   /:userId/verify-email — Mark email as verified
  *   GET    /:userId/export       — GDPR data export (Article 20)
- *   POST   /:userId/purge        — GDPR data purge (Article 17)
+ *   DELETE /:userId              — Delete user
  *
  * Error mapping:
  *   UserNotFoundError → 404
@@ -48,7 +48,7 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
-import { exportUserData, purgeUserData } from '../users/gdpr.js';
+import { exportUserData } from '../users/gdpr.js';
 import * as userService from '../users/service.js';
 
 // ---------------------------------------------------------------------------
@@ -156,6 +156,12 @@ const lockUserSchema = z.object({
 /** Schema for suspending a user (reason optional) */
 const suspendUserSchema = z.object({
   reason: z.string().max(500).optional(),
+});
+
+/** Organization-qualified parameters accepted by user deletion. */
+const identifierSchema = z.object({
+  orgId: z.string().uuid(),
+  userId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -478,57 +484,21 @@ export function createUserRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
-  // POST /:userId/purge — GDPR data purge (Article 17)
-  //
-  // Requires X-Confirm-Purge: true header for safety.
-  // Irreversibly anonymizes user data and deletes related records.
-  // Protected: super-admin user cannot be purged
+  // DELETE /:userId — Delete user
   // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/purge',
-    requirePermission(ADMIN_PERMISSIONS.USER_ARCHIVE),
-    requireUserOrganization(),
-    async (ctx) => {
-      // Require explicit confirmation via header OR request body
-      const confirmHeader = ctx.get('X-Confirm-Purge');
-      const confirmBody = (ctx.request.body as Record<string, unknown> | undefined)?.confirmPurge;
-      if (confirmHeader !== 'true' && confirmBody !== true) {
-        ctx.status = 400;
-        ctx.body = {
-          error: 'Purge requires confirmation',
-          message: 'Set X-Confirm-Purge: true header or send { "confirmPurge": true } in body',
-        };
-        return;
-      }
-
-      const user = await userService.getUserById(ctx.params.userId);
-      if (!user) {
-        return ctx.throw(404, 'User not found');
-      }
-
-      try {
-        // Guard: super-admin user cannot be purged
-        await guardSuperAdmin(ctx.params.userId, 'delete');
-
-        // Use the admin user's ID as the actor for the audit trail
-        const actorId = ctx.state.adminUser?.id ?? 'system';
-        const result = await purgeUserData(user, actorId);
-        ctx.body = { data: result };
-      } catch (err) {
-        if (err instanceof SuperAdminProtectionError) {
-          ctx.status = 403;
-          ctx.body = { error: 'The requested operation is not permitted' };
-          return;
-        }
-        if (err instanceof Error && err.message.includes('super-admin')) {
-          ctx.status = 403;
-          ctx.body = { error: 'The requested operation is not permitted' };
-          return;
-        }
-        throw err;
-      }
-    },
-  );
+  router.delete('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_DELETE), async (ctx) => {
+    try {
+      identifierSchema.parse(ctx.params);
+      await userService.deleteUser(
+        ctx.params.orgId,
+        ctx.params.userId,
+        ctx.state.adminUser?.id,
+      );
+      ctx.status = 204;
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
 
   // -------------------------------------------------------------------------
   // GET /:userId/history — User change history

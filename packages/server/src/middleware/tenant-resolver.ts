@@ -14,14 +14,13 @@
  *   3. If cache miss, query DB: findOrganizationBySlug(orgSlug)
  *   4. If found from DB, cache it: cacheOrganization(org)
  *   5. Validate status:
- *      - archived → 404 "Organization not found"
  *      - suspended → 403 "Organization is suspended"
  *      - active → continue
  *   6. Set ctx.state.organization (full Organization object)
  *   7. Set ctx.state.issuer
  *
  * Returns:
- *   - 404 if organization not found or archived
+ *   - 404 if organization is not found
  *   - 403 if organization is suspended
  */
 
@@ -69,10 +68,6 @@ export function tenantResolver(): Middleware {
     }
 
     // 5. Status-dependent responses
-    if (org.status === 'archived') {
-      return ctx.throw(404, 'Organization not found');
-    }
-
     if (org.status === 'suspended') {
       return ctx.throw(403, 'Organization is suspended');
     }
