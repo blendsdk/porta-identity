@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 09:28
-> **Progress**: 11/40 tasks (28%)
+> **Last Updated**: 2026-09-06 09:33
+> **Progress**: 12/40 tasks (30%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -75,7 +75,7 @@ complete cutover.
 - [x] 2.1 [spec-author] Add `packages/server/tests/integration/migrations/record-deletion-lifecycle.spec.test.ts` for retained statuses, module-permission cascade, no-op Down, and init-owned permissions/mappings — ST-01–ST-05 ✅ (completed: 2026-09-06 09:14; expected red: 6 failed/1 passed)
 - [x] 2.2 [spec-author] Add `packages/server/tests/unit/routes/record-deletion.spec.test.ts` for lifecycle-route absence, exact authentication/permissions/validation/errors, parent qualification, guards, rollback, retained audit, nullable generic actor, and detached cleanup scheduling/failure — ST-02, ST-06–ST-07, ST-14–ST-18, ST-25 ✅ (completed: 2026-09-06 09:21; expected red: 16 failed/1 passed)
 - [x] 2.3 [spec-author] Add `packages/server/tests/integration/admin/record-deletion.spec.test.ts` for all eight cascades, exact affected users, targeted revocation, concurrent last-admin deletes, current-user deletion, audit retention, rollback, and unrelated preservation — ST-06–ST-20, ST-26–ST-27 ✅ (completed: 2026-09-06 09:28; expected red: 11 failed)
-- [ ] 2.4 [spec-author] Add `packages/server/tests/integration/services/invitation-deleted-preassignments.spec.test.ts` for deployment-global application validation, canonical creation/acceptance, and deleted optional references — ST-40–ST-41
+- [x] 2.4 [spec-author] Add `packages/server/tests/integration/services/invitation-deleted-preassignments.spec.test.ts` for deployment-global application validation, canonical creation/acceptance, and deleted optional references — ST-40–ST-41 ✅ (completed: 2026-09-06 09:33; expected red: 3 failed/1 passed)
 - [ ] 2.5 Run the four Phase 2 specification files with their exact 07 commands and record the expected-red boundary
 
 ### Session 2 — Implementation
