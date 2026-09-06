@@ -37,8 +37,10 @@ import {
   listOrganizationsCursor as repoListCursor,
   slugExists,
   hardDeleteOrganization,
+  deleteOrganization as repoDeleteOrganization,
   getCascadeCounts as repoGetCascadeCounts,
 } from './repository.js';
+import type { OrganizationDeletionCapture } from './repository.js';
 import type { ListOrganizationsCursorOptions } from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
@@ -626,4 +628,24 @@ export async function destroyOrganization(
   await invalidateOrganizationCache(org.slug, org.id);
 
   return { organization: org, cascadeCounts };
+}
+
+/**
+ * Physically delete an organization after capturing its affected authority.
+ * Audit, session revocation, protocol cleanup, and cache cleanup are composed
+ * around this operation by the administrative mutation flow.
+ *
+ * @param idOrSlug - Organization UUID or slug.
+ * @param _actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured immediately before the database cascade.
+ * @throws OrganizationNotFoundError when the target does not exist.
+ * @throws OrganizationValidationError when the target is the control plane.
+ */
+export async function deleteOrganization(
+  idOrSlug: string,
+  _actorId?: string,
+): Promise<OrganizationDeletionCapture> {
+  const capture = await repoDeleteOrganization(idOrSlug);
+  if (!capture) throw new OrganizationNotFoundError(idOrSlug);
+  return capture;
 }

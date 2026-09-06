@@ -145,36 +145,48 @@ export async function updateDefinition(
 }
 
 /**
- * Delete a claim definition (cascades to all associated values).
+ * Delete a claim definition by ID or through its authoritative application parent.
  *
- * Invalidates the definitions cache after deletion.
+ * The ID-only form preserves cache invalidation and audit behavior. The parent-qualified form
+ * captures authority before applying the same physical cascade.
  *
- * @param id - Definition UUID
- * @throws ClaimNotFoundError if definition not found
+ * @param applicationIdOrId - Parent application UUID, or definition UUID for the ID-only call.
+ * @param id - Child definition UUID for a parent-qualified call.
+ * @param _actorId - Actor identifier available for audit attribution.
+ * @returns Nothing for ID-only deletion, otherwise the captured authority identifiers.
+ * @throws ClaimNotFoundError when the definition is absent from the requested boundary.
  */
-export async function deleteDefinition(id: string): Promise<void> {
-  // 1. Verify definition exists (needed for cache invalidation and audit)
-  const existing = await repoFindDefinitionById(id);
-  if (!existing) {
-    throw new ClaimNotFoundError(id);
+export function deleteDefinition(id: string): Promise<void>;
+export function deleteDefinition(
+  applicationId: string,
+  id: string,
+  actorId?: string,
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] }>;
+export async function deleteDefinition(
+  applicationIdOrId: string,
+  id?: string,
+  _actorId?: string,
+): Promise<void | { definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] }> {
+  if (id === undefined) {
+    const existing = await repoFindDefinitionById(applicationIdOrId);
+    if (!existing) throw new ClaimNotFoundError(applicationIdOrId);
+    await repoDeleteDefinition(applicationIdOrId);
+    await invalidateDefinitionsCache(existing.applicationId);
+    void writeAuditLog({
+      eventType: 'claim.deleted',
+      eventCategory: 'admin',
+      metadata: {
+        definitionId: applicationIdOrId,
+        applicationId: existing.applicationId,
+        claimName: existing.claimName,
+      },
+    });
+    return;
   }
 
-  // 2. Delete from database (CASCADE removes values)
-  await repoDeleteDefinition(id);
-
-  // 3. Invalidate definitions cache for this application
-  await invalidateDefinitionsCache(existing.applicationId);
-
-  // 4. Audit log (fire-and-forget)
-  void writeAuditLog({
-    eventType: 'claim.deleted',
-    eventCategory: 'admin',
-    metadata: {
-      definitionId: id,
-      applicationId: existing.applicationId,
-      claimName: existing.claimName,
-    },
-  });
+  const capture = await repoDeleteDefinition(applicationIdOrId, id);
+  if (!capture) throw new ClaimNotFoundError(id);
+  return capture;
 }
 
 /**

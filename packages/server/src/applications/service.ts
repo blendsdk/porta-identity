@@ -45,8 +45,14 @@ import {
   updateModule as repoUpdateModule,
   listModules as repoListModules,
   moduleSlugExists,
+  deleteApplication as repoDeleteApplication,
+  deleteModule as repoDeleteModule,
 } from './repository.js';
-import type { ListApplicationsCursorOptions } from './repository.js';
+import type {
+  ApplicationDeletionCapture,
+  ListApplicationsCursorOptions,
+  ModuleDeletionCapture,
+} from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
   getCachedApplicationById,
@@ -496,4 +502,40 @@ export async function deactivateModule(
  */
 export async function listModules(applicationId: string): Promise<ApplicationModule[]> {
   return repoListModules(applicationId);
+}
+
+/**
+ * Physically delete an application after capturing cross-organization authority.
+ *
+ * @param id - Application UUID.
+ * @param _actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured before PostgreSQL applied its cascade.
+ * @throws ApplicationNotFoundError when the application does not exist.
+ */
+export async function deleteApplication(
+  id: string,
+  _actorId?: string,
+): Promise<ApplicationDeletionCapture> {
+  const capture = await repoDeleteApplication(id);
+  if (!capture) throw new ApplicationNotFoundError(id);
+  return capture;
+}
+
+/**
+ * Physically delete a module through its authoritative application parent.
+ *
+ * @param applicationId - Parent application UUID.
+ * @param moduleId - Module UUID.
+ * @param _actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured before PostgreSQL applied its cascade.
+ * @throws ApplicationNotFoundError for a missing or mismatched module.
+ */
+export async function deleteModule(
+  applicationId: string,
+  moduleId: string,
+  _actorId?: string,
+): Promise<ModuleDeletionCapture> {
+  const capture = await repoDeleteModule(applicationId, moduleId);
+  if (!capture) throw new ApplicationNotFoundError(moduleId);
+  return capture;
 }

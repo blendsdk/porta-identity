@@ -207,56 +207,57 @@ export async function updateRole(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a role by ID.
+ * Delete a role using either the current force-aware call or a parent-qualified call.
  *
- * By default (force=false), refuses to delete roles that have users
- * assigned. Pass force=true to delete regardless — CASCADE will
- * remove user_roles and role_permissions entries.
+ * The ID/force form preserves the mounted API behavior, including cache invalidation and audit.
+ * The application/role form captures authority before applying the same physical cascade.
  *
- * @param id - Role UUID
- * @param force - If true, delete even if users are assigned
- * @param actorId - Optional UUID of the admin performing the action
- * @throws RoleNotFoundError if role doesn't exist
- * @throws RbacValidationError if users are assigned and force is false
+ * @param applicationIdOrId - Parent application UUID, or role UUID for the force-aware call.
+ * @param roleIdOrForce - Child role UUID, or the force flag for the force-aware call.
+ * @param actorId - Actor identifier used for audit attribution when applicable.
+ * @returns Nothing for the force-aware call, otherwise the captured authority identifiers.
+ * @throws RoleNotFoundError when the selected role does not exist within the requested boundary.
  */
-export async function deleteRole(
-  id: string,
-  force: boolean = false,
+export function deleteRole(id: string, force?: boolean, actorId?: string): Promise<void>;
+export function deleteRole(
+  applicationId: string,
+  roleId: string,
   actorId?: string,
-): Promise<void> {
-  // Verify role exists
-  const existing = await repoFindRoleById(id);
-  if (!existing) {
-    throw new RoleNotFoundError(id);
-  }
-
-  // Deletion guard: check for assigned users
-  if (!force) {
-    const userCount = await countUsersWithRole(id);
-    if (userCount > 0) {
-      throw new RbacValidationError(
-        `Cannot delete role "${existing.slug}": ${userCount} user(s) still assigned. Use force=true to override.`,
-      );
+): Promise<{ role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }>;
+export async function deleteRole(
+  applicationIdOrId: string,
+  roleIdOrForce: string | boolean = false,
+  actorId?: string,
+): Promise<
+  void | { role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }
+> {
+  if (typeof roleIdOrForce === 'boolean') {
+    const existing = await repoFindRoleById(applicationIdOrId);
+    if (!existing) throw new RoleNotFoundError(applicationIdOrId);
+    if (!roleIdOrForce) {
+      const userCount = await countUsersWithRole(applicationIdOrId);
+      if (userCount > 0) {
+        throw new RbacValidationError(
+          `Cannot delete role "${existing.slug}": ${userCount} user(s) still assigned. Use force=true to override.`,
+        );
+      }
     }
+    await repoDeleteRole(applicationIdOrId);
+    await invalidateRoleCache(applicationIdOrId);
+    if (roleIdOrForce) await invalidateAllUserRbacCaches();
+    void writeAuditLog({
+      eventType: 'role.deleted',
+      eventCategory: 'admin',
+      actorId,
+      metadata: { roleId: applicationIdOrId, slug: existing.slug, force: roleIdOrForce },
+    });
+    return;
   }
 
-  // Delete the role (CASCADE handles related records)
-  await repoDeleteRole(id);
-
-  // Invalidate caches
-  await invalidateRoleCache(id);
-  // User caches may be stale if role had users (force=true case)
-  if (force) {
-    await invalidateAllUserRbacCaches();
-  }
-
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
-    eventType: 'role.deleted',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { roleId: id, slug: existing.slug, force },
-  });
+  const capture = await repoDeleteRole(applicationIdOrId, roleIdOrForce);
+  const roleId = roleIdOrForce;
+  if (!capture) throw new RoleNotFoundError(roleId);
+  return capture;
 }
 
 // ---------------------------------------------------------------------------

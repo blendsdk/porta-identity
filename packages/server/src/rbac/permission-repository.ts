@@ -154,23 +154,79 @@ export async function updatePermission(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a permission by ID.
+ * Delete a permission by ID, or lock and capture it through its application parent.
  *
- * Returns true if a row was deleted, false if the permission didn't exist.
- * CASCADE constraints will automatically remove related role_permissions entries.
+ * The ID-only form returns whether a row was removed. The parent-qualified
+ * form returns authority captured immediately before the same FK cascade.
  *
- * @param id - Permission UUID
- * @returns true if deleted, false if not found
+ * @param applicationIdOrId - Parent application UUID, or permission UUID for ID-only deletion.
+ * @param permissionId - Child permission UUID for parent-qualified deletion.
+ * @returns Deletion status, or the captured parent-qualified authority.
  */
-export async function deletePermission(id: string): Promise<boolean> {
+export function deletePermission(id: string): Promise<boolean>;
+export function deletePermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<{
+  permission: Permission;
+  userIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+} | null>;
+export async function deletePermission(
+  applicationIdOrId: string,
+  permissionId?: string,
+): Promise<
+  | boolean
+  | { permission: Permission; userIds: string[]; roleIds: string[]; grantIds: string[] }
+  | null
+> {
   const pool = getPool();
-
-  const result = await pool.query(
-    'DELETE FROM permissions WHERE id = $1',
-    [id],
+  if (permissionId === undefined) {
+    const deleted = await pool.query('DELETE FROM permissions WHERE id = $1', [applicationIdOrId]);
+    return (deleted.rowCount ?? 0) > 0;
+  }
+  const applicationId = applicationIdOrId;
+  const target = await pool.query<PermissionRow>(
+    `SELECT * FROM permissions WHERE application_id = $1 AND id = $2 FOR UPDATE`,
+    [applicationId, permissionId],
   );
-
-  return (result.rowCount ?? 0) > 0;
+  if (!target.rows[0]) return null;
+  const graph = await pool.query<{
+    user_ids: string[];
+    role_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH affected_roles AS (
+       SELECT role_id FROM role_permissions WHERE permission_id = $1
+     ), affected_users AS (
+       SELECT DISTINCT assignment.user_id FROM user_roles assignment
+       WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(SELECT role_id FROM affected_roles ORDER BY role_id) AS role_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(SELECT user_id::text FROM affected_users))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $2
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [permissionId, applicationId],
+  );
+  await pool.query('DELETE FROM permissions WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    permissionId,
+  ]);
+  return {
+    permission: mapRowToPermission(target.rows[0]),
+    userIds: graph.rows[0]!.user_ids,
+    roleIds: graph.rows[0]!.role_ids,
+    grantIds: graph.rows[0]!.grant_ids,
+  };
 }
 
 // ---------------------------------------------------------------------------

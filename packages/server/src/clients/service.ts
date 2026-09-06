@@ -36,8 +36,9 @@ import {
   updateClient as repoUpdateClient,
   listClients as repoListClients,
   listClientsCursor as repoListClientsCursor,
+  deleteClient as repoDeleteClient,
 } from './repository.js';
-import type { ListClientsCursorOptions } from './repository.js';
+import type { ClientDeletionCapture, ListClientsCursorOptions } from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getLatestActiveSha256 } from './secret-repository.js';
 import {
@@ -676,4 +677,18 @@ export async function verifyClientSecret(clientId: string, plaintext: string): P
 
   // Delegate to secret-service which checks all active, non-expired hashes
   return verify(client.id, plaintext);
+}
+
+/**
+ * Physically delete an OIDC client after capturing its protocol authority.
+ *
+ * @param id - Internal client UUID.
+ * @param _actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured before PostgreSQL applied its cascade.
+ * @throws ClientNotFoundError when the client does not exist.
+ */
+export async function deleteClient(id: string, _actorId?: string): Promise<ClientDeletionCapture> {
+  const capture = await repoDeleteClient(id);
+  if (!capture) throw new ClientNotFoundError(id);
+  return capture;
 }

@@ -21,6 +21,7 @@ import type { UserRow, UserListOptions, PaginatedResult, User } from './types.js
 import { mapRowToUser } from './types.js';
 import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
+import { UserValidationError } from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -716,4 +717,131 @@ export async function countByOrganization(orgId: string): Promise<number> {
   );
 
   return parseInt(result.rows[0].count, 10);
+}
+
+/** Authority identifiers captured before a user cascade runs. */
+export interface UserDeletionCapture {
+  user: User;
+  userIds: string[];
+  grantIds: string[];
+  roleIds: string[];
+  claimIds: string[];
+  applicationIds: string[];
+}
+
+/**
+ * Lock, protect, capture, and physically delete one organization-owned user.
+ *
+ * Control-plane deletions first serialize on the single control-plane
+ * organization row. Deleting an active holder of the exact built-in
+ * `porta-super-admin` role is permitted only while another such active user
+ * remains.
+ *
+ * @param organizationId - Owning organization UUID.
+ * @param userId - User UUID.
+ * @returns Captured authority, or null for a missing or mismatched user.
+ * @throws UserValidationError when deletion would remove the last super administrator.
+ */
+export async function deleteUser(
+  organizationId: string,
+  userId: string,
+): Promise<UserDeletionCapture | null> {
+  const pool = getPool();
+  const controlPlane = await pool.query<{ id: string }>(
+    `SELECT id FROM organizations
+     WHERE id = $1 AND is_super_admin = TRUE
+     FOR UPDATE`,
+    [organizationId],
+  );
+
+  const target = await pool.query<UserRow>(
+    `SELECT * FROM users
+     WHERE organization_id = $1 AND id = $2
+     FOR UPDATE`,
+    [organizationId, userId],
+  );
+  if (!target.rows[0]) return null;
+  const user = mapRowToUser(target.rows[0]);
+
+  if (controlPlane.rows[0] && user.status === 'active') {
+    const exactRole = await pool.query<{ assigned: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM user_roles assignment
+         JOIN roles role ON role.id = assignment.role_id
+         JOIN applications application ON application.id = role.application_id
+         WHERE assignment.user_id = $1
+           AND role.slug = 'porta-super-admin'
+           AND application.slug = 'porta-admin'
+       ) AS assigned`,
+      [userId],
+    );
+    if (exactRole.rows[0]?.assigned) {
+      const survivor = await pool.query<{ exists: boolean }>(
+        `SELECT EXISTS(
+           SELECT 1 FROM users candidate
+           JOIN user_roles assignment ON assignment.user_id = candidate.id
+           JOIN roles role ON role.id = assignment.role_id
+           JOIN applications application ON application.id = role.application_id
+           WHERE candidate.organization_id = $1
+             AND candidate.id <> $2
+             AND candidate.status = 'active'
+             AND role.slug = 'porta-super-admin'
+             AND application.slug = 'porta-admin'
+         ) AS exists`,
+        [organizationId, userId],
+      );
+      if (!survivor.rows[0]?.exists) {
+        throw new UserValidationError('Cannot delete the last active porta-super-admin user');
+      }
+    }
+  }
+
+  const graph = await pool.query<{
+    grant_ids: string[];
+    role_ids: string[];
+    claim_ids: string[];
+    application_ids: string[];
+  }>(
+    `WITH assigned_roles AS (
+       SELECT role.id, role.application_id
+       FROM user_roles assignment
+       JOIN roles role ON role.id = assignment.role_id
+       WHERE assignment.user_id = $1
+     ), assigned_claims AS (
+       SELECT definition.id, definition.application_id
+       FROM custom_claim_values value
+       JOIN custom_claim_definitions definition ON definition.id = value.claim_id
+       WHERE value.user_id = $1
+     )
+     SELECT
+       ARRAY(
+         SELECT id FROM oidc_payloads
+         WHERE type = 'Grant' AND payload->>'accountId' = $1::text
+         ORDER BY id
+       ) AS grant_ids,
+       ARRAY(SELECT id FROM assigned_roles ORDER BY id) AS role_ids,
+       ARRAY(SELECT id FROM assigned_claims ORDER BY id) AS claim_ids,
+       ARRAY(
+         SELECT DISTINCT application_id FROM (
+           SELECT application_id FROM assigned_roles
+           UNION ALL
+           SELECT application_id FROM assigned_claims
+         ) authority
+         ORDER BY application_id
+       ) AS application_ids`,
+    [userId],
+  );
+  await pool.query('DELETE FROM users WHERE organization_id = $1 AND id = $2', [
+    organizationId,
+    userId,
+  ]);
+  const captured = graph.rows[0]!;
+  return {
+    user,
+    userIds: [user.id],
+    grantIds: captured.grant_ids,
+    roleIds: captured.role_ids,
+    claimIds: captured.claim_ids,
+    applicationIds: captured.application_ids,
+  };
 }

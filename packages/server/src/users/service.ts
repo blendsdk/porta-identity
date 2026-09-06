@@ -47,7 +47,9 @@ import {
   recordEligiblePasswordFailure,
   unlockEligiblePasswordAccount,
   updateLoginStats,
+  deleteUser as repoDeleteUser,
 } from './repository.js';
+import type { UserDeletionCapture } from './repository.js';
 import type {
   CreateUserInput,
   PaginatedResult,
@@ -830,4 +832,26 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
   if (user.status !== 'active') return null;
 
   return user;
+}
+
+/**
+ * Physically delete a user through its authoritative organization boundary.
+ * The repository serializes control-plane deletion and preserves another
+ * active user assigned the exact `porta-super-admin` role.
+ *
+ * @param organizationId - Owning organization UUID.
+ * @param userId - User UUID.
+ * @param _actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured before PostgreSQL applied its cascade.
+ * @throws UserNotFoundError for a missing or mismatched user.
+ * @throws UserValidationError when the last active exact super administrator is protected.
+ */
+export async function deleteUser(
+  organizationId: string,
+  userId: string,
+  _actorId?: string,
+): Promise<UserDeletionCapture> {
+  const capture = await repoDeleteUser(organizationId, userId);
+  if (!capture) throw new UserNotFoundError(userId);
+  return capture;
 }

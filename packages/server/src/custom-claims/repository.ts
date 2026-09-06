@@ -190,22 +190,67 @@ export async function updateDefinition(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a claim definition by ID.
+ * Delete a definition by ID, or lock and capture it through its application parent.
  *
- * CASCADE constraint automatically removes all associated claim values.
+ * Both forms rely on the claim-value FK cascade. The parent-qualified form
+ * also returns authority captured immediately before deletion.
  *
- * @param id - Definition UUID
- * @returns true if deleted, false if not found
+ * @param applicationIdOrId - Parent application UUID, or definition UUID for ID-only deletion.
+ * @param id - Child definition UUID for parent-qualified deletion.
+ * @returns Deletion status, or the captured parent-qualified authority.
  */
-export async function deleteDefinition(id: string): Promise<boolean> {
+export function deleteDefinition(id: string): Promise<boolean>;
+export function deleteDefinition(
+  applicationId: string,
+  id: string,
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null>;
+export async function deleteDefinition(
+  applicationIdOrId: string,
+  id?: string,
+): Promise<
+  boolean | { definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null
+> {
   const pool = getPool();
-
-  const result = await pool.query(
-    'DELETE FROM custom_claim_definitions WHERE id = $1',
-    [id],
+  if (id === undefined) {
+    const deleted = await pool.query('DELETE FROM custom_claim_definitions WHERE id = $1', [
+      applicationIdOrId,
+    ]);
+    return (deleted.rowCount ?? 0) > 0;
+  }
+  const applicationId = applicationIdOrId;
+  const target = await pool.query<CustomClaimDefinitionRow>(
+    `SELECT * FROM custom_claim_definitions
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, id],
   );
-
-  return (result.rowCount ?? 0) > 0;
+  if (!target.rows[0]) return null;
+  const graph = await pool.query<{ user_ids: string[]; grant_ids: string[] }>(
+    `WITH affected_users AS (
+       SELECT DISTINCT user_id FROM custom_claim_values WHERE claim_id = $1
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(SELECT user_id::text FROM affected_users))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $2
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [id, applicationId],
+  );
+  await pool.query(
+    'DELETE FROM custom_claim_definitions WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
+  );
+  return {
+    definition: mapRowToDefinition(target.rows[0]),
+    userIds: graph.rows[0]!.user_ids,
+    grantIds: graph.rows[0]!.grant_ids,
+  };
 }
 
 // ---------------------------------------------------------------------------

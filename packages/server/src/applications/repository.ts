@@ -562,3 +562,174 @@ export async function moduleSlugExists(
   );
   return result.rows[0].exists;
 }
+
+/** Authority identifiers captured before an application cascade runs. */
+export interface ApplicationDeletionCapture {
+  application: Application;
+  userIds: string[];
+  clientIds: string[];
+  publicClientIds: string[];
+  grantIds: string[];
+  moduleIds: string[];
+  roleIds: string[];
+  permissionIds: string[];
+  claimIds: string[];
+}
+
+/** Authority identifiers captured before a module cascade runs. */
+export interface ModuleDeletionCapture {
+  module: ApplicationModule;
+  userIds: string[];
+  permissionIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+}
+
+/**
+ * Lock, capture, and delete one deployment-global application graph.
+ *
+ * @param id - Application UUID.
+ * @returns The captured graph, or null when the application does not exist.
+ */
+export async function deleteApplication(id: string): Promise<ApplicationDeletionCapture | null> {
+  const pool = getPool();
+  const target = await pool.query<ApplicationRow>(
+    'SELECT * FROM applications WHERE id = $1 FOR UPDATE',
+    [id],
+  );
+  if (!target.rows[0]) return null;
+  const application = mapRowToApplication(target.rows[0]);
+  const graph = await pool.query<{
+    user_ids: string[];
+    client_ids: string[];
+    public_client_ids: string[];
+    grant_ids: string[];
+    module_ids: string[];
+    role_ids: string[];
+    permission_ids: string[];
+    claim_ids: string[];
+  }>(
+    `WITH owned_clients AS (
+       SELECT id, client_id FROM clients WHERE application_id = $1
+     ), affected_users AS (
+       SELECT assignment.user_id
+       FROM user_roles assignment
+       JOIN roles role ON role.id = assignment.role_id
+       WHERE role.application_id = $1
+       UNION
+       SELECT value.user_id
+       FROM custom_claim_values value
+       JOIN custom_claim_definitions definition ON definition.id = value.claim_id
+       WHERE definition.application_id = $1
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(SELECT id FROM owned_clients ORDER BY id) AS client_ids,
+       ARRAY(SELECT client_id FROM owned_clients ORDER BY client_id) AS public_client_ids,
+       ARRAY(
+         SELECT DISTINCT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'clientId' = ANY(ARRAY(SELECT client_id FROM owned_clients))
+         ORDER BY payload.id
+       ) AS grant_ids,
+       ARRAY(SELECT id FROM application_modules WHERE application_id = $1 ORDER BY id) AS module_ids,
+       ARRAY(SELECT id FROM roles WHERE application_id = $1 ORDER BY id) AS role_ids,
+       ARRAY(SELECT id FROM permissions WHERE application_id = $1 ORDER BY id) AS permission_ids,
+       ARRAY(SELECT id FROM custom_claim_definitions WHERE application_id = $1 ORDER BY id) AS claim_ids`,
+    [id],
+  );
+  await pool.query('DELETE FROM applications WHERE id = $1', [id]);
+  return { application, ...camelApplicationGraph(graph.rows[0]!) };
+}
+
+/**
+ * Lock, capture, and delete a module through its application parent.
+ *
+ * @param applicationId - Parent application UUID.
+ * @param moduleId - Module UUID.
+ * @returns The captured graph, or null for a missing or mismatched module.
+ */
+export async function deleteModule(
+  applicationId: string,
+  moduleId: string,
+): Promise<ModuleDeletionCapture | null> {
+  const pool = getPool();
+  const target = await pool.query<ApplicationModuleRow>(
+    `SELECT * FROM application_modules
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, moduleId],
+  );
+  if (!target.rows[0]) return null;
+  const module = mapRowToModule(target.rows[0]);
+  const graph = await pool.query<{
+    user_ids: string[];
+    permission_ids: string[];
+    role_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH owned_permissions AS (
+       SELECT id FROM permissions WHERE application_id = $1 AND module_id = $2
+     ), affected_roles AS (
+       SELECT DISTINCT link.role_id
+       FROM role_permissions link
+       WHERE link.permission_id = ANY(ARRAY(SELECT id FROM owned_permissions))
+     )
+     SELECT
+       ARRAY(
+         SELECT DISTINCT assignment.user_id
+         FROM user_roles assignment
+         WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
+         ORDER BY assignment.user_id
+       ) AS user_ids,
+       ARRAY(SELECT id FROM owned_permissions ORDER BY id) AS permission_ids,
+       ARRAY(SELECT role_id FROM affected_roles ORDER BY role_id) AS role_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(
+             SELECT DISTINCT assignment.user_id::text FROM user_roles assignment
+             WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
+           ))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $1
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [applicationId, moduleId],
+  );
+  await pool.query(
+    'DELETE FROM application_modules WHERE application_id = $1 AND id = $2',
+    [applicationId, moduleId],
+  );
+  const captured = graph.rows[0]!;
+  return {
+    module,
+    userIds: captured.user_ids,
+    permissionIds: captured.permission_ids,
+    roleIds: captured.role_ids,
+    grantIds: captured.grant_ids,
+  };
+}
+
+function camelApplicationGraph(row: {
+  user_ids: string[];
+  client_ids: string[];
+  public_client_ids: string[];
+  grant_ids: string[];
+  module_ids: string[];
+  role_ids: string[];
+  permission_ids: string[];
+  claim_ids: string[];
+}): Omit<ApplicationDeletionCapture, 'application'> {
+  return {
+    userIds: row.user_ids,
+    clientIds: row.client_ids,
+    publicClientIds: row.public_client_ids,
+    grantIds: row.grant_ids,
+    moduleIds: row.module_ids,
+    roleIds: row.role_ids,
+    permissionIds: row.permission_ids,
+    claimIds: row.claim_ids,
+  };
+}

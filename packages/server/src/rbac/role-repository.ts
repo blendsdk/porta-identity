@@ -158,24 +158,77 @@ export async function updateRole(id: string, input: UpdateRoleInput): Promise<Ro
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a role by ID.
+ * Delete a role by ID, or lock and capture it through its application parent.
  *
- * Returns true if a row was deleted, false if the role didn't exist.
- * CASCADE constraints will automatically remove related role_permissions
- * and user_roles entries.
+ * The ID-only form returns whether a row was removed. The parent-qualified
+ * form returns authority captured immediately before the same FK cascade.
  *
- * @param id - Role UUID
- * @returns true if deleted, false if not found
+ * @param applicationIdOrId - Parent application UUID, or role UUID for ID-only deletion.
+ * @param roleId - Child role UUID for parent-qualified deletion.
+ * @returns Deletion status, or the captured parent-qualified authority.
  */
-export async function deleteRole(id: string): Promise<boolean> {
+export function deleteRole(id: string): Promise<boolean>;
+export function deleteRole(
+  applicationId: string,
+  roleId: string,
+): Promise<{
+  role: Role;
+  userIds: string[];
+  permissionIds: string[];
+  grantIds: string[];
+} | null>;
+export async function deleteRole(
+  applicationIdOrId: string,
+  roleId?: string,
+): Promise<
+  | boolean
+  | { role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }
+  | null
+> {
   const pool = getPool();
-
-  const result = await pool.query(
-    'DELETE FROM roles WHERE id = $1',
-    [id],
+  if (roleId === undefined) {
+    const deleted = await pool.query('DELETE FROM roles WHERE id = $1', [applicationIdOrId]);
+    return (deleted.rowCount ?? 0) > 0;
+  }
+  const applicationId = applicationIdOrId;
+  const target = await pool.query<RoleRow>(
+    `SELECT * FROM roles WHERE application_id = $1 AND id = $2 FOR UPDATE`,
+    [applicationId, roleId],
   );
-
-  return (result.rowCount ?? 0) > 0;
+  if (!target.rows[0]) return null;
+  const graph = await pool.query<{
+    user_ids: string[];
+    permission_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH affected_users AS (
+       SELECT user_id FROM user_roles WHERE role_id = $1
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(SELECT permission_id FROM role_permissions WHERE role_id = $1 ORDER BY permission_id)
+         AS permission_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(SELECT user_id::text FROM affected_users))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $2
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [roleId, applicationId],
+  );
+  await pool.query('DELETE FROM roles WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    roleId,
+  ]);
+  return {
+    role: mapRowToRole(target.rows[0]),
+    userIds: graph.rows[0]!.user_ids,
+    permissionIds: graph.rows[0]!.permission_ids,
+    grantIds: graph.rows[0]!.grant_ids,
+  };
 }
 
 // ---------------------------------------------------------------------------

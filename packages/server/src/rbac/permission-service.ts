@@ -170,54 +170,60 @@ export async function updatePermission(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a permission by ID.
+ * Delete a permission using either the current force-aware call or a parent-qualified call.
  *
- * By default (force=false), refuses to delete permissions that are
- * assigned to any role. Pass force=true to delete regardless —
- * CASCADE will remove role_permissions entries.
+ * The ID/force form preserves the mounted API behavior, including cache invalidation and audit.
+ * The application/permission form captures authority before applying the physical cascade.
  *
- * @param id - Permission UUID
- * @param force - If true, delete even if assigned to roles
- * @param actorId - Optional UUID of the admin performing the action
- * @throws PermissionNotFoundError if permission doesn't exist
- * @throws RbacValidationError if assigned to roles and force is false
+ * @param applicationIdOrId - Parent application UUID, or permission UUID for the force-aware call.
+ * @param permissionIdOrForce - Child permission UUID, or force flag for the force-aware call.
+ * @param actorId - Actor identifier used for audit attribution when applicable.
+ * @returns Nothing for the force-aware call, otherwise the captured authority identifiers.
+ * @throws PermissionNotFoundError when the permission is absent from the requested boundary.
  */
-export async function deletePermission(
-  id: string,
-  force: boolean = false,
+export function deletePermission(id: string, force?: boolean, actorId?: string): Promise<void>;
+export function deletePermission(
+  applicationId: string,
+  permissionId: string,
   actorId?: string,
-): Promise<void> {
-  // Verify permission exists
-  const existing = await repoFindPermissionById(id);
-  if (!existing) {
-    throw new PermissionNotFoundError(id);
-  }
-
-  // Deletion guard: check for assigned roles
-  if (!force) {
-    const roleCount = await countRolesWithPermission(id);
-    if (roleCount > 0) {
-      throw new RbacValidationError(
-        `Cannot delete permission "${existing.slug}": assigned to ${roleCount} role(s). Use force=true to override.`,
-      );
+): Promise<{ permission: Permission; userIds: string[]; roleIds: string[]; grantIds: string[] }>;
+export async function deletePermission(
+  applicationIdOrId: string,
+  permissionIdOrForce: string | boolean = false,
+  actorId?: string,
+): Promise<
+  void | { permission: Permission; userIds: string[]; roleIds: string[]; grantIds: string[] }
+> {
+  if (typeof permissionIdOrForce === 'boolean') {
+    const existing = await repoFindPermissionById(applicationIdOrId);
+    if (!existing) throw new PermissionNotFoundError(applicationIdOrId);
+    if (!permissionIdOrForce) {
+      const roleCount = await countRolesWithPermission(applicationIdOrId);
+      if (roleCount > 0) {
+        throw new RbacValidationError(
+          `Cannot delete permission "${existing.slug}": assigned to ${roleCount} role(s). Use force=true to override.`,
+        );
+      }
     }
+    await repoDeletePermission(applicationIdOrId);
+    if (permissionIdOrForce) await invalidateAllUserRbacCaches();
+    void writeAuditLog({
+      eventType: 'permission.deleted',
+      eventCategory: 'admin',
+      actorId,
+      metadata: {
+        permissionId: applicationIdOrId,
+        slug: existing.slug,
+        force: permissionIdOrForce,
+      },
+    });
+    return;
   }
 
-  // Delete the permission (CASCADE handles related records)
-  await repoDeletePermission(id);
-
-  // Invalidate user caches — permissions may have changed for users who had this
-  if (force) {
-    await invalidateAllUserRbacCaches();
-  }
-
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
-    eventType: 'permission.deleted',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { permissionId: id, slug: existing.slug, force },
-  });
+  const capture = await repoDeletePermission(applicationIdOrId, permissionIdOrForce);
+  const permissionId = permissionIdOrForce;
+  if (!capture) throw new PermissionNotFoundError(permissionId);
+  return capture;
 }
 
 // ---------------------------------------------------------------------------

@@ -481,3 +481,39 @@ export async function countClientsByApp(applicationId: string): Promise<number> 
 
   return parseInt(result.rows[0].count, 10);
 }
+
+/** Authority identifiers captured before a client cascade runs. */
+export interface ClientDeletionCapture {
+  client: Client;
+  clientIds: string[];
+  publicClientIds: string[];
+  grantIds: string[];
+}
+
+/**
+ * Lock, capture, and physically delete one OIDC client.
+ *
+ * @param id - Internal client UUID.
+ * @returns The captured graph, or null when the client does not exist.
+ */
+export async function deleteClient(id: string): Promise<ClientDeletionCapture | null> {
+  const pool = getPool();
+  const target = await pool.query<ClientRow>('SELECT * FROM clients WHERE id = $1 FOR UPDATE', [
+    id,
+  ]);
+  if (!target.rows[0]) return null;
+  const client = mapRowToClient(target.rows[0]);
+  const grants = await pool.query<{ id: string }>(
+    `SELECT id FROM oidc_payloads
+     WHERE type = 'Grant' AND payload->>'clientId' = $1
+     ORDER BY id`,
+    [client.clientId],
+  );
+  await pool.query('DELETE FROM clients WHERE id = $1', [id]);
+  return {
+    client,
+    clientIds: [client.id],
+    publicClientIds: [client.clientId],
+    grantIds: grants.rows.map((row) => row.id),
+  };
+}
