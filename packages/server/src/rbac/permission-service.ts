@@ -22,6 +22,8 @@ import {
   findPermissionBySlug as repoFindPermissionBySlug,
   updatePermission as repoUpdatePermission,
   deletePermission as repoDeletePermission,
+  capturePermissionForDeletion,
+  deleteCapturedPermission,
   listPermissionsByApplication as repoListPermissionsByApplication,
   permissionSlugExists,
   countRolesWithPermission,
@@ -32,6 +34,11 @@ import { validatePermissionSlug } from './slugs.js';
 import { PermissionNotFoundError, RbacValidationError } from './errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Permission, Role, CreatePermissionInput, UpdatePermissionInput } from './types.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
+
+const PERMISSION_DELETED_EVENT = 'permission.deleted';
 
 // ---------------------------------------------------------------------------
 // Create
@@ -191,9 +198,12 @@ export async function deletePermission(
   applicationIdOrId: string,
   permissionIdOrForce: string | boolean = false,
   actorId?: string,
-): Promise<
-  void | { permission: Permission; userIds: string[]; roleIds: string[]; grantIds: string[] }
-> {
+): Promise<void | {
+  permission: Permission;
+  userIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+}> {
   if (typeof permissionIdOrForce === 'boolean') {
     const existing = await repoFindPermissionById(applicationIdOrId);
     if (!existing) throw new PermissionNotFoundError(applicationIdOrId);
@@ -208,7 +218,7 @@ export async function deletePermission(
     await repoDeletePermission(applicationIdOrId);
     if (permissionIdOrForce) await invalidateAllUserRbacCaches();
     void writeAuditLog({
-      eventType: 'permission.deleted',
+      eventType: PERMISSION_DELETED_EVENT,
       eventCategory: 'admin',
       actorId,
       metadata: {
@@ -220,9 +230,46 @@ export async function deletePermission(
     return;
   }
 
-  const capture = await repoDeletePermission(applicationIdOrId, permissionIdOrForce);
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) throw new Error('Permission deletion requires an active database transaction');
+  const capture = await capturePermissionForDeletion(applicationIdOrId, permissionIdOrForce);
   const permissionId = permissionIdOrForce;
   if (!capture) throw new PermissionNotFoundError(permissionId);
+  await transaction.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await transaction.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'accountId' = ANY($2::text[])`,
+    [capture.grantIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(transaction, {
+    actorId,
+    eventType: PERMISSION_DELETED_EVENT,
+    eventCategory: 'admin',
+    metadata: {
+      applicationId: applicationIdOrId,
+      permissionId,
+      slug: capture.permission.slug,
+    },
+  });
+  await deleteCapturedPermission(applicationIdOrId, permissionId);
+  await registerDeletionCleanup({
+    resource: 'permission',
+    targetId: permissionId,
+    parentId: applicationIdOrId,
+    userIds: capture.userIds,
+    clientIds: [],
+    publicClientIds: [],
+    grantIds: capture.grantIds,
+    roleIds: capture.roleIds,
+    permissionIds: [permissionId],
+    claimIds: [],
+    applicationIds: [applicationIdOrId],
+  });
   return capture;
 }
 

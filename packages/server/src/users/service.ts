@@ -47,9 +47,13 @@ import {
   recordEligiblePasswordFailure,
   unlockEligiblePasswordAccount,
   updateLoginStats,
-  deleteUser as repoDeleteUser,
+  deleteUserCapture,
+  deleteCapturedUser,
 } from './repository.js';
 import type { UserDeletionCapture } from './repository.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 import type {
   CreateUserInput,
   PaginatedResult,
@@ -841,7 +845,7 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
  *
  * @param organizationId - Owning organization UUID.
  * @param userId - User UUID.
- * @param _actorId - Actor identifier available for audit attribution.
+ * @param actorId - Actor identifier available for audit attribution.
  * @returns The graph captured before PostgreSQL applied its cascade.
  * @throws UserNotFoundError for a missing or mismatched user.
  * @throws UserValidationError when the last active exact super administrator is protected.
@@ -849,9 +853,51 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
 export async function deleteUser(
   organizationId: string,
   userId: string,
-  _actorId?: string,
+  actorId?: string,
 ): Promise<UserDeletionCapture> {
-  const capture = await repoDeleteUser(organizationId, userId);
+  // The repository performs the locked exact `porta-super-admin` survivor check;
+  // this service deliberately cannot bypass that control-plane guard.
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('User deletion requires an active database transaction');
+  const capture = await deleteUserCapture(organizationId, userId);
   if (!capture) throw new UserNotFoundError(userId);
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'accountId' = ANY($2::text[])`,
+    [capture.grantIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    organizationId,
+    userId,
+    actorId,
+    eventType: 'user.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      organizationId,
+      userId,
+      email: capture.user.email,
+      status: capture.user.status,
+    },
+  });
+  await deleteCapturedUser(organizationId, userId);
+  await registerDeletionCleanup({
+    resource: 'user',
+    targetId: userId,
+    parentId: organizationId,
+    userIds: capture.userIds,
+    clientIds: [],
+    publicClientIds: [],
+    grantIds: capture.grantIds,
+    roleIds: capture.roleIds,
+    permissionIds: [],
+    claimIds: capture.claimIds,
+    applicationIds: capture.applicationIds,
+  });
   return capture;
 }

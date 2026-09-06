@@ -22,6 +22,8 @@ import {
   findRoleBySlug as repoFindRoleBySlug,
   updateRole as repoUpdateRole,
   deleteRole as repoDeleteRole,
+  captureRoleForDeletion,
+  deleteCapturedRole,
   listRolesByApplication as repoListRolesByApplication,
   roleSlugExists,
   countUsersWithRole,
@@ -41,6 +43,11 @@ import { generateRoleSlug, validateRoleSlug } from './slugs.js';
 import { RoleNotFoundError, RbacValidationError } from './errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Role, Permission, CreateRoleInput, UpdateRoleInput } from './types.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
+
+const ROLE_DELETED_EVENT = 'role.deleted';
 
 // ---------------------------------------------------------------------------
 // Create
@@ -228,9 +235,7 @@ export async function deleteRole(
   applicationIdOrId: string,
   roleIdOrForce: string | boolean = false,
   actorId?: string,
-): Promise<
-  void | { role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }
-> {
+): Promise<void | { role: Role; userIds: string[]; permissionIds: string[]; grantIds: string[] }> {
   if (typeof roleIdOrForce === 'boolean') {
     const existing = await repoFindRoleById(applicationIdOrId);
     if (!existing) throw new RoleNotFoundError(applicationIdOrId);
@@ -246,7 +251,7 @@ export async function deleteRole(
     await invalidateRoleCache(applicationIdOrId);
     if (roleIdOrForce) await invalidateAllUserRbacCaches();
     void writeAuditLog({
-      eventType: 'role.deleted',
+      eventType: ROLE_DELETED_EVENT,
       eventCategory: 'admin',
       actorId,
       metadata: { roleId: applicationIdOrId, slug: existing.slug, force: roleIdOrForce },
@@ -254,9 +259,46 @@ export async function deleteRole(
     return;
   }
 
-  const capture = await repoDeleteRole(applicationIdOrId, roleIdOrForce);
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) throw new Error('Role deletion requires an active database transaction');
+  const capture = await captureRoleForDeletion(applicationIdOrId, roleIdOrForce);
   const roleId = roleIdOrForce;
   if (!capture) throw new RoleNotFoundError(roleId);
+  await transaction.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await transaction.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'accountId' = ANY($2::text[])`,
+    [capture.grantIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(transaction, {
+    actorId,
+    eventType: ROLE_DELETED_EVENT,
+    eventCategory: 'admin',
+    metadata: {
+      applicationId: applicationIdOrId,
+      roleId,
+      slug: capture.role.slug,
+    },
+  });
+  await deleteCapturedRole(applicationIdOrId, roleId);
+  await registerDeletionCleanup({
+    resource: 'role',
+    targetId: roleId,
+    parentId: applicationIdOrId,
+    userIds: capture.userIds,
+    clientIds: [],
+    publicClientIds: [],
+    grantIds: capture.grantIds,
+    roleIds: [roleId],
+    permissionIds: capture.permissionIds,
+    claimIds: [],
+    applicationIds: [applicationIdOrId],
+  });
   return capture;
 }
 

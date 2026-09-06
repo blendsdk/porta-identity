@@ -217,7 +217,18 @@ export async function deleteDefinition(
     ]);
     return (deleted.rowCount ?? 0) > 0;
   }
-  const applicationId = applicationIdOrId;
+  const capture = await captureDefinitionForDeletion(applicationIdOrId, id);
+  if (!capture) return null;
+  await deleteCapturedDefinition(applicationIdOrId, id);
+  return capture;
+}
+
+/** Lock and capture a claim definition without deleting it. */
+export async function captureDefinitionForDeletion(
+  applicationId: string,
+  id: string,
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null> {
+  const pool = getPool();
   const target = await pool.query<CustomClaimDefinitionRow>(
     `SELECT * FROM custom_claim_definitions
      WHERE application_id = $1 AND id = $2
@@ -242,15 +253,19 @@ export async function deleteDefinition(
        ) AS grant_ids`,
     [id, applicationId],
   );
-  await pool.query(
-    'DELETE FROM custom_claim_definitions WHERE application_id = $1 AND id = $2',
-    [applicationId, id],
-  );
   return {
     definition: mapRowToDefinition(target.rows[0]),
     userIds: graph.rows[0]!.user_ids,
     grantIds: graph.rows[0]!.grant_ids,
   };
+}
+
+/** Physically delete a claim definition previously locked through its parent. */
+export async function deleteCapturedDefinition(applicationId: string, id: string): Promise<void> {
+  await getPool().query(
+    'DELETE FROM custom_claim_definitions WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
+  );
 }
 
 // ---------------------------------------------------------------------------

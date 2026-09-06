@@ -47,9 +47,13 @@ export function adminMutationAudit(): Middleware {
         if (!client) throw new Error('Administrative mutation transaction is unavailable');
         const actor = ctx.state.adminUser;
         if (!actor) throw new Error('Administrative mutation actor is unavailable');
+        const liveActor = await client.query<{ id: string; organization_id: string }>(
+          'SELECT id, organization_id FROM users WHERE id = $1',
+          [actor.id],
+        );
         await writeAuditLogInTransaction(client, {
-          organizationId: actor.organizationId,
-          actorId: actor.id,
+          organizationId: liveActor.rows[0]?.organization_id,
+          actorId: liveActor.rows[0]?.id,
           eventType: 'admin.mutation.committed',
           eventCategory: 'admin',
           metadata: {

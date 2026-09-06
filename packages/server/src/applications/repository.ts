@@ -591,7 +591,9 @@ export interface ModuleDeletionCapture {
  * @param id - Application UUID.
  * @returns The captured graph, or null when the application does not exist.
  */
-export async function deleteApplication(id: string): Promise<ApplicationDeletionCapture | null> {
+export async function captureApplicationForDeletion(
+  id: string,
+): Promise<ApplicationDeletionCapture | null> {
   const pool = getPool();
   const target = await pool.query<ApplicationRow>(
     'SELECT * FROM applications WHERE id = $1 FOR UPDATE',
@@ -638,8 +640,20 @@ export async function deleteApplication(id: string): Promise<ApplicationDeletion
        ARRAY(SELECT id FROM custom_claim_definitions WHERE application_id = $1 ORDER BY id) AS claim_ids`,
     [id],
   );
-  await pool.query('DELETE FROM applications WHERE id = $1', [id]);
   return { application, ...camelApplicationGraph(graph.rows[0]!) };
+}
+
+/** Physically delete an application previously locked and captured. */
+export async function deleteCapturedApplication(id: string): Promise<void> {
+  await getPool().query('DELETE FROM applications WHERE id = $1', [id]);
+}
+
+/** Capture and immediately delete an application for direct repository callers. */
+export async function deleteApplication(id: string): Promise<ApplicationDeletionCapture | null> {
+  const capture = await captureApplicationForDeletion(id);
+  if (!capture) return null;
+  await deleteCapturedApplication(id);
+  return capture;
 }
 
 /**
@@ -649,7 +663,7 @@ export async function deleteApplication(id: string): Promise<ApplicationDeletion
  * @param moduleId - Module UUID.
  * @returns The captured graph, or null for a missing or mismatched module.
  */
-export async function deleteModule(
+export async function captureModuleForDeletion(
   applicationId: string,
   moduleId: string,
 ): Promise<ModuleDeletionCapture | null> {
@@ -698,10 +712,6 @@ export async function deleteModule(
        ) AS grant_ids`,
     [applicationId, moduleId],
   );
-  await pool.query(
-    'DELETE FROM application_modules WHERE application_id = $1 AND id = $2',
-    [applicationId, moduleId],
-  );
   const captured = graph.rows[0]!;
   return {
     module,
@@ -710,6 +720,25 @@ export async function deleteModule(
     roleIds: captured.role_ids,
     grantIds: captured.grant_ids,
   };
+}
+
+/** Physically delete a module previously locked through its parent. */
+export async function deleteCapturedModule(applicationId: string, moduleId: string): Promise<void> {
+  await getPool().query('DELETE FROM application_modules WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    moduleId,
+  ]);
+}
+
+/** Capture and immediately delete a module for direct repository callers. */
+export async function deleteModule(
+  applicationId: string,
+  moduleId: string,
+): Promise<ModuleDeletionCapture | null> {
+  const capture = await captureModuleForDeletion(applicationId, moduleId);
+  if (!capture) return null;
+  await deleteCapturedModule(applicationId, moduleId);
+  return capture;
 }
 
 function camelApplicationGraph(row: {

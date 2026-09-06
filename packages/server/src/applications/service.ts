@@ -45,8 +45,10 @@ import {
   updateModule as repoUpdateModule,
   listModules as repoListModules,
   moduleSlugExists,
-  deleteApplication as repoDeleteApplication,
-  deleteModule as repoDeleteModule,
+  captureApplicationForDeletion,
+  deleteCapturedApplication,
+  captureModuleForDeletion,
+  deleteCapturedModule,
 } from './repository.js';
 import type {
   ApplicationDeletionCapture,
@@ -63,6 +65,9 @@ import {
 import { generateSlug, validateSlug } from './slugs.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from './errors.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 
 // ===========================================================================
 // Application CRUD
@@ -508,16 +513,54 @@ export async function listModules(applicationId: string): Promise<ApplicationMod
  * Physically delete an application after capturing cross-organization authority.
  *
  * @param id - Application UUID.
- * @param _actorId - Actor identifier available for audit attribution.
+ * @param actorId - Actor identifier available for audit attribution.
  * @returns The graph captured before PostgreSQL applied its cascade.
  * @throws ApplicationNotFoundError when the application does not exist.
  */
 export async function deleteApplication(
   id: string,
-  _actorId?: string,
+  actorId?: string,
 ): Promise<ApplicationDeletionCapture> {
-  const capture = await repoDeleteApplication(id);
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('Application deletion requires an active database transaction');
+  const capture = await captureApplicationForDeletion(id);
   if (!capture) throw new ApplicationNotFoundError(id);
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'clientId' = ANY($2::text[])
+       OR payload->>'accountId' = ANY($3::text[])`,
+    [capture.grantIds, capture.publicClientIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    actorId,
+    eventType: 'app.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      applicationId: capture.application.id,
+      slug: capture.application.slug,
+      status: capture.application.status,
+    },
+  });
+  await deleteCapturedApplication(id);
+  await registerDeletionCleanup({
+    resource: 'application',
+    targetId: id,
+    targetSlug: capture.application.slug,
+    userIds: capture.userIds,
+    clientIds: capture.clientIds,
+    publicClientIds: capture.publicClientIds,
+    grantIds: capture.grantIds,
+    roleIds: capture.roleIds,
+    permissionIds: capture.permissionIds,
+    claimIds: capture.claimIds,
+    applicationIds: [id],
+  });
   return capture;
 }
 
@@ -526,16 +569,55 @@ export async function deleteApplication(
  *
  * @param applicationId - Parent application UUID.
  * @param moduleId - Module UUID.
- * @param _actorId - Actor identifier available for audit attribution.
+ * @param actorId - Actor identifier available for audit attribution.
  * @returns The graph captured before PostgreSQL applied its cascade.
  * @throws ApplicationNotFoundError for a missing or mismatched module.
  */
 export async function deleteModule(
   applicationId: string,
   moduleId: string,
-  _actorId?: string,
+  actorId?: string,
 ): Promise<ModuleDeletionCapture> {
-  const capture = await repoDeleteModule(applicationId, moduleId);
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('Module deletion requires an active database transaction');
+  const capture = await captureModuleForDeletion(applicationId, moduleId);
   if (!capture) throw new ApplicationNotFoundError(moduleId);
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'accountId' = ANY($2::text[])`,
+    [capture.grantIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    actorId,
+    eventType: 'app.module.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      applicationId,
+      moduleId,
+      slug: capture.module.slug,
+      status: capture.module.status,
+    },
+  });
+  await deleteCapturedModule(applicationId, moduleId);
+  await registerDeletionCleanup({
+    resource: 'module',
+    targetId: moduleId,
+    targetSlug: capture.module.slug,
+    parentId: applicationId,
+    userIds: capture.userIds,
+    clientIds: [],
+    publicClientIds: [],
+    grantIds: capture.grantIds,
+    roleIds: capture.roleIds,
+    permissionIds: capture.permissionIds,
+    claimIds: [],
+    applicationIds: [applicationId],
+  });
   return capture;
 }

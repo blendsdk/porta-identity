@@ -36,7 +36,8 @@ import {
   updateClient as repoUpdateClient,
   listClients as repoListClients,
   listClientsCursor as repoListClientsCursor,
-  deleteClient as repoDeleteClient,
+  captureClientForDeletion,
+  deleteCapturedClient,
 } from './repository.js';
 import type { ClientDeletionCapture, ListClientsCursorOptions } from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
@@ -63,6 +64,9 @@ import { writeAuditLog } from '../lib/audit-log.js';
 import { ClientNotFoundError, ClientValidationError } from './errors.js';
 import { getApplicationById } from '../applications/service.js';
 import { getOrganizationById } from '../organizations/service.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 
 // ===========================================================================
 // Validation helpers (private)
@@ -683,12 +687,46 @@ export async function verifyClientSecret(clientId: string, plaintext: string): P
  * Physically delete an OIDC client after capturing its protocol authority.
  *
  * @param id - Internal client UUID.
- * @param _actorId - Actor identifier available for audit attribution.
+ * @param actorId - Actor identifier available for audit attribution.
  * @returns The graph captured before PostgreSQL applied its cascade.
  * @throws ClientNotFoundError when the client does not exist.
  */
-export async function deleteClient(id: string, _actorId?: string): Promise<ClientDeletionCapture> {
-  const capture = await repoDeleteClient(id);
+export async function deleteClient(id: string, actorId?: string): Promise<ClientDeletionCapture> {
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) throw new Error('Client deletion requires an active database transaction');
+  const capture = await captureClientForDeletion(id);
   if (!capture) throw new ClientNotFoundError(id);
+  await transaction.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'clientId' = ANY($2::text[])`,
+    [capture.grantIds, capture.publicClientIds],
+  );
+  await writeAuditLogInTransaction(transaction, {
+    organizationId: capture.client.organizationId,
+    actorId,
+    eventType: 'client.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      clientDbId: capture.client.id,
+      clientId: capture.client.clientId,
+      applicationId: capture.client.applicationId,
+      status: capture.client.status,
+    },
+  });
+  await deleteCapturedClient(id);
+  await registerDeletionCleanup({
+    resource: 'client',
+    targetId: id,
+    parentId: capture.client.applicationId,
+    userIds: [],
+    clientIds: capture.clientIds,
+    publicClientIds: capture.publicClientIds,
+    grantIds: capture.grantIds,
+    roleIds: [],
+    permissionIds: [],
+    claimIds: [],
+    applicationIds: [capture.client.applicationId],
+  });
   return capture;
 }

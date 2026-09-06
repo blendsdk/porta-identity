@@ -496,7 +496,7 @@ export interface ClientDeletionCapture {
  * @param id - Internal client UUID.
  * @returns The captured graph, or null when the client does not exist.
  */
-export async function deleteClient(id: string): Promise<ClientDeletionCapture | null> {
+export async function captureClientForDeletion(id: string): Promise<ClientDeletionCapture | null> {
   const pool = getPool();
   const target = await pool.query<ClientRow>('SELECT * FROM clients WHERE id = $1 FOR UPDATE', [
     id,
@@ -509,11 +509,23 @@ export async function deleteClient(id: string): Promise<ClientDeletionCapture | 
      ORDER BY id`,
     [client.clientId],
   );
-  await pool.query('DELETE FROM clients WHERE id = $1', [id]);
   return {
     client,
     clientIds: [client.id],
     publicClientIds: [client.clientId],
     grantIds: grants.rows.map((row) => row.id),
   };
+}
+
+/** Physically delete a client previously locked and captured. */
+export async function deleteCapturedClient(id: string): Promise<void> {
+  await getPool().query('DELETE FROM clients WHERE id = $1', [id]);
+}
+
+/** Capture and immediately delete a client for direct repository callers. */
+export async function deleteClient(id: string): Promise<ClientDeletionCapture | null> {
+  const capture = await captureClientForDeletion(id);
+  if (!capture) return null;
+  await deleteCapturedClient(id);
+  return capture;
 }

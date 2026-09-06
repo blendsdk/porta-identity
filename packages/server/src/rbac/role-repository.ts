@@ -190,7 +190,23 @@ export async function deleteRole(
     const deleted = await pool.query('DELETE FROM roles WHERE id = $1', [applicationIdOrId]);
     return (deleted.rowCount ?? 0) > 0;
   }
-  const applicationId = applicationIdOrId;
+  const capture = await captureRoleForDeletion(applicationIdOrId, roleId);
+  if (!capture) return null;
+  await deleteCapturedRole(applicationIdOrId, roleId);
+  return capture;
+}
+
+/** Lock and capture a role without deleting it. */
+export async function captureRoleForDeletion(
+  applicationId: string,
+  roleId: string,
+): Promise<{
+  role: Role;
+  userIds: string[];
+  permissionIds: string[];
+  grantIds: string[];
+} | null> {
+  const pool = getPool();
   const target = await pool.query<RoleRow>(
     `SELECT * FROM roles WHERE application_id = $1 AND id = $2 FOR UPDATE`,
     [applicationId, roleId],
@@ -219,16 +235,20 @@ export async function deleteRole(
        ) AS grant_ids`,
     [roleId, applicationId],
   );
-  await pool.query('DELETE FROM roles WHERE application_id = $1 AND id = $2', [
-    applicationId,
-    roleId,
-  ]);
   return {
     role: mapRowToRole(target.rows[0]),
     userIds: graph.rows[0]!.user_ids,
     permissionIds: graph.rows[0]!.permission_ids,
     grantIds: graph.rows[0]!.grant_ids,
   };
+}
+
+/** Physically delete a role previously locked through its parent. */
+export async function deleteCapturedRole(applicationId: string, roleId: string): Promise<void> {
+  await getPool().query('DELETE FROM roles WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    roleId,
+  ]);
 }
 
 // ---------------------------------------------------------------------------

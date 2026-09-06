@@ -742,7 +742,7 @@ export interface UserDeletionCapture {
  * @returns Captured authority, or null for a missing or mismatched user.
  * @throws UserValidationError when deletion would remove the last super administrator.
  */
-export async function deleteUser(
+export async function deleteUserCapture(
   organizationId: string,
   userId: string,
 ): Promise<UserDeletionCapture | null> {
@@ -831,10 +831,6 @@ export async function deleteUser(
        ) AS application_ids`,
     [userId],
   );
-  await pool.query('DELETE FROM users WHERE organization_id = $1 AND id = $2', [
-    organizationId,
-    userId,
-  ]);
   const captured = graph.rows[0]!;
   return {
     user,
@@ -844,4 +840,23 @@ export async function deleteUser(
     claimIds: captured.claim_ids,
     applicationIds: captured.application_ids,
   };
+}
+
+/** Physically delete a user previously locked through its organization boundary. */
+export async function deleteCapturedUser(organizationId: string, userId: string): Promise<void> {
+  await getPool().query('DELETE FROM users WHERE organization_id = $1 AND id = $2', [
+    organizationId,
+    userId,
+  ]);
+}
+
+/** Capture and immediately delete a user for direct repository callers. */
+export async function deleteUser(
+  organizationId: string,
+  userId: string,
+): Promise<UserDeletionCapture | null> {
+  const capture = await deleteUserCapture(organizationId, userId);
+  if (!capture) return null;
+  await deleteCapturedUser(organizationId, userId);
+  return capture;
 }

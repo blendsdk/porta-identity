@@ -489,7 +489,7 @@ export interface OrganizationDeletionCapture {
  * @returns Captured deletion graph, or null when the target does not exist.
  * @throws OrganizationValidationError when the target is the control plane.
  */
-export async function deleteOrganization(
+export async function captureOrganizationForDeletion(
   idOrSlug: string,
 ): Promise<OrganizationDeletionCapture | null> {
   const pool = getPool();
@@ -534,14 +534,6 @@ export async function deleteOrganization(
     [organization.id],
   );
 
-  const deleted = await pool.query(
-    'DELETE FROM organizations WHERE id = $1 AND is_super_admin = FALSE RETURNING id',
-    [organization.id],
-  );
-  if (deleted.rowCount !== 1) {
-    throw new OrganizationValidationError('The control-plane organization cannot be deleted');
-  }
-
   const captured = graph.rows[0]!;
   return {
     organization,
@@ -550,6 +542,27 @@ export async function deleteOrganization(
     publicClientIds: captured.public_client_ids,
     grantIds: captured.grant_ids,
   };
+}
+
+/** Physically delete the already guarded organization row. */
+export async function deleteOrganizationCaptured(id: string): Promise<void> {
+  const deleted = await getPool().query(
+    'DELETE FROM organizations WHERE id = $1 AND is_super_admin = FALSE RETURNING id',
+    [id],
+  );
+  if (deleted.rowCount !== 1) {
+    throw new OrganizationValidationError('The control-plane organization cannot be deleted');
+  }
+}
+
+/** Capture and immediately delete an organization for direct repository callers. */
+export async function deleteOrganization(
+  idOrSlug: string,
+): Promise<OrganizationDeletionCapture | null> {
+  const capture = await captureOrganizationForDeletion(idOrSlug);
+  if (!capture) return null;
+  await deleteOrganizationCaptured(capture.organization.id);
+  return capture;
 }
 
 /**

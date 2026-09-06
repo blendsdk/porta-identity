@@ -37,10 +37,14 @@ import {
   listOrganizationsCursor as repoListCursor,
   slugExists,
   hardDeleteOrganization,
-  deleteOrganization as repoDeleteOrganization,
+  captureOrganizationForDeletion,
+  deleteOrganizationCaptured,
   getCascadeCounts as repoGetCascadeCounts,
 } from './repository.js';
 import type { OrganizationDeletionCapture } from './repository.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 import type { ListOrganizationsCursorOptions } from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
@@ -633,19 +637,62 @@ export async function destroyOrganization(
 /**
  * Physically delete an organization after capturing its affected authority.
  * Audit, session revocation, protocol cleanup, and cache cleanup are composed
- * around this operation by the administrative mutation flow.
+ * around this operation by the administrative mutation flow. Cleanup registration
+ * delegates to the transaction's `afterDatabaseCommit` boundary.
  *
  * @param idOrSlug - Organization UUID or slug.
- * @param _actorId - Actor identifier available for audit attribution.
+ * @param actorId - Actor identifier available for audit attribution.
  * @returns The graph captured immediately before the database cascade.
  * @throws OrganizationNotFoundError when the target does not exist.
  * @throws OrganizationValidationError when the target is the control plane.
  */
 export async function deleteOrganization(
   idOrSlug: string,
-  _actorId?: string,
+  actorId?: string,
 ): Promise<OrganizationDeletionCapture> {
-  const capture = await repoDeleteOrganization(idOrSlug);
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('Organization deletion requires an active database transaction');
+  const capture = await captureOrganizationForDeletion(idOrSlug);
   if (!capture) throw new OrganizationNotFoundError(idOrSlug);
+  if (capture.organization.isSuperAdmin) {
+    throw new OrganizationValidationError('The control-plane organization cannot be deleted');
+  }
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'clientId' = ANY($2::text[])
+       OR payload->>'accountId' = ANY($3::text[])`,
+    [capture.grantIds, capture.publicClientIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    organizationId: capture.organization.id,
+    actorId,
+    eventType: 'org.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      organizationId: capture.organization.id,
+      slug: capture.organization.slug,
+      status: capture.organization.status,
+    },
+  });
+  await deleteOrganizationCaptured(capture.organization.id);
+  await registerDeletionCleanup({
+    resource: 'organization',
+    targetId: capture.organization.id,
+    targetSlug: capture.organization.slug,
+    userIds: capture.userIds,
+    clientIds: capture.clientIds,
+    publicClientIds: capture.publicClientIds,
+    grantIds: capture.grantIds,
+    roleIds: [],
+    permissionIds: [],
+    claimIds: [],
+    applicationIds: [],
+  });
   return capture;
 }

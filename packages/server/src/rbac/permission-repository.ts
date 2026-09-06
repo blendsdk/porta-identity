@@ -186,7 +186,23 @@ export async function deletePermission(
     const deleted = await pool.query('DELETE FROM permissions WHERE id = $1', [applicationIdOrId]);
     return (deleted.rowCount ?? 0) > 0;
   }
-  const applicationId = applicationIdOrId;
+  const capture = await capturePermissionForDeletion(applicationIdOrId, permissionId);
+  if (!capture) return null;
+  await deleteCapturedPermission(applicationIdOrId, permissionId);
+  return capture;
+}
+
+/** Lock and capture a permission without deleting it. */
+export async function capturePermissionForDeletion(
+  applicationId: string,
+  permissionId: string,
+): Promise<{
+  permission: Permission;
+  userIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+} | null> {
+  const pool = getPool();
   const target = await pool.query<PermissionRow>(
     `SELECT * FROM permissions WHERE application_id = $1 AND id = $2 FOR UPDATE`,
     [applicationId, permissionId],
@@ -217,16 +233,23 @@ export async function deletePermission(
        ) AS grant_ids`,
     [permissionId, applicationId],
   );
-  await pool.query('DELETE FROM permissions WHERE application_id = $1 AND id = $2', [
-    applicationId,
-    permissionId,
-  ]);
   return {
     permission: mapRowToPermission(target.rows[0]),
     userIds: graph.rows[0]!.user_ids,
     roleIds: graph.rows[0]!.role_ids,
     grantIds: graph.rows[0]!.grant_ids,
   };
+}
+
+/** Physically delete a permission previously locked through its parent. */
+export async function deleteCapturedPermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<void> {
+  await getPool().query('DELETE FROM permissions WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    permissionId,
+  ]);
 }
 
 // ---------------------------------------------------------------------------
