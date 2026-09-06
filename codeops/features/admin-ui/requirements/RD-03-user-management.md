@@ -12,7 +12,7 @@
 Add complete organization-scoped user administration to the embedded terminal application. After
 selecting an organization, an authorized administrator can find and inspect users, create or invite
 them, maintain their supported profile and credentials, manage their account lifecycle, inspect
-their history, and permanently purge personal data.
+their history, and permanently delete the user and owned identity data.
 
 The interface follows the familiar identity-provider flow of a Users list leading to one user
 detail view with focused actions. It uses direct JSVision components and the Porta SDK; it does not
@@ -77,14 +77,18 @@ global audit, bulk operations, and import/export remain owned by their later roa
       history entries newest first. It shows event type, actor identifier or `System`, and timestamp,
       plus a fixed indication when more entries exist. RD-03 adds no history paging or filtering UI
       and never renders arbitrary metadata; global audit exploration remains RD-08. (AR-60)
-- [ ] **UM-11 — Permanent purge:** an administrator with archive permission can request the
-      existing irreversible per-user purge. The confirmation shows the exact target email and a
-      fixed irreversible warning, with `Cancel` focused initially and a distinct `Purge permanently`
-      button. Cancellation sends no request. Success closes the detail view and refreshes the list.
-      Import and export are absent and remain RD-09. (AR-64, AR-69, AR-70)
+- [ ] **UM-11 — Permanent deletion:** an administrator with `admin:user:delete` can permanently
+      delete a control-plane user only when another active user has the exact built-in
+      `porta-super-admin` role. The check serializes on the control-plane organization row. The
+      confirmation shows the exact target email and a fixed irreversible warning,
+      with `Keep` focused initially and `Delete <email>` as the destructive action. Cancellation sends
+      no request. Success returns `204`, closes the detail view, and refreshes the list. The user row
+      and owned identity/security data are physically deleted; nullable audit references clear while
+      separately governed audit history remains under its configured retention policy. Import and
+      export remain RD-09. (AR-64, AR-69, AR-104, AR-109, AR-111)
 - [ ] **UM-12 — Permission-aware actions:** the UI derives exact user capability booleans from the
       freshly validated UserInfo permissions and the existing exact legacy administrator role.
-      Read, create, invite, update, lifecycle, and purge affordances are governed independently.
+      Read, create, invite, update, lifecycle, and delete affordances are governed independently.
       Visible disabled actions use short fixed reasons. These affordances never replace the server's
       authentication, permission, organization-membership, or super-admin checks. (AR-65)
 - [ ] **UM-13 — Mutation results:** one modal operation owns submission at a time. Cancel before
@@ -131,7 +135,7 @@ global audit, bulk operations, and import/export remain owned by their later roa
 - Impersonation, background refresh, live synchronization, tenant-deletion polling, optimistic UI,
   or a dedicated multi-administrator conflict interface.
 - A generic entity table, form generator, admin-screen framework, new workspace, new dependency,
-  runtime matrix, CI workflow, or server endpoint.
+  runtime matrix, CI workflow, or unrelated server endpoint.
 
 ## Technical Requirements
 
@@ -156,6 +160,7 @@ global audit, bulk operations, and import/export remain owned by their later roa
 | `invite()`             | Return the server's invitation result containing `userId`, `email`, `created`, `invitationSent`, and `expiresAt`.                                                                                                                                     |
 | `suspend()` / `lock()` | Carry the optional suspend reason and required lock reason accepted by the server.                                                                                                                                                                    |
 | History                | Return the existing `{ data, hasMore, nextCursor }` result with its default limit of 20 instead of unwrapping it as an array; RD-03 does not expose history paging, filtering, or arbitrary metadata.                                                 |
+| `delete()`             | Issue `DELETE /organizations/:orgId/users/:userId`, resolve `void` only on `204`, and expose no Purge alias or result placeholder.                                                                                                                    |
 
 The corrections are public SDK contract changes and require focused SDK specifications,
 documentation, package verification, and clean compatibility assurance before completion. Porta's
@@ -171,7 +176,7 @@ updated with the SDK, without preserving aliases for contracts that do not match
 | Invite and preview                       | `admin:user:invite`  | `admin:user:invite`        |
 | Edit, password, verify email             | `admin:user:update`  | `admin:user:update`        |
 | Suspend, lock, deactivate, and reversals | `admin:user:suspend` | `admin:user:suspend`       |
-| Purge                                    | `admin:user:archive` | `admin:user:archive`       |
+| Delete                                   | `admin:user:delete`  | `admin:user:delete`        |
 
 The UI permissions are an ephemeral presentation snapshot. Every request must accept the current
 server decision as authoritative, including a `403` after an action was displayed as enabled.
@@ -186,9 +191,10 @@ server decision as authoritative, including a `403` after an action was displaye
   receives a fixed validated success outcome. No background polling or general cache layer is added.
 - Password buffers exist only for the active dialog, are masked, are never copied into application
   state, and are cleared on every exit path.
-- Purge uses the SDK's explicit confirmation header only after the administrator activates the
-  confirmed `Purge permanently` action. Super-admin protection and transactionality remain server
-  responsibilities.
+- Delete uses one SDK `DELETE` request only after the administrator activates the confirmed
+  `Delete <email>` action. The server transaction enforces the last-active-capable-administrator
+  invariant, removes owned authority, and writes the deletion audit event. Existing audit history
+  remains separately governed evidence and may identify the deleted user.
 
 ## Integration Points
 
@@ -208,18 +214,18 @@ server decision as authoritative, including a `403` after an action was displaye
 
 ## Scope Decisions
 
-| Decision           | Chosen                                                     | Rationale                                                 | AR Ref       |
-| ------------------ | ---------------------------------------------------------- | --------------------------------------------------------- | ------------ |
-| Feature depth      | Complete core user management                              | Finish one roadmap feature before moving to another       | AR-60        |
-| Navigation         | Users list leading to detail and focused actions           | Familiar without a generated UI framework                 | AR-61        |
-| Profile scope      | Complete existing server-supported profile and credentials | Avoid artificial SDK limitations                          | AR-62, AR-68 |
-| Invitation scope   | Existing fields and preview, without role/claim assignment | RD-05 owns authorization assignments                      | AR-63        |
-| Lifecycle scope    | All existing lifecycle actions plus purge                  | Complete the core user lifecycle                          | AR-64        |
-| Authorization      | Validated UI affordances plus authoritative server checks  | Clear UX without weakening enforcement                    | AR-65        |
-| Concurrency        | Ordinary request and refresh behavior                      | Single-operator use does not justify a conflict subsystem | AR-66        |
-| Context changes    | Clear user state on explicit organization/session change   | Preserves tenant isolation without rare-race polling      | AR-67        |
-| Purge confirmation | Email warning and explicit destructive button              | Clear and safe without typed-confirm ceremony             | AR-69        |
-| Import/export      | Deferred to RD-09                                          | Keeps operational data tooling together                   | AR-70        |
+| Decision            | Chosen                                                     | Rationale                                                 | AR Ref        |
+| ------------------- | ---------------------------------------------------------- | --------------------------------------------------------- | ------------- |
+| Feature depth       | Complete core user management                              | Finish one roadmap feature before moving to another       | AR-60         |
+| Navigation          | Users list leading to detail and focused actions           | Familiar without a generated UI framework                 | AR-61         |
+| Profile scope       | Complete existing server-supported profile and credentials | Avoid artificial SDK limitations                          | AR-62, AR-68  |
+| Invitation scope    | Existing fields and preview, without role/claim assignment | RD-05 owns authorization assignments                      | AR-63         |
+| Lifecycle scope     | Existing reversible actions plus Delete                    | One consistent permanent record operation                 | AR-64, AR-104 |
+| Authorization       | Validated UI affordances plus authoritative server checks  | Clear UX without weakening enforcement                    | AR-65         |
+| Concurrency         | Ordinary request and refresh behavior                      | Single-operator use does not justify a conflict subsystem | AR-66         |
+| Context changes     | Clear user state on explicit organization/session change   | Preserves tenant isolation without rare-race polling      | AR-67         |
+| Delete confirmation | Email warning and `Keep` / `Delete <email>`                | Matches every permanent record deletion                   | AR-69, AR-110 |
+| Import/export       | Deferred to RD-09                                          | Keeps operational data tooling together                   | AR-70         |
 
 ## Security Considerations
 
@@ -235,12 +241,13 @@ server decision as authoritative, including a `403` after an action was displaye
   terminal controls directly. Existing parameterized server repositories remain unchanged.
 - **Transport and storage:** existing TLS and credential protections remain unchanged. RD-03 adds no
   local user-data store or export file.
-- **Irreversible and authentication-sensitive actions:** purge, passwords, verification, and
+- **Irreversible and authentication-sensitive actions:** Delete, passwords, verification, and
   lifecycle transitions use explicit focused dialogs, fixed warnings, duplicate-submit prevention,
   and no automatic mutation retry.
 - **Security testing:** specifications cover missing/stale permissions, server `403`, cross-tenant
   responses, malformed users, terminal injection, password cleanup, duplicate mutation,
-  cancellation, stale context results, super-admin rejection, and irreversible-action confirmation.
+  cancellation, stale context results, last-capable-administrator rejection, physical deletion,
+  and irreversible-action confirmation.
 
 ## Acceptance Criteria
 
@@ -272,8 +279,8 @@ server decision as authoritative, including a `403` after an action was displaye
        Suspend accepts an absent or at-most-500-character reason; lock requires 1–500 characters.
        Suspend, lock, and deactivate identify the exact email and target state before one request is
        dispatched; recovery actions also dispatch at most once.
-8. [ ] The purge dialog initially focuses Cancel, displays the exact email and irreversible warning,
-       and sends no request until `Purge permanently` is deliberately activated. Success removes the
+8. [ ] The Delete dialog initially focuses Keep, displays the exact email and irreversible warning,
+       and sends no request until `Delete <email>` is deliberately activated. Success removes the
        stale detail and refreshes the list; server rejection leaves validated state intact.
 9. [ ] Each capability is independently enabled only by its exact validated permission or the exact
        legacy administrator role. Missing, malformed, unknown, or control-bearing claims fail closed,
@@ -285,20 +292,20 @@ server decision as authoritative, including a `403` after an action was displaye
         and resize preserve the last validated current-context view, while context/session changes
         clear it. No late result can display data from the prior organization or redraw after
         teardown.
-11. [ ] The corrected SDK types and methods represent the existing server list, profile, invitation,
-        history, suspend, and lock contracts. The current CLI user commands and SDK agent metadata
-        use the corrected contracts; focused tests fail against the former mismatches and pass
-        without compatibility shims or a new server endpoint. The existing packed P1 user-list
+11. [ ] The corrected SDK types and methods represent the server list, profile, invitation,
+        history, suspend, lock, and Delete contracts. The conventional CLI exposes `porta user
+delete` and no Purge alias; SDK agent metadata uses Delete. Focused tests fail against the
+        former mismatches and pass without compatibility shims. The existing packed P1 user-list
         cursor journey proves `{ cursor, pageSize }` sends `cursor` plus `limit`, while the Admin UI
         continues using offset pagination only.
 12. [ ] User history displays at most the first 20 validated entries newest first, shows event type,
         actor or `System`, and timestamp without metadata, and indicates when more entries exist
         without adding paging or filtering controls.
-13. [ ] Focused CLI and SDK specifications, relevant security tests, both affected package verify
-        commands, repository structure tests, docs build, and the packed Admin UI playground journey
-        pass on Node 24 LTS. Clean SDK compatibility assurance is required because public SDK contracts
-        change. Full unrelated Porta/server suites are not required when server implementation is
-        untouched.
+13. [ ] Focused server, CLI, and SDK specifications, relevant integration and security tests,
+        affected package verification, repository structure tests, docs build, and the packed Admin
+        UI playground journey pass on Node 24 LTS. Clean SDK/CLI compatibility assurance is required
+        because public contracts change; server verification follows RD-10 because physical user
+        deletion changes server behavior.
 
 ## Technical Documentation Update
 

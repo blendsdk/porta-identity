@@ -14,7 +14,7 @@ lifecycle, and the local maintainer playground.
 
 The completed organization context supplies the tenant boundary for administration modules. User
 management is the first such module: a familiar Users list and detail flow covering the existing
-core profile, invitation, credential, lifecycle, history, and purge operations. Later modules add
+core profile, invitation, credential, lifecycle, history, and permanent Delete operations. Later modules add
 roles, sessions, two-factor controls, audit exploration, and operational data tools.
 
 Applications are global product and authorization definitions shared by organizations. OIDC clients
@@ -59,13 +59,14 @@ These directives apply to every current and future Admin UI requirement:
 
 ## Document Index
 
-| #         | Document                                                                            | Description                                                            | Depends On |
-| --------- | ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------- |
-| **AR**    | [Ambiguity Register](00-ambiguity-register.md)                                      | Approved feature decisions                                             | —          |
-| **RD-01** | [JSVision admin foundation](RD-01-jsvision-admin-foundation.md)                     | Secure embedded shell, authentication, and playground                  | —          |
-| **RD-02** | [Organization context and navigation](RD-02-organization-context-and-navigation.md) | Global menu, identity dialog, and organization create/switch workflows | RD-01      |
-| **RD-03** | [User management](RD-03-user-management.md)                                         | Complete organization-scoped user administration                       | RD-02      |
-| **RD-04** | [Applications and OIDC clients](RD-04-applications-and-oidc-clients.md)             | Global applications and organization-owned OIDC clients                | RD-02      |
+| #         | Document                                                                                    | Description                                                            | Depends On  |
+| --------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------- |
+| **AR**    | [Ambiguity Register](00-ambiguity-register.md)                                              | Approved feature decisions                                             | —           |
+| **RD-01** | [JSVision admin foundation](RD-01-jsvision-admin-foundation.md)                             | Secure embedded shell, authentication, and playground                  | —           |
+| **RD-02** | [Organization context and navigation](RD-02-organization-context-and-navigation.md)         | Global menu, identity dialog, and organization create/switch workflows | RD-01       |
+| **RD-03** | [User management](RD-03-user-management.md)                                                 | Complete organization-scoped user administration                       | RD-02       |
+| **RD-04** | [Applications and OIDC clients](RD-04-applications-and-oidc-clients.md)                     | Global applications and organization-owned OIDC clients                | RD-02       |
+| **RD-10** | [Record deletion and lifecycle simplification](RD-10-application-module-client-deletion.md) | Product-wide Delete, Archive removal, cascade, and targeted logout     | RD-02–RD-04 |
 
 ## Dependency Graph
 
@@ -74,7 +75,8 @@ RD-01 Secure admin foundation
   └── RD-02 Organization context and navigation
         ├── RD-03 User management
         └── RD-04 Applications and OIDC clients
-              └── RD-05 Roles and permissions
+              ├── RD-05 Roles and permissions
+              └── RD-10 Record deletion and lifecycle simplification
 ```
 
 ## Suggested Implementation Order
@@ -85,6 +87,7 @@ RD-01 Secure admin foundation
 | Organization context | RD-02     | Establish the selected tenant context used by later screens |
 | User administration  | RD-03     | Complete the core organization-scoped user workflows        |
 | Application clients  | RD-04     | Manage global products and tenant OIDC deployments          |
+| Record deletion      | RD-10     | Remove Archive and provide consistent permanent Delete      |
 
 ## Key Architecture Decisions
 
@@ -103,6 +106,8 @@ RD-01 Secure admin foundation
 | Client ownership       | Selected organization                                      | Holds tenant-specific OIDC deployment configuration    |
 | UI layout              | JSVision Layout DSL                                        | Keeps sizing and redraw behavior deterministic         |
 | Tabular collections    | JSVision DataGrid where appropriate                        | Reuses the established accessible grid interaction     |
+| Setup-time deletion    | Direct synchronous cascade after confirmation              | Avoids preview, queue, and worker machinery            |
+| Record lifecycle       | Reversible disable states plus permanent Delete            | Removes redundant retained terminal record states      |
 
 ## How to Use These Documents
 

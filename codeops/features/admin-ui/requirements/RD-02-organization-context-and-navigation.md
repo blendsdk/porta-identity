@@ -51,9 +51,10 @@ read`. The menu uses Porta's organization terminology. (AR-48, AR-58)
       to load the complete organization collection into one simple list. The UI exposes no search or
       pagination controls. A failure on any underlying page yields no partial selectable list. The
       empty state is explicit and keeps permitted creation reachable. (AR-55)
-- [ ] **OC-07 — Organization statuses:** active, suspended, and archived organizations are
+- [ ] **OC-07 — Organization statuses:** active and suspended organizations are
       selectable. Every row and the resulting landing view display the status in text; color is never
-      the only signal. Selection itself grants no authority. (AR-54)
+      the only signal. Selection itself grants no authority. Archive and Restore do not exist; record
+      deletion is owned by RD-10. (AR-54, AR-103)
 - [ ] **OC-08 — Switching:** selecting an organization and activating `Switch` atomically replaces
       the in-memory working context and redraws the content. Cancel, load failure, or invalid response
       preserves the prior selection. Switching initiates no authentication and changes no issuer,
@@ -98,7 +99,7 @@ read`. The menu uses Porta's organization terminology. (AR-48, AR-58)
 ### Won't Have (Out of Scope)
 
 - User and invitation administration, organization editing, branding, authentication-method
-  configuration, suspension, archival, restoration, or deletion.
+  configuration, suspension, or deletion.
 - Persisted recent organizations, favorites, search, pagination controls, or automatic selection.
 - A new server endpoint, workspace, application, dependency, runtime matrix, or CI workflow.
 - Changes to Porta's server-side authorization decisions or tenant isolation.
@@ -129,7 +130,7 @@ read`. The menu uses Porta's organization terminology. (AR-48, AR-58)
   roles array supplies the exact legacy compatibility role in OC-04. A malformed roles claim cannot
   invalidate otherwise valid permissions.
 - Organization identifiers must be UUIDs, slugs must satisfy Porta's established slug format, names
-  must satisfy their server bounds, and statuses must be exactly `active`, `suspended`, or `archived`
+  must satisfy their server bounds, and statuses must be exactly `active` or `suspended`
   before the values enter selected organization state.
 - All remote text shown in a terminal is length-bounded and rejects ASCII/C1 control characters.
   Errors use allowlisted local categories and never display raw response bodies, stack traces,
@@ -163,19 +164,19 @@ current server-bound bearer token and must accept a later `401` or `403` as auth
 
 ## Scope Decisions
 
-| Decision              | Options Considered                            | Chosen                     | Rationale                                                             | AR Ref       |
-| --------------------- | --------------------------------------------- | -------------------------- | --------------------------------------------------------------------- | ------------ |
-| Menu terminology      | Organizations / Admin / Tenants               | Organizations              | Matches Porta's domain and API                                        | AR-48        |
-| Global actions        | Labelled hamburger / separate menus           | Labelled hamburger         | Keeps session actions together without an icon-only affordance        | AR-49        |
-| Working context       | Session memory / persistence / tenant login   | Session memory             | Avoids stale context and preserves global login                       | AR-50        |
-| Create scope          | Basic fields / complete settings              | Basic fields               | Delivers the first workflow without pulling settings into scope       | AR-51, AR-52 |
-| Initial selection     | Explicit switcher / landing first             | Explicit switcher          | Prevents silent tenant choice                                         | AR-53        |
-| Status eligibility    | Active only / all statuses                    | All statuses               | Administrators may need inactive context for later recovery workflows | AR-54        |
-| List interaction      | Complete list / search and pages / first page | Complete list              | Expected organization counts are small                                | AR-55        |
-| Stale context         | Clear after reconciliation / retain           | Clear after reconciliation | Prevents misleading tenant context                                    | AR-56        |
-| Landing content       | Minimal identity / blank                      | Minimal identity           | Makes current organization explicit                                   | AR-57        |
-| Permission affordance | Visible disabled / hidden                     | Visible disabled           | Makes capabilities discoverable without bypassing authorization       | AR-58        |
-| Capability source     | Existing UserInfo / new endpoint / `403` only | Existing UserInfo          | The established `/me` response already includes RBAC claims           | AR-59        |
+| Decision              | Options Considered                            | Chosen                     | Rationale                                                       | AR Ref        |
+| --------------------- | --------------------------------------------- | -------------------------- | --------------------------------------------------------------- | ------------- |
+| Menu terminology      | Organizations / Admin / Tenants               | Organizations              | Matches Porta's domain and API                                  | AR-48         |
+| Global actions        | Labelled hamburger / separate menus           | Labelled hamburger         | Keeps session actions together without an icon-only affordance  | AR-49         |
+| Working context       | Session memory / persistence / tenant login   | Session memory             | Avoids stale context and preserves global login                 | AR-50         |
+| Create scope          | Basic fields / complete settings              | Basic fields               | Delivers the first workflow without pulling settings into scope | AR-51, AR-52  |
+| Initial selection     | Explicit switcher / landing first             | Explicit switcher          | Prevents silent tenant choice                                   | AR-53         |
+| Status eligibility    | Active only / active and suspended            | Active and suspended       | Both retained organization states remain selectable             | AR-54, AR-103 |
+| List interaction      | Complete list / search and pages / first page | Complete list              | Expected organization counts are small                          | AR-55         |
+| Stale context         | Clear after reconciliation / retain           | Clear after reconciliation | Prevents misleading tenant context                              | AR-56         |
+| Landing content       | Minimal identity / blank                      | Minimal identity           | Makes current organization explicit                             | AR-57         |
+| Permission affordance | Visible disabled / hidden                     | Visible disabled           | Makes capabilities discoverable without bypassing authorization | AR-58         |
+| Capability source     | Existing UserInfo / new endpoint / `403` only | Existing UserInfo          | The established `/me` response already includes RBAC claims     | AR-59         |
 
 ## Security Considerations
 
@@ -208,7 +209,7 @@ I…`, invoke Reauthenticate, and quit entirely by keyboard; the identity dialog
        it displays every organization returned across all SDK pages exactly once, including textual
        status; zero, one, and more-than-one organization never cause automatic selection. Without that
        capability, it sends no list request and displays the fixed unavailable state from OC-05.
-3. [ ] Selecting any valid active, suspended, or archived organization and activating Switch updates
+3. [ ] Selecting any valid active or suspended organization and activating Switch updates
        the landing view to its name, slug, status, and server without initiating authentication or
        changing issuer, server, or credential-profile binding; transparent global-session maintenance
        remains allowed. Cancel and every load/validation failure preserve the prior selection.

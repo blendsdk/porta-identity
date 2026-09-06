@@ -1,7 +1,7 @@
 # Ambiguity Register: Porta Admin UI Requirements
 
-> **Status**: ✅ GATE PASSED — all 37 items resolved
-> **Last Updated**: 2026-08-30 09:29
+> **Status**: ✅ GATE PASSED — all 9 lifecycle-revision items resolved
+> **Last Updated**: 2026-09-06 01:30
 > **CodeOps Artifact Schema**: 1
 
 The foundation decisions AR-1 through AR-47 remain recorded in
@@ -48,6 +48,33 @@ This register continues that feature-level sequence for later requirements.
 
 | 83 | Behavioral gaps | Which application, client, module, and secret lifecycle transitions require confirmation? | Confirm application deactivate/archive, client deactivate/revoke, module deactivate, and secret revoke; activation requires no confirmation / confirm only permanent archive/revoke operations | User approved confirmation for every listed restrictive or permanent transition; activation requires no confirmation. | ✅ Resolved |
 | 84 | Security & compliance | Should the Admin UI expose secret operations for public clients because the server route technically accepts them? | Expose secret management only for confidential clients because public clients cannot keep a credential confidential / expose the endpoint for both client types | User confirmed that client configuration and secrets are organization-scoped through the owning client, and approved secret management only for confidential clients. | ✅ Resolved |
+| 85 | Scope ambiguities | Which setup-time resources belong to the hard-deletion capability? | Applications, application modules, and OIDC clients / modules only | User confirmed applications, application modules, and OIDC clients in one new Admin UI requirement and plan. Existing organization, user, role, permission, and claim deletion remains with its current or owning feature. | ✅ Resolved |
+| 86 | UX & presentation | How does the Admin UI confirm deletion? | Plain `Are you sure` warning with `Keep` and `Delete <name>` buttons / typed-name confirmation | User chose the plain warning with `Keep` and `Delete <name>`; no typed confirmation. Long names may be shortened only on the button when terminal width requires it, while the complete name remains in the warning. | ✅ Resolved |
+| 87 | Data & state | What happens to permissions owned by a deleted module? | Delete the module, its permissions, and their role-permission assignments / detach permissions by setting `module_id` to null | User required cascading deletion of the module's permissions; database referential behavior must also remove their role-permission assignments rather than converting them into unscoped permissions. | ✅ Resolved |
+| 88 | Behavioral gaps | From which lifecycle states may each resource be permanently deleted? | Delete directly from active/inactive/terminal states with the same impact confirmation / require the resource to reach its terminal state first | User accepted deletion from every ordinary lifecycle state. Deleting an active application may disrupt operations; the product must state that impact but does not block the operation merely because disruption is possible. | ✅ Resolved |
+| 89 | Data & state | What exact application-owned data is deleted with an application? | Cascade every application-owned module, client, secret, role, permission, role/user assignment link, claim definition, and claim value / block deletion while any dependent configuration exists | User accepted complete cascading deletion of the application-owned graph while preserving audit records. | ✅ Resolved |
+| 90 | Security & compliance | What exact protocol state is invalidated when an OIDC client or its application is deleted? | Delete secrets, revoke/invalidate active grants, refresh capability, sessions, and cached client metadata so no further protocol use succeeds / delete relational client configuration only and let protocol artifacts expire | User accepted immediate server-side protocol invalidation and cleanup. Already-issued self-contained tokens remain cryptographically valid until expiry because Porta cannot recall them. | ✅ Resolved |
+| 91 | Security & compliance | Which permissions authorize deletions that cross existing resource boundaries? | Require every existing destructive permission for resource types actually affected / use only the owning resource's current archive-or-revoke permission / add new dedicated delete permissions | User chose dedicated `admin:app:delete`, `admin:module:delete`, and `admin:client:delete` permissions, granted to Super Admin and Application Admin. Each DELETE requires its matching permission. | ✅ Resolved |
+| 92 | Integration points | How does the UI communicate cascade impact before deletion? | Add a server impact-preview endpoint with exact counts / calculate counts client-side / show a clear generic cascade warning using the selected resource | After reviewing the complexity, the user replaced the earlier preview decision with a clear generic warning. No impact-preview endpoint, exact dependency counts, or client-side cascade calculation is added. | ✅ Resolved |
+| 93 | Edge cases | What happens when dependencies change between confirmation and deletion? | Require an impact ETag and `If-Match` / delete the current dependency graph transactionally after confirmation | After reviewing the complexity, the user removed the impact ETag and dependency fingerprint. Once confirmed, DELETE operates transactionally on the dependency graph that exists when the request executes. | ✅ Resolved |
+| 94 | Data & state | What atomicity and audit guarantee applies to deletion? | Perform the relational cascade, server-controlled protocol cleanup, and durable audit write synchronously in one database transaction, then invalidate affected caches directly in the request / add a durable cleanup outbox and worker / retain the current separate best-effort audit pattern | User rejected an outbox, worker, or other asynchronous cleanup machinery. After confirmation, the request synchronously cascade-deletes the resource and directly revokes affected server-controlled sessions, grants, refresh capability, security state, permission state, and caches. The database remains authoritative if a cache is stale. | ✅ Resolved |
+| 95 | Integration points | Which product surfaces expose deletion in this feature? | Server API, SDK, Admin UI, and conventional CLI / server API, SDK, and Admin UI only / Admin UI only | User limited this feature to the required server DELETE operations, SDK methods, and Admin UI. Conventional `porta app delete`, `porta client delete`, and module-delete commands are excluded. | ✅ Resolved |
+| 96 | Behavioral gaps | How does the Admin UI handle the deletion result? | Reuse the existing mutation handling with one DELETE followed by an authoritative reload / optimistically remove and retry automatically / add a new reconciliation subsystem | User chose the existing simple mutation flow: issue DELETE once, reload the authoritative collection afterward, remove the row on confirmed success, and display an error when the request fails. There is no optimistic deletion, automatic retry, or new reconciliation subsystem. | ✅ Resolved |
+| 97 | Non-functional gaps | Must deletion remain a bounded synchronous setup operation, or support large asynchronous deletion jobs? | Bounded synchronous count-and-delete using existing PostgreSQL transactions / introduce background deletion jobs with progress and recovery | User required a direct synchronous operation with no additional worker or job machinery. These deletions are rare and expected primarily during setup. | ✅ Resolved |
+| 98 | Data & state | How is the irreversible foreign-key migration deployed and recovered? | Add an ordered forward migration, verify pre/post referential behavior, deploy migration before compatible servers, and recover only by database restore after committed deletion / rewrite an applied migration / attempt to recreate deleted records automatically | User chose one new ordered forward migration, without rewriting applied migrations. A committed deletion is recoverable only through normal database backup or point-in-time restore; Porta does not attempt to reconstruct deleted records. | ✅ Resolved |
+| 99 | Naming & terminology | Which destructive terms are used across product surfaces? | `Delete application`, `Delete module`, and `Delete client`, reserving Destroy for the existing organization operation and Purge for GDPR user removal / use Destroy or Purge for all three | User chose `Delete application`, `Delete module`, and `Delete client`. Archive and Revoke remain distinct lifecycle operations; Destroy remains the organization term and Purge remains the GDPR user-removal term. | ✅ Resolved |
+| 100 | Security & compliance | Are any bootstrap or system-owned applications/clients permanently protected from deletion? | Protect explicitly identified system resources server-side with a durable marker / allow deletion of every resource, including the resource backing current administration | User chose no protected-resource markers or deletion blocks. A confirmed deletion may remove the application or client backing the current Admin UI session; the operation completes, its warning states the consequence, and the administrator is then logged out. | ✅ Resolved |
+| 101 | Security & compliance | Which active sessions are logged out when deletion changes clients or effective permissions? | Revoke only grants and sessions tied to deleted clients, and revoke active sessions for users whose effective permissions changed through module deletion / revoke every session in every affected organization / perform no permission-driven session revocation | User confirmed targeted revocation. Client deletion terminates sessions and grants for that client. Module deletion logs out users whose effective permissions changed. Application deletion covers every owned client plus users whose effective permissions changed, without terminating unrelated users' sessions. | ✅ Resolved |
+| 102 | Data & state | What happens to a still-valid invitation whose JSON details reference a role or claim definition removed by application deletion? | Keep the invitation valid and let the existing acceptance checks skip only the deleted preassignments / cancel every affected invitation / rewrite each invitation's JSON during deletion | User chose to keep the invitation valid, leave its stored JSON unchanged, and let the existing acceptance checks skip only role or claim preassignments that no longer exist. | ✅ Resolved |
+| 103 | Scope ambiguities | Does Archive remain a product lifecycle after permanent Delete is introduced? | Remove Archive product-wide and retain only reversible disable states plus Delete / retain Archive as a separate retained terminal state | User removed Archive product-wide. Applications use Active/Inactive/Delete; organizations use Active/Suspended/Delete. Role, permission, and custom-claim operations that already hard-delete are named Delete rather than Archive. | ✅ Resolved |
+| 104 | Security & compliance | Does deleting a user retain an anonymized placeholder row? | Physically delete the user row and cascade/null owned references / retain the current `purged-<UUID>@purged.local` row | User required ordinary hard deletion. No anonymized placeholder user remains; owned authentication data cascades, nullable references clear, and Redis authority is removed. Separately governed audit history is not owned user data. | ✅ Resolved |
+| 105 | Naming & terminology | How are destructive operations and permissions named after Archive and Purge are removed? | Use Delete for organization, application, module, client, role, permission, custom claim, and user records; reserve Revoke for security artifacts / retain resource-specific Archive, Destroy, and Purge terms | User chose one Delete term for records. Misnamed archive permissions become dedicated delete permissions, and user purge becomes `admin:user:delete`. Credential, secret, session, invitation, and signing-key revocation remains distinct. | ✅ Resolved |
+| 106 | Data & state | Must the lifecycle revision migrate deployed archived/anonymized records or preserve rollback compatibility? | Use a new forward migration and validate only a reset/migrate/init path / add compatibility conversion and rollback machinery | User confirmed Porta has no deployed users or production data. Current databases are disposable through `yarn admin:env reset`; no data-conversion, compatibility, or recovery machinery is added, and applied migrations are not rewritten. | ✅ Resolved |
+| 107 | Behavioral gaps | Does the terminal `revoked` state for an entire OIDC client remain when client Delete exists? | Remove whole-client Revoke and use Active/Inactive/Delete while retaining secret/session/token revocation / retain whole-client Revoke as an irreversible retained state | User removed whole-client Revoke. Clients use Active/Inactive/Delete. Revocation remains only for credentials and protocol/security artifacts. | ✅ Resolved |
+| 108 | Integration points | Does the lifecycle revision reverse AR-95 and expose consistent Delete commands through the conventional CLI? | Add/rename conventional CLI Delete commands for every directly deletable record / rename existing destructive commands only / keep new Delete operations limited to server, SDK, and Admin UI | User reversed AR-95 and required thin conventional CLI Delete commands for organization, application, module, client, role, permission, custom-claim definition, and user records. Old Archive, Destroy, Purge, and whole-client Revoke aliases are removed without compatibility shims. | ✅ Resolved |
+| 109 | Security & compliance | May an administrator delete the bootstrap super-admin organization or a user within it? | Block deletion of the control-plane organization but allow administrator deletion when another active capable administrator remains / retain all current organization and user protections / allow every confirmed deletion and rely on external reset or recovery | User retained the hard-delete block on the control-plane organization. Any administrator, including the bootstrap or current user, may be deleted only when another active user has the exact built-in `porta-super-admin` role. Concurrent checks serialize on the control-plane organization row. | ✅ Resolved |
+| 110 | Behavioral gaps | What common interaction applies to every record Delete operation? | Confirm with `Keep` and `Delete <name>`, then synchronously delete the current graph and revoke only affected authority / retain previews, typed confirmation, force switches, or background deletion machinery | User required the direct confirmation-and-delete rule across record types. No preview, ETag, typed confirmation, force switch, worker, queue, or automatic retry is added. | ✅ Resolved |
+| 111 | Data & state | What happens to audit information when its target user is deleted? | Retain audit history as separately governed security evidence and let user/actor foreign keys become null / scrub or delete target-linked history | User retained audit history unchanged because attribution is its purpose. Audit records may identify the deleted user, remain subject to configured retention, and do not require a placeholder user row. No GDPR-erasure claim is made. | ✅ Resolved |
 
 ## Resolution Notes
 
@@ -99,6 +126,53 @@ deactivate/revoke, module deactivate, and secret revoke. Activation requires no 
 **AR-84:** The user confirmed that client configuration and confidential-client secrets are
 organization-scoped through their owning client; no client secret is global. Public clients expose
 no secret operations because they cannot keep a credential confidential.
+
+**AR-85 through AR-87:** The user added one cohesive application-configuration deletion capability
+covering applications, modules, and OIDC clients. Confirmation is direct rather than typed, and
+module deletion removes its permissions and their role assignments instead of detaching them.
+
+**AR-88 through AR-90:** The user accepted deletion from every ordinary lifecycle state, complete
+application-owned cascading deletion, and immediate cleanup of server-controlled OIDC state. The
+user explicitly accepted that deleting an active application can disrupt operations and rejected
+blocking legitimate administration merely because every operational consequence cannot be
+prevented.
+
+**AR-91 through AR-93:** The user retained dedicated deletion permissions but deliberately removed
+the proposed impact-preview and ETag protocol after applying the feature's simplicity rule. The UI
+shows a clear generic cascade warning, and a confirmed DELETE operates on the current dependency
+graph in one transaction.
+
+**AR-94 and AR-97:** The user explicitly rejected the proposed cleanup outbox and asynchronous job
+machinery. Deletion remains a rare, synchronous setup operation: after confirmation, Porta performs
+the database cascade and directly revokes every affected server-controlled session, grant, refresh
+capability, permission state, and cache. Database-owned deletion and its durable audit record commit
+together. The database remains authoritative when cache state is stale.
+
+**AR-101:** The user confirmed targeted logout and revocation. Client deletion terminates state for
+that client; module deletion logs out users whose effective permissions changed; application deletion
+covers all owned clients and permission-affected users. Unrelated users and sessions remain active.
+
+**AR-102:** Pending invitations remain valid and their stored JSON is not rewritten. The existing
+acceptance flow verifies each referenced role and claim and skips only unavailable preassignments
+rather than failing the invitation.
+
+**AR-95 and AR-96:** The user limited delivery to the server API, SDK, and Admin UI, excluding new
+conventional CLI commands. The UI uses its existing one-request mutation handling and authoritative
+reload, without optimistic removal, automatic retries, or a new reconciliation subsystem.
+
+**AR-98 through AR-100:** The user chose an ordinary ordered forward migration and normal database
+restore as the only recovery for committed deletion. Product language uses Delete while retaining
+the distinct Archive, Revoke, Destroy, and Purge lifecycle terms. No resource is specially protected:
+a confirmed deletion may remove the application or client backing the current administration
+session, after which the administrator is logged out.
+
+**AR-103 through AR-111:** These decisions supersede the Archive, Destroy, Purge, whole-client
+Revoke, conventional-CLI exclusion, and user-placeholder portions of AR-54, AR-60, AR-64, AR-69,
+AR-72, AR-75, AR-83, AR-85, AR-91, AR-95, AR-98, and AR-99. Porta now uses reversible operational
+disable states plus permanent Delete for records. Credential and protocol-artifact revocation stays
+distinct. The control-plane organization remains undeletable, while an administrator may be deleted
+when another active capable administrator remains. Current environments use the reset/migrate/init
+path, so no compatibility or data-conversion machinery is introduced.
 
 The user reviewed and approved RD-03 on 2026-08-29 with all AR-60 through AR-70 decisions intact.
 

@@ -34,7 +34,7 @@ not a separate server authorization boundary.
       the organization whose clients it manages. (AR-71, AR-74, AR-78)
 - [ ] **AC-02 — Global application list:** Applications loads the complete validated application
       collection through the SDK `listAll` operation and presents one DataGrid with Name, Slug, and
-      textual Status columns. Active, inactive, and archived applications remain visible. No search
+      textual Status columns. Active and inactive applications remain visible. No search
       or pagination controls are shown. Loading, empty, failed, and ready states are explicit, and a
       failed underlying page publishes no partial collection. A concise persistent notice identifies
       the workspace as deployment-global. (AR-72, AR-77, AR-82)
@@ -47,21 +47,20 @@ not a separate server authorization boundary.
       optional description. Edit accepts name and nullable description; slug is immutable after
       creation because the server update contract does not support changing it. Name length is
       1–255, optional slug length is 3–100, and optional description length is at most 2,000
-      characters before dispatch; server slug syntax and uniqueness remain authoritative. Archived
-      applications are read-only. (AR-72, AR-79)
-- [ ] **AC-05 — Application lifecycle:** an active application can be deactivated, an inactive
-      application can be activated, and an active or inactive application can be permanently
-      archived. Deactivate and Archive require explicit confirmation naming the application and its
-      exact global effect: both prevent creation of new clients for the application but do not disable
-      existing clients. Archived applications have no restore action and are read-only. Success
-      reloads the application; rejection or failure preserves the prior validated view. (AR-72,
-      AR-75, AR-83)
+      characters before dispatch; server slug syntax and uniqueness remain authoritative. (AR-72,
+      AR-79, AR-103)
+- [ ] **AC-05 — Application lifecycle:** an active application can be deactivated and an inactive
+      application can be activated. Deactivate requires explicit confirmation naming the application
+      and its exact global effect: new clients cannot be created while existing clients continue to
+      operate. Success reloads the application; rejection or failure preserves the prior validated
+      view. Archive and Restore do not exist; permanent deletion is owned by RD-10. (AR-72, AR-75,
+      AR-83, AR-103)
 - [ ] **AC-06 — Application modules:** application detail lists every module with Name, Slug, and
       textual Status and permits create, edit, and deactivate through the existing application read
       and update permissions. Create accepts name, optional slug, and optional description; edit
       accepts name and nullable description. Field bounds match applications. Module deactivation
-      requires confirmation and has no invented delete or restore action. Modules under an archived
-      application are read-only. Update and deactivate atomically verify that the internal module ID
+      requires confirmation; permanent deletion is owned by RD-10. Update and deactivate atomically
+      verify that the internal module ID
       belongs to the application named by the nested route, and the UI rejects returned module data
       whose application ID differs from the selected application. (AR-72, AR-75, AR-80, AR-83)
 - [ ] **AC-07 — Organization client list:** with an active organization, OIDC Clients loads the
@@ -84,14 +83,14 @@ not a separate server authorization boundary.
       configuration and separates focused Basic, Redirects, Protocol, Login, and Secrets actions.
       Client type, application type, owning organization, global application, and generated Client ID
       are immutable after creation. Every editable field maps directly to the existing server update
-      contract and the shared protocol compatibility validator. Revoked clients are read-only;
-      inactive clients remain editable so configuration can be corrected before activation. No
+      contract and the shared protocol compatibility validator. Inactive clients remain editable so
+      configuration can be corrected before activation. No
       generic entity editor or oversized raw form is introduced. (AR-73, AR-81)
-- [ ] **AC-10 — Client lifecycle:** an active client can be deactivated, an inactive client can be
-      activated, and an active or inactive client can be permanently revoked. Deactivate and Revoke
-      require explicit confirmation naming the client and organization. Revoked clients have no
-      restore action and are read-only. A successful transition reloads the organization-scoped
-      client; rejection or failure preserves the prior validated view. (AR-73, AR-75, AR-83)
+- [ ] **AC-10 — Client lifecycle:** an active client can be deactivated and an inactive client can be
+      activated. Deactivate requires explicit confirmation naming the client and organization. A
+      successful transition reloads the organization-scoped client; rejection or failure preserves
+      the prior validated view. Whole-client Revoke and Restore do not exist; permanent deletion is
+      owned by RD-10. (AR-73, AR-75, AR-83, AR-107)
 - [ ] **AC-11 — Initial confidential secret:** creating a confidential client automatically returns
       its initial plaintext secret once. The UI immediately presents it in a warning dialog with the
       client name, Client ID, optional label, and a fixed warning that the secret cannot be shown
@@ -103,7 +102,7 @@ not a separate server authorization boundary.
       administrator can generate another one-time secret with an optional label of at most 255
       characters and an optional valid expiry instant, or permanently revoke an active secret after explicit
       confirmation. Plaintext is never available from list or detail operations and secret actions are
-      unavailable for public or revoked clients. Every returned secret row must name the selected
+      unavailable for public clients. Every returned secret row must name the selected
       internal client ID. The server revoke operation must verify that the secret belongs to the
       client named by the route. Every active, unexpired secret remains accepted by the token endpoint
       until explicit revocation or expiry so rotation supports overlap without an outage. (AR-76,
@@ -144,7 +143,8 @@ not a separate server authorization boundary.
 ### Won't Have (Out of Scope)
 
 - Tenant ownership of application, module, role, permission, or claim definitions.
-- Application or client restore, hard delete, cloning, templates, or automatic tenant enrollment.
+- Application or client cloning, templates, or automatic tenant enrollment. Permanent record
+  deletion is owned by RD-10.
 - Role, permission, claim-definition, or assignment administration, which belongs to RD-05.
 - Audit and entity history views, which belong to RD-08.
 - Import, export, bulk operations, signing keys, and global configuration, which belong to RD-09.
@@ -192,9 +192,9 @@ Porta deployment
 | Login methods                 | Inherit organization default, `password`, `magic_link`, or both          |
 | Initial/rotated secret label  | Omitted or 0–255 control-free characters                                 |
 | Secret expiry                 | Omitted or a valid instant                                               |
-| Application status            | `active`, `inactive`, or `archived`                                      |
+| Application status            | `active` or `inactive`                                                   |
 | Module status                 | `active` or `inactive`                                                   |
-| Client status                 | `active`, `inactive`, or `revoked`                                       |
+| Client status                 | `active` or `inactive`                                                   |
 | Secret status                 | `active` or `revoked`; expiry is evaluated separately from stored status |
 
 - Redirect URI collections reject empty entries, fragments, and wildcards before dispatch. Logout
@@ -220,11 +220,10 @@ Porta deployment
 | List/inspect applications and modules    | `admin:app:read`                         | `admin:app:read`                         |
 | Create applications                      | `admin:app:create`                       | `admin:app:create`                       |
 | Edit/status/modules                      | `admin:app:update`                       | `admin:app:update`                       |
-| Archive applications                     | `admin:app:archive`                      | `admin:app:archive`                      |
 | List/inspect clients and secret metadata | `admin:client:read`                      | `admin:client:read`                      |
 | Create clients                           | `admin:client:create` + `admin:app:read` | `admin:client:create` + `admin:app:read` |
 | Edit/status/generate secrets             | `admin:client:update`                    | `admin:client:update`                    |
-| Revoke clients or secrets                | `admin:client:revoke`                    | `admin:client:revoke`                    |
+| Revoke client secrets                    | `admin:client:revoke`                    | `admin:client:revoke`                    |
 
 The validated UserInfo capability snapshot controls affordances only. Existing deployment-wide
 server authentication and permission middleware remain authoritative. The selected organization is
@@ -240,9 +239,9 @@ RD-04 may correct the SDK and affected conventional CLI commands to match the ex
 - remove the nonexistent application `organizationId` and unsupported application slug update;
 - represent module `status` and the existing module-deactivation route accurately;
 - retain both application and module internal UUIDs for module update/deactivate operations;
-- remove nonexistent application/client restore operations;
-- add the existing application and client activate/deactivate lifecycle operations, preserve
-  application archive and client revoke, and use internal entity UUIDs where the routes require them;
+- remove application Archive and whole-client Revoke/Restore operations;
+- add the existing application and client activate/deactivate lifecycle operations and use internal
+  entity UUIDs where the routes require them;
 - represent complete client fields including organization ID, application type, scope, origins,
   PKCE, status, login methods, and effective login methods;
 - represent client create responses as the returned client plus optional one-time secret;
@@ -300,21 +299,21 @@ changes.
 
 ## Scope Decisions
 
-| Decision               | Options Considered                                 | Chosen                      | Rationale                                   | AR Ref       |
-| ---------------------- | -------------------------------------------------- | --------------------------- | ------------------------------------------- | ------------ |
-| Application ownership  | Global / organization-owned                        | Global                      | Matches Porta's SaaS product model          | AR-71        |
-| Feature depth          | Complete existing API / reduced CRUD               | Complete existing API       | Finishes one roadmap capability             | AR-72, AR-73 |
-| Navigation             | Separate workspaces / clients nested in app detail | Separate workspaces         | Makes global versus tenant scope explicit   | AR-74        |
-| Lifecycle              | Existing permanent transitions / invented restore  | Existing transitions        | Matches the authoritative server            | AR-75        |
-| Secrets                | Complete rotation / omit                           | Complete one-time rotation  | Required for confidential clients           | AR-76        |
-| List interaction       | Complete collection / UI pages and search          | Complete collection         | Expected counts are small                   | AR-77        |
-| Affordances            | Permission-aware / `403` only                      | Permission-aware            | Clear UX without weakening server authority | AR-78        |
-| Contract defects       | Correct SDK/CLI/server defects / constrain UI      | Focused contract correction | Exposes the safe server capability          | AR-79        |
-| Neighboring features   | Preserve roadmap / combine                         | Preserve roadmap            | Avoids an oversized RD                      | AR-80        |
-| Presentation           | Focused provider-style UI / generic form           | Focused provider-style UI   | Familiar and maintainable                   | AR-81        |
-| Layout controls        | DSL, DataGrid, fixed inputs / ad hoc               | Prime directive             | Prevents sizing and redraw defects          | AR-82        |
-| Lifecycle confirmation | Restrictive and permanent / permanent only         | Restrictive and permanent   | Makes service-impacting changes deliberate  | AR-83        |
-| Public-client secrets  | Confidential clients only / every client           | Confidential clients only   | Public clients cannot keep a secret         | AR-84        |
+| Decision               | Options Considered                                        | Chosen                               | Rationale                                         | AR Ref                |
+| ---------------------- | --------------------------------------------------------- | ------------------------------------ | ------------------------------------------------- | --------------------- |
+| Application ownership  | Global / organization-owned                               | Global                               | Matches Porta's SaaS product model                | AR-71                 |
+| Feature depth          | Complete existing API / reduced CRUD                      | Complete existing API                | Finishes one roadmap capability                   | AR-72, AR-73          |
+| Navigation             | Separate workspaces / clients nested in app detail        | Separate workspaces                  | Makes global versus tenant scope explicit         | AR-74                 |
+| Lifecycle              | Reversible disable plus Delete / retained terminal states | Reversible disable plus RD-10 Delete | Removes redundant Archive and whole-client Revoke | AR-75, AR-103, AR-107 |
+| Secrets                | Complete rotation / omit                                  | Complete one-time rotation           | Required for confidential clients                 | AR-76                 |
+| List interaction       | Complete collection / UI pages and search                 | Complete collection                  | Expected counts are small                         | AR-77                 |
+| Affordances            | Permission-aware / `403` only                             | Permission-aware                     | Clear UX without weakening server authority       | AR-78                 |
+| Contract defects       | Correct SDK/CLI/server defects / constrain UI             | Focused contract correction          | Exposes the safe server capability                | AR-79                 |
+| Neighboring features   | Preserve roadmap / combine                                | Preserve roadmap                     | Avoids an oversized RD                            | AR-80                 |
+| Presentation           | Focused provider-style UI / generic form                  | Focused provider-style UI            | Familiar and maintainable                         | AR-81                 |
+| Layout controls        | DSL, DataGrid, fixed inputs / ad hoc                      | Prime directive                      | Prevents sizing and redraw defects                | AR-82                 |
+| Lifecycle confirmation | Restrictive and permanent / permanent only                | Restrictive and permanent            | Makes service-impacting changes deliberate        | AR-83                 |
+| Public-client secrets  | Confidential clients only / every client                  | Confidential clients only            | Public clients cannot keep a secret               | AR-84                 |
 
 ## Security Considerations
 
@@ -353,12 +352,11 @@ changes.
 3. [ ] Application create accepts name lengths 1 and 255, slug lengths 3 and 100 when present, and
        description lengths 0 and 2,000; it rejects values outside those bounds. Success adds the
        returned global application, while cancellation and every failure preserve the prior list.
-4. [ ] Application detail always labels global scope. Deactivate and permanent Archive name the
-       application and global impact in confirmation; archived applications expose no restore action.
-       The confirmation states that no new clients can be registered while existing clients continue
-       authenticating, and the archived detail is read-only.
+4. [ ] Application detail always labels global scope. Deactivate names the application and global
+       impact in confirmation and states that no new clients can be registered while existing clients
+       continue authenticating. Archive and Restore are absent.
 5. [ ] Module create/edit/deactivate operates only under its application, uses the application
-       read/update permissions, displays textual status, and exposes no delete or restore action. A
+       read/update permissions and displays textual status. Delete is supplied by RD-10. A
        mismatched application/module pair cannot update or deactivate anything, and a returned module
        with a different application ID is not published.
 6. [ ] Client create always sends the active organization UUID and selected active application UUID,
@@ -368,8 +366,8 @@ changes.
 7. [ ] Client detail exposes focused Basic, Redirects, Protocol, Login, and Secrets actions. Every
        supported server update field can be changed without exposing a raw JSON or generated generic
        form.
-8. [ ] Client Deactivate and permanent Revoke confirmations name the client and active organization;
-       a revoked client exposes no restore action and cannot be silently reactivated.
+8. [ ] Client Deactivate confirmation names the client and active organization. Whole-client Revoke
+       and Restore are absent; Delete is supplied by RD-10.
 9. [ ] Confidential-client creation displays the returned plaintext secret exactly once with the
        required warning. Public-client creation never shows Secrets. No later list, detail, redraw,
        log, error, context switch, or reauthentication can reveal the plaintext.
@@ -392,7 +390,7 @@ changes.
         terminal restoration.
 15. [ ] SDK and conventional CLI application/client specification tests describe the existing server
         fields, response wrappers, internal-ID targeting, lifecycle routes, and secret semantics;
-        nonexistent application organization ownership and restore contracts are removed without
+        nonexistent application organization ownership and Archive/Revoke/Restore contracts are removed without
         changing the server data model.
 16. [ ] Focused specifications, relevant security tests, affected package tests, repository structure
         tests, the packed Admin UI playground journey, and `yarn verify` pass on Node 24 LTS. SDK/CLI
