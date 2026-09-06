@@ -56,7 +56,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('action', {
               type: 'string',
               describe: 'Status action',
-              choices: ['suspend', 'activate', 'deactivate', 'lock', 'unlock', 'archive'] as const,
+              choices: ['suspend', 'activate', 'deactivate', 'lock', 'unlock'] as const,
               demandOption: true,
             })
             .option('ids', {
@@ -99,7 +99,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               // Route to organization bulk endpoint
               result = await client.bulk.organizationStatus({
                 ids,
-                action: argv.action as 'activate' | 'suspend' | 'archive',
+                action: argv.action as 'activate' | 'suspend',
                 reason: argv.reason,
               });
             } else {

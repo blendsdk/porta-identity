@@ -6,16 +6,14 @@
  *
  * Usage:
  *   porta org create --name "Acme Corp" [--slug acme-corp] [--locale en]
- *   porta org list [--status active|suspended|archived] [--page 1] [--page-size 20]
+ *   porta org list [--status active|suspended] [--page 1] [--page-size 20]
  *   porta org show <id-or-slug>
  *   porta org update <id-or-slug> --name "New Name" [--default-locale fr]
  *   porta org suspend <id-or-slug>
  *   porta org activate <id-or-slug>
- *   porta org archive <id-or-slug>
- *   porta org restore <id-or-slug>
+ *   porta org delete <id-or-slug>
  *   porta org history <id-or-slug>
  *   porta org branding <id-or-slug> --primary-color "#..." [--company-name "..."]
- *   porta org destroy <id-or-slug>
  *
  * @module commands/org
  */
@@ -25,8 +23,8 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, error, info, formatDate } from '../output.js';
-import { confirm, question } from '../prompt.js';
+import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 import { parseLoginMethods } from '../parsers.js';
 
@@ -142,7 +140,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             y
               .option('status', {
                 type: 'string',
-                choices: ['active', 'suspended', 'archived'],
+                choices: ['active', 'suspended'],
                 description: 'Filter by status',
               })
               .option('page', {
@@ -334,10 +332,10 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           },
         )
 
-        // ── archive ─────────────────────────────────────────────────────
+        // ── delete ──────────────────────────────────────────────────────
         .command<OrgIdArgs>(
-          'archive <id-or-slug>',
-          'Archive an organization (soft-delete)',
+          'delete <id-or-slug>',
+          'Permanently delete an organization and its owned data',
           (y) =>
             y.positional('id-or-slug', {
               type: 'string',
@@ -348,42 +346,15 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             try {
               const client = createClient(argv);
               const { data: org } = await client.organizations.get(argv['id-or-slug']);
-
-              if (!argv.force) {
-                const confirmed = await confirm(
-                  `Archive organization "${org.name}" (${org.slug})? This cannot be easily undone.`,
-                );
-                if (!confirmed) {
-                  warn('Operation cancelled');
-                  return;
-                }
+              const confirmed = await confirm(
+                `Keep organization "${org.name}" (${org.slug}), or Delete ${org.name}? This permanently deletes its users, clients, and security data.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
               }
-
-              await client.organizations.archive(org.id);
-              success(`Organization archived: ${org.name} (${org.slug})`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
-        // ── restore (NEW) ──────────────────────────────────────────────
-        .command<OrgIdArgs>(
-          'restore <id-or-slug>',
-          'Restore an archived organization',
-          (y) =>
-            y.positional('id-or-slug', {
-              type: 'string',
-              demandOption: true,
-              description: 'Organization UUID or slug',
-            }),
-          async (argv) => {
-            try {
-              const client = createClient(argv);
-              const { data: org } = await client.organizations.get(argv['id-or-slug']);
-
-              await client.organizations.restore(org.id);
-              success(`Organization restored: ${org.name} (${org.slug})`);
+              await client.organizations.delete(argv['id-or-slug']);
+              success(`Organization deleted: ${org.name} (${org.slug})`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -476,63 +447,9 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           },
         )
 
-        // ── destroy ─────────────────────────────────────────────────────
-        .command<OrgIdArgs>(
-          'destroy <id-or-slug>',
-          'Permanently destroy an organization and all its data (CASCADE)',
-          (y) =>
-            y.positional('id-or-slug', {
-              type: 'string',
-              demandOption: true,
-              description: 'Organization UUID or slug',
-            }),
-          async (argv) => {
-            try {
-              const client = createClient(argv);
-              const idOrSlug = argv['id-or-slug'];
-
-              // 1. Dry-run to get cascade counts
-              const preview = await client.organizations.destroy(idOrSlug, { dryRun: true });
-              const counts = preview.counts ?? {};
-
-              // 2. Resolve the org for display
-              const { data: org } = await client.organizations.get(idOrSlug);
-
-              // 3. Display what will be destroyed
-              console.log('');
-              warn('This will PERMANENTLY destroy the following:');
-              console.log('');
-              console.log(`  Organization:      ${org.name} (${org.slug})`);
-              for (const [entity, count] of Object.entries(counts)) {
-                const label = entity.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-                console.log(`  ${label.padEnd(20)} ${count}`);
-              }
-              console.log('');
-
-              // 4. Type-to-confirm (unless --force)
-              if (!argv.force) {
-                const confirmSlug = await question(
-                  `Type the organization slug "${org.slug}" to confirm destruction: `,
-                );
-                if (confirmSlug !== org.slug) {
-                  error('Slug does not match. Destruction cancelled.');
-                  return;
-                }
-              }
-
-              // 5. Execute destruction
-              await client.organizations.destroy(idOrSlug);
-              success(
-                `Organization "${org.name}" and all its data have been permanently destroyed.`,
-              );
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
         .demandCommand(
           1,
-          'Specify an org subcommand: create, list, show, update, suspend, activate, archive, restore, history, branding, destroy',
+          'Specify an org subcommand: create, list, show, update, suspend, activate, delete, history, branding',
         )
     );
   },

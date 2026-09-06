@@ -13,6 +13,7 @@
  *   porta user update --org <id> <user-id> [--name "..."]
  *   porta user suspend/reactivate/lock/unlock/deactivate --org <id> <user-id>
  *   porta user set-password --org <id> <user-id> --password "..."
+ *   porta user delete <org-id> <user-id>
  *   porta user history --org <id> <user-id>
  *   porta user roles <subcommand> ...
  *   porta user claims <subcommand> ...
@@ -89,6 +90,11 @@ interface UserListArgs extends OrgScopedArgs {
 }
 
 interface UserIdArgs extends OrgScopedArgs {
+  'user-id': string;
+}
+
+interface UserDeleteArgs extends GlobalOptions {
+  'org-id': string;
   'user-id': string;
 }
 
@@ -545,6 +551,44 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           },
         )
 
+        .command<UserDeleteArgs>(
+          'delete <org-id> <user-id>',
+          'Permanently delete a user and owned identity data',
+          (y) =>
+            y
+              .positional('org-id', {
+                type: 'string',
+                demandOption: true,
+                description: 'Organization UUID',
+              })
+              .positional('user-id', {
+                type: 'string',
+                demandOption: true,
+                description: 'User UUID',
+              }),
+          async (argv) => {
+            try {
+              const sdkClient = createClient(argv);
+              const { data: user } = await sdkClient.users.get(
+                argv['org-id'],
+                argv['user-id'],
+              );
+              const name = displayName(user);
+              const confirmed = await confirm(
+                `Keep user "${name}" (${user.email}), or Delete ${name}? This permanently deletes identity and security data; retained audit history is separate.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
+              await sdkClient.users.delete(argv['org-id'], argv['user-id']);
+              success(`User deleted: ${name} (${user.email})`);
+            } catch (err) {
+              handleError(err, argv.verbose);
+            }
+          },
+        )
+
         // ── set-password ────────────────────────────────────────────────
         .command<SetPasswordArgs>(
           'set-password <user-id>',
@@ -621,7 +665,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(userClaimsCommand)
         .demandCommand(
           1,
-          'Specify a user subcommand: create, invite, list, show, update, suspend, unsuspend, reactivate, lock, unlock, deactivate, set-password, history, roles, claims',
+          'Specify a user subcommand: create, invite, list, show, update, suspend, unsuspend, reactivate, lock, unlock, deactivate, delete, set-password, history, roles, claims',
         )
     );
   },

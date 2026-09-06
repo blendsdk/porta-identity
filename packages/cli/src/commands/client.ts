@@ -408,10 +408,10 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           },
         )
 
-        // ── revoke ──────────────────────────────────────────────────────
+        // ── delete ──────────────────────────────────────────────────────
         .command<ClientIdArgs>(
-          'revoke <client-id>',
-          'Revoke a client (permanent)',
+          'delete <client-id>',
+          'Permanently delete a client and its credentials',
           (y) =>
             y.positional('client-id', {
               type: 'string',
@@ -422,19 +422,15 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             try {
               const sdkClient = createClient(argv);
               const { data: c } = await sdkClient.clients.get(argv['client-id']);
-
-              if (!argv.force) {
-                const confirmed = await confirm(
-                  `Revoke client "${c.clientName}" (${c.clientId})? This is permanent and cannot be undone.`,
-                );
-                if (!confirmed) {
-                  warn('Operation cancelled');
-                  return;
-                }
+              const confirmed = await confirm(
+                `Keep client "${c.clientName}" (${c.clientId}), or Delete ${c.clientName}? This permanently deletes its secrets and protocol authority.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
               }
-
-              await sdkClient.clients.revoke(c.id);
-              success(`Client revoked: ${c.clientName} (${c.clientId})`);
+              await sdkClient.clients.delete(c.id);
+              success(`Client deleted: ${c.clientName} (${c.clientId})`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -589,7 +585,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(clientSecretCommand)
         .demandCommand(
           1,
-          'Specify a client subcommand: create, list, get, update, activate, deactivate, revoke, history, login-methods, secret',
+          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret',
         )
     );
   },

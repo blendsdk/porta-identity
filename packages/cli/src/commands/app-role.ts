@@ -10,6 +10,7 @@ import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -40,7 +41,7 @@ interface RoleUpdateArgs extends GlobalOptions {
   description?: string;
 }
 
-interface RoleArchiveArgs extends GlobalOptions {
+interface RoleDeleteArgs extends GlobalOptions {
   'app-id': string;
   'role-id': string;
 }
@@ -212,9 +213,9 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
-      .command<RoleArchiveArgs>(
-        'archive <app-id> <role-id>',
-        'Archive a role',
+      .command<RoleDeleteArgs>(
+        'delete <app-id> <role-id>',
+        'Permanently delete a role and its assignments',
         (y) =>
           y
             .positional('app-id', {
@@ -224,10 +225,18 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             })
             .positional('role-id', { type: 'string', demandOption: true, description: 'Role ID' }),
         async (argv) => {
-          try {
-            const client = createClient(argv);
-            await client.roles.archive(argv['app-id'], argv['role-id']);
-            success('Role archived');
+            try {
+              const client = createClient(argv);
+              const role = await client.roles.get(argv['app-id'], argv['role-id']);
+              const confirmed = await confirm(
+                `Keep role "${role.name}" (${role.slug}), or Delete ${role.name}? This permanently deletes its assignments and permission links.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
+              await client.roles.delete(argv['app-id'], argv['role-id']);
+              success(`Role deleted: ${role.name} (${role.slug})`);
           } catch (err) {
             handleError(err, argv.verbose);
           }
@@ -297,7 +306,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       )
       .demandCommand(
         1,
-        'Specify a role subcommand: create, list, show, update, archive, assign-perm, remove-perm',
+        'Specify a role subcommand: create, list, show, update, delete, assign-perm, remove-perm',
       );
   },
   handler: () => {},

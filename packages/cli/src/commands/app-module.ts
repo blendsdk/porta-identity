@@ -10,6 +10,7 @@ import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -34,6 +35,11 @@ interface ModuleUpdateArgs extends GlobalOptions {
 }
 
 interface ModuleDeactivateArgs extends GlobalOptions {
+  'app-id': string;
+  'module-id': string;
+}
+
+interface ModuleDeleteArgs extends GlobalOptions {
   'app-id': string;
   'module-id': string;
 }
@@ -183,7 +189,43 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           }
         },
       )
-      .demandCommand(1, 'Specify a module subcommand: add, list, update, deactivate');
+
+      .command<ModuleDeleteArgs>(
+        'delete <app-id> <module-id>',
+        'Permanently delete a module and its owned permissions',
+        (y) =>
+          y
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module ID',
+            }),
+        async (argv) => {
+          try {
+            const client = createClient(argv);
+            const modules = await client.applications.listModules(argv['app-id']);
+            const module = modules.find(({ id }) => id === argv['module-id']);
+            if (!module) throw new Error('Module not found');
+            const confirmed = await confirm(
+              `Keep module "${module.name}" (${module.slug}), or Delete ${module.name}? This permanently deletes its permissions and dependent links.`,
+            );
+            if (!confirmed) {
+              warn('Operation cancelled');
+              return;
+            }
+            await client.applications.deleteModule(argv['app-id'], argv['module-id']);
+            success(`Module deleted: ${module.name} (${module.slug})`);
+          } catch (err) {
+            handleError(err, argv.verbose);
+          }
+        },
+      )
+      .demandCommand(1, 'Specify a module subcommand: add, list, update, deactivate, delete');
   },
   handler: () => {},
 };

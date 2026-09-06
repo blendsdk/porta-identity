@@ -10,6 +10,7 @@ import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -33,7 +34,7 @@ interface PermShowArgs extends GlobalOptions {
   'permission-id': string;
 }
 
-interface PermArchiveArgs extends GlobalOptions {
+interface PermDeleteArgs extends GlobalOptions {
   'app-id': string;
   'permission-id': string;
 }
@@ -171,9 +172,9 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         },
       )
 
-      .command<PermArchiveArgs>(
-        'archive <app-id> <permission-id>',
-        'Archive a permission',
+      .command<PermDeleteArgs>(
+        'delete <app-id> <permission-id>',
+        'Permanently delete a permission and its role links',
         (y) =>
           y
             .positional('app-id', {
@@ -187,16 +188,27 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               description: 'Permission ID',
             }),
         async (argv) => {
-          try {
-            const client = createClient(argv);
-            await client.permissions.archive(argv['app-id'], argv['permission-id']);
-            success('Permission archived');
+            try {
+              const client = createClient(argv);
+              const permission = await client.permissions.get(
+                argv['app-id'],
+                argv['permission-id'],
+              );
+              const confirmed = await confirm(
+                `Keep permission "${permission.name}" (${permission.slug}), or Delete ${permission.name}? This permanently deletes its role links.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
+              await client.permissions.delete(argv['app-id'], argv['permission-id']);
+              success(`Permission deleted: ${permission.name} (${permission.slug})`);
           } catch (err) {
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Specify a permission subcommand: create, list, show, archive');
+      .demandCommand(1, 'Specify a permission subcommand: create, list, show, delete');
   },
   handler: () => {},
 };

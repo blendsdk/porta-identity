@@ -109,7 +109,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             y
               .option('status', {
                 type: 'string',
-                choices: ['active', 'inactive', 'archived'],
+                choices: ['active', 'inactive'],
                 description: 'Filter by status',
               })
               .option('page', {
@@ -286,8 +286,8 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         )
 
         .command<AppIdArgs>(
-          'archive <id-or-slug>',
-          'Archive an application',
+          'delete <id-or-slug>',
+          'Permanently delete a deployment-global application',
           (y) =>
             y.positional('id-or-slug', {
               type: 'string',
@@ -299,16 +299,15 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const client = createClient(argv);
               const { data: app } = await client.applications.get(argv['id-or-slug']);
 
-              if (!argv.force) {
-                const confirmed = await confirm(`Archive application "${app.name}" (${app.slug})?`);
-                if (!confirmed) {
-                  warn('Operation cancelled');
-                  return;
-                }
+              const confirmed = await confirm(
+                `Keep application "${app.name}" (${app.slug}), or Delete ${app.name}? This permanently deletes its deployment-global modules, clients, roles, permissions, and claims.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
               }
-
-              await client.applications.archive(app.id);
-              success(`Application archived: ${app.name} (${app.slug})`);
+              await client.applications.delete(app.id);
+              success(`Application deleted: ${app.name} (${app.slug})`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
