@@ -313,6 +313,18 @@ export async function arrangeFixtureBaseline(
   if (superAdminOrganization === null || adminApplication === null) {
     throw new Error('Porta bootstrap must create the super-admin organization and application');
   }
+  const adminClients = await listClientsByApplication(adminApplication.id, {
+    page: 1,
+    pageSize: 100,
+  });
+  const adminClient = adminClients.data.find(
+    (candidate) =>
+      candidate.organizationId === superAdminOrganization.id &&
+      candidate.clientName === 'Porta Admin CLI',
+  );
+  if (adminClient === undefined) {
+    throw new Error('Porta bootstrap must create the admin CLI client');
+  }
   entities.push(
     { alias: 'super-admin', id: superAdminOrganization.id },
     { alias: 'porta-admin', id: adminApplication.id },
@@ -352,7 +364,7 @@ export async function arrangeFixtureBaseline(
         adminToken,
         JSON.stringify({
           accountId: user.id,
-          clientId: 'porta-admin-assurance',
+          clientId: adminClient.clientId,
           scope: fixtureProtocolScopes.join(' '),
         }),
       ],
