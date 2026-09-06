@@ -1,0 +1,301 @@
+<style>
+  #porta-admin-grid-concept {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: light-dark(#20242b, #e7edf5);
+  }
+  #porta-admin-grid-concept .porta-terminal {
+    position: relative;
+    overflow: hidden;
+    min-height: 490px;
+    border: 1px solid light-dark(#9aa4b2, #4a5565);
+    border-radius: 8px;
+    background: light-dark(#f4f7fa, #111720);
+    box-shadow: 0 18px 50px light-dark(rgba(21, 31, 44, 0.16), rgba(0, 0, 0, 0.35));
+  }
+  #porta-admin-grid-concept .porta-menu {
+    display: flex;
+    gap: 24px;
+    align-items: center;
+    padding: 9px 14px;
+    border-bottom: 1px solid light-dark(#a9b2bf, #3b4656);
+    background: light-dark(#e4eaf1, #202a37);
+    font-weight: 650;
+  }
+  #porta-admin-grid-concept .porta-menu-current {
+    color: light-dark(#0b5cad, #70b8ff);
+    text-decoration: underline;
+    text-underline-offset: 5px;
+  }
+  #porta-admin-grid-concept .porta-surface {
+    padding: 22px 22px 12px;
+  }
+  #porta-admin-grid-concept .porta-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 18px;
+    margin-bottom: 15px;
+  }
+  #porta-admin-grid-concept .porta-title {
+    margin: 0 0 5px;
+    font: 700 20px/1.2 ui-sans-serif, system-ui, sans-serif;
+  }
+  #porta-admin-grid-concept .porta-count {
+    color: light-dark(#4d5a69, #aeb9c7);
+    white-space: nowrap;
+  }
+  #porta-admin-grid-concept .porta-grid {
+    overflow: hidden;
+    border: 1px solid light-dark(#9ba6b5, #465365);
+    background: light-dark(#ffffff, #151d28);
+  }
+  #porta-admin-grid-concept .porta-grid-row {
+    display: grid;
+    grid-template-columns: minmax(190px, 2fr) minmax(150px, 1.3fr) 110px;
+    min-height: 48px;
+    align-items: center;
+    border-top: 1px solid light-dark(#d8dee7, #313c4c);
+  }
+  #porta-admin-grid-concept .porta-grid-row:first-child {
+    min-height: 40px;
+    border-top: 0;
+    background: light-dark(#e9eef4, #222d3a);
+    color: light-dark(#394555, #c8d1dc);
+    font-weight: 700;
+  }
+  #porta-admin-grid-concept .porta-grid-row:nth-child(odd):not(:first-child) {
+    background: light-dark(#f7f9fb, #18212c);
+  }
+  #porta-admin-grid-concept .porta-grid-row.porta-selected {
+    background: light-dark(#dbeafe, #17395c);
+    box-shadow: inset 4px 0 light-dark(#1769aa, #58adff);
+  }
+  #porta-admin-grid-concept .porta-cell {
+    overflow: hidden;
+    padding: 8px 13px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  #porta-admin-grid-concept .porta-row-name {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    font-weight: 700;
+  }
+  #porta-admin-grid-concept .porta-cursor {
+    width: 10px;
+    color: light-dark(#0b5cad, #70b8ff);
+  }
+  #porta-admin-grid-concept .porta-status {
+    font-weight: 700;
+  }
+  #porta-admin-grid-concept .porta-status-active {
+    color: light-dark(#14723c, #5fd18d);
+  }
+  #porta-admin-grid-concept .porta-status-inactive {
+    color: light-dark(#815b00, #e9ba4b);
+  }
+  #porta-admin-grid-concept .porta-help {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 1px 0;
+    color: light-dark(#4d5a69, #aeb9c7);
+    font-size: 13px;
+  }
+  #porta-admin-grid-concept .porta-footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    margin-top: 18px;
+    padding: 9px 14px;
+    border-top: 1px solid light-dark(#a9b2bf, #3b4656);
+    background: light-dark(#e4eaf1, #202a37);
+    color: light-dark(#3d4856, #c4cfdb);
+  }
+  #porta-admin-grid-concept .porta-dialog-backdrop {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 22px;
+    background: rgba(7, 12, 20, 0.42);
+  }
+  #porta-admin-grid-concept .porta-dialog {
+    width: min(600px, calc(100% - 30px));
+    overflow: hidden;
+    border: 1px solid light-dark(#6e7a89, #6b7789);
+    border-radius: 6px;
+    background: light-dark(#f8fafc, #1a2330);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.38);
+  }
+  #porta-admin-grid-concept .porta-dialog-title {
+    padding: 9px 13px;
+    border-bottom: 1px solid light-dark(#a9b2bf, #3b4656);
+    background: light-dark(#e4eaf1, #202a37);
+    font-weight: 750;
+  }
+  #porta-admin-grid-concept .porta-form {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 12px 14px;
+    padding: 18px;
+  }
+  #porta-admin-grid-concept .porta-form label {
+    padding-top: 8px;
+    font-weight: 700;
+  }
+  #porta-admin-grid-concept .porta-input {
+    min-height: 34px;
+    box-sizing: border-box;
+    border: 1px solid light-dark(#909baa, #526075);
+    border-radius: 3px;
+    background: light-dark(#ffffff, #101721);
+  }
+  #porta-admin-grid-concept .porta-input-large {
+    min-height: 78px;
+  }
+  #porta-admin-grid-concept .porta-dialog-note {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+    color: light-dark(#556271, #aeb9c7);
+    font: 13px/1.4 ui-sans-serif, system-ui, sans-serif;
+  }
+  #porta-admin-grid-concept .porta-dialog-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 9px;
+  }
+  #porta-admin-grid-concept .porta-dialog-button {
+    min-width: 92px;
+    padding: 7px 14px;
+    border: 1px solid light-dark(#7d8998, #5d6a7c);
+    border-radius: 3px;
+    background: light-dark(#eef2f6, #273342);
+    color: inherit;
+    font: inherit;
+  }
+  #porta-admin-grid-concept .porta-dialog-primary {
+    border-color: light-dark(#0b5cad, #58adff);
+    background: light-dark(#dbeafe, #17395c);
+  }
+  @media (max-width: 680px) {
+    #porta-admin-grid-concept .porta-menu { gap: 12px; font-size: 12px; }
+    #porta-admin-grid-concept .porta-grid-row { grid-template-columns: minmax(150px, 2fr) minmax(115px, 1.2fr) 90px; }
+    #porta-admin-grid-concept .porta-help { flex-direction: column; gap: 5px; }
+  }
+</style>
+
+<div id="porta-admin-grid-concept" aria-label="Recommended Porta applications DataGrid design">
+  <section class="porta-terminal">
+    <nav class="porta-menu" aria-label="Porta administration menu">
+      <span>≡</span>
+      <span>Organizations</span>
+      <span>Users</span>
+      <span class="porta-menu-current">Applications</span>
+      <span>OIDC Clients</span>
+    </nav>
+
+    <main class="porta-surface">
+      <header class="porta-heading">
+        <div>
+          <h2 class="porta-title">Applications</h2>
+        </div>
+        <div class="porta-count">3 applications</div>
+      </header>
+
+      <div class="porta-grid" role="table" aria-label="Applications">
+        <div class="porta-grid-row" role="row">
+          <div class="porta-cell" role="columnheader">Name</div>
+          <div class="porta-cell" role="columnheader">Slug</div>
+          <div class="porta-cell" role="columnheader">Status</div>
+        </div>
+        <div class="porta-grid-row porta-selected" role="row">
+          <div class="porta-cell porta-row-name" role="cell"><span class="porta-cursor">›</span>Customer portal</div>
+          <div class="porta-cell" role="cell">customer-portal</div>
+          <div class="porta-cell porta-status porta-status-active" role="cell">● Active</div>
+        </div>
+        <div class="porta-grid-row" role="row">
+          <div class="porta-cell porta-row-name" role="cell"><span class="porta-cursor"></span>Operations</div>
+          <div class="porta-cell" role="cell">operations</div>
+          <div class="porta-cell porta-status porta-status-active" role="cell">● Active</div>
+        </div>
+        <div class="porta-grid-row" role="row">
+          <div class="porta-cell porta-row-name" role="cell"><span class="porta-cursor"></span>Legacy API</div>
+          <div class="porta-cell" role="cell">legacy-api</div>
+          <div class="porta-cell porta-status porta-status-inactive" role="cell">○ Inactive</div>
+        </div>
+      </div>
+
+      <div class="porta-help">
+        <span>↑↓ Move · Enter View details</span>
+        <span>Create: Applications menu · Refresh: F5</span>
+      </div>
+    </main>
+
+    <footer class="porta-footer">
+      <span>F10 Menu</span>
+      <span>Alt-X Quit · Ctrl-R Reauthenticate</span>
+    </footer>
+
+    <div class="porta-dialog-backdrop" data-dialog-backdrop>
+      <section class="porta-dialog" role="dialog" aria-modal="true" aria-labelledby="porta-application-dialog-title">
+        <div class="porta-dialog-title" id="porta-application-dialog-title" data-dialog-title>Create application</div>
+        <div class="porta-form">
+          <label>Name</label><div class="porta-input"></div>
+          <label data-slug-label>Slug</label><div class="porta-input" data-slug-input></div>
+          <label>Description</label><div class="porta-input porta-input-large"></div>
+          <div class="porta-dialog-note" data-dialog-note>ⓘ This application will be available to every organization.</div>
+          <div class="porta-dialog-actions">
+            <button class="porta-dialog-button porta-dialog-primary" type="button" data-dialog-submit>Create</button>
+            <button class="porta-dialog-button" type="button">Cancel</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+</div>
+
+<script>
+  (() => {
+    const root = document.getElementById('porta-admin-grid-concept');
+    const state = { dialog: 'create', showDialog: true };
+    const backdrop = root.querySelector('[data-dialog-backdrop]');
+    const title = root.querySelector('[data-dialog-title]');
+    const note = root.querySelector('[data-dialog-note]');
+    const submit = root.querySelector('[data-dialog-submit]');
+    const slugLabel = root.querySelector('[data-slug-label]');
+    const slugInput = root.querySelector('[data-slug-input]');
+
+    function render() {
+      const creating = state.dialog === 'create';
+      backdrop.style.display = state.showDialog ? 'grid' : 'none';
+      title.textContent = creating ? 'Create application' : 'Edit application';
+      note.textContent = creating
+        ? 'ⓘ This application will be available to every organization.'
+        : 'ⓘ Changes apply wherever this application is used.';
+      submit.textContent = creating ? 'Create' : 'Save';
+      slugLabel.style.display = creating ? 'block' : 'none';
+      slugInput.style.display = creating ? 'block' : 'none';
+    }
+
+    render();
+
+    if (globalThis.Tweak) {
+      const tweak = new Tweak({ container: root, onChange: render });
+      tweak.addSelect(state, 'dialog', {
+        label: 'Dialog state',
+        options: [
+          { label: 'Create application', value: 'create' },
+          { label: 'Edit application', value: 'edit' }
+        ],
+        reference: 'application.dialog'
+      });
+      tweak.addToggle(state, 'showDialog', {
+        label: 'Show dialog',
+        reference: 'application.show-dialog'
+      });
+    }
+  })();
+</script>
