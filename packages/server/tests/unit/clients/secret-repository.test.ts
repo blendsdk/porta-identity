@@ -70,11 +70,11 @@ describe('secret repository', () => {
     });
 
     it.each([
-      ['public', 'active'],
-      ['confidential', 'revoked'],
-    ])('should reject an ineligible %s/%s parent before counting', async (clientType, status) => {
+      ['missing', []],
+      ['public', [{ id: 'client-uuid-1', client_type: 'public', status: 'active' }]],
+    ])('should reject a %s parent before counting', async (_condition, rows) => {
       mockQuery.mockResolvedValueOnce({
-        rows: [{ id: 'client-uuid-1', client_type: clientType, status }],
+        rows,
       });
 
       await expect(

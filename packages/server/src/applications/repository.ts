@@ -683,7 +683,7 @@ export async function captureModuleForDeletion(
     grant_ids: string[];
   }>(
     `WITH owned_permissions AS (
-       SELECT id FROM permissions WHERE application_id = $1 AND module_id = $2
+       SELECT id FROM permissions WHERE module_id = $2
      ), affected_roles AS (
        SELECT DISTINCT link.role_id
        FROM role_permissions link

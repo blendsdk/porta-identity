@@ -468,6 +468,8 @@ export async function captureOrganizationForDeletion(
   const targetResult = await pool.query<OrganizationRow>(
     `SELECT * FROM organizations
      WHERE id::text = $1 OR slug = $1
+     ORDER BY (id::text = $1) DESC
+     LIMIT 1
      FOR UPDATE`,
     [idOrSlug],
   );

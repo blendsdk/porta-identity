@@ -47,7 +47,7 @@ export interface InsertSecretData {
  *
  * @param data - Secret data including the hash
  * @returns The created secret metadata (without hash)
- * @throws ClientNotFoundError when the client is absent, public, or revoked
+ * @throws ClientNotFoundError when the client is absent or public
  * @throws ClientValidationError when the client already has ten active secrets
  */
 export async function insertSecret(data: InsertSecretData): Promise<ClientSecret> {
@@ -58,11 +58,7 @@ export async function insertSecret(data: InsertSecretData): Promise<ClientSecret
       [data.clientId],
     );
     const eligible = parent.rows[0];
-    if (
-      eligible === undefined ||
-      eligible.client_type !== 'confidential' ||
-      eligible.status === 'revoked'
-    ) {
+    if (eligible === undefined || eligible.client_type !== 'confidential') {
       throw new ClientNotFoundError(data.clientId);
     }
     const active = await db.query<{ count: string }>(

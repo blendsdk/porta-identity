@@ -165,6 +165,22 @@ describe('immutable record deletion integration contract', () => {
     expect(await revoked(otherSession)).toBe(false);
   });
 
+  it('treats a UUID-shaped organization identifier as an ID when another organization uses it as a slug', async () => {
+    const remove = await deleteOrganization();
+    const targetId = randomUUID();
+    const slugOwnerId = randomUUID();
+    await getPool().query(
+      `INSERT INTO organizations (id, name, slug)
+       VALUES ($1::uuid, 'Slug Owner', $2::text), ($2::uuid, 'ID Owner', 'id-owner')`,
+      [slugOwnerId, targetId],
+    );
+
+    await inMutation(remove, targetId);
+
+    expect(await scalar('SELECT COUNT(*) FROM organizations WHERE id = $1', [targetId])).toBe(0);
+    expect(await scalar('SELECT COUNT(*) FROM organizations WHERE id = $1', [slugOwnerId])).toBe(1);
+  });
+
   it('deletes an application graph across organizations and revokes exactly affected users', async () => {
     const remove = await deleteApplication();
     const orgA = await createTestOrganization();
@@ -266,6 +282,25 @@ describe('immutable record deletion integration contract', () => {
     expect(await scalar('SELECT COUNT(*) FROM roles WHERE id = $1', [role.id])).toBe(1);
     expect(await revoked(affectedSession)).toBe(true);
     expect(await revoked(unrelatedSession)).toBe(false);
+  });
+
+  it('revokes users affected by every permission cascaded through a deleted module', async () => {
+    const remove = await deleteModule();
+    const org = await createTestOrganization();
+    const moduleApplication = await createTestApplication();
+    const permissionApplication = await createTestApplication();
+    const moduleId = await createModule(moduleApplication.id);
+    const affected = await createTestUser(org.id);
+    const role = await createTestRole(permissionApplication.id);
+    const permission = await createTestPermission(permissionApplication.id, { moduleId });
+    await assignRole(affected.id, role.id);
+    await grantPermission(role.id, permission.id);
+    const sessionId = await track(affected.id, org.id);
+
+    await inMutation(remove, moduleApplication.id, moduleId, affected.id);
+
+    expect(await scalar('SELECT COUNT(*) FROM permissions WHERE id = $1', [permission.id])).toBe(0);
+    expect(await revoked(sessionId)).toBe(true);
   });
 
   it('deletes a client, its secrets, and identifiable protocol state without revoking user sessions', async () => {
