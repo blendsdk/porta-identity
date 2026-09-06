@@ -10,7 +10,7 @@ import type {
 
 const ORGANIZATION_SLUG = /^[a-z0-9][a-z0-9-]{1,98}[a-z0-9]$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ORGANIZATION_STATUSES = new Set(['active', 'suspended', 'archived']);
+const ORGANIZATION_STATUSES = new Set(['active', 'suspended']);
 
 /** Narrows an untrusted value to a supported organization lifecycle state. */
 function isOrganizationStatus(value: unknown): value is AdminOrganizationContext['status'] {
@@ -48,7 +48,8 @@ export function validateOrganizationContext(value: unknown): AdminOrganizationCo
     containsTerminalControl(candidate.name) ||
     typeof candidate.slug !== 'string' ||
     !ORGANIZATION_SLUG.test(candidate.slug) ||
-    !isOrganizationStatus(candidate.status)
+    !isOrganizationStatus(candidate.status) ||
+    (candidate.isSuperAdmin !== undefined && typeof candidate.isSuperAdmin !== 'boolean')
   ) {
     return undefined;
   }
@@ -57,6 +58,7 @@ export function validateOrganizationContext(value: unknown): AdminOrganizationCo
     name: candidate.name,
     slug: candidate.slug,
     status: candidate.status,
+    ...(candidate.isSuperAdmin === true ? { isSuperAdmin: true } : {}),
   };
 }
 
@@ -102,6 +104,8 @@ export interface AdminOrganizationOperations {
   readonly create: (
     input: CreateOrganizationInput,
   ) => Promise<AdminOrganizationResult<AdminOrganizationContext>>;
+  /** Permanently deletes one organization. */
+  readonly delete: (id: string) => Promise<AdminOrganizationResult<void>>;
 }
 
 /**
@@ -119,7 +123,7 @@ export interface AdminOrganizationOperations {
  * ```
  */
 export function createAdminOrganizationOperations(
-  domain: () => Pick<OrganizationsDomain, 'listAll' | 'create'>,
+  domain: () => Pick<OrganizationsDomain, 'listAll' | 'create' | 'delete'>,
 ): AdminOrganizationOperations {
   return {
     async listAll() {
@@ -188,6 +192,15 @@ export function createAdminOrganizationOperations(
         return organization
           ? { kind: 'success', value: organization }
           : { kind: 'failure', failure: 'invalid-response' };
+      } catch (error) {
+        return mapOrganizationError(error);
+      }
+    },
+    async delete(id) {
+      if (!UUID.test(id)) return { kind: 'failure', failure: 'validation' };
+      try {
+        await domain().delete(id);
+        return { kind: 'success', value: undefined };
       } catch (error) {
         return mapOrganizationError(error);
       }

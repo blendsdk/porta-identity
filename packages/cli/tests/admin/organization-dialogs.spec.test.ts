@@ -23,12 +23,6 @@ const organizations = [
     slug: 'suspended-tenant',
     status: 'suspended' as const,
   },
-  {
-    id: '33333333-3333-4333-8333-333333333333',
-    name: 'Archived Tenant',
-    slug: 'archived-tenant',
-    status: 'archived' as const,
-  },
 ];
 
 /** Reads visible characters from a real JSVision frame buffer. */
@@ -194,10 +188,8 @@ describe('organization chooser', () => {
 
     const active = frame.indexOf('Crème 東京 (creme-tokyo) [active]');
     const suspended = frame.indexOf('Suspended Tenant (suspended-tenant) [suspended]');
-    const archived = frame.indexOf('Archived Tenant (archived-tenant) [archived]');
     expect(active).toBeGreaterThanOrEqual(0);
     expect(suspended).toBeGreaterThan(active);
-    expect(archived).toBeGreaterThan(suspended);
 
     press(application, 's', { alt: true });
     await settle();

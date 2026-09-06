@@ -108,11 +108,12 @@ function applicationDomain(overrides: Record<string, unknown> = {}): Record<stri
     update: vi.fn(),
     activate: vi.fn(),
     deactivate: vi.fn(),
-    archive: vi.fn(),
+    delete: vi.fn(),
     listModules: vi.fn(),
     addModule: vi.fn(),
     updateModule: vi.fn(),
     deactivateModule: vi.fn(),
+    deleteModule: vi.fn(),
     ...overrides,
   };
 }
@@ -126,7 +127,7 @@ function clientDomain(overrides: Record<string, unknown> = {}): Record<string, u
     update: vi.fn(),
     activate: vi.fn(),
     deactivate: vi.fn(),
-    revoke: vi.fn(),
+    delete: vi.fn(),
     listSecrets: vi.fn(),
     generateSecret: vi.fn(),
     revokeSecret: vi.fn(),
@@ -148,15 +149,18 @@ function authenticated(overrides: Record<string, unknown> = {}): Record<string, 
       canInviteUsers: false,
       canUpdateUsers: false,
       canManageUserLifecycle: false,
-      canPurgeUsers: false,
+      canDeleteOrganizations: false,
+      canDeleteUsers: false,
       canReadApplications: true,
       canCreateApplications: true,
       canUpdateApplications: true,
-      canArchiveApplications: true,
+      canDeleteApplications: true,
+      canDeleteModules: true,
       canReadClients: true,
       canCreateClients: true,
       canUpdateClients: true,
-      canRevokeClients: true,
+      canDeleteClients: true,
+      canRevokeClientSecrets: true,
     },
     organization: {
       id: organizationId,
@@ -195,7 +199,6 @@ describe('global application administration workflow', () => {
     const rows = [
       application({ name: 'n'.repeat(255), description: 'd'.repeat(2_000), status: 'active' }),
       application({ id: '77777777-7777-4777-8777-777777777777', status: 'inactive' }),
-      application({ id: '88888888-8888-4888-8888-888888888888', status: 'archived' }),
     ];
     const modules = [
       applicationModule({ status: 'active' }),
@@ -301,20 +304,21 @@ describe('global application administration workflow', () => {
   it('parses every application capability independently and never organization-scopes it', () => {
     const capabilities = validateAdminCapabilities(
       [],
-      ['admin:app:read', 'admin:app:create', 'admin:app:update', 'admin:app:archive'],
+      ['admin:app:read', 'admin:app:create', 'admin:app:update', 'admin:app:delete', 'admin:module:delete'],
     );
 
     expect(capabilities).toMatchObject({
       canReadApplications: true,
       canCreateApplications: true,
       canUpdateApplications: true,
-      canArchiveApplications: true,
+      canDeleteApplications: true,
+      canDeleteModules: true,
     });
     expect(validateAdminCapabilities([], ['admin:app:read', 'admin:app:delete'])).toMatchObject({
       canReadApplications: true,
       canCreateApplications: false,
       canUpdateApplications: false,
-      canArchiveApplications: false,
+      canDeleteApplications: true,
     });
   });
 
@@ -470,14 +474,6 @@ describe('selected-organization OIDC client administration workflow', () => {
         tokenEndpointAuthMethod: 'none',
         requirePkce: true,
       }),
-      client({
-        id: '88888888-8888-4888-8888-888888888888',
-        status: 'revoked',
-        clientType: 'public',
-        applicationType: 'native',
-        tokenEndpointAuthMethod: 'none',
-        requirePkce: true,
-      }),
     ];
     const secrets = [
       secret({ status: 'active' }),
@@ -582,13 +578,14 @@ describe('selected-organization OIDC client administration workflow', () => {
     expect(
       validateAdminCapabilities(
         [],
-        ['admin:client:read', 'admin:client:create', 'admin:client:update', 'admin:client:revoke'],
+        ['admin:client:read', 'admin:client:create', 'admin:client:update', 'admin:client:revoke', 'admin:client:delete'],
       ),
     ).toMatchObject({
       canReadClients: true,
       canCreateClients: false,
       canUpdateClients: true,
-      canRevokeClients: true,
+      canDeleteClients: true,
+      canRevokeClientSecrets: true,
     });
     expect(validateAdminCapabilities([], ['admin:client:create', 'admin:app:read'])).toMatchObject({
       canReadApplications: true,

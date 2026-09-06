@@ -127,20 +127,6 @@ Reactivates a suspended organization.
 
 **Response:** `200 OK`
 
-## Archive Organization
-
-```http
-POST /api/admin/organizations/:id/archive
-```
-
-Permanently archives the organization. **This action is irreversible.**
-
-**Response:** `200 OK`
-
-::: danger
-Archiving is permanent. An archived organization cannot be reactivated.
-:::
-
 ## Update Branding
 
 ```http
@@ -167,70 +153,26 @@ GET /api/admin/organizations/:id/branding
 
 **Response:** `200 OK` — Branding fields for the organization.
 
-## Destroy Organization
+## Delete Organization
 
 ```http
 DELETE /api/admin/organizations/:idOrSlug
 ```
 
-Permanently hard-deletes an organization and all child entities via PostgreSQL CASCADE. The super-admin organization is protected and cannot be deleted.
+Permanently deletes an organization and its owned users, clients, assignments, credentials, and
+security data in one database transaction. Affected sessions are revoked. The super-admin
+organization is protected and cannot be deleted.
 
-**Permission:** `ORG_ARCHIVE`
+**Permission:** `admin:org:delete`
 
-**Query parameters:**
+**Response:** `204 No Content`
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `dry-run` | boolean | If `true`, return cascade counts without deleting |
-
-### Dry Run Response
-
-```http
-DELETE /api/admin/organizations/acme?dry-run=true
-```
-
-**Response:** `200 OK`
-
-```json
-{
-  "dryRun": true,
-  "organization": { "id": "...", "name": "Acme Corp", "slug": "acme", "..." },
-  "cascadeCounts": {
-    "applications": 3,
-    "clients": 5,
-    "users": 42,
-    "roles": 8,
-    "permissions": 16,
-    "claim_definitions": 4
-  }
-}
-```
-
-### Destroy Response
-
-```http
-DELETE /api/admin/organizations/acme
-```
-
-**Response:** `200 OK`
-
-```json
-{
-  "organization": { "id": "...", "name": "Acme Corp", "slug": "acme", "..." },
-  "cascadeCounts": {
-    "applications": 3,
-    "clients": 5,
-    "users": 42,
-    "roles": 8,
-    "permissions": 16,
-    "claim_definitions": 4
-  }
-}
-```
+The retained audit event follows the configured audit retention policy. It is not a surviving
+organization record.
 
 **Error responses:**
 
 | Status | Condition |
 |--------|-----------|
-| `400` | Attempting to destroy the super-admin organization |
+| `400` | Attempting to delete the super-admin organization |
 | `404` | Organization not found |

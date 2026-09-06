@@ -519,7 +519,7 @@ export function createAdminUserOperations(
     | 'unlock'
     | 'deactivate'
     | 'reactivate'
-    | 'purge'
+    | 'delete'
   >,
 ): AdminUserOperations {
   return {
@@ -688,9 +688,9 @@ export function createAdminUserOperations(
       UUID.test(organizationId) && UUID.test(userId)
         ? voidMutation(() => domain().reactivate(organizationId, userId))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    purge: (organizationId, userId) =>
+    delete: (organizationId, userId) =>
       UUID.test(organizationId) && UUID.test(userId)
-        ? voidMutation(() => domain().purge(organizationId, userId))
+        ? voidMutation(() => domain().delete(organizationId, userId))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
   };
 }

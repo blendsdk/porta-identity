@@ -57,14 +57,18 @@ porta org activate --id <org-id>
 
 Reactivates a suspended organization.
 
-## `porta org archive`
+## `porta org delete`
 
 ```bash
-porta org archive --id <org-id>
+porta org delete <id-or-slug>
 ```
 
-::: danger
-Archiving is **permanent** and cannot be undone. The CLI will prompt for confirmation unless `--force` is used.
+Permanently deletes the organization and its owned users, clients, and security data. The CLI
+always asks whether to keep or delete the named organization. There is no record-deletion
+`--force` option.
+
+::: danger Irreversible
+Deletion cannot be undone. The super-admin organization cannot be deleted.
 :::
 
 ## `porta org branding`
@@ -87,47 +91,3 @@ porta org branding --id <org-id> \
 | `--primary-color` | Primary accent color (hex) |
 | `--company-name` | Display name on login pages |
 | `--custom-css` | Custom CSS for login pages |
-
-## `porta org destroy`
-
-Permanently destroy an organization and all its child entities (applications, clients, users, roles, permissions, claim definitions). Uses PostgreSQL CASCADE deletion. The super-admin organization is protected and cannot be destroyed.
-
-```bash
-# Preview what will be destroyed (no changes)
-porta org destroy <id-or-slug> --dry-run
-
-# Destroy with type-to-confirm safety prompt
-porta org destroy acme-corp
-
-# Skip confirmation (for scripting)
-porta org destroy acme-corp --force
-```
-
-| Flag | Description |
-|------|-------------|
-| `--dry-run` | Preview cascade counts without deleting |
-| `--force` | Skip the type-to-confirm safety prompt |
-
-### Cascade Preview
-
-The command always shows what will be destroyed before prompting:
-
-```
-⚠️  This will PERMANENTLY destroy the following:
-
-  Organization:      Acme Corp (acme-corp)
-  Applications:      3
-  Clients:           5
-  Users:             42
-  Roles:             8
-  Permissions:       16
-  Claim Definitions: 4
-
-Type the organization slug "acme-corp" to confirm destruction:
-```
-
-### Safety
-
-- The super-admin organization **cannot** be destroyed (enforced at both SQL and application level)
-- An audit log entry is written **before** deletion (the organization ID is preserved in the audit trail)
-- The `--force` flag skips the interactive prompt but still requires admin authentication and the `ORG_ARCHIVE` permission

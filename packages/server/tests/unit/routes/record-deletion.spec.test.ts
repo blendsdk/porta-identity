@@ -174,7 +174,7 @@ describe('record deletion Admin API specification', () => {
       expect(routes).not.toContain(`'${obsoletePath}'`);
     }
 
-    expect(routes).toMatch(/router\.delete\(\s*'\/:id\/secrets\/:secretId'/);
+    expect(routes).toMatch(/router\.post\(\s*'\/:id\/secrets\/:secretId\/revoke'/);
     expect(routes).toContain('ADMIN_PERMISSIONS.CLIENT_REVOKE');
     expect(routes).toMatch(/router\.delete\(\s*'\/:sessionId'/);
     expect(routes).toContain('ADMIN_PERMISSIONS.SESSION_REVOKE');

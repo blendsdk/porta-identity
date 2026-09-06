@@ -72,7 +72,7 @@ function authenticatedState(
     readonly id: string;
     readonly name: string;
     readonly slug: string;
-    readonly status: 'active' | 'suspended' | 'archived';
+    readonly status: 'active' | 'suspended';
   },
   capabilities = noOrganizationCapabilities,
 ): AdminConnectionState {
@@ -161,7 +161,7 @@ describe('organization workflow ownership', () => {
     });
   });
 
-  it.each(['active', 'suspended', 'archived'] as const)(
+  it.each(['active', 'suspended'] as const)(
     'should switch explicitly to a validated %s organization in memory',
     async (status) => {
       // Explicit keyboard selection accepts every valid lifecycle status and changes only the in-memory context.

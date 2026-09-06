@@ -10,7 +10,7 @@ const noUserCapabilities = {
   canInviteUsers: false,
   canUpdateUsers: false,
   canManageUserLifecycle: false,
-  canPurgeUsers: false,
+  canDeleteUsers: false,
 };
 
 const allUserCapabilities = {
@@ -19,29 +19,35 @@ const allUserCapabilities = {
   canInviteUsers: true,
   canUpdateUsers: true,
   canManageUserLifecycle: true,
-  canPurgeUsers: true,
+  canDeleteUsers: true,
 };
 
 const noApplicationClientCapabilities = {
+  canDeleteOrganizations: false,
   canReadApplications: false,
   canCreateApplications: false,
   canUpdateApplications: false,
-  canArchiveApplications: false,
+  canDeleteApplications: false,
+  canDeleteModules: false,
   canReadClients: false,
   canCreateClients: false,
   canUpdateClients: false,
-  canRevokeClients: false,
+  canDeleteClients: false,
+  canRevokeClientSecrets: false,
 };
 
 const allApplicationClientCapabilities = {
+  canDeleteOrganizations: true,
   canReadApplications: true,
   canCreateApplications: true,
   canUpdateApplications: true,
-  canArchiveApplications: true,
+  canDeleteApplications: true,
+  canDeleteModules: true,
   canReadClients: true,
   canCreateClients: true,
   canUpdateClients: true,
-  canRevokeClients: true,
+  canDeleteClients: true,
+  canRevokeClientSecrets: true,
 };
 
 const credentials = {
@@ -388,7 +394,7 @@ describe('live administration capabilities', () => {
     ['admin:user:invite', 'canInviteUsers'],
     ['admin:user:update', 'canUpdateUsers'],
     ['admin:user:suspend', 'canManageUserLifecycle'],
-    ['admin:user:archive', 'canPurgeUsers'],
+    ['admin:user:delete', 'canDeleteUsers'],
   ])('should map exact %s permission to only %s', async (permission, enabledCapability) => {
     // Each exact user permission enables one independently evaluated application capability.
     const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
@@ -398,7 +404,7 @@ describe('live administration capabilities', () => {
       canInviteUsers: false,
       canUpdateUsers: false,
       canManageUserLifecycle: false,
-      canPurgeUsers: false,
+      canDeleteUsers: false,
       [enabledCapability]: true,
     };
 
@@ -415,12 +421,12 @@ describe('live administration capabilities', () => {
       canInviteUsers: true,
       canUpdateUsers: true,
       canManageUserLifecycle: true,
-      canPurgeUsers: true,
+      canDeleteUsers: true,
     });
   });
 
   it.each([
-    ['unknown permission', [], ['admin:user:delete'], {}],
+    ['unknown permission', [], ['admin:user:unknown'], {}],
     ['control-bearing permission', [], ['admin:user:\u0000read'], {}],
     [
       'malformed permissions claim',
@@ -432,7 +438,7 @@ describe('live administration capabilities', () => {
         canInviteUsers: true,
         canUpdateUsers: true,
         canManageUserLifecycle: true,
-        canPurgeUsers: true,
+        canDeleteUsers: true,
       },
     ],
     [
@@ -455,7 +461,7 @@ describe('live administration capabilities', () => {
         canInviteUsers: false,
         canUpdateUsers: false,
         canManageUserLifecycle: false,
-        canPurgeUsers: false,
+        canDeleteUsers: false,
         ...granted,
       });
     },

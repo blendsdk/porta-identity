@@ -1,7 +1,7 @@
 /** Immutable selected-organization OIDC client values retained by the terminal application. */
 
 /** Supported OIDC client lifecycle values. */
-export type AdminClientStatus = 'active' | 'inactive' | 'revoked';
+export type AdminClientStatus = 'active' | 'inactive';
 
 /** Allowlisted OIDC client projection safe for terminal presentation. */
 export interface AdminClient {

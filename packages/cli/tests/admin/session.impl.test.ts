@@ -25,18 +25,21 @@ const noUserCapabilities = {
   canInviteUsers: false,
   canUpdateUsers: false,
   canManageUserLifecycle: false,
-  canPurgeUsers: false,
+  canDeleteUsers: false,
 };
 
 const noApplicationClientCapabilities = {
+  canDeleteOrganizations: false,
   canReadApplications: false,
   canCreateApplications: false,
   canUpdateApplications: false,
-  canArchiveApplications: false,
+  canDeleteApplications: false,
+  canDeleteModules: false,
   canReadClients: false,
   canCreateClients: false,
   canUpdateClients: false,
-  canRevokeClients: false,
+  canDeleteClients: false,
+  canRevokeClientSecrets: false,
 };
 
 describe('admin session implementation edges', () => {

@@ -11,13 +11,19 @@ import {
   showCreateUserDialog,
   showEditUserDialog,
   showInviteUserDialog,
-  showPurgeUserDialog,
+  showDeleteUserDialog,
   showSetUserPasswordDialog,
   showUserConfirmationDialog,
   showUserReasonDialog,
 } from '../../src/admin/user-dialogs.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
+const organization = {
+  id: organizationId,
+  name: 'Example Organization',
+  slug: 'example-organization',
+  status: 'active' as const,
+};
 const detail: AdminUserDetail = {
   id: '22222222-2222-4222-8222-222222222222',
   organizationId,
@@ -110,7 +116,12 @@ describe('user dialogs', () => {
           canInviteUsers: true,
           canUpdateUsers: true,
           canManageUserLifecycle: true,
-          canPurgeUsers: true,
+          canDeleteOrganizations: true,
+          canDeleteUsers: true,
+          canDeleteApplications: false,
+          canDeleteModules: false,
+          canDeleteClients: false,
+          canRevokeClientSecrets: false,
         },
       },
       false,
@@ -163,7 +174,12 @@ describe('user dialogs', () => {
           canInviteUsers: true,
           canUpdateUsers: true,
           canManageUserLifecycle: true,
-          canPurgeUsers: true,
+          canDeleteOrganizations: true,
+          canDeleteUsers: true,
+          canDeleteApplications: false,
+          canDeleteModules: false,
+          canDeleteClients: false,
+          canRevokeClientSecrets: false,
         },
       },
       false,
@@ -511,23 +527,29 @@ describe('user dialogs', () => {
     await expect(suspend).resolves.toEqual({ kind: 'suspend' });
   });
 
-  it('should initially focus Cancel and require the distinct permanent purge action', async () => {
+  it('should initially focus Keep and require the named Delete action', async () => {
     const application = createApplication({ viewport: { width: 80, height: 24 } });
-    const operation = showPurgeUserDialog(application, new AbortController().signal, detail.email);
+    const operation = showDeleteUserDialog(
+      application,
+      new AbortController().signal,
+      organization,
+      detail,
+    );
     await settle();
     const form = activeForm(application);
     const focused = application.loop.getFocused();
     expect(focused).toBeInstanceOf(Button);
-    expect((focused as Button).activation.label).toBe('Cancel');
-    expect(form.buttons.map((button) => button.activation.label)).toContain('Purge permanently');
+    expect((focused as Button).activation.label).toBe('Keep');
+    expect(form.buttons.map((button) => button.activation.label)).toContain(`Delete ${detail.email}`);
     application.loop.endModal('yes');
-    await expect(operation).resolves.toEqual({ kind: 'purge' });
+    await expect(operation).resolves.toEqual({ kind: 'delete' });
 
     const cancelApplication = createApplication({ viewport: { width: 80, height: 24 } });
-    const cancelled = showPurgeUserDialog(
+    const cancelled = showDeleteUserDialog(
       cancelApplication,
       new AbortController().signal,
-      detail.email,
+      organization,
+      detail,
     );
     await settle();
     cancelApplication.loop.endModal('cancel');

@@ -68,7 +68,7 @@ function domain(overrides: Record<string, unknown> = {}) {
     unlock: vi.fn(),
     deactivate: vi.fn(),
     reactivate: vi.fn(),
-    purge: vi.fn(),
+    delete: vi.fn(),
     ...overrides,
   };
 }

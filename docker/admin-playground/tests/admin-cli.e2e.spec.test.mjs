@@ -67,8 +67,8 @@ test('should authenticate the packed CLI and restore its terminal when the isola
   assert.equal(result.testUserWasAbsentAfterCleanup, true);
   assert.equal(result.testOrganizationWasAbsentAfterCleanup, true);
   assert.equal(result.testClientAndSecretsWereAbsentAfterCleanup, true);
-  assert.equal(result.testModuleWasDeactivatedAfterCleanup, true);
-  assert.equal(result.testApplicationWasArchivedAfterCleanup, true);
+  assert.equal(result.testModuleWasDeletedAfterCleanup, true);
+  assert.equal(result.testApplicationWasDeletedAfterCleanup, true);
   assert.equal(result.exitCode, 0);
   assert.equal(result.terminalWasRestored, true);
   assert.equal(result.alternateScreenWasEnteredExactlyOnce, true);

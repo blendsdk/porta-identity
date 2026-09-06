@@ -57,8 +57,8 @@ export interface AdminApplicationController {
     applicationId: string,
     confirm: (signal: AbortSignal) => Promise<boolean>,
   ) => Promise<void>;
-  /** Confirms and permanently archives one application at most once. */
-  readonly archive: (
+  /** Confirms and permanently deletes one application at most once. */
+  readonly delete: (
     applicationId: string,
     confirm: (signal: AbortSignal) => Promise<boolean>,
   ) => Promise<void>;
@@ -76,6 +76,12 @@ export interface AdminApplicationController {
     moduleId: string,
     confirm: (signal: AbortSignal) => Promise<boolean>,
   ) => Promise<void>;
+  /** Confirms module deletion and reloads authoritative same-parent detail. */
+  readonly deleteModule: (
+    applicationId: string,
+    moduleId: string,
+    confirm: (signal: AbortSignal) => Promise<boolean>,
+  ) => Promise<void>;
   /** Cancels the current read, confirmation, or mutation. */
   readonly cancelActiveOperation: () => void;
   /** Cancels ownership when the terminal enters resize-only recovery. */
@@ -86,9 +92,7 @@ export interface AdminApplicationController {
 
 /** Application capability names used by the controller's fresh dispatch checks. */
 type ApplicationCapability =
-  | 'canCreateApplications'
-  | 'canUpdateApplications'
-  | 'canArchiveApplications';
+  'canCreateApplications' | 'canUpdateApplications' | 'canDeleteApplications' | 'canDeleteModules';
 
 /** Creates the small global application workflow controller. */
 export function createAdminApplicationController(
@@ -160,10 +164,6 @@ export function createAdminApplicationController(
       recoveryRequired = true;
       options.setRecoveryRequired?.(true);
       publish({ kind: 'indeterminate', ...(projection ? { previous: projection } : {}) });
-      return false;
-    }
-    if (result.kind === 'failure') {
-      publishFailure(result);
       return false;
     }
     return result.kind === 'success';
@@ -271,11 +271,10 @@ export function createAdminApplicationController(
   const reload = (): Promise<void> =>
     projection?.kind === 'detail' ? select(projection.application.id) : load();
 
-  /** Checks that a module mutation still targets the selected non-archived parent. */
+  /** Checks that a module mutation still targets the selected parent. */
   const ownsMutableModuleParent = (applicationId: string, moduleId?: string): boolean =>
     projection?.kind === 'detail' &&
     projection.application.id === applicationId &&
-    projection.application.status !== 'archived' &&
     (moduleId === undefined ||
       projection.modules.some(
         (module) => module.id === moduleId && module.applicationId === applicationId,
@@ -284,10 +283,13 @@ export function createAdminApplicationController(
   /** Runs one application mutation with fresh capability and single-operation ownership. */
   const mutate = async (
     capability: ApplicationCapability,
-    invoke: (operations: Partial<AdminApplicationOperations>) => Promise<AdminApplicationMutationResult>,
+    invoke: (
+      operations: Partial<AdminApplicationOperations>,
+    ) => Promise<AdminApplicationMutationResult>,
     reload: 'list' | { readonly applicationId: string },
     confirm?: (signal: AbortSignal) => Promise<boolean>,
     precondition?: () => boolean,
+    reloadOnFailure = false,
   ): Promise<void> => {
     if (disposed || operation || recoveryRequired) return;
     const initial = options.readState();
@@ -302,7 +304,10 @@ export function createAdminApplicationController(
     operation = controller;
     const capturedGeneration = ++generation;
     try {
-      if (confirm && (!(await confirm(controller.signal)) || !owns(capturedGeneration, controller))) {
+      if (
+        confirm &&
+        (!(await confirm(controller.signal)) || !owns(capturedGeneration, controller))
+      ) {
         return;
       }
       const current = options.readState();
@@ -318,6 +323,19 @@ export function createAdminApplicationController(
       mutationDispatched = true;
       const result = await invoke(operations);
       if (!owns(capturedGeneration, controller)) return;
+      if (result.kind === 'failure') {
+        mutationDispatched = false;
+        if (reloadOnFailure) {
+          const selectedApplicationId =
+            projection?.kind === 'detail' ? projection.application.id : undefined;
+          operation = undefined;
+          if (selectedApplicationId) await select(selectedApplicationId);
+          else await load();
+          if (!projection) return;
+        }
+        publishFailure(result);
+        return;
+      }
       if (!finishMutation(result)) return;
       operation = undefined;
       if (reload === 'list') await load();
@@ -349,16 +367,14 @@ export function createAdminApplicationController(
     create: (input) =>
       mutate(
         'canCreateApplications',
-        (operations) =>
-          operations.create?.(input) ?? Promise.resolve({ kind: 'cancelled' }),
+        (operations) => operations.create?.(input) ?? Promise.resolve({ kind: 'cancelled' }),
         'list',
       ),
     update: (applicationId, input, etag) =>
       mutate(
         'canUpdateApplications',
         (operations) =>
-          operations.update?.(applicationId, input, etag) ??
-          Promise.resolve({ kind: 'cancelled' }),
+          operations.update?.(applicationId, input, etag) ?? Promise.resolve({ kind: 'cancelled' }),
         { applicationId },
       ),
     activate: (applicationId, confirm) =>
@@ -377,13 +393,15 @@ export function createAdminApplicationController(
         { applicationId },
         confirm,
       ),
-    archive: (applicationId, confirm) =>
+    delete: (applicationId, confirm) =>
       mutate(
-        'canArchiveApplications',
+        'canDeleteApplications',
         (operations) =>
-          operations.archive?.(applicationId) ?? Promise.resolve({ kind: 'cancelled' }),
-        { applicationId },
+          operations.delete?.(applicationId) ?? Promise.resolve({ kind: 'cancelled' }),
+        'list',
         confirm,
+        undefined,
+        true,
       ),
     addModule: (applicationId, input) =>
       mutate(
@@ -413,6 +431,17 @@ export function createAdminApplicationController(
         { applicationId },
         confirm,
         () => ownsMutableModuleParent(applicationId, moduleId),
+      ),
+    deleteModule: (applicationId, moduleId, confirm) =>
+      mutate(
+        'canDeleteModules',
+        (operations) =>
+          operations.deleteModule?.(applicationId, moduleId) ??
+          Promise.resolve({ kind: 'cancelled' }),
+        { applicationId },
+        confirm,
+        () => ownsMutableModuleParent(applicationId, moduleId),
+        true,
       ),
     cancelActiveOperation: () => cancel(true),
     handleRecoverableGeometry(recoverable) {

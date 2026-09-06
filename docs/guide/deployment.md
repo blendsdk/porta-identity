@@ -917,7 +917,7 @@ Requests exceeding these limits receive a `413 Payload Too Large` response.
 
 ## GDPR Compliance
 
-Porta provides built-in support for GDPR data portability (Article 20) and right to erasure (Article 17).
+Porta provides data portability and physical account deletion operations.
 
 ### Data Export (Article 20)
 
@@ -933,22 +933,26 @@ GET /api/admin/organizations/:orgId/users/:userId/export
 
 The export includes: profile data, organization membership, role assignments, custom claim values, audit log entries, 2FA enrollment status, and active OIDC sessions.
 
-### Data Purge (Article 17)
+### User Deletion
 
-Permanently anonymize and delete a user's personal data:
+Permanently delete a user and owned identity and security data:
 
 ```bash
 # Via CLI (requires confirmation)
-porta user purge --org-id <id> --user-id <id>
+porta user delete <org-id> <user-id>
 
 # Via API
-POST /api/admin/organizations/:orgId/users/:userId/purge
+DELETE /api/admin/organizations/:orgId/users/:userId
 ```
 
-The purge anonymizes the user record (replaces email, name, etc. with anonymized values) and deletes all associated data (roles, claims, tokens, 2FA enrollment, audit metadata) in a single database transaction.
+The operation deletes the user record and owned roles, claims, credentials, recovery data, and
+server-backed sessions in one database transaction. Audit history is retained separately according
+to the configured retention policy and may identify the deleted user.
 
 ::: danger
-**Data purge is irreversible.** The CLI prompts for confirmation; use `--force` to skip. Super-admin users cannot be purged as a safety measure.
+**User deletion is irreversible.** The CLI always asks whether to keep or delete the named user.
+A control-plane user cannot be deleted when that would leave no other active user with the exact
+built-in `porta-super-admin` role.
 :::
 
 ### Audit Retention

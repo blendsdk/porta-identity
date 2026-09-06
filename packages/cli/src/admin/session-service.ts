@@ -275,18 +275,22 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
     canUpdateUsers: isLegacyAdministrator || validPermissions.includes('admin:user:update'),
     canManageUserLifecycle:
       isLegacyAdministrator || validPermissions.includes('admin:user:suspend'),
-    canPurgeUsers: isLegacyAdministrator || validPermissions.includes('admin:user:archive'),
+    canDeleteOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:delete'),
+    canDeleteUsers: isLegacyAdministrator || validPermissions.includes('admin:user:delete'),
     canReadApplications: isLegacyAdministrator || validPermissions.includes('admin:app:read'),
     canCreateApplications: isLegacyAdministrator || validPermissions.includes('admin:app:create'),
     canUpdateApplications: isLegacyAdministrator || validPermissions.includes('admin:app:update'),
-    canArchiveApplications: isLegacyAdministrator || validPermissions.includes('admin:app:archive'),
+    canDeleteApplications: isLegacyAdministrator || validPermissions.includes('admin:app:delete'),
+    canDeleteModules: isLegacyAdministrator || validPermissions.includes('admin:module:delete'),
     canReadClients: isLegacyAdministrator || validPermissions.includes('admin:client:read'),
     canCreateClients:
       isLegacyAdministrator ||
       (validPermissions.includes('admin:client:create') &&
         validPermissions.includes('admin:app:read')),
     canUpdateClients: isLegacyAdministrator || validPermissions.includes('admin:client:update'),
-    canRevokeClients: isLegacyAdministrator || validPermissions.includes('admin:client:revoke'),
+    canDeleteClients: isLegacyAdministrator || validPermissions.includes('admin:client:delete'),
+    canRevokeClientSecrets:
+      isLegacyAdministrator || validPermissions.includes('admin:client:revoke'),
   };
 }
 

@@ -25,13 +25,13 @@ per-status counts discovered for that table.
 ```json
 {
   "data": {
-    "organizations": { "total": 15, "active": 12, "suspended": 2, "archived": 1 },
+    "organizations": { "total": 14, "active": 12, "suspended": 2 },
     "users": {
       "total": 342, "active": 298, "inactive": 20, "suspended": 15, "locked": 9,
       "newLast7d": 8, "newLast30d": 25, "activeLast30d": 180
     },
-    "applications": { "total": 8, "active": 7, "archived": 1 },
-    "clients": { "total": 23, "active": 20, "revoked": 3 },
+    "applications": { "total": 8, "active": 7, "inactive": 1 },
+    "clients": { "total": 23, "active": 20, "inactive": 3 },
     "loginActivity": {
       "last24h": { "successful": 156, "failed": 12 },
       "last7d":  { "successful": 980, "failed": 64 },

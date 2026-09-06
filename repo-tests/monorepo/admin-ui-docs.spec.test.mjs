@@ -85,6 +85,7 @@ test('should link exact playground guidance when technical docs are read', () =>
 
   for (const requiredPattern of [
     /porta-admin-playground\.ci\.portaidentity\.com/i,
+    /yarn admin(?:\s|$)/,
     /yarn admin:env up/,
     /yarn admin:env stop/,
     /yarn admin:env reset/,
@@ -111,5 +112,26 @@ test('should link exact playground guidance when technical docs are read', () =>
     technicalIndexes.includes(basename(guidePath)),
     true,
     'the focused playground guide must be linked from technical documentation',
+  );
+});
+
+test('should describe only the supported deletion and temporary lifecycle rules', () => {
+  const publicDocumentation = findMarkdownFiles('docs').map(readRepositoryFile).join('\n');
+
+  for (const obsoleteClaim of [
+    /Active\s*(?:→|->)\s*Suspended\s*(?:→|->)\s*Archived/i,
+    /protected super-admin user cannot be deleted/i,
+    /system roles \(`is_system = true`\) cannot be deleted/i,
+  ]) {
+    assert.equal(
+      obsoleteClaim.test(publicDocumentation),
+      false,
+      `public docs must omit obsolete rule matched by ${obsoleteClaim}`,
+    );
+  }
+
+  assert.match(
+    publicDocumentation,
+    /leave no other\s+active user with the exact\s+built-in `porta-super-admin` role/i,
   );
 });

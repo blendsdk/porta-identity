@@ -229,8 +229,8 @@ describe('secret parent eligibility specification', () => {
       vi.mocked(clientService.getClientById).mockResolvedValue(value);
 
       const ctx = await executeRoute(
-        'DELETE',
-        '/api/admin/clients/:id/secrets/:secretId',
+        'POST',
+        '/api/admin/clients/:id/secrets/:secretId/revoke',
         ['admin:client:revoke'],
         {
           params: {

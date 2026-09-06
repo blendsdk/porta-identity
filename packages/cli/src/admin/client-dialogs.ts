@@ -1,10 +1,6 @@
 /** Movable Layout DSL dialogs for selected-organization OIDC client administration. */
 
-import type {
-  CreateClientInput,
-  GenerateSecretInput,
-  UpdateClientInput,
-} from '@portaidentity/sdk';
+import type { CreateClientInput, GenerateSecretInput, UpdateClientInput } from '@portaidentity/sdk';
 import {
   Button,
   CheckGroup,
@@ -28,21 +24,14 @@ import {
   TabView,
   Text,
 } from '@jsvision/ui';
-import type {
-  Column,
-  EventLoop,
-  ModalDialogHost,
-  Signal,
-  Tab,
-} from '@jsvision/ui';
+
+import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
+import type { Column, EventLoop, ModalDialogHost, Signal, Tab } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication } from './application-state.js';
 import type { AdminClientConfigurationTab } from './client-workspace.js';
-import type {
-  AdminClient,
-  AdminClientSecret,
-} from './client-state.js';
+import type { AdminClient, AdminClientSecret } from './client-state.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -79,8 +68,11 @@ export type ClientConfigurationDialogResult =
 
 /** Result of an explicit client lifecycle confirmation. */
 export type ClientLifecycleDialogResult =
-  | { readonly kind: 'deactivate' | 'revoke'; readonly clientId: string }
-  | { readonly kind: 'cancel' };
+  { readonly kind: 'deactivate'; readonly clientId: string } | { readonly kind: 'cancel' };
+
+/** Result of an irreversible client-deletion dialog. */
+export type DeleteClientDialogResult =
+  { readonly kind: 'delete'; readonly clientId: string } | { readonly kind: 'cancel' };
 
 /** Result of the client-secret generation form. */
 export type GenerateClientSecretDialogResult =
@@ -108,7 +100,10 @@ const COLLECTION_COLUMNS: Column<CollectionRow>[] = [
 /** DataGrid that keeps complete collection replacement behind one owned signal. */
 class CollectionGrid extends DataGrid<CollectionRow> {
   /** Creates the grid over its caller-owned rows. */
-  constructor(private readonly values: Signal<CollectionRow[]>, focused: Signal<number>) {
+  constructor(
+    private readonly values: Signal<CollectionRow[]>,
+    focused: Signal<number>,
+  ) {
     super({ rows: values, focused, columns: COLLECTION_COLUMNS, zebra: true });
   }
 
@@ -288,7 +283,9 @@ function validCollection(
 function validInstant(value: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/.test(value)) return false;
   const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 19) === value.slice(0, 19);
+  return (
+    Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 19) === value.slice(0, 19)
+  );
 }
 
 /** Returns a dialog size capped to the current terminal surface. */
@@ -358,7 +355,9 @@ function collectionEditor(
       const index = Math.max(0, Math.min(selected.peek(), values.peek().length - 1));
       const value = entry.peek();
       if (!validText(value, 1, 2_048) || !values.peek()[index]) return;
-      grid.setRows(values.peek().map((row, rowIndex) => rowIndex === index ? { ...row, value } : row));
+      grid.setRows(
+        values.peek().map((row, rowIndex) => (rowIndex === index ? { ...row, value } : row)),
+      );
     },
   });
   const remove = new Button('~R~emove', {
@@ -406,11 +405,13 @@ function createForm(options: ClientConfigurationDialogOptions): ClientForm {
   const secretLabel = signal('');
   const application = signal<AdminApplication | null>(
     options.mode === 'create'
-      ? options.applications.find((candidate) => candidate.status === 'active') ?? null
+      ? (options.applications.find((candidate) => candidate.status === 'active') ?? null)
       : null,
   );
   const clientType = signal(current?.clientType === 'public' ? 0 : 1);
-  const applicationType = signal(current ? ['web', 'native', 'spa'].indexOf(current.applicationType) : 0);
+  const applicationType = signal(
+    current ? ['web', 'native', 'spa'].indexOf(current.applicationType) : 0,
+  );
   const protocolMode = signal(current ? 1 : 0);
   const grants = signal([
     current?.grantTypes.includes('authorization_code') ?? true,
@@ -418,7 +419,11 @@ function createForm(options: ClientConfigurationDialogOptions): ClientForm {
     current?.grantTypes.includes('refresh_token') ?? true,
   ]);
   const authenticationMethod = signal(
-    current ? ['client_secret_basic', 'client_secret_post', 'none'].indexOf(current.tokenEndpointAuthMethod) : 0,
+    current
+      ? ['client_secret_basic', 'client_secret_post', 'none'].indexOf(
+          current.tokenEndpointAuthMethod,
+        )
+      : 0,
   );
   const requirePkce = signal(current?.requirePkce ?? true);
   const loginMode = signal(
@@ -445,9 +450,17 @@ function createForm(options: ClientConfigurationDialogOptions): ClientForm {
     authenticationMethod,
     requirePkce,
     loginMode,
-    nameInput: new Input({ value: clientName, maxLength: 255, validator: textValidator(1, 255, false) }),
+    nameInput: new Input({
+      value: clientName,
+      maxLength: 255,
+      validator: textValidator(1, 255, false),
+    }),
     scopeInput: new Input({ value: scope, maxLength: 2_048, validator: textValidator(0, 2_048) }),
-    secretLabelInput: new Input({ value: secretLabel, maxLength: 255, validator: textValidator(0, 255) }),
+    secretLabelInput: new Input({
+      value: secretLabel,
+      maxLength: 255,
+      validator: textValidator(0, 255),
+    }),
   };
 }
 
@@ -457,25 +470,46 @@ function configurationTabs(
   form: ClientForm,
   width: number,
 ): Tab[] {
-  const applicationPicker = options.mode === 'create'
-    ? new ComboBox<AdminApplication>({
-        items: signal(options.applications.filter((application) => application.status === 'active')),
-        getText: (application) => application.name,
-        value: form.application,
-        editable: false,
-      })
-    : undefined;
+  const applicationPicker =
+    options.mode === 'create'
+      ? new ComboBox<AdminApplication>({
+          items: signal(
+            options.applications.filter((application) => application.status === 'active'),
+          ),
+          getText: (application) => application.name,
+          value: form.application,
+          editable: false,
+        })
+      : undefined;
   const basic = col(
     { gap: 0, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
     fixed(new Text(`Organization: ${options.organization.name} (read only)`), 1),
-    options.mode === 'edit' && fixed(new Text(`Client ID: ${options.client.clientId} (read only)`), 1),
+    options.mode === 'edit' &&
+      fixed(new Text(`Client ID: ${options.client.clientId} (read only)`), 1),
     inputRow('Client name', form.nameInput),
-    applicationPicker && fixed(row({ gap: 1 }, fixed(new Text('Application'), 18), grow(applicationPicker)), 1),
-    options.mode === 'edit' && fixed(new Text(`Application: ${options.client.applicationId} (read only)`), 1),
-    fixed(new Text(`Application type${options.mode === 'edit' ? `: ${options.client.applicationType} (read only)` : ''}`), 1),
-    options.mode === 'create' && fixed(new RadioGroup({ labels: ['~W~eb', '~N~ative', '~S~PA'], value: form.applicationType }), 3),
-    fixed(new Text(`Client type${options.mode === 'edit' ? `: ${options.client.clientType} (read only)` : ''}`), 1),
-    options.mode === 'create' && fixed(new RadioGroup({ labels: ['~P~ublic', '~C~onfidential'], value: form.clientType }), 2),
+    applicationPicker &&
+      fixed(row({ gap: 1 }, fixed(new Text('Application'), 18), grow(applicationPicker)), 1),
+    options.mode === 'edit' &&
+      fixed(new Text(`Application: ${options.client.applicationId} (read only)`), 1),
+    fixed(
+      new Text(
+        `Application type${options.mode === 'edit' ? `: ${options.client.applicationType} (read only)` : ''}`,
+      ),
+      1,
+    ),
+    options.mode === 'create' &&
+      fixed(
+        new RadioGroup({ labels: ['~W~eb', '~N~ative', '~S~PA'], value: form.applicationType }),
+        3,
+      ),
+    fixed(
+      new Text(
+        `Client type${options.mode === 'edit' ? `: ${options.client.clientType} (read only)` : ''}`,
+      ),
+      1,
+    ),
+    options.mode === 'create' &&
+      fixed(new RadioGroup({ labels: ['~P~ublic', '~C~onfidential'], value: form.clientType }), 2),
     options.mode === 'create' && inputRow('Initial secret', form.secretLabelInput),
     spacer(),
   );
@@ -487,20 +521,41 @@ function configurationTabs(
   const protocol = col(
     { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
     fixed(new Text('Protocol values: Server default or Custom'), 1),
-    fixed(new RadioGroup({ labels: ['Server ~d~efault', '~C~ustom'], value: form.protocolMode }), 2),
+    fixed(
+      new RadioGroup({ labels: ['Server ~d~efault', '~C~ustom'], value: form.protocolMode }),
+      2,
+    ),
     fixed(new Text('Grant types'), 1),
-    fixed(new CheckGroup({ labels: ['Authorization code', 'Client credentials', 'Refresh token'], value: form.grants }), 3),
+    fixed(
+      new CheckGroup({
+        labels: ['Authorization code', 'Client credentials', 'Refresh token'],
+        value: form.grants,
+      }),
+      3,
+    ),
     fixed(new Text('Response types: code'), 1),
     inputRow('Scope', form.scopeInput),
     fixed(new Text('Token authentication'), 1),
-    fixed(new RadioGroup({ labels: ['Client secret basic', 'Client secret post', 'None'], value: form.authenticationMethod }), 3),
+    fixed(
+      new RadioGroup({
+        labels: ['Client secret basic', 'Client secret post', 'None'],
+        value: form.authenticationMethod,
+      }),
+      3,
+    ),
     fixed(new Switch({ value: form.requirePkce, label: '~P~KCE required' }), 1),
     grow(originEditor.content),
   );
   const login = col(
     { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
     fixed(new Text('Login methods'), 1),
-    fixed(new RadioGroup({ labels: ['~I~nherit', '~P~assword', '~M~agic link', '~B~oth'], value: form.loginMode }), 4),
+    fixed(
+      new RadioGroup({
+        labels: ['~I~nherit', '~P~assword', '~M~agic link', '~B~oth'],
+        value: form.loginMode,
+      }),
+      4,
+    ),
     spacer(),
   );
   return [
@@ -519,12 +574,14 @@ function createPayload(form: ClientForm): Omit<CreateClientInput, 'organizationI
     applicationId: application.id,
     clientName: form.clientName.peek(),
     clientType: form.clientType.peek() === 0 ? 'public' : 'confidential',
-    applicationType: ['web', 'native', 'spa'][form.applicationType.peek()] as 'web' | 'native' | 'spa',
+    applicationType: ['web', 'native', 'spa'][form.applicationType.peek()] as
+      'web' | 'native' | 'spa',
     redirectUris: form.redirects.peek().map((entry) => entry.value),
   };
   const logout = form.logoutRedirects.peek().map((entry) => entry.value);
   if (logout.length) input.postLogoutRedirectUris = logout;
-  if (form.secretLabel.peek() && input.clientType === 'confidential') input.secretLabel = form.secretLabel.peek();
+  if (form.secretLabel.peek() && input.clientType === 'confidential')
+    input.secretLabel = form.secretLabel.peek();
   if (form.protocolMode.peek() === 1) Object.assign(input, protocolPayload(form));
   input.loginMethods = loginPayload(form.loginMode.peek());
   if (input.loginMethods === null) delete input.loginMethods;
@@ -536,7 +593,9 @@ function protocolPayload(form: ClientForm): UpdateClientInput {
   const grantNames = ['authorization_code', 'client_credentials', 'refresh_token'] as const;
   const authenticationNames = ['client_secret_basic', 'client_secret_post', 'none'] as const;
   return {
-    grantTypes: form.grants.peek().flatMap((selected, index) => selected ? [grantNames[index]!] : []),
+    grantTypes: form.grants
+      .peek()
+      .flatMap((selected, index) => (selected ? [grantNames[index]!] : [])),
     responseTypes: ['code'],
     scope: form.scope.peek(),
     tokenEndpointAuthMethod: authenticationNames[form.authenticationMethod.peek()]!,
@@ -593,7 +652,13 @@ export async function showClientConfigurationDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(new Button(options.mode === 'create' ? '~C~reate' : '~S~ave', { command: Commands.ok, default: true }), 12),
+            fixed(
+              new Button(options.mode === 'create' ? '~C~reate' : '~S~ave', {
+                command: Commands.ok,
+                default: true,
+              }),
+              12,
+            ),
             fixed(new Button('Cancel', { command: Commands.cancel }), 10),
           ),
           2,
@@ -611,23 +676,64 @@ export async function showClientConfigurationDialog(
 export async function showClientLifecycleDialog(
   host: AdminClientDialogHost,
   operationSignal: AbortSignal,
-  action: 'deactivate' | 'revoke',
+  action: 'deactivate',
   organization: AdminOrganizationContext,
   client: AdminClient,
 ): Promise<ClientLifecycleDialogResult> {
   const { width, height } = dialogSize(host, 60, 12);
-  const dialog = new Dialog({ title: `${action === 'revoke' ? 'Revoke' : 'Deactivate'} OIDC client`, width, height, centered: true });
+  const dialog = new Dialog({ title: 'Deactivate OIDC client', width, height, centered: true });
   dialog.add(
     cover(
       col(
         { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        grow(new Text(`Organization: ${organization.name}\nClient: ${client.clientName}\n${action === 'revoke' ? 'Revocation is permanent and has no restore action.' : 'The client can be activated again later.'}`)),
-        fixed(row({ gap: 1 }, spacer(), fixed(new Button(action === 'revoke' ? 'Revoke permanently' : 'Deactivate', { command: Commands.ok, default: true }), 20), fixed(new Button('Cancel', { command: Commands.cancel }), 10)), 2),
+        grow(
+          new Text(
+            `Organization: ${organization.name}\nClient: ${client.clientName}\nThe client can be activated again later.`,
+          ),
+        ),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            fixed(new Button('Deactivate', { command: Commands.ok, default: true }), 20),
+            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+          ),
+          2,
+        ),
       ),
     ),
   );
   return (await runDialog(host, dialog, operationSignal)) === Commands.ok
     ? { kind: action, clientId: client.id }
+    : { kind: 'cancel' };
+}
+
+/** Shows the protocol-authority cascade before permanently deleting a client. */
+export async function showDeleteClientDialog(
+  host: AdminClientDialogHost,
+  operationSignal: AbortSignal,
+  organization: AdminOrganizationContext,
+  client: AdminClient,
+): Promise<DeleteClientDialogResult> {
+  if (client.organizationId !== organization.id) return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 72, 14);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(client.clientName, width), {
+    command: Commands.yes,
+  });
+  const dialog = new Dialog({ title: 'Delete OIDC client', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Organization: ${organization.name}\nClient: ${client.clientName}`,
+    warning: 'Deleting this client removes its secrets and client, grant, and protocol authority.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes
+    ? { kind: 'delete', clientId: client.id }
     : { kind: 'cancel' };
 }
 
@@ -651,7 +757,15 @@ export async function showGenerateClientSecretDialog(
         inputRow('Label', labelInput),
         inputRow('Expires at', expiryInput),
         grow(new Text('The secret value is shown once after generation.')),
-        fixed(row({ gap: 1 }, spacer(), fixed(new Button('~G~enerate', { command: Commands.ok, default: true }), 12), fixed(new Button('Cancel', { command: Commands.cancel }), 10)), 2),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            fixed(new Button('~G~enerate', { command: Commands.ok, default: true }), 12),
+            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+          ),
+          2,
+        ),
       ),
     ),
   );
@@ -677,8 +791,20 @@ export async function showRevokeClientSecretDialog(
     cover(
       col(
         { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        grow(new Text(`Organization: ${organization.name}\nClient: ${client.clientName}\nSecret: ${secret.label ?? secret.id}\nRevocation is permanent.`)),
-        fixed(row({ gap: 1 }, spacer(), fixed(new Button('Revoke permanently', { command: Commands.ok, default: true }), 20), fixed(new Button('Cancel', { command: Commands.cancel }), 10)), 2),
+        grow(
+          new Text(
+            `Organization: ${organization.name}\nClient: ${client.clientName}\nSecret: ${secret.label ?? secret.id}\nRevocation is permanent.`,
+          ),
+        ),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            fixed(new Button('Revoke permanently', { command: Commands.ok, default: true }), 20),
+            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+          ),
+          2,
+        ),
       ),
     ),
   );
@@ -709,7 +835,14 @@ export async function showOneTimeClientSecretDialog(
         fixed(new Text(`Label: ${value.label ?? 'Not provided'}`), 1),
         fixed(new Text(value.plaintext), 2),
         fixed(new Text('Store this value now. It cannot be shown again.'), 1),
-        fixed(row({ gap: 1 }, spacer(), fixed(new Button('Close', { command: Commands.ok, default: true }), 10)), 2),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            fixed(new Button('Close', { command: Commands.ok, default: true }), 10),
+          ),
+          2,
+        ),
       ),
     ),
   );

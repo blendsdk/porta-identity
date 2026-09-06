@@ -30,7 +30,18 @@ const capabilities: AdminCapabilities = {
   canInviteUsers: true,
   canUpdateUsers: true,
   canManageUserLifecycle: true,
-  canPurgeUsers: true,
+  canDeleteOrganizations: false,
+  canDeleteUsers: true,
+  canReadApplications: false,
+  canCreateApplications: false,
+  canUpdateApplications: false,
+  canDeleteApplications: false,
+  canDeleteModules: false,
+  canReadClients: false,
+  canCreateClients: false,
+  canUpdateClients: false,
+  canDeleteClients: false,
+  canRevokeClientSecrets: false,
 };
 const page: AdminUserPage = {
   data: [
@@ -350,7 +361,7 @@ describe('user workspace', () => {
         'Lock',
         'Deactivate',
         'History',
-        'Purge',
+        'Delete',
       ]),
     );
     expect(actions).not.toEqual(expect.arrayContaining(['Unsuspend', 'Unlock', 'Reactivate']));

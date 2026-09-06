@@ -157,6 +157,6 @@ export interface AdminUserOperations {
   readonly deactivate: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
   /** Reactivates the user. */
   readonly reactivate: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
-  /** Permanently purges the user. */
-  readonly purge: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
+  /** Permanently deletes the user. */
+  readonly delete: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
 }

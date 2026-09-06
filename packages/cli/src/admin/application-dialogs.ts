@@ -26,10 +26,14 @@ import type { EventLoop, ModalDialogHost, Signal, Validator } from '@jsvision/ui
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication, AdminApplicationModule } from './application-state.js';
+import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import { textValidator } from './user-dialog-fields.js';
 
-/** Concise scope warning repeated anywhere a global mutation can be confirmed. */
-const GLOBAL_SCOPE_NOTICE = 'Deployment-global: changes may affect multiple organizations.';
+/** Plain-language scope note shown when an application is created. */
+const APPLICATION_CREATE_SCOPE_NOTICE = 'This application will be available to every organization.';
+
+/** Plain-language scope note shown when a shared application or module changes. */
+const APPLICATION_CHANGE_SCOPE_NOTICE = 'Changes apply wherever this application is used.';
 
 /** Modal host needed for abort-driven application dialog closure. */
 export interface AdminApplicationDialogHost extends ModalDialogHost {
@@ -39,8 +43,7 @@ export interface AdminApplicationDialogHost extends ModalDialogHost {
 
 /** Result of the global application create dialog. */
 export type CreateApplicationDialogResult =
-  | { readonly kind: 'create'; readonly input: CreateApplicationInput }
-  | { readonly kind: 'cancel' };
+  { readonly kind: 'create'; readonly input: CreateApplicationInput } | { readonly kind: 'cancel' };
 
 /** Result of the global application edit dialog. */
 export type EditApplicationDialogResult =
@@ -53,7 +56,7 @@ export type EditApplicationDialogResult =
   | { readonly kind: 'cancel' };
 
 /** Application lifecycle choices that require an explicit warning. */
-export type ApplicationLifecycleAction = 'deactivate' | 'archive';
+export type ApplicationLifecycleAction = 'deactivate';
 
 /** Result of an application lifecycle confirmation. */
 export type ApplicationLifecycleDialogResult =
@@ -89,6 +92,15 @@ export type ModuleDeactivationDialogResult =
       readonly applicationId: string;
       readonly moduleId: string;
     }
+  | { readonly kind: 'cancel' };
+
+/** Result of an irreversible application or module deletion dialog. */
+export type ApplicationDeleteDialogResult =
+  { readonly kind: 'delete'; readonly applicationId: string } | { readonly kind: 'cancel' };
+
+/** Result of an irreversible module deletion dialog. */
+export type ModuleDeleteDialogResult =
+  | { readonly kind: 'delete'; readonly applicationId: string; readonly moduleId: string }
   | { readonly kind: 'cancel' };
 
 /** Signals and controls shared by the small application and module forms. */
@@ -191,7 +203,10 @@ function inputRow(label: string, input: Input): ReturnType<typeof row> {
 }
 
 /** Creates form signals and controls for create or edit. */
-function entityForm(current?: AdminApplication | AdminApplicationModule, includeSlug = false): EntityForm {
+function entityForm(
+  current?: AdminApplication | AdminApplicationModule,
+  includeSlug = false,
+): EntityForm {
   const name = signal(current?.name ?? '');
   const slug = includeSlug ? signal('') : undefined;
   const description = signal(current?.description ?? '');
@@ -204,7 +219,14 @@ function entityForm(current?: AdminApplication | AdminApplicationModule, include
     ? new Input({ value: slug, maxLength: 100, validator: slugValidator() })
     : undefined;
   const descriptionMemo = new Memo({ value: description });
-  return { name, ...(slug ? { slug } : {}), description, nameInput, ...(slugInput ? { slugInput } : {}), descriptionMemo };
+  return {
+    name,
+    ...(slug ? { slug } : {}),
+    description,
+    nameInput,
+    ...(slugInput ? { slugInput } : {}),
+    descriptionMemo,
+  };
 }
 
 /** Builds the complete Layout DSL content for one entity form. */
@@ -212,15 +234,16 @@ function formLayout(
   form: EntityForm,
   readOnlySlug: string | undefined,
   submitLabel: string,
+  scopeNotice: string,
 ): ReturnType<typeof col> {
   return col(
     { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-    fixed(new Text(GLOBAL_SCOPE_NOTICE), 1),
     inputRow('Name', form.nameInput),
     form.slugInput && inputRow('Slug', form.slugInput),
     readOnlySlug ? fixed(new Text(`Slug: ${readOnlySlug} (read only)`), 1) : undefined,
     fixed(new Text('Description'), 1),
     grow(form.descriptionMemo),
+    fixed(new Text(scopeNotice), 1),
     fixed(
       row(
         { gap: 1 },
@@ -247,7 +270,7 @@ export async function showCreateApplicationDialog(
     form.description,
     form.descriptionMemo,
   );
-  dialog.add(cover(formLayout(form, undefined, '~C~reate')));
+  dialog.add(cover(formLayout(form, undefined, '~C~reate', APPLICATION_CREATE_SCOPE_NOTICE)));
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const input: CreateApplicationInput = { name: form.name.peek() };
   if (form.slug?.peek()) input.slug = form.slug.peek();
@@ -271,7 +294,7 @@ export async function showEditApplicationDialog(
     form.description,
     form.descriptionMemo,
   );
-  dialog.add(cover(formLayout(form, application.slug, '~S~ave')));
+  dialog.add(cover(formLayout(form, application.slug, '~S~ave', APPLICATION_CHANGE_SCOPE_NOTICE)));
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const input: UpdateApplicationInput = {};
   if (form.name.peek() !== application.name) input.name = form.name.peek();
@@ -294,18 +317,18 @@ export async function showApplicationLifecycleDialog(
   application: AdminApplication,
 ): Promise<ApplicationLifecycleDialogResult> {
   const { width, height } = dialogSize(host, 68, 12);
-  const title = action === 'archive' ? 'Archive application' : 'Deactivate application';
+  const title = 'Deactivate application';
   const dialog = new Dialog({ title, width, height, centered: true });
   dialog.add(
     cover(
       col(
         { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        fixed(new Text(GLOBAL_SCOPE_NOTICE), 1),
         grow(
           new Text(
             `${title}: ${application.name}?\nNew client creation stops.\nExisting clients remain enabled.`,
           ),
         ),
+        fixed(new Text(APPLICATION_CHANGE_SCOPE_NOTICE), 1),
         fixed(
           row(
             { gap: 1 },
@@ -320,6 +343,34 @@ export async function showApplicationLifecycleDialog(
   );
   return (await runDialog(host, dialog, operationSignal)) === Commands.ok
     ? { kind: action, applicationId: application.id }
+    : { kind: 'cancel' };
+}
+
+/** Shows the deployment-global cascade before permanently deleting an application. */
+export async function showDeleteApplicationDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  application: AdminApplication,
+): Promise<ApplicationDeleteDialogResult> {
+  const { width, height } = dialogSize(host, 76, 14);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(application.name, width), {
+    command: Commands.yes,
+  });
+  const dialog = new Dialog({ title: 'Delete application', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Application: ${application.name}`,
+    warning:
+      'This deployment-global deletion removes its modules, clients, roles, permissions, and claims.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes
+    ? { kind: 'delete', applicationId: application.id }
     : { kind: 'cancel' };
 }
 
@@ -338,7 +389,7 @@ export async function showCreateModuleDialog(
     form.description,
     form.descriptionMemo,
   );
-  dialog.add(cover(formLayout(form, undefined, '~A~dd')));
+  dialog.add(cover(formLayout(form, undefined, '~A~dd', APPLICATION_CHANGE_SCOPE_NOTICE)));
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const input: CreateModuleInput = { name: form.name.peek() };
   if (form.slug?.peek()) input.slug = form.slug.peek();
@@ -361,7 +412,7 @@ export async function showEditModuleDialog(
     form.description,
     form.descriptionMemo,
   );
-  dialog.add(cover(formLayout(form, module.slug, '~S~ave')));
+  dialog.add(cover(formLayout(form, module.slug, '~S~ave', APPLICATION_CHANGE_SCOPE_NOTICE)));
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const input: UpdateModuleInput = {};
   if (form.name.peek() !== module.name) input.name = form.name.peek();
@@ -390,16 +441,13 @@ export async function showModuleDeactivationDialog(
     cover(
       col(
         { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        fixed(new Text(GLOBAL_SCOPE_NOTICE), 1),
         grow(new Text(`Application: ${application.name}\nModule: ${module.name}`)),
+        fixed(new Text(APPLICATION_CHANGE_SCOPE_NOTICE), 1),
         fixed(
           row(
             { gap: 1 },
             spacer(),
-            fixed(
-              new Button('Deactivate', { command: Commands.ok, default: true }),
-              14,
-            ),
+            fixed(new Button('Deactivate', { command: Commands.ok, default: true }), 14),
             fixed(new Button('Cancel', { command: Commands.cancel }), 10),
           ),
           2,
@@ -413,5 +461,32 @@ export async function showModuleDeactivationDialog(
         applicationId: application.id,
         moduleId: module.id,
       }
+    : { kind: 'cancel' };
+}
+
+/** Shows the owned-permission cascade before permanently deleting a module. */
+export async function showDeleteModuleDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  application: AdminApplication,
+  module: AdminApplicationModule,
+): Promise<ModuleDeleteDialogResult> {
+  if (module.applicationId !== application.id) return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 70, 13);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(module.name, width), { command: Commands.yes });
+  const dialog = new Dialog({ title: 'Delete module', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Application: ${application.name}\nModule: ${module.name}`,
+    warning: 'Deleting this module also deletes its\npermissions and dependent links.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes
+    ? { kind: 'delete', applicationId: application.id, moduleId: module.id }
     : { kind: 'cancel' };
 }

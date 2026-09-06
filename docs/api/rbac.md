@@ -12,10 +12,10 @@ Manage RBAC roles, permissions, and user-role assignments.
 POST /api/admin/applications/:appId/roles
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | Role name |
-| `description` | string | | Role description |
+| Field         | Type   | Required | Description      |
+| ------------- | ------ | -------- | ---------------- |
+| `name`        | string | ✅       | Role name        |
+| `description` | string |          | Role description |
 
 ```json
 {
@@ -48,20 +48,19 @@ GET /api/admin/applications/:appId/roles/:roleId
 PUT /api/admin/applications/:appId/roles/:roleId
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Role name |
+| Field         | Type   | Description      |
+| ------------- | ------ | ---------------- |
+| `name`        | string | Role name        |
 | `description` | string | Role description |
 
-### Archive Role
+### Delete Role
 
 ```http
-POST /api/admin/applications/:appId/roles/:roleId/archive
+DELETE /api/admin/applications/:appId/roles/:roleId
 ```
 
-::: warning
-System roles (`is_system = true`) cannot be archived.
-:::
+Deleting a role permanently removes its user and permission assignments. The operation requires
+confirmation and cannot be undone.
 
 ### Assign Permission to Role
 
@@ -69,9 +68,9 @@ System roles (`is_system = true`) cannot be archived.
 POST /api/admin/applications/:appId/roles/:roleId/permissions
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `permissionId` | uuid | ✅ | Permission to assign |
+| Field          | Type | Required | Description          |
+| -------------- | ---- | -------- | -------------------- |
+| `permissionId` | uuid | ✅       | Permission to assign |
 
 ### Remove Permission from Role
 
@@ -91,10 +90,10 @@ DELETE /api/admin/applications/:appId/roles/:roleId/permissions/:permissionId
 POST /api/admin/applications/:appId/permissions
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | Permission name (e.g., `deals:write`) |
-| `description` | string | | Permission description |
+| Field         | Type   | Required | Description                           |
+| ------------- | ------ | -------- | ------------------------------------- |
+| `name`        | string | ✅       | Permission name (e.g., `deals:write`) |
+| `description` | string |          | Permission description                |
 
 ### List Permissions
 
@@ -108,11 +107,14 @@ GET /api/admin/applications/:appId/permissions
 GET /api/admin/applications/:appId/permissions/:permissionId
 ```
 
-### Archive Permission
+### Delete Permission
 
 ```http
-POST /api/admin/applications/:appId/permissions/:permissionId/archive
+DELETE /api/admin/applications/:appId/permissions/:permissionId
 ```
+
+Deleting a role removes its user assignments and permission links. Deleting a permission removes
+its role links. Each operation returns `204 No Content`.
 
 ---
 
@@ -126,9 +128,9 @@ POST /api/admin/applications/:appId/permissions/:permissionId/archive
 POST /api/admin/organizations/:orgId/users/:userId/roles
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `roleId` | uuid | ✅ | Role to assign |
+| Field    | Type | Required | Description    |
+| -------- | ---- | -------- | -------------- |
+| `roleId` | uuid | ✅       | Role to assign |
 
 ### Remove Role from User
 

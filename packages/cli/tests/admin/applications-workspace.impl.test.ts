@@ -1,6 +1,7 @@
 /** Implementation diagnostics for the application workspace, dialogs, and controller reloads. */
 
 import {
+  Button,
   createApplication,
   DataGrid,
   Dialog,
@@ -16,8 +17,12 @@ import { describe, expect, it, vi } from 'vitest';
 import { showCreateApplicationDialog } from '../../src/admin/application-dialogs.js';
 import { createAdminApplicationController } from '../../src/admin/application-controller.js';
 import type { AdminApplicationOperations } from '../../src/admin/application-service.js';
-import type { AdminApplication, AdminApplicationModule } from '../../src/admin/application-state.js';
+import type {
+  AdminApplication,
+  AdminApplicationModule,
+} from '../../src/admin/application-state.js';
 import { createAdminApplicationWorkspace } from '../../src/admin/application-workspace.js';
+import { createAdminPresentation } from '../../src/admin/presentation.js';
 import type { AdminCapabilities, AdminConnectionState } from '../../src/admin/state.js';
 
 const applicationId = '11111111-1111-4111-8111-111111111111';
@@ -49,15 +54,18 @@ const capabilities: AdminCapabilities = {
   canInviteUsers: false,
   canUpdateUsers: false,
   canManageUserLifecycle: false,
-  canPurgeUsers: false,
+  canDeleteOrganizations: false,
+  canDeleteUsers: false,
   canReadApplications: true,
   canCreateApplications: true,
   canUpdateApplications: true,
-  canArchiveApplications: true,
+  canDeleteApplications: true,
+  canDeleteModules: true,
   canReadClients: false,
   canCreateClients: false,
   canUpdateClients: false,
-  canRevokeClients: false,
+  canDeleteClients: false,
+  canRevokeClientSecrets: false,
 };
 
 /** Collects all descendants of a mounted view. */
@@ -107,16 +115,23 @@ function deferred<T>(): {
 
 /** Mounts the application catalog at one diagnostic geometry. */
 function mount(width: number, height: number) {
-  const host = createApplication({ viewport: { width, height } });
+  const presentation = createAdminPresentation(authenticated(), false, { width, height });
+  const host = createApplication({
+    content: presentation.content,
+    menuBar: presentation.menu,
+    statusLine: presentation.status,
+    viewport: { width, height },
+  });
   const workspace = createAdminApplicationWorkspace({
     capabilities,
     onIntent: vi.fn(),
     focusView: (view) => host.loop.focusView(view),
   });
-  const window = new Window('Applications');
-  window.setLayout({ rect: { x: 0, y: 0, width, height } });
-  window.add(at(workspace.content, 1, 1, Math.max(1, width - 4), Math.max(1, height - 4)));
-  host.desktop.addWindow(window);
+  presentation.setWorkspace(workspace.content);
+  if (!(workspace.content instanceof Dialog)) {
+    throw new Error('Expected a dialog-styled application workspace.');
+  }
+  const window = workspace.content;
   workspace.setState({ kind: 'list', scope: 'global', applications: [application] });
   return { host, window, workspace };
 }
@@ -157,6 +172,54 @@ describe('application workspace implementation', () => {
     expect(frameText(mounted.host)).toContain('Service unavailable');
     expect(frameText(mounted.host)).not.toContain('Customer Portal');
     expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
+  });
+
+  it('lays out detail actions with fixed DSL sizes and separate navigation', async () => {
+    const mounted = mount(100, 35);
+    mounted.workspace.setState({
+      kind: 'detail',
+      scope: 'global',
+      applications: [application],
+      application,
+      etag: null,
+      modules: [moduleRow],
+    });
+    await settle();
+    const buttons = descendants(mounted.window).filter((view) => view instanceof Button);
+    const byLabel = (label: string): Button => {
+      const button = buttons.find((candidate) => candidate.activation.label === label);
+      if (!button) throw new Error(`${label} button missing.`);
+      return button;
+    };
+    const actionLabels = new Set([
+      'Edit',
+      'Deactivate',
+      'Delete',
+      'Add module',
+      'Edit module',
+      'Deactivate module',
+      'Delete module',
+      'Back to applications',
+    ]);
+
+    for (const label of actionLabels) {
+      const button = byLabel(label);
+      expect(button.layout.position).not.toBe('absolute');
+      expect(button.layout.size).toEqual({ kind: 'fixed', cells: button.measure().width });
+    }
+
+    expect(byLabel('Edit').bounds.x).toBeLessThan(byLabel('Deactivate').bounds.x);
+    expect(byLabel('Deactivate').bounds.x).toBeLessThan(byLabel('Delete').bounds.x);
+    expect(byLabel('Add module').bounds.x).toBeLessThan(byLabel('Edit module').bounds.x);
+    expect(byLabel('Edit module').bounds.x).toBeLessThan(byLabel('Deactivate module').bounds.x);
+    expect(byLabel('Back to applications').bounds.x).toBeLessThan(byLabel('Add module').bounds.x);
+
+    const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    if (!(grid instanceof DataGrid)) throw new Error('Module DataGrid missing.');
+    const gridOrigin = mounted.host.loop.renderRoot.originOf(grid);
+    const moduleActionOrigin = mounted.host.loop.renderRoot.originOf(byLabel('Add module'));
+    if (!gridOrigin || !moduleActionOrigin) throw new Error('Module layout origins missing.');
+    expect(moduleActionOrigin.y).toBe(gridOrigin.y + grid.bounds.height + 1);
   });
 
   it('removes retained projections on clear and ignores state after disposal', async () => {
@@ -342,23 +405,4 @@ describe('application controller implementation', () => {
     expect(states.at(-1)).toEqual(expect.objectContaining({ kind: 'indeterminate' }));
   });
 
-  it('blocks module mutations when retained detail belongs to an archived application', async () => {
-    const archived = { ...application, status: 'archived' as const };
-    const updateModule = vi.fn();
-    const controller = createAdminApplicationController({
-      readState: authenticated,
-      readOperations: () => ({
-        get: vi.fn().mockResolvedValue({ kind: 'success', value: { application: archived, etag: null } }),
-        listModules: vi.fn().mockResolvedValue({ kind: 'success', value: [moduleRow] }),
-        updateModule,
-      }),
-      publishState: vi.fn(),
-      requestAuthentication: vi.fn(),
-    });
-    controller.syncContext(authenticated(), 1);
-    await controller.select(applicationId);
-    await controller.updateModule(applicationId, moduleId, { name: 'Changed' });
-
-    expect(updateModule).not.toHaveBeenCalled();
-  });
 });

@@ -10,7 +10,7 @@ closes the prior client workspace so client data is never carried into the new c
 
 The interactive workspace uses a DataGrid for the selected organization's clients. Client details
 provide Basic, Redirects, Protocol, Login, and Secrets actions plus activation, deactivation, and
-permanent revocation. Configuration dialogs keep the client name as a normal one-line field and
+permanent deletion. Configuration dialogs keep the client name as a normal one-line field and
 reload authoritative server state after saving.
 
 ## Client CRUD
@@ -63,14 +63,17 @@ porta client update --id <client-id> \
   [--scope "openid profile email"]
 ```
 
-### `porta client revoke`
+### `porta client delete`
 
 ```bash
-porta client revoke --id <client-id>
+porta client delete <client-id>
 ```
 
+Permanently deletes the client, its secrets, and its protocol authority. The CLI always asks
+whether to keep or delete the named client. There is no record-deletion `--force` option.
+
 ::: warning
-Revoking a client immediately invalidates all tokens and prevents new authentication flows.
+Deleting a client removes its credentials and immediately ends its protocol authority.
 :::
 
 ### `porta client activate` / `porta client deactivate`

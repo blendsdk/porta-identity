@@ -1,7 +1,7 @@
 # Execution Quality Reviews: Record Deletion and Lifecycle Simplification
 
-> **Status**: Phase 2 review passed
-> **Last Updated**: 2026-09-06 17:14
+> **Status**: Phase 4 review passed
+> **Last Updated**: 2026-09-06 21:49
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Session and OIDC Authority Foundation
@@ -58,3 +58,36 @@ Both remediation re-reviews passed with no critical, major, or minor findings. T
 tenant membership checks do not touch Redis, UUID syntax selects the ID row deterministically,
 module deletion captures every permission its foreign key deletes, and the lifecycle/documentation
 cleanup retains the intended inactive-client and secret-revocation behavior.
+
+## Phase 4: Five-Surface Admin UI, Documentation, and Final Evidence
+
+**Review boundary:** `73b231b3` plus the Task 4 implementation and documentation working tree
+**Scope mode:** Strict
+**Verification before review:** CLI lint/typecheck/build and 1,055 tests, 96 structure tests,
+documentation build, 132 browser tests, six packed Admin CLI journey checks, and the focused server
+route, unit, integration, E2E, and penetration-test gates passed.
+
+| ID      | Severity | Lens        | Finding                                                                                      | Minimum correction                                                                                              | Ruling      |
+| ------- | -------- | ----------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ----------- |
+| RV4-001 | 🟠 Major | Correctness | The control-plane organization marker was discarded, so its Delete action could be enabled  | Retain the marker, disable Delete in the chooser, and reject direct control-plane deletion                      | ✅ Accepted |
+| RV4-002 | 🟠 Major | Correctness | An organization deletion failure was retained in state but never displayed                  | Pass the retained failure into the organization chooser                                                        | ✅ Accepted |
+| RV4-003 | 🟠 Major | Correctness | Reload after application or module deletion failure could republish stale errors after logout | Stop failure publication when authoritative reload removes the projection                                     | ✅ Accepted |
+| RV4-004 | 🟠 Major | Correctness | Public documentation still described removed archive and role restrictions                 | Align the affected public documentation with physical deletion and the exact control-plane rules               | ✅ Accepted |
+| SA4-001 | 🟠 Major | Security    | Inactive confidential clients could not open Secrets to revoke an active secret             | Permit secret loading for inactive confidential clients while preserving organization and confidentiality checks | ✅ Accepted |
+| SA4-002 | 🟠 Major | Security    | Maximum-length valid targets could hide cascade details or overflow destructive buttons     | Keep warnings fixed, scroll full target details, bound labels, and focus Keep                                  | ✅ Accepted |
+| RV4-005 | 🟡 Minor | Correctness | Client API documentation reported `200` for bodyless secret revocation                      | Document `204 No Content`                                                                                       | ✅ Corrected |
+| RV4-006 | 🟡 Minor | Correctness | Admin UI application documentation still advertised Archive and a workspace warning        | Describe Delete and dialog-local scope notices                                                                 | ✅ Corrected |
+| RV4-007 | 🟡 Minor | Correctness | The shared layout comment claimed long activation labels remain unchanged                   | Document the intentional ellipsis on redundant destructive-button target text                                  | ✅ Corrected |
+| RV4-008 | 🟠 Major | Correctness | The organization chooser emitted Delete without terminating its modal session                | Route the one organization-specific command through the dialog's standard terminating-command path             | ✅ Accepted and corrected |
+
+The user accepted all major corrections. The minimum implementation uses one small shared Layout
+DSL helper across five dialogs and adds no workflow layer, service, dependency, or support system.
+Both remediation re-reviews passed with no remaining critical, major, or minor findings. They
+confirmed inactive-client secret revocation, control-plane protection, retained failure display,
+authentication-loss reconciliation, full inspectable targets at 48×12, bounded action labels, and
+Keep as the initial focus. The final manual oracle exposed RV4-008 before commit. Its immutable
+regression failed with the same unhandled command, then passed after a single specialized dialog
+handled that command through JSVision's existing enabled-state and validity boundary. A narrow
+correctness re-review reported no findings. The live Admin UI then deleted the organization and
+reloaded the authoritative list; organization, user, application, module, and client deletion all
+passed in the same reset playground.

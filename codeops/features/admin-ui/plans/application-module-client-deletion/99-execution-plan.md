@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 17:47
-> **Progress**: 32/40 tasks (80%)
+> **Last Updated**: 2026-09-06 18:18
+> **Progress**: 38/40 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -150,15 +150,15 @@ vocabulary and direct confirmation.
 
 ### Session 2 — Implementation
 
-- [ ] 4.4 Replace obsolete capabilities/intents/services/controller branches with Delete only on organization, user, application, module, and client surfaces — 03-03 §Embedded Admin UI/UI Scope; ST-32–ST-35, ST-39
-- [ ] 4.5 Implement the five resource warnings through the current dialog/presentation patterns, with Keep default, measured labels, safe text, focus, and teardown — 03-03 §Confirmation Contract; ST-33, ST-36–ST-38
-- [ ] 4.6 Place Delete with existing JSVision Layout DSL and preserve navigation separation plus the blank module-operation row — 03-03 §Embedded Admin UI; ST-37
-- [ ] 4.7 Run the Phase 4 specifications and existing `packages/cli/tests/admin/application.pty.impl.test.ts`; make behavior green without changing specification expectations
+- [x] 4.4 Replace obsolete capabilities/intents/services/controller branches with Delete only on organization, user, application, module, and client surfaces — 03-03 §Embedded Admin UI/UI Scope; ST-32–ST-35, ST-39 ✅ (completed: 2026-09-06 18:13; CLI lint/typecheck and 1,045 tests passed)
+- [x] 4.5 Implement the five resource warnings through the current dialog/presentation patterns, with Keep default, measured labels, safe text, focus, and teardown — 03-03 §Confirmation Contract; ST-33, ST-36–ST-38 ✅ (completed: 2026-09-06 18:13; five dialogs passed the 80×24 and 48×12 specification oracle)
+- [x] 4.6 Place Delete with existing JSVision Layout DSL and preserve navigation separation plus the blank module-operation row — 03-03 §Embedded Admin UI; ST-37 ✅ (completed: 2026-09-06 18:13; Layout DSL placement and measured-label specifications passed)
+- [x] 4.7 Run the Phase 4 specifications and existing `packages/cli/tests/admin/application.pty.impl.test.ts`; make behavior green without changing specification expectations ✅ (completed: 2026-09-06 18:13; 26 deletion specifications and 5 compiled PTY tests passed unchanged)
 
 ### Session 3 — Implementation Tests and Final Gate
 
-- [ ] 4.8 Add implementation tests for capability derivation, mutation ownership, generation races, dialog teardown, focus, measurement, resize, and redraw
-- [ ] 4.9 Update public API/SDK/CLI/Admin UI docs and maintainer security/data/migration/playground docs; remove obsolete lifecycle vocabulary
+- [x] 4.8 Add implementation tests for capability derivation, mutation ownership, generation races, dialog teardown, focus, measurement, resize, and redraw ✅ (completed: 2026-09-06 18:13; focused and full CLI suites passed with 1,045 tests)
+- [x] 4.9 Update public API/SDK/CLI/Admin UI docs and maintainer security/data/migration/playground docs; remove obsolete lifecycle vocabulary ✅ (completed: 2026-09-06 18:18; public lifecycle scan, docs build, and 96 structure checks passed)
 - [ ] 4.10 Run the focused and broader Phase 4 gates from 07 plus all repository-required final gates; separately run `yarn admin:env reset`, `yarn admin:env up`, and `yarn admin` for the five-surface manual oracle; update plan and roadmap only after all evidence qualifies
 
 **Deliverable:** a consistent capability-safe Delete experience on the five existing Admin UI

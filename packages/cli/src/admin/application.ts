@@ -15,6 +15,7 @@ import type { AdminApplicationInteraction } from './application-runtime.js';
 import {
   showAuthenticationGate,
   showCreateOrganizationDialog,
+  showDeleteOrganizationDialog,
   showOrganizationChooser,
   showWhoAmIDialog,
 } from './organization-dialogs.js';
@@ -168,7 +169,10 @@ export async function runAdminApplication(
         userDialogOpen ||
         featureDialogOpen;
       const cancellableWorkOpen =
-        currentController !== undefined || organizationDialogOpen || userDialogOpen || featureDialogOpen;
+        currentController !== undefined ||
+        organizationDialogOpen ||
+        userDialogOpen ||
+        featureDialogOpen;
       if (command === Commands.quit && modalWorkOpen) {
         if (!deferredQuit) {
           deferredQuit = true;
@@ -271,7 +275,10 @@ export async function runAdminApplication(
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.cancel,
-      currentController !== undefined || organizationDialogOpen || userDialogOpen || featureDialogOpen,
+      currentController !== undefined ||
+        organizationDialogOpen ||
+        userDialogOpen ||
+        featureDialogOpen,
     );
     const featureIdle =
       !currentController &&
@@ -481,6 +488,55 @@ export async function runAdminApplication(
       });
   }
 
+  /** Confirms and deletes one selected organization, then reloads organization choice. */
+  function startDeleteOrganization(target: AdminOrganizationContext): void {
+    const state = presentation.getState();
+    const operations = session?.organizations;
+    if (
+      state.kind !== 'authenticated' ||
+      !state.capabilities.canDeleteOrganizations ||
+      target.isSuperAdmin ||
+      !operations ||
+      currentController ||
+      organizationDialogOpen ||
+      disposed
+    )
+      return;
+    const generation = ++organizationGeneration;
+    const controller = new AbortController();
+    organizationDialogOpen = true;
+    setState(state);
+    void showDeleteOrganizationDialog(dialogHost, controller.signal, target)
+      .then(async (choice) => {
+        if (!ownsOrganizationGeneration(generation) || choice.kind !== 'delete') return;
+        const latest = presentation.getState();
+        if (latest.kind !== 'authenticated' || !latest.capabilities.canDeleteOrganizations) return;
+        const result = await operations.delete(target.id);
+        if (!ownsOrganizationGeneration(generation)) return;
+        if (result.kind === 'session-invalid') {
+          invalidateSession();
+          return;
+        }
+        if (result.kind === 'success') {
+          setState(
+            authenticatedState(
+              latest,
+              latest.organization?.id === target.id ? undefined : latest.organization,
+            ),
+          );
+        } else {
+          setState(authenticatedState(latest, latest.organization, result.failure));
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!ownsOrganizationGeneration(generation)) return;
+        organizationDialogOpen = false;
+        setState(presentation.getState());
+        startOrganizationChooser();
+      });
+  }
+
   /** Opens organization choice with one complete, order-preserving list request when authorized. */
   function startOrganizationChooser(): void {
     const state = presentation.getState();
@@ -516,9 +572,11 @@ export async function runAdminApplication(
       });
     }
 
-    let next: 'create' | 'reauthenticate' | undefined;
+    let next:
+      'create' | 'reauthenticate' | { readonly delete: AdminOrganizationContext } | undefined;
     void showOrganizationChooser(dialogHost, {
       capabilities: state.capabilities,
+      ...(state.organizationFailure ? { failure: state.organizationFailure } : {}),
       ...(organizations ? { organizations } : {}),
     })
       .then((choice) => {
@@ -527,6 +585,8 @@ export async function runAdminApplication(
           setState(authenticatedState(state, choice.organization));
         } else if (choice.kind === 'create') {
           next = 'create';
+        } else if (choice.kind === 'delete') {
+          next = { delete: choice.organization };
         } else if (choice.kind === 'reauthenticate') {
           next = 'reauthenticate';
         }
@@ -538,6 +598,7 @@ export async function runAdminApplication(
         setState(presentation.getState());
         if (next === 'create') startCreateOrganization();
         else if (next === 'reauthenticate') startReauthentication();
+        else if (next) startDeleteOrganization(next.delete);
       });
   }
 

@@ -6,11 +6,10 @@ import {
   DataGrid,
   Dialog,
   Group,
+  GroupBox,
   Input,
   Memo,
   View,
-  Window,
-  at,
 } from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
 
@@ -26,6 +25,7 @@ import {
   createAdminApplicationWorkspace,
   type AdminApplicationIntent,
 } from '../../src/admin/application-workspace.js';
+import { createAdminPresentation } from '../../src/admin/presentation.js';
 import type { AdminCapabilities } from '../../src/admin/state.js';
 import type {
   AdminApplication,
@@ -62,15 +62,18 @@ const capabilities: AdminCapabilities = {
   canInviteUsers: false,
   canUpdateUsers: false,
   canManageUserLifecycle: false,
-  canPurgeUsers: false,
+  canDeleteOrganizations: false,
+  canDeleteUsers: false,
   canReadApplications: true,
   canCreateApplications: true,
   canUpdateApplications: true,
-  canArchiveApplications: true,
+  canDeleteApplications: true,
+  canDeleteModules: true,
   canReadClients: false,
   canCreateClients: false,
   canUpdateClients: false,
-  canRevokeClients: false,
+  canDeleteClients: false,
+  canRevokeClientSecrets: false,
 };
 
 /** Collects a mounted JSVision tree for observable control assertions. */
@@ -108,18 +111,34 @@ function mountWorkspace(
   granted: AdminCapabilities = capabilities,
 ) {
   const intents: AdminApplicationIntent[] = [];
-  const host = createApplication({ viewport: { width, height } });
+  const presentation = createAdminPresentation(
+    {
+      kind: 'authenticated',
+      server: new URL('https://porta.example.test'),
+      identity: { sub: 'administrator' },
+      capabilities: granted,
+    },
+    false,
+    { width, height },
+  );
+  const host = createApplication({
+    content: presentation.content,
+    menuBar: presentation.menu,
+    statusLine: presentation.status,
+    viewport: { width, height },
+  });
   const workspace = createAdminApplicationWorkspace({
     capabilities: granted,
     onIntent: (intent) => intents.push(intent),
     focusView: (view) => host.loop.focusView(view),
   });
-  const window = new Window('Applications');
-  window.setLayout({ rect: { x: 0, y: 0, width, height } });
-  window.add(at(workspace.content, 1, 1, Math.max(1, width - 4), Math.max(1, height - 4)));
-  host.desktop.addWindow(window);
+  presentation.setWorkspace(workspace.content);
   workspace.setState(state);
   workspace.focusCurrent();
+  if (!(workspace.content instanceof Dialog)) {
+    throw new Error('Expected a dialog-styled application workspace.');
+  }
+  const window = workspace.content;
   return { host, intents, window, workspace };
 }
 
@@ -174,16 +193,29 @@ async function submitCreateDialog<T>(
 }
 
 describe('global applications workspace', () => {
-  it('shows a full-height DataGrid and persistent deployment-global notice without an organization', async () => {
+  it('shows a clean full-height DataGrid with creation owned by the Applications menu', async () => {
     const mounted = mountWorkspace({ kind: 'list', scope: 'global', applications: [application] });
     await settle();
     const views = descendants(mounted.window);
     const grid = views.find((view) => view instanceof DataGrid);
 
+    expect(mounted.window.title()).toBe('Applications');
+    expect(mounted.window.isZoomed()).toBe(true);
+    expect(mounted.window.closable).toBe(false);
+    expect(mounted.window.resizable).toBe(false);
+    expect(mounted.window.zoomable).toBe(false);
     expect(grid).toBeInstanceOf(DataGrid);
     expect((grid as DataGrid<unknown>).layout.size).toEqual({ kind: 'fr', weight: 1 });
     expect((grid as DataGrid<unknown>).bounds.height).toBeGreaterThan(10);
-    expect(frameText(mounted.host)).toContain('Deployment-global applications');
+    expect(frameText(mounted.host)).toContain('Applications');
+    expect(frameText(mounted.host).match(/Applications/g)).toHaveLength(2);
+    expect(frameText(mounted.host)).toContain('Enter View details · 1 application');
+    expect(frameText(mounted.host)).not.toContain('Deployment-global');
+    expect(
+      views
+        .filter((view) => view instanceof Button)
+        .some((button) => button.activation.label === 'Create'),
+    ).toBe(false);
     expect(frameText(mounted.host)).toContain('Name');
     expect(frameText(mounted.host)).toContain('Slug');
     expect(frameText(mounted.host)).toContain('Status');
@@ -195,7 +227,9 @@ describe('global applications workspace', () => {
     await settle();
     mounted.workspace.setState({ kind: 'list', scope: 'global', applications: [] });
     await settle();
-    expect(frameText(mounted.host)).toContain('No applications');
+    expect(frameText(mounted.host)).toContain(
+      'No applications. Use Applications > Create application.',
+    );
     expect(frameText(mounted.host)).not.toContain('Customer Portal');
 
     mounted.workspace.setState({ kind: 'failure', failure: 'unavailable' });
@@ -204,7 +238,7 @@ describe('global applications workspace', () => {
     expect(frameText(mounted.host)).not.toContain('Customer Portal');
   });
 
-  it('shows safe detail, timestamps, modules, global scope, and permitted actions', async () => {
+  it('shows safe detail, timestamps, modules, and permitted actions without scope jargon', async () => {
     const mounted = mountWorkspace({
       kind: 'detail',
       scope: 'global',
@@ -215,54 +249,65 @@ describe('global applications workspace', () => {
     });
     await settle();
     const text = frameText(mounted.host);
-    const grids = descendants(mounted.window).filter((view) => view instanceof DataGrid);
+    const views = descendants(mounted.window);
+    const grids = views.filter((view) => view instanceof DataGrid);
+    const groupBoxes = views.filter((view) => view instanceof GroupBox);
 
     expect(grids).toHaveLength(1);
-    expect(text).toContain('Deployment-global application');
+    expect(groupBoxes).toHaveLength(2);
+    expect(text).not.toContain('Deployment-global');
+    expect(text).toContain('Customer Portal');
+    expect(text).toContain('ACTIVE');
+    expect(text).toContain('customer-portal');
+    expect(text).toContain('The deployment-wide customer product.');
     expect(text).toContain('Created: 2026-01-01T00:00:00Z');
     expect(text).toContain('Updated: 2026-08-01T00:00:00Z');
+    expect(text).toContain('Modules · 1 module');
     expect(text).toContain('Billing');
     expect(text).toContain('Edit');
     expect(text).toContain('Deactivate');
-    expect(text).toContain('Archive');
+    expect(text).toContain('Delete');
     expect(text).toContain('Add module');
-  });
 
-  it('keeps archived detail readable while every mutation is visible-disabled and restore is absent', async () => {
-    const archived = { ...application, status: 'archived' as const };
-    const mounted = mountWorkspace({
-      kind: 'detail',
-      scope: 'global',
-      applications: [archived],
-      application: archived,
-      etag: null,
-      modules: [moduleRow],
-    });
-    await settle();
-    const buttons = descendants(mounted.window).filter((view) => view instanceof Button);
-    const labels = buttons.map((button) => button.activation.label);
-
-    expect(labels).toEqual(
-      expect.arrayContaining(['Edit', 'Add module', 'Edit module', 'Deactivate module', 'Archive']),
+    const applicationActions = descendants(groupBoxes[0]!)
+      .filter((view) => view instanceof Button)
+      .map((button) => button.activation.label);
+    const moduleActions = descendants(groupBoxes[1]!)
+      .filter((view) => view instanceof Button)
+      .map((button) => button.activation.label);
+    expect(applicationActions).toEqual(expect.arrayContaining(['Edit', 'Deactivate', 'Delete']));
+    expect(applicationActions).not.toContain('Back to applications');
+    expect(applicationActions).not.toContain('Add module');
+    expect(moduleActions).toEqual(
+      expect.arrayContaining(['Add module', 'Edit module', 'Deactivate module', 'Delete module']),
     );
-    for (const button of buttons.filter((candidate) =>
-      ['Edit', 'Add module', 'Edit module', 'Deactivate module', 'Archive'].includes(
-        candidate.activation.label,
-      ),
+    expect(moduleActions).not.toContain('Back to applications');
+    expect(
+      views
+        .filter((view) => view instanceof Button)
+        .map((button) => button.activation.label),
+    ).toContain('Back to applications');
+
+    // Every detail action keeps both face-padding cells and its shadow column.
+    const detailActionLabels = new Set([
+      'Edit',
+      'Deactivate',
+      'Delete',
+      'Add module',
+      'Edit module',
+      'Deactivate module',
+      'Delete module',
+      'Back to applications',
+    ]);
+    for (const button of views.filter(
+      (view): view is Button =>
+        view instanceof Button && detailActionLabels.has(view.activation.label),
     )) {
-      click(mounted.host, button);
+      expect(button.bounds.width).toBe(button.measure().width);
     }
-    const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
-    if (!(grid instanceof DataGrid)) throw new Error('Archived module grid missing.');
-    mounted.host.loop.focusView(grid.rows);
-    mounted.host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
-    expect(mounted.intents).toEqual([]);
-    expect(frameText(mounted.host)).toContain('Archived applications are read only');
-    expect(frameText(mounted.host)).not.toContain('Restore');
-    expect(frameText(mounted.host)).not.toContain('Delete');
   });
 
-  it('emits parent-qualified module actions and no delete or restore action', async () => {
+  it('enables parent-qualified module actions only after selecting a module record', async () => {
     const mounted = mountWorkspace({
       kind: 'detail',
       scope: 'global',
@@ -274,10 +319,40 @@ describe('global applications workspace', () => {
     await settle();
     const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
     if (!(grid instanceof DataGrid)) throw new Error('Module grid missing.');
+    const edit = descendants(mounted.window)
+      .filter((view) => view instanceof Button)
+      .find((button) => button.activation.label === 'Edit module');
+    const deactivate = descendants(mounted.window)
+      .filter((view) => view instanceof Button)
+      .find((button) => button.activation.label === 'Deactivate module');
+    const add = descendants(mounted.window)
+      .filter((view) => view instanceof Button)
+      .find((button) => button.activation.label === 'Add module');
+    if (!add || !edit || !deactivate) throw new Error('Module operation buttons missing.');
+
+    // Creating a new record does not depend on selecting an existing record.
+    activate(mounted.host, add);
+    expect(mounted.intents).toContainEqual({ kind: 'add-module', applicationId });
+    mounted.intents.length = 0;
+
+    // Module mutation controls require an explicitly selected DataGrid record.
+    click(mounted.host, edit);
+    click(mounted.host, deactivate);
+    expect(mounted.intents).toEqual([]);
+
     mounted.host.loop.focusView(grid.rows);
-    mounted.host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
+    mounted.host.loop.dispatch({
+      type: 'key',
+      key: 'enter',
+      ctrl: false,
+      alt: false,
+      shift: false,
+    });
     await settle();
 
+    // Enter selects the focused record without silently choosing an operation.
+    expect(mounted.intents).toEqual([]);
+    activate(mounted.host, edit);
     expect(mounted.intents).toContainEqual({
       kind: 'edit-module',
       applicationId,
@@ -287,13 +362,48 @@ describe('global applications workspace', () => {
       expect.arrayContaining(['delete-module', 'restore-module']),
     );
 
-    const deactivate = descendants(mounted.window)
-      .filter((view) => view instanceof Button)
-      .find((button) => button.activation.label === 'Deactivate module');
-    if (!deactivate) throw new Error('Deactivate module button missing.');
     activate(mounted.host, deactivate);
     expect(mounted.intents).toContainEqual({
       kind: 'deactivate-module',
+      applicationId,
+      moduleId,
+    });
+  });
+
+  it('keeps deactivation disabled when the selected module is already inactive', async () => {
+    const inactiveModule = { ...moduleRow, status: 'inactive' as const };
+    const mounted = mountWorkspace({
+      kind: 'detail',
+      scope: 'global',
+      applications: [application],
+      application,
+      etag: null,
+      modules: [inactiveModule],
+    });
+    await settle();
+    const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    const buttons = descendants(mounted.window).filter((view) => view instanceof Button);
+    const edit = buttons.find((button) => button.activation.label === 'Edit module');
+    const deactivate = buttons.find((button) => button.activation.label === 'Deactivate module');
+    if (!(grid instanceof DataGrid) || !edit || !deactivate) {
+      throw new Error('Inactive module controls missing.');
+    }
+
+    mounted.host.loop.focusView(grid.rows);
+    mounted.host.loop.dispatch({
+      type: 'key',
+      key: 'enter',
+      ctrl: false,
+      alt: false,
+      shift: false,
+    });
+    await settle();
+    click(mounted.host, deactivate);
+    expect(mounted.intents).toEqual([]);
+
+    activate(mounted.host, edit);
+    expect(mounted.intents).toContainEqual({
+      kind: 'edit-module',
       applicationId,
       moduleId,
     });
@@ -341,7 +451,7 @@ describe('global applications workspace', () => {
     expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
   });
 
-  it('keeps unavailable actions visible-disabled with a fixed denial reason', async () => {
+  it('keeps creation menu-owned when the session lacks application-create permission', async () => {
     const mounted = mountWorkspace(
       { kind: 'list', scope: 'global', applications: [application] },
       80,
@@ -352,90 +462,116 @@ describe('global applications workspace', () => {
     const create = descendants(mounted.window)
       .filter((view) => view instanceof Button)
       .find((button) => button.activation.label === 'Create');
-    if (!create) throw new Error('Create button missing.');
-    click(mounted.host, create);
+
+    expect(create).toBeUndefined();
     expect(mounted.intents).toEqual([]);
-    expect(frameText(mounted.host)).toContain('requires application create');
+    expect(frameText(mounted.host)).not.toContain('requires application create');
   });
 });
-
 describe('application and module dialogs', () => {
-  it('repeats the deployment-global multi-organization notice in every mutation dialog', async () => {
+  it('places plain-language scope guidance only inside mutation dialogs', async () => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const openers = [
-      () => showCreateApplicationDialog(host, new AbortController().signal),
-      () => showEditApplicationDialog(host, new AbortController().signal, application),
-      () =>
-        showApplicationLifecycleDialog(
-          host,
-          new AbortController().signal,
-          'deactivate',
-          application,
-        ),
-      () => showCreateModuleDialog(host, new AbortController().signal, applicationId),
-      () => showEditModuleDialog(host, new AbortController().signal, moduleRow),
-      () =>
-        showModuleDeactivationDialog(
-          host,
-          new AbortController().signal,
-          application,
-          moduleRow,
-        ),
+    const dialogs = [
+      {
+        open: () => showCreateApplicationDialog(host, new AbortController().signal),
+        notice: 'This application will be available to every organization.',
+      },
+      {
+        open: () => showEditApplicationDialog(host, new AbortController().signal, application),
+        notice: 'Changes apply wherever this application is used.',
+      },
+      {
+        open: () =>
+          showApplicationLifecycleDialog(
+            host,
+            new AbortController().signal,
+            'deactivate',
+            application,
+          ),
+        notice: 'Changes apply wherever this application is used.',
+      },
+      {
+        open: () => showCreateModuleDialog(host, new AbortController().signal, applicationId),
+        notice: 'Changes apply wherever this application is used.',
+      },
+      {
+        open: () => showEditModuleDialog(host, new AbortController().signal, moduleRow),
+        notice: 'Changes apply wherever this application is used.',
+      },
+      {
+        open: () =>
+          showModuleDeactivationDialog(host, new AbortController().signal, application, moduleRow),
+        notice: 'Changes apply wherever this application is used.',
+      },
     ];
-    for (const open of openers) {
+
+    for (const { open, notice } of dialogs) {
       const result = open();
       await settle();
-      expect(frameText(host)).toContain('Deployment-global: changes may affect multiple organizations');
+      expect(frameText(host)).toContain(notice);
+      expect(frameText(host)).not.toContain('Deployment-global');
       host.loop.endModal('cancel');
       await expect(result).resolves.toEqual({ kind: 'cancel' });
     }
   });
   it.each([
-    ['application', (host: ReturnType<typeof createApplication>) => showCreateApplicationDialog(host, new AbortController().signal)],
-    ['module', (host: ReturnType<typeof createApplication>) => showCreateModuleDialog(host, new AbortController().signal, applicationId)],
-  ] as const)('accepts exact create boundaries and rejects adjacent invalid %s values', async (_name, open) => {
-    const accepted: Array<readonly [string, string, string]> = [
-      ['n', '', ''],
-      ['n'.repeat(255), 'abc', 'd'.repeat(2_000)],
-      ['name', 'a'.repeat(100), 'description'],
-    ];
-    for (const values of accepted) {
-      const result = await submitCreateDialog(open, values);
-      expect(result.kind).not.toBe('cancel');
-    }
+    [
+      'application',
+      (host: ReturnType<typeof createApplication>) =>
+        showCreateApplicationDialog(host, new AbortController().signal),
+    ],
+    [
+      'module',
+      (host: ReturnType<typeof createApplication>) =>
+        showCreateModuleDialog(host, new AbortController().signal, applicationId),
+    ],
+  ] as const)(
+    'accepts exact create boundaries and rejects adjacent invalid %s values',
+    async (_name, open) => {
+      const accepted: Array<readonly [string, string, string]> = [
+        ['n', '', ''],
+        ['n'.repeat(255), 'abc', 'd'.repeat(2_000)],
+        ['name', 'a'.repeat(100), 'description'],
+      ];
+      for (const values of accepted) {
+        const result = await submitCreateDialog(open, values);
+        expect(result.kind).not.toBe('cancel');
+      }
 
-    for (const values of [
-      ['', 'abc', ''],
-      ['n'.repeat(256), 'abc', ''],
-      ['name', 'ab', ''],
-      ['name', 'a'.repeat(101), ''],
-      ['name', 'bad slug', ''],
-      ['name\u001b', 'abc', ''],
-      ['name', 'abc', `description\u001b`],
-      ['name', 'abc', 'd'.repeat(2_001)],
-    ] as const) {
-      const host = createApplication({ viewport: { width: 80, height: 24 } });
-      const result = open(host);
-      await settle();
-      const views = descendants(activeDialog(host));
-      const inputs = views.filter((view) => view instanceof Input);
-      const memo = views.find((view) => view instanceof Memo);
-      inputs[0]?.getValueSignal().set(values[0]);
-      inputs[1]?.getValueSignal().set(values[1]);
-      memo?.setText(values[2]);
-      const submit = views
-        .filter((view) => view instanceof Button)
-        .find((button) => button.activation.command === 'ok');
-      if (!submit) throw new Error('Create submit button missing.');
-      activate(host, submit);
-      await settle();
-      expect(host.desktop.activeWindow(), `invalid values closed: ${JSON.stringify(values)}`).toBeInstanceOf(
-        Dialog,
-      );
-      host.loop.endModal('cancel');
-      await expect(result).resolves.toEqual({ kind: 'cancel' });
-    }
-  });
+      for (const values of [
+        ['', 'abc', ''],
+        ['n'.repeat(256), 'abc', ''],
+        ['name', 'ab', ''],
+        ['name', 'a'.repeat(101), ''],
+        ['name', 'bad slug', ''],
+        ['name\u001b', 'abc', ''],
+        ['name', 'abc', `description\u001b`],
+        ['name', 'abc', 'd'.repeat(2_001)],
+      ] as const) {
+        const host = createApplication({ viewport: { width: 80, height: 24 } });
+        const result = open(host);
+        await settle();
+        const views = descendants(activeDialog(host));
+        const inputs = views.filter((view) => view instanceof Input);
+        const memo = views.find((view) => view instanceof Memo);
+        inputs[0]?.getValueSignal().set(values[0]);
+        inputs[1]?.getValueSignal().set(values[1]);
+        memo?.setText(values[2]);
+        const submit = views
+          .filter((view) => view instanceof Button)
+          .find((button) => button.activation.command === 'ok');
+        if (!submit) throw new Error('Create submit button missing.');
+        activate(host, submit);
+        await settle();
+        expect(
+          host.desktop.activeWindow(),
+          `invalid values closed: ${JSON.stringify(values)}`,
+        ).toBeInstanceOf(Dialog);
+        host.loop.endModal('cancel');
+        await expect(result).resolves.toEqual({ kind: 'cancel' });
+      }
+    },
+  );
 
   it('creates application and module payloads with omitted empty optional values', async () => {
     const created = await submitCreateDialog(
@@ -471,7 +607,7 @@ describe('application and module dialogs', () => {
     await moduleEditing;
   });
 
-  it.each(['deactivate', 'archive'] as const)(
+  it.each(['deactivate'] as const)(
     'names the application and explains existing-client behavior before %s',
     async (action) => {
       const host = createApplication({ viewport: { width: 80, height: 24 } });

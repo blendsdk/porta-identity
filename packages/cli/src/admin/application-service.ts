@@ -82,11 +82,7 @@ function applicationValue(value: unknown): AdminApplication | undefined {
     !isText(candidate.slug, 100, 3) ||
     !SLUG.test(candidate.slug) ||
     !(candidate.description === null || isText(candidate.description, 2_000)) ||
-    !(
-      candidate.status === 'active' ||
-      candidate.status === 'inactive' ||
-      candidate.status === 'archived'
-    ) ||
+    !(candidate.status === 'active' || candidate.status === 'inactive') ||
     !isTimestamp(candidate.createdAt) ||
     !isTimestamp(candidate.updatedAt)
   ) {
@@ -196,8 +192,8 @@ export interface AdminApplicationOperations {
   readonly activate: (id: string) => Promise<AdminApplicationMutationResult>;
   /** Deactivates an active application. */
   readonly deactivate: (id: string) => Promise<AdminApplicationMutationResult>;
-  /** Permanently archives an application. */
-  readonly archive: (id: string) => Promise<AdminApplicationMutationResult>;
+  /** Permanently deletes an application. */
+  readonly delete: (id: string) => Promise<AdminApplicationMutationResult>;
   /** Lists every validated module beneath one application. */
   readonly listModules: (
     applicationId: string,
@@ -215,6 +211,11 @@ export interface AdminApplicationOperations {
   ) => Promise<AdminApplicationMutationResult<AdminApplicationModule>>;
   /** Deactivates a module through its parent-qualified route. */
   readonly deactivateModule: (
+    applicationId: string,
+    moduleId: string,
+  ) => Promise<AdminApplicationMutationResult>;
+  /** Permanently deletes a module through its parent-qualified route. */
+  readonly deleteModule: (
     applicationId: string,
     moduleId: string,
   ) => Promise<AdminApplicationMutationResult>;
@@ -254,11 +255,12 @@ export function createAdminApplicationOperations(
     | 'update'
     | 'activate'
     | 'deactivate'
-    | 'archive'
+    | 'delete'
     | 'listModules'
     | 'addModule'
     | 'updateModule'
     | 'deactivateModule'
+    | 'deleteModule'
   >,
 ): AdminApplicationOperations {
   return {
@@ -298,9 +300,9 @@ export function createAdminApplicationOperations(
       UUID.test(id)
         ? voidMutation(() => domain().deactivate(id))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    archive: (id) =>
+    delete: (id) =>
       UUID.test(id)
-        ? voidMutation(() => domain().archive(id))
+        ? voidMutation(() => domain().delete(id))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
     async listModules(applicationId) {
       if (!UUID.test(applicationId)) return { kind: 'failure', failure: 'validation' };
@@ -345,6 +347,10 @@ export function createAdminApplicationOperations(
     deactivateModule: (applicationId, moduleId) =>
       UUID.test(applicationId) && UUID.test(moduleId)
         ? voidMutation(() => domain().deactivateModule(applicationId, moduleId))
+        : Promise.resolve({ kind: 'failure', failure: 'validation' }),
+    deleteModule: (applicationId, moduleId) =>
+      UUID.test(applicationId) && UUID.test(moduleId)
+        ? voidMutation(() => domain().deleteModule(applicationId, moduleId))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
   };
 }

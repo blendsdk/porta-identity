@@ -228,11 +228,7 @@ function clientValue(value: unknown, organizationId: string): AdminClient | unde
     ) ||
     override === undefined ||
     !effective ||
-    !(
-      candidate.status === 'active' ||
-      candidate.status === 'inactive' ||
-      candidate.status === 'revoked'
-    ) ||
+    !(candidate.status === 'active' || candidate.status === 'inactive') ||
     !isTimestamp(candidate.createdAt) ||
     !isTimestamp(candidate.updatedAt)
   ) {
@@ -401,8 +397,8 @@ export interface AdminClientOperations {
     clientId: string,
     signal?: AbortSignal,
   ) => Promise<AdminClientMutationResult>;
-  /** Permanently revokes one client. */
-  readonly revoke: (
+  /** Permanently deletes one client. */
+  readonly delete: (
     organizationId: string,
     clientId: string,
     signal?: AbortSignal,
@@ -436,7 +432,7 @@ type AdminClientDomain = Pick<
   | 'update'
   | 'activate'
   | 'deactivate'
-  | 'revoke'
+  | 'delete'
   | 'listSecrets'
   | 'generateSecret'
   | 'revokeSecret'
@@ -574,7 +570,7 @@ export function createAdminClientOperations(
         ? voidMutation(() => remote.deactivate(clientId))
         : ownershipMutationFailure(ownership);
     },
-    async revoke(organizationId, clientId, signal) {
+    async delete(organizationId, clientId, signal) {
       if (!UUID.test(organizationId) || !UUID.test(clientId)) {
         return { kind: 'failure', failure: 'validation' };
       }
@@ -582,7 +578,7 @@ export function createAdminClientOperations(
       const ownership = await readOwnedClient(remote, organizationId, clientId);
       if (ownership.kind === 'success' && signal?.aborted) return { kind: 'cancelled' };
       return ownership.kind === 'success'
-        ? voidMutation(() => remote.revoke(clientId))
+        ? voidMutation(() => remote.delete(clientId))
         : ownershipMutationFailure(ownership);
     },
     async listSecrets(organizationId, clientId) {

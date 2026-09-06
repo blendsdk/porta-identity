@@ -132,7 +132,7 @@ describe('admin session production wiring', () => {
       clearPassword: unused,
       verifyEmail: unused,
       exportData: unused,
-      purge: unused,
+      delete: unused,
       suspend: unused,
       unsuspend: unused,
       lock: unused,

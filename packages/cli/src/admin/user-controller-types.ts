@@ -8,7 +8,7 @@ import type {
   CreateUserDialogResult,
   EditUserDialogResult,
   InviteUserDialogResult,
-  PurgeUserDialogResult,
+  DeleteUserDialogResult,
   SetUserPasswordDialogResult,
   UserConfirmationAction,
   UserConfirmationDialogResult,
@@ -57,12 +57,13 @@ export interface AdminUserControllerDialogs {
     action: 'suspend' | 'lock',
     email: string,
   ) => Promise<UserReasonDialogResult>;
-  /** Collects the distinct irreversible purge decision. */
-  readonly purge: (
+  /** Collects the irreversible user-deletion decision. */
+  readonly delete: (
     host: AdminUserDialogHost,
     signal: AbortSignal,
-    email: string,
-  ) => Promise<PurgeUserDialogResult>;
+    organization: Extract<AdminConnectionState, { readonly kind: 'authenticated' }>['organization'],
+    user: AdminUserSelection['detail'],
+  ) => Promise<DeleteUserDialogResult>;
 }
 
 /** Dependencies for one direct user controller. */

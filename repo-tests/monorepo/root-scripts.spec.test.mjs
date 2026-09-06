@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 const supportedScripts = [
+  'admin',
   'admin:env',
   'assurance:all',
   'assurance:baseline',
@@ -238,6 +239,16 @@ test('should delegate operational commands to current monorepo paths', () => {
   );
   assertScriptEquals(scripts, 'porta', 'tsx packages/server/src/cli/index.ts');
   assertScriptEquals(scripts, 'cli', 'tsx packages/cli/src/index.ts --insecure');
+  assertScriptEquals(
+    scripts,
+    'admin',
+    'NODE_USE_SYSTEM_CA=1 tsx packages/cli/src/index.ts admin --server https://porta-admin-playground.ci.portaidentity.com:3543',
+  );
+  assert.doesNotMatch(
+    scripts.admin ?? '',
+    /--insecure|NODE_TLS_REJECT_UNAUTHORIZED/,
+    'the trusted playground helper must not disable TLS verification',
+  );
 
   for (const dockerAction of ['up', 'down', 'logs']) {
     const suffix = dockerAction === 'up' ? 'up -d' : dockerAction === 'logs' ? 'logs -f' : 'down';

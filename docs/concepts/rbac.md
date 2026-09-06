@@ -57,7 +57,7 @@ User-role assignments are checked within the **organization context**. A user in
 
 ### System Roles
 
-Some roles are marked as **system roles** (`is_system = true`). These are created during bootstrap and cannot be deleted. The most important system role is `porta-admin`, which grants access to the Admin API.
+The bootstrap process creates the `porta-admin` role, which grants access to the Admin API.
 
 ## How Roles Appear in Tokens
 
@@ -155,10 +155,11 @@ Permissions are organized by domain with standard CRUD-style operations:
 
 | Domain | Permissions | Description |
 | --- | --- | --- |
-| **Organizations** | `org:create`, `org:read`, `org:update`, `org:suspend`, `org:archive` | Organization lifecycle management |
-| **Users** | `user:create`, `user:read`, `user:update`, `user:suspend`, `user:invite` | User account management |
-| **Applications** | `app:create`, `app:read`, `app:update`, `app:archive` | Application configuration |
-| **Clients** | `client:create`, `client:read`, `client:update`, `client:revoke` | OIDC client management |
+| **Organizations** | `org:create`, `org:read`, `org:update`, `org:suspend`, `org:delete` | Organization lifecycle management |
+| **Users** | `user:create`, `user:read`, `user:update`, `user:suspend`, `user:invite`, `user:delete` | User account management |
+| **Applications** | `app:create`, `app:read`, `app:update`, `app:delete`, `module:delete` | Application configuration |
+| **Clients** | `client:create`, `client:read`, `client:update`, `client:revoke`, `client:delete` | OIDC client and secret management |
+| **RBAC** | `role:delete`, `permission:delete`, `claim:delete` | Permanent definition deletion |
 | **System** | `config:read`, `config:write`, `key:read`, `key:rotate`, `audit:read` | System configuration and operations |
 | **Sessions** | `session:read`, `session:revoke` | Active session management |
 

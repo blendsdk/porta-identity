@@ -75,7 +75,7 @@ function authenticatedState(
     readonly id: string;
     readonly name: string;
     readonly slug: string;
-    readonly status: 'active' | 'suspended' | 'archived';
+    readonly status: 'active' | 'suspended';
   },
 ): AdminConnectionState {
   return {
@@ -512,7 +512,7 @@ describe('admin application shell', () => {
           canInviteUsers: true,
           canUpdateUsers: true,
           canManageUserLifecycle: true,
-          canPurgeUsers: true,
+          canDeleteUsers: true,
         },
       },
       applicationFactory: createApplication,
@@ -542,7 +542,7 @@ describe('admin application shell', () => {
         canInviteUsers: capability === 'invite',
         canUpdateUsers: false,
         canManageUserLifecycle: false,
-        canPurgeUsers: false,
+        canDeleteUsers: false,
       };
       const calls: string[] = [];
 

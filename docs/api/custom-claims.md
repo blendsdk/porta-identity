@@ -58,11 +58,13 @@ PUT /api/admin/applications/:appId/claims/:claimId
 | `description` | string | Updated description |
 | `validation_rules` | object | Updated validation rules |
 
-### Archive Claim Definition
+### Delete Claim Definition
 
 ```http
-POST /api/admin/applications/:appId/claims/:claimId/archive
+DELETE /api/admin/applications/:appId/claims/:claimId
 ```
+
+Permanently deletes the claim definition and its user values. The response is `204 No Content`.
 
 ---
 

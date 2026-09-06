@@ -93,7 +93,7 @@ Returns the current first-page history envelope.
 
 After `porta admin` authenticates and an organization is selected, open the Users menu to browse,
 search, filter, create, or invite users. Enter on a user row opens its detail view. Available profile,
-credential, history, lifecycle, and purge actions are shown only when the verified identity has the
+credential, history, lifecycle, and Delete actions are shown only when the verified identity has the
 corresponding permission. Import and export are not part of this screen.
 
 ---
@@ -214,9 +214,9 @@ Resets 2FA by disabling and clearing all enrollment data, forcing the user to re
 
 ---
 
-## GDPR Compliance
+## Data Export and Deletion
 
-Commands for GDPR data portability (Article 20) and right to erasure (Article 17).
+Commands for data portability and physical user deletion.
 
 ### `porta user export`
 
@@ -232,20 +232,20 @@ Use `--json` to pipe the output to a file:
 porta user export --org-id <id> --user-id <id> --json > user-data.json
 ```
 
-### `porta user purge`
+### `porta user delete`
 
 ```bash
-porta user purge --org-id <id> --user-id <id>
+porta user delete <org-id> <user-id>
 ```
 
-Permanently anonymizes and deletes a user's personal data. This operation:
+Permanently deletes the user and owned identity and security data. This includes role assignments,
+claim values, credentials, recovery data, and server-backed sessions. Audit history is retained
+separately under the configured audit policy and can still identify the deleted user.
 
-1. Anonymizes the user record (replaces PII with anonymized placeholders)
-2. Deletes all associated data (roles, claims, tokens, 2FA, audit metadata)
-3. Executes in a single database transaction
-
-Prompts for confirmation before executing. Use `--force` to skip the confirmation prompt.
+The CLI always asks whether to keep or delete the named user. There is no record-deletion
+`--force` option.
 
 ::: danger Irreversible
-Data purge cannot be undone. Super-admin users cannot be purged as a safety measure.
+Deletion cannot be undone. A control-plane user cannot be deleted when that would leave no other
+active user with the exact built-in `porta-super-admin` role.
 :::

@@ -61,7 +61,18 @@ const capabilities = {
   canInviteUsers: false,
   canUpdateUsers: true,
   canManageUserLifecycle: true,
-  canPurgeUsers: true,
+  canDeleteOrganizations: false,
+  canDeleteUsers: true,
+  canReadApplications: false,
+  canCreateApplications: false,
+  canUpdateApplications: false,
+  canDeleteApplications: false,
+  canDeleteModules: false,
+  canReadClients: false,
+  canCreateClients: false,
+  canUpdateClients: false,
+  canDeleteClients: false,
+  canRevokeClientSecrets: false,
 };
 
 /** Collects all descendants of one mounted view tree. */
@@ -162,7 +173,7 @@ describe('user workspace implementation', () => {
       shift: false,
     });
 
-    expect(mounted.intents).toEqual(['purge']);
+    expect(mounted.intents).toEqual(['delete']);
   });
 
   it('should remove retained projections on clear and ignore state after disposal', async () => {

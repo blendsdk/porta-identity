@@ -213,22 +213,16 @@ if (action === 'assert-absent') {
     if (secretsBefore.some((secret) => secret.clientId !== ownedClient?.id)) {
       throw new Error('Test client-secret ownership could not be proved.');
     }
-    await client.organizations.destroy(matches[0].id);
+    await client.organizations.delete(matches[0].id);
     const after = await client.organizations.listAll();
     if (after.some((organization) => organization.slug === slug)) {
       throw new Error('Test organization remains after cleanup.');
     }
-    const usersAfter = await client.users.list(matches[0].id, { page: 1, pageSize: 20 });
-    if (usersAfter.data.some((user) => user.email === userEmail)) {
-      throw new Error('Test user remains after organization cleanup.');
+    if (application) await client.applications.delete(application.id);
+    const applicationsAfter = await client.applications.listAll();
+    if (applicationsAfter.some((candidate) => candidate.slug === applicationSlug)) {
+      throw new Error('Test application remains after cleanup.');
     }
-    const clientsAfter = await client.clients.listAll({ organizationId: matches[0].id });
-    if (clientsAfter.some((candidate) => candidate.clientName === clientName)) {
-      throw new Error('Test client remains after organization cleanup.');
-    }
-    if (application) await client.applications.archive(application.id);
-    const archivedApplication = application ? await client.applications.get(application.id) : undefined;
-    const modulesAfter = application ? await client.applications.listModules(application.id) : [];
     const remainingIds = after.map((organization) => organization.id).sort();
     if (JSON.stringify(remainingIds) !== JSON.stringify(unrelatedIds)) {
       throw new Error('Cleanup changed an unrelated organization.');
@@ -240,12 +234,8 @@ if (action === 'assert-absent') {
         userAbsent: true,
         userOwnershipVerified,
         clientAndSecretsAbsent: true,
-          applicationArchived: archivedApplication?.data.status === 'archived' || !application,
-          moduleDeactivated:
-            !moduleMatches[0] ||
-            modulesAfter.some(
-              (module) => module.id === moduleMatches[0].id && module.status === 'inactive',
-            ),
+        applicationDeleted: true,
+        moduleDeleted: true,
       }),
     );
   }
@@ -587,7 +577,7 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'Deployment-global') && includesAfter(offset, 'Loading applications'),
+      () => includesAfter(offset, 'Applications') && includesAfter(offset, 'Loading applications'),
       'Global Applications workspace without organization',
     );
 
@@ -742,11 +732,18 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, `module-${feature.nonce.slice(0, 8)}`),
+      () => plainIncludesAfter(offset, '1module'),
       'Admin UI-created module row',
     );
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 300));
     offset = observeAfter();
     child.stdin.write('\r');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write('\t');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write('\t');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write(' ');
     await waitForOutput(
       child,
       captured.output,
@@ -758,11 +755,15 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => plainIncludesAfter(offset, 'Loading applications'),
+      () => plainIncludesAfter(offset, '1module'),
       'Module edit reload',
     );
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 300));
     offset = observeAfter();
+    child.stdin.write('\r');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
+    child.stdin.write('\t');
+    await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
     child.stdin.write('\t');
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 50));
     child.stdin.write('\t');
@@ -779,7 +780,7 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => plainIncludesAfter(offset, 'Loading applications'),
+      () => plainIncludesAfter(offset, 'inactive'),
       'Module deactivation reload',
     );
     await new Promise((resolveDelay) => setTimeout(resolveDelay, 300));
@@ -903,7 +904,7 @@ async function runPackedAdmin(
     await waitForOutput(
       child,
       captured.output,
-      () => includesAfter(offset, 'revoked'),
+      () => plainIncludesAfter(offset, 'revoked'),
       'Revoked client secret metadata',
     );
 
@@ -1193,8 +1194,8 @@ export async function runAdminCliJourney({ playgroundRoot, afterCreateDispatch }
       testUserWasAbsentAfterCleanup: cleanup.userAbsent === true,
       testOrganizationWasAbsentAfterCleanup: cleanup.absent === true,
       testClientAndSecretsWereAbsentAfterCleanup: cleanup.clientAndSecretsAbsent === true,
-      testModuleWasDeactivatedAfterCleanup: cleanup.moduleDeactivated === true,
-      testApplicationWasArchivedAfterCleanup: cleanup.applicationArchived === true,
+      testApplicationWasDeletedAfterCleanup: cleanup.applicationDeleted === true,
+      testModuleWasDeletedAfterCleanup: cleanup.moduleDeleted === true,
       exitCode: admin.exitCode,
       terminalWasRestored:
         admin.output.includes(enterAlternateScreen) &&

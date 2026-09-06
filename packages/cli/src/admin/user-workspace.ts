@@ -49,7 +49,7 @@ export type AdminUserIntent =
   | { readonly kind: 'unlock' }
   | { readonly kind: 'deactivate' }
   | { readonly kind: 'reactivate' }
-  | { readonly kind: 'purge' };
+  | { readonly kind: 'delete' };
 
 /** Construction inputs for one user-specific workspace. */
 export interface AdminUserWorkspaceOptions {
@@ -318,8 +318,8 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
         actions.push({ label: 'Unlock', intent: { kind: 'unlock' }, width: 10 });
       else actions.push({ label: 'Reactivate', intent: { kind: 'reactivate' }, width: 13 });
     }
-    if (options.capabilities.canPurgeUsers)
-      actions.push({ label: 'Purge', intent: { kind: 'purge' }, width: 9 });
+    if (options.capabilities.canDeleteUsers)
+      actions.push({ label: 'Delete', intent: { kind: 'delete' }, width: 10 });
     return actions;
   };
 

@@ -715,12 +715,12 @@ describe('client routes', () => {
     });
   });
 
-  describe('DELETE /:id/secrets/:secretId — Revoke secret', () => {
+  describe('POST /:id/secrets/:secretId/revoke — Revoke secret', () => {
     it('should return 204 on success', async () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const router = createClientRouter();
-      const handler = findHandler(router, 'DELETE', '/api/admin/clients/:id/secrets/:secretId');
+      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets/:secretId/revoke');
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
@@ -737,7 +737,7 @@ describe('client routes', () => {
       );
 
       const router = createClientRouter();
-      const handler = findHandler(router, 'DELETE', '/api/admin/clients/:id/secrets/:secretId');
+      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets/:secretId/revoke');
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
@@ -771,7 +771,7 @@ describe('client routes', () => {
       expect(paths).toContain('POST /api/admin/clients/:id/deactivate');
       expect(paths).toContain('POST /api/admin/clients/:id/secrets');
       expect(paths).toContain('GET /api/admin/clients/:id/secrets');
-      expect(paths).toContain('DELETE /api/admin/clients/:id/secrets/:secretId');
+      expect(paths).toContain('POST /api/admin/clients/:id/secrets/:secretId/revoke');
     });
   });
 });

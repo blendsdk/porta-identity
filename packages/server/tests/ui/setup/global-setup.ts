@@ -102,7 +102,6 @@ const ADDITIONAL_USERS = [
  */
 const ADDITIONAL_ORGS = [
   { name: 'Suspended Org', slug: 'suspended-org', status: 'suspended' as const },
-  { name: 'Archived Org', slug: 'archived-org', status: 'archived' as const },
 ] as const;
 
 /** Dedicated port for UI tests — distinct from E2E (random) and dev (3000) */
@@ -292,6 +291,13 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     ]);
   }
 
+  // Retain a known slug whose row has been physically deleted.
+  const deletedOrg = await createTestOrganization({
+    name: 'Deleted Org',
+    slug: 'deleted-org',
+  });
+  await pool.query(`DELETE FROM organizations WHERE id = $1`, [deletedOrg.id]);
+
   // ── Step 9d: Seed 2FA-enabled users ─────────────────────────────────
   // Create users with email OTP and TOTP 2FA enabled. These are seeded
   // here (in the server process) so the server's in-memory cache sees the
@@ -444,7 +450,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
 
   // Phase 2: Additional org slugs for tenant isolation tests
   process.env.UI_TEST_SUSPENDED_ORG_SLUG = 'suspended-org';
-  process.env.UI_TEST_ARCHIVED_ORG_SLUG = 'archived-org';
+  process.env.UI_TEST_DELETED_ORG_SLUG = 'deleted-org';
 
   // 2FA test data — seeded users with 2FA enabled
   process.env.UI_TEST_2FA_EMAIL_USER = 'ui-test-2fa-email@test.local';

@@ -6,6 +6,7 @@ import {
   Button,
   CheckGroup,
   Commands,
+  cover,
   Dialog,
   Group,
   Input,
@@ -22,7 +23,9 @@ import type {
   AdminUserReadResult,
 } from './user-service.js';
 import type { AdminInvitationPreview, AdminUserDetail } from './user-state.js';
+import type { AdminOrganizationContext } from './state.js';
 import { runAbortableAdminDialog } from './application-runtime.js';
+import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import {
   addCreateProfile,
   addField,
@@ -66,8 +69,8 @@ export type UserReasonDialogResult =
   | { readonly kind: 'lock'; readonly reason: string }
   | { readonly kind: 'cancel' };
 
-/** Result of the irreversible purge dialog. */
-export type PurgeUserDialogResult = { readonly kind: 'purge' } | { readonly kind: 'cancel' };
+/** Result of the irreversible user-deletion dialog. */
+export type DeleteUserDialogResult = { readonly kind: 'delete' } | { readonly kind: 'cancel' };
 
 /** Modal host used by user dialogs, including synchronous abort-driven closure. */
 export interface AdminUserDialogHost extends ModalDialogHost {
@@ -617,42 +620,28 @@ export async function showUserReasonDialog(
   }
 }
 
-/** Shows the irreversible purge warning with Cancel initially focused. */
-export async function showPurgeUserDialog(
+/** Shows the irreversible physical user-deletion warning with Keep initially focused. */
+export async function showDeleteUserDialog(
   host: AdminUserDialogHost,
   operationSignal: AbortSignal,
-  email: string,
-): Promise<PurgeUserDialogResult> {
+  organization: AdminOrganizationContext | undefined,
+  user: AdminUserDetail,
+): Promise<DeleteUserDialogResult> {
+  if (!organization || user.organizationId !== organization.id) return { kind: 'cancel' };
   const { width, height } = dialogSize(host, 64, 12);
-  const dialog = new Dialog({ title: 'Purge user', width, height, centered: true });
-  dialog.add(
-    at(
-      new Text(`User: ${email}\nThis permanently removes the user and cannot be undone.`),
-      2,
-      1,
-      Math.max(1, width - 6),
-      3,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel, default: true }),
-      Math.max(2, width - 34),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Purge permanently', { command: Commands.yes }),
-      Math.max(2, width - 23),
-      Math.max(1, height - 5),
-      20,
-      2,
-    ),
-  );
-  return (await runDialog(host, dialog, operationSignal)) === Commands.yes
-    ? { kind: 'purge' }
-    : { kind: 'cancel' };
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(user.email, width), { command: Commands.yes });
+  const dialog = new Dialog({ title: 'Delete user', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Organization: ${organization.name}\nUser: ${user.email}`,
+    warning:
+      'This physically deletes identity and security data. Audit records are retained separately.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes ? { kind: 'delete' } : { kind: 'cancel' };
 }

@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import {
   showCreateUserDialog,
   showInviteUserDialog,
-  showPurgeUserDialog,
+  showDeleteUserDialog,
   showSetUserPasswordDialog,
 } from '../../src/admin/user-dialogs.js';
 import { textValidator } from '../../src/admin/user-dialog-fields.js';
@@ -158,19 +158,20 @@ describe('user dialog implementation', () => {
     expect(frameText(application)).not.toContain('STALE-PREVIEW');
   });
 
-  it('should make purge cancellation the default focus and fully tear down on cancel', async () => {
+  it('should make deletion cancellation the default focus and fully tear down on cancel', async () => {
     const application = createApplication({ viewport: { width: 48, height: 12 } });
-    const result = showPurgeUserDialog(
+    const result = Reflect.apply(showDeleteUserDialog, undefined, [
       application,
       new AbortController().signal,
-      'alice@example.test',
-    );
+      { id: '11111111-1111-4111-8111-111111111111', name: 'Example', slug: 'example', status: 'active' },
+      { id: '22222222-2222-4222-8222-222222222222', organizationId: '11111111-1111-4111-8111-111111111111', email: 'alice@example.test' },
+    ]);
     await settle();
     const dialog = activeDialog(application);
 
     expect(dialog.bounds.width).toBeLessThanOrEqual(48);
     expect(dialog.bounds.height).toBeLessThanOrEqual(12);
-    expect((application.loop.getFocused() as Button).activation.label).toBe('Cancel');
+    expect((application.loop.getFocused() as Button).activation.label).toBe('Keep');
     application.loop.endModal('cancel');
     await expect(result).resolves.toEqual({ kind: 'cancel' });
     expect(application.desktop.activeWindow()).toBeNull();

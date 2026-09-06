@@ -30,7 +30,7 @@ Content-Type: application/json
 | Field    | Type   | Required | Description                                  |
 | -------- | ------ | -------- | -------------------------------------------- |
 | `ids`    | UUID[] | Yes      | Organization IDs (1-100)                     |
-| `action` | string | Yes      | One of: `activate`, `suspend`, `archive`     |
+| `action` | string | Yes      | One of: `activate`, `suspend`                |
 | `reason` | string | No       | Reason for the status change (max 500 chars) |
 
 ### Valid Organization Transitions
@@ -39,7 +39,6 @@ Content-Type: application/json
 | ---------- | ----------------- | --------- |
 | `activate` | suspended         | active    |
 | `suspend`  | active            | suspended |
-| `archive`  | active, suspended | archived  |
 
 ## Bulk User Status Change
 

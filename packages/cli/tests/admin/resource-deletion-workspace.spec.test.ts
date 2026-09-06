@@ -1,6 +1,15 @@
 /** Immutable presentation specifications for the five Admin UI deletion surfaces. */
 
-import { Button, createApplication, DataGrid, Dialog, Group, View } from '@jsvision/ui';
+import {
+  Button,
+  createApplication,
+  DataGrid,
+  Dialog,
+  Group,
+  ListView,
+  Scroller,
+  View,
+} from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
 
 const organization = {
@@ -190,6 +199,24 @@ function activate(host: ReturnType<typeof createApplication>, button: Button): v
   host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
 }
 
+/** Replaces only the displayed delete target while retaining every parent identifier. */
+function argsWithTarget(testCase: DeleteDialogCase, target: string): readonly unknown[] {
+  switch (testCase.label) {
+    case 'organization':
+      return [{ ...organization, name: target }];
+    case 'user':
+      return [organization, { ...user, email: target }];
+    case 'application':
+      return [{ ...application, name: target }];
+    case 'module':
+      return [application, { ...moduleRow, name: target }];
+    case 'client':
+      return [organization, { ...client, clientName: target }];
+    default:
+      throw new Error(`Unsupported deletion dialog case: ${testCase.label}`);
+  }
+}
+
 describe.each(dialogCases)('$label deletion dialog', (testCase) => {
   it.each([
     { width: 80, height: 24 },
@@ -230,6 +257,133 @@ describe.each(dialogCases)('$label deletion dialog', (testCase) => {
     expect(keep.bounds.width).toBe(keep.measure().width);
     expect(remove.bounds.width).toBe(remove.measure().width);
     activate(host, keep);
+    await expect(result).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('ST-36/ST-38 keeps a maximum-length target and cascade inspectable at 48×12', async () => {
+    const host = createApplication({ viewport: { width: 48, height: 12 } });
+    const target = `Target-${'x'.repeat(240)}-END`;
+    const show = await deleteDialog(testCase);
+    const result = show(host, new AbortController().signal, ...argsWithTarget(testCase, target));
+    await settle();
+
+    const { dialog, buttons } = activeForm(host);
+    const remove = buttons.find((button) => button.activation.label.startsWith('Delete '));
+    const scroller = descendants(dialog).find((view) => view instanceof Scroller);
+    if (!remove || !(scroller instanceof Scroller)) {
+      throw new Error('Expected a bounded Delete action and scrollable complete target.');
+    }
+    expect(remove.bounds.width).toBeLessThan(dialog.bounds.width);
+    expect(remove.activation.label).toMatch(/…$/u);
+    const initial = frameText(host).replace(/\s+/g, ' ');
+    expect(initial).toContain('Target-');
+    for (const affected of testCase.affected) expect(initial.toLowerCase()).toContain(affected);
+
+    host.loop.focusView(scroller);
+    host.loop.dispatch({ type: 'key', key: 'end', ctrl: false, alt: false, shift: false });
+    await settle();
+    expect(frameText(host)).toContain('-END');
+
+    host.loop.dispatch({ type: 'key', key: 'escape', ctrl: false, alt: false, shift: false });
+    await expect(result).resolves.toEqual({ kind: 'cancel' });
+  });
+});
+
+describe('organization deletion eligibility and failure presentation', () => {
+  const capabilities = {
+    canReadOrganizations: true,
+    canCreateOrganizations: false,
+    canReadUsers: false,
+    canCreateUsers: false,
+    canInviteUsers: false,
+    canUpdateUsers: false,
+    canManageUserLifecycle: false,
+    canDeleteOrganizations: true,
+    canDeleteUsers: false,
+    canReadApplications: false,
+    canCreateApplications: false,
+    canUpdateApplications: false,
+    canDeleteApplications: false,
+    canDeleteModules: false,
+    canReadClients: false,
+    canCreateClients: false,
+    canUpdateClients: false,
+    canDeleteClients: false,
+    canRevokeClientSecrets: false,
+  };
+
+  it('ST-32 disables Delete for the control-plane organization', async () => {
+    const { showOrganizationChooser } = await import('../../src/admin/organization-dialogs.js');
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const result = showOrganizationChooser(host, {
+      capabilities,
+      organizations: Promise.resolve({
+        kind: 'success',
+        value: [{ ...organization, isSuperAdmin: true }],
+      }),
+    });
+    await settle();
+    const list = descendants(activeForm(host).dialog).find((view) => view instanceof ListView);
+    if (!(list instanceof ListView)) throw new Error('Expected organization list.');
+    const origin = host.loop.renderRoot.originOf(list.rows);
+    if (!origin) throw new Error('Expected rendered organization rows.');
+    host.loop.dispatch({
+      type: 'mouse',
+      kind: 'down',
+      button: 0,
+      x: origin.x + 1,
+      y: origin.y,
+    });
+    await settle();
+    const remove = activeForm(host).buttons.find((button) => button.activation.label === 'Delete');
+    if (!remove) throw new Error('Expected organization Delete action.');
+    expect(remove.state.disabled).toBe(true);
+
+    host.loop.dispatch({ type: 'key', key: 'escape', ctrl: false, alt: false, shift: false });
+    await expect(result).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('ST-32 returns the selected non-control-plane organization from Delete', async () => {
+    const { showOrganizationChooser } = await import('../../src/admin/organization-dialogs.js');
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const result = showOrganizationChooser(host, {
+      capabilities,
+      organizations: Promise.resolve({ kind: 'success', value: [organization] }),
+    });
+    await settle();
+    const list = descendants(activeForm(host).dialog).find((view) => view instanceof ListView);
+    if (!(list instanceof ListView)) throw new Error('Expected organization list.');
+    list.selected.set(0);
+    await settle();
+    const remove = activeForm(host).buttons.find((button) => button.activation.label === 'Delete');
+    if (!remove) throw new Error('Expected organization Delete action.');
+    expect(remove.activation.command).toBe('admin:delete-organization');
+    let commandResult: Awaited<typeof result> | undefined;
+    void result.then((value) => {
+      commandResult = value;
+    });
+    host.loop.dispatch({ type: 'command', command: remove.activation.command });
+    await settle();
+    const observed = commandResult;
+    if (!observed) {
+      host.loop.dispatch({ type: 'key', key: 'escape', ctrl: false, alt: false, shift: false });
+      await result;
+    }
+    expect(observed).toEqual({ kind: 'delete', organization });
+  });
+
+  it('ST-35 retains a fixed deletion failure while the chooser reloads', async () => {
+    const { showOrganizationChooser } = await import('../../src/admin/organization-dialogs.js');
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const result = showOrganizationChooser(host, {
+      capabilities,
+      failure: 'conflict',
+      organizations: Promise.resolve({ kind: 'success', value: [organization] }),
+    });
+    await settle();
+    expect(frameText(host)).toContain('Conflict');
+
+    host.loop.dispatch({ type: 'key', key: 'escape', ctrl: false, alt: false, shift: false });
     await expect(result).resolves.toEqual({ kind: 'cancel' });
   });
 });

@@ -18,24 +18,30 @@ export interface AdminCapabilities {
   readonly canUpdateUsers: boolean;
   /** Whether user lifecycle transitions may be performed. */
   readonly canManageUserLifecycle: boolean;
-  /** Whether a user may be permanently purged. */
-  readonly canPurgeUsers: boolean;
+  /** Whether an organization may be permanently deleted. */
+  readonly canDeleteOrganizations: boolean;
+  /** Whether a user may be permanently deleted. */
+  readonly canDeleteUsers: boolean;
   /** Whether global applications and modules may be inspected. */
   readonly canReadApplications: boolean;
   /** Whether a global application may be created. */
   readonly canCreateApplications: boolean;
   /** Whether applications, modules, and application lifecycle may be updated. */
   readonly canUpdateApplications: boolean;
-  /** Whether a global application may be permanently archived. */
-  readonly canArchiveApplications: boolean;
+  /** Whether a global application may be permanently deleted. */
+  readonly canDeleteApplications: boolean;
+  /** Whether an application module may be permanently deleted. */
+  readonly canDeleteModules: boolean;
   /** Whether organization clients and secret metadata may be inspected. */
   readonly canReadClients: boolean;
   /** Whether a client may be created when application read is also granted. */
   readonly canCreateClients: boolean;
   /** Whether client configuration, lifecycle, and secrets may be updated. */
   readonly canUpdateClients: boolean;
-  /** Whether clients and client secrets may be permanently revoked. */
-  readonly canRevokeClients: boolean;
+  /** Whether clients may be permanently deleted. */
+  readonly canDeleteClients: boolean;
+  /** Whether nested client secrets may be permanently revoked. */
+  readonly canRevokeClientSecrets: boolean;
 }
 
 /** The bounded organization projection retained by the terminal application. */
@@ -47,7 +53,9 @@ export interface AdminOrganizationContext {
   /** Canonical organization slug. */
   readonly slug: string;
   /** Current organization lifecycle state. */
-  readonly status: 'active' | 'suspended' | 'archived';
+  readonly status: 'active' | 'suspended';
+  /** Whether this is the undeletable control-plane organization. */
+  readonly isSuperAdmin?: boolean;
 }
 
 /** Fixed organization failure categories safe to expose in the terminal. */

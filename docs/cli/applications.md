@@ -11,9 +11,9 @@ organization-specific OIDC registrations belong under Clients instead.
 
 Run `porta admin`, authenticate, and open **Applications**. No organization selection is required.
 The workspace lists every application, opens application details, and supports application creation,
-editing, archival, and module creation, editing, and deactivation according to the
-administrator's permissions. The global warning in the workspace is intentional: changing an
-application or module can affect clients in multiple organizations.
+editing, deletion, and module creation, editing, deactivation, and deletion according to the
+administrator's permissions. Creation, editing, and deletion dialogs show a quiet scope notice
+when the change can affect clients in multiple organizations.
 
 ## Application CRUD
 
@@ -41,11 +41,15 @@ porta app show --id <app-id>
 porta app update --id <app-id> [--name "New Name"] [--description "Updated description"]
 ```
 
-### `porta app archive`
+### `porta app delete`
 
 ```bash
-porta app archive --id <app-id>
+porta app delete <id-or-slug>
 ```
+
+Permanently deletes the deployment-global application, including its modules, clients, roles,
+permissions, claim definitions, and dependent security data. The CLI always asks whether to keep
+or delete the named application.
 
 ---
 
@@ -101,10 +105,10 @@ porta app role show --app-id <id> --role-id <id>
 porta app role update --app-id <id> --role-id <id> [--name "New Name"]
 ```
 
-### `porta app role archive`
+### `porta app role delete`
 
 ```bash
-porta app role archive --app-id <id> --role-id <id>
+porta app role delete <app-id> <role-id>
 ```
 
 ### `porta app role assign-perm`
@@ -143,10 +147,10 @@ porta app permission list --app-id <id>
 porta app permission show --app-id <id> --permission-id <id>
 ```
 
-### `porta app permission archive`
+### `porta app permission delete`
 
 ```bash
-porta app permission archive --app-id <id> --permission-id <id>
+porta app permission delete <app-id> <permission-id>
 ```
 
 ---
@@ -181,8 +185,21 @@ porta app claim list --app-id <id>
 porta app claim show --app-id <id> --claim-id <id>
 ```
 
-### `porta app claim archive`
+### `porta app claim delete`
 
 ```bash
-porta app claim archive --app-id <id> --claim-id <id>
+porta app claim delete <app-id> <claim-id>
 ```
+
+All record-deletion commands require a Keep/Delete-name confirmation. They do not accept a
+record-deletion `--force` bypass.
+
+## Modules
+
+### `porta app module delete`
+
+```bash
+porta app module delete <app-id> <module-id>
+```
+
+Permanently deletes the module and its permissions and dependent links after confirmation.

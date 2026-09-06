@@ -7,7 +7,10 @@ import { createAdminApplicationController } from '../../src/admin/application-co
 import { createAdminApplicationOperations } from '../../src/admin/application-service.js';
 import { createAdminClientController } from '../../src/admin/client-controller.js';
 import { createAdminClientOperations } from '../../src/admin/client-service.js';
-import { createAdminOrganizationOperations } from '../../src/admin/organization-service.js';
+import {
+  createAdminOrganizationOperations,
+  validateOrganizationContext,
+} from '../../src/admin/organization-service.js';
 import { validateAdminCapabilities } from '../../src/admin/session-service.js';
 import type { AdminConnectionState } from '../../src/admin/state.js';
 import { createAdminUserController } from '../../src/admin/user-controller.js';
@@ -77,6 +80,15 @@ const userRow = {
   familyName: 'Admin',
   status: 'active' as const,
 };
+const secret = {
+  id: '66666666-6666-4666-8666-666666666666',
+  clientId,
+  label: null,
+  status: 'active' as const,
+  lastUsedAt: null,
+  expiresAt: null,
+  createdAt,
+};
 
 /** Adds future exact Delete capabilities while retaining the current compile-time state shape. */
 function authenticated(overrides: Record<string, boolean> = {}): AdminConnectionState {
@@ -98,6 +110,7 @@ function authenticated(overrides: Record<string, boolean> = {}): AdminConnection
       canCreateClients: false,
       canUpdateClients: false,
       canRevokeClients: false,
+      canRevokeClientSecrets: true,
     },
     {
       canDeleteOrganizations: true,
@@ -140,6 +153,13 @@ async function settle(): Promise<void> {
 }
 
 describe('Admin resource deletion state', () => {
+  it('ST-32 retains the control-plane marker needed to suppress organization deletion', () => {
+    expect(validateOrganizationContext({ ...organization, isSuperAdmin: true })).toEqual({
+      ...organization,
+      isSuperAdmin: true,
+    });
+  });
+
   it('ST-32 derives five independent exact Delete capabilities and removes terminal aliases', () => {
     const capabilities = validateAdminCapabilities(
       [],
@@ -342,6 +362,74 @@ describe('Admin resource deletion state', () => {
     );
     expect(JSON.stringify(states)).not.toContain('Redis');
     expect(JSON.stringify(states)).not.toContain('PostgreSQL');
+  });
+
+  it('ST-32 keeps secret revocation available while a confidential client is inactive', async () => {
+    const inactiveClient = { ...client, status: 'inactive' as const };
+    const listSecrets = vi.fn().mockResolvedValue({ kind: 'success', value: [secret] });
+    const revokeSecret = vi.fn().mockResolvedValue({ kind: 'success' });
+    const states: unknown[] = [];
+    const controller = createAdminClientController({
+      readState: authenticated,
+      readOperations: () => ({
+        listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [inactiveClient] }),
+        get: vi.fn().mockResolvedValue({
+          kind: 'success',
+          value: { client: inactiveClient, etag: null },
+        }),
+        listSecrets,
+        revokeSecret,
+      }),
+      publishState: (state) => states.push(state),
+      requestAuthentication: vi.fn(),
+    });
+    controller.syncContext(authenticated(), 1);
+    await controller.load();
+    await controller.select(clientId);
+    await controller.loadSecrets(clientId);
+    await controller.revokeSecret(clientId, secret.id, () => Promise.resolve(true));
+
+    expect(states).toContainEqual(
+      expect.objectContaining({ kind: 'secrets', client: inactiveClient, secrets: [secret] }),
+    );
+    expect(revokeSecret).toHaveBeenCalledOnce();
+    expect(listSecrets).toHaveBeenCalledTimes(2);
+  });
+
+  it('ST-39 does not republish a deletion failure after reconciliation loses authentication', async () => {
+    const requestAuthentication = vi.fn();
+    const states: unknown[] = [];
+    const get = vi
+      .fn()
+      .mockResolvedValueOnce({
+        kind: 'success',
+        value: { application, etag: null },
+      })
+      .mockResolvedValueOnce({ kind: 'session-invalid' });
+    const controller = createAdminApplicationController({
+      readState: authenticated,
+      readOperations: () => ({
+        get,
+        listModules: vi.fn().mockResolvedValue({ kind: 'success', value: [moduleRow] }),
+        delete: vi.fn().mockResolvedValue({ kind: 'failure', failure: 'unavailable' }),
+      }),
+      publishState: (state) => states.push(state),
+      requestAuthentication,
+    });
+    controller.syncContext(authenticated(), 1);
+    await controller.select(applicationId);
+    await controller.delete(applicationId, () => Promise.resolve(true));
+
+    expect(requestAuthentication).toHaveBeenCalledOnce();
+    expect(states.at(-1)).toEqual({ kind: 'closed' });
+    const closedIndex = states.findLastIndex(
+      (state) =>
+        typeof state === 'object' && state !== null && Reflect.get(state, 'kind') === 'closed',
+    );
+    expect(closedIndex).toBeGreaterThanOrEqual(0);
+    expect(states.slice(closedIndex + 1)).not.toContainEqual(
+      expect.objectContaining({ kind: 'failure' }),
+    );
   });
 
   it('ST-39 routes self-deletion session invalidation through the authentication gate', async () => {

@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-08-30
+> **Last Updated**: 2026-09-06
 
 ## High-Level Architecture
 
@@ -210,7 +210,6 @@ The tenant resolver middleware (`packages/server/src/middleware/tenant-resolver.
 5. Return appropriate HTTP status based on org status:
    - `active` → proceed
    - `suspended` → 403
-   - `archived` → 410
    - Not found → pass through (no match)
 
 ## Graceful Shutdown

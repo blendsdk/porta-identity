@@ -203,7 +203,7 @@ for (const toolCall of response.choices[0].message.tool_calls ?? []) {
 
 | Domain | Tools | Description |
 |---|---|---|
-| `organizations` | 10 | Org CRUD, status lifecycle, destroy |
+| `organizations` | 10 | Org CRUD, status lifecycle, delete |
 | `applications` | 8 | App CRUD, modules |
 | `clients` | 8 | Client CRUD, secrets |
 | `users` | 12 | User CRUD, invite, password, status |
@@ -226,7 +226,7 @@ for (const toolCall of response.choices[0].message.tool_calls ?? []) {
 ## Security Considerations
 
 - The agent operates with the **same permissions** as the SDK client's authentication. Use a dedicated service account with minimal required permissions.
-- **Side-effect awareness**: Tools with `sideEffects: true` modify state. AI agents should confirm destructive actions (e.g., `organizations.destroy`) with the user.
+- **Side-effect awareness**: Tools with `sideEffects: true` modify state. AI agents should confirm destructive actions such as `organizations.delete` with the user.
 - **Rate limiting**: The Porta API enforces rate limits. Agent loops that make many rapid requests may be throttled.
 - **No credential exposure**: Never pass credentials through tool parameters. Authentication is handled by the transport layer.
 

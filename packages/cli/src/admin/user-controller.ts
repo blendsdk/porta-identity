@@ -5,7 +5,7 @@ import {
   showCreateUserDialog,
   showEditUserDialog,
   showInviteUserDialog,
-  showPurgeUserDialog,
+  showDeleteUserDialog,
   showSetUserPasswordDialog,
   showUserConfirmationDialog,
   showUserReasonDialog,
@@ -41,7 +41,7 @@ const DEFAULT_DIALOGS: AdminUserControllerDialogs = {
   setPassword: showSetUserPasswordDialog,
   confirm: showUserConfirmationDialog,
   reason: showUserReasonDialog,
-  purge: showPurgeUserDialog,
+  delete: showDeleteUserDialog,
 };
 
 /** Mutation result shape shared by value-returning and void service operations. */
@@ -56,7 +56,7 @@ type UserMutationCapability = keyof Pick<
   | 'canInviteUsers'
   | 'canUpdateUsers'
   | 'canManageUserLifecycle'
-  | 'canPurgeUsers'
+  | 'canDeleteUsers'
 >;
 
 /** Returns the validated projection retained beneath transient state. */
@@ -219,25 +219,25 @@ export function createAdminUserController(
   };
 
   /** Loads the current exact query from the selected organization. */
-  const loadPage = (): void => {
+  const loadPage = (): Promise<void> => {
     const selectedOrganization = organizationId;
     const operations = options.readOperations();
-    if (!selectedOrganization || !operations) return;
-    void startRead(
+    if (!selectedOrganization || !operations) return Promise.resolve();
+    return startRead(
       () => operations.list(selectedOrganization, { ...query }),
       (page) => ({ kind: 'page', page }),
     );
   };
 
   /** Loads one detail selected from the retained validated page. */
-  const loadDetail = (userId: string): void => {
+  const loadDetail = (userId: string): Promise<void> => {
     const selectedOrganization = organizationId;
     const operations = options.readOperations();
     const previous = projection(state);
     const page = previous?.kind === 'page' ? previous.page : previous?.page;
     const selected = page?.data.find((row) => row.id === userId);
-    if (!selectedOrganization || !operations || !page || !selected) return;
-    void startRead(
+    if (!selectedOrganization || !operations || !page || !selected) return Promise.resolve();
+    return startRead(
       () => operations.get(selectedOrganization, userId),
       (value) => ({
         kind: 'detail',
@@ -250,21 +250,23 @@ export function createAdminUserController(
   };
 
   /** Reloads the current target or page after a definite mutation success. */
-  const reconcile = (previous: AdminUserProjection | undefined, purge = false): void => {
-    if (!previous || previous.kind === 'page' || purge) {
-      loadPage();
-      return;
+  const reconcile = (
+    previous: AdminUserProjection | undefined,
+    deleted = false,
+  ): Promise<void> => {
+    if (!previous || previous.kind === 'page' || deleted) {
+      return loadPage();
     }
-    loadDetail(previous.selected.id);
+    return loadDetail(previous.selected.id);
   };
 
   /** Applies a fixed mutation result without optimistic local patching. */
-  const finishMutation = (
+  const finishMutation = async (
     result: ControllerMutationResult,
     previous: AdminUserProjection | undefined,
     noReadSuccess: 'created' | 'invited' | undefined,
-    purge = false,
-  ): void => {
+    deleted = false,
+  ): Promise<void> => {
     if (result.kind === 'session-invalid') {
       sessionInvalid();
       return;
@@ -273,7 +275,7 @@ export function createAdminUserController(
       setRecoveryRequired(false);
       const current = options.readState();
       if (current.kind === 'authenticated' && current.capabilities.canReadUsers) {
-        reconcile(previous, purge);
+        await reconcile(previous, deleted);
       } else if (noReadSuccess) {
         visible = true;
         publish({ kind: 'success', action: noReadSuccess });
@@ -289,8 +291,15 @@ export function createAdminUserController(
       syncMount();
       return;
     }
-    visible = true;
-    publish(withOutcome(previous, result.failure));
+    if (deleted) {
+      await reconcile(previous, false);
+      if (options.readState().kind !== 'authenticated') return;
+      visible = true;
+      publish(withOutcome(projection(state), result.failure));
+    } else {
+      visible = true;
+      publish(withOutcome(previous, result.failure));
+    }
     syncMount();
   };
 
@@ -300,7 +309,7 @@ export function createAdminUserController(
     choose: (choice: Choice) => Promise<ControllerMutationResult> | undefined,
     requiredCapability: UserMutationCapability,
     noReadSuccess?: 'created' | 'invited',
-    purge = false,
+    deleted = false,
   ): Promise<void> => {
     if (disposed || operation || dialogBusy || options.isApplicationBusy()) return;
     const current = options.readState();
@@ -338,7 +347,7 @@ export function createAdminUserController(
       }
       const previous = operationPrevious;
       operationPrevious = undefined;
-      finishMutation(result, previous, noReadSuccess, purge);
+      await finishMutation(result, previous, noReadSuccess, deleted);
     } finally {
       releaseOperation(controller);
     }
@@ -360,7 +369,7 @@ export function createAdminUserController(
       selectedOrganization: string,
     ) => Promise<ControllerMutationResult> | undefined,
     requiredCapability: UserMutationCapability,
-    purge = false,
+    deleted = false,
   ): void => {
     const selected = selection();
     const operations = options.readOperations();
@@ -371,7 +380,7 @@ export function createAdminUserController(
       (choice) => choose(selected, choice, operations, selectedOrganization),
       requiredCapability,
       undefined,
-      purge,
+      deleted,
     );
   };
 
@@ -387,8 +396,8 @@ export function createAdminUserController(
     )
       return;
     const requiredCapability: keyof AdminCapabilities =
-      intent.kind === 'purge'
-        ? 'canPurgeUsers'
+      intent.kind === 'delete'
+        ? 'canDeleteUsers'
         : intent.kind === 'edit' ||
             intent.kind === 'set-password' ||
             intent.kind === 'clear-password' ||
@@ -500,14 +509,15 @@ export function createAdminUserController(
       );
       return;
     }
-    if (intent.kind === 'purge') {
+    if (intent.kind === 'delete') {
+      const organization = current.organization;
       selectedMutation(
-        (selected, signal) => dialogs.purge(options.host, signal, selected.detail.email),
+        (selected, signal) => dialogs.delete(options.host, signal, organization, selected.detail),
         (selected, choice, operations, selectedOrganization) =>
-          choice.kind === 'purge'
-            ? operations.purge(selectedOrganization, selected.selected.id)
+          choice.kind === 'delete'
+            ? operations.delete(selectedOrganization, selected.selected.id)
             : undefined,
-        'canPurgeUsers',
+        'canDeleteUsers',
         true,
       );
       return;

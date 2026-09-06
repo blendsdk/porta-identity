@@ -16,7 +16,7 @@
  *   POST   /:id/deactivate                 — Deactivate client
  *   POST   /:id/secrets                    — Generate new secret
  *   GET    /:id/secrets                    — List secrets (no hashes)
- *   DELETE /:id/secrets/:secretId          — Revoke a secret
+ *   POST   /:id/secrets/:secretId/revoke   — Revoke a secret
  *
  * Error mapping:
  *   ClientNotFoundError → 404
@@ -415,10 +415,10 @@ export function createClientRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // DELETE /:id/secrets/:secretId — Revoke a secret
+  // POST /:id/secrets/:secretId/revoke — Revoke a secret
   // -------------------------------------------------------------------------
-  router.delete(
-    '/:id/secrets/:secretId',
+  router.post(
+    '/:id/secrets/:secretId/revoke',
     requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE),
     async (ctx) => {
       try {

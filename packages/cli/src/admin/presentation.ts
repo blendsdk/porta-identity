@@ -12,6 +12,7 @@ import {
   statusLine,
   subMenu,
   View,
+  Window,
 } from '@jsvision/ui';
 import type { AdminConnectionState } from './state.js';
 
@@ -100,15 +101,18 @@ export function createAdminPresentation(
             canInviteUsers: false,
             canUpdateUsers: false,
             canManageUserLifecycle: false,
-            canPurgeUsers: false,
+            canDeleteOrganizations: false,
+            canDeleteUsers: false,
             canReadApplications: false,
             canCreateApplications: false,
             canUpdateApplications: false,
-            canArchiveApplications: false,
+            canDeleteApplications: false,
+            canDeleteModules: false,
             canReadClients: false,
             canCreateClients: false,
             canUpdateClients: false,
-            canRevokeClients: false,
+            canDeleteClients: false,
+            canRevokeClientSecrets: false,
           })
         : {
             canReadOrganizations: false,
@@ -118,15 +122,18 @@ export function createAdminPresentation(
             canInviteUsers: false,
             canUpdateUsers: false,
             canManageUserLifecycle: false,
-            canPurgeUsers: false,
+            canDeleteOrganizations: false,
+            canDeleteUsers: false,
             canReadApplications: false,
             canCreateApplications: false,
             canUpdateApplications: false,
-            canArchiveApplications: false,
+            canDeleteApplications: false,
+            canDeleteModules: false,
             canReadClients: false,
             canCreateClients: false,
             canUpdateClients: false,
-            canRevokeClients: false,
+            canDeleteClients: false,
+            canRevokeClientSecrets: false,
           };
     const hasOrganization = currentState.kind === 'authenticated' && currentState.organization;
     const hasUserCapability =
@@ -135,7 +142,7 @@ export function createAdminPresentation(
       capabilities.canInviteUsers ||
       capabilities.canUpdateUsers ||
       capabilities.canManageUserLifecycle ||
-      capabilities.canPurgeUsers;
+      capabilities.canDeleteUsers;
     const unavailableUserItem = (label: string, reason: string) =>
       item(`${label} (${reason})`, ADMIN_COMMANDS.unavailableUser);
     const usersMenu =
@@ -235,10 +242,23 @@ export function createAdminPresentation(
   /** Replaces the complete main surface without retaining covered feature content. */
   const setWorkspace = (next: View | null): void => {
     if (next === workspace) return;
-    if (workspace) content.remove(workspace);
+    if (workspace instanceof Window) content.removeWindow(workspace);
+    else if (workspace) content.remove(workspace);
     workspace = next;
     landing.state.visible = next === null;
-    if (next) content.add(grow(next));
+    if (next instanceof Window) {
+      content.addWindow(next);
+      if (!next.isZoomed()) {
+        // A workspace always fills the desktop, even when it deliberately hides the restore control.
+        // Temporarily enable the Window operation so its resize tracking retains maximized geometry.
+        const zoomable = next.zoomable;
+        next.zoomable = true;
+        next.zoom();
+        next.zoomable = zoomable;
+      }
+    } else if (next) {
+      content.add(grow(next));
+    }
     content.invalidateLayout();
   };
 

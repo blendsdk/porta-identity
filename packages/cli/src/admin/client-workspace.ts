@@ -37,7 +37,7 @@ export type AdminClientIntent =
   | { readonly kind: 'edit'; readonly clientId: string; readonly tab: AdminClientConfigurationTab }
   | { readonly kind: 'activate'; readonly clientId: string }
   | { readonly kind: 'deactivate'; readonly clientId: string }
-  | { readonly kind: 'revoke'; readonly clientId: string }
+  | { readonly kind: 'delete'; readonly clientId: string }
   | { readonly kind: 'secrets'; readonly clientId: string }
   | { readonly kind: 'generate-secret'; readonly clientId: string }
   | { readonly kind: 'revoke-secret'; readonly clientId: string; readonly secretId: string };
@@ -229,9 +229,8 @@ export function createAdminClientWorkspace(
     status?: ProjectionStatus,
   ): void => {
     const selected = projection.client;
-    const revoked = selected.status === 'revoked';
-    const canUpdate = options.capabilities.canUpdateClients && !revoked;
-    const canRevoke = options.capabilities.canRevokeClients && !revoked;
+    const canUpdate = options.capabilities.canUpdateClients;
+    const canDelete = options.capabilities.canDeleteClients;
     const application = options.capabilities.canReadApplications
       ? projection.applicationName ?? applicationLabel(selected, options)
       : selected.applicationId;
@@ -243,13 +242,13 @@ export function createAdminClientWorkspace(
       ...(['Basic', 'Redirects', 'Protocol', 'Login'] as const).map((tab) =>
         action(`~${tab[0]}~${tab.slice(1)}`, { kind: 'edit', clientId: selected.id, tab }, tab.length + 4, !canUpdate),
       ),
-      action('~S~ecrets', { kind: 'secrets', clientId: selected.id }, 11, revoked || selected.clientType === 'public'),
+      action('~S~ecrets', { kind: 'secrets', clientId: selected.id }, 11, selected.clientType === 'public'),
     );
     const controls = row(
       { gap: 1 },
       action('~B~ack', { kind: 'back' }, 9),
       lifecycle,
-      action('~R~evoke', { kind: 'revoke', clientId: selected.id }, 10, !canRevoke),
+      action('Delete', { kind: 'delete', clientId: selected.id }, 10, !canDelete),
       spacer(),
     );
     const details = [
@@ -278,9 +277,8 @@ export function createAdminClientWorkspace(
         col(
           { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           statusRow(status),
-          revoked && fixed(new Text('Revoked clients are read only'), 1),
           !options.capabilities.canUpdateClients && fixed(new Text('Configuration and lifecycle require client update'), 1),
-          !options.capabilities.canRevokeClients && fixed(new Text('Revoke requires client revoke'), 1),
+          !options.capabilities.canDeleteClients && fixed(new Text('Delete requires client delete'), 1),
           fixed(configuration, 2),
           grow(new Text(details.join('\n'))),
           fixed(controls, 2),
@@ -297,9 +295,9 @@ export function createAdminClientWorkspace(
   ): void => {
     const selectedSecretId = signal<string | null>(projection.secrets[0]?.id ?? null);
     const eligible =
-      projection.client.clientType === 'confidential' && projection.client.status !== 'revoked';
+      projection.client.clientType === 'confidential';
     const canUpdate = eligible && options.capabilities.canUpdateClients;
-    const canRevoke = eligible && options.capabilities.canRevokeClients;
+    const canRevoke = eligible && options.capabilities.canRevokeClientSecrets;
     const rows: Signal<AdminClientSecret[]> = signal([...projection.secrets]);
     const grid = new DataGrid({
       rows,

@@ -81,7 +81,7 @@ function domain(overrides: Record<string, unknown> = {}): Record<string, unknown
     unlock: vi.fn(),
     deactivate: vi.fn(),
     reactivate: vi.fn(),
-    purge: vi.fn(),
+    delete: vi.fn(),
     ...overrides,
   };
 }
@@ -893,11 +893,11 @@ describe('fixed user operation outcomes', () => {
     'unlock',
     'deactivate',
     'reactivate',
-    'purge',
+    'delete',
   ])('should publish success for a successful void %s action', async (method) => {
     // Successful lifecycle and credential actions produce one fixed result and one organization-scoped SDK call.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const invocation = vi.fn().mockResolvedValue(method === 'purge' ? {} : undefined);
+    const invocation = vi.fn().mockResolvedValue(undefined);
     const operations = createAdminUserOperations(() => domain({ [method]: invocation }));
 
     let result;
@@ -926,8 +926,8 @@ describe('fixed user operation outcomes', () => {
       case 'reactivate':
         result = await operations.reactivate(organizationId, userId);
         break;
-      case 'purge':
-        result = await operations.purge(organizationId, userId);
+      case 'delete':
+        result = await operations.delete(organizationId, userId);
         break;
     }
 

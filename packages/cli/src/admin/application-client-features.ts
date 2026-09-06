@@ -6,6 +6,8 @@ import {
   showApplicationLifecycleDialog,
   showCreateApplicationDialog,
   showCreateModuleDialog,
+  showDeleteApplicationDialog,
+  showDeleteModuleDialog,
   showEditApplicationDialog,
   showEditModuleDialog,
   showModuleDeactivationDialog,
@@ -25,6 +27,7 @@ import type {
 import {
   showClientConfigurationDialog,
   showClientLifecycleDialog,
+  showDeleteClientDialog,
   showGenerateClientSecretDialog,
   showOneTimeClientSecretDialog,
   showRevokeClientSecretDialog,
@@ -246,12 +249,15 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'edit') void editApplication(intent.applicationId);
     else if (intent.kind === 'activate')
       void applicationController.activate(intent.applicationId, async () => true);
-    else if (intent.kind === 'deactivate' || intent.kind === 'archive')
-      void changeApplicationLifecycle(intent.kind, intent.applicationId);
+    else if (intent.kind === 'deactivate')
+      void changeApplicationLifecycle(intent.applicationId);
+    else if (intent.kind === 'delete') void deleteApplication(intent.applicationId);
     else if (intent.kind === 'add-module') void addModule(intent.applicationId);
     else if (intent.kind === 'edit-module')
       void editModule(intent.applicationId, intent.moduleId);
-    else void deactivateModule(intent.applicationId, intent.moduleId);
+    else if (intent.kind === 'deactivate-module')
+      void deactivateModule(intent.applicationId, intent.moduleId);
+    else void deleteModule(intent.applicationId, intent.moduleId);
   }
 
   /** Handles the complete closed client intent set. */
@@ -264,8 +270,8 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'edit') void editClient(intent.clientId, intent.tab);
     else if (intent.kind === 'activate')
       void clientController.activate(intent.clientId, async () => true);
-    else if (intent.kind === 'deactivate' || intent.kind === 'revoke')
-      void changeClientLifecycle(intent.kind, intent.clientId);
+    else if (intent.kind === 'deactivate') void changeClientLifecycle(intent.clientId);
+    else if (intent.kind === 'delete') void deleteClient(intent.clientId);
     else if (intent.kind === 'secrets') void clientController.loadSecrets(intent.clientId);
     else if (intent.kind === 'generate-secret') void generateSecret(intent.clientId);
     else void revokeSecret(intent.clientId, intent.secretId);
@@ -292,10 +298,7 @@ export function createAdminApplicationClientFeatures(
   }
 
   /** Confirms an application transition with the exact retained target. */
-  async function changeApplicationLifecycle(
-    action: 'deactivate' | 'archive',
-    applicationId: string,
-  ): Promise<void> {
+  async function changeApplicationLifecycle(applicationId: string): Promise<void> {
     const application = selectedApplication();
     if (!application || application.id !== applicationId) return;
     const confirmation = (signal: AbortSignal) =>
@@ -303,14 +306,24 @@ export function createAdminApplicationClientFeatures(
         const result = await showApplicationLifecycleDialog(
           options.dialogs.host,
           signal,
-          action,
+          'deactivate',
           application,
         );
-        return result.kind === action;
+        return result.kind === 'deactivate';
       });
-    if (action === 'deactivate')
-      await applicationController.deactivate(applicationId, confirmation);
-    else await applicationController.archive(applicationId, confirmation);
+    await applicationController.deactivate(applicationId, confirmation);
+  }
+
+  /** Confirms permanent application deletion with the exact retained target. */
+  async function deleteApplication(applicationId: string): Promise<void> {
+    const application = selectedApplication();
+    if (!application || application.id !== applicationId) return;
+    await applicationController.delete(applicationId, (signal) =>
+      confirm(async () =>
+        (await showDeleteApplicationDialog(options.dialogs.host, signal, application)).kind ===
+        'delete',
+      ),
+    );
   }
 
   /** Opens and submits a new module form under the retained application. */
@@ -349,6 +362,19 @@ export function createAdminApplicationClientFeatures(
       confirm(async () =>
         (await showModuleDeactivationDialog(options.dialogs.host, signal, application, target)).kind ===
         'deactivate-module',
+      ),
+    );
+  }
+
+  /** Confirms permanent module deletion with the retained same-parent target. */
+  async function deleteModule(applicationId: string, moduleId: string): Promise<void> {
+    const application = selectedApplication();
+    const target = module(applicationId, moduleId);
+    if (!application || !target) return;
+    await applicationController.deleteModule(applicationId, moduleId, (signal) =>
+      confirm(async () =>
+        (await showDeleteModuleDialog(options.dialogs.host, signal, application, target)).kind ===
+        'delete',
       ),
     );
   }
@@ -418,10 +444,7 @@ export function createAdminApplicationClientFeatures(
   }
 
   /** Confirms a client transition with its selected organization and retained row. */
-  async function changeClientLifecycle(
-    action: 'deactivate' | 'revoke',
-    clientId: string,
-  ): Promise<void> {
+  async function changeClientLifecycle(clientId: string): Promise<void> {
     const client = selectedClient();
     const state = options.readState();
     if (!client || client.id !== clientId || state.kind !== 'authenticated' || !state.organization)
@@ -429,11 +452,30 @@ export function createAdminApplicationClientFeatures(
     const organization = state.organization;
     const confirmation = (signal: AbortSignal) =>
       confirm(async () =>
-        (await showClientLifecycleDialog(options.dialogs.host, signal, action, organization, client))
-          .kind === action,
+        (await showClientLifecycleDialog(
+          options.dialogs.host,
+          signal,
+          'deactivate',
+          organization,
+          client,
+        )).kind === 'deactivate',
       );
-    if (action === 'deactivate') await clientController.deactivate(clientId, confirmation);
-    else await clientController.revoke(clientId, confirmation);
+    await clientController.deactivate(clientId, confirmation);
+  }
+
+  /** Confirms permanent client deletion within the selected organization. */
+  async function deleteClient(clientId: string): Promise<void> {
+    const client = selectedClient();
+    const state = options.readState();
+    if (!client || client.id !== clientId || state.kind !== 'authenticated' || !state.organization)
+      return;
+    const organization = state.organization;
+    await clientController.delete(clientId, (signal) =>
+      confirm(async () =>
+        (await showDeleteClientDialog(options.dialogs.host, signal, organization, client))
+          .kind === 'delete',
+      ),
+    );
   }
 
   /** Opens the bounded modern-secret generation form. */

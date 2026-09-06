@@ -5,6 +5,7 @@ import {
   at,
   Button,
   Commands,
+  cover,
   Dialog,
   Input,
   Label,
@@ -13,12 +14,15 @@ import {
   stringWidth,
   Text,
 } from '@jsvision/ui';
-import type { DispatchEvent, ModalDialogHost, Signal, Validator } from '@jsvision/ui';
+import type { DispatchEvent, EventLoop, ModalDialogHost, Signal, Validator } from '@jsvision/ui';
 
 import { normalizeServerOrigin } from '../global-options.js';
+import { runAbortableAdminDialog } from './application-runtime.js';
+import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import type {
   AdminCapabilities,
   AdminConnectionState,
+  AdminOrganizationFailureKind,
   AdminOrganizationContext,
   AdminOrganizationResult,
 } from './state.js';
@@ -35,11 +39,14 @@ export interface OrganizationChooserOptions {
   readonly capabilities: AdminCapabilities;
   /** Current list operation, omitted when listing is not allowed. */
   readonly organizations?: Promise<AdminOrganizationResult<readonly AdminOrganizationContext[]>>;
+  /** Fixed failure retained while an authoritative organization list is reloaded. */
+  readonly failure?: AdminOrganizationFailureKind;
 }
 
 /** User choice returned by the organization chooser. */
 export type OrganizationChoiceResult =
   | { readonly kind: 'switch'; readonly organization: AdminOrganizationContext }
+  | { readonly kind: 'delete'; readonly organization: AdminOrganizationContext }
   | { readonly kind: 'create' }
   | { readonly kind: 'reauthenticate' }
   | { readonly kind: 'cancel' };
@@ -49,11 +56,22 @@ export type CreateOrganizationDialogResult =
   | { readonly kind: 'create'; readonly input: CreateOrganizationInput }
   | { readonly kind: 'cancel' };
 
+/** Result of the irreversible organization-deletion dialog. */
+export type DeleteOrganizationDialogResult =
+  { readonly kind: 'delete'; readonly organizationId: string } | { readonly kind: 'cancel' };
+
+/** Modal host needed for abort-driven organization deletion confirmation. */
+export interface AdminOrganizationDeleteDialogHost extends ModalDialogHost {
+  /** Event loop that can close an owned modal when its operation is cancelled. */
+  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal' | 'focusView'>;
+}
+
 /** Explicit choice returned by the blocking unauthenticated gate. */
 export type AuthenticationGateChoice = 'authenticate' | 'quit';
 
 /** Maximum number of terminal cells used for one organization row. */
 const ORGANIZATION_ROW_WIDTH = 68;
+const DELETE_ORGANIZATION_COMMAND = 'admin:delete-organization';
 
 /** Dialog that keeps an unauthenticated user inside the Authenticate-or-Quit decision. */
 class AuthenticationGateDialog extends Dialog {
@@ -118,6 +136,21 @@ class OrganizationListView extends ListView<AdminOrganizationContext> {
   }
 }
 
+/** Dialog that lets the organization-specific Delete command complete its modal session. */
+class OrganizationChooserDialog extends Dialog {
+  /** Routes Delete through the same enabled-state and validity checks as standard dialog actions. */
+  onEvent(event: DispatchEvent): void {
+    if (
+      event.event.type === 'command' &&
+      event.event.command === DELETE_ORGANIZATION_COMMAND
+    ) {
+      this.handleTerminating(DELETE_ORGANIZATION_COMMAND, event);
+      return;
+    }
+    super.onEvent(event);
+  }
+}
+
 /** Returns a dialog size capped to the currently available terminal surface. */
 function dialogSize(
   host: ModalDialogHost,
@@ -135,6 +168,27 @@ async function runDialog(host: ModalDialogHost, dialog: Dialog): Promise<string>
   host.desktop.addWindow(dialog);
   try {
     return (await host.loop.execView<string>(dialog)) ?? Commands.cancel;
+  } finally {
+    host.desktop.removeWindow(dialog);
+  }
+}
+
+/** Runs one abortable organization dialog and always removes its window. */
+async function runDeleteDialog(
+  host: AdminOrganizationDeleteDialogHost,
+  dialog: Dialog,
+  operationSignal: AbortSignal,
+): Promise<string> {
+  host.desktop.addWindow(dialog);
+  try {
+    return await runAbortableAdminDialog(
+      host.loop,
+      operationSignal,
+      async () => (await host.loop.execView<string>(dialog)) ?? Commands.cancel,
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return Commands.cancel;
+    throw error;
   } finally {
     host.desktop.removeWindow(dialog);
   }
@@ -227,6 +281,11 @@ function chooserMessage(
   }
 }
 
+/** Converts a retained fixed organization failure into the chooser's bounded message. */
+function organizationFailureMessage(failure: AdminOrganizationFailureKind): string {
+  return chooserMessage({ kind: 'failure', failure });
+}
+
 /** Shows trusted identity details and restores the previously focused control on close. */
 export async function showWhoAmIDialog(
   host: ModalDialogHost,
@@ -263,13 +322,20 @@ export async function showOrganizationChooser(
   const { width, height } = dialogSize(host, 76, 18);
   const organizations = signal<AdminOrganizationContext[]>([]);
   const message = signal(
-    options.capabilities.canReadOrganizations
-      ? 'Loading organizations'
-      : 'Organization listing unavailable',
+    options.failure
+      ? organizationFailureMessage(options.failure)
+      : options.capabilities.canReadOrganizations
+        ? 'Loading organizations'
+        : 'Organization listing unavailable',
   );
   const selected = signal(-1);
   const list = new OrganizationListView(organizations, selected);
-  const dialog = new Dialog({ title: 'Organizations', width, height, centered: true });
+  const dialog = new OrganizationChooserDialog({
+    title: 'Organizations',
+    width,
+    height,
+    centered: true,
+  });
   dialog.add(at(new Text(() => message()), 2, 1, Math.max(1, width - 6), 1));
   dialog.add(at(list, 2, 3, Math.max(1, width - 6), Math.max(1, height - 9)));
 
@@ -310,6 +376,23 @@ export async function showOrganizationChooser(
       ),
     );
   }
+  if (options.capabilities.canDeleteOrganizations) {
+    dialog.add(
+      at(
+        new Button('Delete', {
+          command: DELETE_ORGANIZATION_COMMAND,
+          disabled: () => {
+            const organization = organizations()[selected()];
+            return !organization || organization.isSuperAdmin === true;
+          },
+        }),
+        40,
+        Math.max(1, height - 5),
+        10,
+        2,
+      ),
+    );
+  }
   dialog.add(
     at(
       new Button('~R~eauthenticate', { command: Commands.no }),
@@ -330,15 +413,21 @@ export async function showOrganizationChooser(
         return;
       }
       organizations.set([...result.value]);
-      message.set(
-        result.value.length === 0 ? 'No organizations available' : 'Select an organization',
-      );
+      if (!options.failure) {
+        message.set(
+          result.value.length === 0 ? 'No organizations available' : 'Select an organization',
+        );
+      }
     });
   }
 
   const command = await runDialog(host, dialog);
   if (command === Commands.yes && createAllowed) return { kind: 'create' };
   if (command === Commands.no) return { kind: 'reauthenticate' };
+  if (command === DELETE_ORGANIZATION_COMMAND) {
+    const organization = organizations.peek()[selected.peek()];
+    if (organization && !organization.isSuperAdmin) return { kind: 'delete', organization };
+  }
   if (command === Commands.ok) {
     const organization = organizations.peek()[selected.peek()];
     if (organization) return { kind: 'switch', organization };
@@ -407,4 +496,31 @@ export async function showCreateOrganizationDialog(
   if (slug.peek()) input.slug = slug.peek();
   if (defaultLocale.peek()) input.defaultLocale = defaultLocale.peek();
   return { kind: 'create', input };
+}
+
+/** Shows the tenant-owned cascade before permanently deleting an organization. */
+export async function showDeleteOrganizationDialog(
+  host: AdminOrganizationDeleteDialogHost,
+  operationSignal: AbortSignal,
+  organization: AdminOrganizationContext,
+): Promise<DeleteOrganizationDialogResult> {
+  const { width, height } = dialogSize(host, 72, 14);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(organization.name, width), {
+    command: Commands.yes,
+  });
+  const dialog = new Dialog({ title: 'Delete organization', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Organization: ${organization.name}`,
+    warning: 'Deleting this organization removes its users, clients, and security data.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDeleteDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes
+    ? { kind: 'delete', organizationId: organization.id }
+    : { kind: 'cancel' };
 }

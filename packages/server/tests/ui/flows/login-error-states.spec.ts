@@ -6,7 +6,7 @@
  * UI Testing Phase 2 plan.
  *
  * Uses seeded users in various statuses (suspended, inactive, locked) and
- * organizations in non-active states (suspended, archived) from global-setup.
+ * organizations in suspended or physically deleted states from global setup.
  *
  * @see plans/ui-testing-v2/06-login-consent-interaction-tests.md — Category 6
  */
@@ -134,15 +134,15 @@ test.describe('Login Error States', () => {
     await expect(page.locator('#email')).not.toBeVisible();
   });
 
-  // ── 6.6: Archived organization ──────────────────────────────────────
+  // A deleted tenant must not regain a public authentication surface.
 
-  test('archived org shows 404 error', async ({ page, testData }) => {
-    // Navigate to a page under the archived org slug
+  test('deleted org shows 404 error', async ({ page, testData }) => {
+    // Navigate to a page under the deleted org slug
     const response = await page.goto(
-      `${testData.baseUrl}/${testData.archivedOrgSlug}/auth/forgot-password`,
+      `${testData.baseUrl}/${testData.deletedOrgSlug}/auth/forgot-password`,
     );
 
-    // Tenant resolver returns 404 for archived orgs (treated as non-existent)
+    // Tenant resolver returns 404 for deleted orgs (treated as non-existent)
     expect(response?.status()).toBe(404);
 
     // Should NOT show the login form

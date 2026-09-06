@@ -73,15 +73,18 @@ const capabilities: AdminCapabilities = {
   canInviteUsers: false,
   canUpdateUsers: false,
   canManageUserLifecycle: false,
-  canPurgeUsers: false,
+  canDeleteOrganizations: false,
+  canDeleteUsers: false,
   canReadApplications: true,
   canCreateApplications: false,
   canUpdateApplications: false,
-  canArchiveApplications: false,
+  canDeleteApplications: false,
+  canDeleteModules: false,
   canReadClients: true,
   canCreateClients: true,
   canUpdateClients: true,
-  canRevokeClients: true,
+  canDeleteClients: true,
+  canRevokeClientSecrets: true,
 };
 
 interface ClientWorkspace {
@@ -119,7 +122,7 @@ interface ClientDialogExports {
   readonly showClientLifecycleDialog: (
     host: ReturnType<typeof createApplication>,
     signal: AbortSignal,
-    action: 'deactivate' | 'revoke',
+    action: 'deactivate',
     organization: AdminOrganizationContext,
     client: AdminClient,
   ) => Promise<unknown>;
@@ -278,7 +281,6 @@ describe('organization OIDC client workspace', () => {
 
   it.each([
     ['inactive', { ...client, status: 'inactive' as const }, true],
-    ['revoked', { ...client, status: 'revoked' as const }, false],
   ])('renders complete %s detail with immutable context and correct editability', async (_status, value, editable) => {
     const mounted = await mountWorkspace({ organization });
     mounted.workspace.setState({ kind: 'detail', organizationId: organization.id, clients: [value], client: value, applicationName: application.name, secrets: [secret] });
@@ -288,7 +290,6 @@ describe('organization OIDC client workspace', () => {
       expect(text).toContain(expected);
     const mutationButtons = descendants(mounted.window).filter((view) => view instanceof Button).filter((button) => ['Basic', 'Redirects', 'Protocol', 'Login', 'Secrets'].includes(button.activation.label));
     expect(mutationButtons.every((button) => !button.state.disabled)).toBe(editable);
-    if (!editable) expect(text).toContain('Revoked clients are read only');
   });
 
   it('uses the immutable application ID in detail when application read is unavailable', async () => {
@@ -313,7 +314,6 @@ describe('organization OIDC client workspace', () => {
 
   it.each([
     ['public', { ...client, clientType: 'public' as const }],
-    ['revoked', { ...client, status: 'revoked' as const }],
   ])('keeps secret mutation visible-disabled for a %s client', async (_case, value) => {
     const mounted = await mountWorkspace({ organization });
     mounted.workspace.setState({ kind: 'secrets', organizationId: organization.id, clients: [value], client: value, applicationName: application.name, secrets: [] });
@@ -452,13 +452,12 @@ describe('OIDC client configuration dialogs', () => {
 });
 
 describe('client lifecycle and one-time secrets', () => {
-  it.each(['deactivate', 'revoke'] as const)('names client and organization before %s with no restore path', async (action) => {
+  it.each(['deactivate'] as const)('names client and organization before %s with no restore path', async (action) => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
     const pending = (await dialogExports()).showClientLifecycleDialog(host, new AbortController().signal, action, organization, client);
     await settle();
     expect(frameText(host)).toContain(client.clientName);
     expect(frameText(host)).toContain(organization.name);
-    if (action === 'revoke') expect(frameText(host)).toContain('permanent');
     expect(frameText(host)).not.toContain('Restore');
     host.loop.endModal('cancel');
     await pending;

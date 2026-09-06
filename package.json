@@ -42,6 +42,7 @@
     "migrate:create": "node-pg-migrate create --migrations-dir packages/server/migrations --migration-file-language sql",
     "porta": "tsx packages/server/src/cli/index.ts",
     "cli": "tsx packages/cli/src/index.ts --insecure",
+    "admin": "NODE_USE_SYSTEM_CA=1 tsx packages/cli/src/index.ts admin --server https://porta-admin-playground.ci.portaidentity.com:3543",
     "harness:start": "bash test-harness/scripts/start.sh",
     "harness:stop": "bash test-harness/scripts/stop.sh",
     "harness:test": "bash test-harness/scripts/test.sh",

@@ -16,9 +16,9 @@ import { describe, expect, it, vi } from 'vitest';
 const organizations = [
   organization({
     id: '11111111-1111-4111-8111-111111111111',
-    name: 'Archived Organization',
-    slug: 'archived-organization',
-    status: 'archived',
+    name: 'Second Suspended Organization',
+    slug: 'second-suspended-organization',
+    status: 'suspended',
   }),
   organization({
     id: '22222222-2222-4222-8222-222222222222',
@@ -73,9 +73,9 @@ describe('organization listing', () => {
       value: [
         {
           id: '11111111-1111-4111-8111-111111111111',
-          name: 'Archived Organization',
-          slug: 'archived-organization',
-          status: 'archived',
+          name: 'Second Suspended Organization',
+          slug: 'second-suspended-organization',
+          status: 'suspended',
         },
         {
           id: '22222222-2222-4222-8222-222222222222',

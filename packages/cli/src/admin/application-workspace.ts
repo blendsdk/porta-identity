@@ -5,16 +5,18 @@ import {
   col,
   cover,
   DataGrid,
+  Dialog,
   fixed,
-  Group,
+  GroupBox,
   grow,
   row,
   signal,
+  sortRows,
   spacer,
   Text,
   View,
 } from '@jsvision/ui';
-import type { Column, Signal } from '@jsvision/ui';
+import type { Column, Signal, SortState } from '@jsvision/ui';
 
 import type { AdminCapabilities } from './state.js';
 import type {
@@ -33,7 +35,7 @@ export type AdminApplicationIntent =
   | { readonly kind: 'edit'; readonly applicationId: string }
   | { readonly kind: 'activate'; readonly applicationId: string }
   | { readonly kind: 'deactivate'; readonly applicationId: string }
-  | { readonly kind: 'archive'; readonly applicationId: string }
+  | { readonly kind: 'delete'; readonly applicationId: string }
   | { readonly kind: 'add-module'; readonly applicationId: string }
   | {
       readonly kind: 'edit-module';
@@ -42,6 +44,11 @@ export type AdminApplicationIntent =
     }
   | {
       readonly kind: 'deactivate-module';
+      readonly applicationId: string;
+      readonly moduleId: string;
+    }
+  | {
+      readonly kind: 'delete-module';
       readonly applicationId: string;
       readonly moduleId: string;
     };
@@ -105,25 +112,29 @@ interface ProjectionStatus {
 export function createAdminApplicationWorkspace(
   options: AdminApplicationWorkspaceOptions,
 ): AdminApplicationWorkspace {
-  const content = new Group();
+  const content = new Dialog({ title: 'Applications', width: 72, height: 20 });
+  content.closable = false;
+  content.resizable = false;
+  content.zoomable = false;
   let state: AdminApplicationViewState = { kind: 'closed' };
   let currentFocus: View | null = null;
   let disposed = false;
   let focusedApplicationId: string | null = null;
 
-  /** Builds a bounded action button without giving it vertical flex growth. */
+  /** Gives a button its complete natural face width while keeping it in DSL flow layout. */
+  const fitButton = (button: Button): Button => fixed(button, button.measure().width);
+
+  /** Builds a naturally sized action button without giving it vertical flex growth. */
   const action = (
     label: string,
     intent: AdminApplicationIntent,
-    width: number,
     disabled: boolean | (() => boolean) = false,
   ): Button =>
-    fixed(
+    fitButton(
       new Button(label, {
         disabled,
         onClick: () => options.onIntent(intent),
       }),
-      width,
     );
 
   /** Renders the complete application catalog or its explicit empty state. */
@@ -132,22 +143,14 @@ export function createAdminApplicationWorkspace(
     status?: ProjectionStatus,
   ): void => {
     const createAllowed = options.capabilities.canCreateApplications;
-    const header = row(
-      { gap: 1 },
-      fixed(new Text('Deployment-global applications'), 30),
-      spacer(),
-      fixed(
-        new Button('~C~reate', {
-          disabled: !createAllowed,
-          onClick: () => options.onIntent({ kind: 'create' }),
-        }),
-        11,
-      ),
-    );
     let body: View;
     if (projection.applications.length === 0) {
-      body = new Text('No applications');
-      currentFocus = createAllowed ? header.children.at(-1) ?? null : null;
+      body = new Text(
+        createAllowed
+          ? 'No applications. Use Applications > Create application.'
+          : 'No applications',
+      );
+      currentFocus = null;
     } else {
       const rows: Signal<AdminApplication[]> = signal([...projection.applications]);
       const focused = signal(
@@ -169,26 +172,24 @@ export function createAdminApplicationWorkspace(
       body = grid;
       currentFocus = grid.rows;
     }
-    const denial = createAllowed ? undefined : 'Create (requires application create)';
+    const applicationCount = projection.applications.length;
     const retry = status?.retry
-      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
+      ? fitButton(new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) }))
       : undefined;
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          fixed(header, 2),
           status &&
-            fixed(
-              row(
-                { gap: 1 },
-                grow(new Text(status.label)),
-                retry && fixed(retry, 10),
-              ),
-              2,
-            ),
-          denial && fixed(new Text(denial), 1),
+            fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
           grow(body),
+          projection.applications.length > 0 &&
+            fixed(
+              new Text(
+                `↑↓ Move · Enter View details · ${applicationCount} ${applicationCount === 1 ? 'application' : 'applications'}`,
+              ),
+              1,
+            ),
         ),
       ),
     );
@@ -201,85 +202,103 @@ export function createAdminApplicationWorkspace(
     status?: ProjectionStatus,
   ): void => {
     const selected = projection.application;
-    const archived = selected.status === 'archived';
-    const canUpdate = options.capabilities.canUpdateApplications && !archived;
-    const canArchive = options.capabilities.canArchiveApplications && !archived;
-    const selectedModuleId = signal<string | null>(projection.modules[0]?.id ?? null);
+    const canUpdate = options.capabilities.canUpdateApplications;
+    const canDelete = options.capabilities.canDeleteApplications;
     const lifecycle =
       selected.status === 'inactive'
-        ? action('~A~ctivate', { kind: 'activate', applicationId: selected.id }, 12, !canUpdate)
-        : action('~D~eactivate', { kind: 'deactivate', applicationId: selected.id }, 14, !canUpdate);
-    const actions = row(
+        ? action('~A~ctivate', { kind: 'activate', applicationId: selected.id }, !canUpdate)
+        : action(
+            '~D~eactivate',
+            { kind: 'deactivate', applicationId: selected.id },
+            !canUpdate,
+          );
+    const applicationActions = row(
       { gap: 1 },
-      action('~B~ack', { kind: 'back' }, 9),
-      action('~E~dit', { kind: 'edit', applicationId: selected.id }, 9, !canUpdate),
-      lifecycle,
-      action('A~r~chive', { kind: 'archive', applicationId: selected.id }, 11, !canArchive),
       spacer(),
-      action(
-        'Add ~m~odule',
-        { kind: 'add-module', applicationId: selected.id },
-        14,
-        !canUpdate,
+      action('~E~dit', { kind: 'edit', applicationId: selected.id }, !canUpdate),
+      lifecycle,
+      action('Delete', { kind: 'delete', applicationId: selected.id }, !canDelete),
+    );
+    const detail = col(
+      fixed(
+        row(
+          { gap: 1 },
+          grow(new Text(selected.name)),
+          fixed(new Text(selected.status.toUpperCase()), 10),
+        ),
+        1,
+      ),
+      fixed(new Text(`Slug: ${selected.slug}`), 1),
+      fixed(new Text(selected.description ?? 'No description'), 1),
+      fixed(
+        row(
+          { gap: 2 },
+          grow(new Text(`Created: ${selected.createdAt}`)),
+          grow(new Text(`Updated: ${selected.updatedAt}`)),
+        ),
+        1,
       ),
     );
-    const detail = new Text(
-      [
-        'Deployment-global application — changes may affect multiple organizations',
-        `Name: ${selected.name}`,
-        `Slug: ${selected.slug}`,
-        `Status: ${selected.status}`,
-        `Description: ${selected.description ?? 'Not provided'}`,
-        `Created: ${selected.createdAt}`,
-        `Updated: ${selected.updatedAt}`,
-      ].join('\n'),
-    );
+    const moduleRows: Signal<AdminApplicationModule[]> = signal([...projection.modules]);
+    const selectedModuleIndex = signal(-1);
+    const moduleSort = signal<SortState>(null);
+
+    /** Resolves the selected display row after the DataGrid applies its current sort. */
+    const selectedModule = (): AdminApplicationModule | undefined =>
+      sortRows(moduleRows(), MODULE_COLUMNS, moduleSort())[selectedModuleIndex()];
+
     const moduleAction = (
       label: string,
-      kind: 'edit-module' | 'deactivate-module',
-      width: number,
+      kind: 'edit-module' | 'deactivate-module' | 'delete-module',
     ): Button =>
-      fixed(
+      fitButton(
         new Button(label, {
           disabled: () => {
-            const moduleId = selectedModuleId();
-            const module = projection.modules.find((item) => item.id === moduleId);
-            return !canUpdate || !module || (kind === 'deactivate-module' && module.status !== 'active');
+            const module = selectedModule();
+            return (
+              !module ||
+              (kind === 'delete-module'
+                ? !options.capabilities.canDeleteModules
+                : !canUpdate || (kind === 'deactivate-module' && module.status !== 'active'))
+            );
           },
           onClick: () => {
-            const moduleId = selectedModuleId.peek();
-            if (!moduleId || !canUpdate) return;
-            options.onIntent({ kind, applicationId: selected.id, moduleId });
+            const module = selectedModule();
+            if (
+              !module ||
+              (kind === 'delete-module'
+                ? !options.capabilities.canDeleteModules
+                : !canUpdate)
+            ) return;
+            options.onIntent({ kind, applicationId: selected.id, moduleId: module.id });
           },
         }),
-        width,
       );
+    const addModule = action(
+      'Add ~m~odule',
+      { kind: 'add-module', applicationId: selected.id },
+      !canUpdate,
+    );
     const moduleActions = row(
       { gap: 1 },
-      moduleAction('~E~dit module', 'edit-module', 14),
-      moduleAction('Deacti~v~ate module', 'deactivate-module', 20),
       spacer(),
+      addModule,
+      moduleAction('~E~dit module', 'edit-module'),
+      moduleAction('Deacti~v~ate module', 'deactivate-module'),
+      moduleAction('Delete module', 'delete-module'),
     );
+    const back = action('~B~ack to applications', { kind: 'back' });
     let modules: View;
     if (projection.modules.length === 0) {
       modules = new Text('No modules');
-      currentFocus = actions.children[0] ?? null;
+      currentFocus = canUpdate ? addModule : back;
     } else {
-      const rows: Signal<AdminApplicationModule[]> = signal([...projection.modules]);
       const grid = new DataGrid({
-        rows,
+        rows: moduleRows,
         columns: MODULE_COLUMNS,
+        selected: selectedModuleIndex,
+        sort: moduleSort,
         zebra: true,
-        onSelect: (_index, module) => {
-          selectedModuleId.set(module.id);
-          if (canUpdate) {
-            options.onIntent({
-              kind: 'edit-module',
-              applicationId: selected.id,
-              moduleId: module.id,
-            });
-          }
-        },
       });
       modules = grid;
       currentFocus = grid.rows;
@@ -288,33 +307,42 @@ export function createAdminApplicationWorkspace(
       !options.capabilities.canUpdateApplications
         ? 'Edit, lifecycle, and module actions require application update'
         : undefined,
-      !options.capabilities.canArchiveApplications
-        ? 'Archive requires application archive'
+      !options.capabilities.canDeleteApplications
+        ? 'Delete requires application delete'
         : undefined,
+      !options.capabilities.canDeleteModules ? 'Module Delete requires module delete' : undefined,
     ].filter((value): value is string => Boolean(value));
     const retry = status?.retry
-      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
+      ? fitButton(new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) }))
       : undefined;
+    const applicationNotices = denials;
+    const applicationSection = new GroupBox({ title: 'Application' });
+    applicationSection.add(
+      cover(
+        col(
+          { gap: 0 },
+          fixed(detail, 4),
+          ...applicationNotices.map((notice) => fixed(new Text(notice), 1)),
+          fixed(applicationActions, 2),
+        ),
+      ),
+    );
+    const moduleCount = projection.modules.length;
+    const modulesSection = new GroupBox({
+      title: `Modules · ${moduleCount} ${moduleCount === 1 ? 'module' : 'modules'}`,
+    });
+    modulesSection.add(
+      cover(col({ gap: 1 }, grow(modules), fixed(moduleActions, 2))),
+    );
     content.add(
       cover(
         col(
           { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          fixed(detail, 7),
           status &&
-            fixed(
-              row(
-                { gap: 1 },
-                grow(new Text(status.label)),
-                retry && fixed(retry, 10),
-              ),
-              2,
-            ),
-          archived && fixed(new Text('Archived applications are read only'), 1),
-          ...denials.map((denial) => fixed(new Text(denial), 1)),
-          fixed(actions, 2),
-          fixed(new Text('Modules'), 1),
-          grow(modules),
-          fixed(moduleActions, 2),
+            fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
+          fixed(applicationSection, 8 + applicationNotices.length),
+          grow(modulesSection),
+          fixed(row({ gap: 1 }, back, spacer()), 2),
         ),
       ),
     );
@@ -346,14 +374,16 @@ export function createAdminApplicationWorkspace(
       else renderDetail(state.previous, status);
       return;
     }
-    const retry = new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) });
+    const retry = fitButton(
+      new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) }),
+    );
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          fixed(new Text('Deployment-global applications'), 1),
+          fixed(new Text('Applications'), 1),
           fixed(new Text(label), 1),
-          state.kind !== 'loading' && fixed(retry, 10),
+          state.kind !== 'loading' && retry,
           spacer(),
         ),
       ),

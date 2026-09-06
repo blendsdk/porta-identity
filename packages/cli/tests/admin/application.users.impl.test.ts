@@ -62,7 +62,18 @@ function authenticated(): AdminConnectionState {
       canInviteUsers: true,
       canUpdateUsers: true,
       canManageUserLifecycle: true,
-      canPurgeUsers: true,
+      canDeleteOrganizations: false,
+      canDeleteUsers: true,
+      canReadApplications: false,
+      canCreateApplications: false,
+      canUpdateApplications: false,
+      canDeleteApplications: false,
+      canDeleteModules: false,
+      canReadClients: false,
+      canCreateClients: false,
+      canUpdateClients: false,
+      canDeleteClients: false,
+      canRevokeClientSecrets: false,
     },
     organization: {
       id: organizationId,
@@ -113,7 +124,7 @@ function operations(overrides: Partial<AdminUserOperations> = {}): AdminUserOper
     unlock: mutation,
     deactivate: mutation,
     reactivate: mutation,
-    purge: mutation,
+    delete: mutation,
     ...overrides,
   };
 }

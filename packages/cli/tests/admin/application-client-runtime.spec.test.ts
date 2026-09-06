@@ -53,15 +53,18 @@ const allCapabilities = {
   canInviteUsers: false,
   canUpdateUsers: false,
   canManageUserLifecycle: false,
-  canPurgeUsers: false,
+  canDeleteOrganizations: true,
+  canDeleteUsers: false,
   canReadApplications: true,
   canCreateApplications: true,
   canUpdateApplications: true,
-  canArchiveApplications: true,
+  canDeleteApplications: true,
+  canDeleteModules: true,
   canReadClients: true,
   canCreateClients: true,
   canUpdateClients: true,
-  canRevokeClients: true,
+  canDeleteClients: true,
+  canRevokeClientSecrets: true,
 };
 const commands = {
   browseApplications: 'browse-applications',
@@ -118,11 +121,12 @@ function featureSession(overrides: Partial<AdminApplicationSession> = {}): Admin
       update: vi.fn(),
       activate: mutation,
       deactivate: mutation,
-      archive: mutation,
+      delete: mutation,
       listModules: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
       addModule: vi.fn(),
       updateModule: vi.fn(),
       deactivateModule: mutation,
+      deleteModule: mutation,
     },
     clients: {
       listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [clientRow] }),
@@ -131,7 +135,7 @@ function featureSession(overrides: Partial<AdminApplicationSession> = {}): Admin
       update: vi.fn(),
       activate: mutation,
       deactivate: mutation,
-      revoke: mutation,
+      delete: mutation,
       listSecrets: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
       generateSecret: vi.fn(),
       revokeSecret: mutation,
@@ -154,7 +158,8 @@ describe('application and client shell navigation', () => {
         expect(application.loop.isCommandEnabled(commands.browseClients)).toBe(false);
         application.loop.emitCommand(commands.browseApplications);
         await settle();
-        expect(frameText(application)).toContain('Deployment-global applications');
+        expect(frameText(application)).toContain('Enter View details');
+        expect(frameText(application)).not.toContain('Deployment-global');
         application.loop.dispatch({ type: 'key', key: 'c', codepoint: 99, ctrl: false, alt: true, shift: false });
         await settle();
         const matches = frameText(application).match(/OIDC Clients \(organization required\)/g);
@@ -194,7 +199,7 @@ describe('application and client shell navigation', () => {
       applicationRunner: async (application) => {
         application.loop.emitCommand(commands.browseApplications);
         await settle();
-        expect(frameText(application)).toContain('Deployment-global applications');
+        expect(frameText(application)).toContain('Customer Portal');
         const applicationFocus = application.loop.getFocused();
         expect(applicationFocus).toBeInstanceOf(View);
         expect(applicationFocus?.focusable).toBe(true);
@@ -202,14 +207,13 @@ describe('application and client shell navigation', () => {
         application.loop.emitCommand(commands.browseClients);
         await settle();
         expect(frameText(application)).toContain('Portal Web Client');
-        expect(frameText(application)).not.toContain('Deployment-global applications');
+        expect(frameText(application)).not.toContain('Enter View details');
         expect(application.loop.getFocused()?.focusable).toBe(true);
         return 0;
       },
     });
   });
 });
-
 describe('application and client shell ownership', () => {
   it('clears organization client work on switch while retaining global application ownership', async () => {
     const switched = { ...organization, id: '44444444-4444-4444-8444-444444444444', name: 'Other Organization', slug: 'other' };
@@ -233,7 +237,7 @@ describe('application and client shell ownership', () => {
         expect(frameText(application)).not.toContain('Portal Web Client');
         application.loop.emitCommand(commands.browseApplications);
         await settle();
-        expect(frameText(application)).toContain('Deployment-global applications');
+        expect(frameText(application)).toContain('Customer Portal');
         return 0;
       },
     });

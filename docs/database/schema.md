@@ -91,7 +91,7 @@ The tenant table. Every user, client, and data point traces back to an organizat
 | `id` | `uuid` | Primary key (generated) |
 | `name` | `text` | Display name |
 | `slug` | `text` | URL slug (unique) |
-| `status` | `text` | `active`, `suspended`, or `archived` |
+| `status` | `text` | `active` or `suspended` |
 | `is_super_admin` | `boolean` | Whether this is the super-admin org |
 | `logo_url` | `text` | Branding: logo URL |
 | `favicon_url` | `text` | Branding: favicon URL |
@@ -116,7 +116,7 @@ End-user accounts scoped to an organization.
 | `organization_id` | `uuid` | FK → organizations |
 | `email` | `citext` | Email (unique per org, case-insensitive) |
 | `password_hash` | `text` | Argon2id hash |
-| `status` | `text` | `active`, `invited`, `suspended`, `locked`, `archived` |
+| `status` | `text` | `active`, `inactive`, `suspended`, or `locked` |
 | `given_name` | `text` | First name |
 | `family_name` | `text` | Last name |
 | `nickname` | `text` | Nickname |
@@ -145,7 +145,7 @@ SaaS product definitions that scope clients, roles, and claims.
 | `name` | `text` | Application name |
 | `slug` | `text` | URL slug (unique) |
 | `description` | `text` | Description |
-| `status` | `text` | `active`, `inactive`, `archived` |
+| `status` | `text` | `active` or `inactive` |
 | `created_at` | `timestamptz` | Creation timestamp |
 | `updated_at` | `timestamptz` | Last update |
 
@@ -183,7 +183,7 @@ OIDC clients (public or confidential).
 | `cors_origins` | `text[]` | CORS origins |
 | `require_pkce` | `boolean` | Require PKCE |
 | `login_methods` | `text[]` | Override login methods (NULL = inherit) |
-| `status` | `text` | `active`, `inactive`, `revoked` |
+| `status` | `text` | `active` or `inactive` |
 
 ### `client_secrets`
 
@@ -211,8 +211,6 @@ RBAC roles scoped to an application.
 | `name` | `text` | Role name |
 | `slug` | `text` | Role slug |
 | `description` | `text` | Description |
-| `is_system` | `boolean` | System role (cannot be deleted) |
-| `status` | `text` | `active` or `archived` |
 
 ### `permissions`
 
@@ -225,7 +223,6 @@ Permissions scoped to an application.
 | `name` | `text` | Permission name |
 | `slug` | `text` | Permission slug |
 | `description` | `text` | Description |
-| `status` | `text` | `active` or `archived` |
 
 ### `role_permissions`
 
@@ -258,7 +255,6 @@ Custom claim definitions scoped to an application.
 | `claim_type` | `text` | `string`, `number`, `boolean`, `json` |
 | `validation_rules` | `jsonb` | Type-specific validation rules |
 | `description` | `text` | Description |
-| `status` | `text` | `active` or `archived` |
 
 ### `user_claim_values`
 

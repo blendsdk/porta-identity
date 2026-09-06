@@ -77,8 +77,7 @@ Every command supports these flags:
 | `porta org update <id>`    | Update organization properties                            |
 | `porta org activate <id>`  | Activate an organization                                  |
 | `porta org suspend <id>`   | Suspend an organization                                   |
-| `porta org archive <id>`   | Archive an organization                                   |
-| `porta org destroy <slug>` | Permanently delete an organization and all child entities |
+| `porta org delete <id>`    | Permanently delete an organization and its owned data     |
 
 ### Applications
 
@@ -90,7 +89,7 @@ Every command supports these flags:
 | `porta app update <id>`   | Update application properties |
 | `porta app activate <id>` | Activate an application       |
 | `porta app suspend <id>`  | Suspend an application        |
-| `porta app archive <id>`  | Archive an application        |
+| `porta app delete <id>`   | Permanently delete an application and its owned data |
 
 **Nested: Roles** (`porta app role ...`)
 
@@ -100,7 +99,7 @@ Every command supports these flags:
 | `porta app role list <app-id>`                            | List roles                  |
 | `porta app role show <app-id> <role-id>`                  | Show role details           |
 | `porta app role update <app-id> <role-id>`                | Update a role               |
-| `porta app role archive <app-id> <role-id>`               | Archive a role              |
+| `porta app role delete <app-id> <role-id>`                | Permanently delete a role   |
 | `porta app role assign-perm <app-id> <role-id> <perm-id>` | Assign permission to role   |
 | `porta app role remove-perm <app-id> <role-id> <perm-id>` | Remove permission from role |
 
@@ -111,7 +110,7 @@ Every command supports these flags:
 | `porta app permission create <app-id>`            | Create a permission     |
 | `porta app permission list <app-id>`              | List permissions        |
 | `porta app permission show <app-id> <perm-id>`    | Show permission details |
-| `porta app permission archive <app-id> <perm-id>` | Archive a permission    |
+| `porta app permission delete <app-id> <perm-id>`  | Permanently delete a permission |
 
 **Nested: Claims** (`porta app claim ...`)
 
@@ -121,7 +120,7 @@ Every command supports these flags:
 | `porta app claim list <app-id>`               | List claim definitions     |
 | `porta app claim show <app-id> <claim-id>`    | Show claim details         |
 | `porta app claim update <app-id> <claim-id>`  | Update a claim definition  |
-| `porta app claim archive <app-id> <claim-id>` | Archive a claim definition |
+| `porta app claim delete <app-id> <claim-id>`  | Permanently delete a claim definition |
 
 **Nested: Modules** (`porta app module ...`)
 
@@ -130,6 +129,7 @@ Every command supports these flags:
 | `porta app module list <app-id>`    | List application modules |
 | `porta app module enable <app-id>`  | Enable a module          |
 | `porta app module disable <app-id>` | Disable a module         |
+| `porta app module delete <app-id> <module-id>` | Permanently delete a module and its permissions |
 
 ### Clients
 
@@ -139,9 +139,9 @@ Every command supports these flags:
 | `porta client create`        | Create a new client      |
 | `porta client show <id>`     | Show client details      |
 | `porta client update <id>`   | Update client properties |
-| `porta client activate <id>` | Activate a client        |
-| `porta client suspend <id>`  | Suspend a client         |
-| `porta client archive <id>`  | Archive a client         |
+| `porta client activate <id>`   | Activate a client                  |
+| `porta client deactivate <id>` | Temporarily deactivate a client    |
+| `porta client delete <id>`     | Permanently delete a client        |
 
 **Nested: Secrets** (`porta client secret ...`)
 
@@ -162,7 +162,7 @@ Every command supports these flags:
 | `porta user invite <org-id>`             | Send a user invitation        |
 | `porta user activate <org-id> <user-id>` | Activate a user               |
 | `porta user suspend <org-id> <user-id>`  | Suspend a user                |
-| `porta user archive <org-id> <user-id>`  | Archive a user                |
+| `porta user delete <org-id> <user-id>`   | Permanently delete a user     |
 
 **Nested: Roles** (`porta user role ...`)
 

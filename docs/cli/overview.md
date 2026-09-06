@@ -145,7 +145,7 @@ output.
 | `porta whoami`           | Display current identity                                   |
 | `porta admin`            | Open the interactive verified-session administration shell |
 | `porta version`          | Show CLI, SDK, and server version info                     |
-| `porta org`              | Manage organizations (CRUD, status, branding, destroy)     |
+| `porta org`              | Manage organizations (CRUD, status, branding, delete)      |
 | `porta app`              | Manage applications, modules, roles, permissions, claims   |
 | `porta client`           | Manage OIDC clients and secrets                            |
 | `porta user`             | Manage users (CRUD, status, password, roles, claims, 2FA)  |

@@ -120,15 +120,15 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 
 | Namespace       | Methods | Description                                                |
 | --------------- | ------- | ---------------------------------------------------------- |
-| `organizations` | 12      | CRUD, status lifecycle, slug validation, history           |
-| `applications`  | 13      | CRUD, status, modules management, history                  |
+| `organizations` | 10      | CRUD, status lifecycle, slug validation, history           |
+| `applications`  | 13      | CRUD, status, module management, history                   |
 | `clients`       | 12      | CRUD, status, secret management, history                   |
-| `users`         | 19      | CRUD, 6 status transitions, password, email, export, purge |
-| `roles`         | 9       | CRUD, archive, permission assignment                       |
-| `permissions`   | 6       | CRUD, archive                                              |
+| `users`         | 19      | CRUD, status transitions, password, email, and export      |
+| `roles`         | 9       | CRUD and permission assignment                             |
+| `permissions`   | 6       | CRUD                                                       |
 | `userRoles`     | 3       | List, assign, remove role assignments                      |
 | `userClaims`    | 3       | List, set, remove claim values                             |
-| `customClaims`  | 6       | Claim definitions CRUD, archive                            |
+| `customClaims`  | 6       | Claim definition CRUD                                      |
 | `config`        | 3       | System configuration get/set/list                          |
 | `keys`          | 3       | Signing key list/generate/rotate                           |
 | `audit`         | 1       | Audit log listing with filters                             |

@@ -1061,23 +1061,23 @@
     "@jridgewell/resolve-uri" "^3.1.0"
     "@jridgewell/sourcemap-codec" "^1.4.14"
 
-"@jsvision/core@1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@jsvision/core/-/core-1.6.0.tgz#e5f14d77eb02b49d8dce1805ea43456a2b902ea8"
-  integrity sha512-f2CBh73IsICJVkVotZNSE4tSeOcL4MFMcZfca0W9/cKVf6uXTIA9Kjw2TVcEa7ozgq8IS2k657jTljj/nZ9BFg==
+"@jsvision/core@1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@jsvision/core/-/core-1.7.0.tgz#3832a8596a450f58da5e30ca2e81355c534c6905"
+  integrity sha512-sKX50Xtm3v7PTTfo3hrVvW3+c4smLZcPUGoBoiyMGUEnj1rErs3ssEt493BBwC+JUfSbvH36aPBlgDHNKmaNUA==
 
-"@jsvision/i18n@1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@jsvision/i18n/-/i18n-1.6.0.tgz#5a906df41511710800772236abd30d8def54e9fd"
-  integrity sha512-PXtkqDZNPxP2fEpEJ8szetQx5YlET/5lwQnH802ANBIm+lC/qD+2RWXRS6F83j9my89+ir1bLeLpCh+xwt2olg==
+"@jsvision/i18n@1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@jsvision/i18n/-/i18n-1.7.0.tgz#245ecc5e87821270e55a4eb6003fc2a5af67ac80"
+  integrity sha512-dd1J8szCfeRP8Jv00+5GPUKA7dvVw3rnCMqmJK8LrcZsAh8Yd7Qs6EUOm/WKgl4pBH4zVJbOTYvPf88mPrDxUQ==
 
-"@jsvision/ui@1.6.0":
-  version "1.6.0"
-  resolved "https://registry.yarnpkg.com/@jsvision/ui/-/ui-1.6.0.tgz#68f2d801c60264469aa9b8520aa3808ed13fe786"
-  integrity sha512-6c1FbJStDyu/eeIVtjvqQkoGOcuURwyB2xw0gJakdE/gEk3revk1uyvcmMkQcp5bktaRXtmj/FYX1gLBYzTX7Q==
+"@jsvision/ui@1.7.0":
+  version "1.7.0"
+  resolved "https://registry.yarnpkg.com/@jsvision/ui/-/ui-1.7.0.tgz#85ac52f6b4e37ae502342be9ee5b1e6cd626666a"
+  integrity sha512-eRuKb7ijtQloPEQqkMKNWzZv9+3qnXBlQHn60cAikEpCF/FzReS/LCdfvuldpYKFKh+OJIC8OZV8FKZTI/x+FQ==
   dependencies:
-    "@jsvision/core" "1.6.0"
-    "@jsvision/i18n" "1.6.0"
+    "@jsvision/core" "1.7.0"
+    "@jsvision/i18n" "1.7.0"
   optionalDependencies:
     clipboardy "^5.3.2"
 

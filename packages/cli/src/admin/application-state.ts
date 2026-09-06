@@ -1,7 +1,7 @@
 /** Immutable global application administration values retained by the terminal application. */
 
 /** Supported global application lifecycle values. */
-export type AdminApplicationStatus = 'active' | 'inactive' | 'archived';
+export type AdminApplicationStatus = 'active' | 'inactive';
 
 /** Supported application-module lifecycle values. */
 export type AdminApplicationModuleStatus = 'active' | 'inactive';
