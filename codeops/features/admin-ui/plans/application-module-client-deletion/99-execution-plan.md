@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 03:50
-> **Progress**: 6/40 tasks (15%)
+> **Last Updated**: 2026-09-06 03:51
+> **Progress**: 7/40 tasks (18%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -51,7 +51,7 @@ otherwise the first `[ ]`. Use `[!]` only with a concise blocker on the task lin
 
 ### Session 3 — Implementation Tests and Gate
 
-- [ ] 1.7 Add implementation tests for tracking order/failure, extracted OIDC reference sets, all adapter methods, and direct query behavior
+- [x] 1.7 Add implementation tests for tracking order/failure, extracted OIDC reference sets, all adapter methods, and direct query behavior ✅ (completed: 2026-09-06 03:51)
 - [ ] 1.8 Run the two Phase 1 selectors, `yarn test:unit`, `yarn test:integration`, and `yarn test:structure`; update this plan, maintainer authority docs, and the roadmap
 
 **Deliverable:** Redis cannot publish an untracked Session and cached server-backed artifacts cannot
