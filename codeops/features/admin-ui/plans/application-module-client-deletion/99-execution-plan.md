@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-09-06 17:30
-> **Progress**: 26/40 tasks (65%)
+> **Progress**: 27/40 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -114,7 +114,7 @@ its existing retention policy.
 
 - [x] 3.4 Replace obsolete SDK lifecycle methods/status unions/agent descriptors with eight thin delete contracts — 03-03 §SDK Contracts; ST-28–ST-29 ✅ (completed: 2026-09-06 17:26; all 27 SDK deletion specifications and SDK lint passed; previously immutable lifecycle specs remain intentionally stale for Task 3.8 alignment before the full typecheck gate)
 - [x] 3.5 Replace conventional Archive/Destroy/Purge/whole-client-Revoke commands and help with eight Delete commands — 03-03 §Conventional CLI; ST-29–ST-30 ✅ (completed: 2026-09-06 17:30; all 34 CLI deletion specifications and CLI lint passed)
-- [ ] 3.6 Reuse the current CLI presentation boundary for Keep/Delete-name confirmation without a record-delete `--force` bypass — 03-03 §Confirmation Contract; ST-30–ST-31
+- [x] 3.6 Reuse the current CLI presentation boundary for Keep/Delete-name confirmation without a record-delete `--force` bypass — 03-03 §Confirmation Contract; ST-30–ST-31 ✅ (completed: 2026-09-06 17:30; existing sanitized confirmation boundary used directly; Keep/default, hostile-name, cancellation, one-call, and force-safe cases passed)
 - [ ] 3.7 Run the Phase 3 specifications and make them green without changing their expectations
 
 ### Session 3 — Implementation Tests and Gate
