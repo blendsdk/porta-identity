@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 10:34
-> **Progress**: 18/40 tasks (45%)
+> **Last Updated**: 2026-09-06 10:35
+> **Progress**: 19/40 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -85,7 +85,7 @@ complete cutover.
 - [x] 2.8 Implement one immutable post-commit descriptor and detached `setImmediate` Redis-only pass through existing hooks/adapters, with no wait, retry, identifier logging, or new support machinery — 03-02 §Detached Redis Cleanup; ST-25–ST-26 ✅ (completed: 2026-09-06 10:16; Redis/cache unit 107 passed, typecheck and 96 structure checks passed; route spec 5 passed/12 expected red; deletion integration 10 passed/1 migration-owned expected red)
 - [x] 2.9 Correct invitation creation in `routes/users.ts` and acceptance in `routes/invitation.ts` directly, including deployment-global application validation, without a shared helper or stored-payload rewrite — 03-04 §Pending Invitations; ST-40–ST-41 ✅ (completed: 2026-09-06 10:19; invitation specification 4 passed, related integration 9 passed, route unit 32 passed, typecheck and 96 structure checks passed)
 - [x] 2.10 Only after Tasks 2.6–2.9 are complete, perform one coherent lifecycle cutover: apply retained status/public types, the lifecycle/module-cascade migration, init-owned delete permissions/mappings, all eight mounted/normalized DELETE routes, and obsolete endpoint/permission removal — 03-01 §Lifecycle/API/Permission/Migration; ST-01–ST-07 ✅ (completed: 2026-09-06 10:34; route specification 17 passed, migration specification 7 passed, deletion/invitation integration 15 passed, typecheck and 96 structure checks passed; 55 stale lifecycle tests remain for Tasks 2.11–2.12)
-- [ ] 2.11 Run the Phase 2 specifications and make them green without changing their expectations
+- [x] 2.11 Run the Phase 2 specifications and make them green without changing their expectations ✅ (completed: 2026-09-06 10:35; migration 7, route 17, deletion 11, and invitation 4 specifications passed unchanged)
 
 ### Session 3 — Implementation Tests and Gate
 
