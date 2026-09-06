@@ -35,7 +35,7 @@ function isApplication(value: unknown): value is Application {
     typeof value.name === 'string' &&
     typeof value.slug === 'string' &&
     (typeof value.description === 'string' || value.description === null) &&
-    (value.status === 'active' || value.status === 'inactive' || value.status === 'archived') &&
+    (value.status === 'active' || value.status === 'inactive') &&
     typeof value.createdAt === 'string' &&
     typeof value.updatedAt === 'string'
   );
@@ -83,8 +83,8 @@ export interface ApplicationsDomain {
   activate(id: string): Promise<void>;
   /** Deactivate an active application. */
   deactivate(id: string): Promise<void>;
-  /** Permanently archive an application. */
-  archive(idOrSlug: string): Promise<void>;
+  /** Permanently delete a deployment-global application. */
+  delete(id: string): Promise<void>;
   /** Read application audit history. */
   getHistory(idOrSlug: string, params?: ListParams): Promise<HistoryEntry[]>;
   /** List modules owned by an application. */
@@ -99,6 +99,8 @@ export interface ApplicationsDomain {
   ): Promise<ApplicationModule>;
   /** Deactivate a module through its parent-qualified route. */
   deactivateModule(appId: string, moduleId: string): Promise<void>;
+  /** Permanently delete a module through its parent-qualified route. */
+  deleteModule(appId: string, moduleId: string): Promise<void>;
 }
 
 /** Create the application operations backed by one HTTP transport. */
@@ -139,8 +141,8 @@ export function createApplicationsDomain(transport: HttpTransport): Applications
       return requireData(res.body, isApplication);
     },
 
-    async archive(idOrSlug) {
-      await transport.request({ method: 'POST', path: `${base}/${idOrSlug}/archive` });
+    async delete(id) {
+      await transport.request({ method: 'DELETE', path: `${base}/${id}` });
     },
 
     async activate(id) {
@@ -194,6 +196,13 @@ export function createApplicationsDomain(transport: HttpTransport): Applications
       await transport.request({
         method: 'POST',
         path: `${base}/${appId}/modules/${moduleId}/deactivate`,
+      });
+    },
+
+    async deleteModule(appId, moduleId) {
+      await transport.request({
+        method: 'DELETE',
+        path: `${base}/${appId}/modules/${moduleId}`,
       });
     },
   };

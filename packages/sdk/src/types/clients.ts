@@ -11,7 +11,7 @@ import type { LoginMethod } from './organizations.js';
 // ---------------------------------------------------------------------------
 
 /** Administrative client lifecycle state. */
-export type ClientStatus = 'active' | 'inactive' | 'revoked';
+export type ClientStatus = 'active' | 'inactive';
 /** Whether the client authenticates with a secret. */
 export type ClientType = 'public' | 'confidential';
 /** Client deployment model used for protocol defaults. */

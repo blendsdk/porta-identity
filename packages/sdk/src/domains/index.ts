@@ -9,7 +9,7 @@ export { unwrapData, unwrapWithEtag, etagHeaders, toQueryParams } from './helper
 
 // Organizations
 export { createOrganizationsDomain } from './organizations.js';
-export type { OrganizationsDomain, SlugValidation, DestroyResult } from './organizations.js';
+export type { OrganizationsDomain, SlugValidation } from './organizations.js';
 
 // Applications
 export { createApplicationsDomain } from './applications.js';

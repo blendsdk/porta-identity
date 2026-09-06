@@ -14,7 +14,8 @@ export interface PermissionsDomain {
   listAll(appId: string, params?: Omit<ListParams, 'page' | 'cursor'>): Promise<Permission[]>;
   get(appId: string, permissionId: string): Promise<Permission>;
   create(appId: string, input: CreatePermissionInput): Promise<Permission>;
-  archive(appId: string, permissionId: string): Promise<void>;
+  /** Permanently delete a permission through its parent-qualified route. */
+  delete(appId: string, permissionId: string): Promise<void>;
 }
 
 export function createPermissionsDomain(transport: HttpTransport): PermissionsDomain {
@@ -36,8 +37,8 @@ export function createPermissionsDomain(transport: HttpTransport): PermissionsDo
       const res = await transport.request({ method: 'POST', path: base(appId), body: input });
       return unwrapData<Permission>(res.body);
     },
-    async archive(appId, permissionId) {
-      await transport.request({ method: 'POST', path: `${base(appId)}/${permissionId}/archive` });
+    async delete(appId, permissionId) {
+      await transport.request({ method: 'DELETE', path: `${base(appId)}/${permissionId}` });
     },
   };
 }

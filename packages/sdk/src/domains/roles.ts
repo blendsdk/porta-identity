@@ -6,8 +6,7 @@
  *   GET    /applications/:appId/roles/:roleId      — Get role (plain Role)
  *   POST   /applications/:appId/roles              — Create role
  *   PUT    /applications/:appId/roles/:roleId      — Update role
- *   POST   /applications/:appId/roles/:roleId/archive — Archive role
- *   DELETE /applications/:appId/roles/:roleId      — Delete role (?force=true)
+ *   DELETE /applications/:appId/roles/:roleId      — Delete role
  *   GET    /applications/:appId/roles/:roleId/permissions    — List permissions for role
  *   PUT    /applications/:appId/roles/:roleId/permissions    — Assign permissions (bulk)
  *   DELETE /applications/:appId/roles/:roleId/permissions    — Remove permissions (bulk)
@@ -26,8 +25,8 @@ export interface RolesDomain {
   get(appId: string, roleId: string): Promise<Role>;
   create(appId: string, input: CreateRoleInput): Promise<Role>;
   update(appId: string, roleId: string, input: UpdateRoleInput): Promise<Role>;
-  archive(appId: string, roleId: string): Promise<void>;
-  remove(appId: string, roleId: string, force?: boolean): Promise<void>;
+  /** Permanently delete a role through its parent-qualified route. */
+  delete(appId: string, roleId: string): Promise<void>;
   /** List permissions assigned to a role (full Permission objects) */
   listPermissions(appId: string, roleId: string): Promise<Permission[]>;
   /** Bulk assign permissions to a role (array of permission UUIDs) */
@@ -63,12 +62,8 @@ export function createRolesDomain(transport: HttpTransport): RolesDomain {
       const res = await transport.request({ method: 'PUT', path: `${base(appId)}/${roleId}`, body: input });
       return unwrapData<Role>(res.body);
     },
-    async archive(appId, roleId) {
-      await transport.request({ method: 'POST', path: `${base(appId)}/${roleId}/archive` });
-    },
-    async remove(appId, roleId, force?) {
-      const params = force ? { force: 'true' } : undefined;
-      await transport.request({ method: 'DELETE', path: `${base(appId)}/${roleId}`, params });
+    async delete(appId, roleId) {
+      await transport.request({ method: 'DELETE', path: `${base(appId)}/${roleId}` });
     },
     async listPermissions(appId, roleId) {
       const res = await transport.request({ method: 'GET', path: `${base(appId)}/${roleId}/permissions` });

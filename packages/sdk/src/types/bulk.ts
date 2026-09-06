@@ -10,7 +10,7 @@
  */
 
 /** Organization bulk status actions (matches server Zod schema) */
-export type BulkOrgAction = 'activate' | 'suspend' | 'archive';
+export type BulkOrgAction = 'activate' | 'suspend';
 
 /** User bulk status actions (matches server Zod schema) */
 export type BulkUserAction = 'activate' | 'deactivate' | 'suspend' | 'lock' | 'unlock';

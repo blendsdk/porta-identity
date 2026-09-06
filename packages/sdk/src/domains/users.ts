@@ -75,8 +75,8 @@ export interface UsersDomain {
   verifyEmail(orgId: string, userId: string): Promise<void>;
   /** GDPR data export (Article 20) — GET .../:userId/export */
   exportData(orgId: string, userId: string): Promise<UserExportData>;
-  /** GDPR data purge (Article 17) — POST .../:userId/purge (X-Confirm-Purge) */
-  purge(orgId: string, userId: string): Promise<UserPurgeResult>;
+  /** Permanently delete a user and their owned identity data. */
+  delete(orgId: string, userId: string): Promise<void>;
   /** Suspend a user with an optional administrative reason. */
   suspend(orgId: string, userId: string, reason?: string): Promise<void>;
   /** Unsuspend a user (suspended → active) — POST .../:userId/unsuspend */
@@ -99,9 +99,6 @@ export interface InvitePreviewResult {
 
 /** GDPR export payload returned by `exportData()` (shape determined by the server). */
 export type UserExportData = Record<string, unknown>;
-
-/** Result of a GDPR purge returned by `purge()`. */
-export type UserPurgeResult = Record<string, unknown>;
 
 /**
  * Create organization-scoped user operations over an authenticated transport.
@@ -206,15 +203,8 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
       return unwrapData<UserExportData>(res.body);
     },
 
-    async purge(orgId, userId) {
-      // The server requires an explicit confirmation header to perform the
-      // irreversible GDPR purge (X-Confirm-Purge: true).
-      const res = await transport.request({
-        method: 'POST',
-        path: `${userBase(orgId)}/${userId}/purge`,
-        headers: { 'X-Confirm-Purge': 'true' },
-      });
-      return unwrapData<UserPurgeResult>(res.body);
+    async delete(orgId, userId) {
+      await transport.request({ method: 'DELETE', path: `${userBase(orgId)}/${userId}` });
     },
 
     async suspend(orgId, userId, reason?) {

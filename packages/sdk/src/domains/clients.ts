@@ -68,7 +68,7 @@ function isClient(value: unknown): value is Client {
     typeof value.requirePkce === 'boolean' &&
     (value.loginMethods === null || isLoginMethods(value.loginMethods)) &&
     isLoginMethods(value.effectiveLoginMethods) &&
-    (value.status === 'active' || value.status === 'inactive' || value.status === 'revoked') &&
+    (value.status === 'active' || value.status === 'inactive') &&
     typeof value.createdAt === 'string' &&
     typeof value.updatedAt === 'string'
   );
@@ -142,8 +142,8 @@ export interface ClientsDomain {
   activate(id: string): Promise<void>;
   /** Deactivate an active client. */
   deactivate(id: string): Promise<void>;
-  /** Permanently revoke a client. */
-  revoke(id: string): Promise<void>;
+  /** Permanently delete a client and its credentials. */
+  delete(id: string): Promise<void>;
   /** Read client audit history. */
   getHistory(id: string, params?: ListParams): Promise<HistoryEntry[]>;
   /** List secret metadata for one confidential client. */
@@ -195,8 +195,8 @@ export function createClientsDomain(transport: HttpTransport): ClientsDomain {
       return requireData(res.body, isClient);
     },
 
-    async revoke(id) {
-      await transport.request({ method: 'POST', path: `${base}/${id}/revoke` });
+    async delete(id) {
+      await transport.request({ method: 'DELETE', path: `${base}/${id}` });
     },
 
     async activate(id) {

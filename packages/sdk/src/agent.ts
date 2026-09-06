@@ -84,21 +84,24 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'organizations.update', description: 'Update an organization', parameters: [ID('idOrSlug', 'Organization ID or slug'), OBJ('input', 'UpdateOrganizationInput'), OPT_STR('etag', 'ETag for concurrency')], returns: 'Organization' },
   { name: 'organizations.suspend', description: 'Suspend an organization', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
   { name: 'organizations.activate', description: 'Activate an organization', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
-  { name: 'organizations.archive', description: 'Archive an organization', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
-  { name: 'organizations.destroy', description: 'Permanently delete an organization', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'DestroyResult' },
+  { name: 'organizations.delete', description: 'Permanently delete an organization and its owned data', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
 
   // Applications
   { name: 'applications.list', description: 'List applications', parameters: [...LIST_PARAMS], returns: 'PaginatedResponse<Application>' },
   { name: 'applications.get', description: 'Get an application by ID or slug', parameters: [ID('idOrSlug', 'Application ID or slug')], returns: '{ data: Application, etag: string | null }' },
   { name: 'applications.create', description: 'Create a new application', parameters: [OBJ('input', 'CreateApplicationInput')], returns: 'Application' },
   { name: 'applications.update', description: 'Update an application', parameters: [ID('idOrSlug', 'Application ID or slug'), OBJ('input', 'UpdateApplicationInput'), OPT_STR('etag', 'ETag')], returns: 'Application' },
+  { name: 'applications.delete', description: 'Permanently delete a deployment-global application', parameters: [ID('id', 'Application ID')], returns: 'void' },
+  { name: 'applications.deleteModule', description: 'Permanently delete an application module', parameters: [ID('appId', 'Application ID'), ID('moduleId', 'Module ID')], returns: 'void' },
 
   // Clients
   { name: 'clients.list', description: 'List clients', parameters: [...LIST_PARAMS], returns: 'PaginatedResponse<Client>' },
   { name: 'clients.get', description: 'Get a client by ID', parameters: [ID('idOrClientId', 'Client ID or clientId')], returns: '{ data: Client, etag: string | null }' },
   { name: 'clients.create', description: 'Create a new client', parameters: [OBJ('input', 'CreateClientInput')], returns: 'Client' },
   { name: 'clients.update', description: 'Update a client', parameters: [ID('idOrClientId', 'Client ID'), OBJ('input', 'UpdateClientInput'), OPT_STR('etag', 'ETag')], returns: 'Client' },
+  { name: 'clients.delete', description: 'Permanently delete a client and its credentials', parameters: [ID('id', 'Client ID')], returns: 'void' },
   { name: 'clients.generateSecret', description: 'Generate a new secret for a client', parameters: [ID('clientId', 'Client ID'), OPT_OBJ('input', 'GenerateSecretInput')], returns: 'GeneratedSecret' },
+  { name: 'clients.revokeSecret', description: 'Revoke one client secret', parameters: [ID('clientId', 'Client ID'), ID('secretId', 'Secret ID')], returns: 'void' },
 
   // Users
   { name: 'users.list', description: 'List users in an organization', parameters: [ID('orgId', 'Organization ID'), OPT_OBJ('params', 'UserListParams')], returns: 'PaginatedResponse<User>' },
@@ -115,7 +118,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'users.clearPassword', description: 'Clear a user password (make passwordless)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.verifyEmail', description: 'Mark a user email as verified', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.exportData', description: 'GDPR data export for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserExportData' },
-  { name: 'users.purge', description: 'GDPR data purge for a user (irreversible)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserPurgeResult' },
+  { name: 'users.delete', description: 'Permanently delete a user and owned identity data', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
   { name: 'users.getHistory', description: 'Get user change history', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'HistoryResult' },
 
 
@@ -124,10 +127,12 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   { name: 'roles.get', description: 'Get a role by ID', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'Role' },
   { name: 'roles.listPermissions', description: 'List permissions assigned to a role', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'Permission[]' },
   { name: 'roles.create', description: 'Create a role', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateRoleInput')], returns: 'Role' },
+  { name: 'roles.delete', description: 'Permanently delete a role', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'void' },
 
   // Permissions
   { name: 'permissions.list', description: 'List permissions for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<Permission>' },
   { name: 'permissions.create', description: 'Create a permission', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreatePermissionInput')], returns: 'Permission' },
+  { name: 'permissions.delete', description: 'Permanently delete a permission', parameters: [ID('appId', 'Application ID'), ID('permissionId', 'Permission ID')], returns: 'void' },
 
   // User Roles
   { name: 'userRoles.list', description: 'List role assignments for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserRoleAssignment[]' },
@@ -137,6 +142,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   // Custom Claims
   { name: 'customClaims.list', description: 'List claim definitions for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<ClaimDefinition>' },
   { name: 'customClaims.create', description: 'Create a claim definition', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateClaimDefinitionInput')], returns: 'ClaimDefinition' },
+  { name: 'customClaims.delete', description: 'Permanently delete a claim definition', parameters: [ID('appId', 'Application ID'), ID('claimId', 'Claim definition ID')], returns: 'void' },
 
   // Config
   { name: 'config.list', description: 'List all system configuration entries', parameters: [], returns: 'ConfigEntry[]' },

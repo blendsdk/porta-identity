@@ -8,7 +8,7 @@
 // Status
 // ---------------------------------------------------------------------------
 
-export type ApplicationStatus = 'active' | 'inactive' | 'archived';
+export type ApplicationStatus = 'active' | 'inactive';
 
 // ---------------------------------------------------------------------------
 // Entity
