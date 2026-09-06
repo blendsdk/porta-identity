@@ -16,6 +16,11 @@ const transactionStorage = new AsyncLocalStorage<DatabaseTransactionState>();
 
 export async function connectDatabase(): Promise<Pool> {
   pool = new Pool({ connectionString: config.databaseUrl });
+  pool.on('error', () => {
+    // PostgreSQL reports broken idle connections through the pool's error event. Keep the process
+    // alive so readiness can return 503 and the pool can reconnect after the dependency recovers.
+    logger.error({ event: 'database-pool-error' }, 'Database pool connection failed');
+  });
 
   // Verify connectivity
   const client = await pool.connect();
