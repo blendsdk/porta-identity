@@ -136,7 +136,10 @@ export class RedisAdapter {
       }
     }
 
-    await pipeline.exec();
+    const results = await pipeline.exec();
+    if (results === null || results.some(([error]) => error !== null)) {
+      throw new Error('Redis pipeline execution failed');
+    }
   }
 
   /**
@@ -264,16 +267,13 @@ export class RedisAdapter {
       }
     }
 
-    await redis.del(...keysToDelete);
-
-    // Fire-and-forget: mark session as revoked in PostgreSQL tracking table.
-    // Only Session model needs tracking — other model destroys don't need admin visibility.
+    // Session revocation is the durable authority boundary. Complete it before
+    // deleting Redis so a concurrent publication cannot restore a live session.
     if (this.name === 'Session') {
-      revokeSession(id).catch(() => {
-        // Intentionally swallowed — tracking must never break the OIDC flow.
-        // revokeSession already logs warnings internally.
-      });
+      await revokeSession(id);
     }
+
+    await redis.del(...keysToDelete);
   }
 
   /**

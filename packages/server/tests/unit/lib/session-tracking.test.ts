@@ -69,9 +69,9 @@ describe('session-tracking', () => {
       expect(params[0]).toBe('sess-123');
     });
 
-    it('should not throw on database error (fire-and-forget)', async () => {
+    it('should propagate a database error', async () => {
       mockPool.query.mockRejectedValue(new Error('timeout'));
-      await expect(revokeSession('sess-fail')).resolves.toBeUndefined();
+      await expect(revokeSession('sess-fail')).rejects.toThrow('timeout');
     });
   });
 

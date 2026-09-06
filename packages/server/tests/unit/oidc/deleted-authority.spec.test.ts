@@ -111,7 +111,7 @@ import { getValuesForUserByApp } from '../../../src/custom-claims/repository.js'
 import { buildCustomClaims } from '../../../src/custom-claims/service.js';
 import { getPool } from '../../../src/lib/database.js';
 import { getRedis } from '../../../src/lib/redis.js';
-import { getSession, upsertSession } from '../../../src/lib/session-tracking.js';
+import { getSession, revokeSession, upsertSession } from '../../../src/lib/session-tracking.js';
 import { createAdapterFactory } from '../../../src/oidc/adapter-factory.js';
 import { RedisAdapter } from '../../../src/oidc/redis-adapter.js';
 import { getCachedUserPermissions, getCachedUserRoles } from '../../../src/rbac/cache.js';
@@ -189,6 +189,7 @@ beforeEach(() => {
     query: vi.fn().mockResolvedValue({ rowCount: 0, rows: [] }),
   });
   vi.mocked(getSession).mockResolvedValue(createLiveTracking());
+  vi.mocked(revokeSession).mockResolvedValue(undefined);
   vi.mocked(upsertSession).mockResolvedValue(undefined);
 });
 
@@ -230,6 +231,62 @@ describe('deleted PostgreSQL authority', () => {
         'Redis unavailable',
       );
       expect(upsertSession).toHaveBeenCalledOnce();
+    });
+
+    // Redis pipelines report individual command failures in resolved result tuples.
+    it('should reject Session publication when a Redis pipeline command fails', async () => {
+      const { pipeline } = installRedis();
+      pipeline.exec.mockResolvedValue([[new Error('Redis command failed'), null]]);
+      const adapter = new RedisAdapter('Session');
+
+      await expect(adapter.upsert('session-1', { accountId: 'user-1' }, 3600)).rejects.toThrow(
+        'Redis pipeline execution failed',
+      );
+      expect(upsertSession).toHaveBeenCalledOnce();
+    });
+
+    // A null pipeline result means Redis did not return command outcomes and cannot be treated as success.
+    it('should reject Session publication when Redis returns no pipeline result', async () => {
+      const { pipeline } = installRedis();
+      pipeline.exec.mockResolvedValue(null);
+      const adapter = new RedisAdapter('Session');
+
+      await expect(adapter.upsert('session-1', { accountId: 'user-1' }, 3600)).rejects.toThrow(
+        'Redis pipeline execution failed',
+      );
+      expect(upsertSession).toHaveBeenCalledOnce();
+    });
+
+    // Logout must establish durable revocation before removing the cache entry.
+    it('should await Session revocation before deleting the Redis payload', async () => {
+      const { redis } = installRedis({ accountId: 'user-1' });
+      let finishRevocation: (() => void) | undefined;
+      vi.mocked(revokeSession).mockImplementation(
+        () =>
+          new Promise<void>((resolve) => {
+            finishRevocation = resolve;
+          }),
+      );
+      const adapter = new RedisAdapter('Session');
+
+      const destroying = adapter.destroy('session-1');
+      await vi.waitFor(() => expect(revokeSession).toHaveBeenCalledWith('session-1'));
+      expect(redis.del).not.toHaveBeenCalled();
+
+      finishRevocation?.();
+      await destroying;
+
+      expect(redis.del).toHaveBeenCalledOnce();
+    });
+
+    // A failed durable revocation must fail logout without removing its Redis evidence.
+    it('should preserve the Redis payload when Session revocation fails', async () => {
+      const { redis } = installRedis({ accountId: 'user-1' });
+      vi.mocked(revokeSession).mockRejectedValue(new Error('tracking unavailable'));
+      const adapter = new RedisAdapter('Session');
+
+      await expect(adapter.destroy('session-1')).rejects.toThrow('tracking unavailable');
+      expect(redis.del).not.toHaveBeenCalled();
     });
 
     const readCases = [

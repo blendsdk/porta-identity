@@ -119,21 +119,19 @@ export async function upsertSession(input: SessionTrackingInput): Promise<void> 
 }
 
 /**
- * Mark a session as revoked (called on session destroy).
- * Fire-and-forget — errors are logged but never thrown.
+ * Mark a session as revoked before its Redis payload is deleted.
+ *
+ * Database errors propagate so callers cannot report a completed logout while
+ * the durable authority record remains live.
  *
  * @param sessionId - OIDC Session identifier.
  */
 export async function revokeSession(sessionId: string): Promise<void> {
-  try {
-    const pool = getPool();
-    await pool.query(
-      `UPDATE admin_sessions SET revoked_at = NOW() WHERE session_id = $1 AND revoked_at IS NULL`,
-      [sessionId],
-    );
-  } catch (err) {
-    logger.warn({ err, sessionId }, 'Failed to revoke session tracking record');
-  }
+  const pool = getPool();
+  await pool.query(
+    `UPDATE admin_sessions SET revoked_at = NOW() WHERE session_id = $1 AND revoked_at IS NULL`,
+    [sessionId],
+  );
 }
 
 /**
