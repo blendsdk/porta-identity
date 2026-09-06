@@ -821,7 +821,9 @@ export async function checkAutoUnlock(user: User): Promise<boolean> {
  * @returns Active user or null
  */
 export async function findUserForOidc(sub: string): Promise<User | null> {
-  const user = await getUserById(sub);
+  // OIDC account authority is deliberately database-backed so deletion or a
+  // restrictive status change takes effect even while a user cache key exists.
+  const user = await repoFindById(sub);
   if (!user) return null;
 
   // Only active users can interact with OIDC endpoints

@@ -595,7 +595,9 @@ export async function revokeClient(id: string, actorId?: string): Promise<void> 
  * @returns OIDC client metadata object, or undefined if not found/inactive
  */
 export async function findForOidc(clientId: string): Promise<Record<string, unknown> | undefined> {
-  const client = await getClientByClientId(clientId);
+  // Protocol authority must come from PostgreSQL. Administrative cache reads
+  // remain useful elsewhere, but stale metadata cannot authorize an OIDC flow.
+  const client = await findClientByClientId(clientId);
 
   // Client must exist and be active for OIDC operations
   if (!client || client.status !== 'active') {

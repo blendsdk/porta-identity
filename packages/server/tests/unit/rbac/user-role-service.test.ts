@@ -1,7 +1,7 @@
 /**
  * Unit tests for user-role service.
  *
- * Tests user role assignment, cache-first claims building,
+ * Tests user role assignment, database-backed claims building,
  * and audit logging. All dependencies are mocked.
  */
 
@@ -35,13 +35,7 @@ import {
   getPermissionsForUser as mockRepoGetPerms,
   getUsersWithRole as mockRepoGetUsers,
 } from '../../../src/rbac/mapping-repository.js';
-import {
-  getCachedUserRoles as mockGetCachedRoles,
-  setCachedUserRoles as mockSetCachedRoles,
-  getCachedUserPermissions as mockGetCachedPerms,
-  setCachedUserPermissions as mockSetCachedPerms,
-  invalidateUserRbacCache as mockInvalidateUser,
-} from '../../../src/rbac/cache.js';
+import { invalidateUserRbacCache as mockInvalidateUser } from '../../../src/rbac/cache.js';
 import { writeAuditLog as mockAuditLog } from '../../../src/lib/audit-log.js';
 
 import {
@@ -90,10 +84,6 @@ beforeEach(() => {
   // Reset default mock return values
   vi.mocked(mockRepoAssign).mockResolvedValue(undefined);
   vi.mocked(mockRepoRemove).mockResolvedValue(undefined);
-  vi.mocked(mockGetCachedRoles).mockResolvedValue(null);
-  vi.mocked(mockSetCachedRoles).mockResolvedValue(undefined);
-  vi.mocked(mockGetCachedPerms).mockResolvedValue(null);
-  vi.mocked(mockSetCachedPerms).mockResolvedValue(undefined);
   vi.mocked(mockInvalidateUser).mockResolvedValue(undefined);
   vi.mocked(mockAuditLog).mockResolvedValue(undefined);
 });
@@ -206,18 +196,7 @@ describe('getUsersWithRole', () => {
 // ===========================================================================
 
 describe('buildRoleClaims', () => {
-  it('should return cached slugs on cache hit', async () => {
-    vi.mocked(mockGetCachedRoles).mockResolvedValue(['admin', 'editor']);
-
-    const result = await buildRoleClaims('user-1');
-
-    expect(result).toEqual(['admin', 'editor']);
-    // Should NOT call the DB
-    expect(mockRepoGetRoles).not.toHaveBeenCalled();
-  });
-
-  it('should query DB and cache result on cache miss', async () => {
-    vi.mocked(mockGetCachedRoles).mockResolvedValue(null);
+  it('should return role slugs from PostgreSQL', async () => {
     vi.mocked(mockRepoGetRoles).mockResolvedValue([
       createTestRole({ slug: 'admin' }),
       createTestRole({ slug: 'editor' }),
@@ -227,42 +206,20 @@ describe('buildRoleClaims', () => {
 
     expect(result).toEqual(['admin', 'editor']);
     expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1');
-    expect(mockSetCachedRoles).toHaveBeenCalledWith('user-1', ['admin', 'editor']);
   });
 
   it('should return empty array when user has no roles', async () => {
-    vi.mocked(mockGetCachedRoles).mockResolvedValue(null);
     vi.mocked(mockRepoGetRoles).mockResolvedValue([]);
 
     const result = await buildRoleClaims('user-1');
 
     expect(result).toEqual([]);
-    expect(mockSetCachedRoles).toHaveBeenCalledWith('user-1', []);
-  });
-
-  it('should return cached empty array (no DB call)', async () => {
-    // Empty array is a valid cached value — means user has no roles
-    vi.mocked(mockGetCachedRoles).mockResolvedValue([]);
-
-    const result = await buildRoleClaims('user-1');
-
-    expect(result).toEqual([]);
-    expect(mockRepoGetRoles).not.toHaveBeenCalled();
+    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1');
   });
 });
 
 describe('buildPermissionClaims', () => {
-  it('should return cached slugs on cache hit', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue(['crm:contacts:read', 'crm:deals:write']);
-
-    const result = await buildPermissionClaims('user-1');
-
-    expect(result).toEqual(['crm:contacts:read', 'crm:deals:write']);
-    expect(mockRepoGetPerms).not.toHaveBeenCalled();
-  });
-
-  it('should query DB and cache result on cache miss', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue(null);
+  it('should return permission slugs from PostgreSQL', async () => {
     vi.mocked(mockRepoGetPerms).mockResolvedValue([
       createTestPermission({ slug: 'crm:contacts:read' }),
       createTestPermission({ slug: 'crm:deals:write' }),
@@ -272,28 +229,14 @@ describe('buildPermissionClaims', () => {
 
     expect(result).toEqual(['crm:contacts:read', 'crm:deals:write']);
     expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1');
-    expect(mockSetCachedPerms).toHaveBeenCalledWith(
-      'user-1',
-      ['crm:contacts:read', 'crm:deals:write'],
-    );
   });
 
   it('should return empty array when user has no permissions', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue(null);
     vi.mocked(mockRepoGetPerms).mockResolvedValue([]);
 
     const result = await buildPermissionClaims('user-1');
 
     expect(result).toEqual([]);
-    expect(mockSetCachedPerms).toHaveBeenCalledWith('user-1', []);
-  });
-
-  it('should return cached empty array (no DB call)', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue([]);
-
-    const result = await buildPermissionClaims('user-1');
-
-    expect(result).toEqual([]);
-    expect(mockRepoGetPerms).not.toHaveBeenCalled();
+    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1');
   });
 });

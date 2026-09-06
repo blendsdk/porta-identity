@@ -5,14 +5,8 @@
  * roles and permissions, and building the claims arrays that get
  * injected into OIDC tokens.
  *
- * The claims-building functions (buildRoleClaims, buildPermissionClaims)
- * are the token hot path — they use cache-first resolution to minimize
- * database queries during token issuance.
- *
- * Cache strategy for claims:
- * 1. Check Redis for cached slug arrays
- * 2. On cache hit → return immediately (fast path)
- * 3. On cache miss → query DB, cache result, return
+ * Token claim construction reads PostgreSQL directly. This makes role and
+ * permission deletion authoritative even when an older Redis entry remains.
  *
  * @see mapping-repository.ts — Database operations for user-role join table
  * @see cache.ts — Redis cache for role/permission slug arrays
@@ -25,13 +19,7 @@ import {
   getPermissionsForUser as repoGetPermissionsForUser,
   getUsersWithRole as repoGetUsersWithRole,
 } from './mapping-repository.js';
-import {
-  getCachedUserRoles,
-  setCachedUserRoles,
-  getCachedUserPermissions,
-  setCachedUserPermissions,
-  invalidateUserRbacCache,
-} from './cache.js';
+import { invalidateUserRbacCache } from './cache.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Role, Permission, UserRole } from './types.js';
 
@@ -158,27 +146,12 @@ export async function getUsersWithRole(
  * Returns an array of role slugs (e.g., ["crm-editor", "invoice-approver"])
  * for inclusion in the token's custom claims.
  *
- * Cache-first: checks Redis for cached role slugs. On cache miss,
- * resolves from DB and caches the result for future token issuances.
- *
  * @param userId - User UUID
  * @returns Array of role slug strings
  */
 export async function buildRoleClaims(userId: string): Promise<string[]> {
-  // 1. Check cache for user role slugs
-  const cached = await getCachedUserRoles(userId);
-  if (cached !== null) {
-    return cached;
-  }
-
-  // 2. Cache miss — resolve from DB
   const roles = await repoGetRolesForUser(userId);
-  const slugs = roles.map((role) => role.slug);
-
-  // 3. Cache the slugs for future requests
-  await setCachedUserRoles(userId, slugs);
-
-  return slugs;
+  return roles.map((role) => role.slug);
 }
 
 /**
@@ -187,26 +160,10 @@ export async function buildRoleClaims(userId: string): Promise<string[]> {
  * Returns an array of permission slugs (e.g., ["crm:contacts:read",
  * "crm:deals:write"]) for inclusion in the token's custom claims.
  *
- * Cache-first: checks Redis for cached permission slugs. On cache miss,
- * resolves through the full user → roles → permissions chain from DB
- * and caches the result.
- *
  * @param userId - User UUID
  * @returns Array of permission slug strings
  */
 export async function buildPermissionClaims(userId: string): Promise<string[]> {
-  // 1. Check cache for user permission slugs
-  const cached = await getCachedUserPermissions(userId);
-  if (cached !== null) {
-    return cached;
-  }
-
-  // 2. Cache miss — resolve from DB (through roles)
   const permissions = await repoGetPermissionsForUser(userId);
-  const slugs = permissions.map((perm) => perm.slug);
-
-  // 3. Cache the slugs for future requests
-  await setCachedUserPermissions(userId, slugs);
-
-  return slugs;
+  return permissions.map((permission) => permission.slug);
 }

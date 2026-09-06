@@ -118,7 +118,11 @@ describe('user service', () => {
       (repo.emailExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
       (repo.insertUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await createUser({ organizationId: 'org-uuid-1', email: 'john@example.com', password: 'secure123' });
+      await createUser({
+        organizationId: 'org-uuid-1',
+        email: 'john@example.com',
+        password: 'secure123',
+      });
 
       expect(pw.validatePassword).toHaveBeenCalledWith('secure123');
       expect(pw.hashPassword).toHaveBeenCalledWith('secure123');
@@ -229,7 +233,9 @@ describe('user service', () => {
     it('should throw UserNotFoundError when not found', async () => {
       (repo.updateUser as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('User not found'));
 
-      await expect(updateUser('nonexistent', { givenName: 'Test' })).rejects.toThrow(UserNotFoundError);
+      await expect(updateUser('nonexistent', { givenName: 'Test' })).rejects.toThrow(
+        UserNotFoundError,
+      );
     });
 
     it('should write audit log', async () => {
@@ -253,7 +259,11 @@ describe('user service', () => {
       const result = { data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 };
       (repo.listUsers as ReturnType<typeof vi.fn>).mockResolvedValue(result);
 
-      const res = await listUsersByOrganization({ organizationId: 'org-uuid-1', page: 1, pageSize: 20 });
+      const res = await listUsersByOrganization({
+        organizationId: 'org-uuid-1',
+        page: 1,
+        pageSize: 20,
+      });
 
       expect(res).toBe(result);
       expect(repo.listUsers).toHaveBeenCalled();
@@ -349,10 +359,13 @@ describe('user service', () => {
 
       await lockUser('user-uuid-1', 'too many failed attempts');
 
-      expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', expect.objectContaining({
-        status: 'locked',
-        lockedReason: 'too many failed attempts',
-      }));
+      expect(repo.updateUser).toHaveBeenCalledWith(
+        'user-uuid-1',
+        expect.objectContaining({
+          status: 'locked',
+          lockedReason: 'too many failed attempts',
+        }),
+      );
     });
 
     it('should reject non-active user', async () => {
@@ -399,9 +412,12 @@ describe('user service', () => {
 
       expect(pw.validatePassword).toHaveBeenCalledWith('new_secure_password');
       expect(pw.hashPassword).toHaveBeenCalledWith('new_secure_password');
-      expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', expect.objectContaining({
-        passwordHash: '$argon2id$hashed',
-      }));
+      expect(repo.updateUser).toHaveBeenCalledWith(
+        'user-uuid-1',
+        expect.objectContaining({
+          passwordHash: '$argon2id$hashed',
+        }),
+      );
     });
 
     it('should reject invalid password length', async () => {
@@ -493,7 +509,7 @@ describe('user service', () => {
   describe('findUserForOidc', () => {
     it('should return active user', async () => {
       const user = createTestUser({ status: 'active' });
-      (cache.getCachedUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
       const result = await findUserForOidc('user-uuid-1');
 
@@ -502,7 +518,7 @@ describe('user service', () => {
 
     it('should return null for non-active user', async () => {
       const user = createTestUser({ status: 'suspended' });
-      (cache.getCachedUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
       const result = await findUserForOidc('user-uuid-1');
 
