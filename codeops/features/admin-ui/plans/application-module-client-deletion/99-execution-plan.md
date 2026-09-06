@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 04:05
-> **Progress**: 8/40 tasks (20%)
+> **Last Updated**: 2026-09-06 09:14
+> **Progress**: 9/40 tasks (23%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -62,6 +62,7 @@ complete cutover.
 
 ## Phase 2: Atomic Deletion, Routes, Audit, Cleanup, and Invitations
 
+> **Phase baseline tree**: f6c56a152ea33ef5495d6bb444af316e8ca4bd2d
 > **Scope mode**: Strict — 03-01, 03-02 §Affected Authority/PostgreSQL/Detached Cleanup, 03-04
 > §Pending Invitations; ST-01–ST-19, ST-25–ST-27, ST-40–ST-41
 > **Expected modification set**: deletion repositories/services, mutation/audit wiring, existing
@@ -71,7 +72,7 @@ complete cutover.
 
 ### Session 1 — Specification Tests
 
-- [ ] 2.1 [spec-author] Add `packages/server/tests/integration/migrations/record-deletion-lifecycle.spec.test.ts` for retained statuses, module-permission cascade, no-op Down, and init-owned permissions/mappings — ST-01–ST-05
+- [x] 2.1 [spec-author] Add `packages/server/tests/integration/migrations/record-deletion-lifecycle.spec.test.ts` for retained statuses, module-permission cascade, no-op Down, and init-owned permissions/mappings — ST-01–ST-05 ✅ (completed: 2026-09-06 09:14; expected red: 6 failed/1 passed)
 - [ ] 2.2 [spec-author] Add `packages/server/tests/unit/routes/record-deletion.spec.test.ts` for lifecycle-route absence, exact authentication/permissions/validation/errors, parent qualification, guards, rollback, retained audit, nullable generic actor, and detached cleanup scheduling/failure — ST-02, ST-06–ST-07, ST-14–ST-18, ST-25
 - [ ] 2.3 [spec-author] Add `packages/server/tests/integration/admin/record-deletion.spec.test.ts` for all eight cascades, exact affected users, targeted revocation, concurrent last-admin deletes, current-user deletion, audit retention, rollback, and unrelated preservation — ST-06–ST-20, ST-26–ST-27
 - [ ] 2.4 [spec-author] Add `packages/server/tests/integration/services/invitation-deleted-preassignments.spec.test.ts` for deployment-global application validation, canonical creation/acceptance, and deleted optional references — ST-40–ST-41
