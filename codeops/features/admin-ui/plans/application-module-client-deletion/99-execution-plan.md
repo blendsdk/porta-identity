@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 17:38
-> **Progress**: 29/40 tasks (72.5%)
+> **Last Updated**: 2026-09-06 17:47
+> **Progress**: 32/40 tasks (80%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -135,6 +135,7 @@ vocabulary and direct confirmation.
 
 ## Phase 4: Five-Surface Admin UI, Documentation, and Final Evidence
 
+> **Phase baseline tree**: 4117920aaf8e3e0554d56dde37eaaac838736ab9
 > **Scope mode**: Strict — 03-03 §Embedded Admin UI/UI Scope, 03-04 §Environment/Manual Journey,
 > ST-32–ST-39/ST-42
 > **Expected modification set**: existing organization/user/application/module/client Admin state,
@@ -143,9 +144,9 @@ vocabulary and direct confirmation.
 
 ### Session 1 — Specification Tests
 
-- [ ] 4.1 [spec-author] Add `packages/cli/tests/admin/resource-deletion-state.spec.test.ts` for the five-surface capability/selection/context/generation oracle, duplicate prevention, reload/navigation, fixed failures, and authentication transition — ST-32–ST-35, ST-39
-- [ ] 4.2 [spec-author] Add `packages/cli/tests/admin/resource-deletion-workspace.spec.test.ts` for five warnings, Keep/Escape/focus, measured buttons, Layout DSL placement, blank module row, 80×24, and 48×12 — ST-33, ST-36–ST-38
-- [ ] 4.3 Run the exact Admin command from 07 and record the expected-red boundary
+- [x] 4.1 [spec-author] Add `packages/cli/tests/admin/resource-deletion-state.spec.test.ts` for the five-surface capability/selection/context/generation oracle, duplicate prevention, reload/navigation, fixed failures, and authentication transition — ST-32–ST-35, ST-39 ✅ (completed: 2026-09-06 17:47; immutable five-capability/service/controller oracle authored)
+- [x] 4.2 [spec-author] Add `packages/cli/tests/admin/resource-deletion-workspace.spec.test.ts` for five warnings, Keep/Escape/focus, measured buttons, Layout DSL placement, blank module row, 80×24, and 48×12 — ST-33, ST-36–ST-38 ✅ (completed: 2026-09-06 17:47; immutable five-dialog and module-placement oracle authored)
+- [x] 4.3 Run the exact Admin command from 07 and record the expected-red boundary ✅ (completed: 2026-09-06 17:47; 2 files and 26 tests failed only at missing Delete capabilities, service/controller paths, dialogs, and module workspace placement)
 
 ### Session 2 — Implementation
 
