@@ -486,19 +486,20 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE /:userId — Delete user
   // -------------------------------------------------------------------------
-  router.delete('/:userId', requirePermission(ADMIN_PERMISSIONS.USER_DELETE), async (ctx) => {
-    try {
-      identifierSchema.parse(ctx.params);
-      await userService.deleteUser(
-        ctx.params.orgId,
-        ctx.params.userId,
-        ctx.state.adminUser?.id,
-      );
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.delete(
+    '/:userId',
+    requirePermission(ADMIN_PERMISSIONS.USER_DELETE),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        identifierSchema.parse(ctx.params);
+        await userService.deleteUser(ctx.params.orgId, ctx.params.userId, ctx.state.adminUser?.id);
+        ctx.status = 204;
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:userId/history — User change history

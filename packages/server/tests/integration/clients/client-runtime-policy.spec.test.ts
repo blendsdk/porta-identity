@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { archiveApplication, deactivateApplication } from '../../../src/applications/service.js';
+import { deactivateApplication } from '../../../src/applications/service.js';
 import { createClient, findForOidc, verifyClientSecret } from '../../../src/clients/service.js';
 import { generateAndStore } from '../../../src/clients/secret-service.js';
 import {
@@ -78,40 +78,33 @@ describe('OIDC client runtime policy specification', () => {
     expect(requiresPkce(metadata!)).toBe(true);
   });
 
-  it.each(['inactive', 'archived'] as const)(
-    'ST-15B keeps existing authentication active but rejects new clients after application becomes %s',
-    async (applicationState) => {
-      const organization = await createTestOrganization();
-      const application = await createTestApplication();
-      const existingClient = await createTestClient(organization.id, application.id, {
-        clientType: 'confidential',
-        tokenEndpointAuthMethod: 'client_secret_basic',
-      });
-      const existingSecret = await generateAndStore(existingClient.id, { label: 'existing' });
+  it('ST-15B keeps existing authentication active but rejects new clients after application becomes inactive', async () => {
+    const organization = await createTestOrganization();
+    const application = await createTestApplication();
+    const existingClient = await createTestClient(organization.id, application.id, {
+      clientType: 'confidential',
+      tokenEndpointAuthMethod: 'client_secret_basic',
+    });
+    const existingSecret = await generateAndStore(existingClient.id, { label: 'existing' });
 
-      if (applicationState === 'inactive') {
-        await deactivateApplication(application.id);
-      } else {
-        await archiveApplication(application.id);
-      }
+    await deactivateApplication(application.id);
 
-      await expect(
-        verifyClientSecret(existingClient.clientId, existingSecret.plaintext),
-      ).resolves.toBe(true);
-      await expect(
-        createClient({
-          organizationId: organization.id,
-          applicationId: application.id,
-          clientName: 'New client after lifecycle transition',
-          clientType: 'public',
-          applicationType: 'spa',
-          redirectUris: ['https://client.example.test/callback'],
-          grantTypes: ['authorization_code'],
-          responseTypes: ['code'],
-          tokenEndpointAuthMethod: 'none',
-          requirePkce: true,
-        }),
-      ).rejects.toThrow();
-    },
-  );
+    await expect(
+      verifyClientSecret(existingClient.clientId, existingSecret.plaintext),
+    ).resolves.toBe(true);
+    await expect(
+      createClient({
+        organizationId: organization.id,
+        applicationId: application.id,
+        clientName: 'New client after lifecycle transition',
+        clientType: 'public',
+        applicationType: 'spa',
+        redirectUris: ['https://client.example.test/callback'],
+        grantTypes: ['authorization_code'],
+        responseTypes: ['code'],
+        tokenEndpointAuthMethod: 'none',
+        requirePkce: true,
+      }),
+    ).rejects.toThrow();
+  });
 });

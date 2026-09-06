@@ -78,7 +78,6 @@ import {
   listClientsByApplication,
   deactivateClient,
   activateClient,
-  revokeClient,
   findForOidc,
   verifyClientSecret,
 } from '../../../src/clients/service.js';
@@ -473,54 +472,6 @@ describe('client service', () => {
       await expect(activateClient('client-db-uuid-1')).rejects.toThrow(
         'Cannot activate client from status: active',
       );
-    });
-  });
-
-  describe('revokeClient', () => {
-    it('should revoke an active client', async () => {
-      const client = createTestClient({ status: 'active' });
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
-      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ...client,
-        status: 'revoked',
-      });
-
-      await revokeClient('client-db-uuid-1', 'actor-1');
-
-      expect(repoUpdateClient).toHaveBeenCalledWith('client-db-uuid-1', { status: 'revoked' });
-      expect(invalidateClientCache).toHaveBeenCalled();
-      expect(writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventType: 'client.revoked',
-          metadata: expect.objectContaining({ previousStatus: 'active' }),
-        }),
-      );
-    });
-
-    it('should revoke an inactive client', async () => {
-      const client = createTestClient({ status: 'inactive' });
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
-      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ...client,
-        status: 'revoked',
-      });
-
-      await revokeClient('client-db-uuid-1');
-
-      expect(repoUpdateClient).toHaveBeenCalledWith('client-db-uuid-1', { status: 'revoked' });
-    });
-
-    it('should throw ClientNotFoundError when client not found', async () => {
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-
-      await expect(revokeClient('nonexistent')).rejects.toThrow(ClientNotFoundError);
-    });
-
-    it('should throw ClientValidationError when already revoked', async () => {
-      const client = createTestClient({ status: 'revoked' });
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
-
-      await expect(revokeClient('client-db-uuid-1')).rejects.toThrow('Client is already revoked');
     });
   });
 

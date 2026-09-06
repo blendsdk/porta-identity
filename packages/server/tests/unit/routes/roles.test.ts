@@ -276,39 +276,19 @@ describe('role routes', () => {
 
       const layer = findLayer(createRoleRouter(), 'DELETE', '/:roleId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '10000000-0000-4000-8000-000000000002',
+        },
       });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
-      expect(roleService.deleteRole).toHaveBeenCalledWith('role-uuid-1', false);
-    });
-
-    it('should pass force=true when query param is set', async () => {
-      vi.mocked(roleService.deleteRole).mockResolvedValue(undefined);
-
-      const layer = findLayer(createRoleRouter(), 'DELETE', '/:roleId');
-      const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
-        query: { force: 'true' },
-      });
-      await execHandler(layer!, ctx);
-
-      expect(ctx.status).toBe(204);
-      expect(roleService.deleteRole).toHaveBeenCalledWith('role-uuid-1', true);
-    });
-
-    it('should throw 400 when role has assigned users (no force)', async () => {
-      vi.mocked(roleService.deleteRole).mockRejectedValue(
-        new RbacValidationError('Role has 5 assigned users. Use force=true to delete.'),
+      expect(roleService.deleteRole).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+        '10000000-0000-4000-8000-000000000002',
+        undefined,
       );
-
-      const layer = findLayer(createRoleRouter(), 'DELETE', '/:roleId');
-      const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
-      });
-
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Role request is invalid');
     });
   });
 

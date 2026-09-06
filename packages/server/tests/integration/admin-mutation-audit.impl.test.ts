@@ -86,17 +86,16 @@ describe('client-secret administrative transactions', () => {
     expect(persisted.rowCount).toBe(1);
   });
 
-  it('should reject generation when revocation wins before the parent lock', async () => {
+  it('should reject generation when deletion wins before the parent lock', async () => {
     const organization = await createTestOrganization();
     const application = await createTestApplication();
     const client = await createTestClient(organization.id, application.id);
-    await getPool().query("UPDATE clients SET status = 'revoked' WHERE id = $1", [client.id]);
+    await getPool().query('DELETE FROM clients WHERE id = $1', [client.id]);
 
     await expect(generateAndStore(client.id)).rejects.toBeInstanceOf(ClientNotFoundError);
-    const persisted = await getPool().query(
-      'SELECT id FROM client_secrets WHERE client_id = $1',
-      [client.id],
-    );
+    const persisted = await getPool().query('SELECT id FROM client_secrets WHERE client_id = $1', [
+      client.id,
+    ]);
     expect(persisted.rowCount).toBe(0);
   });
 

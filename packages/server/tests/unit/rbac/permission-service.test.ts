@@ -2,7 +2,7 @@
  * Unit tests for permission service.
  *
  * Tests business logic: slug format validation, uniqueness checks,
- * deletion guards, and audit logging.
+ * lifecycle validation and audit logging.
  * All dependencies (repository, cache, audit) are mocked.
  */
 
@@ -14,10 +14,8 @@ vi.mock('../../../src/rbac/permission-repository.js', () => ({
   findPermissionById: vi.fn(),
   findPermissionBySlug: vi.fn(),
   updatePermission: vi.fn(),
-  deletePermission: vi.fn(),
   listPermissionsByApplication: vi.fn(),
   permissionSlugExists: vi.fn(),
-  countRolesWithPermission: vi.fn(),
 }));
 
 vi.mock('../../../src/rbac/mapping-repository.js', () => ({
@@ -37,13 +35,10 @@ import {
   findPermissionById as mockRepoFindById,
   findPermissionBySlug as mockRepoFindBySlug,
   updatePermission as mockRepoUpdate,
-  deletePermission as mockRepoDelete,
   listPermissionsByApplication as mockRepoList,
   permissionSlugExists as mockSlugExists,
-  countRolesWithPermission as mockCountRoles,
 } from '../../../src/rbac/permission-repository.js';
 import { getRolesWithPermission as mockRepoGetRoles } from '../../../src/rbac/mapping-repository.js';
-import { invalidateAllUserRbacCaches as mockInvalidateAll } from '../../../src/rbac/cache.js';
 import { writeAuditLog as mockAuditLog } from '../../../src/lib/audit-log.js';
 
 import {
@@ -51,7 +46,6 @@ import {
   findPermissionById,
   findPermissionBySlug,
   updatePermission,
-  deletePermission,
   listPermissionsByApplication,
   getRolesWithPermission,
 } from '../../../src/rbac/permission-service.js';
@@ -79,7 +73,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Reset default mock return values
   vi.mocked(mockSlugExists).mockResolvedValue(false);
-  vi.mocked(mockInvalidateAll).mockResolvedValue(undefined);
   vi.mocked(mockAuditLog).mockResolvedValue(undefined);
 });
 
@@ -190,9 +183,9 @@ describe('updatePermission', () => {
   it('should throw PermissionNotFoundError when permission does not exist', async () => {
     vi.mocked(mockRepoFindById).mockResolvedValue(null);
 
-    await expect(
-      updatePermission('non-existent', { name: 'X' }),
-    ).rejects.toThrow(PermissionNotFoundError);
+    await expect(updatePermission('non-existent', { name: 'X' })).rejects.toThrow(
+      PermissionNotFoundError,
+    );
   });
 
   it('should write audit log on update', async () => {
@@ -204,57 +197,6 @@ describe('updatePermission', () => {
 
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'permission.updated', actorId: 'admin-1' }),
-    );
-  });
-});
-
-describe('deletePermission', () => {
-  it('should delete permission when no roles assigned', async () => {
-    const existing = createTestPermission();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockCountRoles).mockResolvedValue(0);
-    vi.mocked(mockRepoDelete).mockResolvedValue(true);
-
-    await deletePermission('perm-uuid-1');
-
-    expect(mockRepoDelete).toHaveBeenCalledWith('perm-uuid-1');
-  });
-
-  it('should throw PermissionNotFoundError when permission does not exist', async () => {
-    vi.mocked(mockRepoFindById).mockResolvedValue(null);
-
-    await expect(deletePermission('non-existent')).rejects.toThrow(PermissionNotFoundError);
-  });
-
-  it('should throw RbacValidationError when assigned to roles and force=false', async () => {
-    const existing = createTestPermission();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockCountRoles).mockResolvedValue(3);
-
-    await expect(deletePermission('perm-uuid-1', false)).rejects.toThrow(RbacValidationError);
-  });
-
-  it('should delete and invalidate all user caches when force=true', async () => {
-    const existing = createTestPermission();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockRepoDelete).mockResolvedValue(true);
-
-    await deletePermission('perm-uuid-1', true);
-
-    expect(mockRepoDelete).toHaveBeenCalled();
-    expect(mockInvalidateAll).toHaveBeenCalled();
-  });
-
-  it('should write audit log on deletion', async () => {
-    const existing = createTestPermission();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockCountRoles).mockResolvedValue(0);
-    vi.mocked(mockRepoDelete).mockResolvedValue(true);
-
-    await deletePermission('perm-uuid-1', false, 'admin-1');
-
-    expect(mockAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: 'permission.deleted', actorId: 'admin-1' }),
     );
   });
 });

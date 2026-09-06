@@ -15,6 +15,7 @@ vi.mock('../../../src/users/service.js', () => ({
   unsuspendUser: vi.fn(),
   lockUser: vi.fn(),
   unlockUser: vi.fn(),
+  deleteUser: vi.fn(),
   setUserPassword: vi.fn(),
   clearUserPassword: vi.fn(),
   markEmailVerified: vi.fn(),
@@ -545,6 +546,7 @@ describe('user routes', () => {
       expect(paths).toContain(`GET ${PREFIX}`);
       expect(paths).toContain(`GET ${PREFIX}/:userId`);
       expect(paths).toContain(`PUT ${PREFIX}/:userId`);
+      expect(paths).toContain(`DELETE ${PREFIX}/:userId`);
       expect(paths).toContain(`POST ${PREFIX}/:userId/deactivate`);
       expect(paths).toContain(`POST ${PREFIX}/:userId/reactivate`);
       expect(paths).toContain(`POST ${PREFIX}/:userId/suspend`);

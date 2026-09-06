@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-06 10:35
-> **Progress**: 19/40 tasks (48%)
+> **Last Updated**: 2026-09-06 11:03
+> **Progress**: 20/40 tasks (50%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -89,7 +89,7 @@ complete cutover.
 
 ### Session 3 — Implementation Tests and Gate
 
-- [ ] 2.12 Add implementation tests for constraints, foreign keys, init idempotency, set-based query shape, lock order, nullable audit actor lookup, transaction order, descriptor immutability, cursor termination, compare-before-delete, and fixed failure logging
+- [x] 2.12 Add implementation tests for constraints, foreign keys, init idempotency, set-based query shape, lock order, nullable audit actor lookup, transaction order, descriptor immutability, cursor termination, compare-before-delete, and fixed failure logging ✅ (completed: 2026-09-06 11:03; 10 focused implementation tests added; server unit 2,906 and integration 419 passed; typecheck, lint, and 96 structure checks passed)
 - [ ] 2.13 Run the focused server commands from 07, server unit/integration/E2E/pentest gates, `yarn test:structure`, `yarn assurance:harness --project protocol --profile operational`, and `yarn assurance:harness --project security --profile operational`; update schema/security/data/API techdocs and roadmap
 
 **Deliverable:** every route crosses one complete atomic database boundary and invalidates only

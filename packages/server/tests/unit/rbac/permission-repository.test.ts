@@ -19,10 +19,8 @@ import {
   findPermissionById,
   findPermissionBySlug,
   updatePermission,
-  deletePermission,
   listPermissionsByApplication,
   permissionSlugExists,
-  countRolesWithPermission,
 } from '../../../src/rbac/permission-repository.js';
 import type { PermissionRow } from '../../../src/rbac/types.js';
 
@@ -80,8 +78,11 @@ describe('insertPermission', () => {
     expect(sql).toContain('INSERT INTO permissions');
     expect(sql).toContain('RETURNING *');
     expect(params).toEqual([
-      'app-uuid-1', 'mod-uuid-1', 'Read Contacts',
-      'crm:contacts:read', 'View contact records',
+      'app-uuid-1',
+      'mod-uuid-1',
+      'Read Contacts',
+      'crm:contacts:read',
+      'View contact records',
     ]);
 
     // Verify mapping from snake_case to camelCase
@@ -107,10 +108,7 @@ describe('insertPermission', () => {
     });
 
     const [, params] = mockQuery.mock.calls[0];
-    expect(params).toEqual([
-      'app-uuid-1', null, 'Write Contacts',
-      'crm:contacts:write', null,
-    ]);
+    expect(params).toEqual(['app-uuid-1', null, 'Write Contacts', 'crm:contacts:write', null]);
   });
 });
 
@@ -140,10 +138,7 @@ describe('findPermissionById', () => {
 
     await findPermissionById('test-id');
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT * FROM permissions WHERE id = $1',
-      ['test-id'],
-    );
+    expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM permissions WHERE id = $1', ['test-id']);
   });
 });
 
@@ -235,36 +230,8 @@ describe('updatePermission', () => {
   it('should throw when permission is not found', async () => {
     mockPool([]);
 
-    await expect(updatePermission('non-existent', { name: 'X' }))
-      .rejects.toThrow('Permission not found');
-  });
-});
-
-describe('deletePermission', () => {
-  it('should return true when a permission is deleted', async () => {
-    mockPool([], 1);
-
-    const result = await deletePermission('perm-uuid-1');
-
-    expect(result).toBe(true);
-  });
-
-  it('should return false when permission does not exist', async () => {
-    mockPool([], 0);
-
-    const result = await deletePermission('non-existent');
-
-    expect(result).toBe(false);
-  });
-
-  it('should execute DELETE with the correct ID', async () => {
-    const mockQuery = mockPool([], 1);
-
-    await deletePermission('test-id');
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      'DELETE FROM permissions WHERE id = $1',
-      ['test-id'],
+    await expect(updatePermission('non-existent', { name: 'X' })).rejects.toThrow(
+      'Permission not found',
     );
   });
 });
@@ -339,34 +306,5 @@ describe('permissionSlugExists', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('application_id = $1 AND slug = $2');
     expect(params).toEqual(['app-1', 'crm:contacts:read']);
-  });
-});
-
-describe('countRolesWithPermission', () => {
-  it('should return the role count', async () => {
-    mockPool([{ count: '3' }]);
-
-    const result = await countRolesWithPermission('perm-uuid-1');
-
-    expect(result).toBe(3);
-  });
-
-  it('should return 0 when no roles have the permission', async () => {
-    mockPool([{ count: '0' }]);
-
-    const result = await countRolesWithPermission('perm-uuid-1');
-
-    expect(result).toBe(0);
-  });
-
-  it('should query the role_permissions table', async () => {
-    const mockQuery = mockPool([{ count: '0' }]);
-
-    await countRolesWithPermission('test-perm');
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT COUNT(*)::int as count FROM role_permissions WHERE permission_id = $1',
-      ['test-perm'],
-    );
   });
 });

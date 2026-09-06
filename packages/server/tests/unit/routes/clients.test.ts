@@ -19,7 +19,7 @@ vi.mock('../../../src/clients/service.js', () => ({
   listClientsCursor: vi.fn(),
   deactivateClient: vi.fn(),
   activateClient: vi.fn(),
-  revokeClient: vi.fn(),
+  deleteClient: vi.fn(),
   findForOidc: vi.fn(),
 }));
 
@@ -613,32 +613,6 @@ describe('client routes', () => {
   // Status actions
   // -------------------------------------------------------------------------
 
-  describe('POST /:id/revoke', () => {
-    it('should return 204 on success', async () => {
-      (clientService.revokeClient as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-
-      const router = createClientRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/revoke');
-      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
-
-      await handler(ctx as never, vi.fn());
-
-      expect(ctx.status).toBe(204);
-    });
-
-    it('should throw 400 when already revoked', async () => {
-      (clientService.revokeClient as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new ClientValidationError('Client is already revoked'),
-      );
-
-      const router = createClientRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/revoke');
-      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
-
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
-    });
-  });
-
   describe('POST /:id/activate', () => {
     it('should return 204 on success', async () => {
       (clientService.activateClient as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
@@ -741,16 +715,12 @@ describe('client routes', () => {
     });
   });
 
-  describe('POST /:id/secrets/:secretId/revoke — Revoke secret', () => {
+  describe('DELETE /:id/secrets/:secretId — Revoke secret', () => {
     it('should return 204 on success', async () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const router = createClientRouter();
-      const handler = findHandler(
-        router,
-        'POST',
-        '/api/admin/clients/:id/secrets/:secretId/revoke',
-      );
+      const handler = findHandler(router, 'DELETE', '/api/admin/clients/:id/secrets/:secretId');
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
@@ -767,11 +737,7 @@ describe('client routes', () => {
       );
 
       const router = createClientRouter();
-      const handler = findHandler(
-        router,
-        'POST',
-        '/api/admin/clients/:id/secrets/:secretId/revoke',
-      );
+      const handler = findHandler(router, 'DELETE', '/api/admin/clients/:id/secrets/:secretId');
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
@@ -800,12 +766,12 @@ describe('client routes', () => {
       expect(paths).toContain('GET /api/admin/clients');
       expect(paths).toContain('GET /api/admin/clients/:id');
       expect(paths).toContain('PUT /api/admin/clients/:id');
-      expect(paths).toContain('POST /api/admin/clients/:id/revoke');
+      expect(paths).toContain('DELETE /api/admin/clients/:id');
       expect(paths).toContain('POST /api/admin/clients/:id/activate');
       expect(paths).toContain('POST /api/admin/clients/:id/deactivate');
       expect(paths).toContain('POST /api/admin/clients/:id/secrets');
       expect(paths).toContain('GET /api/admin/clients/:id/secrets');
-      expect(paths).toContain('POST /api/admin/clients/:id/secrets/:secretId/revoke');
+      expect(paths).toContain('DELETE /api/admin/clients/:id/secrets/:secretId');
     });
   });
 });

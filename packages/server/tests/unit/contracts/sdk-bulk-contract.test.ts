@@ -30,7 +30,7 @@ describe('SDK↔Server contract: Bulk Operations', () => {
     });
 
     it('supports all org actions', () => {
-      for (const action of ['activate', 'suspend', 'archive'] as const) {
+      for (const action of ['activate', 'suspend'] as const) {
         const input: BulkOrgStatusInput = {
           ids: ['550e8400-e29b-41d4-a716-446655440000'],
           action,

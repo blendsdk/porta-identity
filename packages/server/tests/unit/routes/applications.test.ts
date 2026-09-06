@@ -14,7 +14,7 @@ vi.mock('../../../src/applications/service.js', () => ({
   listApplications: vi.fn(),
   deactivateApplication: vi.fn(),
   activateApplication: vi.fn(),
-  archiveApplication: vi.fn(),
+  deleteApplication: vi.fn(),
   createModule: vi.fn(),
   updateModule: vi.fn(),
   deactivateModule: vi.fn(),
@@ -259,36 +259,6 @@ describe('application routes', () => {
   // Status actions
   // -------------------------------------------------------------------------
 
-  describe('POST /:id/archive', () => {
-    it('should return 204 on success', async () => {
-      (applicationService.archiveApplication as ReturnType<typeof vi.fn>).mockResolvedValue(
-        undefined,
-      );
-
-      const router = createApplicationRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/applications/:id/archive');
-      const ctx = createMockCtx({ params: { id: 'app-uuid-1' } });
-
-      await handler(ctx as never, vi.fn());
-
-      expect(ctx.status).toBe(204);
-    });
-
-    it('should throw 400 when already archived', async () => {
-      (applicationService.archiveApplication as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new ApplicationValidationError('Application is already archived'),
-      );
-
-      const router = createApplicationRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/applications/:id/archive');
-      const ctx = createMockCtx({ params: { id: 'app-uuid-1' } });
-
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow(
-        'Application request is invalid',
-      );
-    });
-  });
-
   describe('POST /:id/activate', () => {
     it('should return 204 on success', async () => {
       (applicationService.activateApplication as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -407,10 +377,7 @@ describe('application routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(204);
-      expect(applicationService.deactivateModule).toHaveBeenCalledWith(
-        'app-uuid-1',
-        'mod-uuid-1',
-      );
+      expect(applicationService.deactivateModule).toHaveBeenCalledWith('app-uuid-1', 'mod-uuid-1');
     });
   });
 
@@ -434,13 +401,14 @@ describe('application routes', () => {
       expect(paths).toContain('GET /api/admin/applications');
       expect(paths).toContain('GET /api/admin/applications/:id');
       expect(paths).toContain('PUT /api/admin/applications/:id');
-      expect(paths).toContain('POST /api/admin/applications/:id/archive');
+      expect(paths).toContain('DELETE /api/admin/applications/:id');
       expect(paths).toContain('POST /api/admin/applications/:id/activate');
       expect(paths).toContain('POST /api/admin/applications/:id/deactivate');
       expect(paths).toContain('POST /api/admin/applications/:id/modules');
       expect(paths).toContain('GET /api/admin/applications/:id/modules');
       expect(paths).toContain('PUT /api/admin/applications/:id/modules/:moduleId');
       expect(paths).toContain('POST /api/admin/applications/:id/modules/:moduleId/deactivate');
+      expect(paths).toContain('DELETE /api/admin/applications/:appId/modules/:moduleId');
     });
   });
 });

@@ -199,19 +199,4 @@ describe('Client Repository (Integration)', () => {
     const secrets = await listSecretsByClient(client.id);
     expect(secrets).toHaveLength(0);
   });
-
-  // ── Revoked Client ───────────────────────────────────────────
-
-  it('should handle revoked client status', async () => {
-    const client = await createTestClient(orgId, appId);
-
-    // Revoke the client
-    const revoked = await updateClient(client.id, { status: 'revoked' });
-    expect(revoked.status).toBe('revoked');
-
-    // Client should still be findable by ID (status filtering is service-layer logic)
-    const found = await findClientById(client.id);
-    expect(found).not.toBeNull();
-    expect(found!.status).toBe('revoked');
-  });
 });

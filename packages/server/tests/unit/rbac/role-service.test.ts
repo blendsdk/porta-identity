@@ -2,7 +2,7 @@
  * Unit tests for role service.
  *
  * Tests business logic: slug validation, uniqueness checks,
- * deletion guards, cache orchestration, and audit logging.
+ * cache orchestration and audit logging.
  * All dependencies (repository, cache, audit) are mocked.
  */
 
@@ -14,10 +14,8 @@ vi.mock('../../../src/rbac/role-repository.js', () => ({
   findRoleById: vi.fn(),
   findRoleBySlug: vi.fn(),
   updateRole: vi.fn(),
-  deleteRole: vi.fn(),
   listRolesByApplication: vi.fn(),
   roleSlugExists: vi.fn(),
-  countUsersWithRole: vi.fn(),
 }));
 
 vi.mock('../../../src/rbac/mapping-repository.js', () => ({
@@ -41,10 +39,8 @@ import {
   insertRole as mockInsertRole,
   findRoleById as mockRepoFindById,
   updateRole as mockRepoUpdate,
-  deleteRole as mockRepoDelete,
   listRolesByApplication as mockRepoList,
   roleSlugExists as mockSlugExists,
-  countUsersWithRole as mockCountUsers,
 } from '../../../src/rbac/role-repository.js';
 import {
   assignPermissionsToRole as mockRepoAssignPerms,
@@ -64,7 +60,6 @@ import {
   findRoleById,
   findRoleBySlug,
   updateRole,
-  deleteRole,
   listRolesByApplication,
   assignPermissionsToRole,
   removePermissionsFromRole,
@@ -113,9 +108,7 @@ describe('createRole', () => {
     const result = await createRole({ applicationId: 'app-uuid-1', name: 'CRM Editor' });
 
     expect(result).toEqual(role);
-    expect(mockInsertRole).toHaveBeenCalledWith(
-      expect.objectContaining({ slug: 'crm-editor' }),
-    );
+    expect(mockInsertRole).toHaveBeenCalledWith(expect.objectContaining({ slug: 'crm-editor' }));
   });
 
   it('should create a role with provided slug', async () => {
@@ -140,9 +133,9 @@ describe('createRole', () => {
   it('should throw RbacValidationError for duplicate slug', async () => {
     vi.mocked(mockSlugExists).mockResolvedValue(true);
 
-    await expect(
-      createRole({ applicationId: 'app-uuid-1', name: 'CRM Editor' }),
-    ).rejects.toThrow(RbacValidationError);
+    await expect(createRole({ applicationId: 'app-uuid-1', name: 'CRM Editor' })).rejects.toThrow(
+      RbacValidationError,
+    );
   });
 
   it('should cache the new role after creation', async () => {
@@ -206,7 +199,8 @@ describe('findRoleById', () => {
 
 describe('findRoleBySlug', () => {
   it('should delegate to repository', async () => {
-    const { findRoleBySlug: mockRepoFindBySlug } = await import('../../../src/rbac/role-repository.js');
+    const { findRoleBySlug: mockRepoFindBySlug } =
+      await import('../../../src/rbac/role-repository.js');
     const role = createTestRole();
     vi.mocked(mockRepoFindBySlug).mockResolvedValue(role);
 
@@ -240,9 +234,9 @@ describe('updateRole', () => {
     const existing = createTestRole();
     vi.mocked(mockRepoFindById).mockResolvedValue(existing);
 
-    await expect(
-      updateRole('role-uuid-1', { slug: 'INVALID SLUG' }),
-    ).rejects.toThrow(RbacValidationError);
+    await expect(updateRole('role-uuid-1', { slug: 'INVALID SLUG' })).rejects.toThrow(
+      RbacValidationError,
+    );
   });
 
   it('should check slug uniqueness when slug is changing', async () => {
@@ -250,9 +244,9 @@ describe('updateRole', () => {
     vi.mocked(mockRepoFindById).mockResolvedValue(existing);
     vi.mocked(mockSlugExists).mockResolvedValue(true);
 
-    await expect(
-      updateRole('role-uuid-1', { slug: 'taken-slug' }),
-    ).rejects.toThrow(RbacValidationError);
+    await expect(updateRole('role-uuid-1', { slug: 'taken-slug' })).rejects.toThrow(
+      RbacValidationError,
+    );
   });
 
   it('should skip slug validation when slug is not changing', async () => {
@@ -276,58 +270,6 @@ describe('updateRole', () => {
 
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'role.updated', actorId: 'admin-1' }),
-    );
-  });
-});
-
-describe('deleteRole', () => {
-  it('should delete role when no users assigned', async () => {
-    const existing = createTestRole();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockCountUsers).mockResolvedValue(0);
-    vi.mocked(mockRepoDelete).mockResolvedValue(true);
-
-    await deleteRole('role-uuid-1');
-
-    expect(mockRepoDelete).toHaveBeenCalledWith('role-uuid-1');
-    expect(mockInvalidateRole).toHaveBeenCalledWith('role-uuid-1');
-  });
-
-  it('should throw RoleNotFoundError when role does not exist', async () => {
-    vi.mocked(mockRepoFindById).mockResolvedValue(null);
-
-    await expect(deleteRole('non-existent')).rejects.toThrow(RoleNotFoundError);
-  });
-
-  it('should throw RbacValidationError when users assigned and force=false', async () => {
-    const existing = createTestRole();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockCountUsers).mockResolvedValue(5);
-
-    await expect(deleteRole('role-uuid-1', false)).rejects.toThrow(RbacValidationError);
-  });
-
-  it('should delete and invalidate all user caches when force=true', async () => {
-    const existing = createTestRole();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockRepoDelete).mockResolvedValue(true);
-
-    await deleteRole('role-uuid-1', true);
-
-    expect(mockRepoDelete).toHaveBeenCalled();
-    expect(mockInvalidateAll).toHaveBeenCalled();
-  });
-
-  it('should write audit log on deletion', async () => {
-    const existing = createTestRole();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
-    vi.mocked(mockCountUsers).mockResolvedValue(0);
-    vi.mocked(mockRepoDelete).mockResolvedValue(true);
-
-    await deleteRole('role-uuid-1', false, 'admin-1');
-
-    expect(mockAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: 'role.deleted', actorId: 'admin-1' }),
     );
   });
 });

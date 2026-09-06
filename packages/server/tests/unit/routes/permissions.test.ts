@@ -284,48 +284,28 @@ describe('permission routes', () => {
   });
 
   // -------------------------------------------------------------------------
-  // DELETE /:permId — Delete permission
+  // DELETE /:permissionId — Delete permission
   // -------------------------------------------------------------------------
 
-  describe('DELETE /:permId — Delete permission', () => {
+  describe('DELETE /:permissionId — Delete permission', () => {
     it('should return 204 on successful delete', async () => {
       vi.mocked(permissionService.deletePermission).mockResolvedValue(undefined);
 
-      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permId');
+      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permissionId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permissionId: '10000000-0000-4000-8000-000000000002',
+        },
       });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
-      expect(permissionService.deletePermission).toHaveBeenCalledWith('perm-uuid-1', false);
-    });
-
-    it('should pass force=true when query param is set', async () => {
-      vi.mocked(permissionService.deletePermission).mockResolvedValue(undefined);
-
-      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permId');
-      const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
-        query: { force: 'true' },
-      });
-      await execHandler(layer!, ctx);
-
-      expect(ctx.status).toBe(204);
-      expect(permissionService.deletePermission).toHaveBeenCalledWith('perm-uuid-1', true);
-    });
-
-    it('should throw 400 when permission is used by roles (no force)', async () => {
-      vi.mocked(permissionService.deletePermission).mockRejectedValue(
-        new RbacValidationError('Permission is used by 3 roles. Use force=true to delete.'),
+      expect(permissionService.deletePermission).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+        '10000000-0000-4000-8000-000000000002',
+        undefined,
       );
-
-      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permId');
-      const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
-      });
-
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission request is invalid');
     });
   });
 
@@ -381,7 +361,7 @@ describe('permission routes', () => {
       expect(paths).toContain(`GET ${prefix}`);
       expect(paths).toContain(`GET ${prefix}/:permId`);
       expect(paths).toContain(`PUT ${prefix}/:permId`);
-      expect(paths).toContain(`DELETE ${prefix}/:permId`);
+      expect(paths).toContain(`DELETE ${prefix}/:permissionId`);
       expect(paths).toContain(`GET ${prefix}/:permId/roles`);
     });
   });

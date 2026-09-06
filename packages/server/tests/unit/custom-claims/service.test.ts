@@ -6,7 +6,6 @@ vi.mock('../../../src/custom-claims/repository.js', () => ({
   findDefinitionById: vi.fn(),
   findDefinitionByName: vi.fn(),
   updateDefinition: vi.fn(),
-  deleteDefinition: vi.fn(),
   listDefinitionsByApplication: vi.fn(),
   claimNameExists: vi.fn(),
   upsertValue: vi.fn(),
@@ -30,7 +29,6 @@ import {
   insertDefinition as repoInsert,
   findDefinitionById as repoFindById,
   updateDefinition as repoUpdate,
-  deleteDefinition as repoDelete,
   listDefinitionsByApplication as repoList,
   claimNameExists,
   upsertValue as repoUpsert,
@@ -48,7 +46,6 @@ import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import {
   createDefinition,
   updateDefinition,
-  deleteDefinition,
   findDefinitionById,
   listDefinitions,
   setValue,
@@ -58,7 +55,11 @@ import {
   buildCustomClaims,
 } from '../../../src/custom-claims/service.js';
 import { ClaimNotFoundError, ClaimValidationError } from '../../../src/custom-claims/errors.js';
-import type { CustomClaimDefinition, CustomClaimValue, CustomClaimWithValue } from '../../../src/custom-claims/types.js';
+import type {
+  CustomClaimDefinition,
+  CustomClaimValue,
+  CustomClaimWithValue,
+} from '../../../src/custom-claims/types.js';
 
 // ---------------------------------------------------------------------------
 // Sample data
@@ -172,31 +173,9 @@ describe('updateDefinition', () => {
   it('should throw ClaimNotFoundError when definition not found', async () => {
     vi.mocked(repoFindById).mockResolvedValue(null);
 
-    await expect(
-      updateDefinition('nonexistent', { description: 'test' }),
-    ).rejects.toThrow(ClaimNotFoundError);
-  });
-});
-
-describe('deleteDefinition', () => {
-  it('should delete an existing definition', async () => {
-    vi.mocked(repoFindById).mockResolvedValue(sampleDef);
-    vi.mocked(repoDelete).mockResolvedValue(true);
-
-    await deleteDefinition('def-uuid-1');
-
-    expect(repoDelete).toHaveBeenCalledWith('def-uuid-1');
-    expect(invalidateDefinitionsCache).toHaveBeenCalledWith('app-uuid-1');
-    expect(writeAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({ eventType: 'claim.deleted' }),
+    await expect(updateDefinition('nonexistent', { description: 'test' })).rejects.toThrow(
+      ClaimNotFoundError,
     );
-  });
-
-  it('should throw ClaimNotFoundError when definition not found', async () => {
-    vi.mocked(repoFindById).mockResolvedValue(null);
-
-    await expect(deleteDefinition('nonexistent')).rejects.toThrow(ClaimNotFoundError);
-    expect(repoDelete).not.toHaveBeenCalled();
   });
 });
 
@@ -269,9 +248,9 @@ describe('setValue', () => {
   it('should throw ClaimNotFoundError when definition not found', async () => {
     vi.mocked(repoFindById).mockResolvedValue(null);
 
-    await expect(
-      setValue('user-uuid-1', 'nonexistent', 'value'),
-    ).rejects.toThrow(ClaimNotFoundError);
+    await expect(setValue('user-uuid-1', 'nonexistent', 'value')).rejects.toThrow(
+      ClaimNotFoundError,
+    );
     expect(repoUpsert).not.toHaveBeenCalled();
   });
 
@@ -334,9 +313,7 @@ describe('deleteValue', () => {
   it('should throw ClaimNotFoundError when value not found', async () => {
     vi.mocked(repoDeleteVal).mockResolvedValue(false);
 
-    await expect(
-      deleteValue('user-uuid-1', 'nonexistent'),
-    ).rejects.toThrow(ClaimNotFoundError);
+    await expect(deleteValue('user-uuid-1', 'nonexistent')).rejects.toThrow(ClaimNotFoundError);
   });
 });
 
@@ -374,7 +351,10 @@ describe('buildCustomClaims', () => {
 
   const claimsWithValues: CustomClaimWithValue[] = [
     { definition: deptDef, value: { ...sampleVal, value: 'Engineering' } },
-    { definition: levelDef, value: { ...sampleVal, id: 'val-uuid-2', claimId: 'def-uuid-2', value: 5 } },
+    {
+      definition: levelDef,
+      value: { ...sampleVal, id: 'val-uuid-2', claimId: 'def-uuid-2', value: 5 },
+    },
   ];
 
   it('should filter claims by access_token inclusion', async () => {
@@ -420,9 +400,7 @@ describe('buildCustomClaims', () => {
       includeInAccessToken: false,
       includeInUserinfo: false,
     };
-    vi.mocked(repoGetByApp).mockResolvedValue([
-      { definition: excludedDef, value: sampleVal },
-    ]);
+    vi.mocked(repoGetByApp).mockResolvedValue([{ definition: excludedDef, value: sampleVal }]);
 
     const result = await buildCustomClaims('user-uuid-1', 'app-uuid-1', 'id_token');
     expect(result).toEqual({});

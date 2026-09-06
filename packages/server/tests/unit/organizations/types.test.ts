@@ -27,7 +27,6 @@ function createTestRow(overrides: Partial<OrganizationRow> = {}): OrganizationRo
   };
 }
 
-
 describe('types', () => {
   describe('mapRowToOrganization', () => {
     it('should correctly map all fields from a full row', () => {
@@ -71,12 +70,8 @@ describe('types', () => {
       // dropping a required field.
       const row = createTestRow();
       delete (row as unknown as Record<string, unknown>).default_login_methods;
-      expect(mapRowToOrganization(row).defaultLoginMethods).toEqual([
-        'password',
-        'magic_link',
-      ]);
+      expect(mapRowToOrganization(row).defaultLoginMethods).toEqual(['password', 'magic_link']);
     });
-
 
     it('should preserve null values for branding fields', () => {
       const row = createTestRow({
@@ -98,7 +93,7 @@ describe('types', () => {
     it('should cast status string to OrganizationStatus type', () => {
       // The DB CHECK constraint ensures only valid values, but we verify
       // the cast works for all three valid statuses
-      for (const status of ['active', 'suspended', 'archived'] as const) {
+      for (const status of ['active', 'suspended'] as const) {
         const row = createTestRow({ status });
         const org = mapRowToOrganization(row);
         expect(org.status).toBe(status);

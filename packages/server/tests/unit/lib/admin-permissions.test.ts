@@ -75,22 +75,22 @@ describe('ADMIN_PERMISSIONS', () => {
   });
 
   describe('organization permissions', () => {
-    it('should include create, read, update, suspend, and archive', () => {
+    it('should include create, read, update, suspend, and delete', () => {
       expect(ADMIN_PERMISSIONS.ORG_CREATE).toBe('admin:org:create');
       expect(ADMIN_PERMISSIONS.ORG_READ).toBe('admin:org:read');
       expect(ADMIN_PERMISSIONS.ORG_UPDATE).toBe('admin:org:update');
       expect(ADMIN_PERMISSIONS.ORG_SUSPEND).toBe('admin:org:suspend');
-      expect(ADMIN_PERMISSIONS.ORG_ARCHIVE).toBe('admin:org:archive');
+      expect(ADMIN_PERMISSIONS.ORG_DELETE).toBe('admin:org:delete');
     });
   });
 
   describe('user permissions', () => {
-    it('should include CRUD, suspend, archive, and invite', () => {
+    it('should include CRUD, suspend, delete, and invite', () => {
       expect(ADMIN_PERMISSIONS.USER_CREATE).toBe('admin:user:create');
       expect(ADMIN_PERMISSIONS.USER_READ).toBe('admin:user:read');
       expect(ADMIN_PERMISSIONS.USER_UPDATE).toBe('admin:user:update');
       expect(ADMIN_PERMISSIONS.USER_SUSPEND).toBe('admin:user:suspend');
-      expect(ADMIN_PERMISSIONS.USER_ARCHIVE).toBe('admin:user:archive');
+      expect(ADMIN_PERMISSIONS.USER_DELETE).toBe('admin:user:delete');
       expect(ADMIN_PERMISSIONS.USER_INVITE).toBe('admin:user:invite');
     });
   });
@@ -207,10 +207,7 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
     it('should have ALL permissions', () => {
       const superAdminPerms = new Set(ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.permissions);
       for (const perm of ALL_ADMIN_PERMISSIONS) {
-        expect(
-          superAdminPerms.has(perm),
-          `Super Admin missing permission: ${perm}`,
-        ).toBe(true);
+        expect(superAdminPerms.has(perm), `Super Admin missing permission: ${perm}`).toBe(true);
       }
     });
 
@@ -232,7 +229,7 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
       expect(perms).toContain('admin:org:read');
       expect(perms).toContain('admin:org:update');
       expect(perms).toContain('admin:org:suspend');
-      expect(perms).toContain('admin:org:archive');
+      expect(perms).toContain('admin:org:delete');
     });
 
     it('should include stats:read', () => {
@@ -258,7 +255,7 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
       expect(perms).toContain('admin:user:read');
       expect(perms).toContain('admin:user:update');
       expect(perms).toContain('admin:user:suspend');
-      expect(perms).toContain('admin:user:archive');
+      expect(perms).toContain('admin:user:delete');
       expect(perms).toContain('admin:user:invite');
     });
 
@@ -532,7 +529,9 @@ describe('hasPermissions', () => {
     const userPerms = ['admin:org:read', 'admin:org:create', 'admin:org:update'];
     expect(hasPermissions(userPerms, ['admin:org:read'])).toBe(true);
     expect(hasPermissions(userPerms, ['admin:org:read', 'admin:org:create'])).toBe(true);
-    expect(hasPermissions(userPerms, ['admin:org:read', 'admin:org:create', 'admin:org:update'])).toBe(true);
+    expect(
+      hasPermissions(userPerms, ['admin:org:read', 'admin:org:create', 'admin:org:update']),
+    ).toBe(true);
   });
 
   it('should return false when user is missing a required permission', () => {
@@ -552,7 +551,9 @@ describe('hasPermissions', () => {
 
   it('should work with all admin permissions', () => {
     const allPerms = [...ALL_ADMIN_PERMISSIONS] as string[];
-    expect(hasPermissions(allPerms, ['admin:org:read', 'admin:user:create', 'admin:audit:read'])).toBe(true);
+    expect(
+      hasPermissions(allPerms, ['admin:org:read', 'admin:user:create', 'admin:audit:read']),
+    ).toBe(true);
     expect(hasPermissions(allPerms, [...ALL_ADMIN_PERMISSIONS])).toBe(true);
   });
 });

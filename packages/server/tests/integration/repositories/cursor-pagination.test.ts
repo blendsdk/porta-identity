@@ -175,8 +175,8 @@ describe('Cursor Pagination (Integration)', () => {
       await createTestApplication({ organizationId: org.id, name: 'Active App', status: 'active' });
       await createTestApplication({
         organizationId: org.id,
-        name: 'Archived App',
-        status: 'archived',
+        name: 'Inactive App',
+        status: 'inactive',
       });
 
       const result = await listApplicationsCursor({ limit: 10, status: 'active' });
@@ -218,7 +218,9 @@ describe('Cursor Pagination (Integration)', () => {
       const org = await createTestOrganization();
       const app = await createTestApplication({ organizationId: org.id });
       for (let i = 0; i < 5; i++) {
-        await createTestClient(org.id, app.id, { clientName: `Client ${String(i).padStart(2, '0')}` });
+        await createTestClient(org.id, app.id, {
+          clientName: `Client ${String(i).padStart(2, '0')}`,
+        });
       }
 
       const page1 = await listClientsCursor({
@@ -257,7 +259,9 @@ describe('Cursor Pagination (Integration)', () => {
     it('should paginate forward without duplicates', async () => {
       const org = await createTestOrganization();
       for (let i = 0; i < 5; i++) {
-        await createTestUser(org.id, { email: `paginate${String(i).padStart(2, '0')}@cursor-test.com` });
+        await createTestUser(org.id, {
+          email: `paginate${String(i).padStart(2, '0')}@cursor-test.com`,
+        });
       }
 
       const page1 = await listUsersCursor({

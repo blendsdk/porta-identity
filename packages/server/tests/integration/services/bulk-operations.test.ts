@@ -67,42 +67,22 @@ describe('Bulk Operations (Integration)', () => {
       expect(updated1!.status).toBe('active');
     });
 
-    it('should archive multiple organizations', async () => {
-      const org1 = await createTestOrganization({ name: 'Bulk Arch 1' });
-      const org2 = await createTestOrganization({ name: 'Bulk Arch 2' });
-
-      // Archive from active is valid per ORG_TRANSITIONS
-      const result = await bulkStatusChange({
-        entityType: 'organization',
-        entityIds: [org1.id, org2.id],
-        action: 'archive',
-      });
-
-      expect(result.succeeded).toBe(2);
-
-      const updated1 = await findOrganizationById(org1.id);
-      expect(updated1!.status).toBe('archived');
-    });
-
     it('should handle partial failure for invalid transitions', async () => {
       const activeOrg = await createTestOrganization({ name: 'Active Bulk' });
-      const archivedOrg = await createTestOrganization({ name: 'Archived Bulk' });
+      const suspendedOrg = await createTestOrganization({ name: 'Suspended Bulk' });
 
-      // Archive the second org so it's already archived
       await bulkStatusChange({
         entityType: 'organization',
-        entityIds: [archivedOrg.id],
-        action: 'archive',
-      });
-
-      // Now try to suspend both — activeOrg can be suspended, archivedOrg cannot
-      const result = await bulkStatusChange({
-        entityType: 'organization',
-        entityIds: [activeOrg.id, archivedOrg.id],
+        entityIds: [suspendedOrg.id],
         action: 'suspend',
       });
 
-      // activeOrg succeeds (active→suspended), archivedOrg fails (archived can't be suspended)
+      const result = await bulkStatusChange({
+        entityType: 'organization',
+        entityIds: [activeOrg.id, suspendedOrg.id],
+        action: 'suspend',
+      });
+
       expect(result.succeeded).toBe(1);
       expect(result.failed).toBe(1);
     });

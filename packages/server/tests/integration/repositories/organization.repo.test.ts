@@ -12,10 +12,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { truncateAllTables, seedBaseData } from '../helpers/database.js';
 import { flushTestRedis } from '../helpers/redis.js';
-import {
-  createTestOrganization,
-  buildOrganizationInput,
-} from '../helpers/factories.js';
+import { createTestOrganization, buildOrganizationInput } from '../helpers/factories.js';
 import {
   insertOrganization,
   findOrganizationById,
@@ -119,10 +116,6 @@ describe('Organization Repository (Integration)', () => {
     // suspended → active
     const reactivated = await updateOrganization(org.id, { status: 'active' });
     expect(reactivated.status).toBe('active');
-
-    // active → archived
-    const archived = await updateOrganization(org.id, { status: 'archived' });
-    expect(archived.status).toBe('archived');
   });
 
   // ── List with Pagination ─────────────────────────────────────

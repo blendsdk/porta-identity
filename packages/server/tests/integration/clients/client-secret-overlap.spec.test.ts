@@ -16,7 +16,6 @@ import { ensureSigningKeys } from '../../../src/lib/signing-keys.js';
 import { getPool } from '../../../src/lib/database.js';
 import { loadOidcTtlConfig } from '../../../src/lib/system-config.js';
 import { generateSecret, hashSecret, sha256Secret } from '../../../src/clients/crypto.js';
-import { updateClient } from '../../../src/clients/repository.js';
 import {
   insertSecret,
   revokeSecret,
@@ -357,23 +356,5 @@ describe('confidential client active-secret overlap', () => {
 
     expectSafeProviderFailure(revokedResult, [revokedPlaintext]);
     expect(retainedResult.response.status).toBe(200);
-  });
-
-  it('should reject credentials for a revoked confidential client', async () => {
-    const org = await createTestOrganization();
-    const application = await createTestApplication();
-    const client = await createTestClient(org.id, application.id, {
-      grantTypes: ['client_credentials'],
-    });
-    const secret = generateSecret();
-    await addSecret(client.id, secret);
-    await updateClient(client.id, { status: 'revoked' });
-
-    const result = await requestToken(org.slug, {
-      clientId: client.clientId,
-      secret,
-      method: 'client_secret_basic',
-    });
-    expectSafeProviderFailure(result, [secret]);
   });
 });

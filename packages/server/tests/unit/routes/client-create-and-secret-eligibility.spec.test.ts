@@ -11,7 +11,7 @@ vi.mock('../../../src/clients/service.js', () => ({
   listClientsCursor: vi.fn(),
   deactivateClient: vi.fn(),
   activateClient: vi.fn(),
-  revokeClient: vi.fn(),
+  deleteClient: vi.fn(),
   findForOidc: vi.fn(),
 }));
 
@@ -187,10 +187,9 @@ describe('secret parent eligibility specification', () => {
     vi.mocked(secretService.listByClient).mockResolvedValue([]);
   });
 
-  it.each([
-    ['public', client({ clientType: 'public', tokenEndpointAuthMethod: 'none' })],
-    ['revoked', client({ status: 'revoked' })],
-  ] as const)(
+  // Whole-client Revoked was superseded by physical client deletion. Public clients remain the
+  // only extant parent state that is deliberately ineligible for secret operations.
+  it.each([['public', client({ clientType: 'public', tokenEndpointAuthMethod: 'none' })]] as const)(
     'ST-07B rejects generation for a %s client as an absent eligible parent',
     async (_label, value) => {
       vi.mocked(clientService.getClientById).mockResolvedValue(value);
@@ -207,10 +206,7 @@ describe('secret parent eligibility specification', () => {
     },
   );
 
-  it.each([
-    ['public', client({ clientType: 'public', tokenEndpointAuthMethod: 'none' })],
-    ['revoked', client({ status: 'revoked' })],
-  ] as const)(
+  it.each([['public', client({ clientType: 'public', tokenEndpointAuthMethod: 'none' })]] as const)(
     'ST-07B rejects listing for a %s client as an absent eligible parent',
     async (_label, value) => {
       vi.mocked(clientService.getClientById).mockResolvedValue(value);
@@ -227,17 +223,14 @@ describe('secret parent eligibility specification', () => {
     },
   );
 
-  it.each([
-    ['public', client({ clientType: 'public', tokenEndpointAuthMethod: 'none' })],
-    ['revoked', client({ status: 'revoked' })],
-  ] as const)(
+  it.each([['public', client({ clientType: 'public', tokenEndpointAuthMethod: 'none' })]] as const)(
     'ST-07B rejects revocation for a %s client as an absent eligible parent',
     async (_label, value) => {
       vi.mocked(clientService.getClientById).mockResolvedValue(value);
 
       const ctx = await executeRoute(
-        'POST',
-        '/api/admin/clients/:id/secrets/:secretId/revoke',
+        'DELETE',
+        '/api/admin/clients/:id/secrets/:secretId',
         ['admin:client:revoke'],
         {
           params: {

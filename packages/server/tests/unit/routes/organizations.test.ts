@@ -14,8 +14,7 @@ vi.mock('../../../src/organizations/service.js', () => ({
   updateOrganizationBranding: vi.fn(),
   suspendOrganization: vi.fn(),
   activateOrganization: vi.fn(),
-  archiveOrganization: vi.fn(),
-  restoreOrganization: vi.fn(),
+  deleteOrganization: vi.fn(),
   listOrganizations: vi.fn(),
   validateSlugAvailability: vi.fn(),
 }));
@@ -476,46 +475,6 @@ describe('organization routes', () => {
     });
   });
 
-  describe('POST /:id/archive', () => {
-    it('should return 204 on success', async () => {
-      (organizationService.archiveOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
-        undefined,
-      );
-
-      const router = createOrganizationRouter();
-      const layer = router.stack.find(
-        (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations/:id/archive',
-      );
-
-      const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
-      const next = vi.fn();
-
-      await layer!.stack[layer!.stack.length - 1](ctx as never, next);
-
-      expect(ctx.status).toBe(204);
-    });
-  });
-
-  describe('POST /:id/restore', () => {
-    it('should return 204 on success', async () => {
-      (organizationService.restoreOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
-        undefined,
-      );
-
-      const router = createOrganizationRouter();
-      const layer = router.stack.find(
-        (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations/:id/restore',
-      );
-
-      const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
-      const next = vi.fn();
-
-      await layer!.stack[layer!.stack.length - 1](ctx as never, next);
-
-      expect(ctx.status).toBe(204);
-    });
-  });
-
   // -------------------------------------------------------------------------
   // GET /validate-slug
   // -------------------------------------------------------------------------
@@ -583,8 +542,7 @@ describe('organization routes', () => {
       expect(paths).toContain('PUT /api/admin/organizations/:id/branding');
       expect(paths).toContain('POST /api/admin/organizations/:id/suspend');
       expect(paths).toContain('POST /api/admin/organizations/:id/activate');
-      expect(paths).toContain('POST /api/admin/organizations/:id/archive');
-      expect(paths).toContain('POST /api/admin/organizations/:id/restore');
+      expect(paths).toContain('DELETE /api/admin/organizations/:idOrSlug');
     });
   });
 });

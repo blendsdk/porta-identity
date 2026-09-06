@@ -3,7 +3,7 @@
  *
  * Verifies tenant resolution with real PostgreSQL and Redis cache.
  * Tests cover: resolve active org by slug, cache-first second request,
- * suspended org → 403, archived org → 404, non-existent slug → 404,
+ * suspended org → 403, non-existent slug → 404,
  * and cache invalidation on org update.
  *
  * Each test starts with a clean slate via truncateAllTables() + seedBaseData()
@@ -77,22 +77,6 @@ describe('Tenant Resolver (Integration)', () => {
 
     // The middleware would return 403 for this status.
     // We verify the status is correctly returned so the middleware can decide.
-  });
-
-  // ── Archived Org → 404 ─────────────────────────────────────────
-
-  it('should reject an archived organization with status check', async () => {
-    const org = await createTestOrganization({ name: 'Archive Me Org' });
-
-    // Archive the organization
-    await updateOrganization(org.id, { status: 'archived' });
-
-    // Fetch the updated org
-    const found = await findOrganizationBySlug(org.slug);
-    expect(found).not.toBeNull();
-    expect(found!.status).toBe('archived');
-
-    // The middleware would return 404 for this status.
   });
 
   // ── Non-Existent Slug → null ───────────────────────────────────

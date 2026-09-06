@@ -19,10 +19,8 @@ import {
   findRoleById,
   findRoleBySlug,
   updateRole,
-  deleteRole,
   listRolesByApplication,
   roleSlugExists,
-  countUsersWithRole,
 } from '../../../src/rbac/role-repository.js';
 import type { RoleRow } from '../../../src/rbac/types.js';
 
@@ -132,10 +130,7 @@ describe('findRoleById', () => {
 
     await findRoleById('test-id');
 
-    expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT * FROM roles WHERE id = $1',
-      ['test-id'],
-    );
+    expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM roles WHERE id = $1', ['test-id']);
   });
 });
 
@@ -226,35 +221,6 @@ describe('updateRole', () => {
   });
 });
 
-describe('deleteRole', () => {
-  it('should return true when a role is deleted', async () => {
-    mockPool([], 1);
-
-    const result = await deleteRole('role-uuid-1');
-
-    expect(result).toBe(true);
-  });
-
-  it('should return false when role does not exist', async () => {
-    mockPool([], 0);
-
-    const result = await deleteRole('non-existent');
-
-    expect(result).toBe(false);
-  });
-
-  it('should execute DELETE with the correct ID', async () => {
-    const mockQuery = mockPool([], 1);
-
-    await deleteRole('test-id');
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      'DELETE FROM roles WHERE id = $1',
-      ['test-id'],
-    );
-  });
-});
-
 describe('listRolesByApplication', () => {
   it('should return all roles for an application ordered by name', async () => {
     const rows = [
@@ -325,34 +291,5 @@ describe('roleSlugExists', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).not.toContain('id !=');
     expect(params).toEqual(['app-1', 'my-slug']);
-  });
-});
-
-describe('countUsersWithRole', () => {
-  it('should return the user count', async () => {
-    mockPool([{ count: '5' }]);
-
-    const result = await countUsersWithRole('role-uuid-1');
-
-    expect(result).toBe(5);
-  });
-
-  it('should return 0 when no users have the role', async () => {
-    mockPool([{ count: '0' }]);
-
-    const result = await countUsersWithRole('role-uuid-1');
-
-    expect(result).toBe(0);
-  });
-
-  it('should query the user_roles table', async () => {
-    const mockQuery = mockPool([{ count: '0' }]);
-
-    await countUsersWithRole('test-role');
-
-    expect(mockQuery).toHaveBeenCalledWith(
-      'SELECT COUNT(*)::int as count FROM user_roles WHERE role_id = $1',
-      ['test-role'],
-    );
   });
 });

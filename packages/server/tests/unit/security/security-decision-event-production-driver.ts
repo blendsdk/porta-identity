@@ -304,7 +304,7 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
     const pool = getPool();
     const runId = randomUUID();
     const organizationId = randomUUID();
-    const actorId = randomUUID();
+    const actorId = validActor ? randomUUID() : 'invalid-actor-id';
     await pool.query(
       'CREATE TABLE IF NOT EXISTS security_decision_driver_mutations (run_id UUID PRIMARY KEY)',
     );
@@ -368,7 +368,7 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       }>(
         `SELECT event_type, event_category, description, metadata FROM audit_log
          WHERE actor_id = $1 AND event_type = 'admin.mutation.committed'`,
-        [actorId],
+        [validActor ? actorId : null],
       );
       return {
         caseId,

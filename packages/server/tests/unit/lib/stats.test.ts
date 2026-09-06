@@ -37,8 +37,7 @@ describe('stats service', () => {
         .mockResolvedValueOnce({
           rows: [
             { status: 'active', count: '5' },
-            { status: 'suspended', count: '1' },
-            { status: 'archived', count: '2' },
+            { status: 'suspended', count: '3' },
           ],
         })
         // 2. countByStatus('users')
@@ -97,7 +96,7 @@ describe('stats service', () => {
 
       const stats = await getStatsOverview();
 
-      expect(stats.organizations).toEqual({ total: 8, active: 5, suspended: 1, archived: 2 });
+      expect(stats.organizations).toEqual({ total: 8, active: 5, suspended: 3 });
       expect(stats.users.total).toBe(115);
       expect(stats.users.active).toBe(100);
       expect(stats.users.newLast7d).toBe(12);
@@ -172,9 +171,7 @@ describe('stats service', () => {
         })
         // 2. countByStatus('clients', org)
         .mockResolvedValueOnce({
-          rows: [
-            { status: 'active', count: '4' },
-          ],
+          rows: [{ status: 'active', count: '4' }],
         })
         // 3. countNewUsers('7 days', orgId)
         .mockResolvedValueOnce({ rows: [{ count: '3' }] })

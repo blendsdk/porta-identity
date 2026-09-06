@@ -306,21 +306,27 @@ describe('custom claims routes', () => {
 
       const layer = findLayer(createCustomClaimRouter(), 'DELETE', '/:claimId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', claimId: 'claim-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          claimId: '10000000-0000-4000-8000-000000000002',
+        },
       });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
     });
 
-    it('should throw 404 when definition not found', async () => {
+    it('should throw 404 when definition is not found', async () => {
       vi.mocked(claimService.deleteDefinition).mockRejectedValue(
         new ClaimNotFoundError('nonexistent'),
       );
 
       const layer = findLayer(createCustomClaimRouter(), 'DELETE', '/:claimId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', claimId: 'nonexistent' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          claimId: '10000000-0000-4000-8000-000000000002',
+        },
       });
 
       await expect(execHandler(layer!, ctx)).rejects.toThrow('not found');

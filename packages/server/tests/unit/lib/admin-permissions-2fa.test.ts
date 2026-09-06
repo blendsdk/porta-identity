@@ -44,9 +44,8 @@ describe('ALL_ADMIN_PERMISSIONS with USER_2FA', () => {
     expect(ALL_ADMIN_PERMISSIONS).toContain('admin:user:2fa');
   });
 
-  it('should have exactly 43 permissions', () => {
-    // 42 original + 1 new USER_2FA = 43
-    expect(ALL_ADMIN_PERMISSIONS.length).toBe(43);
+  it('should include the complete current permission catalog', () => {
+    expect(ALL_ADMIN_PERMISSIONS.length).toBe(45);
   });
 });
 
