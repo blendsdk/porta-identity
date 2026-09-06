@@ -1,7 +1,7 @@
 # Execution Quality Reviews: Record Deletion and Lifecycle Simplification
 
-> **Status**: Phase 1 review passed
-> **Last Updated**: 2026-09-06 09:08
+> **Status**: Phase 2 review passed
+> **Last Updated**: 2026-09-06 17:14
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Session and OIDC Authority Foundation
@@ -31,3 +31,30 @@ The single remediation re-review passed with no critical, major, or minor findin
 that the changes are minimal, PostgreSQL revocation completes before Redis deletion, concurrent
 Session publication cannot clear `revoked_at`, and a Redis deletion failure leaves a payload that
 the PostgreSQL authority check rejects.
+
+## Phase 2: Atomic Deletion, Routes, Audit, Cleanup, and Invitations
+
+**Review boundary:** `f6c56a15..8ee6d008` plus Task 2.13 documentation and stale-test cleanup
+**Scope mode:** Strict
+**Verification:** Server lint/typecheck, 2,906 unit, 422 integration, 127 E2E, 223 pentest, 96
+structure, 15/15 operational protocol assurance, and the documentation build passed. Operational
+security assurance reported zero product failures, zero execution failures, and four registered
+incomplete observability cases.
+
+| ID      | Severity | Lens        | Finding                                                                                  | Minimum correction                                                                                 | Ruling      |
+| ------- | -------- | ----------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ----------- |
+| RV2-001 | 🟠 Major | Correctness | User deletion could register and await a stale post-commit user-cache write              | Make the existing membership guard use the live repository lookup                                  | ✅ Accepted |
+| RV2-002 | 🟠 Major | Correctness | Task 2.13 removed the real-server inactive-client token rejection assertion              | Restore the existing E2E case with retained status `inactive`                                      | ✅ Accepted |
+| RV2-003 | 🟡 Minor | Correctness | Unreachable whole-client `revoked` vocabulary remained in secret creation                | Remove the dead branch and retain secret-level revocation                                           | ✅ Accepted |
+| RV2-004 | 🟡 Minor | Correctness | The custom-claim data-model section described nonexistent tables and columns             | Align the diagram and tables with migration 007                                                     | ✅ Accepted |
+| SA2-001 | 🟠 Major | Security    | UUID-shaped organization slugs made destructive target selection ambiguous              | Give exact UUID IDs deterministic precedence in the existing locked query and add collision coverage | ✅ Accepted |
+| SA2-002 | 🟠 Major | Security    | Module capture omitted permissions that PostgreSQL could cascade by `module_id`          | Capture every permission with the target `module_id` and prove affected-user revocation             | ✅ Accepted |
+
+The user accepted all six narrow corrections after an independent overengineering challenge. The
+challenge confirmed that no new lookup service, middleware mode, UUID resolver, schema restriction,
+foreign key, trigger, repair migration, worker, queue, or normalization system was needed.
+
+Both remediation re-reviews passed with no critical, major, or minor findings. They confirmed live
+tenant membership checks do not touch Redis, UUID syntax selects the ID row deterministically,
+module deletion captures every permission its foreign key deletes, and the lifecycle/documentation
+cleanup retains the intended inactive-client and secret-revocation behavior.

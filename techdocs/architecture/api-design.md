@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-09-06
 
 ## Overview
 
@@ -41,6 +41,35 @@ All admin endpoints follow a consistent RESTful pattern:
 | `PUT`    | Full update                    | Yes        | 200 + body    |
 | `PATCH`  | Partial update / status change | Yes        | 200 + body    |
 | `DELETE` | Remove resource                | Yes        | 204 (no body) |
+
+### Permanent record deletion
+
+The Admin API exposes eight physical deletion routes. Each route requires Admin authentication,
+validates every path identifier, and checks its dedicated Delete permission. Nested resources are
+resolved through both parent and child identifiers; a child from another parent is indistinguishable
+from a missing child.
+
+| Resource           | Route                                                             | Permission                |
+| ------------------ | ----------------------------------------------------------------- | ------------------------- |
+| Organization       | `DELETE /api/admin/organizations/:idOrSlug`                       | `admin:org:delete`        |
+| Application        | `DELETE /api/admin/applications/:id`                              | `admin:app:delete`        |
+| Application module | `DELETE /api/admin/applications/:appId/modules/:moduleId`         | `admin:module:delete`     |
+| Client             | `DELETE /api/admin/clients/:id`                                   | `admin:client:delete`     |
+| Role               | `DELETE /api/admin/applications/:appId/roles/:roleId`             | `admin:role:delete`       |
+| Permission         | `DELETE /api/admin/applications/:appId/permissions/:permissionId` | `admin:permission:delete` |
+| Claim definition   | `DELETE /api/admin/applications/:appId/claims/:claimId`           | `admin:claim:delete`      |
+| User               | `DELETE /api/admin/organizations/:orgId/users/:userId`            | `admin:user:delete`       |
+
+A successful deletion returns `204` with no response body. A missing or parent-mismatched record
+returns a fixed resource-specific `404`; it does not expose dependency counts or partial cascade
+details. Repeating a completed deletion therefore returns `404` and creates no second deletion
+event.
+
+Archive, Restore, user Purge, and whole-client Revoke are not Admin API lifecycle operations.
+Applications, modules, and clients retain reversible Activate/Deactivate operations; organizations
+and users retain their applicable reversible status operations. Revocation remains available for
+security artifacts, including client credentials, sessions, and tokens. The retained
+`admin:client:revoke` permission applies to client-secret revocation, not client lifecycle.
 
 ### Endpoint Inventory
 
@@ -236,7 +265,6 @@ All errors follow a consistent JSON format:
 | 403  | Forbidden             | Insufficient permissions or suspended tenant |
 | 404  | Not Found             | Resource does not exist                      |
 | 409  | Conflict              | Duplicate slug, email uniqueness violation   |
-| 410  | Gone                  | Archived tenant                              |
 | 412  | Precondition Failed   | ETag mismatch                                |
 | 429  | Too Many Requests     | Rate limit exceeded                          |
 | 500  | Internal Server Error | Unhandled error (details hidden)             |
@@ -279,6 +307,14 @@ graph LR
 5. **Audit log** records the action (best-effort for compatibility workflows; transaction-bound
    for covered administrative data mutations)
 6. **Response** is returned as JSON
+
+Permanent deletion tightens this pattern to one request-owned PostgreSQL transaction: lock and
+capture the target graph, revoke affected tracked sessions, remove identifiable PostgreSQL OIDC
+payloads, write one bounded deletion audit event, physically delete through foreign-key cascades,
+and register one immutable post-commit cleanup descriptor. A failure before commit rolls back all
+of those database changes and schedules no Redis work. After commit, one detached best-effort Redis
+pass runs without delaying the HTTP response. See [Security](./security.md#permanent-deletion-authority)
+for the authority and failure boundaries.
 
 ### Functional Style
 

@@ -235,7 +235,7 @@ The tenant resolver middleware validates the organization from the URL path:
 
 1. Extract `orgSlug` from `/:orgSlug/*` route parameter
 2. Lookup organization (cache-first, DB fallback)
-3. Verify organization status: `active` → proceed, `suspended` → 403, `archived` → 410
+3. Verify organization status: `active` → proceed, `suspended` → 403
 4. Set `ctx.state.organization` for downstream handlers
 
 Cross-tenant requests are impossible because:
@@ -354,6 +354,44 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 - **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
 
+## Permanent Deletion Authority
+
+Permanent deletion uses PostgreSQL as the synchronous authority boundary. Each of the eight domain
+services operates inside the request-owned transaction and follows this order:
+
+1. Lock the target and capture its bounded affected graph with parameterized, set-based queries.
+2. Revoke `admin_sessions` for exactly the affected users.
+3. Delete identifiable PostgreSQL `oidc_payloads` using captured users, public clients, and grants.
+4. Insert exactly one resource deletion audit event with safe target identity, state, and parent
+   metadata.
+5. Physically delete the target and let declared foreign-key cascades remove owned rows.
+6. Register one immutable cleanup descriptor that becomes runnable only after commit.
+
+Any failure through target deletion or audit insertion rolls back the transaction. Because the
+cleanup callback is registered on the transaction's post-commit boundary, rollback schedules no
+Redis work. Application deletion is deployment-global, so its affected-user and protocol capture
+can legitimately span organizations; organization and user deletion remain organization-qualified,
+and module, role, permission, and claim deletion remain application-qualified.
+
+The detached cleanup callback schedules one `setImmediate` Redis-only pass and returns without
+waiting for it. That pass deletes exact captured cache and grant keys, compares reusable
+organization/application slug entries with the deleted UUID before removing them, and performs one
+terminating scan of the closed `oidc:*` namespace for short-lived artifacts that reference captured
+users, public clients, grants, or Session authorization pairs. Malformed or unrelated entries are
+ignored. Cleanup failure is absorbed with one fixed identifier-free warning; there is no retry,
+worker, queue, or open PostgreSQL transaction. Live PostgreSQL validation remains authoritative if
+Redis cleanup is delayed or fails.
+
+Two control-plane guards prevent deletion from removing the ability to administer Porta:
+
+- The organization marked `is_super_admin` cannot be deleted through either the service or
+  repository boundary.
+- Deleting a user from that organization locks its single organization row before target/survivor
+  evaluation and requires another active user assigned the exact built-in `porta-super-admin` role
+  for the `porta-admin` application. Concurrent attempts therefore cannot both remove the last
+  qualifying administrator. A current administrator may delete their own account when a survivor
+  exists.
+
 ## Audit Trail
 
 All security-relevant actions are logged to the `audit_log` table:
@@ -371,6 +409,12 @@ successful state-changing administrative request also writes a durable business 
 the same PostgreSQL transaction as its database mutation. A failed audit insert therefore rolls
 back that request's database changes. Bulk operations preserve their documented per-item
 transactions, while imports retain one manifest-wide transaction.
+
+The deletion events are `org.deleted`, `app.deleted`, `app.module.deleted`, `client.deleted`,
+`role.deleted`, `permission.deleted`, `claim.deleted`, and `user.deleted`. Audit foreign keys for
+the organization, subject user, and actor use `ON DELETE SET NULL`, so deletion preserves historical
+evidence. Generic mutation audit resolves its actor through the live user table and permits a null
+result, allowing self-deletion to commit without retaining a live account solely for attribution.
 
 Covered administrative and public-authentication requests emit one strict
 `security.decision.v1` terminal event after the final response status is known. Correlation starts
