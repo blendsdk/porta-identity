@@ -125,6 +125,7 @@ function featureSession(overrides: Partial<AdminApplicationSession> = {}): Admin
       listModules: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
       addModule: vi.fn(),
       updateModule: vi.fn(),
+      activateModule: mutation,
       deactivateModule: mutation,
       deleteModule: mutation,
     },

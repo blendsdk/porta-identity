@@ -17,6 +17,7 @@
  *   POST   /:id/modules                     — Create module
  *   GET    /:id/modules                     — List modules
  *   PUT    /:id/modules/:moduleId           — Update module
+ *   POST   /:id/modules/:moduleId/activate   — Activate module
  *   POST   /:id/modules/:moduleId/deactivate — Deactivate module
  *   DELETE /:appId/modules/:moduleId        — Delete module
  *
@@ -283,6 +284,22 @@ export function createApplicationRouter(): Router {
         const body = updateModuleSchema.parse(ctx.request.body);
         const mod = await applicationService.updateModule(ctx.params.id, ctx.params.moduleId, body);
         ctx.body = { data: mod };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // POST /:id/modules/:moduleId/activate — Activate module
+  // -------------------------------------------------------------------------
+  router.post(
+    '/:id/modules/:moduleId/activate',
+    requirePermission(ADMIN_PERMISSIONS.APP_UPDATE),
+    async (ctx) => {
+      try {
+        await applicationService.activateModule(ctx.params.id, ctx.params.moduleId);
+        ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
       }

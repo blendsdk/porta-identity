@@ -18,7 +18,7 @@
  * Module management:
  *   - Modules belong to an application (parent must exist)
  *   - Module slugs are unique within their parent application
- *   - Module deactivation sets status to inactive
+ *   - Modules can move between active and inactive status
  */
 
 import type {
@@ -462,6 +462,39 @@ export async function deactivateModule(
 
   await writeAuditLog({
     eventType: 'app.module.deactivated',
+    eventCategory: 'admin',
+    actorId,
+    metadata: { moduleId: mod.id, applicationId: mod.applicationId },
+  });
+}
+
+/**
+ * Activate an inactive module.
+ *
+ * @param applicationId - Authoritative parent application UUID
+ * @param moduleId - Module UUID
+ * @param actorId - UUID of the user performing the action
+ * @throws ApplicationNotFoundError if the module is not owned by the application
+ * @throws ApplicationValidationError if the module is not inactive
+ */
+export async function activateModule(
+  applicationId: string,
+  moduleId: string,
+  actorId?: string,
+): Promise<void> {
+  const mod = await findModuleById(applicationId, moduleId);
+  if (!mod || mod.applicationId !== applicationId) {
+    throw new ApplicationNotFoundError(moduleId);
+  }
+
+  if (mod.status !== 'inactive') {
+    throw new ApplicationValidationError(`Cannot activate module from status: ${mod.status}`);
+  }
+
+  await repoUpdateModule(applicationId, moduleId, { status: 'active' });
+
+  await writeAuditLog({
+    eventType: 'app.module.activated',
     eventCategory: 'admin',
     actorId,
     metadata: { moduleId: mod.id, applicationId: mod.applicationId },

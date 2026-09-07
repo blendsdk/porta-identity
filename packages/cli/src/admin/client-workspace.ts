@@ -80,12 +80,12 @@ const FAILURE_LABELS = {
 } as const;
 
 /** Returns the application name only when the session may inspect applications. */
-function applicationLabel(
-  client: AdminClient,
-  options: AdminClientWorkspaceOptions,
-): string {
+function applicationLabel(client: AdminClient, options: AdminClientWorkspaceOptions): string {
   if (!options.capabilities.canReadApplications) return client.applicationId;
-  return options.applications.find((application) => application.id === client.applicationId)?.name ?? client.applicationId;
+  return (
+    options.applications.find((application) => application.id === client.applicationId)?.name ??
+    client.applicationId
+  );
 }
 
 /** Builds the required complete client catalog columns. */
@@ -127,17 +127,12 @@ export function createAdminClientWorkspace(
   let focusedClientId: string | null = null;
   let disposed = false;
 
-  /** Creates a fixed-height action button. */
+  /** Creates an action button whose natural size is resolved by its Layout DSL row. */
   const action = (
     label: string,
     intent: AdminClientIntent,
-    width: number,
     disabled: boolean | (() => boolean) = false,
-  ): Button =>
-    fixed(
-      new Button(label, { disabled, onClick: () => options.onIntent(intent) }),
-      width,
-    );
+  ): Button => new Button(label, { disabled, onClick: () => options.onIntent(intent) });
 
   /** Adds a compact status row when a retained projection is loading or failed. */
   const statusRow = (status: ProjectionStatus | undefined): View | undefined => {
@@ -146,10 +141,7 @@ export function createAdminClientWorkspace(
       ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
       : undefined;
     if (retry) currentFocus = retry;
-    return fixed(
-      row({ gap: 1 }, grow(new Text(status.label)), retry && fixed(retry, 10)),
-      2,
-    );
+    return fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2);
   };
 
   /** Renders the complete same-organization catalog. */
@@ -168,9 +160,12 @@ export function createAdminClientWorkspace(
     });
     const heading = row(
       { gap: 1 },
-      fixed(new Text(`OIDC Clients — ${options.organization?.name ?? 'organization required'}`), 40),
+      fixed(
+        new Text(`OIDC Clients — ${options.organization?.name ?? 'organization required'}`),
+        40,
+      ),
       spacer(),
-      fixed(create, 11),
+      create,
     );
     let body: View;
     if (projection.clients.length === 0) {
@@ -179,7 +174,10 @@ export function createAdminClientWorkspace(
     } else {
       const rows: Signal<AdminClient[]> = signal([...projection.clients]);
       const focused = signal(
-        Math.max(0, projection.clients.findIndex((item) => item.id === focusedClientId)),
+        Math.max(
+          0,
+          projection.clients.findIndex((item) => item.id === focusedClientId),
+        ),
       );
       const grid = new DataGrid({
         rows,
@@ -194,15 +192,16 @@ export function createAdminClientWorkspace(
       body = grid;
       currentFocus = grid.rows;
     }
-    const denial = options.organization?.status !== 'active'
-      ? 'Create requires an active organization'
-      : !options.capabilities.canCreateClients
-      ? 'Create requires client create'
-      : !options.capabilities.canReadApplications
-        ? 'Create requires application read'
-        : !options.applications.some((application) => application.status === 'active')
-          ? 'Create requires an active application'
-        : undefined;
+    const denial =
+      options.organization?.status !== 'active'
+        ? 'Create requires an active organization'
+        : !options.capabilities.canCreateClients
+          ? 'Create requires client create'
+          : !options.capabilities.canReadApplications
+            ? 'Create requires application read'
+            : !options.applications.some((application) => application.status === 'active')
+              ? 'Create requires an active application'
+              : undefined;
     const firstClient = projection.clients[0];
     const applicationSummary = firstClient
       ? `Application: ${applicationLabel(firstClient, options)}`
@@ -232,23 +231,32 @@ export function createAdminClientWorkspace(
     const canUpdate = options.capabilities.canUpdateClients;
     const canDelete = options.capabilities.canDeleteClients;
     const application = options.capabilities.canReadApplications
-      ? projection.applicationName ?? applicationLabel(selected, options)
+      ? (projection.applicationName ?? applicationLabel(selected, options))
       : selected.applicationId;
-    const lifecycle = selected.status === 'inactive'
-      ? action('~A~ctivate', { kind: 'activate', clientId: selected.id }, 12, !canUpdate)
-      : action('~D~eactivate', { kind: 'deactivate', clientId: selected.id }, 14, !canUpdate);
+    const lifecycle =
+      selected.status === 'inactive'
+        ? action('~A~ctivate', { kind: 'activate', clientId: selected.id }, !canUpdate)
+        : action('~D~eactivate', { kind: 'deactivate', clientId: selected.id }, !canUpdate);
     const configuration = row(
       { gap: 1 },
       ...(['Basic', 'Redirects', 'Protocol', 'Login'] as const).map((tab) =>
-        action(`~${tab[0]}~${tab.slice(1)}`, { kind: 'edit', clientId: selected.id, tab }, tab.length + 4, !canUpdate),
+        action(
+          `~${tab[0]}~${tab.slice(1)}`,
+          { kind: 'edit', clientId: selected.id, tab },
+          !canUpdate,
+        ),
       ),
-      action('~S~ecrets', { kind: 'secrets', clientId: selected.id }, 11, selected.clientType === 'public'),
+      action(
+        '~S~ecrets',
+        { kind: 'secrets', clientId: selected.id },
+        selected.clientType === 'public',
+      ),
     );
     const controls = row(
       { gap: 1 },
-      action('~B~ack', { kind: 'back' }, 9),
+      action('~B~ack', { kind: 'back' }),
       lifecycle,
-      action('Delete', { kind: 'delete', clientId: selected.id }, 10, !canDelete),
+      action('Delete', { kind: 'delete', clientId: selected.id }, !canDelete),
       spacer(),
     );
     const details = [
@@ -277,8 +285,10 @@ export function createAdminClientWorkspace(
         col(
           { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           statusRow(status),
-          !options.capabilities.canUpdateClients && fixed(new Text('Configuration and lifecycle require client update'), 1),
-          !options.capabilities.canDeleteClients && fixed(new Text('Delete requires client delete'), 1),
+          !options.capabilities.canUpdateClients &&
+            fixed(new Text('Configuration and lifecycle require client update'), 1),
+          !options.capabilities.canDeleteClients &&
+            fixed(new Text('Delete requires client delete'), 1),
           fixed(configuration, 2),
           grow(new Text(details.join('\n'))),
           fixed(controls, 2),
@@ -294,8 +304,7 @@ export function createAdminClientWorkspace(
     status?: ProjectionStatus,
   ): void => {
     const selectedSecretId = signal<string | null>(projection.secrets[0]?.id ?? null);
-    const eligible =
-      projection.client.clientType === 'confidential';
+    const eligible = projection.client.clientType === 'confidential';
     const canUpdate = eligible && options.capabilities.canUpdateClients;
     const canRevoke = eligible && options.capabilities.canRevokeClientSecrets;
     const rows: Signal<AdminClientSecret[]> = signal([...projection.secrets]);
@@ -308,32 +317,51 @@ export function createAdminClientWorkspace(
     const generate = action(
       '~G~enerate',
       { kind: 'generate-secret', clientId: projection.client.id },
-      12,
       !canUpdate,
     );
-    const revoke = fixed(
-      new Button('~R~evoke', {
-        disabled: () => {
-          const selected = projection.secrets.find((secret) => secret.id === selectedSecretId());
-          return !canRevoke || selected?.status !== 'active';
-        },
-        onClick: () => {
-          const secretId = selectedSecretId.peek();
-          if (secretId) options.onIntent({ kind: 'revoke-secret', clientId: projection.client.id, secretId });
-        },
-      }),
-      10,
-    );
+    const revoke = new Button('~R~evoke', {
+      disabled: () => {
+        const selected = projection.secrets.find((secret) => secret.id === selectedSecretId());
+        return !canRevoke || selected?.status !== 'active';
+      },
+      onClick: () => {
+        const secretId = selectedSecretId.peek();
+        if (secretId)
+          options.onIntent({
+            kind: 'revoke-secret',
+            clientId: projection.client.id,
+            secretId,
+          });
+      },
+    });
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           fixed(new Text(`Secrets — ${projection.client.clientName}`), 1),
-          projection.secrets[0] && fixed(new Text(`Selected secret: ${projection.secrets[0].label ?? projection.secrets[0].id}`), 1),
+          projection.secrets[0] &&
+            fixed(
+              new Text(
+                `Selected secret: ${projection.secrets[0].label ?? projection.secrets[0].id}`,
+              ),
+              1,
+            ),
           statusRow(status),
-          fixed(new Text('Generate a modern secret for a legacy-only client before authentication.'), 1),
+          fixed(
+            new Text('Generate a modern secret for a legacy-only client before authentication.'),
+            1,
+          ),
           grow(projection.secrets.length > 0 ? grid : new Text('No client secrets')),
-          fixed(row({ gap: 1 }, action('~B~ack', { kind: 'select', clientId: projection.client.id }, 9), generate, revoke, spacer()), 2),
+          fixed(
+            row(
+              { gap: 1 },
+              action('~B~ack', { kind: 'select', clientId: projection.client.id }),
+              generate,
+              revoke,
+              spacer(),
+            ),
+            2,
+          ),
         ),
       ),
     );
@@ -362,7 +390,7 @@ export function createAdminClientWorkspace(
             { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
             fixed(new Text('OIDC Clients'), 1),
             fixed(new Text('organization required'), 1),
-            fixed(disabled, 11),
+            row(disabled, spacer()),
             spacer(),
           ),
         ),
@@ -376,11 +404,12 @@ export function createAdminClientWorkspace(
     if (state.kind === 'list') return renderList(state);
     if (state.kind === 'detail') return renderDetail(state);
     if (state.kind === 'secrets') return renderSecrets(state);
-    const label = state.kind === 'loading'
-      ? 'Loading OIDC clients…'
-      : state.kind === 'indeterminate'
-        ? 'The operation outcome is unknown; reload is required'
-        : FAILURE_LABELS[state.failure];
+    const label =
+      state.kind === 'loading'
+        ? 'Loading OIDC clients…'
+        : state.kind === 'indeterminate'
+          ? 'The operation outcome is unknown; reload is required'
+          : FAILURE_LABELS[state.failure];
     if (state.previous) {
       const previous = normalizePrevious(state.previous, state.organizationId);
       const status = { label, retry: state.kind !== 'loading' };
@@ -396,7 +425,7 @@ export function createAdminClientWorkspace(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           fixed(new Text(`OIDC Clients — ${options.organization.name}`), 1),
           fixed(new Text(label), 1),
-          state.kind !== 'loading' && fixed(retry, 10),
+          state.kind !== 'loading' && row(retry, spacer()),
           spacer(),
         ),
       ),

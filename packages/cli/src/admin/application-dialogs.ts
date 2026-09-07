@@ -248,8 +248,8 @@ function formLayout(
       row(
         { gap: 1 },
         spacer(),
-        fixed(new Button(submitLabel, { command: Commands.ok, default: true }), 12),
-        fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+        new Button(submitLabel, { command: Commands.ok, default: true }),
+        new Button('Cancel', { command: Commands.cancel }),
       ),
       2,
     ),
@@ -333,8 +333,8 @@ export async function showApplicationLifecycleDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(new Button(title, { command: Commands.ok, default: true }), 22),
-            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+            new Button(title, { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
           ),
           2,
         ),
@@ -447,8 +447,8 @@ export async function showModuleDeactivationDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(new Button('Deactivate', { command: Commands.ok, default: true }), 14),
-            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+            new Button('Deactivate', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
           ),
           2,
         ),

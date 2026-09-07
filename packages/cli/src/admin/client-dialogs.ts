@@ -372,7 +372,7 @@ function collectionEditor(
     fixed(new Text(title), 1),
     fixed(grid, 6),
     inputRow('Value', input),
-    fixed(row({ gap: 1 }, fixed(add, 9), fixed(edit, 9), fixed(remove, 11), spacer()), 2),
+    fixed(row({ gap: 1 }, add, edit, remove, spacer()), 2),
   );
   return { content, grid };
 }
@@ -652,14 +652,11 @@ export async function showClientConfigurationDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(
-              new Button(options.mode === 'create' ? '~C~reate' : '~S~ave', {
-                command: Commands.ok,
-                default: true,
-              }),
-              12,
-            ),
-            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+            new Button(options.mode === 'create' ? '~C~reate' : '~S~ave', {
+              command: Commands.ok,
+              default: true,
+            }),
+            new Button('Cancel', { command: Commands.cancel }),
           ),
           2,
         ),
@@ -695,8 +692,8 @@ export async function showClientLifecycleDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(new Button('Deactivate', { command: Commands.ok, default: true }), 20),
-            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+            new Button('Deactivate', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
           ),
           2,
         ),
@@ -761,8 +758,8 @@ export async function showGenerateClientSecretDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(new Button('~G~enerate', { command: Commands.ok, default: true }), 12),
-            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+            new Button('~G~enerate', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
           ),
           2,
         ),
@@ -800,8 +797,8 @@ export async function showRevokeClientSecretDialog(
           row(
             { gap: 1 },
             spacer(),
-            fixed(new Button('Revoke permanently', { command: Commands.ok, default: true }), 20),
-            fixed(new Button('Cancel', { command: Commands.cancel }), 10),
+            new Button('Revoke permanently', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
           ),
           2,
         ),
@@ -836,11 +833,7 @@ export async function showOneTimeClientSecretDialog(
         fixed(new Text(value.plaintext), 2),
         fixed(new Text('Store this value now. It cannot be shown again.'), 1),
         fixed(
-          row(
-            { gap: 1 },
-            spacer(),
-            fixed(new Button('Close', { command: Commands.ok, default: true }), 10),
-          ),
+          row({ gap: 1 }, spacer(), new Button('Close', { command: Commands.ok, default: true })),
           2,
         ),
       ),

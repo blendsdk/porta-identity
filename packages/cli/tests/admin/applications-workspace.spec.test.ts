@@ -283,9 +283,7 @@ describe('global applications workspace', () => {
     );
     expect(moduleActions).not.toContain('Back to applications');
     expect(
-      views
-        .filter((view) => view instanceof Button)
-        .map((button) => button.activation.label),
+      views.filter((view) => view instanceof Button).map((button) => button.activation.label),
     ).toContain('Back to applications');
 
     // Every detail action keeps both face-padding cells and its shadow column.
@@ -303,6 +301,7 @@ describe('global applications workspace', () => {
       (view): view is Button =>
         view instanceof Button && detailActionLabels.has(view.activation.label),
     )) {
+      expect(button.layout.size).toBeUndefined();
       expect(button.bounds.width).toBe(button.measure().width);
     }
   });
@@ -370,7 +369,7 @@ describe('global applications workspace', () => {
     });
   });
 
-  it('keeps deactivation disabled when the selected module is already inactive', async () => {
+  it('offers activation when the selected module is inactive', async () => {
     const inactiveModule = { ...moduleRow, status: 'inactive' as const };
     const mounted = mountWorkspace({
       kind: 'detail',
@@ -382,12 +381,7 @@ describe('global applications workspace', () => {
     });
     await settle();
     const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
-    const buttons = descendants(mounted.window).filter((view) => view instanceof Button);
-    const edit = buttons.find((button) => button.activation.label === 'Edit module');
-    const deactivate = buttons.find((button) => button.activation.label === 'Deactivate module');
-    if (!(grid instanceof DataGrid) || !edit || !deactivate) {
-      throw new Error('Inactive module controls missing.');
-    }
+    if (!(grid instanceof DataGrid)) throw new Error('Module grid missing.');
 
     mounted.host.loop.focusView(grid.rows);
     mounted.host.loop.dispatch({
@@ -398,9 +392,20 @@ describe('global applications workspace', () => {
       shift: false,
     });
     await settle();
-    click(mounted.host, deactivate);
-    expect(mounted.intents).toEqual([]);
+    const buttons = descendants(mounted.window).filter((view) => view instanceof Button);
+    const edit = buttons.find((button) => button.activation.label === 'Edit module');
+    const activateModule = buttons.find((button) => button.activation.label === 'Activate module');
+    if (!edit || !activateModule) throw new Error('Inactive module controls missing.');
+    expect(buttons.some((button) => button.activation.label === 'Deactivate module')).toBe(false);
 
+    activate(mounted.host, activateModule);
+    expect(mounted.intents).toContainEqual({
+      kind: 'activate-module',
+      applicationId,
+      moduleId,
+    });
+
+    mounted.intents.length = 0;
     activate(mounted.host, edit);
     expect(mounted.intents).toContainEqual({
       kind: 'edit-module',

@@ -20,6 +20,7 @@ const mockApplications = {
   listModules: vi.fn(),
   addModule: vi.fn(),
   updateModule: vi.fn(),
+  activateModule: vi.fn(),
   deactivateModule: vi.fn(),
   deleteModule: vi.fn(),
 };
@@ -322,6 +323,11 @@ describe('app module command', () => {
   it('deactivates a module', async () => {
     await invokeSubcommand(['module', 'deactivate', 'app-1', 'mod-1'], {});
     expect(mockApplications.deactivateModule).toHaveBeenCalledWith('app-1', 'mod-1');
+  });
+
+  it('activates a module', async () => {
+    await invokeSubcommand(['module', 'activate', 'app-1', 'mod-1'], {});
+    expect(mockApplications.activateModule).toHaveBeenCalledWith('app-1', 'mod-1');
   });
 
   it('deletes a module after confirmation', async () => {

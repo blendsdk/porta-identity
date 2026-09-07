@@ -57,6 +57,7 @@ import {
   activateApplication,
   createModule,
   updateModule,
+  activateModule,
   deactivateModule,
   listModules,
 } from '../../../src/applications/service.js';
@@ -459,6 +460,44 @@ describe('application service', () => {
 
       await expect(deactivateModule('app-uuid-1', 'mod-uuid-1')).rejects.toThrow(
         'Cannot deactivate module',
+      );
+    });
+  });
+
+  describe('activateModule', () => {
+    it('should activate an inactive module', async () => {
+      const mod = createTestModule({ status: 'inactive' });
+      (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
+      (repoUpdateModule as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...mod,
+        status: 'active',
+      });
+
+      await activateModule('app-uuid-1', 'mod-uuid-1', 'actor-1');
+
+      expect(repoUpdateModule).toHaveBeenCalledWith('app-uuid-1', 'mod-uuid-1', {
+        status: 'active',
+      });
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'app.module.activated' }),
+      );
+    });
+
+    it('should throw not found when the module is not owned by the application', async () => {
+      const mod = createTestModule({ applicationId: 'different-app' });
+      (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
+
+      await expect(activateModule('app-uuid-1', 'mod-uuid-1')).rejects.toThrow(
+        ApplicationNotFoundError,
+      );
+    });
+
+    it('should reject activation of an active module', async () => {
+      const mod = createTestModule({ status: 'active' });
+      (findModuleById as ReturnType<typeof vi.fn>).mockResolvedValue(mod);
+
+      await expect(activateModule('app-uuid-1', 'mod-uuid-1')).rejects.toThrow(
+        'Cannot activate module',
       );
     });
   });

@@ -39,6 +39,11 @@ interface ModuleDeactivateArgs extends GlobalOptions {
   'module-id': string;
 }
 
+interface ModuleActivateArgs extends GlobalOptions {
+  'app-id': string;
+  'module-id': string;
+}
+
 interface ModuleDeleteArgs extends GlobalOptions {
   'app-id': string;
   'module-id': string;
@@ -184,6 +189,32 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             const client = createClient(argv);
             await client.applications.deactivateModule(argv['app-id'], argv['module-id']);
             success('Module deactivated');
+          } catch (err) {
+            handleError(err, argv.verbose);
+          }
+        },
+      )
+
+      .command<ModuleActivateArgs>(
+        'activate <app-id> <module-id>',
+        'Activate a module',
+        (y) =>
+          y
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module ID',
+            }),
+        async (argv) => {
+          try {
+            const client = createClient(argv);
+            await client.applications.activateModule(argv['app-id'], argv['module-id']);
+            success('Module activated');
           } catch (err) {
             handleError(err, argv.verbose);
           }

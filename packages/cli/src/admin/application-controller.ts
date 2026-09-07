@@ -70,6 +70,8 @@ export interface AdminApplicationController {
     moduleId: string,
     input: UpdateModuleInput,
   ) => Promise<void>;
+  /** Activates a module and reloads authoritative same-parent detail. */
+  readonly activateModule: (applicationId: string, moduleId: string) => Promise<void>;
   /** Confirms module deactivation and reloads authoritative same-parent detail. */
   readonly deactivateModule: (
     applicationId: string,
@@ -417,6 +419,16 @@ export function createAdminApplicationController(
         'canUpdateApplications',
         (operations) =>
           operations.updateModule?.(applicationId, moduleId, input) ??
+          Promise.resolve({ kind: 'cancelled' }),
+        { applicationId },
+        undefined,
+        () => ownsMutableModuleParent(applicationId, moduleId),
+      ),
+    activateModule: (applicationId, moduleId) =>
+      mutate(
+        'canUpdateApplications',
+        (operations) =>
+          operations.activateModule?.(applicationId, moduleId) ??
           Promise.resolve({ kind: 'cancelled' }),
         { applicationId },
         undefined,

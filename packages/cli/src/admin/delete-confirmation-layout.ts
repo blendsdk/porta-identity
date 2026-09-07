@@ -83,26 +83,13 @@ export function deleteConfirmationLayout(
     scrollbars: 'vertical',
   });
   const warningHeight = Math.max(1, wrapText(options.warning, contentWidth).length);
-  const keepWidth = Math.min(options.keep.measure().width, contentWidth);
-  const removeWidth = Math.min(
-    options.remove.measure().width,
-    Math.max(1, contentWidth - keepWidth - 2),
-  );
 
   return {
     content: col(
       { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
       fixed(new Text(options.warning), warningHeight),
       grow(details),
-      fixed(
-        row(
-          { gap: 1 },
-          spacer(),
-          fixed(options.keep, keepWidth),
-          fixed(options.remove, removeWidth),
-        ),
-        2,
-      ),
+      fixed(row({ gap: 1 }, spacer(), options.keep, options.remove), 2),
     ),
     details,
   };

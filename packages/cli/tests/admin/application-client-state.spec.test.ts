@@ -112,6 +112,7 @@ function applicationDomain(overrides: Record<string, unknown> = {}): Record<stri
     listModules: vi.fn(),
     addModule: vi.fn(),
     updateModule: vi.fn(),
+    activateModule: vi.fn(),
     deactivateModule: vi.fn(),
     deleteModule: vi.fn(),
     ...overrides,
@@ -266,6 +267,21 @@ describe('global application administration workflow', () => {
       kind: 'failure',
       failure: 'invalid-response',
     });
+  });
+
+  it('dispatches module activation once through both validated UUIDs', async () => {
+    const { createAdminApplicationOperations } =
+      await import('../../src/admin/application-service.js');
+    const activateModule = vi.fn().mockResolvedValue(undefined);
+    const operations = createAdminApplicationOperations(() =>
+      applicationDomain({ activateModule }),
+    );
+
+    await expect(operations.activateModule(applicationId, moduleId)).resolves.toEqual({
+      kind: 'success',
+    });
+    expect(activateModule).toHaveBeenCalledOnce();
+    expect(activateModule).toHaveBeenCalledWith(applicationId, moduleId);
   });
 
   it('ST-24 rejects a failed complete-catalog load without publishing an earlier page', async () => {

@@ -97,6 +97,8 @@ export interface ApplicationsDomain {
     moduleId: string,
     input: UpdateModuleInput,
   ): Promise<ApplicationModule>;
+  /** Activate an inactive module through its parent-qualified route. */
+  activateModule(appId: string, moduleId: string): Promise<void>;
   /** Deactivate a module through its parent-qualified route. */
   deactivateModule(appId: string, moduleId: string): Promise<void>;
   /** Permanently delete a module through its parent-qualified route. */
@@ -190,6 +192,13 @@ export function createApplicationsDomain(transport: HttpTransport): Applications
         body: input,
       });
       return requireData(res.body, isApplicationModule);
+    },
+
+    async activateModule(appId, moduleId) {
+      await transport.request({
+        method: 'POST',
+        path: `${base}/${appId}/modules/${moduleId}/activate`,
+      });
     },
 
     async deactivateModule(appId, moduleId) {

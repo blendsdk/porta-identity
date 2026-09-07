@@ -19,6 +19,7 @@ const applications = {
   addModule: vi.fn(),
   listModules: vi.fn(),
   updateModule: vi.fn(),
+  activateModule: vi.fn(),
   deactivateModule: vi.fn(),
   deleteModule: vi.fn(),
   removeModule: vi.fn(),
@@ -323,6 +324,13 @@ describe('ST-23 bounded conventional CLI inventory', () => {
 
       expect(applications.deactivateModule).toHaveBeenCalledWith(applicationId, moduleId);
       expect(success).toHaveBeenCalledWith(expect.stringContaining('deactivated'));
+    });
+
+    it('maps module activate argv with both internal IDs', async () => {
+      await invoke('app', ['module', 'activate', applicationId, moduleId]);
+
+      expect(applications.activateModule).toHaveBeenCalledWith(applicationId, moduleId);
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('activated'));
     });
 
     it('maps module delete argv with both internal IDs', async () => {

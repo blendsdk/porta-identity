@@ -17,6 +17,7 @@ vi.mock('../../../src/applications/service.js', () => ({
   deleteApplication: vi.fn(),
   createModule: vi.fn(),
   updateModule: vi.fn(),
+  activateModule: vi.fn(),
   deactivateModule: vi.fn(),
   listModules: vi.fn(),
 }));
@@ -378,6 +379,25 @@ describe('application routes', () => {
 
       expect(ctx.status).toBe(204);
       expect(applicationService.deactivateModule).toHaveBeenCalledWith('app-uuid-1', 'mod-uuid-1');
+    });
+  });
+
+  describe('POST /:id/modules/:moduleId/activate — Activate module', () => {
+    it('should return 204 on success', async () => {
+      (applicationService.activateModule as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+
+      const router = createApplicationRouter();
+      const handler = findHandler(
+        router,
+        'POST',
+        '/api/admin/applications/:id/modules/:moduleId/activate',
+      );
+      const ctx = createMockCtx({ params: { id: 'app-uuid-1', moduleId: 'mod-uuid-1' } });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(204);
+      expect(applicationService.activateModule).toHaveBeenCalledWith('app-uuid-1', 'mod-uuid-1');
     });
   });
 

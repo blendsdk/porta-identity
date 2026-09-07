@@ -10,7 +10,9 @@ import {
   Input,
   Label,
   ListView,
+  row,
   signal,
+  spacer,
   stringWidth,
   Text,
 } from '@jsvision/ui';
@@ -140,10 +142,7 @@ class OrganizationListView extends ListView<AdminOrganizationContext> {
 class OrganizationChooserDialog extends Dialog {
   /** Routes Delete through the same enabled-state and validity checks as standard dialog actions. */
   onEvent(event: DispatchEvent): void {
-    if (
-      event.event.type === 'command' &&
-      event.event.command === DELETE_ORGANIZATION_COMMAND
-    ) {
+    if (event.event.type === 'command' && event.event.command === DELETE_ORGANIZATION_COMMAND) {
       this.handleTerminating(DELETE_ORGANIZATION_COMMAND, event);
       return;
     }
@@ -209,19 +208,14 @@ export async function showAuthenticationGate(
   dialog.add(at(new Text('Authenticate with Porta to continue.'), 2, 1, Math.max(1, width - 6), 1));
   dialog.add(
     at(
-      new Button('~A~uthenticate', { command: Commands.ok, default: true }),
-      Math.max(2, width - 31),
-      Math.max(1, height - 5),
-      16,
+      row(
+        { gap: 1, justify: 'end' },
+        new Button('~A~uthenticate', { command: Commands.ok, default: true }),
+        new AuthenticationQuitButton('~Q~uit', { command: Commands.no }),
+      ),
       2,
-    ),
-  );
-  dialog.add(
-    at(
-      new AuthenticationQuitButton('~Q~uit', { command: Commands.no }),
-      Math.max(2, width - 14),
       Math.max(1, height - 5),
-      10,
+      Math.max(1, width - 6),
       2,
     ),
   );
@@ -304,10 +298,10 @@ export async function showWhoAmIDialog(
   dialog.add(at(new Text(lines.join('\n')), 2, 1, Math.max(1, width - 6), Math.max(1, height - 6)));
   dialog.add(
     at(
-      new Button('~O~K', { command: Commands.ok, default: true }),
-      Math.max(1, Math.floor((width - 12) / 2)),
+      row({ justify: 'center' }, new Button('~O~K', { command: Commands.ok, default: true })),
+      2,
       Math.max(1, height - 5),
-      10,
+      Math.max(1, width - 6),
       2,
     ),
   );
@@ -340,11 +334,7 @@ export async function showOrganizationChooser(
   dialog.add(at(list, 2, 3, Math.max(1, width - 6), Math.max(1, height - 9)));
 
   const createAllowed = options.capabilities.canCreateOrganizations;
-  if (createAllowed) {
-    dialog.add(
-      at(new Button('~C~reate', { command: Commands.yes }), 14, Math.max(1, height - 5), 12, 2),
-    );
-  } else {
+  if (!createAllowed) {
     dialog.add(
       at(
         new Text('Create organization… (requires organization create)'),
@@ -355,17 +345,7 @@ export async function showOrganizationChooser(
       ),
     );
   }
-  if (options.capabilities.canReadOrganizations) {
-    dialog.add(
-      at(
-        new Button('~S~witch', { command: Commands.ok, disabled: () => selected() < 0 }),
-        27,
-        Math.max(1, height - 5),
-        12,
-        2,
-      ),
-    );
-  } else {
+  if (!options.capabilities.canReadOrganizations) {
     dialog.add(
       at(
         new Text('Switch organization… (requires organization read)'),
@@ -376,35 +356,24 @@ export async function showOrganizationChooser(
       ),
     );
   }
-  if (options.capabilities.canDeleteOrganizations) {
-    dialog.add(
-      at(
-        new Button('Delete', {
-          command: DELETE_ORGANIZATION_COMMAND,
-          disabled: () => {
-            const organization = organizations()[selected()];
-            return !organization || organization.isSuperAdmin === true;
-          },
-        }),
-        40,
-        Math.max(1, height - 5),
-        10,
-        2,
-      ),
-    );
-  }
-  dialog.add(
-    at(
-      new Button('~R~eauthenticate', { command: Commands.no }),
-      Math.max(40, width - 24),
-      Math.max(1, height - 5),
-      18,
-      2,
-    ),
+  const chooserActions = row(
+    { gap: 1 },
+    new Button('Cancel', { command: Commands.cancel }),
+    createAllowed && new Button('~C~reate', { command: Commands.yes }),
+    options.capabilities.canReadOrganizations &&
+      new Button('~S~witch', { command: Commands.ok, disabled: () => selected() < 0 }),
+    options.capabilities.canDeleteOrganizations &&
+      new Button('Delete', {
+        command: DELETE_ORGANIZATION_COMMAND,
+        disabled: () => {
+          const organization = organizations()[selected()];
+          return !organization || organization.isSuperAdmin === true;
+        },
+      }),
+    spacer(),
+    new Button('~R~eauthenticate', { command: Commands.no }),
   );
-  dialog.add(
-    at(new Button('Cancel', { command: Commands.cancel }), 2, Math.max(1, height - 5), 10, 2),
-  );
+  dialog.add(at(chooserActions, 2, Math.max(1, height - 5), Math.max(1, width - 6), 2));
 
   if (options.organizations && options.capabilities.canReadOrganizations) {
     void options.organizations.then((result) => {
@@ -473,19 +442,14 @@ export async function showCreateOrganizationDialog(
   dialog.add(at(localeInput, 19, 5, inputWidth, 1));
   dialog.add(
     at(
-      new Button('~C~reate', { command: Commands.ok, default: true }),
-      Math.max(2, width - 27),
-      Math.max(1, height - 5),
-      12,
+      row(
+        { gap: 1, justify: 'end' },
+        new Button('~C~reate', { command: Commands.ok, default: true }),
+        new Button('Cancel', { command: Commands.cancel }),
+      ),
       2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 14),
       Math.max(1, height - 5),
-      10,
+      Math.max(1, width - 6),
       2,
     ),
   );

@@ -10,6 +10,7 @@ import {
   Dialog,
   Group,
   Input,
+  row,
   signal,
   TabView,
   Text,
@@ -90,6 +91,24 @@ function dialogSize(
   };
 }
 
+/** Adds naturally sized buttons to one trailing Layout DSL row. */
+function addDialogActions(
+  dialog: Dialog,
+  width: number,
+  height: number,
+  ...buttons: Button[]
+): void {
+  dialog.add(
+    at(
+      row({ gap: 1, justify: 'end' }, ...buttons),
+      2,
+      Math.max(1, height - 5),
+      Math.max(1, width - 6),
+      2,
+    ),
+  );
+}
+
 /** Converts an abort into the ordinary dialog cancellation command. */
 async function runDialog(
   host: AdminUserDialogHost,
@@ -158,23 +177,12 @@ export async function showCreateUserDialog(
       Math.max(1, height - 7),
     ),
   );
-  dialog.add(
-    at(
-      new Button('~C~reate', { command: Commands.ok, default: true }),
-      Math.max(2, width - 27),
-      Math.max(1, height - 5),
-      12,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 14),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button('~C~reate', { command: Commands.ok, default: true }),
+    new Button('Cancel', { command: Commands.cancel }),
   );
   const inputs = [emailInput, givenNameInput, familyNameInput, passwordInput, confirmationInput];
   for (const tab of tabs.peek().slice(1)) {
@@ -223,14 +231,11 @@ async function showInvitationPreview(
       Math.max(1, height - 6),
     ),
   );
-  dialog.add(
-    at(
-      new Button('~O~K', { command: Commands.ok, default: true }),
-      Math.max(2, width - 13),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button('~O~K', { command: Commands.ok, default: true }),
   );
   await runDialog(host, dialog, operationSignal);
 }
@@ -304,28 +309,17 @@ export async function showInviteUserDialog(
         });
     },
   });
-  dialog.add(at(previewButton, Math.max(2, width - 39), Math.max(1, height - 5), 12, 2));
-  dialog.add(
-    at(
-      new Button('~I~nvite', {
-        command: Commands.ok,
-        default: true,
-        disabled: () => previewBusy,
-      }),
-      Math.max(2, width - 26),
-      Math.max(1, height - 5),
-      11,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 14),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    previewButton,
+    new Button('~I~nvite', {
+      command: Commands.ok,
+      default: true,
+      disabled: () => previewBusy,
+    }),
+    new Button('Cancel', { command: Commands.cancel }),
   );
 
   try {
@@ -384,23 +378,12 @@ export async function showEditUserDialog(
       Math.max(1, height - 7),
     ),
   );
-  dialog.add(
-    at(
-      new Button('~S~ave', { command: Commands.ok, default: true }),
-      Math.max(2, width - 25),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 14),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button('~S~ave', { command: Commands.ok, default: true }),
+    new Button('Cancel', { command: Commands.cancel }),
   );
   const inputs = [givenNameInput, familyNameInput];
   for (const tab of tabs.peek().slice(1)) {
@@ -473,23 +456,12 @@ export async function showSetUserPasswordDialog(
   dialog.add(at(new Text(`User: ${email}`), 2, 1, Math.max(1, width - 6), 1));
   addField(dialog, 'Password', passwordInput, 3, width);
   addField(dialog, 'Confirm password', confirmationInput, 5, width);
-  dialog.add(
-    at(
-      new Button('~S~et password', { command: Commands.ok, default: true }),
-      Math.max(2, width - 32),
-      Math.max(1, height - 5),
-      17,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 14),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button('~S~et password', { command: Commands.ok, default: true }),
+    new Button('Cancel', { command: Commands.cancel }),
   );
   try {
     while (true) {
@@ -540,23 +512,12 @@ export async function showUserConfirmationDialog(
       2,
     ),
   );
-  dialog.add(
-    at(
-      new Button(label, { command: Commands.ok, default: true }),
-      Math.max(2, width - 29),
-      Math.max(1, height - 5),
-      15,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 13),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button(label, { command: Commands.ok, default: true }),
+    new Button('Cancel', { command: Commands.cancel }),
   );
   return (await runDialog(host, dialog, operationSignal)) === Commands.ok
     ? { kind: action }
@@ -593,23 +554,15 @@ export async function showUserReasonDialog(
     ),
   );
   addField(dialog, 'Reason', reasonInput, 4, width);
-  dialog.add(
-    at(
-      new Button(action === 'lock' ? 'Lock' : 'Suspend', { command: Commands.ok, default: true }),
-      Math.max(2, width - 27),
-      Math.max(1, height - 5),
-      12,
-      2,
-    ),
-  );
-  dialog.add(
-    at(
-      new Button('Cancel', { command: Commands.cancel }),
-      Math.max(2, width - 14),
-      Math.max(1, height - 5),
-      10,
-      2,
-    ),
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button(action === 'lock' ? 'Lock' : 'Suspend', {
+      command: Commands.ok,
+      default: true,
+    }),
+    new Button('Cancel', { command: Commands.cancel }),
   );
   while (true) {
     const command = await runDialog(host, dialog, operationSignal);

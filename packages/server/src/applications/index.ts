@@ -48,6 +48,7 @@ export {
 export {
   createModule,
   updateModule,
+  activateModule,
   deactivateModule,
   deleteModule,
   listModules,

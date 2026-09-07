@@ -255,6 +255,8 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'add-module') void addModule(intent.applicationId);
     else if (intent.kind === 'edit-module')
       void editModule(intent.applicationId, intent.moduleId);
+    else if (intent.kind === 'activate-module')
+      void applicationController.activateModule(intent.applicationId, intent.moduleId);
     else if (intent.kind === 'deactivate-module')
       void deactivateModule(intent.applicationId, intent.moduleId);
     else void deleteModule(intent.applicationId, intent.moduleId);

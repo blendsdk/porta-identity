@@ -63,6 +63,7 @@ function applicationDomain(overrides: Record<string, unknown> = {}): Record<stri
     listModules: vi.fn(),
     addModule: vi.fn(),
     updateModule: vi.fn(),
+    activateModule: vi.fn(),
     deactivateModule: vi.fn(),
     deleteModule: vi.fn(),
     ...overrides,

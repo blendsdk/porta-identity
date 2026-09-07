@@ -205,14 +205,20 @@ describe('application workspace implementation', () => {
     for (const label of actionLabels) {
       const button = byLabel(label);
       expect(button.layout.position).not.toBe('absolute');
-      expect(button.layout.size).toEqual({ kind: 'fixed', cells: button.measure().width });
+      expect(button.layout.size).toBeUndefined();
     }
+
+    const xOf = (label: string): number => {
+      const origin = mounted.host.loop.renderRoot.originOf(byLabel(label));
+      if (!origin) throw new Error(`${label} button origin missing.`);
+      return origin.x;
+    };
 
     expect(byLabel('Edit').bounds.x).toBeLessThan(byLabel('Deactivate').bounds.x);
     expect(byLabel('Deactivate').bounds.x).toBeLessThan(byLabel('Delete').bounds.x);
-    expect(byLabel('Add module').bounds.x).toBeLessThan(byLabel('Edit module').bounds.x);
-    expect(byLabel('Edit module').bounds.x).toBeLessThan(byLabel('Deactivate module').bounds.x);
-    expect(byLabel('Back to applications').bounds.x).toBeLessThan(byLabel('Add module').bounds.x);
+    expect(xOf('Add module')).toBeLessThan(xOf('Edit module'));
+    expect(xOf('Edit module')).toBeLessThan(xOf('Deactivate module'));
+    expect(xOf('Back to applications')).toBeLessThan(xOf('Add module'));
 
     const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
     if (!(grid instanceof DataGrid)) throw new Error('Module DataGrid missing.');
@@ -404,5 +410,4 @@ describe('application controller implementation', () => {
     await pending;
     expect(states.at(-1)).toEqual(expect.objectContaining({ kind: 'indeterminate' }));
   });
-
 });

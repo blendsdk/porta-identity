@@ -254,6 +254,16 @@ describe('domains/applications', () => {
       });
     });
 
+    it('activateModule calls the nested POST route', async () => {
+      transport = mockTransport();
+      const apps = createApplicationsDomain(transport);
+      await apps.activateModule('app-1', 'm2');
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'POST',
+        path: '/applications/app-1/modules/m2/activate',
+      });
+    });
+
     it('deleteModule calls the nested DELETE route', async () => {
       transport = mockTransport();
       const apps = createApplicationsDomain(transport);

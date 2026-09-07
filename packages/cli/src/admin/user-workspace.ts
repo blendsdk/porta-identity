@@ -145,17 +145,11 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     return { width, height, compact: width < 76 || height < 20 };
   };
 
-  /** Adds a standard action button and remembers the first focus target. */
-  const action = (
-    label: string,
-    intent: AdminUserIntent,
-    x: number,
-    y: number,
-    width: number,
-  ): void => {
+  /** Builds an action button whose natural size is resolved by its Layout DSL row. */
+  const action = (label: string, intent: AdminUserIntent): Button => {
     const button = new Button(label, { onClick: () => options.onIntent(intent) });
-    content.add(at(button, x, y, width, 2));
     currentFocus ??= button;
+    return button;
   };
 
   /** Renders list browsing controls for one validated page. */
@@ -172,7 +166,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       { gap: 1 },
       fixed(new Label('~S~earch', searchInput), 7),
       grow(searchInput),
-      fixed(searchButton, 11),
+      searchButton,
     );
     currentFocus = searchInput;
 
@@ -204,17 +198,13 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     } else {
       const filterControls: View[] = [];
       for (const [label, status] of filters) {
-        const buttonWidth = label.replaceAll('~', '').length + 4;
         filterControls.push(
-          fixed(
-            new Button(label, {
-              onClick: () => {
-                filterStatus.set(status ?? null);
-                options.onIntent(status ? { kind: 'filter', status } : { kind: 'filter' });
-              },
-            }),
-            buttonWidth,
-          ),
+          new Button(label, {
+            onClick: () => {
+              filterStatus.set(status ?? null);
+              options.onIntent(status ? { kind: 'filter', status } : { kind: 'filter' });
+            },
+          }),
         );
       }
       filterBar = row(
@@ -262,12 +252,12 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     });
     const pager = row(
       { gap: 1 },
-      fixed(previous, 13),
+      previous,
       !compact &&
         fixed(new Text(`Page ${state.page.page} of ${Math.max(1, state.page.totalPages)}`), 20),
       spacer(),
       state.outcome && fixed(new Text(OUTCOME_LABELS[state.outcome]), compact ? 18 : 26),
-      fixed(next, 9),
+      next,
     );
     const pageLayout = col(
       {
@@ -290,36 +280,34 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
   ): Array<{
     readonly label: string;
     readonly intent: AdminUserIntent;
-    readonly width: number;
   }> => {
     const actions: Array<{
       readonly label: string;
       readonly intent: AdminUserIntent;
-      readonly width: number;
-    }> = [{ label: '~B~ack', intent: { kind: 'back' }, width: 9 }];
+    }> = [{ label: '~B~ack', intent: { kind: 'back' } }];
     if (options.capabilities.canReadUsers)
-      actions.push({ label: '~H~istory', intent: { kind: 'history' }, width: 11 });
+      actions.push({ label: '~H~istory', intent: { kind: 'history' } });
     if (options.capabilities.canUpdateUsers) {
-      actions.push({ label: '~E~dit', intent: { kind: 'edit' }, width: 8 });
-      actions.push({ label: 'Set password', intent: { kind: 'set-password' }, width: 16 });
+      actions.push({ label: '~E~dit', intent: { kind: 'edit' } });
+      actions.push({ label: 'Set password', intent: { kind: 'set-password' } });
       if (user.hasPassword)
-        actions.push({ label: 'Clear password', intent: { kind: 'clear-password' }, width: 18 });
+        actions.push({ label: 'Clear password', intent: { kind: 'clear-password' } });
       if (!user.emailVerified)
-        actions.push({ label: 'Verify email', intent: { kind: 'verify-email' }, width: 15 });
+        actions.push({ label: 'Verify email', intent: { kind: 'verify-email' } });
     }
     if (options.capabilities.canManageUserLifecycle) {
       if (user.status === 'active') {
-        actions.push({ label: 'Suspend', intent: { kind: 'suspend' }, width: 11 });
-        actions.push({ label: 'Lock', intent: { kind: 'lock' }, width: 8 });
-        actions.push({ label: 'Deactivate', intent: { kind: 'deactivate' }, width: 13 });
+        actions.push({ label: 'Suspend', intent: { kind: 'suspend' } });
+        actions.push({ label: 'Lock', intent: { kind: 'lock' } });
+        actions.push({ label: 'Deactivate', intent: { kind: 'deactivate' } });
       } else if (user.status === 'suspended')
-        actions.push({ label: 'Unsuspend', intent: { kind: 'unsuspend' }, width: 13 });
+        actions.push({ label: 'Unsuspend', intent: { kind: 'unsuspend' } });
       else if (user.status === 'locked')
-        actions.push({ label: 'Unlock', intent: { kind: 'unlock' }, width: 10 });
-      else actions.push({ label: 'Reactivate', intent: { kind: 'reactivate' }, width: 13 });
+        actions.push({ label: 'Unlock', intent: { kind: 'unlock' } });
+      else actions.push({ label: 'Reactivate', intent: { kind: 'reactivate' } });
     }
     if (options.capabilities.canDeleteUsers)
-      actions.push({ label: 'Delete', intent: { kind: 'delete' }, width: 10 });
+      actions.push({ label: 'Delete', intent: { kind: 'delete' } });
     return actions;
   };
 
@@ -380,16 +368,23 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       const columnWidth = Math.max(1, Math.floor((width - 2) / 2));
       content.add(at(new Text(identityLines.join('\n')), 0, 1, columnWidth, 11));
       content.add(at(new Text(accountLines.join('\n')), columnWidth + 2, 1, columnWidth, 11));
-      let x = 0;
+      let actionRow: Button[] = [];
+      let actionRowWidth = 0;
       let y = 13;
       for (const item of actions) {
-        if (x + item.width > width) {
-          x = 0;
+        const button = action(item.label, item.intent);
+        const buttonWidth = button.measure().width;
+        if (actionRow.length > 0 && actionRowWidth + 1 + buttonWidth > width) {
+          content.add(at(row({ gap: 1 }, ...actionRow, spacer()), 0, y, width, 2));
+          actionRow = [];
+          actionRowWidth = 0;
           y += 2;
         }
-        action(item.label, item.intent, x, y, item.width);
-        x += item.width + 1;
+        actionRow.push(button);
+        actionRowWidth += (actionRowWidth > 0 ? 1 : 0) + buttonWidth;
       }
+      if (actionRow.length > 0)
+        content.add(at(row({ gap: 1 }, ...actionRow, spacer()), 0, y, width, 2));
       if (state.outcome) content.add(at(new Text(OUTCOME_LABELS[state.outcome]), 0, 10, width, 1));
     }
   };
@@ -407,7 +402,8 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       sorted: false,
     });
     content.add(at(list, 0, compact ? 2 : 3, width, compact ? Math.max(1, backY - 2) : 12));
-    action('~B~ack', { kind: 'back' }, 0, backY, 9);
+    const back = action('~B~ack', { kind: 'back' });
+    content.add(at(row(back, spacer()), 0, backY, width, 2));
     currentFocus = list.rows;
     if (state.history.hasMore) content.add(at(new Text('More entries exist'), 12, backY, 22, 1));
     if (state.outcome)
@@ -466,7 +462,8 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
           1,
         ),
       );
-      action('~R~etry', { kind: 'retry' }, Math.max(0, Math.min(62, width - 11)), 2, 10);
+      const retry = action('~R~etry', { kind: 'retry' });
+      content.add(at(row({ justify: 'end' }, retry), 0, 2, width, 2));
       return;
     }
     if (currentState.kind === 'page') renderPage(currentState);

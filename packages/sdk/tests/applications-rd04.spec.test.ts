@@ -139,6 +139,19 @@ describe('RD-04 application SDK contract', () => {
     });
   });
 
+  it('reactivates an inactive module through both internal UUIDs', async () => {
+    const transport = transportWith();
+    const applications = createApplicationsDomain(transport);
+
+    expect(typeof applications.activateModule).toBe('function');
+    await applications.activateModule(APPLICATION_ID, MODULE_ID);
+
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'POST',
+      path: `/applications/${APPLICATION_ID}/modules/${MODULE_ID}/activate`,
+    });
+  });
+
   it('ST-22 rejects listAll when a later application page fails', async () => {
     const transport = transportWith({
       body: { data: [application], total: 2, page: 1, totalPages: 2 },

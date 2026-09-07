@@ -209,6 +209,11 @@ export interface AdminApplicationOperations {
     moduleId: string,
     input: UpdateModuleInput,
   ) => Promise<AdminApplicationMutationResult<AdminApplicationModule>>;
+  /** Activates a module through its parent-qualified route. */
+  readonly activateModule: (
+    applicationId: string,
+    moduleId: string,
+  ) => Promise<AdminApplicationMutationResult>;
   /** Deactivates a module through its parent-qualified route. */
   readonly deactivateModule: (
     applicationId: string,
@@ -259,6 +264,7 @@ export function createAdminApplicationOperations(
     | 'listModules'
     | 'addModule'
     | 'updateModule'
+    | 'activateModule'
     | 'deactivateModule'
     | 'deleteModule'
   >,
@@ -344,6 +350,10 @@ export function createAdminApplicationOperations(
         return mutationError(error);
       }
     },
+    activateModule: (applicationId, moduleId) =>
+      UUID.test(applicationId) && UUID.test(moduleId)
+        ? voidMutation(() => domain().activateModule(applicationId, moduleId))
+        : Promise.resolve({ kind: 'failure', failure: 'validation' }),
     deactivateModule: (applicationId, moduleId) =>
       UUID.test(applicationId) && UUID.test(moduleId)
         ? voidMutation(() => domain().deactivateModule(applicationId, moduleId))

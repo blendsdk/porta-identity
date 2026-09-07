@@ -10,6 +10,7 @@ import {
   GroupBox,
   grow,
   row,
+  Show,
   signal,
   sortRows,
   spacer,
@@ -39,6 +40,11 @@ export type AdminApplicationIntent =
   | { readonly kind: 'add-module'; readonly applicationId: string }
   | {
       readonly kind: 'edit-module';
+      readonly applicationId: string;
+      readonly moduleId: string;
+    }
+  | {
+      readonly kind: 'activate-module';
       readonly applicationId: string;
       readonly moduleId: string;
     }
@@ -121,21 +127,16 @@ export function createAdminApplicationWorkspace(
   let disposed = false;
   let focusedApplicationId: string | null = null;
 
-  /** Gives a button its complete natural face width while keeping it in DSL flow layout. */
-  const fitButton = (button: Button): Button => fixed(button, button.measure().width);
-
-  /** Builds a naturally sized action button without giving it vertical flex growth. */
+  /** Builds an action button whose natural size is resolved by its Layout DSL row. */
   const action = (
     label: string,
     intent: AdminApplicationIntent,
     disabled: boolean | (() => boolean) = false,
   ): Button =>
-    fitButton(
-      new Button(label, {
-        disabled,
-        onClick: () => options.onIntent(intent),
-      }),
-    );
+    new Button(label, {
+      disabled,
+      onClick: () => options.onIntent(intent),
+    });
 
   /** Renders the complete application catalog or its explicit empty state. */
   const renderList = (
@@ -174,14 +175,13 @@ export function createAdminApplicationWorkspace(
     }
     const applicationCount = projection.applications.length;
     const retry = status?.retry
-      ? fitButton(new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) }))
+      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
       : undefined;
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          status &&
-            fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
+          status && fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
           grow(body),
           projection.applications.length > 0 &&
             fixed(
@@ -207,11 +207,7 @@ export function createAdminApplicationWorkspace(
     const lifecycle =
       selected.status === 'inactive'
         ? action('~A~ctivate', { kind: 'activate', applicationId: selected.id }, !canUpdate)
-        : action(
-            '~D~eactivate',
-            { kind: 'deactivate', applicationId: selected.id },
-            !canUpdate,
-          );
+        : action('~D~eactivate', { kind: 'deactivate', applicationId: selected.id }, !canUpdate);
     const applicationActions = row(
       { gap: 1 },
       spacer(),
@@ -249,42 +245,49 @@ export function createAdminApplicationWorkspace(
 
     const moduleAction = (
       label: string,
-      kind: 'edit-module' | 'deactivate-module' | 'delete-module',
+      kind: 'edit-module' | 'activate-module' | 'deactivate-module' | 'delete-module',
     ): Button =>
-      fitButton(
-        new Button(label, {
-          disabled: () => {
-            const module = selectedModule();
-            return (
-              !module ||
-              (kind === 'delete-module'
-                ? !options.capabilities.canDeleteModules
-                : !canUpdate || (kind === 'deactivate-module' && module.status !== 'active'))
-            );
-          },
-          onClick: () => {
-            const module = selectedModule();
-            if (
-              !module ||
-              (kind === 'delete-module'
-                ? !options.capabilities.canDeleteModules
-                : !canUpdate)
-            ) return;
-            options.onIntent({ kind, applicationId: selected.id, moduleId: module.id });
-          },
-        }),
-      );
+      new Button(label, {
+        disabled: () => {
+          const module = selectedModule();
+          return (
+            !module ||
+            (kind === 'delete-module'
+              ? !options.capabilities.canDeleteModules
+              : !canUpdate ||
+                (kind === 'activate-module' && module.status !== 'inactive') ||
+                (kind === 'deactivate-module' && module.status !== 'active'))
+          );
+        },
+        onClick: () => {
+          const module = selectedModule();
+          if (
+            !module ||
+            (kind === 'delete-module' ? !options.capabilities.canDeleteModules : !canUpdate)
+          )
+            return;
+          options.onIntent({ kind, applicationId: selected.id, moduleId: module.id });
+        },
+      });
     const addModule = action(
       'Add ~m~odule',
       { kind: 'add-module', applicationId: selected.id },
       !canUpdate,
+    );
+    const moduleLifecycle = row();
+    moduleLifecycle.addDynamic(() =>
+      Show(
+        () => selectedModule()?.status === 'inactive',
+        () => moduleAction('~A~ctivate module', 'activate-module'),
+        () => moduleAction('Deacti~v~ate module', 'deactivate-module'),
+      ),
     );
     const moduleActions = row(
       { gap: 1 },
       spacer(),
       addModule,
       moduleAction('~E~dit module', 'edit-module'),
-      moduleAction('Deacti~v~ate module', 'deactivate-module'),
+      moduleLifecycle,
       moduleAction('Delete module', 'delete-module'),
     );
     const back = action('~B~ack to applications', { kind: 'back' });
@@ -313,7 +316,7 @@ export function createAdminApplicationWorkspace(
       !options.capabilities.canDeleteModules ? 'Module Delete requires module delete' : undefined,
     ].filter((value): value is string => Boolean(value));
     const retry = status?.retry
-      ? fitButton(new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) }))
+      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
       : undefined;
     const applicationNotices = denials;
     const applicationSection = new GroupBox({ title: 'Application' });
@@ -331,15 +334,12 @@ export function createAdminApplicationWorkspace(
     const modulesSection = new GroupBox({
       title: `Modules · ${moduleCount} ${moduleCount === 1 ? 'module' : 'modules'}`,
     });
-    modulesSection.add(
-      cover(col({ gap: 1 }, grow(modules), fixed(moduleActions, 2))),
-    );
+    modulesSection.add(cover(col({ gap: 1 }, grow(modules), fixed(moduleActions, 2))));
     content.add(
       cover(
         col(
           { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          status &&
-            fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
+          status && fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
           fixed(applicationSection, 8 + applicationNotices.length),
           grow(modulesSection),
           fixed(row({ gap: 1 }, back, spacer()), 2),
@@ -374,16 +374,16 @@ export function createAdminApplicationWorkspace(
       else renderDetail(state.previous, status);
       return;
     }
-    const retry = fitButton(
-      new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) }),
-    );
+    const retry = new Button('~R~etry', {
+      onClick: () => options.onIntent({ kind: 'retry' }),
+    });
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           fixed(new Text('Applications'), 1),
           fixed(new Text(label), 1),
-          state.kind !== 'loading' && retry,
+          state.kind !== 'loading' && row(retry, spacer()),
           spacer(),
         ),
       ),
