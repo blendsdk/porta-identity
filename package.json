@@ -88,20 +88,20 @@
     "koa": "^3.2.1",
     "koa-session": "^7.0.2",
     "koa-static": "^5.0.0",
-    "mermaid": "11.16.1",
+    "mermaid": "11.17.2",
     "npm": "11.15.0",
-    "npm-check-updates": "23.0.2",
+    "npm-check-updates": "23.1.0",
     "oidc-client-ts": "3.5.0",
-    "openid-client": "^6.8.4",
+    "openid-client": "^6.8.7",
     "prettier": "3.9.6",
     "sirv-cli": "^3.0.1",
-    "tsx": "4.23.11",
-    "turbo": "^2.10.9",
-    "typescript-eslint": "8.66.0",
+    "tsx": "4.23.13",
+    "turbo": "^2.10.12",
+    "typescript-eslint": "8.69.0",
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
     "vitest": "4.1.10",
-    "zod": "4.4.3"
+    "zod": "4.5.4"
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }
