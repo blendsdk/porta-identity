@@ -32,10 +32,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.1",
     "@types/yargs": "^17.0.35",
     "@typescript/native": "npm:typescript@^7.0.2",
-    "eslint": "^10.8.1",
+    "eslint": "^10.9.1",
     "eslint-config-prettier": "^10.1.8",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "^8.66.0",
