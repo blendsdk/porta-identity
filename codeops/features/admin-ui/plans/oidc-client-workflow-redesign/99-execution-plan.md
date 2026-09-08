@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 08:38
-> **Progress**: 11/37 tasks (30%)
+> **Last Updated**: 2026-09-08 08:40
+> **Progress**: 12/37 tasks (32%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -105,7 +105,7 @@ AR-12, AR-14
 
 - [x] 2.2.1 Move compact create behavior into the direct registration module and retain facade exports — `packages/cli/src/admin/client-registration-dialog.ts`, `packages/cli/src/admin/client-dialogs.ts` ✅ (completed: 2026-09-08 08:33; direct compact dialog and stable facade export added; seven registration specifications pass and remaining failures map to Tasks 2.2.2–2.2.3)
 - [x] 2.2.2 Implement the complete 3/6/12/24/custom/Never expiry helper once and use its six-month default for registration — `packages/cli/src/admin/client-registration-dialog.ts`, `packages/cli/src/admin/client-credential-dialogs.ts` ✅ (completed: 2026-09-08 08:38; feature-local DatePicker composition added with civil-month clamping, next-day UTC serialization, warnings, and six-month registration default)
-- [ ] 2.2.3 After transient secret presentation, authoritatively reload through `select(created.id)` and publish Overview — `packages/cli/src/admin/client-controller.ts`
+- [x] 2.2.3 After transient secret presentation, authoritatively reload through `select(created.id)` and publish Overview — `packages/cli/src/admin/client-controller.ts` ✅ (completed: 2026-09-08 08:40; successful create values now select and authoritatively reload the created client after any one-time presentation)
 - [ ] 2.2.4 Pass raw secret expiry through the existing one-time presenter and wire compact registration without changing dialog/network ownership — `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/client-dialogs.ts`
 - [ ] 2.2.5 Run ST-10–ST-17 and make the immutable expectations green
 

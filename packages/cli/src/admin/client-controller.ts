@@ -426,7 +426,7 @@ export function createAdminClientController(
     result: AdminClientMutationResult | AdminClientMutationResult<ClientMutationValue>,
     owner: string,
     controller: AbortController,
-    reloadAfter: () => Promise<void>,
+    reloadAfter: (value?: ClientMutationValue) => Promise<void>,
     reloadOnFailure: boolean,
   ): Promise<void> => {
     if (result.kind === 'session-invalid') {
@@ -475,7 +475,7 @@ export function createAdminClientController(
           options.presentSecret(secret, controller.signal),
           owner,
           controller,
-          reloadAfter,
+          () => reloadAfter(value),
         );
       } catch {
         operation = undefined;
@@ -485,7 +485,7 @@ export function createAdminClientController(
       }
     }
     operation = undefined;
-    await finishReload(reloadAfter);
+    await finishReload(() => reloadAfter(value));
   };
 
   /** Runs one client or secret mutation with fresh context and capability checks. */
@@ -496,7 +496,7 @@ export function createAdminClientController(
       signal: AbortSignal,
       owner: string,
     ) => Promise<AdminClientMutationResult | AdminClientMutationResult<ClientMutationValue>>,
-    reloadAfter: () => Promise<void>,
+    reloadAfter: (value?: ClientMutationValue) => Promise<void>,
     confirm?: (signal: AbortSignal) => Promise<boolean>,
     precondition?: () => boolean,
     reloadOnFailure = false,
@@ -571,7 +571,7 @@ export function createAdminClientController(
         'canCreateClients',
         (operations, _signal, owner) =>
           operations.create?.(owner, input) ?? Promise.resolve({ kind: 'cancelled' }),
-        load,
+        (value) => (value && 'client' in value ? select(value.client.id) : load()),
         undefined,
         canCreateInContext,
       ),
