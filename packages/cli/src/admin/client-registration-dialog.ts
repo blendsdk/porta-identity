@@ -10,19 +10,17 @@ import {
   Dialog,
   fixed,
   grow,
-  Group,
   GroupBox,
   Input,
   Label,
   RadioGroup,
   row,
-  Scroller,
   Show,
   signal,
   spacer,
   Text,
 } from '@jsvision/ui';
-import type { EventLoop, ModalDialogHost, Signal, Size2D, View } from '@jsvision/ui';
+import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication } from './application-state.js';
@@ -30,6 +28,7 @@ import {
   createClientSecretExpiryFields,
   type ClientSecretExpiryFields,
 } from './client-credential-dialogs.js';
+import { ClientFormScroller } from './client-form-scroller.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -192,59 +191,6 @@ function registrationInputRow(label: string, input: Input): ReturnType<typeof ro
   return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
 }
 
-/** Returns every focusable leaf below a form so hidden rows can be revealed as focus moves. */
-function focusableDescendants(root: View): View[] {
-  const result: View[] = [];
-  const visit = (view: View): void => {
-    if (view.focusable && !(view instanceof Group)) result.push(view);
-    if (view instanceof Group) for (const child of view.children) visit(child);
-  };
-  visit(root);
-  return result;
-}
-
-/** Vertical form scroller that keeps keyboard-focused fields inside its viewport. */
-class RegistrationFormScroller extends Scroller {
-  /** Creates a scrolling viewport over one complete registration form. */
-  constructor(content: Group, extent: () => Size2D) {
-    // Giving the content a growing initial layout prevents its nested DSL rows from first solving at
-    // their two-cell intrinsic frame width before Scroller applies the larger content extent.
-    super({ content: grow(content), extent, scrollbars: 'vertical' });
-    this.onMount(() => {
-      const targets = focusableDescendants(content);
-      this.bind(
-        () => {
-          let focused: View | null = null;
-          for (const target of targets) {
-            target.focusSignal()();
-            if (target.state.focused) focused = target;
-          }
-          return focused;
-        },
-        (focused) => this.revealFocused(focused),
-      );
-    });
-  }
-
-  /** Adjusts only the vertical offset needed to reveal one focused descendant. */
-  protected revealFocused(target: View | null): void {
-    if (!target || this.vpH <= 0) return;
-    let top = 0;
-    let current: View | null = target;
-    while (current && current !== this.content) {
-      top += current.bounds.y;
-      current = current.parent;
-    }
-    if (!current) return;
-    // Leave three rows below the control when possible so expiry guidance remains visible with its
-    // picker instead of forcing a second manual scroll immediately after keyboard focus arrives.
-    const bottom = top + Math.max(1, target.bounds.height) + 3;
-    const offset = this.dy.peek();
-    if (top < offset) this.dy.set(top);
-    else if (bottom > offset + this.vpH) this.dy.set(Math.min(this.maxY, bottom - this.vpH));
-  }
-}
-
 /** Builds the spacious client identity and type region of the registration form. */
 function clientDetailsGroup(
   form: RegistrationForm,
@@ -311,7 +257,7 @@ function registrationFormScroller(
   dialog: Dialog,
   form: RegistrationForm,
   organization: AdminOrganizationContext,
-): Scroller {
+): ClientFormScroller {
   const formContent = col(
     { gap: 1, padding: 1 },
     fixed(clientDetailsGroup(form, organization), 16),
@@ -322,7 +268,7 @@ function registrationFormScroller(
       () => fixed(initialSecretGroup(form), 8),
     ),
   );
-  return new RegistrationFormScroller(formContent, () => ({
+  return new ClientFormScroller(formContent, () => ({
     width: Math.max(1, (dialog.bounds.width || 68) - 6),
     height: form.clientType() === 1 ? 27 : 18,
   }));

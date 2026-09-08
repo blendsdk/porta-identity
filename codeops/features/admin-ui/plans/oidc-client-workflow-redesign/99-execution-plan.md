@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 13:14
+> **Last Updated**: 2026-09-08 13:35
 > **Progress**: 37/37 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
@@ -226,6 +226,13 @@ fixed context and action rows leave zero height for the editable regions in Auth
 Protocol, Login experience, and secret generation. Existing compact tests reach hidden controls
 directly and therefore do not prove visible editor usability. Phase 4 remains open pending the
 required user ruling; no implementation change has been made for this finding.
+
+**RV-4001 remediation (2026-09-08 13:35)**: User accepted the recommended fix. The four focused
+editors now place their complete logical forms in one focus-aware vertical Scroller, retain fixed
+naturally sized action rows, and use a compact client context at 48×12. A four-case immutable
+compact specification first reproduced the missing scroller, then passed together with the retained
+registration/editor suites (72 tests), CLI verification (76 files, 1,101 tests), typecheck, lint,
+build, and 97 structure tests. Phase 4 remains open for its one bounded re-review.
 
 ---
 

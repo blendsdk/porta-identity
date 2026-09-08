@@ -24,6 +24,7 @@ import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminClient } from './client-state.js';
+import { ClientFormScroller } from './client-form-scroller.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -124,15 +125,30 @@ function clientContext(organization: AdminOrganizationContext, client: AdminClie
 function addEditorLayout(
   dialog: Dialog,
   context: GroupBox,
+  compactContext: string,
   editor: GroupBox,
+  editorHeight: number,
+  compact: boolean,
   canSave: () => boolean,
 ) {
+  const compactContextBox = new GroupBox({ title: 'Client', padding: 0 });
+  compactContextBox.add(cover(new Text(compactContext)));
+  const editorContent = col(fixed(editor, editorHeight));
+  const editorScroller = new ClientFormScroller(editorContent, () => ({
+    width: Math.max(1, (dialog.bounds.width || 78) - (compact ? 4 : 6)),
+    height: editorHeight,
+  }));
   dialog.add(
     cover(
       col(
-        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        fixed(context, 4),
-        grow(editor),
+        {
+          gap: compact ? 0 : 1,
+          padding: compact
+            ? { top: 0, right: 1, bottom: 0, left: 1 }
+            : { top: 1, right: 2, bottom: 1, left: 2 },
+        },
+        fixed(compact ? compactContextBox : context, compact ? 3 : 4),
+        grow(editorScroller),
         fixed(
           row(
             { gap: 1 },
@@ -230,7 +246,15 @@ export async function showClientProtocolDialog(
       ),
     ),
   );
-  addEditorLayout(dialog, clientContext(organization, client), editor, canSave);
+  addEditorLayout(
+    dialog,
+    clientContext(organization, client),
+    `Organization: ${organization.name} · Client: ${client.clientName}`,
+    editor,
+    21,
+    host.desktop.bounds.height <= 12,
+    canSave,
+  );
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   return {
     kind: 'update',
@@ -316,7 +340,15 @@ export async function showClientLoginDialog(
       ),
     ),
   );
-  addEditorLayout(dialog, clientContext(organization, client), editor, canSave);
+  addEditorLayout(
+    dialog,
+    clientContext(organization, client),
+    `Organization: ${organization.name} · Client: ${client.clientName}`,
+    editor,
+    13,
+    host.desktop.bounds.height <= 12,
+    canSave,
+  );
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const selected = methods.peek();
   return {

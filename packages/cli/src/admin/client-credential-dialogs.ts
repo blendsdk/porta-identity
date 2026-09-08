@@ -30,6 +30,7 @@ import {
 import type { CalendarDate, EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
+import { ClientFormScroller } from './client-form-scroller.js';
 import type { AdminClient } from './client-state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -239,12 +240,23 @@ export async function showGenerateClientSecretDialog(
       ),
     ),
   );
+  const compact = host.desktop.bounds.height <= 12;
+  const formContent = col(fixed(fields, 15));
+  const formScroller = new ClientFormScroller(formContent, () => ({
+    width: Math.max(1, (dialog.bounds.width || width) - (compact ? 4 : 6)),
+    height: 15,
+  }));
   const canGenerate = () => validLabel(label()) && expiry.isValid();
   dialog.add(
     cover(
       col(
-        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        grow(fields),
+        {
+          gap: compact ? 0 : 1,
+          padding: compact
+            ? { top: 0, right: 1, bottom: 0, left: 1 }
+            : { top: 1, right: 2, bottom: 1, left: 2 },
+        },
+        grow(formScroller),
         fixed(
           row(
             { gap: 1 },

@@ -23,6 +23,7 @@ import type { Column, EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminClient } from './client-state.js';
+import { ClientFormScroller } from './client-form-scroller.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -382,12 +383,27 @@ export async function showClientAuthenticationDialog(
       ),
     ),
   );
+  const compact = host.desktop.bounds.height <= 12;
+  const compactContext = new GroupBox({ title: 'Client', padding: 0 });
+  compactContext.add(
+    cover(new Text(`Organization: ${organization.name} · Client: ${client.clientName}`)),
+  );
+  const editorContent = col(fixed(editor, 13));
+  const editorScroller = new ClientFormScroller(editorContent, () => ({
+    width: Math.max(1, (dialog.bounds.width || host.desktop.bounds.width) - (compact ? 4 : 6)),
+    height: 13,
+  }));
   dialog.add(
     cover(
       col(
-        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        fixed(context, 4),
-        grow(editor),
+        {
+          gap: compact ? 0 : 1,
+          padding: compact
+            ? { top: 0, right: 1, bottom: 0, left: 1 }
+            : { top: 1, right: 2, bottom: 1, left: 2 },
+        },
+        fixed(compact ? compactContext : context, compact ? 3 : 4),
+        grow(editorScroller),
         fixed(
           row(
             { gap: 1 },
