@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 12:14
-> **Progress**: 30/37 tasks (81%)
+> **Last Updated**: 2026-09-08 12:16
+> **Progress**: 31/37 tasks (84%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -210,7 +210,7 @@ AR-14
 ### Step 4.3: Implementation Tests, Documentation, and Hardening
 
 - [x] 4.3.1 Add collection selector/geometry, protocol, login, exact calendar, warning, selection, representative late-result, validator, and facade implementation coverage while replacing obsolete shared-tab implementation assertions — `packages/server/tests/unit/clients/validators.test.ts`, `packages/cli/tests/admin/oidc-client-editors.impl.test.ts`, `packages/cli/tests/admin/oidc-clients-workspace.impl.test.ts` ✅ (completed: 2026-09-08 12:14; seven focused editor regressions and three duplicate-validator cases added; obsolete shared-tab implementation assertions removed while retained late-result and plaintext-lifetime coverage stayed green; 81 CLI tests, 48 server tests, scoped lint, CLI typecheck, and 97 structure tests passed; inventory 74→75)
-- [ ] 4.3.2 Update focused Admin UI/CLI documentation for registration, sections, redirects, login inheritance, and credentials, then run `yarn docs:build` — `packages/cli/README.md`, `docs/cli/clients.md`
+- [x] 4.3.2 Update focused Admin UI/CLI documentation for registration, sections, redirects, login inheritance, and credentials, then run `yarn docs:build` — `packages/cli/README.md`, `docs/cli/clients.md` ✅ (completed: 2026-09-08 12:16; documented compact registration, focused full-surface sections, staged authentication collections, login inheritance, calendar expiry choices, and one-time plaintext handling; docs build and 97 structure tests passed)
 - [ ] 4.3.3 Run `yarn test:structure`
 - [ ] 4.3.4 Run `yarn workspace @portaidentity/server verify`
 - [ ] 4.3.5 Run `yarn workspace @portaidentity/sdk verify`

@@ -145,6 +145,11 @@ Every command supports these flags:
 
 **Nested: Secrets** (`porta client secret ...`)
 
+The interactive `porta admin` client workspace uses focused Overview, Authentication, Protocol,
+Login experience, Credentials, and Lifecycle sections. Multi-field editors fill the Admin surface;
+secret generation supports 3, 6, 12, and 24 month presets, a custom calendar date, or Never. Secret
+plaintext is shown once and is never retained in the workspace.
+
 | Command                                              | Description                  |
 | ---------------------------------------------------- | ---------------------------- |
 | `porta client secret create <client-id>`             | Generate a new client secret |

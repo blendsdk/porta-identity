@@ -8,10 +8,24 @@ OIDC clients belong to one organization and reference one deployment-global appl
 `porta admin`, select the organization first, then open **OIDC Clients**. Switching organizations
 closes the prior client workspace so client data is never carried into the new context.
 
-The interactive workspace uses a DataGrid for the selected organization's clients. Client details
-provide Basic, Redirects, Protocol, Login, and Secrets actions plus activation, deactivation, and
-permanent deletion. Configuration dialogs keep the client name as a normal one-line field and
-reload authoritative server state after saving.
+The interactive workspace always uses a DataGrid for the selected organization's clients, including
+when the list is empty. Registration asks only for client identity, application/type, one redirect
+URI, and optional initial-secret settings. After creation, Porta opens the authoritative client
+Overview instead of retaining a local placeholder.
+
+Client details use separate Overview, Authentication, Protocol, Login experience, Credentials, and
+Lifecycle sections. Each section opens one focused editor instead of a shared tabbed form:
+
+- **Authentication** stages redirect URIs, post-logout redirect URIs, and allowed origins in one
+  reusable grid. Add, Edit, and Remove remain local until Save submits all three ordered arrays.
+- **Protocol** configures grant types, the fixed `code` response type, scope, token authentication,
+  and PKCE while preserving public/confidential compatibility rules.
+- **Login experience** either inherits the selected organization's effective methods or enables
+  Password, Magic link, or both explicitly.
+- **Credentials** lists secret metadata and enables Revoke only for the selected active secret.
+
+The client name remains a one-line field in its own small editor. All other multi-field editors use
+the full Admin surface and reload authoritative server state after saving.
 
 ## Client CRUD
 
@@ -28,17 +42,17 @@ porta client create \
   [--cors-origins "https://erp.example.com"]
 ```
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--name` | ✅ | Client display name |
-| `--org-id` | ✅ | Organization ID |
-| `--app-id` | ✅ | Application ID |
-| `--type` | ✅ | `public` or `confidential` |
-| `--redirect-uris` | ✅ | Comma-separated redirect URIs |
-| `--application-type` | | `web`, `native`, or `spa` (default: `web`) |
-| `--scope` | | Space-separated scopes |
-| `--cors-origins` | | Comma-separated CORS origins |
-| `--login-methods` | | Override org default login methods |
+| Flag                 | Required | Description                                |
+| -------------------- | -------- | ------------------------------------------ |
+| `--name`             | ✅       | Client display name                        |
+| `--org-id`           | ✅       | Organization ID                            |
+| `--app-id`           | ✅       | Application ID                             |
+| `--type`             | ✅       | `public` or `confidential`                 |
+| `--redirect-uris`    | ✅       | Comma-separated redirect URIs              |
+| `--application-type` |          | `web`, `native`, or `spa` (default: `web`) |
+| `--scope`            |          | Space-separated scopes                     |
+| `--cors-origins`     |          | Comma-separated CORS origins               |
+| `--login-methods`    |          | Override org default login methods         |
 
 ### `porta client list`
 
@@ -103,6 +117,11 @@ credentials are never canonicalized.
 ```bash
 porta client secret generate --client-id <id> [--label "production-2024"]
 ```
+
+In `porta admin`, secret generation offers 3, 6, 12, and 24 month presets, a custom calendar date,
+and Never. Six months is selected by default. Custom dates may be later than 24 months, with a
+rotation warning. Never omits expiry and shows the same non-blocking warning. These warnings do not
+add a second confirmation.
 
 ::: danger
 The plaintext secret is displayed **only once**. Copy and store it securely.
