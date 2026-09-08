@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 07:42
-> **Progress**: 1/37 tasks (3%)
+> **Last Updated**: 2026-09-08 07:48
+> **Progress**: 2/37 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -57,7 +57,7 @@ existing runtime, storage, controller, and JSVision boundaries (AR-1, AR-9, AR-1
 AR-11 · ST-1–ST-9
 
 - [x] 1.1.1 [spec-author] Write strict ISO expiry, control-free label, and SDK contract specifications from ST-1–ST-9; register the new SDK type-contract file in its existing explicit include list — `packages/server/tests/unit/routes/client-secret-expiry.spec.test.ts`, `packages/sdk/tests/type-contracts/client-secret-expiry-contract.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json` ✅ (completed: 2026-09-08 07:42)
-- [ ] 1.1.2 Run the two new specification suites and record the expected red result before implementation
+- [x] 1.1.2 Run the two new specification suites and record the expected red result before implementation ✅ (completed: 2026-09-08 07:48; server: 16 failed/6 passed, SDK runtime: 3 passed, SDK type contract: 5 expected diagnostics)
 
 ### Step 1.2: Implementation
 
