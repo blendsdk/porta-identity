@@ -28,9 +28,6 @@ import type {
 } from './client-state.js';
 import type { AdminCapabilities, AdminOrganizationContext } from './state.js';
 
-/** Tabs that enter the shared client configuration dialog. */
-export type AdminClientConfigurationTab = 'Basic' | 'Redirects' | 'Protocol' | 'Login';
-
 /** Closed set of intents emitted by the organization client workspace. */
 export type AdminClientIntent =
   | { readonly kind: 'create' }
@@ -38,7 +35,9 @@ export type AdminClientIntent =
   | { readonly kind: 'retry' }
   | { readonly kind: 'back' }
   | { readonly kind: 'edit-name'; readonly clientId: string }
-  | { readonly kind: 'edit'; readonly clientId: string; readonly tab: AdminClientConfigurationTab }
+  | { readonly kind: 'edit-authentication'; readonly clientId: string }
+  | { readonly kind: 'edit-protocol'; readonly clientId: string }
+  | { readonly kind: 'edit-login'; readonly clientId: string }
   | { readonly kind: 'activate'; readonly clientId: string }
   | { readonly kind: 'deactivate'; readonly clientId: string }
   | { readonly kind: 'delete'; readonly clientId: string }
@@ -344,7 +343,7 @@ export function createAdminClientWorkspace(
           { gap: 1 },
           action(
             '~E~dit authentication',
-            { kind: 'edit', clientId: selected.id, tab: 'Redirects' },
+            { kind: 'edit-authentication', clientId: selected.id },
             !options.capabilities.canUpdateClients,
           ),
           spacer(),
@@ -372,7 +371,7 @@ export function createAdminClientWorkspace(
           { gap: 1 },
           action(
             '~E~dit protocol',
-            { kind: 'edit', clientId: selected.id, tab: 'Protocol' },
+            { kind: 'edit-protocol', clientId: selected.id },
             !options.capabilities.canUpdateClients,
           ),
           spacer(),
@@ -399,7 +398,7 @@ export function createAdminClientWorkspace(
           { gap: 1 },
           action(
             '~E~dit login experience',
-            { kind: 'edit', clientId: selected.id, tab: 'Login' },
+            { kind: 'edit-login', clientId: selected.id },
             !options.capabilities.canUpdateClients,
           ),
           spacer(),

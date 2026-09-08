@@ -154,14 +154,18 @@ export type {
 } from './client-state.js';
 export { createAdminClientWorkspace } from './client-workspace.js';
 export type {
-  AdminClientConfigurationTab,
   AdminClientIntent,
   AdminClientWorkspace,
   AdminClientWorkspaceOptions,
 } from './client-workspace.js';
 export {
-  showClientConfigurationDialog,
+  showClientAuthenticationDialog,
   showClientLifecycleDialog,
+  showClientLoginDialog,
+  showClientProtocolDialog,
+  showClientRegistrationDialog,
+  showDeleteClientDialog,
+  showEditClientNameDialog,
   showGenerateClientSecretDialog,
   showOneTimeClientSecretDialog,
   showRevokeClientSecretDialog,
@@ -172,10 +176,18 @@ export type {
   AdminApplicationClientFeaturesOptions,
 } from './application-client-features.js';
 export type {
+  AdminClientRegistrationDialogHost,
+  AdminClientRegistrationDialogOptions,
+  AdminClientRegistrationDialogResult,
   AdminClientDialogHost,
-  ClientConfigurationDialogOptions,
-  ClientConfigurationDialogResult,
+  ClientAuthenticationDialogHost,
+  ClientAuthenticationDialogResult,
+  ClientCredentialDialogHost,
+  ClientFocusedEditorResult,
   ClientLifecycleDialogResult,
+  ClientProtocolLoginDialogHost,
+  DeleteClientDialogResult,
+  EditClientNameDialogResult,
   GenerateClientSecretDialogResult,
   RevokeClientSecretDialogResult,
 } from './client-dialogs.js';

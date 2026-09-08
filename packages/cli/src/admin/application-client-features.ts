@@ -25,8 +25,10 @@ import type {
   AdminApplicationWorkspace,
 } from './application-workspace.js';
 import {
-  showClientConfigurationDialog,
+  showClientAuthenticationDialog,
+  showClientLoginDialog,
   showClientLifecycleDialog,
+  showClientProtocolDialog,
   showDeleteClientDialog,
   showEditClientNameDialog,
   showGenerateClientSecretDialog,
@@ -273,7 +275,12 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'back') void clientController.load();
     else if (intent.kind === 'create') void createClient();
     else if (intent.kind === 'edit-name') void editClientName(intent.clientId);
-    else if (intent.kind === 'edit') void editClient(intent.clientId, intent.tab);
+    else if (
+      intent.kind === 'edit-authentication' ||
+      intent.kind === 'edit-protocol' ||
+      intent.kind === 'edit-login'
+    )
+      void editClient(intent.clientId, intent.kind);
     else if (intent.kind === 'activate')
       void clientController.activate(intent.clientId, async () => true);
     else if (intent.kind === 'deactivate') void changeClientLifecycle(intent.clientId);
@@ -441,24 +448,25 @@ export function createAdminApplicationClientFeatures(
     await clientController.update(result.clientId, result.input, etag);
   }
 
-  /** Opens the shared client configuration dialog on the requested entry tab. */
+  /** Opens the focused editor for one selected client configuration section. */
   async function editClient(
     clientId: string,
-    tab: Extract<AdminClientIntent, { readonly kind: 'edit' }>['tab'],
+    editor: 'edit-authentication' | 'edit-protocol' | 'edit-login',
   ): Promise<void> {
     const client = selectedClient();
     const state = options.readState();
     if (!client || client.id !== clientId || state.kind !== 'authenticated' || !state.organization)
       return;
     const organization = state.organization;
-    const result = await runDialog((signal) =>
-      showClientConfigurationDialog(options.dialogs.host, signal, {
-        mode: 'edit',
-        organization,
-        client,
-        initialTab: tab,
-      }),
-    );
+    const result = await runDialog((signal) => {
+      if (editor === 'edit-authentication') {
+        return showClientAuthenticationDialog(options.dialogs.host, signal, organization, client);
+      }
+      if (editor === 'edit-protocol') {
+        return showClientProtocolDialog(options.dialogs.host, signal, organization, client);
+      }
+      return showClientLoginDialog(options.dialogs.host, signal, organization, client);
+    });
     if (result?.kind === 'update') {
       const etag =
         clientState.kind === 'detail' || clientState.kind === 'secrets'
