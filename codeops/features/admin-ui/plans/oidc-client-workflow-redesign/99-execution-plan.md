@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 13:02
-> **Progress**: 36/37 tasks (97%)
+> **Last Updated**: 2026-09-08 13:09
+> **Progress**: 37/37 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -216,7 +216,7 @@ AR-14
 - [x] 4.3.5 Run `yarn workspace @portaidentity/sdk verify` ✅ (completed: 2026-09-08 12:48; passed under Node.js 24.20.0 with 474 tests plus lint, type contracts, typecheck, and build; 97 structure tests also passed before commit)
 - [x] 4.3.6 Run `yarn workspace @portaidentity/cli verify` ✅ (completed: 2026-09-08 12:50; passed under Node.js 24.20.0 with 1,097 tests across 75 files plus lint, typecheck, and build; 97 structure tests also passed before commit)
 - [x] 4.3.7 Run `yarn harness:test` and `yarn assurance:harness --project protocol --profile operational` ✅ (completed: 2026-09-08 13:02; passed under Node.js 24.20.0 on the clean committed implementation revision with 6 retained SPA/BFF browser flows and 15 protocol assurance checks; the dirty primary checkout's first assurance reset was excluded because unrelated in-progress user-lifecycle fixture edits changed seeded counts without updating their reset oracle)
-- [ ] 4.3.8 After the execution workflow creates a clean committed implementation revision, run `yarn assurance:compat --select p1-admin` and `yarn assurance:compat --select protocol`
+- [x] 4.3.8 After the execution workflow creates a clean committed implementation revision, run `yarn assurance:compat --select p1-admin` and `yarn assurance:compat --select protocol` ✅ (completed: 2026-09-08 13:09; both packed-client compatibility selectors passed under Node.js 24.20.0 from clean implementation revision `5d2d36dd`; p1-admin evidence `24c8429d-7676-43d4-b8bf-1b4fcfdba630`, protocol evidence `3bb00297-8881-4307-a468-57bc4190360d`)
 
 **Verify**: the complete AR-13 nine-command gate; do not run root `yarn verify`
 
