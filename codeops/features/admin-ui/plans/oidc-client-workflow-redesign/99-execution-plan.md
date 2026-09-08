@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 09:41
-> **Progress**: 15/37 tasks (41%)
+> **Last Updated**: 2026-09-08 09:52
+> **Progress**: 16/37 tasks (43%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -134,12 +134,19 @@ Phase 2 is closed (reviewed: 2026-09-08 09:41).
 
 ## Phase 3: Sectioned Client Detail
 
+> **Phase baseline tree**: `15e59623dfbd8d53568867e23ea73d98668aac41`
+> **Expected modification set**: Phase 3 detail specifications and implementation modules,
+> retained dialog/orchestration seams, implementation coverage, this execution record, and the
+> repository test inventory count for intentionally added test files. Pre-existing changes in
+> `client-workspace.ts`, `application-client-features.ts`, and the wider worktree remain excluded
+> from Phase 3 review and task commits. **Scope mode**: strict.
+
 ### Step 3.1: Specification Tests
 
 **Reference**: [03-02 §Detail Sections](03-02-client-workflow.md#detail-sections) · AR-4, AR-12 ·
 ST-18–ST-22, ST-46
 
-- [ ] 3.1.1 [spec-author] Write detail workspace, responsive section navigation, Overview summaries, and name-edit specifications from ST-18–ST-22 and ST-46 — `packages/cli/tests/admin/oidc-client-detail.spec.test.ts`
+- [x] 3.1.1 [spec-author] Write detail workspace, responsive section navigation, Overview summaries, and name-edit specifications from ST-18–ST-22 and ST-46 — `packages/cli/tests/admin/oidc-client-detail.spec.test.ts` ✅ (completed: 2026-09-08 09:52; eight immutable behavior cases added, with scoped lint/format, CLI typecheck, and 97 structure tests passing)
 - [ ] 3.1.2 Run the new detail specification suite and record the expected red result
 
 ### Step 3.2: Implementation
