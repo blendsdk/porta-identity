@@ -172,7 +172,10 @@ compact detail content now scrolls below grouped navigation, the name editor kee
 secret projections preserve newer section choices, rebuilt credential grids restore the retained
 selection, and both detail projections retain the update ETag. Verification passed 96 focused CLI
 tests, CLI typecheck, scoped lint/format, and 97 structure tests. Phase 3 remains open for one
-bounded re-review.
+bounded re-review. The re-review found no Critical or Major issues and closed all accepted repairs.
+It reported one Minor, non-blocking behavior: compact section scrolling retains its prior vertical
+offset when switching sections, but every section remains reachable through Home or manual
+scrolling. Phase 3 is closed (reviewed: 2026-09-08 11:06).
 
 ---
 
