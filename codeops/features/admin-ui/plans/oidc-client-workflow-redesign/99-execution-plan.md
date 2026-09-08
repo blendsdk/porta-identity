@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 10:37
-> **Progress**: 22/37 tasks (59%)
+> **Last Updated**: 2026-09-08 11:31
+> **Progress**: 23/37 tasks (62%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -181,11 +181,19 @@ scrolling. Phase 3 is closed (reviewed: 2026-09-08 11:06).
 
 ## Phase 4: Focused Editors and Final Verification
 
+> **Phase baseline tree**: `def2f25cc4eff7a4ea24340d7a3c380b20a1e460`
+> **Expected modification set**: Phase 4 editor and validator specifications, focused editor
+> implementation modules, retained facade/orchestration/barrel seams, implementation coverage,
+> focused documentation, this execution record, and the repository test inventory count.
+> Pre-existing changes in `client-workspace.ts`, `application-client-features.ts`,
+> `oidc-clients-workspace.spec.test.ts`, `packages/cli/README.md`, and the wider worktree remain
+> excluded from Phase 4 review and task commits. **Scope mode**: strict.
+
 ### Step 4.1: Specification Tests
 
 **Reference**: [03-03](03-03-focused-editors.md) · AR-5–AR-8, AR-10, AR-14 · ST-23–ST-45
 
-- [ ] 4.1.1 [spec-author] Revise only shared-tab/scroller assertions superseded by RD-04; preserve existing safety assertions; add server duplicate-validation and authentication, protocol, login, expiry, credential, and representative context specifications from ST-23–ST-45 — `packages/server/tests/unit/clients/protocol-compatibility.spec.test.ts`, `packages/cli/tests/admin/oidc-clients-workspace.spec.test.ts`, `packages/cli/tests/admin/oidc-client-editors.spec.test.ts`
+- [x] 4.1.1 [spec-author] Revise only shared-tab/scroller assertions superseded by RD-04; preserve existing safety assertions; add server duplicate-validation and authentication, protocol, login, expiry, credential, and representative context specifications from ST-23–ST-45 — `packages/server/tests/unit/clients/protocol-compatibility.spec.test.ts`, `packages/cli/tests/admin/oidc-clients-workspace.spec.test.ts`, `packages/cli/tests/admin/oidc-client-editors.spec.test.ts` ✅ (completed: 2026-09-08 11:31; 46 editor cases and three server duplicate cases added; scoped lint/format passed; test inventory 73→74)
 - [ ] 4.1.2 Run the new editor specification suite and record the expected red result
 
 ### Step 4.2: Implementation

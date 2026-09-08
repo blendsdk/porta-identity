@@ -51,6 +51,7 @@ const APPLICATION_ID = 'b0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22';
 interface ProtocolInput {
   readonly clientType: 'confidential' | 'public';
   readonly redirectUris: readonly string[];
+  readonly postLogoutRedirectUris?: readonly string[];
   readonly grantTypes: readonly string[];
   readonly tokenEndpointAuthMethod: 'client_secret_basic' | 'client_secret_post' | 'none';
   readonly requirePkce: boolean;
@@ -68,7 +69,7 @@ function clientFor(input: ProtocolInput): Client {
     clientType: input.clientType,
     applicationType: 'spa',
     redirectUris: [...input.redirectUris],
-    postLogoutRedirectUris: [],
+    postLogoutRedirectUris: [...(input.postLogoutRedirectUris ?? [])],
     grantTypes: [...input.grantTypes],
     responseTypes: ['code'],
     scope: 'openid',
@@ -139,6 +140,7 @@ function importAccepts(input: ProtocolInput): boolean {
         application_type: 'spa',
         client_type: input.clientType,
         redirect_uris: input.redirectUris,
+        post_logout_redirect_uris: input.postLogoutRedirectUris,
         grant_types: input.grantTypes,
         response_types: ['code'],
         scope: 'openid',
@@ -195,6 +197,36 @@ describe('OIDC client protocol compatibility specification', () => {
     ['origin fragment', { allowedOrigins: ['https://client.example.test#fragment'] }],
     ['origin credentials', { allowedOrigins: ['https://user:pass@client.example.test'] }],
   ] as const)('ST-04 rejects a %s', async (_label, override) => {
+    const input = { ...validPublicClient, ...override } as ProtocolInput;
+    await expect(adminAccepts(input)).resolves.toBe(false);
+    expect(importAccepts(input)).toBe(false);
+  });
+
+  // Every exact URI or origin array must reject duplicate strings at both public ingestion paths.
+  it.each([
+    [
+      'redirect URI',
+      {
+        redirectUris: [
+          'https://client.example.test/callback',
+          'https://client.example.test/callback',
+        ],
+      },
+    ],
+    [
+      'post-logout redirect URI',
+      {
+        postLogoutRedirectUris: [
+          'https://client.example.test/signed-out',
+          'https://client.example.test/signed-out',
+        ],
+      },
+    ],
+    [
+      'allowed origin',
+      { allowedOrigins: ['https://client.example.test', 'https://client.example.test'] },
+    ],
+  ] as const)('rejects an exact duplicate %s', async (_label, override) => {
     const input = { ...validPublicClient, ...override } as ProtocolInput;
     await expect(adminAccepts(input)).resolves.toBe(false);
     expect(importAccepts(input)).toBe(false);

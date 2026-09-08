@@ -8,8 +8,6 @@ import {
   Dialog,
   Group,
   Input,
-  Scroller,
-  TabView,
   Text,
   View,
   Window,
@@ -102,26 +100,11 @@ interface ClientWorkspaceExports {
   }) => ClientWorkspace;
 }
 interface ClientDialogExports {
-  readonly showClientConfigurationDialog: (
-    host: ReturnType<typeof createApplication>,
-    signal: AbortSignal,
-    options: {
-      readonly mode: 'edit';
-      readonly organization: AdminOrganizationContext;
-      readonly client: AdminClient;
-      readonly initialTab: 'Basic' | 'Redirects' | 'Protocol' | 'Login';
-    },
-  ) => Promise<unknown>;
   readonly showClientLifecycleDialog: (
     host: ReturnType<typeof createApplication>,
     signal: AbortSignal,
     action: 'deactivate',
     organization: AdminOrganizationContext,
-    client: AdminClient,
-  ) => Promise<unknown>;
-  readonly showGenerateClientSecretDialog: (
-    host: ReturnType<typeof createApplication>,
-    signal: AbortSignal,
     client: AdminClient,
   ) => Promise<unknown>;
   readonly showRevokeClientSecretDialog: (
@@ -217,15 +200,6 @@ function activeDialog(host: ReturnType<typeof createApplication>): Dialog {
 function activate(host: ReturnType<typeof createApplication>, button: Button): void {
   host.loop.focusView(button);
   host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
-}
-
-/** Submits a modal through its ordinary command route so validation runs. */
-function submit(host: ReturnType<typeof createApplication>, dialog: Dialog): void {
-  const button = descendants(dialog)
-    .filter((view) => view instanceof Button)
-    .find((candidate) => candidate.activation.command === 'ok');
-  if (!button) throw new Error('Submit control missing.');
-  activate(host, button);
 }
 
 describe('organization OIDC client workspace', () => {
@@ -381,85 +355,6 @@ describe('organization OIDC client workspace', () => {
   });
 });
 
-describe('OIDC client configuration dialogs', () => {
-  it.each(['Basic', 'Redirects', 'Protocol', 'Login'] as const)('opens the shared movable Layout DSL dialog on %s', async (initialTab) => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'edit', organization, client, initialTab });
-    await settle();
-    const dialog = activeDialog(host);
-    const views = descendants(dialog);
-    expect(dialog.movable).toBe(true);
-    expect(views.find((view) => view instanceof TabView)).toBeInstanceOf(TabView);
-    expect(views.find((view) => view instanceof Scroller)).toBeInstanceOf(Scroller);
-    expect(frameText(host)).toContain(initialTab);
-    expect(views.filter((view) => view instanceof Input).every((input) => input.layout.position !== 'absolute')).toBe(true);
-    host.loop.endModal('cancel');
-    await expect(pending).resolves.toEqual({ kind: 'cancel' });
-  });
-
-  it.each([[80, 24], [48, 12]])('keeps every single-line input one row and reachable through vertical scrolling at %sx%s', async (width, height) => {
-    const host = createApplication({ viewport: { width, height } });
-    const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'edit', organization, client, initialTab: 'Protocol' });
-    await settle();
-    const dialog = activeDialog(host);
-    const views = descendants(dialog);
-    expect(dialog.bounds.width).toBeLessThanOrEqual(width);
-    expect(dialog.bounds.height).toBeLessThanOrEqual(height);
-    expect(views.filter((view) => view instanceof Input).every((input) => input.bounds.height === 1)).toBe(true);
-    expect(views.find((view) => view instanceof Scroller)).toBeInstanceOf(Scroller);
-    expect(frameText(host)).not.toContain('[jsvision/ui');
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it.each([
-    ['name', '', false], ['name', 'x', true], ['name', 'x'.repeat(255), true], ['name', 'x'.repeat(256), false], ['name', 'bad\u001b', false],
-    ['scope', '', true], ['scope', 'x', true], ['scope', 'x'.repeat(2_048), true], ['scope', 'x'.repeat(2_049), false], ['scope', 'bad\u0085', false],
-  ])('enforces the exact adjacent single-value boundary for %s', async (field, value, accepted) => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'edit', organization, client, initialTab: field === 'name' ? 'Basic' : 'Protocol' });
-    await settle();
-    const dialog = activeDialog(host);
-    const inputs = descendants(dialog).filter((view) => view instanceof Input);
-    const target = inputs.find((input) => input.getMaxLength() === (field === 'name' ? 255 : 2_048));
-    if (!target) throw new Error(`${field} input missing.`);
-    target.getValueSignal().set(value);
-    submit(host, dialog);
-    await settle();
-    expect(host.desktop.activeWindow() !== dialog).toBe(accepted);
-    if (!accepted) host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it.each([
-    ['redirect minimum', ['https://a.example/callback'], true],
-    ['redirect maximum count', Array.from({ length: 10 }, (_, index) => `https://a.example/${index}`), true],
-    ['redirect empty', [], false],
-    ['redirect too many', Array.from({ length: 11 }, (_, index) => `https://a.example/${index}`), false],
-    ['redirect fragment', ['https://a.example/callback#fragment'], false],
-    ['redirect wildcard', ['https://*.example/callback'], false],
-    ['origin empty', [], true],
-    ['origin maximum count', Array.from({ length: 10 }, (_, index) => `https://a${index}.example`), true],
-    ['origin too many', Array.from({ length: 11 }, (_, index) => `https://a${index}.example`), false],
-    ['origin path', ['https://a.example/path'], false],
-    ['origin credentials', ['https://user:pass@a.example'], false],
-  ])('enforces collection boundary: %s', async (_case, values, accepted) => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'edit', organization, client, initialTab: _case.startsWith('origin') ? 'Protocol' : 'Redirects' });
-    await settle();
-    const dialog = activeDialog(host);
-    const grids = descendants(dialog).filter((view) => view instanceof DataGrid);
-    const grid = grids[_case.startsWith('origin') ? 2 : 0];
-    if (!(grid instanceof DataGrid)) throw new Error('Collection grid missing.');
-    grid.setRows(values.map((value, index) => ({ id: String(index), value })));
-    submit(host, dialog);
-    await settle();
-    expect(host.desktop.activeWindow() !== dialog).toBe(accepted);
-    if (!accepted) host.loop.endModal('cancel');
-    await pending;
-  });
-});
-
 describe('client lifecycle and one-time secrets', () => {
   it.each(['deactivate'] as const)('names client and organization before %s with no restore path', async (action) => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
@@ -469,29 +364,6 @@ describe('client lifecycle and one-time secrets', () => {
     expect(frameText(host)).toContain(organization.name);
     expect(frameText(host)).not.toContain('Restore');
     host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it.each([
-    ['label omitted', '', '', true], ['label maximum', 'x'.repeat(255), '', true],
-    ['label too long', 'x'.repeat(256), '', false], ['label control', 'bad\u001b', '', false],
-    ['expiry omitted', '', '', true], ['expiry valid', '', '2027-01-01T00:00:00Z', true],
-    ['expiry malformed', '', 'tomorrow', false],
-    ['expiry nonexistent date', '', '2027-02-30T00:00:00Z', false],
-    ['expiry normalized hour', '', '2027-01-01T24:00:00Z', false],
-  ])('validates secret generation boundary: %s', async (_case, label, expiry, accepted) => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = (await dialogExports()).showGenerateClientSecretDialog(host, new AbortController().signal, client);
-    await settle();
-    const dialog = activeDialog(host);
-    const inputs = descendants(dialog).filter((view) => view instanceof Input);
-    expect(inputs.every((input) => input.bounds.height === 1)).toBe(true);
-    inputs[0]?.getValueSignal().set(label);
-    inputs[1]?.getValueSignal().set(expiry);
-    submit(host, dialog);
-    await settle();
-    expect(host.desktop.activeWindow() !== dialog).toBe(accepted);
-    if (!accepted) host.loop.endModal('cancel');
     await pending;
   });
 
