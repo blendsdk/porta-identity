@@ -80,18 +80,30 @@ const COLLECTION_COLUMNS: Column<CollectionRow>[] = [
 class AuthenticationCollectionGrid extends DataGrid<CollectionRow> {
   /** Creates the reused grid over its visible-row signal. */
   constructor(
-    rows: Signal<CollectionRow[]>,
+    private readonly visibleRows: Signal<CollectionRow[]>,
     focused: Signal<number>,
     selected: Signal<number>,
     private readonly replaceActiveRows: (rows: CollectionRow[]) => void,
     onSelect: (index: number, row: CollectionRow) => void,
   ) {
-    super({ rows, focused, selected, columns: COLLECTION_COLUMNS, zebra: true, onSelect });
+    super({
+      rows: visibleRows,
+      focused,
+      selected,
+      columns: COLLECTION_COLUMNS,
+      zebra: true,
+      onSelect,
+    });
   }
 
   /** Replaces the active collection while retaining one grid instance across selector changes. */
   setRows(rows: CollectionRow[]): void {
     this.replaceActiveRows([...rows]);
+  }
+
+  /** Returns a snapshot of the active staged collection for diagnostics and behavior tests. */
+  getRows(): readonly CollectionRow[] {
+    return [...this.visibleRows.peek()];
   }
 }
 
@@ -198,7 +210,8 @@ function valueGuidance(
   selectedIndex: number,
 ): string {
   if (value.length === 0) return 'A value is required.';
-  if (!collectionValueIsValid(kind, value)) return 'Enter a valid exact URI or origin.';
+  if (!collectionValueIsValid(kind, value))
+    return 'The value is invalid. Enter an exact URI or origin.';
   const duplicate = rows.some((row, index) => row.value === value && index !== selectedIndex);
   return duplicate ? 'That exact value already exists.' : '';
 }
@@ -257,6 +270,11 @@ export async function showClientAuthenticationDialog(
     logoutRedirects: 0,
     origins: 0,
   };
+  const selectedByCollection: Record<CollectionKind, number> = {
+    redirects: -1,
+    logoutRedirects: -1,
+    origins: -1,
+  };
   let activeKind: CollectionKind = 'redirects';
   const grid = new AuthenticationCollectionGrid(
     visibleRows,
@@ -291,11 +309,12 @@ export async function showClientAuthenticationDialog(
       () => choice()?.kind ?? 'redirects',
       (nextKind) => {
         focusedByCollection[activeKind] = focused.peek();
+        selectedByCollection[activeKind] = selected.peek();
         activeKind = nextKind;
         const rows = collections[nextKind].peek();
         visibleRows.set([...rows]);
         focused.set(Math.min(focusedByCollection[nextKind], Math.max(0, rows.length - 1)));
-        selected.set(-1);
+        selected.set(Math.min(selectedByCollection[nextKind], rows.length - 1));
         value.set('');
       },
       { relayout: true },
@@ -354,11 +373,11 @@ export async function showClientAuthenticationDialog(
   editor.add(
     cover(
       col(
-        { gap: 1 },
+        { gap: 0 },
         fixed(row({ gap: 1 }, fixed(new Label('Collection', selector), 18), grow(selector)), 1),
         grow(grid),
         fixed(row({ gap: 1 }, fixed(new Label('Value', valueInput), 18), grow(valueInput)), 1),
-        fixed(row({ gap: 1 }, add, edit, remove, spacer()), 1),
+        fixed(row({ gap: 1 }, add, edit, remove, spacer()), 2),
         fixed(new Text(() => valueGuidance(activeKind, value(), currentRows(), selected())), 1),
       ),
     ),

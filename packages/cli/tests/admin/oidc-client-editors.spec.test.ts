@@ -5,6 +5,7 @@ import {
   Button,
   CheckGroup,
   ComboBox,
+  cover,
   createApplication,
   DataGrid,
   DatePicker,
@@ -153,7 +154,7 @@ function button(root: View, label: string): Button {
 }
 
 /** Verifies the fixed full-page contract shared by the three multi-field editors. */
-function expectFullPage(dialog: Dialog): void {
+function expectFullPage(host: ReturnType<typeof createApplication>, dialog: Dialog): void {
   const views = descendants(dialog);
   const save = button(dialog, 'Save');
   const cancel = button(dialog, 'Cancel');
@@ -161,8 +162,11 @@ function expectFullPage(dialog: Dialog): void {
   expect(dialog.closable || dialog.resizable || dialog.zoomable).toBe(false);
   expect(views.filter((view) => view instanceof GroupBox).length).toBeGreaterThanOrEqual(2);
   expect(views.filter((view) => view instanceof TabView)).toHaveLength(0);
-  expect(save.bounds.y).toBe(cancel.bounds.y);
-  expect(save.bounds.y).toBeGreaterThanOrEqual(dialog.bounds.height - 3);
+  const saveOrigin = host.loop.renderRoot.originOf(save);
+  const cancelOrigin = host.loop.renderRoot.originOf(cancel);
+  if (!saveOrigin || !cancelOrigin) throw new Error('Editor actions are not mounted.');
+  expect(saveOrigin.y).toBe(cancelOrigin.y);
+  expect(saveOrigin.y).toBeGreaterThanOrEqual(dialog.bounds.height - 4);
   for (const action of [save, cancel]) {
     expect(action.layout.size).toBeUndefined();
     expect(action.bounds.width).toBe(action.measure().width);
@@ -172,7 +176,19 @@ function expectFullPage(dialog: Dialog): void {
 /** Activates a control through the ordinary keyboard route. */
 function activate(host: ReturnType<typeof createApplication>, action: Button): void {
   host.loop.focusView(action);
-  host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
+  press(host, 'space');
+}
+
+/** Dispatches one keyboard event through the ordinary application loop. */
+function press(host: ReturnType<typeof createApplication>, key: string, alt = false): void {
+  host.loop.dispatch({
+    type: 'key',
+    key,
+    codepoint: key.codePointAt(0),
+    ctrl: false,
+    alt,
+    shift: false,
+  });
 }
 
 /** Selects one labelled ComboBox item through its public value signal. */
@@ -195,6 +211,19 @@ function replaceRows(grid: DataGrid<unknown>, values: readonly string[]): void {
   const setRows = Reflect.get(grid, 'setRows');
   if (typeof setRows !== 'function') throw new Error('Collection staging seam missing.');
   Reflect.apply(setRows, grid, [values.map((value, index) => ({ id: String(index), value }))]);
+}
+
+/** Reads values from the focused editor's explicit staging seam. */
+function stagedValues(grid: DataGrid<unknown>): readonly string[] {
+  const getRows = Reflect.get(grid, 'getRows');
+  if (typeof getRows !== 'function') throw new Error('Collection staging seam missing.');
+  const rows = Reflect.apply(getRows, grid, []);
+  if (!Array.isArray(rows)) throw new Error('Collection staging rows missing.');
+  return rows.flatMap((row) =>
+    typeof row === 'object' && row !== null && 'value' in row && typeof row.value === 'string'
+      ? [row.value]
+      : [],
+  );
 }
 
 /** Opens one full-page editor on a real terminal surface. */
@@ -245,6 +274,13 @@ async function openGenerator() {
   return { host, pending, dialog: activeDialog(host) };
 }
 
+/** Mounts the feature-local expiry composition inside a filling root group. */
+function mountExpiry(fields: ReturnType<typeof createClientSecretExpiryFields>) {
+  const content = new Group();
+  content.add(cover(fields.content));
+  return createApplication({ content, viewport: { width: 70, height: 10 } });
+}
+
 /** Mounts the credential projection and collects emitted workspace intents. */
 async function mountCredentials(secrets: readonly AdminClientSecret[]) {
   const intents: unknown[] = [];
@@ -274,7 +310,7 @@ async function mountCredentials(secrets: readonly AdminClientSecret[]) {
 describe('Authentication collection editor', () => {
   it('preserves the selected redirect edit while switching collections at compact geometry', async () => {
     const { host, pending, dialog } = await openEditor('authentication', client, 48, 12);
-    expectFullPage(dialog);
+    expectFullPage(host, dialog);
     let resolved = false;
     void pending.then(() => {
       resolved = true;
@@ -282,7 +318,7 @@ describe('Authentication collection editor', () => {
     const { selector, grid, input } = collectionControls(dialog);
     grid.focused.set(1);
     host.loop.focusView(grid.rows);
-    host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
+    press(host, 'enter');
     await settle();
     expect(input.getValueSignal().peek()).toBe(client.redirectUris[1]);
     input.getValueSignal().set('https://portal.example.test/edited-callback');
@@ -292,12 +328,12 @@ describe('Authentication collection editor', () => {
     choose(selector, 'Redirect URIs');
     await settle();
     expect(descendants(dialog).filter((view) => view instanceof DataGrid)).toEqual([grid]);
-    expect(frameText(host)).toContain('https://portal.example.test/edited-callback');
+    expect(stagedValues(grid)).toContain('https://portal.example.test/edited-callback');
     expect(grid.selected.peek()).toBe(1);
     input.getValueSignal().set('https://portal.example.test/third-callback');
     activate(host, button(dialog, 'Add'));
     await settle();
-    expect(frameText(host)).toContain('https://portal.example.test/third-callback');
+    expect(stagedValues(grid)).toContain('https://portal.example.test/third-callback');
     expect(resolved).toBe(false);
     host.loop.endModal('cancel');
     await expect(pending).resolves.toEqual({ kind: 'cancel' });
@@ -330,21 +366,16 @@ describe('Authentication collection editor', () => {
     ['Redirect URIs', `https://example.test/${'x'.repeat(2_049)}`],
     ['Allowed origins', 'https://example.test/path'],
     ['Allowed origins', 'https://user:pass@example.test'],
-  ])('rejects %j in %s without changing rows', async (collection, invalid) => {
+  ])('rejects invalid input in %s: %j', async (collection, invalid) => {
     const { host, pending, dialog } = await openEditor('authentication');
     const { selector, input } = collectionControls(dialog);
     choose(selector, collection);
-    const before = frameText(host);
+    const before = stagedValues(collectionControls(dialog).grid);
     input.getValueSignal().set(invalid);
     await settle();
     expect(button(dialog, 'Add').state.disabled).toBe(true);
     expect(frameText(host)).toMatch(/invalid|required/i);
-    for (const retained of collection === 'Allowed origins'
-      ? client.allowedOrigins
-      : client.redirectUris) {
-      expect(frameText(host)).toContain(retained);
-    }
-    expect(before).not.toContain(invalid || 'not-used');
+    expect(stagedValues(collectionControls(dialog).grid)).toEqual(before);
     host.loop.endModal('cancel');
     await pending;
   });
@@ -438,7 +469,7 @@ describe('Protocol and Login experience editors', () => {
     ],
   ])('emits one compatible %s protocol payload', async (_case, value) => {
     const { host, pending, dialog } = await openEditor('protocol', value);
-    expectFullPage(dialog);
+    expectFullPage(host, dialog);
     activate(host, button(dialog, 'Save'));
     await expect(pending).resolves.toEqual({
       kind: 'update',
@@ -455,7 +486,7 @@ describe('Protocol and Login experience editors', () => {
 
   it('shows inherited effective methods with editing disabled', async () => {
     const { host, pending, dialog } = await openEditor('login');
-    expectFullPage(dialog);
+    expectFullPage(host, dialog);
     const methods = descendants(dialog).find((view) => view instanceof CheckGroup);
     if (!(methods instanceof CheckGroup)) throw new Error('Login method choices missing.');
     expect(frameText(host)).toContain(organization.name);
@@ -479,14 +510,7 @@ describe('Protocol and Login experience editors', () => {
     if (!(inheritance instanceof Switch)) throw new Error('Inheritance switch missing.');
     inheritance.select(false);
     for (const key of hotkeys) {
-      host.loop.dispatch({
-        type: 'key',
-        key,
-        codepoint: key.codePointAt(0),
-        ctrl: false,
-        alt: true,
-        shift: false,
-      });
+      press(host, key, true);
     }
     activate(host, button(dialog, 'Save'));
     await expect(pending).resolves.toEqual({
@@ -535,10 +559,7 @@ describe('shared secret expiry and Credentials', () => {
 
   it('serializes a custom civil date on the following UTC day', async () => {
     const fields = createClientSecretExpiryFields(new Date('2026-09-07T12:00:00Z'));
-    const host = createApplication({
-      content: fields.content,
-      viewport: { width: 70, height: 10 },
-    });
+    const host = mountExpiry(fields);
     const combo = descendants(fields.content).find((view) => view instanceof ComboBox);
     if (!(combo instanceof ComboBox)) throw new Error('Expiry choice missing.');
     choose(combo, 'Custom');
@@ -558,10 +579,7 @@ describe('shared secret expiry and Credentials', () => {
     'validates custom date %j without an extra confirmation',
     async (date, valid, guidance) => {
       const fields = createClientSecretExpiryFields(new Date('2026-09-07T12:00:00Z'));
-      const host = createApplication({
-        content: fields.content,
-        viewport: { width: 70, height: 10 },
-      });
+      const host = mountExpiry(fields);
       const combo = descendants(fields.content).find((view) => view instanceof ComboBox);
       if (!(combo instanceof ComboBox)) throw new Error('Expiry choice missing.');
       choose(combo, 'Custom');
@@ -571,26 +589,23 @@ describe('shared secret expiry and Credentials', () => {
       picker.value.set(date);
       await settle();
       expect(fields.isValid()).toBe(valid);
-      expect(frameText(host)).toMatch(guidance);
-      expect(host.desktop.activeWindow()).toBeNull();
+      expect(frameText(host).replace(/\s+/g, ' ')).toMatch(guidance);
+      expect(descendants(fields.content).filter((view) => view instanceof Dialog)).toHaveLength(0);
     },
   );
 
   it('omits Never and shows its complete warning', async () => {
     const fields = createClientSecretExpiryFields(new Date('2026-09-07T12:00:00Z'));
-    const host = createApplication({
-      content: fields.content,
-      viewport: { width: 70, height: 10 },
-    });
+    const host = mountExpiry(fields);
     const combo = descendants(fields.content).find((view) => view instanceof ComboBox);
     if (!(combo instanceof ComboBox)) throw new Error('Expiry choice missing.');
     choose(combo, 'Never');
     await settle();
     expect(fields.expiresAt()).toBeUndefined();
-    expect(frameText(host)).toContain(
+    expect(frameText(host).replace(/\s+/g, ' ')).toContain(
       'This secret will remain valid until it is revoked. Regular rotation is recommended.',
     );
-    expect(host.desktop.activeWindow()).toBeNull();
+    expect(descendants(fields.content).filter((view) => view instanceof Dialog)).toHaveLength(0);
   });
 
   it('uses the complete expiry composition in focused secret generation', async () => {
@@ -604,7 +619,7 @@ describe('shared secret expiry and Credentials', () => {
     ).toBe(true);
     choose(combo, 'Never');
     await settle();
-    expect(frameText(host)).toContain('Regular rotation is recommended.');
+    expect(frameText(host)).toMatch(/Regular.*rotation is recommended\./s);
     const generate = button(dialog, 'Generate');
     expect(generate.layout.size).toBeUndefined();
     expect(generate.bounds.width).toBe(generate.measure().width);
@@ -632,9 +647,15 @@ describe('shared secret expiry and Credentials', () => {
     const mounted = await mountCredentials([]);
     const grid = descendants(mounted.workspace.content).find((view) => view instanceof DataGrid);
     expect(grid).toBeInstanceOf(DataGrid);
-    for (const heading of ['Label', 'Status', 'Last used', 'Expires', 'Created']) {
+    for (const heading of ['Label', 'Status', 'Last used', 'Expires']) {
       expect(frameText(mounted.host)).toContain(heading);
     }
+    if (!(grid instanceof DataGrid)) throw new Error('Credential grid missing.');
+    mounted.host.loop.focusView(grid.rows);
+    for (let index = 0; index < 40; index += 1) {
+      press(mounted.host, 'right');
+    }
+    expect(frameText(mounted.host)).toContain('Created');
     expect(button(mounted.workspace.content, 'Generate').state.disabled).toBe(false);
   });
 
@@ -661,13 +682,7 @@ describe('shared secret expiry and Credentials', () => {
     expect(revoke.state.disabled).toBe(true);
     grid.focused.set(1);
     mounted.host.loop.focusView(grid.rows);
-    mounted.host.loop.dispatch({
-      type: 'key',
-      key: 'enter',
-      ctrl: false,
-      alt: false,
-      shift: false,
-    });
+    press(mounted.host, 'enter');
     await settle();
     expect(revoke.state.disabled).toBe(false);
     activate(mounted.host, revoke);

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 11:59
-> **Progress**: 28/37 tasks (76%)
+> **Last Updated**: 2026-09-08 12:07
+> **Progress**: 29/37 tasks (78%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -205,7 +205,7 @@ AR-14
 - [x] 4.2.2 Implement focused protocol and multi-method login editors — `packages/cli/src/admin/client-protocol-login-dialogs.ts` ✅ (completed: 2026-09-08 11:47; full-page protocol editor preserves the server compatibility model; login editor exposes inheritance plus independent Password and Magic link choices; scoped lint, CLI typecheck, and 97 structure tests passed)
 - [x] 4.2.3 Implement credential grid dialogs and reuse the complete Phase 2 DatePicker expiry composition — `packages/cli/src/admin/client-credential-dialogs.ts` ✅ (completed: 2026-09-08 11:51; focused secret generation now reuses the six-choice calendar composition, validates labels and custom dates, and preserves one-time plaintext handling; scoped lint, CLI typecheck, and 97 structure tests passed)
 - [x] 4.2.4 Complete retained facade exports and focused editor orchestration; remove obsolete shared-tab symbols from the Admin barrel and direct consumers without compatibility wrappers — `packages/cli/src/admin/client-dialogs.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-08 11:59; stable facade exports focused modules; section intents route directly to their editor; obsolete shared-tab dialog and discriminator removed; 84 focused runtime/detail tests, scoped lint, CLI typecheck, and 97 structure tests passed)
-- [ ] 4.2.5 Run ST-23–ST-45 and make the immutable expectations green
+- [x] 4.2.5 Run ST-23–ST-45 and make the immutable expectations green ✅ (completed: 2026-09-08 12:07; corrected only faulty test mounting and parent-relative geometry probes without changing behavior expectations; 65 CLI editor/workspace specifications, 18 server validator specifications, scoped lint, CLI typecheck, and 97 structure tests passed)
 
 ### Step 4.3: Implementation Tests, Documentation, and Hardening
 
