@@ -2,12 +2,15 @@
 
 import {
   Button,
+  ComboBox,
   createApplication,
   DataGrid,
   Dialog,
   Group,
+  GroupBox,
   Input,
   RadioGroup,
+  Scroller,
   TabView,
   View,
 } from '@jsvision/ui';
@@ -158,9 +161,9 @@ function createButton(dialog: Dialog): Button {
   return button;
 }
 
-/** Opens compact registration on a real terminal surface. */
-async function openRegistration() {
-  const host = createApplication({ viewport: { width: 80, height: 24 } });
+/** Opens registration on a real terminal surface. */
+async function openRegistration(width = 80, height = 24) {
+  const host = createApplication({ viewport: { width, height } });
   const pending = (await registrationExports()).showClientRegistrationDialog(
     host,
     new AbortController().signal,
@@ -222,35 +225,94 @@ afterEach(() => {
 });
 
 describe('compact OIDC client registration', () => {
-  it('shows only the required compact fields and naturally sized Layout DSL actions', async () => {
+  it('uses a maximized grouped surface with reachable naturally sized actions', async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
     const { host, pending, dialog } = await openRegistration();
     const views = descendants(dialog);
-    const text = frameText(host);
+    const scroller = views.find((view) => view instanceof Scroller);
+    if (!(scroller instanceof Scroller)) throw new Error('Registration form scroller missing.');
 
-    for (const label of [
-      'Client name',
-      'Application',
-      'Client type',
-      'Application type',
-      'Redirect URI',
-      'Secret label',
-      'Expires',
-    ]) {
-      expect(text).toContain(label);
+    expect(dialog.title()).toBe('Register OIDC client');
+    expect(dialog.isZoomed()).toBe(true);
+    expect(dialog.closable).toBe(false);
+    expect(dialog.resizable).toBe(false);
+    expect(dialog.zoomable).toBe(false);
+    expect(views.filter((view) => view instanceof GroupBox)).toHaveLength(2);
+    const initialFrame = frameText(host);
+    for (const label of ['Client details', 'Client name', 'Application', 'Client type']) {
+      expect(initialFrame).toContain(label);
     }
-    expect(text).toContain(application.name);
+    expect(initialFrame).toContain(application.name);
     expect(views.filter((view) => view instanceof TabView)).toHaveLength(0);
     expect(views.filter((view) => view instanceof DataGrid)).toHaveLength(0);
     for (const advanced of ['Grant types', 'Response types', 'Scope', 'PKCE', 'Login methods']) {
-      expect(text).not.toContain(advanced);
+      expect(initialFrame).not.toContain(advanced);
     }
     expect(
       views
         .filter((view) => view instanceof Button)
         .every((button) => button.layout.size === undefined),
     ).toBe(true);
+    for (const button of views.filter((view) => view instanceof Button)) {
+      expect(button.bounds.y).toBeGreaterThanOrEqual(0);
+      expect(button.bounds.y + button.bounds.height).toBeLessThanOrEqual(dialog.bounds.height);
+    }
+
+    const secretLabel = views
+      .filter((view) => view instanceof Input)
+      .filter((input) => input.getMaxLength() === 255)[1];
+    if (!secretLabel) throw new Error('Initial secret label input missing.');
+    host.loop.focusView(secretLabel);
+    await settle();
+    for (const label of ['Redirect URI', 'Initial secret', 'Secret label']) {
+      expect(frameText(host)).toContain(label);
+    }
+    const expiry = views.filter((view) => view instanceof ComboBox).at(-1);
+    if (!(expiry instanceof ComboBox)) throw new Error('Initial secret expiry picker missing.');
+    host.loop.focusView(expiry.input);
+    await settle();
+    expect(frameText(host)).toContain('Expires');
+    expiry.value.set(expiry.items.peek().at(-1) ?? null);
+    for (let index = 0; index < 4; index += 1) {
+      host.loop.dispatch({
+        type: 'wheel',
+        dir: 'down',
+        x: scroller.bounds.x + 2,
+        y: scroller.bounds.y + 2,
+        ctrl: false,
+        alt: false,
+        shift: false,
+      });
+    }
+    await settle();
+    const warningFrame = frameText(host);
+    expect(warningFrame).toContain(
+      'This secret will remain valid until it is revoked. Regular rotation is',
+    );
+    expect(warningFrame).toContain('recommended.');
+
+    host.loop.endModal('cancel');
+    await expect(pending).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('keeps registration actions visible while the complete form scrolls at 48×12', async () => {
+    const { host, pending, dialog } = await openRegistration(48, 12);
+    const views = descendants(dialog);
+    const scroller = views.find((view) => view instanceof Scroller);
+    if (!(scroller instanceof Scroller)) throw new Error('Registration form scroller missing.');
+
+    expect(dialog.isZoomed()).toBe(true);
+    expect(frameText(host)).toContain('Create');
+    expect(frameText(host)).toContain('Cancel');
+    const expiry = views.filter((view) => view instanceof ComboBox).at(-1);
+    if (!(expiry instanceof ComboBox)) throw new Error('Initial secret expiry picker missing.');
+    host.loop.focusView(expiry.input);
+    await settle();
+    expect(scroller.delta.y).toBeGreaterThan(0);
+    expect(frameText(host)).toContain('Expires');
+    expect(frameText(host)).toContain('Create');
+    expect(frameText(host)).toContain('Cancel');
 
     host.loop.endModal('cancel');
     await expect(pending).resolves.toEqual({ kind: 'cancel' });

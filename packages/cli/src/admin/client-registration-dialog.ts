@@ -11,16 +11,18 @@ import {
   fixed,
   grow,
   Group,
+  GroupBox,
   Input,
   Label,
   RadioGroup,
   row,
+  Scroller,
   Show,
   signal,
   spacer,
   Text,
 } from '@jsvision/ui';
-import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
+import type { EventLoop, ModalDialogHost, Signal, Size2D, View } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication } from './application-state.js';
@@ -78,13 +80,17 @@ interface RegistrationForm {
 
 /** Dialog that applies the same validation to buttons, Enter, and programmatic submission. */
 class ClientRegistrationDialog extends Dialog {
-  /** Creates one compact, movable registration surface. */
+  /** Creates one fixed registration surface that will fill its desktop. */
   constructor(
     width: number,
     height: number,
     private readonly form: RegistrationForm,
   ) {
-    super({ title: 'Create OIDC client', width, height, centered: true });
+    super({ title: 'Register OIDC client', width, height, centered: true });
+    this.closable = false;
+    this.movable = false;
+    this.resizable = false;
+    this.zoomable = false;
   }
 
   /** Prevents an invalid or incomplete form from emitting a create result. */
@@ -151,6 +157,14 @@ function registrationDialogSize(host: AdminClientRegistrationDialogHost): {
   };
 }
 
+/** Maximizes a fixed dialog while keeping restore and resize operations unavailable to the user. */
+function maximizeRegistrationDialog(dialog: Dialog): void {
+  if (dialog.isZoomed()) return;
+  dialog.zoomable = true;
+  dialog.zoom();
+  dialog.zoomable = false;
+}
+
 /** Runs one abortable modal and removes it regardless of its completion path. */
 async function runRegistrationDialog(
   host: AdminClientRegistrationDialogHost,
@@ -158,6 +172,7 @@ async function runRegistrationDialog(
   operationSignal: AbortSignal,
 ): Promise<string> {
   host.desktop.addWindow(dialog);
+  maximizeRegistrationDialog(dialog);
   try {
     return await runAbortableAdminDialog(
       host.loop,
@@ -175,6 +190,142 @@ async function runRegistrationDialog(
 /** Creates a one-row field whose label points at its input control. */
 function registrationInputRow(label: string, input: Input): ReturnType<typeof row> {
   return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
+}
+
+/** Returns every focusable leaf below a form so hidden rows can be revealed as focus moves. */
+function focusableDescendants(root: View): View[] {
+  const result: View[] = [];
+  const visit = (view: View): void => {
+    if (view.focusable && !(view instanceof Group)) result.push(view);
+    if (view instanceof Group) for (const child of view.children) visit(child);
+  };
+  visit(root);
+  return result;
+}
+
+/** Vertical form scroller that keeps keyboard-focused fields inside its viewport. */
+class RegistrationFormScroller extends Scroller {
+  /** Creates a scrolling viewport over one complete registration form. */
+  constructor(content: Group, extent: () => Size2D) {
+    // Giving the content a growing initial layout prevents its nested DSL rows from first solving at
+    // their two-cell intrinsic frame width before Scroller applies the larger content extent.
+    super({ content: grow(content), extent, scrollbars: 'vertical' });
+    this.onMount(() => {
+      const targets = focusableDescendants(content);
+      this.bind(
+        () => {
+          let focused: View | null = null;
+          for (const target of targets) {
+            target.focusSignal()();
+            if (target.state.focused) focused = target;
+          }
+          return focused;
+        },
+        (focused) => this.revealFocused(focused),
+      );
+    });
+  }
+
+  /** Adjusts only the vertical offset needed to reveal one focused descendant. */
+  protected revealFocused(target: View | null): void {
+    if (!target || this.vpH <= 0) return;
+    let top = 0;
+    let current: View | null = target;
+    while (current && current !== this.content) {
+      top += current.bounds.y;
+      current = current.parent;
+    }
+    if (!current) return;
+    // Leave three rows below the control when possible so expiry guidance remains visible with its
+    // picker instead of forcing a second manual scroll immediately after keyboard focus arrives.
+    const bottom = top + Math.max(1, target.bounds.height) + 3;
+    const offset = this.dy.peek();
+    if (top < offset) this.dy.set(top);
+    else if (bottom > offset + this.vpH) this.dy.set(Math.min(this.maxY, bottom - this.vpH));
+  }
+}
+
+/** Builds the spacious client identity and type region of the registration form. */
+function clientDetailsGroup(
+  form: RegistrationForm,
+  organization: AdminOrganizationContext,
+): GroupBox {
+  const details = new GroupBox({ title: 'Client details', padding: 1 });
+  details.add(
+    cover(
+      col(
+        { gap: 1 },
+        fixed(new Text(`Organization: ${organization.name} (read only)`), 1),
+        registrationInputRow('Client name', form.nameInput),
+        fixed(row({ gap: 1 }, fixed(new Text('Application'), 18), grow(form.applicationPicker)), 1),
+        fixed(
+          row(
+            { gap: 1 },
+            fixed(new Text('Client type'), 18),
+            grow(
+              new RadioGroup({
+                labels: ['~P~ublic', 'Con~f~idential'],
+                value: form.clientType,
+              }),
+            ),
+          ),
+          2,
+        ),
+        fixed(
+          row(
+            { gap: 1 },
+            fixed(new Text('Application type'), 18),
+            grow(
+              new RadioGroup({
+                labels: ['~W~eb', '~N~ative', '~S~PA'],
+                value: form.applicationType,
+              }),
+            ),
+          ),
+          3,
+        ),
+        registrationInputRow('Redirect URI', form.redirectInput),
+      ),
+    ),
+  );
+  return details;
+}
+
+/** Builds the optional initial-secret region shown only for confidential clients. */
+function initialSecretGroup(form: RegistrationForm): GroupBox {
+  const secret = new GroupBox({ title: 'Initial secret', padding: 1 });
+  secret.add(
+    cover(
+      col(
+        { gap: 1 },
+        registrationInputRow('Secret label', form.secretLabelInput),
+        fixed(form.secretExpiry.content, 4),
+      ),
+    ),
+  );
+  return secret;
+}
+
+/** Creates a vertically scrollable form whose logical regions retain comfortable spacing. */
+function registrationFormScroller(
+  dialog: Dialog,
+  form: RegistrationForm,
+  organization: AdminOrganizationContext,
+): Scroller {
+  const formContent = col(
+    { gap: 1, padding: 1 },
+    fixed(clientDetailsGroup(form, organization), 16),
+  );
+  formContent.addDynamic(() =>
+    Show(
+      () => form.clientType() === 1,
+      () => fixed(initialSecretGroup(form), 8),
+    ),
+  );
+  return new RegistrationFormScroller(formContent, () => ({
+    width: Math.max(1, (dialog.bounds.width || 68) - 6),
+    height: form.clientType() === 1 ? 27 : 18,
+  }));
 }
 
 /** Creates the signals and controls for one compact registration attempt. */
@@ -248,56 +399,12 @@ export async function showClientRegistrationDialog(
   const form = createRegistrationForm(options.applications);
   const { width, height } = registrationDialogSize(host);
   const dialog = new ClientRegistrationDialog(width, height, form);
-  const secretFields = new Group();
-  secretFields.addDynamic(() =>
-    Show(
-      () => form.clientType() === 1,
-      () =>
-        cover(
-          col(
-            { gap: 0 },
-            registrationInputRow('Secret label', form.secretLabelInput),
-            fixed(form.secretExpiry.content, 3),
-          ),
-        ),
-    ),
-  );
+  const formScroller = registrationFormScroller(dialog, form, options.organization);
   dialog.add(
     cover(
       col(
-        { gap: 0, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        fixed(new Text(`Organization: ${options.organization.name} (read only)`), 1),
-        registrationInputRow('Client name', form.nameInput),
-        fixed(row({ gap: 1 }, fixed(new Text('Application'), 18), grow(form.applicationPicker)), 1),
-        fixed(
-          row(
-            { gap: 1 },
-            fixed(new Text('Client type'), 18),
-            grow(
-              new RadioGroup({
-                labels: ['~P~ublic', 'Con~f~idential'],
-                value: form.clientType,
-              }),
-            ),
-          ),
-          2,
-        ),
-        fixed(
-          row(
-            { gap: 1 },
-            fixed(new Text('Application type'), 18),
-            grow(
-              new RadioGroup({
-                labels: ['~W~eb', '~N~ative', '~S~PA'],
-                value: form.applicationType,
-              }),
-            ),
-          ),
-          3,
-        ),
-        registrationInputRow('Redirect URI', form.redirectInput),
-        fixed(secretFields, 4),
-        spacer(),
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(formScroller),
         fixed(
           row(
             { gap: 1 },

@@ -115,6 +115,18 @@ AR-12, AR-14
 
 **Verify**: focused CLI registration/controller suites and CLI typecheck
 
+**Phase 2 quality gate (2026-09-08 09:17)**: The independent security audit passed without
+findings. Correctness review found one Major registration-geometry defect and two Minor items. The
+user accepted a focused repair that makes registration a maximized fixed Dialog surface with
+captioned groups, scrollable form content, a separate bottom action row, and complete warning text.
+The claim that unrelated workspace coverage was weakened was rejected: the Phase 2 diff removes
+only assertions for the superseded create-mode dialog, while the maximized workspace and empty-grid
+specifications remain present. Phase 2 remains open until the accepted repair verifies and passes
+one bounded re-review. **Remediation**: maximized grouped registration, focus-aware vertical
+scrolling, fixed bottom actions, and complete expiry-warning height are implemented; verification
+passed 149 focused CLI tests, CLI typecheck, scoped lint/format, and 97 structure tests. One bounded
+re-review remains (verified: 2026-09-08 09:33).
+
 ---
 
 ## Phase 3: Sectioned Client Detail

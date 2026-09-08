@@ -44,16 +44,22 @@ Create remains disabled until all required visible fields are valid. Changing to
 hides/disables secret inputs and removes both secret properties from the payload. Advanced fields
 are omitted so existing server defaults remain authoritative (AR-3, AR-6, AR-11).
 
+Registration uses the existing Dialog as a maximized, fixed module surface rather than a small
+centered window. Client details and initial-secret settings use separate captioned groups with
+comfortable normal-size spacing. The form region scrolls vertically when needed while Create and
+Cancel remain in a separate bottom action row. This keeps the complete workflow reachable at
+48×12 without adding a custom surface or navigation layer (AR-15).
+
 ### Detail Sections
 
-| Section | Content | Operations |
-|---|---|---|
-| Overview | Identity, organization, application, types, status, timestamps, and concise read-only Protocol and Login summaries | Edit name |
-| Authentication | Redirect URIs, post-logout URIs, allowed origins | Open focused collection editor |
-| Protocol | Grants, response type, scope, token authentication, PKCE | Open focused protocol editor |
-| Login experience | Override mode, source organization, effective methods | Open focused login editor |
-| Credentials | Confidential-client secret metadata DataGrid | Generate or revoke selected secret |
-| Lifecycle | Active/inactive state and permanent deletion context | Activate/deactivate/delete |
+| Section          | Content                                                                                                            | Operations                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------- |
+| Overview         | Identity, organization, application, types, status, timestamps, and concise read-only Protocol and Login summaries | Edit name                          |
+| Authentication   | Redirect URIs, post-logout URIs, allowed origins                                                                   | Open focused collection editor     |
+| Protocol         | Grants, response type, scope, token authentication, PKCE                                                           | Open focused protocol editor       |
+| Login experience | Override mode, source organization, effective methods                                                              | Open focused login editor          |
+| Credentials      | Confidential-client secret metadata DataGrid                                                                       | Generate or revoke selected secret |
+| Lifecycle        | Active/inactive state and permanent deletion context                                                               | Activate/deactivate/delete         |
 
 Each logical region uses an existing `GroupBox` with start-aligned caption and no shadow. Overview's
 small name dialog emits only `{clientName}`; immutable identity/type fields remain read-only.
@@ -90,14 +96,14 @@ or generalized collection framework is allowed (AR-14).
 
 ## Error Handling
 
-| Error Case | Handling Strategy | AR Ref |
-|---|---|---|
-| No active application | Registration remains unavailable through existing capability checks | AR-3 |
-| Invalid required registration field | Create remains disabled and the field shows local validation | AR-3 |
-| Create failure | Preserve the prior validated list and sanitized operation status | AR-1, AR-13 |
-| One-time secret presenter fails | Discard plaintext and require authoritative reconciliation | AR-12 |
-| Organization/session changes | Abort dialog/operation and clear organization-scoped state | AR-1 |
-| Compact terminal | Keep every section and bottom navigation reachable through the existing compact recipe | AR-4 |
+| Error Case                          | Handling Strategy                                                                      | AR Ref      |
+| ----------------------------------- | -------------------------------------------------------------------------------------- | ----------- |
+| No active application               | Registration remains unavailable through existing capability checks                    | AR-3        |
+| Invalid required registration field | Create remains disabled and the field shows local validation                           | AR-3        |
+| Create failure                      | Preserve the prior validated list and sanitized operation status                       | AR-1, AR-13 |
+| One-time secret presenter fails     | Discard plaintext and require authoritative reconciliation                             | AR-12       |
+| Organization/session changes        | Abort dialog/operation and clear organization-scoped state                             | AR-1        |
+| Compact terminal                    | Keep every section and bottom navigation reachable through the existing compact recipe | AR-4        |
 
 ## Testing Requirements
 

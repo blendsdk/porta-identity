@@ -95,7 +95,7 @@ export function createClientSecretExpiryFields(now: Date = new Date()): ClientSe
   content.addDynamic(() =>
     Show(
       () => choice()?.kind === 'never',
-      () => fixed(new Text(NEVER_SECRET_EXPIRY_WARNING), 1),
+      () => fixed(new Text(NEVER_SECRET_EXPIRY_WARNING), 3),
     ),
   );
   content.addDynamic(() =>
@@ -108,7 +108,7 @@ export function createClientSecretExpiryFields(now: Date = new Date()): ClientSe
           compare(selected, addMonths(today, 24)) === 1
         );
       },
-      () => fixed(new Text(LONG_SECRET_EXPIRY_WARNING), 1),
+      () => fixed(new Text(LONG_SECRET_EXPIRY_WARNING), 3),
     ),
   );
   return {

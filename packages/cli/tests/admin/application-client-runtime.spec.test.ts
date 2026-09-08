@@ -326,7 +326,7 @@ describe('application and client shell ownership', () => {
 
         applications.resolve({ kind: 'success', value: [applicationRow] });
         await settle();
-        expect(frameText(application)).toContain('Create OIDC client');
+        expect(frameText(application)).toContain('Register OIDC client');
         return 0;
       },
     });
@@ -355,7 +355,7 @@ describe('application and client shell ownership', () => {
         await settle();
         application.loop.emitCommand(commands.createClient);
         await settle();
-        dialogOpened = frameText(application).includes('Create OIDC client');
+        dialogOpened = frameText(application).includes('Register OIDC client');
 
         clients.resolve({ kind: 'session-invalid' });
         await settle();
@@ -364,7 +364,7 @@ describe('application and client shell ownership', () => {
       },
     });
     expect(dialogOpened).toBe(true);
-    expect(finalFrame).not.toContain('Create OIDC client');
+    expect(finalFrame).not.toContain('Register OIDC client');
     expect(finalFrame).not.toContain(organization.name);
   });
 
