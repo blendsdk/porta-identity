@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 08:22
-> **Progress**: 8/37 tasks (22%)
+> **Last Updated**: 2026-09-08 08:26
+> **Progress**: 9/37 tasks (24%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -96,7 +96,7 @@ unchanged authorization boundaries, additive SDK contract, and complete focused 
 AR-6, AR-12 · ST-10–ST-17
 
 - [x] 2.1.1 [spec-author] Replace only existing shared-tab registration assertions superseded by revised RD-04, preserve still-valid safety/focus/sizing assertions, and write compact-registration/continuation specifications from ST-10–ST-17 — `packages/cli/tests/admin/oidc-clients-workspace.spec.test.ts`, `packages/cli/tests/admin/oidc-client-registration.spec.test.ts` ✅ (completed: 2026-09-08 08:22; 55 retained workspace specifications preserved and 14 ST-10–ST-17 cases added)
-- [ ] 2.1.2 Run the new registration specification suite and record the expected red result
+- [x] 2.1.2 Run the new registration specification suite and record the expected red result ✅ (completed: 2026-09-08 08:26; 58 passed, 11 expected failures: six missing compact-dialog cases, two missing expiry-display cases, and three missing authoritative-selection cases)
 
 ### Step 2.2: Implementation
 
