@@ -24,6 +24,10 @@ import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication } from './application-state.js';
+import {
+  createClientSecretExpiryFields,
+  type ClientSecretExpiryFields,
+} from './client-credential-dialogs.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -60,6 +64,8 @@ interface RegistrationForm {
   readonly redirectUri: Signal<string>;
   /** Optional initial-secret label. */
   readonly secretLabel: Signal<string>;
+  /** Initial-secret expiry selection shared with credential generation. */
+  readonly secretExpiry: ClientSecretExpiryFields;
   /** Client-name control used when validation rejects submission. */
   readonly nameInput: Input;
   /** Redirect control used when validation rejects submission. */
@@ -122,7 +128,8 @@ function registrationIsValid(form: RegistrationForm): boolean {
     form.applicationType() >= 0 &&
     form.applicationType() <= 2 &&
     validRedirectUri(form.redirectUri()) &&
-    (form.clientType() === 0 || validText(form.secretLabel(), 0, 255))
+    (form.clientType() === 0 ||
+      (validText(form.secretLabel(), 0, 255) && form.secretExpiry.isValid()))
   );
 }
 
@@ -179,6 +186,7 @@ function createRegistrationForm(applications: readonly AdminApplication[]): Regi
   const applicationType = signal(0);
   const redirectUri = signal('');
   const secretLabel = signal('');
+  const secretExpiry = createClientSecretExpiryFields();
   return {
     clientName,
     application,
@@ -186,6 +194,7 @@ function createRegistrationForm(applications: readonly AdminApplication[]): Regi
     applicationType,
     redirectUri,
     secretLabel,
+    secretExpiry,
     nameInput: new Input({
       value: clientName,
       maxLength: 255,
@@ -222,7 +231,11 @@ function registrationPayload(form: RegistrationForm): Omit<CreateClientInput, 'o
     redirectUris: [form.redirectUri.peek()],
   };
   const secretLabel = form.secretLabel.peek();
-  if (clientType === 'confidential' && secretLabel) input.secretLabel = secretLabel;
+  if (clientType === 'confidential') {
+    if (secretLabel) input.secretLabel = secretLabel;
+    const secretExpiresAt = form.secretExpiry.expiresAt();
+    if (secretExpiresAt) input.secretExpiresAt = secretExpiresAt;
+  }
   return input;
 }
 
@@ -239,7 +252,14 @@ export async function showClientRegistrationDialog(
   secretFields.addDynamic(() =>
     Show(
       () => form.clientType() === 1,
-      () => cover(registrationInputRow('Secret label', form.secretLabelInput)),
+      () =>
+        cover(
+          col(
+            { gap: 0 },
+            registrationInputRow('Secret label', form.secretLabelInput),
+            fixed(form.secretExpiry.content, 3),
+          ),
+        ),
     ),
   );
   dialog.add(
@@ -276,7 +296,7 @@ export async function showClientRegistrationDialog(
           3,
         ),
         registrationInputRow('Redirect URI', form.redirectInput),
-        fixed(secretFields, 1),
+        fixed(secretFields, 4),
         spacer(),
         fixed(
           row(
