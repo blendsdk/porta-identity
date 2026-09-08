@@ -5,9 +5,11 @@ import {
   col,
   cover,
   DataGrid,
+  Dialog,
   fixed,
-  Group,
+  GroupBox,
   grow,
+  ListBox,
   row,
   signal,
   spacer,
@@ -34,6 +36,7 @@ export type AdminClientIntent =
   | { readonly kind: 'select'; readonly clientId: string }
   | { readonly kind: 'retry' }
   | { readonly kind: 'back' }
+  | { readonly kind: 'edit-name'; readonly clientId: string }
   | { readonly kind: 'edit'; readonly clientId: string; readonly tab: AdminClientConfigurationTab }
   | { readonly kind: 'activate'; readonly clientId: string }
   | { readonly kind: 'deactivate'; readonly clientId: string }
@@ -59,7 +62,7 @@ export interface AdminClientWorkspaceOptions {
 /** Mounted organization client workspace controlled by validated state. */
 export interface AdminClientWorkspace {
   /** Content mounted inside the administration shell. */
-  readonly content: Group;
+  readonly content: View;
   /** Replaces the complete validated workspace state. */
   readonly setState: (state: AdminClientViewState) => void;
   /** Restores focus to the current primary control. */
@@ -117,15 +120,55 @@ interface ProjectionStatus {
   readonly retry: boolean;
 }
 
+/** Labels owned by the single persistent detail-section selector. */
+const CLIENT_DETAIL_SECTIONS = [
+  'Overview',
+  'Authentication',
+  'Protocol',
+  'Login experience',
+  'Credentials',
+  'Lifecycle',
+] as const;
+
+/** Maximized workspace dialog that asks its owner to recompute responsive composition on resize. */
+class ClientWorkspaceDialog extends Dialog {
+  /** Rebuilds only the current projection after the desktop changes size. */
+  onWorkspaceResize?: () => void;
+
+  /** Keeps the selected detail section while switching between rail and stacked geometry. */
+  override onResized(): void {
+    super.onResized();
+    this.onWorkspaceResize?.();
+  }
+}
+
 /** Creates the feature-specific client workspace with ordinary Layout DSL primitives. */
 export function createAdminClientWorkspace(
   options: AdminClientWorkspaceOptions,
 ): AdminClientWorkspace {
-  const content = new Group();
+  const content = new ClientWorkspaceDialog({ title: 'OIDC Clients', width: 72, height: 20 });
+  content.closable = false;
+  content.resizable = false;
+  content.zoomable = false;
+  content.background = 'dialog';
   let state: AdminClientViewState = { kind: 'closed' };
   let currentFocus: View | null = null;
   let focusedClientId: string | null = null;
+  let detailClientId: string | null = null;
+  const selectedSection = signal(0);
+  const focusedSection = signal(0);
+  const selectedSecretId = signal<string | null>(null);
+  let updateDetailSection: (() => void) | undefined;
   let disposed = false;
+
+  /** Reports when the maximized workspace needs its narrow stacked detail composition. */
+  const isCompact = (): boolean => {
+    // During a desktop resize the window rect is current before the next reflow updates `bounds`.
+    // Reading the rect first lets the responsive composition switch in that same resize cycle.
+    const width = content.layout.rect?.width ?? (content.bounds.width || 74);
+    const height = content.layout.rect?.height ?? (content.bounds.height || 18);
+    return width < 60 || height < 15;
+  };
 
   /** Creates an action button whose natural size is resolved by its Layout DSL row. */
   const action = (
@@ -222,151 +265,307 @@ export function createAdminClientWorkspace(
     );
   };
 
-  /** Renders immutable client context plus configuration and lifecycle entry actions. */
-  const renderDetail = (
-    projection: Extract<AdminClientProjection, { kind: 'detail' }>,
-    status?: ProjectionStatus,
-  ): void => {
+  /** Wraps one logical detail region in the established framed surface. */
+  const region = (title: string, child: View): GroupBox => {
+    const box = new GroupBox({ title });
+    box.add(cover(child));
+    return box;
+  };
+
+  /** Produces a concise, read-only Overview while keeping name editing focused. */
+  const overviewSection = (
+    projection: Exclude<AdminClientProjection, { kind: 'list' }>,
+    application: string,
+  ): View => {
     const selected = projection.client;
-    const canUpdate = options.capabilities.canUpdateClients;
-    const canDelete = options.capabilities.canDeleteClients;
-    const application = options.capabilities.canReadApplications
-      ? (projection.applicationName ?? applicationLabel(selected, options))
-      : selected.applicationId;
-    const lifecycle =
-      selected.status === 'inactive'
-        ? action('~A~ctivate', { kind: 'activate', clientId: selected.id }, !canUpdate)
-        : action('~D~eactivate', { kind: 'deactivate', clientId: selected.id }, !canUpdate);
-    const configuration = row(
+    const identity = region(
+      'Identity',
+      new Text(
+        [
+          selected.clientName,
+          selected.clientId,
+          `${selected.clientType} · ${selected.applicationType}`,
+          `Status: ${selected.status}`,
+          selected.createdAt,
+          selected.updatedAt,
+        ].join('\n'),
+      ),
+    );
+    const context = region(
+      'Context',
+      new Text(
+        [
+          options.organization?.name ?? projection.organizationId,
+          application,
+          `Auth: ${selected.tokenEndpointAuthMethod}`,
+          `Login override: ${selected.loginMethods?.join(', ') ?? 'inherit'}`,
+        ].join('\n'),
+      ),
+    );
+    const protocol = region('Protocol summary', new Text(selected.grantTypes.join(' · ')));
+    const login = region('Login summary', new Text(selected.effectiveLoginMethods.join(' · ')));
+    return col(
       { gap: 1 },
-      ...(['Basic', 'Redirects', 'Protocol', 'Login'] as const).map((tab) =>
-        action(
-          `~${tab[0]}~${tab.slice(1)}`,
-          { kind: 'edit', clientId: selected.id, tab },
-          !canUpdate,
+      fixed(row({ gap: 1 }, grow(identity), grow(context)), 8),
+      grow(row({ gap: 1 }, grow(protocol), grow(login))),
+      fixed(
+        row(
+          { gap: 1 },
+          action(
+            '~E~dit name',
+            { kind: 'edit-name', clientId: selected.id },
+            !options.capabilities.canUpdateClients,
+          ),
+          spacer(),
+        ),
+        2,
+      ),
+    );
+  };
+
+  /** Shows redirect and browser-origin collections with one focused entry action. */
+  const authenticationSection = (
+    projection: Exclude<AdminClientProjection, { kind: 'list' }>,
+  ): View => {
+    const selected = projection.client;
+    return col(
+      { gap: 1 },
+      grow(region('Redirect URIs', new Text(selected.redirectUris.join('\n') || 'None'))),
+      grow(
+        region(
+          'Post-logout redirect URIs',
+          new Text(selected.postLogoutRedirectUris.join('\n') || 'None'),
         ),
       ),
-      action(
-        '~S~ecrets',
-        { kind: 'secrets', clientId: selected.id },
-        selected.clientType === 'public',
+      grow(region('Allowed origins', new Text(selected.allowedOrigins.join('\n') || 'None'))),
+      fixed(
+        row(
+          { gap: 1 },
+          action(
+            '~E~dit authentication',
+            { kind: 'edit', clientId: selected.id, tab: 'Redirects' },
+            !options.capabilities.canUpdateClients,
+          ),
+          spacer(),
+        ),
+        2,
       ),
     );
-    const controls = row(
-      { gap: 1 },
-      action('~B~ack', { kind: 'back' }),
-      lifecycle,
-      action('Delete', { kind: 'delete', clientId: selected.id }, !canDelete),
-      spacer(),
-    );
+  };
+
+  /** Shows the effective protocol values with one focused entry action. */
+  const protocolSection = (projection: Exclude<AdminClientProjection, { kind: 'list' }>): View => {
+    const selected = projection.client;
     const details = [
-      `Organization: ${options.organization?.name ?? projection.organizationId}`,
-      `Name: ${selected.clientName}`,
-      `Client ID: ${selected.clientId}`,
-      `Application: ${application}`,
-      `Application Type: ${selected.applicationType}`,
-      `Client Type: ${selected.clientType}`,
-      `Status: ${selected.status}`,
-      `Redirect URIs: ${selected.redirectUris.join(', ')}`,
-      `Post-logout URIs: ${selected.postLogoutRedirectUris.join(', ') || 'None'}`,
       `Grant types: ${selected.grantTypes.join(', ')}`,
       `Response types: ${selected.responseTypes.join(', ')}`,
       `Scope: ${selected.scope}`,
       `Token authentication: ${selected.tokenEndpointAuthMethod}`,
-      `Allowed origins: ${selected.allowedOrigins.join(', ') || 'None'}`,
       `PKCE required: ${selected.requirePkce ? 'yes' : 'no'}`,
-      `Login methods: ${selected.loginMethods?.join(', ') ?? 'inherit'}`,
-      `Effective login methods: ${selected.effectiveLoginMethods.join(', ')}`,
-      `Created: ${selected.createdAt}`,
-      `Updated: ${selected.updatedAt}`,
     ];
-    content.add(
-      cover(
-        col(
-          { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          statusRow(status),
-          !options.capabilities.canUpdateClients &&
-            fixed(new Text('Configuration and lifecycle require client update'), 1),
-          !options.capabilities.canDeleteClients &&
-            fixed(new Text('Delete requires client delete'), 1),
-          fixed(configuration, 2),
-          grow(new Text(details.join('\n'))),
-          fixed(controls, 2),
+    return col(
+      { gap: 1 },
+      grow(region('Protocol configuration', new Text(details.join('\n')))),
+      fixed(
+        row(
+          { gap: 1 },
+          action(
+            '~E~dit protocol',
+            { kind: 'edit', clientId: selected.id, tab: 'Protocol' },
+            !options.capabilities.canUpdateClients,
+          ),
+          spacer(),
         ),
+        2,
       ),
     );
-    currentFocus = configuration.children[0] ?? controls.children[0] ?? null;
   };
 
-  /** Renders secret metadata without allowing plaintext into retained state. */
-  const renderSecrets = (
-    projection: Extract<AdminClientProjection, { kind: 'secrets' }>,
-    status?: ProjectionStatus,
-  ): void => {
-    const selectedSecretId = signal<string | null>(projection.secrets[0]?.id ?? null);
-    const eligible = projection.client.clientType === 'confidential';
-    const canUpdate = eligible && options.capabilities.canUpdateClients;
-    const canRevoke = eligible && options.capabilities.canRevokeClientSecrets;
+  /** Shows inherited and effective login methods with one focused entry action. */
+  const loginSection = (projection: Exclude<AdminClientProjection, { kind: 'list' }>): View => {
+    const selected = projection.client;
+    const details = [
+      `Override mode: ${selected.loginMethods === null ? 'Inherit' : 'Custom'}`,
+      `Source organization: ${options.organization?.name ?? projection.organizationId}`,
+      `Configured methods: ${selected.loginMethods?.join(', ') ?? 'inherit'}`,
+      `Effective methods: ${selected.effectiveLoginMethods.join(', ')}`,
+    ];
+    return col(
+      { gap: 1 },
+      grow(region('Login experience', new Text(details.join('\n')))),
+      fixed(
+        row(
+          { gap: 1 },
+          action(
+            '~E~dit login experience',
+            { kind: 'edit', clientId: selected.id, tab: 'Login' },
+            !options.capabilities.canUpdateClients,
+          ),
+          spacer(),
+        ),
+        2,
+      ),
+    );
+  };
+
+  /** Renders metadata-only client secrets and selection-dependent operations. */
+  const credentialsSection = (
+    projection: Exclude<AdminClientProjection, { kind: 'list' }>,
+  ): View => {
+    const selected = projection.client;
+    const currentSecret = projection.secrets.find(
+      (secret) => secret.id === selectedSecretId.peek(),
+    );
+    if (!currentSecret) selectedSecretId.set(projection.secrets[0]?.id ?? null);
     const rows: Signal<AdminClientSecret[]> = signal([...projection.secrets]);
     const grid = new DataGrid({
       rows,
       columns: SECRET_COLUMNS,
       zebra: true,
-      onSelect: (_index, selected) => selectedSecretId.set(selected.id),
+      onSelect: (_index, secret) => selectedSecretId.set(secret.id),
     });
-    const generate = action(
-      '~G~enerate',
-      { kind: 'generate-secret', clientId: projection.client.id },
-      !canUpdate,
+    const actions: View[] = [];
+    if (selected.clientType === 'confidential') {
+      actions.push(
+        action(
+          '~G~enerate',
+          { kind: 'generate-secret', clientId: selected.id },
+          !options.capabilities.canUpdateClients,
+        ),
+      );
+      actions.push(
+        new Button('~R~evoke', {
+          disabled: () => {
+            const secret = projection.secrets.find(
+              (candidate) => candidate.id === selectedSecretId(),
+            );
+            return !options.capabilities.canRevokeClientSecrets || secret?.status !== 'active';
+          },
+          onClick: () => {
+            const secretId = selectedSecretId.peek();
+            if (secretId)
+              options.onIntent({ kind: 'revoke-secret', clientId: selected.id, secretId });
+          },
+        }),
+      );
+    }
+    const credentials = region('Credentials', grid);
+    return col(
+      { gap: 1 },
+      selected.clientType === 'public' &&
+        fixed(new Text('Public clients do not use client secrets.'), 1),
+      grow(credentials),
+      fixed(row({ gap: 1 }, ...actions, spacer()), 2),
     );
-    const revoke = new Button('~R~evoke', {
-      disabled: () => {
-        const selected = projection.secrets.find((secret) => secret.id === selectedSecretId());
-        return !canRevoke || selected?.status !== 'active';
-      },
-      onClick: () => {
-        const secretId = selectedSecretId.peek();
-        if (secretId)
-          options.onIntent({
-            kind: 'revoke-secret',
-            clientId: projection.client.id,
-            secretId,
-          });
-      },
-    });
+  };
+
+  /** Keeps lifecycle operations together and separate from workspace navigation. */
+  const lifecycleSection = (projection: Exclude<AdminClientProjection, { kind: 'list' }>): View => {
+    const selected = projection.client;
+    const lifecycle =
+      selected.status === 'inactive'
+        ? action(
+            '~A~ctivate',
+            { kind: 'activate', clientId: selected.id },
+            !options.capabilities.canUpdateClients,
+          )
+        : action(
+            '~D~eactivate',
+            { kind: 'deactivate', clientId: selected.id },
+            !options.capabilities.canUpdateClients,
+          );
+    return col(
+      { gap: 1 },
+      grow(
+        region(
+          'Lifecycle',
+          new Text(
+            `Status: ${selected.status}\nDeleting this client permanently removes its protocol authority and secrets.`,
+          ),
+        ),
+      ),
+      fixed(
+        row(
+          { gap: 1 },
+          lifecycle,
+          action(
+            'Delete',
+            { kind: 'delete', clientId: selected.id },
+            !options.capabilities.canDeleteClients,
+          ),
+          spacer(),
+        ),
+        2,
+      ),
+    );
+  };
+
+  /** Renders one selected client through stable responsive section navigation. */
+  const renderDetail = (
+    projection: Exclude<AdminClientProjection, { kind: 'list' }>,
+    status?: ProjectionStatus,
+  ): void => {
+    const selected = projection.client;
+    if (detailClientId !== selected.id) {
+      detailClientId = selected.id;
+      selectedSection.set(0);
+      focusedSection.set(0);
+      selectedSecretId.set(null);
+    }
+    const application = options.capabilities.canReadApplications
+      ? (projection.applicationName ?? applicationLabel(selected, options))
+      : selected.applicationId;
+    /** Builds only the currently selected section from this authoritative projection. */
+    const selectedContent = (): GroupBox => {
+      const index = Math.max(
+        0,
+        Math.min(selectedSection.peek(), CLIENT_DETAIL_SECTIONS.length - 1),
+      );
+      if (index === 0) return region('Overview', overviewSection(projection, application));
+      if (index === 1) return region('Authentication', authenticationSection(projection));
+      if (index === 2) return region('Protocol', protocolSection(projection));
+      if (index === 3) return region('Login experience', loginSection(projection));
+      if (index === 4) return region('Credentials', credentialsSection(projection));
+      return region('Lifecycle', lifecycleSection(projection));
+    };
+    let section = selectedContent();
+    const detailBody = isCompact()
+      ? col({ gap: 1 }, fixed(sectionNavigation, 3), grow(section))
+      : row({ gap: 1 }, fixed(sectionNavigation, 19), grow(section));
+    updateDetailSection = () => {
+      const nextSection = selectedContent();
+      detailBody.remove(section);
+      section = nextSection;
+      detailBody.add(grow(section));
+    };
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          fixed(new Text(`Secrets — ${projection.client.clientName}`), 1),
-          projection.secrets[0] &&
-            fixed(
-              new Text(
-                `Selected secret: ${projection.secrets[0].label ?? projection.secrets[0].id}`,
-              ),
-              1,
-            ),
           statusRow(status),
-          fixed(
-            new Text('Generate a modern secret for a legacy-only client before authentication.'),
-            1,
-          ),
-          grow(projection.secrets.length > 0 ? grid : new Text('No client secrets')),
-          fixed(
-            row(
-              { gap: 1 },
-              action('~B~ack', { kind: 'select', clientId: projection.client.id }),
-              generate,
-              revoke,
-              spacer(),
-            ),
-            2,
-          ),
+          grow(detailBody),
+          fixed(row({ gap: 1 }, action('~B~ack to OIDC clients', { kind: 'back' }), spacer()), 2),
         ),
       ),
     );
-    currentFocus = projection.secrets.length > 0 ? grid.rows : generate;
+    currentFocus = sectionNavigation.rows;
   };
+
+  /** One selector instance retains focus and selection across detail redraws and viewport changes. */
+  const sectionNavigation = new ListBox({
+    items: signal([...CLIENT_DETAIL_SECTIONS]),
+    focused: focusedSection,
+    selected: selectedSection,
+    onSelect: (index) => {
+      selectedSection.set(index);
+      focusedSection.set(index);
+      const projection = state.kind === 'detail' || state.kind === 'secrets' ? state : undefined;
+      updateDetailSection?.();
+      options.focusView?.(sectionNavigation.rows);
+      if (index === 4 && projection?.client.clientType === 'confidential')
+        options.onIntent({ kind: 'secrets', clientId: projection.client.id });
+    },
+  });
 
   /** Converts a legacy retained list into the current explicit list projection. */
   const normalizePrevious = (
@@ -401,9 +600,12 @@ export function createAdminClientWorkspace(
       content.add(cover(col({ gap: 1 }, fixed(new Text('OIDC Clients'), 1), spacer())));
       return;
     }
-    if (state.kind === 'list') return renderList(state);
+    if (state.kind === 'list') {
+      detailClientId = null;
+      return renderList(state);
+    }
     if (state.kind === 'detail') return renderDetail(state);
-    if (state.kind === 'secrets') return renderSecrets(state);
+    if (state.kind === 'secrets') return renderDetail(state);
     const label =
       state.kind === 'loading'
         ? 'Loading OIDC clients…'
@@ -415,7 +617,7 @@ export function createAdminClientWorkspace(
       const status = { label, retry: state.kind !== 'loading' };
       if (previous.kind === 'list') renderList(previous, status);
       else if (previous.kind === 'detail') renderDetail(previous, status);
-      else renderSecrets(previous, status);
+      else renderDetail(previous, status);
       return;
     }
     const retry = new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) });
@@ -433,6 +635,8 @@ export function createAdminClientWorkspace(
     if (state.kind !== 'loading') currentFocus = retry;
   };
 
+  content.onWorkspaceResize = render;
+
   return {
     content,
     setState(next) {
@@ -447,12 +651,16 @@ export function createAdminClientWorkspace(
       if (disposed) return;
       state = { kind: 'closed' };
       focusedClientId = null;
+      detailClientId = null;
+      selectedSecretId.set(null);
       render();
     },
     dispose() {
       if (disposed) return;
       state = { kind: 'closed' };
       focusedClientId = null;
+      detailClientId = null;
+      selectedSecretId.set(null);
       render();
       disposed = true;
     },

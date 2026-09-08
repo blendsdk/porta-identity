@@ -77,6 +77,15 @@ export type ClientConfigurationDialogResult =
 export type ClientLifecycleDialogResult =
   { readonly kind: 'deactivate'; readonly clientId: string } | { readonly kind: 'cancel' };
 
+/** Result of the focused client-name editor. */
+export type EditClientNameDialogResult =
+  | {
+      readonly kind: 'update';
+      readonly clientId: string;
+      readonly input: { readonly clientName: string };
+    }
+  | { readonly kind: 'cancel' };
+
 /** Result of an irreversible client-deletion dialog. */
 export type DeleteClientDialogResult =
   { readonly kind: 'delete'; readonly clientId: string } | { readonly kind: 'cancel' };
@@ -674,6 +683,47 @@ export async function showClientConfigurationDialog(
   return options.mode === 'create'
     ? { kind: 'create', input: createPayload(form) }
     : { kind: 'update', clientId: options.client.id, input: updatePayload(form) };
+}
+
+/** Shows one small editor for the only mutable field in the Overview section. */
+export async function showEditClientNameDialog(
+  host: AdminClientDialogHost,
+  operationSignal: AbortSignal,
+  organization: AdminOrganizationContext,
+  client: AdminClient,
+): Promise<EditClientNameDialogResult> {
+  if (client.organizationId !== organization.id) return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 62, 13);
+  const clientName = signal(client.clientName);
+  const nameInput = new Input({
+    value: clientName,
+    maxLength: 255,
+    validator: textValidator(1, 255, false),
+  });
+  const dialog = new Dialog({ title: 'Edit OIDC client name', width, height, centered: true });
+  dialog.add(
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(new Text(`Client ID: ${client.clientId}`), 1),
+        fixed(new Text(`Client type: ${client.clientType}`), 1),
+        fixed(new Text(`Application type: ${client.applicationType}`), 1),
+        inputRow('Client name', nameInput),
+        spacer(),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            new Button('~S~ave', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
+          ),
+          2,
+        ),
+      ),
+    ),
+  );
+  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
+  return { kind: 'update', clientId: client.id, input: { clientName: clientName.peek() } };
 }
 
 /** Shows a named client lifecycle confirmation with the selected organization. */

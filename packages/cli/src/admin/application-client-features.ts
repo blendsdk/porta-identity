@@ -28,6 +28,7 @@ import {
   showClientConfigurationDialog,
   showClientLifecycleDialog,
   showDeleteClientDialog,
+  showEditClientNameDialog,
   showGenerateClientSecretDialog,
   showClientRegistrationDialog,
   showOneTimeClientSecretDialog,
@@ -271,6 +272,7 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'retry') void clientController.reload();
     else if (intent.kind === 'back') void clientController.load();
     else if (intent.kind === 'create') void createClient();
+    else if (intent.kind === 'edit-name') void editClientName(intent.clientId);
     else if (intent.kind === 'edit') void editClient(intent.clientId, intent.tab);
     else if (intent.kind === 'activate')
       void clientController.activate(intent.clientId, async () => true);
@@ -419,6 +421,21 @@ export function createAdminApplicationClientFeatures(
     } finally {
       if (clientCreationOwner === generation) clientCreationOwner = undefined;
     }
+  }
+
+  /** Opens and submits the focused name editor for the exact retained client. */
+  async function editClientName(clientId: string): Promise<void> {
+    const client = selectedClient();
+    const state = options.readState();
+    if (!client || client.id !== clientId || state.kind !== 'authenticated' || !state.organization)
+      return;
+    const organization = state.organization;
+    const result = await runDialog((signal) =>
+      showEditClientNameDialog(options.dialogs.host, signal, organization, client),
+    );
+    if (result?.kind !== 'update') return;
+    const etag = clientState.kind === 'detail' ? (clientState.etag ?? undefined) : undefined;
+    await clientController.update(result.clientId, result.input, etag);
   }
 
   /** Opens the shared client configuration dialog on the requested entry tab. */
