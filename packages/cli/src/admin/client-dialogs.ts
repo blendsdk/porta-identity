@@ -826,9 +826,10 @@ export async function showOneTimeClientSecretDialog(
     readonly clientId: string;
     readonly label: string | null;
     readonly plaintext: string;
+    readonly expiresAt: string | null;
   },
 ): Promise<void> {
-  const { width, height } = dialogSize(host, 76, 14);
+  const { width, height } = dialogSize(host, 76, 15);
   const dialog = new Dialog({ title: 'One-time client secret', width, height, centered: true });
   dialog.add(
     cover(
@@ -837,6 +838,7 @@ export async function showOneTimeClientSecretDialog(
         fixed(new Text(`Client: ${value.clientName}`), 1),
         fixed(new Text(`Client ID: ${value.clientId}`), 1),
         fixed(new Text(`Label: ${value.label ?? 'Not provided'}`), 1),
+        fixed(new Text(`Expires: ${value.expiresAt ?? 'Never'}`), 1),
         fixed(new Text(value.plaintext), 2),
         fixed(new Text('Store this value now. It cannot be shown again.'), 1),
         fixed(

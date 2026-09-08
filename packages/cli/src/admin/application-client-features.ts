@@ -29,6 +29,7 @@ import {
   showClientLifecycleDialog,
   showDeleteClientDialog,
   showGenerateClientSecretDialog,
+  showClientRegistrationDialog,
   showOneTimeClientSecretDialog,
   showRevokeClientSecretDialog,
 } from './client-dialogs.js';
@@ -150,6 +151,7 @@ export function createAdminApplicationClientFeatures(
           clientId: secret.oidcClientId,
           label: secret.label,
           plaintext: secret.plaintext,
+          expiresAt: secret.expiresAt,
         });
       } finally {
         options.setDialogBusy(false);
@@ -408,11 +410,9 @@ export function createAdminApplicationClientFeatures(
         return;
       }
       const result = await runDialog((signal) =>
-        showClientConfigurationDialog(options.dialogs.host, signal, {
-          mode: 'create',
+        showClientRegistrationDialog(options.dialogs.host, signal, {
           organization,
           applications: activeApplications,
-          initialTab: 'Basic',
         }),
       );
       if (result?.kind === 'create') await clientController.create(result.input);
