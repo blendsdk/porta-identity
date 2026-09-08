@@ -164,6 +164,16 @@ ST-18–ST-22, ST-46
 
 **Verify**: focused CLI workspace suites and `yarn workspace @portaidentity/cli typecheck`
 
+**Phase 3 quality gate (2026-09-08 11:00)**: The independent security audit passed without
+findings. Correctness review found three Major issues in compact action reachability, section
+selection stability after secret loading, and credential-grid selection restoration, plus one
+Minor ETag preservation issue. The user approved all four bounded repairs. **Remediation**:
+compact detail content now scrolls below grouped navigation, the name editor keeps fixed actions,
+secret projections preserve newer section choices, rebuilt credential grids restore the retained
+selection, and both detail projections retain the update ETag. Verification passed 96 focused CLI
+tests, CLI typecheck, scoped lint/format, and 97 structure tests. Phase 3 remains open for one
+bounded re-review.
+
 ---
 
 ## Phase 4: Focused Editors and Final Verification

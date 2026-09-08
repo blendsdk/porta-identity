@@ -1,6 +1,16 @@
 /** Implementation regressions for OIDC client detail composition. */
 
-import { Button, createApplication, Dialog, Group, GroupBox, ListBox, View } from '@jsvision/ui';
+import {
+  Button,
+  createApplication,
+  DataGrid,
+  Dialog,
+  Group,
+  GroupBox,
+  ListBox,
+  Scroller,
+  View,
+} from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
 
 import type { AdminApplication } from '../../src/admin/application-state.js';
@@ -76,6 +86,26 @@ const detail: Extract<AdminClientViewState, { kind: 'detail' }> = {
   etag: 'W/"0123456789abcdef"',
   secrets: [],
 };
+const secrets = [
+  {
+    id: '44444444-4444-4444-8444-444444444444',
+    clientId: client.id,
+    label: 'Primary',
+    status: 'active' as const,
+    lastUsedAt: null,
+    expiresAt: '2027-01-01T00:00:00Z',
+    createdAt: '2026-01-03T00:00:00Z',
+  },
+  {
+    id: '55555555-5555-4555-8555-555555555555',
+    clientId: client.id,
+    label: 'Secondary',
+    status: 'active' as const,
+    lastUsedAt: null,
+    expiresAt: '2027-02-01T00:00:00Z',
+    createdAt: '2026-01-04T00:00:00Z',
+  },
+];
 
 /** Collects every descendant in retained-tree order. */
 function descendants(root: View): View[] {
@@ -138,7 +168,7 @@ async function mountDetail(width = 80, height = 24) {
   if (!(workspace.content instanceof Dialog)) throw new Error('Expected the client workspace.');
   const navigation = descendants(workspace.content).find((view) => view instanceof ListBox);
   if (!(navigation instanceof ListBox)) throw new Error('Expected detail navigation.');
-  return { host, intents, navigation, window: workspace.content };
+  return { host, intents, navigation, window: workspace.content, workspace };
 }
 
 /** Activates one section through the real keyboard path. */
@@ -183,12 +213,55 @@ describe('OIDC client detail implementation', () => {
       const section = currentViews.find((view) => view instanceof GroupBox);
       expect(currentViews.filter((view) => view instanceof ListBox)).toEqual([mounted.navigation]);
       expect(mounted.navigation.selected.peek()).toBe(2);
-      expect(frameText(mounted.host)).toContain('Protocol');
+      expect(frameText(mounted.host)).toContain(
+        viewport.width === 48 ? 'Edit protocol' : 'Protocol configuration',
+      );
       expect(frameText(mounted.host)).not.toContain('Redirect URIs');
       expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
-      if (viewport.width === 48 && section instanceof GroupBox)
-        expect(mounted.navigation.bounds.y).toBeLessThan(section.bounds.y);
+      expect(section).toBeInstanceOf(GroupBox);
+      expect(currentViews.some((view) => view instanceof Scroller)).toBe(viewport.width === 48);
+      if (viewport.width === 48 && section instanceof GroupBox) {
+        expect(section.bounds.height).toBeGreaterThan(0);
+      }
     }
+  });
+
+  it('preserves a newer section choice when secret metadata arrives or the viewport changes', async () => {
+    const mounted = await mountDetail();
+    await selectSection(mounted.host, mounted.navigation, 4);
+    await selectSection(mounted.host, mounted.navigation, 2);
+
+    mounted.workspace.setState({ ...detail, kind: 'secrets', secrets });
+    mounted.host.loop.resize({ width: 48, height: 12 });
+    await settle();
+
+    expect(mounted.navigation.selected.peek()).toBe(2);
+    expect(frameText(mounted.host)).toContain('Protocol');
+  });
+
+  it('restores credential grid focus from the retained secret selection', async () => {
+    const mounted = await mountDetail();
+    await selectSection(mounted.host, mounted.navigation, 4);
+    mounted.workspace.setState({ ...detail, kind: 'secrets', secrets });
+    await settle();
+    const firstGrid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    if (!(firstGrid instanceof DataGrid)) throw new Error('Expected the credentials grid.');
+    firstGrid.focused.set(1);
+    mounted.host.loop.focusView(firstGrid.rows);
+    mounted.host.loop.dispatch({
+      type: 'key',
+      key: 'enter',
+      ctrl: false,
+      alt: false,
+      shift: false,
+    });
+    await selectSection(mounted.host, mounted.navigation, 2);
+    await selectSection(mounted.host, mounted.navigation, 4);
+
+    const restoredGrid = descendants(mounted.window).find((view) => view instanceof DataGrid);
+    if (!(restoredGrid instanceof DataGrid))
+      throw new Error('Expected the rebuilt credentials grid.');
+    expect(restoredGrid.focused.peek()).toBe(1);
   });
 
   it('keeps every mounted section operation naturally measured', async () => {

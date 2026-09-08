@@ -376,8 +376,10 @@ describe('OIDC client detail surface', () => {
       expect(back.bounds.y).toBeLessThan(viewport.height);
       expect(currentViews.filter((view) => view instanceof TabView)).toHaveLength(0);
       expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
+      expect(currentSection).toBeInstanceOf(GroupBox);
       if (viewport.width === 48 && currentSection instanceof GroupBox) {
-        expect(navigation.bounds.y).toBeLessThan(currentSection.bounds.y);
+        expect(currentSection.bounds.height).toBeGreaterThan(0);
+        expect(frameText(mounted.host)).toContain('Edit protocol');
       }
     }
   });
@@ -422,6 +424,34 @@ describe('OIDC client detail surface', () => {
 });
 
 describe('focused OIDC client name edit', () => {
+  // Compact terminals retain the editable field and fixed dialog actions.
+  it('keeps the name field and actions reachable at compact geometry', async () => {
+    const host = createApplication({ viewport: { width: 48, height: 12 } });
+    const pending = (await nameDialogExports()).showEditClientNameDialog(
+      host,
+      new AbortController().signal,
+      organization,
+      client,
+    );
+    await settle();
+    const dialog = activeDialog(host);
+    const views = descendants(dialog);
+    expect(views.filter((view) => view instanceof Input)).toHaveLength(1);
+    const actions = views.filter(
+      (view): view is Button =>
+        view instanceof Button && ['Save', 'Cancel'].includes(view.activation.label),
+    );
+    expect(actions).toHaveLength(2);
+    expect(frameText(host)).toContain('Save');
+    expect(frameText(host)).toContain('Cancel');
+    for (const action of actions) {
+      expect(action.bounds.y).toBeLessThan(12);
+      expect(action.bounds.height).toBeGreaterThan(0);
+    }
+    host.loop.endModal('cancel');
+    await expect(pending).resolves.toEqual({ kind: 'cancel' });
+  });
+
   // The name dialog returns only the mutable name and leaves identity and type fields read-only.
   it('returns only a changed client name from a naturally sized focused dialog', async () => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });

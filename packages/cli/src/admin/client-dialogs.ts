@@ -701,15 +701,23 @@ export async function showEditClientNameDialog(
     validator: textValidator(1, 255, false),
   });
   const dialog = new Dialog({ title: 'Edit OIDC client name', width, height, centered: true });
+  const fields = col(
+    { gap: 1 },
+    fixed(new Text(`Client ID: ${client.clientId}`), 1),
+    fixed(new Text(`Client type: ${client.clientType}`), 1),
+    fixed(new Text(`Application type: ${client.applicationType}`), 1),
+    inputRow('Client name', nameInput),
+  );
+  const form = new ClientFormScroller({
+    content: grow(fields),
+    extent: { width: Math.max(1, width - 6), height: 8 },
+    scrollbars: 'vertical',
+  });
   dialog.add(
     cover(
       col(
-        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        fixed(new Text(`Client ID: ${client.clientId}`), 1),
-        fixed(new Text(`Client type: ${client.clientType}`), 1),
-        fixed(new Text(`Application type: ${client.applicationType}`), 1),
-        inputRow('Client name', nameInput),
-        spacer(),
+        { gap: 1, padding: { top: 0, right: 2, bottom: 0, left: 2 } },
+        grow(form),
         fixed(
           row(
             { gap: 1 },

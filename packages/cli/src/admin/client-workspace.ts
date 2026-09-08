@@ -11,6 +11,7 @@ import {
   grow,
   ListBox,
   row,
+  Scroller,
   signal,
   spacer,
   Text,
@@ -418,8 +419,15 @@ export function createAdminClientWorkspace(
     );
     if (!currentSecret) selectedSecretId.set(projection.secrets[0]?.id ?? null);
     const rows: Signal<AdminClientSecret[]> = signal([...projection.secrets]);
+    const focused = signal(
+      Math.max(
+        0,
+        projection.secrets.findIndex((secret) => secret.id === selectedSecretId.peek()),
+      ),
+    );
     const grid = new DataGrid({
       rows,
+      focused,
       columns: SECRET_COLUMNS,
       zebra: true,
       onSelect: (_index, secret) => selectedSecretId.set(secret.id),
@@ -510,11 +518,10 @@ export function createAdminClientWorkspace(
     if (clientChanged) {
       detailClientId = selected.id;
       selectedSecretId.set(null);
+      const sectionIndex = projection.kind === 'secrets' ? 4 : 0;
+      selectedSection.set(sectionIndex);
+      focusedSection.set(sectionIndex);
     }
-    const sectionIndex =
-      projection.kind === 'secrets' ? 4 : clientChanged ? 0 : selectedSection.peek();
-    selectedSection.set(sectionIndex);
-    focusedSection.set(sectionIndex);
     const application = options.capabilities.canReadApplications
       ? (projection.applicationName ?? applicationLabel(selected, options))
       : selected.applicationId;
@@ -532,14 +539,34 @@ export function createAdminClientWorkspace(
       return region('Lifecycle', lifecycleSection(projection));
     };
     let section = selectedContent();
-    const detailBody = isCompact()
-      ? col({ gap: 1 }, fixed(sectionNavigation, 3), grow(section))
+    const compact = isCompact();
+    const back = action('~B~ack to OIDC clients', { kind: 'back' });
+    const sectionScroller = compact
+      ? new Scroller({
+          content: grow(section),
+          extent: () => ({
+            width: Math.max(1, (content.layout.rect?.width ?? content.bounds.width) - 6),
+            height: 18,
+          }),
+          scrollbars: 'vertical',
+        })
+      : undefined;
+    const detailBody = compact
+      ? col(
+          fixed(row({ gap: 1 }, grow(sectionNavigation), back), 2),
+          grow(sectionScroller ?? section),
+        )
       : row({ gap: 1 }, fixed(sectionNavigation, 19), grow(section));
     updateDetailSection = () => {
       const nextSection = selectedContent();
-      detailBody.remove(section);
+      if (sectionScroller) {
+        sectionScroller.remove(section);
+        sectionScroller.add(grow(nextSection));
+      } else {
+        detailBody.remove(section);
+        detailBody.add(grow(nextSection));
+      }
       section = nextSection;
-      detailBody.add(grow(section));
     };
     content.add(
       cover(
@@ -547,7 +574,7 @@ export function createAdminClientWorkspace(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           statusRow(status),
           grow(detailBody),
-          fixed(row({ gap: 1 }, action('~B~ack to OIDC clients', { kind: 'back' }), spacer()), 2),
+          !compact && fixed(row({ gap: 1 }, back, spacer()), 2),
         ),
       ),
     );

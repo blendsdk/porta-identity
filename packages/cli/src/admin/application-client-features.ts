@@ -434,7 +434,10 @@ export function createAdminApplicationClientFeatures(
       showEditClientNameDialog(options.dialogs.host, signal, organization, client),
     );
     if (result?.kind !== 'update') return;
-    const etag = clientState.kind === 'detail' ? (clientState.etag ?? undefined) : undefined;
+    const etag =
+      clientState.kind === 'detail' || clientState.kind === 'secrets'
+        ? (clientState.etag ?? undefined)
+        : undefined;
     await clientController.update(result.clientId, result.input, etag);
   }
 
@@ -457,7 +460,10 @@ export function createAdminApplicationClientFeatures(
       }),
     );
     if (result?.kind === 'update') {
-      const etag = clientState.kind === 'detail' ? clientState.etag ?? undefined : undefined;
+      const etag =
+        clientState.kind === 'detail' || clientState.kind === 'secrets'
+          ? (clientState.etag ?? undefined)
+          : undefined;
       await clientController.update(result.clientId, result.input, etag);
     }
   }
