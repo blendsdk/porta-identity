@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 08:46
-> **Progress**: 14/37 tasks (38%)
+> **Last Updated**: 2026-09-08 08:49
+> **Progress**: 15/37 tasks (41%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -111,7 +111,7 @@ AR-12, AR-14
 
 ### Step 2.3: Implementation Tests and Hardening
 
-- [ ] 2.3.1 Add registration payload, facade, focus, cancellation, and plaintext-lifetime implementation coverage — `packages/cli/tests/admin/oidc-client-registration.impl.test.ts`
+- [x] 2.3.1 Add registration payload, facade, focus, cancellation, and plaintext-lifetime implementation coverage — `packages/cli/tests/admin/oidc-client-registration.impl.test.ts` ✅ (completed: 2026-09-08 08:49; 73 focused specification and implementation tests passed with CLI typecheck, ESLint, and formatting)
 
 **Verify**: focused CLI registration/controller suites and CLI typecheck
 
