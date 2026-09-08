@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 11:37
-> **Progress**: 24/37 tasks (65%)
+> **Last Updated**: 2026-09-08 11:43
+> **Progress**: 25/37 tasks (68%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -201,7 +201,7 @@ scrolling. Phase 3 is closed (reviewed: 2026-09-08 11:06).
 **Reference**: [03-03 §Architecture](03-03-focused-editors.md#architecture) · AR-5–AR-8, AR-10,
 AR-14
 
-- [ ] 4.2.1 Add exact-array uniqueness to the existing shared server validator; implement one selectable, reused URI/origin DataGrid region with parent-local staging and one Save — `packages/server/src/clients/validators.ts`, `packages/cli/src/admin/client-authentication-dialog.ts`
+- [x] 4.2.1 Add exact-array uniqueness to the existing shared server validator; implement one selectable, reused URI/origin DataGrid region with parent-local staging and one Save — `packages/server/src/clients/validators.ts`, `packages/cli/src/admin/client-authentication-dialog.ts` ✅ (completed: 2026-09-08 11:43; exact duplicates rejected for all three server-authoritative collections; focused full-page editor stages and validates one reused DataGrid; scoped lint, CLI typecheck, 18 validator specifications, and 97 structure tests passed)
 - [ ] 4.2.2 Implement focused protocol and multi-method login editors — `packages/cli/src/admin/client-protocol-login-dialogs.ts`
 - [ ] 4.2.3 Implement credential grid dialogs and reuse the complete Phase 2 DatePicker expiry composition — `packages/cli/src/admin/client-credential-dialogs.ts`
 - [ ] 4.2.4 Complete retained facade exports and focused editor orchestration; remove obsolete shared-tab symbols from the Admin barrel and direct consumers without compatibility wrappers — `packages/cli/src/admin/client-dialogs.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts`

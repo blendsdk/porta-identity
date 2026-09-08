@@ -184,6 +184,11 @@ function validateAllowedOrigin(origin: string): boolean {
   }
 }
 
+/** Return whether every value occurs exactly once in one protocol collection. */
+function containsOnlyUniqueValues(values: readonly string[]): boolean {
+  return new Set(values).size === values.length;
+}
+
 /**
  * Validate the complete protocol relationship for an OIDC client.
  *
@@ -202,7 +207,8 @@ export function validateClientProtocolCompatibility(
     configuration.redirectUris.length < 1 ||
     configuration.redirectUris.length > DEFAULT_MAX_REDIRECT_URIS ||
     !validateRedirectUris([...configuration.redirectUris], false).isValid ||
-    configuration.redirectUris.some(containsControlCharacters)
+    configuration.redirectUris.some(containsControlCharacters) ||
+    !containsOnlyUniqueValues(configuration.redirectUris)
   ) {
     errors.push('redirectUris must contain 1 to 10 safe redirect URIs');
   }
@@ -210,13 +216,15 @@ export function validateClientProtocolCompatibility(
     (configuration.postLogoutRedirectUris?.length ?? 0) > DEFAULT_MAX_REDIRECT_URIS ||
     configuration.postLogoutRedirectUris?.some(
       (uri) => containsControlCharacters(uri) || !validateRedirectUris([uri], false).isValid,
-    )
+    ) ||
+    !containsOnlyUniqueValues(configuration.postLogoutRedirectUris ?? [])
   ) {
     errors.push('postLogoutRedirectUris must contain safe redirect URIs');
   }
   if (
     configuration.allowedOrigins.length > DEFAULT_MAX_REDIRECT_URIS ||
-    configuration.allowedOrigins.some((origin) => !validateAllowedOrigin(origin))
+    configuration.allowedOrigins.some((origin) => !validateAllowedOrigin(origin)) ||
+    !containsOnlyUniqueValues(configuration.allowedOrigins)
   ) {
     errors.push('allowedOrigins must contain exact HTTP or HTTPS origins');
   }
