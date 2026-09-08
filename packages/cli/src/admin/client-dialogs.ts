@@ -35,6 +35,13 @@ import type { AdminClient, AdminClientSecret } from './client-state.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
+export { showClientRegistrationDialog } from './client-registration-dialog.js';
+export type {
+  AdminClientRegistrationDialogHost,
+  AdminClientRegistrationDialogOptions,
+  AdminClientRegistrationDialogResult,
+} from './client-registration-dialog.js';
+
 /** Modal host needed for abort-driven client dialog closure. */
 export interface AdminClientDialogHost extends ModalDialogHost {
   /** Event loop that can synchronously close and focus the owned modal. */
