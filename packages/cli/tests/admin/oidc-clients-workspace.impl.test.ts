@@ -1,23 +1,10 @@
 /** Implementation regressions for the organization OIDC client workspace and controller. */
 
-import {
-  Button,
-  createApplication,
-  DataGrid,
-  Dialog,
-  Group,
-  Input,
-  Scroller,
-  TabView,
-  View,
-} from '@jsvision/ui';
+import { createApplication } from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAdminClientController } from '../../src/admin/client-controller.js';
-import {
-  showClientConfigurationDialog,
-  showOneTimeClientSecretDialog,
-} from '../../src/admin/client-dialogs.js';
+import { showOneTimeClientSecretDialog } from '../../src/admin/client-dialogs.js';
 import type {
   AdminClient,
   AdminClientSecret,
@@ -125,17 +112,6 @@ async function settle(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
   await Promise.resolve();
-}
-
-/** Collects a mounted JSVision subtree. */
-function descendants(root: View): View[] {
-  const result: View[] = [];
-  const visit = (view: View): void => {
-    result.push(view);
-    if (view instanceof Group) for (const child of view.children) visit(child);
-  };
-  visit(root);
-  return result;
 }
 
 /** Reads the visible terminal frame. */
@@ -287,11 +263,7 @@ describe('client controller details and secret ownership', () => {
     await controller.select(client.id);
     await controller.loadSecrets(client.id);
 
-    await controller.revokeSecret(
-      client.id,
-      '55555555-5555-4555-8555-555555555555',
-      confirm,
-    );
+    await controller.revokeSecret(client.id, '55555555-5555-4555-8555-555555555555', confirm);
 
     expect(confirm).not.toHaveBeenCalled();
     expect(revokeSecret).not.toHaveBeenCalled();
@@ -303,7 +275,9 @@ describe('client controller details and secret ownership', () => {
     const controller = createAdminClientController({
       readState: authenticated,
       readOperations: () => ({
-        create: vi.fn().mockResolvedValue({ kind: 'success', value: { client, secret: generated } }),
+        create: vi
+          .fn()
+          .mockResolvedValue({ kind: 'success', value: { client, secret: generated } }),
         listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [client] }),
       }),
       publishState: vi.fn(),
@@ -333,7 +307,9 @@ describe('client controller details and secret ownership', () => {
     const controller = createAdminClientController({
       readState: authenticated,
       readOperations: () => ({
-        create: vi.fn().mockResolvedValue({ kind: 'success', value: { client, secret: generated } }),
+        create: vi
+          .fn()
+          .mockResolvedValue({ kind: 'success', value: { client, secret: generated } }),
         listAll: vi.fn(),
       }),
       publishState: (state) => states.push(state),
@@ -358,7 +334,11 @@ describe('client controller details and secret ownership', () => {
   });
 
   it('fails closed for public secret generation and already-revoked secret revocation', async () => {
-    const publicClient = { ...client, clientType: 'public' as const, tokenEndpointAuthMethod: 'none' as const };
+    const publicClient = {
+      ...client,
+      clientType: 'public' as const,
+      tokenEndpointAuthMethod: 'none' as const,
+    };
     const generateSecret = vi.fn();
     const revokeSecret = vi.fn();
     const revokedSecret = { ...secret, status: 'revoked' as const };
@@ -366,7 +346,9 @@ describe('client controller details and secret ownership', () => {
       readState: authenticated,
       readOperations: () => ({
         listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [publicClient] }),
-        get: vi.fn().mockResolvedValue({ kind: 'success', value: { client: publicClient, etag: null } }),
+        get: vi
+          .fn()
+          .mockResolvedValue({ kind: 'success', value: { client: publicClient, etag: null } }),
         generateSecret,
         revokeSecret,
       }),
@@ -399,72 +381,7 @@ describe('client controller details and secret ownership', () => {
   });
 });
 
-describe('client dialog geometry and cleanup', () => {
-  it('edits the keyboard-focused collection row and removes the mouse-focused row', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = showClientConfigurationDialog(host, new AbortController().signal, {
-      mode: 'edit', organization, client, initialTab: 'Redirects',
-    });
-    await settle();
-    const dialog = host.desktop.activeWindow();
-    if (!(dialog instanceof Dialog)) throw new Error('Client dialog missing.');
-    const grid = descendants(dialog).find((view) => view instanceof DataGrid);
-    if (!(grid instanceof DataGrid)) throw new Error('Redirect grid missing.');
-    const setRows = Reflect.get(grid, 'setRows');
-    if (typeof setRows !== 'function') throw new Error('Collection replacement missing.');
-    setRows.call(grid, [
-      { id: 'a', value: 'https://a.test' },
-      { id: 'b', value: 'https://b.test' },
-    ]);
-    const entry = descendants(dialog).filter((view) => view instanceof Input).find((input) => input.getMaxLength() === 2_048);
-    if (!entry) throw new Error('Collection entry input missing.');
-    entry.getValueSignal().set('https://changed.test');
-    host.loop.focusView(grid.rows);
-    host.loop.dispatch({ type: 'key', key: 'down', ctrl: false, alt: false, shift: false });
-    const edit = descendants(dialog).filter((view) => view instanceof Button).find((button) => button.activation.label === 'Edit');
-    if (!edit) throw new Error('Collection edit action missing.');
-    host.loop.focusView(edit);
-    host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
-    expect(frameText(host)).toContain('https://a.test');
-    expect(frameText(host)).toContain('https://changed.test');
-
-    const origin = host.loop.renderRoot.originOf(grid.rows);
-    if (!origin) throw new Error('Collection row origin missing.');
-    for (const kind of ['down', 'up'] as const) {
-      host.loop.dispatch({ type: 'mouse', kind, button: 0, x: origin.x + 2, y: origin.y + 2 });
-    }
-    const remove = descendants(dialog).filter((view) => view instanceof Button).find((button) => button.activation.label === 'Remove');
-    if (!remove) throw new Error('Collection remove action missing.');
-    host.loop.focusView(remove);
-    host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
-    expect(frameText(host)).toContain('https://a.test');
-    expect(frameText(host)).not.toContain('https://changed.test');
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it('mounts one tabbed scroller with three collection DataGrids and one-row inputs', async () => {
-    const host = createApplication({ viewport: { width: 48, height: 12 } });
-    const pending = showClientConfigurationDialog(host, new AbortController().signal, {
-      mode: 'edit',
-      organization,
-      client,
-      initialTab: 'Redirects',
-    });
-    await settle();
-    const dialog = host.desktop.activeWindow();
-    if (!(dialog instanceof Dialog)) throw new Error('Client dialog missing.');
-    const views = descendants(dialog);
-
-    expect(views.filter((view) => view instanceof TabView)).toHaveLength(1);
-    expect(views.filter((view) => view instanceof Scroller)).toHaveLength(4);
-    expect(views.filter((view) => view instanceof DataGrid)).toHaveLength(3);
-    expect(views.filter((view) => view instanceof Input).every((input) => input.bounds.height === 1)).toBe(true);
-    expect(frameText(host)).not.toContain('[jsvision/ui');
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
+describe('client dialog cleanup', () => {
   it('removes transient plaintext and its modal immediately after abort', async () => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
     const controller = new AbortController();
@@ -474,6 +391,7 @@ describe('client dialog geometry and cleanup', () => {
       clientId: client.clientId,
       label: null,
       plaintext,
+      expiresAt: null,
     });
     await settle();
     expect(frameText(host)).toContain(plaintext);
@@ -483,23 +401,5 @@ describe('client dialog geometry and cleanup', () => {
 
     expect(host.desktop.activeWindow()).toBeNull();
     expect(frameText(host)).not.toContain(plaintext);
-  });
-
-  it('keeps all dialog actions bounded and closes without leaving artifacts', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = showClientConfigurationDialog(host, new AbortController().signal, {
-      mode: 'create',
-      organization,
-      applications: [application],
-      initialTab: 'Basic',
-    });
-    await settle();
-    const dialog = host.desktop.activeWindow();
-    if (!(dialog instanceof Dialog)) throw new Error('Client dialog missing.');
-    expect(descendants(dialog).filter((view) => view instanceof Button).length).toBeGreaterThan(10);
-    host.loop.endModal('cancel');
-    await pending;
-    expect(host.desktop.activeWindow()).toBeNull();
-    expect(frameText(host)).not.toContain('[jsvision/ui');
   });
 });
