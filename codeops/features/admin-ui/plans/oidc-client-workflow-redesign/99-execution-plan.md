@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 08:49
+> **Last Updated**: 2026-09-08 09:41
 > **Progress**: 15/37 tasks (41%)
 > **CodeOps Artifact Schema**: 1
 
@@ -125,7 +125,10 @@ specifications remain present. Phase 2 remains open until the accepted repair ve
 one bounded re-review. **Remediation**: maximized grouped registration, focus-aware vertical
 scrolling, fixed bottom actions, and complete expiry-warning height are implemented; verification
 passed 149 focused CLI tests, CLI typecheck, scoped lint/format, and 97 structure tests. One bounded
-re-review remains (verified: 2026-09-08 09:33).
+re-review found no Critical or Major findings and closed the accepted repair. It reported one Minor,
+non-blocking resize limitation: shrinking while focus remains unchanged does not automatically
+recalculate the form offset, but manual scrolling remains available and Create/Cancel stay visible.
+Phase 2 is closed (reviewed: 2026-09-08 09:41).
 
 ---
 
