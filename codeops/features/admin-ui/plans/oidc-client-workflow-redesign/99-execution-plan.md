@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 07:56
-> **Progress**: 5/37 tasks (14%)
+> **Last Updated**: 2026-09-08 08:02
+> **Progress**: 6/37 tasks (16%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -70,7 +70,7 @@ AR-11
 
 ### Step 1.3: Implementation Tests and Hardening
 
-- [ ] 1.3.1 Add internal route and SDK serialization coverage — `packages/server/tests/unit/routes/client-secret-expiry.impl.test.ts`, `packages/sdk/tests/domains/client-secret-expiry.impl.test.ts`
+- [x] 1.3.1 Add internal route and SDK serialization coverage — `packages/server/tests/unit/routes/client-secret-expiry.impl.test.ts`, `packages/sdk/tests/domains/client-secret-expiry.impl.test.ts` ✅ (completed: 2026-09-08 08:02)
 - [ ] 1.3.2 Run focused server/SDK tests, typechecks, and builds for the changed contract
 
 **Verify**: focused server and SDK selectors, then their package typechecks/builds
