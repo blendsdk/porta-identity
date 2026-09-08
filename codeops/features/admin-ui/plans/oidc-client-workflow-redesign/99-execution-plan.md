@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 11:31
-> **Progress**: 23/37 tasks (62%)
+> **Last Updated**: 2026-09-08 11:37
+> **Progress**: 24/37 tasks (65%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -194,7 +194,7 @@ scrolling. Phase 3 is closed (reviewed: 2026-09-08 11:06).
 **Reference**: [03-03](03-03-focused-editors.md) · AR-5–AR-8, AR-10, AR-14 · ST-23–ST-45
 
 - [x] 4.1.1 [spec-author] Revise only shared-tab/scroller assertions superseded by RD-04; preserve existing safety assertions; add server duplicate-validation and authentication, protocol, login, expiry, credential, and representative context specifications from ST-23–ST-45 — `packages/server/tests/unit/clients/protocol-compatibility.spec.test.ts`, `packages/cli/tests/admin/oidc-clients-workspace.spec.test.ts`, `packages/cli/tests/admin/oidc-client-editors.spec.test.ts` ✅ (completed: 2026-09-08 11:31; 46 editor cases and three server duplicate cases added; scoped lint/format passed; test inventory 73→74)
-- [ ] 4.1.2 Run the new editor specification suite and record the expected red result
+- [x] 4.1.2 Run the new editor specification suite and record the expected red result ✅ (completed: 2026-09-08 11:37; CLI editor oracle: 40 expected failures and 6 passes; server validator oracle: 3 expected duplicate failures and 15 passes; failures were confined to the missing focused editors, shared expiry behavior, credential projection, and server uniqueness)
 
 ### Step 4.2: Implementation
 
