@@ -1,7 +1,7 @@
 # Ambiguity Register: Porta Admin UI Requirements
 
-> **Status**: ✅ GATE PASSED — all 9 lifecycle-revision items resolved
-> **Last Updated**: 2026-09-06 01:30
+> **Status**: ✅ GATE PASSED — all OIDC workflow-revision items resolved
+> **Last Updated**: 2026-09-07 22:18
 > **CodeOps Artifact Schema**: 1
 
 The foundation decisions AR-1 through AR-47 remain recorded in
@@ -75,6 +75,16 @@ This register continues that feature-level sequence for later requirements.
 | 109 | Security & compliance | May an administrator delete the bootstrap super-admin organization or a user within it? | Block deletion of the control-plane organization but allow administrator deletion when another active capable administrator remains / retain all current organization and user protections / allow every confirmed deletion and rely on external reset or recovery | User retained the hard-delete block on the control-plane organization. Any administrator, including the bootstrap or current user, may be deleted only when another active user has the exact built-in `porta-super-admin` role. Concurrent checks serialize on the control-plane organization row. | ✅ Resolved |
 | 110 | Behavioral gaps | What common interaction applies to every record Delete operation? | Confirm with `Keep` and `Delete <name>`, then synchronously delete the current graph and revoke only affected authority / retain previews, typed confirmation, force switches, or background deletion machinery | User required the direct confirmation-and-delete rule across record types. No preview, ETag, typed confirmation, force switch, worker, queue, or automatic retry is added. | ✅ Resolved |
 | 111 | Data & state | What happens to audit information when its target user is deleted? | Retain audit history as separately governed security evidence and let user/actor foreign keys become null / scrub or delete target-linked history | User retained audit history unchanged because attribution is its purpose. Audit records may identify the deleted user, remain subject to configured retention, and do not require a placeholder user row. No GDPR-erasure claim is made. | ✅ Resolved |
+| 112 | Scope ambiguities | Is the requested Azure-inspired OIDC work an Admin UI redesign or a Porta OIDC model redesign? | Redesign the Admin UI with only required server/SDK contract corrections / redesign Porta's OIDC model | User chose the Admin UI redesign with narrow contract support and no database or OIDC runtime redesign. | ✅ Resolved |
+| 113 | UX & presentation | What belongs in initial client registration? | Compact registration with identity, types, one redirect URI, and confidential-secret settings / retain the complete tabbed protocol form | User chose compact Azure-style registration and post-create advanced configuration. | ✅ Resolved |
+| 114 | UX & presentation | How is an OIDC client administered after registration? | Maximized sectioned detail workspace with focused editors / retain the oversized shared configuration dialog | User chose Overview, Authentication, Protocol, Login experience, Credentials, and Lifecycle sections using existing JSVision `GroupBox` and Layout DSL controls. | ✅ Resolved |
+| 115 | Behavioral gaps | How are multiple redirect URIs maintained? | DataGrid CRUD for 1–10 exact values, staged until one Save / free-form multiline input or immediate per-row requests | User chose selected-row Add/Edit/Remove with visible validation, exact-duplicate rejection, final-required-row protection, and one collection Save. | ✅ Resolved |
+| 116 | Data & state | What expiration policy applies to generated confidential-client secrets? | Six-month UI default, 3/6/12/24-month presets, unrestricted future custom date, and warned `Never` / impose Azure's 24-month maximum | User chose the unrestricted policy. Custom dates remain valid through the selected UTC date and API omission retains the existing `Never` meaning. | ✅ Resolved |
+| 117 | Behavioral gaps | How are client login methods and organization inheritance represented? | Organization-default toggle plus independent Password and Magic link choices / one radio choice | User chose inheritance plus independent method choices, with the organization and effective values shown. Editing organization defaults remains in the existing API/CLI and outside this redesign. | ✅ Resolved |
+| 118 | Scope ambiguities | Which Azure capabilities are copied into Porta? | Reuse the applicable registration, authentication, and credential information architecture / add Azure-only certificates, federation, owners, multi-directory, exposed APIs, and permission assignment | User limited the work to Porta's existing capabilities and excluded unsupported Azure features. | ✅ Resolved |
+| 119 | Integration points | What supporting client-create contract and post-create navigation are required? | Add flat `secretExpiresAt?: string` and open the new client's Overview after the one-time secret / add a nested credential subsystem or return to the list | User chose the flat field and Overview continuation. The generated secret remains transient and shown once. | ✅ Resolved |
+| 120 | Integration points | What verification gate applies to this redesign? | Structure tests, affected server/SDK/CLI package verifies, docs build, retained OIDC harness, applicable protocol assurance, and clean-revision compatibility without root `yarn verify` / reduced UI-only checks | User chose the complete affected-package and protocol gate and explicitly retained the prohibition on root `yarn verify`. Browser Playwright is not applicable to the terminal UI. | ✅ Resolved |
+| 121 | Technical unknowns | How is the existing oversized client-dialog module kept maintainable during the redesign? | Mechanically split it by registration, configuration, and credential responsibility while retaining `client-dialogs.ts` as the facade file and removing obsolete shared-tab exports / add generalized form infrastructure or compatibility wrappers | User approved only the feature-local responsibility split and explicitly prohibited overcomplication and overengineering. | ✅ Resolved |
 
 ## Resolution Notes
 
@@ -173,6 +183,16 @@ disable states plus permanent Delete for records. Credential and protocol-artifa
 distinct. The control-plane organization remains undeletable, while an administrator may be deleted
 when another active capable administrator remains. Current environments use the reset/migrate/init
 path, so no compatibility or data-conversion machinery is introduced.
+
+**AR-112 through AR-121:** The user approved an Azure-inspired information architecture for OIDC
+client administration without importing unsupported Azure product concepts. The revision replaces
+the cramped shared editor with compact registration and focused client sections, makes existing
+multi-value redirect and login-method behavior usable, and adds only the initial-secret expiry
+contract missing from Porta's current create operation. JSVision 1.7.0 already supplies `GroupBox`,
+`DatePicker`, DataGrid, and Layout DSL primitives, so no new UI abstraction or dependency is needed.
+The existing oversized dialog file may be split only along direct feature responsibilities.
+`client-dialogs.ts` remains the facade file, while obsolete shared-tab symbols are removed rather
+than preserved through compatibility wrappers.
 
 The user reviewed and approved RD-03 on 2026-08-29 with all AR-60 through AR-70 decisions intact.
 

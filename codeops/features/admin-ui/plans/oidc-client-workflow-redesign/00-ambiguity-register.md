@@ -1,0 +1,57 @@
+## Ambiguity Register: OIDC Client Workflow Redesign
+
+> **Status**: ✅ GATE PASSED — all 14 items resolved
+> **Last Updated**: 2026-09-08
+
+The systematic review covers feature, behavioral, scope, technical, edge-case, integration, data,
+security, non-functional, UX, stakeholder, and naming categories. Decisions AR-1 through AR-9 were
+resolved when the user confirmed the complete redesign scope on 2026-09-07. The remaining rows
+close the exact mutation and verification contracts before any other plan document is written.
+
+| # | Category | Ambiguity / Gap | Options Presented | User Decision | Status |
+|---|----------|-----------------|-------------------|---------------|--------|
+| AR-1 | Scope ambiguities | Is this a Porta OIDC redesign or an Admin UI redesign with narrow supporting contracts? | Redesign the Admin UI and add only required server/SDK contract corrections / redesign Porta's OIDC model | Admin UI redesign with narrow server and SDK support; no database or OIDC runtime redesign | ✅ Resolved |
+| AR-2 | Integration points | Which requirement and plan artifacts own the redesign? | Amend RD-04 and add a replacement OIDC workflow plan while retaining the completed original plan as history / overwrite the completed plan | Amend `admin-ui/RD-04`; create `oidc-client-workflow-redesign`; retain the original plan unchanged | ✅ Resolved |
+| AR-3 | UX & presentation | What belongs in initial client registration? | Compact registration with identity, types, one required redirect URI, and confidential-secret settings; configure advanced fields later / retain the complete tabbed form | Compact Azure-style registration; configure advanced settings after creation | ✅ Resolved |
+| AR-4 | UX & presentation | How is one client administered after creation? | Maximized dialog-like detail workspace with Overview, Authentication, Protocol, Login experience, Credentials, and Lifecycle sections using existing `GroupBox` and Layout DSL / retain one oversized configuration dialog | Use the sectioned detail workspace and focused section editors; add no UI framework | ✅ Resolved |
+| AR-5 | Behavioral gaps | What redirect-URI editing behavior is required? | DataGrid CRUD for 1–10 exact URIs with selected-row editing, visible validation, exact-duplicate rejection, and protection of the final required URI / free-form multiline entry | Use the DataGrid CRUD behavior | ✅ Resolved |
+| AR-6 | Data & state | What secret-expiration choices and limits apply? | Six-month UI default with 3/6/12/24-month presets, unrestricted future custom date, and warned `Never` / enforce Azure's 24-month maximum | Use the six-month default, all named choices, no maximum, and a small warning for `Never` | ✅ Resolved |
+| AR-7 | Behavioral gaps | What does a custom secret-expiration date mean, and what does API omission mean? | Valid through the selected UTC date and expire at 00:00 UTC the next day; preserve omission as `Never` / introduce a server-wide six-month omission default | Use next-day 00:00 UTC expiry and preserve API omission as `Never` | ✅ Resolved |
+| AR-8 | Behavioral gaps | How are multiple login methods and inheritance represented? | `Use organization defaults` plus independent Password and Magic link choices, showing organization and effective values / retain a single radio choice | Use inheritance plus independent method choices; organization-default editing stays in the existing API/CLI and outside this redesign | ✅ Resolved |
+| AR-9 | Scope ambiguities | How closely does Porta copy Azure? | Reuse the registration/authentication/credential information architecture only / also add certificates, federation, owners, multi-directory registration, exposed APIs, and Azure permission assignment | Reuse only the applicable information architecture; exclude unsupported Azure capabilities | ✅ Resolved |
+| AR-10 | Behavioral gaps | Do Add, Edit, and Remove redirect operations save immediately or as one section update? | Stage the collection in the focused editor and submit one replacement array with Save / dispatch one API request for every row operation | User accepted staged collection editing followed by one Save | ✅ Resolved |
+| AR-11 | Naming & terminology | How does client creation carry the initial secret expiry through the public SDK/API contract? | Add flat `secretExpiresAt?: string`, where omission means `Never` / introduce a nested initial-secret object | User accepted `secretExpiresAt?: string` with omission retaining `Never` | ✅ Resolved |
+| AR-12 | Behavioral gaps | Where does successful registration navigate after the one-time secret is handled? | Open the new client's Overview section / return to the client list | User accepted navigation to the new client's Overview after the one-time secret is handled | ✅ Resolved |
+| AR-13 | Integration points | What exact project verification gate applies without running the prohibited root `yarn verify` command? | Affected package verifies, structure tests, docs build, retained OIDC harness, applicable protocol assurance, and clean-revision compatibility selectors / a narrower UI-only gate | User accepted `yarn test:structure`, all three affected workspace `verify` commands, `yarn docs:build`, `yarn harness:test`, `yarn assurance:harness --project protocol --profile operational`, and clean-revision `p1-admin` plus `protocol` compatibility selectors; root `yarn verify` and browser Playwright are excluded | ✅ Resolved |
+| AR-14 | Technical unknowns | How should the already 843-line `client-dialogs.ts` accommodate the focused editors without exceeding the project's file-size rule further? | Split dialogs by registration, configuration sections, and credentials while retaining `client-dialogs.ts` as the public re-export surface / continue enlarging the existing file | User approved the mechanical feature-local split and explicitly prohibited overcomplication and overengineering | ✅ Resolved |
+
+### Resolution Notes
+
+**AR-1 through AR-9:** The user explicitly confirmed the complete decision table. Existing Porta
+behavior already supports multiple redirect URIs, multiple login methods, hashed one-time secrets,
+expiry, and revocation. The redesign therefore stays presentation-led and changes only contracts
+that block the accepted interface.
+
+**AR-4:** JSVision 1.7.0 already exports `GroupBox`, `DatePicker`, and the Layout DSL. Reusing those
+components is the smallest viable design and introduces no new dependency or generalized layer.
+
+**AR-6 and AR-7:** The Admin UI calculates its six-month default. The server continues to interpret
+an omitted expiry as no expiry, so existing API callers do not receive a silent policy change.
+
+**AR-10 through AR-13:** The user explicitly accepted all four recommendations. Collection edits
+remain local until one Save replaces the array through the existing update endpoint. Client create
+adds only the flat initial-secret expiry field. Successful creation continues into the retained
+client detail after the transient secret is handled and an authoritative reload completes.
+Verification uses the affected workspace, documentation, retained protocol, applicable assurance,
+and clean-revision compatibility gates without invoking the prohibited root command.
+
+**AR-14:** The split is limited to direct responsibility modules. It introduces no base class,
+factory, schema-driven form, shared editor framework, dependency, or new controller layer. Retained
+exports remain available through `client-dialogs.ts`; obsolete shared-tab symbols are removed from
+the public Admin barrel instead of being preserved through compatibility wrappers.
+
+## Confirmation
+
+The user explicitly confirmed AR-1 through AR-9, accepted all recommendations for AR-10 through
+AR-13, and approved the bounded AR-14 file split on 2026-09-07. The complete register has no open
+or silently deferred item.

@@ -3,6 +3,7 @@
 > **Document**: RD-04-applications-and-oidc-clients.md
 > **Status**: Approved
 > **Created**: 2026-08-30
+> **Revised**: 2026-09-07 — OIDC client workflow redesign
 > **Feature**: Porta Admin UI
 > **Depends On**: RD-02
 > **CodeOps Artifact Schema**: 1
@@ -70,43 +71,54 @@ not a separate server authorization boundary.
       never expose another organization's data or a partial collection. Application names are
       resolved only with `admin:app:read`; otherwise the immutable Application ID is shown. (AR-71,
       AR-73, AR-77, AR-82)
-- [ ] **AC-08 — Create client:** client creation uses the active organization ID and one selected
-      active global application. It collects client name, public or confidential client type, web,
-      SPA, or native application type, 1–10 redirect URIs, 0–10 post-logout redirect URIs, supported
-      grant types, the `code` response type, scope, token endpoint authentication method, allowed
-      origins, PKCE requirement, and inherited or explicit login methods. Confidential creation also
-      accepts an optional initial-secret label. The generated Client ID is read-only. A non-active
-      organization or application cannot be used to create a client. Create requires both
-      `admin:client:create` and `admin:app:read` because the application must be selected from the
-      validated active global catalog. (AR-71, AR-73, AR-81)
-- [ ] **AC-09 — Client detail and configuration:** client detail shows the complete supported OIDC
-      configuration and separates focused Basic, Redirects, Protocol, Login, and Secrets actions.
-      Client type, application type, owning organization, global application, and generated Client ID
-      are immutable after creation. Every editable field maps directly to the existing server update
-      contract and the shared protocol compatibility validator. Inactive clients remain editable so
-      configuration can be corrected before activation. No
-      generic entity editor or oversized raw form is introduced. (AR-73, AR-81)
+- [ ] **AC-08 — Create client:** client registration uses the active organization ID and one selected
+      active global application. Its compact Azure-inspired form collects client name, public or
+      confidential client type, web, SPA, or native application type, and exactly one initial redirect
+      URI. Confidential registration also collects an optional initial-secret label and expiry choice.
+      Advanced protocol, authentication, and login settings use authoritative server defaults and are
+      configured after creation. The generated Client ID is read-only. A non-active organization or
+      application cannot be used. Create requires both `admin:client:create` and `admin:app:read`.
+      (AR-71, AR-73, AR-81, AR-112, AR-113, AR-116, AR-119)
+- [ ] **AC-09 — Client detail and configuration:** after registration, the maximized OIDC Clients
+      surface opens the new client's Overview and provides separate Overview, Authentication,
+      Protocol, Login experience, Credentials, and Lifecycle sections. Captioned `GroupBox` regions
+      and focused section editors replace the oversized shared configuration dialog. Client type,
+      application type, owning organization, global application, and generated Client ID are immutable
+      after creation. Authentication provides selected-row DataGrid Add, Edit, and Remove for 1–10
+      redirect URIs, 0–10 post-logout URIs, and 0–10 allowed origins. Exact duplicate entries are
+      rejected visibly, and the final required redirect URI cannot be removed. Collection changes
+      remain local until one Save replaces the complete array. Login experience offers `Use
+      organization defaults` plus independent Password and Magic link choices, and displays both the
+      source organization and effective methods. Every editable field maps directly to the existing
+      update contract and shared protocol compatibility validator. Inactive clients remain editable.
+      No generic editor, framework, or new navigation subsystem is introduced. (AR-73, AR-81,
+      AR-112, AR-114, AR-115, AR-117, AR-119)
 - [ ] **AC-10 — Client lifecycle:** an active client can be deactivated and an inactive client can be
       activated. Deactivate requires explicit confirmation naming the client and organization. A
       successful transition reloads the organization-scoped client; rejection or failure preserves
       the prior validated view. Whole-client Revoke and Restore do not exist; permanent deletion is
       owned by RD-10. (AR-73, AR-75, AR-83, AR-107)
 - [ ] **AC-11 — Initial confidential secret:** creating a confidential client automatically returns
-      its initial plaintext secret once. The UI immediately presents it in a warning dialog with the
-      client name, Client ID, optional label, and a fixed warning that the secret cannot be shown
+      its initial plaintext secret once. The create contract accepts `secretExpiresAt`; omission means
+      the secret never expires. The Admin UI selects six months initially and offers the same expiry
+      choices as rotation. It immediately presents the returned secret in a warning dialog with the
+      client name, Client ID, optional label, expiry, and a fixed warning that the value cannot be shown
       again. Closing, cancelling, resizing below the recovery threshold, switching context,
-      reauthenticating, or quitting permanently discards the UI's plaintext reference. Public-client
-      creation produces no secret dialog. (AR-76, AR-84)
-- [ ] **AC-12 — Secret rotation:** a confidential client's Secrets action lists metadata only: ID,
+      reauthenticating, or quitting permanently discards the plaintext reference. Public-client
+      creation produces no secret dialog. (AR-76, AR-84, AR-116, AR-119)
+- [ ] **AC-12 — Secret rotation:** a confidential client's Credentials section lists metadata only: ID,
       optional label, textual status, created time, optional expiry, and optional last-used time. An
       administrator can generate another one-time secret with an optional label of at most 255
-      characters and an optional valid expiry instant, or permanently revoke an active secret after explicit
-      confirmation. Plaintext is never available from list or detail operations and secret actions are
+      characters and an expiry preset of 3, 6, 12, or 24 months, any future custom date, or `Never`.
+      Six months is initially selected. A custom date remains valid through that UTC date and expires
+      at 00:00 UTC on the next day. Dates beyond 24 months and `Never` show concise non-blocking
+      warnings; there is no maximum and no extra confirmation. An active secret can be permanently
+      revoked after explicit confirmation. Plaintext is never available from list or detail operations and secret actions are
       unavailable for public clients. Every returned secret row must name the selected
       internal client ID. The server revoke operation must verify that the secret belongs to the
       client named by the route. Every active, unexpired secret remains accepted by the token endpoint
       until explicit revocation or expiry so rotation supports overlap without an outage. (AR-76,
-      AR-83, AR-84)
+      AR-83, AR-84, AR-116)
 - [ ] **AC-13 — Context and operation ownership:** organization switching immediately discards all
       client workspace and client-secret state but does not relabel or tenant-scope the global
       application catalog. Authentication replacement or invalidation clears both global and
@@ -122,8 +134,10 @@ not a separate server authorization boundary.
 - [ ] **AC-15 — Presentation prime directive:** every RD-04 screen and dialog uses the JSVision
       Layout DSL unless a concrete JSVision limitation makes the layout impossible. Application,
       module, client, and secret metadata tables use DataGrid where rows and columns are the natural
-      presentation. Every single-line input remains exactly one row high and receives no vertical
-      growth or fill behavior. (AR-82)
+      presentation. Client detail uses the primary module workspace recipe and captioned `GroupBox`
+      sections. Every single-line input remains exactly one row high and receives no vertical growth
+      or fill behavior. Section content does not depend on a hard-coded scrolling extent. (AR-82,
+      AR-114)
 - [ ] **AC-16 — Terminal interaction:** all grids, menus, detail actions, dialogs, confirmations,
       Create, Save, Cancel, Reauthenticate, and Quit are keyboard reachable and mouse usable. Dialogs
       are movable, restore focus to their invoker, redraw without artifacts, and remain usable at
@@ -135,10 +149,12 @@ not a separate server authorization boundary.
 - [ ] **AC-17 — Thin service boundaries:** presentation code owns no HTTP, token, credential,
       pagination, secret-storage, or authorization policy. Narrow application/client services adapt
       validated SDK contracts to immutable Admin UI state.
-- [ ] **AC-18 — Existing defaults:** creation dialogs leave optional protocol fields as
-      `Server default`, omit unchanged fields from the create payload, and replace that label with
-      authoritative returned values after creation. The UI does not copy the server's private
-      defaults, create a second OIDC policy engine, or silently transform explicitly selected values.
+- [ ] **AC-18 — Existing defaults:** compact registration omits advanced protocol and login fields so
+      the server applies its authoritative defaults. The returned Overview displays those values and
+      the focused sections edit them explicitly afterward. Secret expiry is the exception: the Admin
+      UI deliberately sends its selected six-month default, custom date, preset, or omitted `Never`
+      choice. The UI does not copy the server's private protocol defaults or create a second OIDC
+      policy engine. (AR-113, AR-116)
 
 ### Won't Have (Out of Scope)
 
@@ -191,7 +207,7 @@ Porta deployment
 | Allowed origins               | Server default or 0–10 absolute origins, each 1–2,048 characters         |
 | Login methods                 | Inherit organization default, `password`, `magic_link`, or both          |
 | Initial/rotated secret label  | Omitted or 0–255 control-free characters                                 |
-| Secret expiry                 | Omitted or a valid instant                                               |
+| Secret expiry                 | Omitted (`Never`) or a future instant; no maximum                        |
 | Application status            | `active` or `inactive`                                                   |
 | Module status                 | `active` or `inactive`                                                   |
 | Client status                 | `active` or `inactive`                                                   |
@@ -201,6 +217,12 @@ Porta deployment
   redirect URIs follow the same URL bounds. Allowed origins contain only scheme, host, and optional
   port: no path beyond `/`, query, fragment, credentials, or wildcard. The server remains
   authoritative for protocol, scheme, and exact-match rules.
+- Every redirect, logout, and origin collection rejects exact duplicate strings. Registration sends
+  one initial redirect URI; the Authentication section maintains the complete supported collection
+  afterward. Staged row changes do not mutate the server until Save. (AR-113, AR-115)
+- Secret-generation endpoints reject an expiry that is not in the future. `Never` is represented by
+  omitted expiry, preserving the current API meaning. The Admin UI converts a selected civil date to
+  the exclusive 00:00 UTC boundary on the following day. (AR-116)
 - One shared server-side compatibility validator is used by Admin routes and import, and its rules
   are mirrored only as pre-dispatch UI affordances: public clients use authentication method `none`,
   exclude `client_credentials`, and always require PKCE; confidential clients use
@@ -245,6 +267,7 @@ RD-04 may correct the SDK and affected conventional CLI commands to match the ex
 - represent complete client fields including organization ID, application type, scope, origins,
   PKCE, status, login methods, and effective login methods;
 - represent client create responses as the returned client plus optional one-time secret;
+- accept `secretExpiresAt?: string` when creating the automatic initial confidential-client secret;
 - map `clientName` and returned secret `plaintext` without inaccurate aliases; and
 - use the server's existing secret-revocation route and secret status metadata.
 
@@ -271,6 +294,12 @@ changes.
 - DataGrid fills the remaining workspace body for application and client collections. Focused detail
   dialogs may use a DataGrid for module or secret rows; small action menus and confirmation choices
   remain ordinary controls.
+- The maximized OIDC Clients surface retains ownership while client detail switches between Overview,
+  Authentication, Protocol, Login experience, Credentials, and Lifecycle. Focused edit dialogs contain
+  only one logical section and use natural Layout DSL sizing without a feature-local scrolling extent.
+- Authentication collection editors synchronize DataGrid selection with the one-row value input and
+  keep Add, Edit, and Remove visible but selection- and validation-aware. One Save submits the staged
+  replacement collection. (AR-114, AR-115)
 - Single-line fields have a one-row minimum and maximum content height and never receive vertical
   grow/fill allocation. Multi-line descriptions are the only text inputs allowed to grow vertically.
 - Global application state is bound to the authenticated session epoch. Client and secret state is
@@ -314,6 +343,11 @@ changes.
 | Layout controls        | DSL, DataGrid, fixed inputs / ad hoc                      | Prime directive                      | Prevents sizing and redraw defects                | AR-82                 |
 | Lifecycle confirmation | Restrictive and permanent / permanent only                | Restrictive and permanent            | Makes service-impacting changes deliberate        | AR-83                 |
 | Public-client secrets  | Confidential clients only / every client                  | Confidential clients only            | Public clients cannot keep a secret               | AR-84                 |
+| OIDC workflow          | Sectioned detail / oversized shared form                   | Sectioned detail                      | Keeps each task focused and readable               | AR-112–AR-114        |
+| Redirect editing       | Staged DataGrid CRUD / free-form or per-row API             | Staged DataGrid CRUD                  | Matches the existing array replacement contract   | AR-115                |
+| Secret expiration      | Flexible presets/custom/Never / Azure maximum              | Flexible, no maximum                  | Supports operational choice with visible warnings | AR-116                |
+| Login methods          | Inheritance plus independent choices / single radio        | Inheritance plus checkboxes           | Represents Porta's actual multi-method contract    | AR-117                |
+| Azure boundary         | Information architecture / copy unsupported capabilities    | Information architecture only         | Keeps Porta's domain model truthful                | AR-118                |
 
 ## Security Considerations
 
@@ -321,7 +355,8 @@ changes.
   response and transient warning dialog; hashes are never returned or rendered.
 - **Input validation:** all dialog input uses bounded allowlists before the shared server-side Zod and
   service validation. Organization and application ownership identifiers are never accepted from an
-  editable free-text field.
+  editable free-text field. The server rejects past secret expiry instants and remains authoritative
+  for every URI, origin, protocol, and login-method value. (AR-115, AR-116)
 - **Authentication and authorization:** every request uses the verified server-bound session. UI
   capability checks are advisory; deployment-wide server permissions are authoritative. The built-in
   App Admin receives organization-read permission solely so it can select client context.
@@ -359,43 +394,57 @@ changes.
        read/update permissions and displays textual status. Delete is supplied by RD-10. A
        mismatched application/module pair cannot update or deactivate anything, and a returned module
        with a different application ID is not published.
-6. [ ] Client create always sends the active organization UUID and selected active application UUID,
-       accepts only the closed client/application/grant/response/authentication/login-method values,
-       enforces the public/confidential compatibility rules, URL/origin/scope bounds, 1–10 redirect
-       and 0–10 logout URIs, and never allows editing generated ownership or identity fields afterward.
-7. [ ] Client detail exposes focused Basic, Redirects, Protocol, Login, and Secrets actions. Every
-       supported server update field can be changed without exposing a raw JSON or generated generic
-       form.
-8. [ ] Client Deactivate confirmation names the client and active organization. Whole-client Revoke
+6. [ ] Compact client registration sends the active organization UUID, selected active application
+       UUID, client name, closed client/application type, and exactly one valid initial redirect URI.
+       It omits advanced configuration so the server applies authoritative defaults. Confidential
+       registration also sends the optional label and chosen `secretExpiresAt`; public registration
+       sends neither secret field.
+7. [ ] After creation, client detail opens Overview and exposes Authentication, Protocol, Login
+       experience, Credentials, and Lifecycle sections inside the maximized module surface. Every
+       supported update field can be changed through a focused section without an oversized form,
+       raw JSON, hard-coded scroll extent, or generated UI framework.
+8. [ ] Authentication DataGrids support selected-row Add, Edit, and Remove for every supported URI
+       and origin collection. Exact duplicates and invalid values show a validation result, the final
+       required redirect URI cannot be removed, and one Save submits the staged replacement array.
+9. [ ] Client Deactivate confirmation names the client and active organization. Whole-client Revoke
        and Restore are absent; Delete is supplied by RD-10.
-9. [ ] Confidential-client creation displays the returned plaintext secret exactly once with the
-       required warning. Public-client creation never shows Secrets. No later list, detail, redraw,
-       log, error, context switch, or reauthentication can reveal the plaintext.
-10. [ ] Secret metadata contains no plaintext or hash. Generate accepts label lengths 0 and 255 and
-        an omitted or valid expiry instant; permanent revoke requires confirmation. Missing read/update/revoke
+10. [ ] Confidential-client creation displays the returned plaintext secret exactly once with the
+        required warning, then opens that client's Overview. Public-client creation never shows
+        Credentials. No later list, detail, redraw, log, error, context switch, or reauthentication
+        can reveal the plaintext.
+11. [ ] Initial and rotated secret forms select six months initially, provide 3/6/12/24-month presets,
+        accept any future custom date through JSVision `DatePicker`, and allow warned `Never` without
+        extra confirmation. A date beyond 24 months shows a concise warning but remains valid. A
+        selected custom date serializes to 00:00 UTC on the following day.
+12. [ ] Secret metadata contains no plaintext or hash. Generate accepts label lengths 0 and 255 and
+        an omitted or valid future expiry instant; permanent revoke requires confirmation. Missing read/update/revoke
         capabilities disable exactly the corresponding secret actions. Token-endpoint tests prove an
         old and new active secret both work during overlap and that revocation or expiry disables only
         the affected secret. A mismatched route client/secret pair cannot revoke anything.
-11. [ ] Switching organization clears all client/dialog/secret state before loading the new context
+13. [ ] Login experience can inherit the selected organization's defaults or select Password and
+        Magic link independently, with at least one explicit method required. Inherited and explicit
+        modes both display the effective methods returned by Porta.
+14. [ ] Switching organization clears all client/dialog/secret state before loading the new context
         but leaves global application semantics unchanged. Authentication replacement clears every
         RD-04 state, and late prior-context results cannot reappear.
-12. [ ] Each mutation dispatches once. Only a definite `401` may receive the SDK's single refresh
+15. [ ] Each mutation dispatches once. Only a definite `401` may receive the SDK's single refresh
         replay; `400`, `403`, `409`, cancellation, transport failure, malformed response, or
         indeterminate completion neither retries nor publishes speculative success.
-13. [ ] Every RD-04 screen and dialog is built with the Layout DSL unless a concrete documented DSL
+16. [ ] Every RD-04 screen and dialog is built with the Layout DSL unless a concrete documented DSL
         limitation is proven; every natural table uses DataGrid; every single-line input remains one
         row tall at 80×24, 48×12, and after repeated grow/shrink resize cycles.
-14. [ ] All actions are keyboard reachable and mouse usable; dialogs move, cancel, restore focus,
+17. [ ] All actions are keyboard reachable and mouse usable; dialogs move, cancel, restore focus,
         close on Alt+X through application-owned quit handling, redraw without artifacts, and preserve
         terminal restoration.
-15. [ ] SDK and conventional CLI application/client specification tests describe the existing server
+18. [ ] SDK and conventional CLI application/client specification tests describe the existing server
         fields, response wrappers, internal-ID targeting, lifecycle routes, and secret semantics;
         nonexistent application organization ownership and Archive/Revoke/Restore contracts are removed without
         changing the server data model.
-16. [ ] Focused specifications, relevant security tests, affected package tests, repository structure
-        tests, the packed Admin UI playground journey, and `yarn verify` pass on Node 24 LTS. SDK/CLI
-        compatibility assurance runs from a clean committed revision because their public contracts
-        change.
+19. [ ] Focused specifications, relevant security tests, `yarn test:structure`, server/SDK/CLI package
+        `verify` commands, `yarn docs:build`, `yarn harness:test`, and the operational protocol assurance
+        harness pass on Node 24 LTS. Root `yarn verify` is not run for this redesign, and browser
+        Playwright is not applicable to the terminal UI. The registered `p1-admin` and `protocol`
+        compatibility selectors pass from a clean committed revision.
 
 ## Technical Documentation Update
 
