@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 07:48
-> **Progress**: 2/37 tasks (5%)
+> **Last Updated**: 2026-09-08 07:52
+> **Progress**: 3/37 tasks (8%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -64,7 +64,7 @@ AR-11 · ST-1–ST-9
 **Reference**: [03-01 §Proposed Changes](03-01-initial-secret-contract.md#proposed-changes) · AR-1,
 AR-11
 
-- [ ] 1.2.1 Add one route-local strict ISO/future expiry schema, one route-local control-free label schema, and initial-secret plumbing — `packages/server/src/routes/clients.ts`
+- [x] 1.2.1 Add one route-local strict ISO/future expiry schema, one route-local control-free label schema, and initial-secret plumbing — `packages/server/src/routes/clients.ts` ✅ (completed: 2026-09-08 07:52)
 - [ ] 1.2.2 Add the optional create input field and request contract — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/domains/clients.ts`
 - [ ] 1.2.3 Run ST-1–ST-9 and make the immutable expectations green
 

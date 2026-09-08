@@ -71,6 +71,42 @@ const loginMethodSchema = z.enum(LOGIN_METHODS);
  */
 const clientLoginMethodsSchema = z.array(loginMethodSchema).min(1).nullable();
 
+/** Return whether text contains a C0, DEL, or C1 control code point. */
+function containsControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0);
+    return (
+      codePoint !== undefined &&
+      (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
+    );
+  });
+}
+
+/**
+ * Optional secret labels are safe to render in terminals and audit metadata.
+ * C0, DEL, and C1 controls are rejected because they can alter terminal output
+ * without contributing useful label text.
+ */
+const secretLabelSchema = z
+  .string()
+  .max(255)
+  .refine((value) => !containsControlCharacter(value), {
+    message: 'Secret label must not contain control characters',
+  });
+
+/**
+ * Secret expiry values use one deterministic wire format for creation and
+ * rotation. Validation happens after parsing the ISO instant so both routes
+ * compare the same absolute time with the current request time.
+ */
+const futureSecretExpirySchema = z
+  .string()
+  .datetime({ offset: true })
+  .transform((value) => new Date(value))
+  .refine((value) => value.getTime() > Date.now(), {
+    message: 'Secret expiry must be in the future',
+  });
+
 /** Schema for creating a new client */
 const createClientSchema = z
   .object({
@@ -92,7 +128,8 @@ const createClientSchema = z
     allowedOrigins: z.array(z.string().url()).max(10).optional(),
     requirePkce: z.boolean().optional(),
     loginMethods: clientLoginMethodsSchema.optional(),
-    secretLabel: z.string().max(255).optional(),
+    secretLabel: secretLabelSchema.optional(),
+    secretExpiresAt: futureSecretExpirySchema.optional(),
   })
   .superRefine((value, context) => {
     const result = validateClientProtocolCompatibility({
@@ -150,8 +187,8 @@ const listClientsCursorSchema = z.object({
 
 /** Schema for generating a new secret */
 const createSecretSchema = z.object({
-  label: z.string().max(255).optional(),
-  expiresAt: z.coerce.date().optional(),
+  label: secretLabelSchema.optional(),
+  expiresAt: futureSecretExpirySchema.optional(),
 });
 
 /** Parameters accepted by client deletion. */
@@ -246,14 +283,19 @@ export function createClientRouter(): Router {
       try {
         const body = createClientSchema.parse(ctx.request.body);
 
+        // Secret fields belong to the nested secret mutation and must never
+        // leak into the client persistence input.
+        const { secretLabel, secretExpiresAt, ...clientInput } = body;
+
         // Create client (returns ClientWithSecret — secret is null here)
-        const result = await clientService.createClient(body);
+        const result = await clientService.createClient(clientInput);
 
         // For confidential clients, generate the initial secret automatically
         let secret = result.secret;
         if (body.clientType === 'confidential') {
           secret = await secretService.generateAndStore(result.client.id, {
-            label: body.secretLabel,
+            ...(secretLabel === undefined ? {} : { label: secretLabel }),
+            ...(secretExpiresAt === undefined ? {} : { expiresAt: secretExpiresAt }),
           });
         }
 
