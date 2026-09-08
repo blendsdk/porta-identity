@@ -404,7 +404,22 @@ describe('application and client shell ownership', () => {
         await settle();
         application.loop.dispatch({ type: 'key', key: 'enter', codepoint: 13, ctrl: false, alt: false, shift: false });
         await settle();
-        application.loop.dispatch({ type: 'key', key: 's', codepoint: 115, ctrl: false, alt: true, shift: false });
+        for (let index = 0; index < 4; index += 1)
+          application.loop.dispatch({
+            type: 'key',
+            key: 'down',
+            ctrl: false,
+            alt: false,
+            shift: false,
+          });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'enter',
+          codepoint: 13,
+          ctrl: false,
+          alt: false,
+          shift: false,
+        });
         await settle();
         application.loop.dispatch({ type: 'key', key: 'g', codepoint: 103, ctrl: false, alt: true, shift: false });
         await settle();
