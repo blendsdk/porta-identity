@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 08:43
-> **Progress**: 13/37 tasks (35%)
+> **Last Updated**: 2026-09-08 08:46
+> **Progress**: 14/37 tasks (38%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -107,7 +107,7 @@ AR-12, AR-14
 - [x] 2.2.2 Implement the complete 3/6/12/24/custom/Never expiry helper once and use its six-month default for registration — `packages/cli/src/admin/client-registration-dialog.ts`, `packages/cli/src/admin/client-credential-dialogs.ts` ✅ (completed: 2026-09-08 08:38; feature-local DatePicker composition added with civil-month clamping, next-day UTC serialization, warnings, and six-month registration default)
 - [x] 2.2.3 After transient secret presentation, authoritatively reload through `select(created.id)` and publish Overview — `packages/cli/src/admin/client-controller.ts` ✅ (completed: 2026-09-08 08:40; successful create values now select and authoritatively reload the created client after any one-time presentation)
 - [x] 2.2.4 Pass raw secret expiry through the existing one-time presenter and wire compact registration without changing dialog/network ownership — `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/client-dialogs.ts` ✅ (completed: 2026-09-08 08:43; existing orchestration opens compact registration and passes raw expiry into the transient one-time presenter)
-- [ ] 2.2.5 Run ST-10–ST-17 and make the immutable expectations green
+- [x] 2.2.5 Run ST-10–ST-17 and make the immutable expectations green ✅ (completed: 2026-09-08 08:46; 69 registration and retained workspace specifications passed)
 
 ### Step 2.3: Implementation Tests and Hardening
 
