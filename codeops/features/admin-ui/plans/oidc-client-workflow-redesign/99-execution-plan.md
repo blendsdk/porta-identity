@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 08:06
-> **Progress**: 7/37 tasks (19%)
+> **Last Updated**: 2026-09-08 08:22
+> **Progress**: 8/37 tasks (22%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -84,12 +84,18 @@ unchanged authorization boundaries, additive SDK contract, and complete focused 
 
 ## Phase 2: Compact Registration and Continuation
 
+> **Phase baseline tree**: `f3bb5ae1989707ecfe8d241ea1c802fa93740e0b`
+> **Expected modification set**: Phase 2 registration specifications and implementation modules,
+> their retained facade/controller/orchestration seams, implementation coverage, and this execution
+> record. The repository test inventory count tracks the intentionally added test files.
+> Pre-existing worktree changes remain excluded from Phase 2 review and task commits.
+
 ### Step 2.1: Specification Tests
 
 **Reference**: [03-02 §Compact Registration](03-02-client-workflow.md#compact-registration) · AR-3,
 AR-6, AR-12 · ST-10–ST-17
 
-- [ ] 2.1.1 [spec-author] Replace only existing shared-tab registration assertions superseded by revised RD-04, preserve still-valid safety/focus/sizing assertions, and write compact-registration/continuation specifications from ST-10–ST-17 — `packages/cli/tests/admin/oidc-clients-workspace.spec.test.ts`, `packages/cli/tests/admin/oidc-client-registration.spec.test.ts`
+- [x] 2.1.1 [spec-author] Replace only existing shared-tab registration assertions superseded by revised RD-04, preserve still-valid safety/focus/sizing assertions, and write compact-registration/continuation specifications from ST-10–ST-17 — `packages/cli/tests/admin/oidc-clients-workspace.spec.test.ts`, `packages/cli/tests/admin/oidc-client-registration.spec.test.ts` ✅ (completed: 2026-09-08 08:22; 55 retained workspace specifications preserved and 14 ST-10–ST-17 cases added)
 - [ ] 2.1.2 Run the new registration specification suite and record the expected red result
 
 ### Step 2.2: Implementation

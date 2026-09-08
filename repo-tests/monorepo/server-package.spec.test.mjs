@@ -355,7 +355,7 @@ test('should retain every behavioral and harness test file', () => {
       paths: ['unit', 'integration', 'e2e', 'pentest'].flatMap((suite) =>
         findPhysicalFiles(`packages/server/tests/${suite}`, /(?:\.test|\.spec)\.ts$/),
       ),
-      expectedCount: 275,
+      expectedCount: 277,
     },
     {
       label: 'server browser UI tests',
@@ -365,12 +365,12 @@ test('should retain every behavioral and harness test file', () => {
     {
       label: 'SDK tests',
       paths: findPhysicalFiles('packages/sdk/tests', /\.test\.ts$/),
-      expectedCount: 39,
+      expectedCount: 41,
     },
     {
       label: 'CLI tests',
       paths: findPhysicalFiles('packages/cli/tests', /\.test\.ts$/),
-      expectedCount: 69,
+      expectedCount: 70,
     },
     {
       label: 'OIDC harness tests',

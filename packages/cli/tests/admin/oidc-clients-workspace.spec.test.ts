@@ -105,19 +105,12 @@ interface ClientDialogExports {
   readonly showClientConfigurationDialog: (
     host: ReturnType<typeof createApplication>,
     signal: AbortSignal,
-    options:
-      | {
-          readonly mode: 'create';
-          readonly organization: AdminOrganizationContext;
-          readonly applications: readonly (typeof application)[];
-          readonly initialTab: 'Basic';
-        }
-      | {
-          readonly mode: 'edit';
-          readonly organization: AdminOrganizationContext;
-          readonly client: AdminClient;
-          readonly initialTab: 'Basic' | 'Redirects' | 'Protocol' | 'Login';
-        },
+    options: {
+      readonly mode: 'edit';
+      readonly organization: AdminOrganizationContext;
+      readonly client: AdminClient;
+      readonly initialTab: 'Basic' | 'Redirects' | 'Protocol' | 'Login';
+    },
   ) => Promise<unknown>;
   readonly showClientLifecycleDialog: (
     host: ReturnType<typeof createApplication>,
@@ -348,22 +341,6 @@ describe('OIDC client configuration dialogs', () => {
     await expect(pending).resolves.toEqual({ kind: 'cancel' });
   });
 
-  it('opens create on Basic with immutable owner/type selectors and collection DataGrid row actions', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'create', organization, applications: [application], initialTab: 'Basic' });
-    await settle();
-    const dialog = activeDialog(host);
-    const views = descendants(dialog);
-    expect(frameText(host)).toContain('Basic');
-    expect(frameText(host)).toContain(organization.name);
-    expect(frameText(host)).toContain(application.name);
-    expect(frameText(host)).toMatch(/Application type.*Client type/s);
-    expect(views.filter((view) => view instanceof DataGrid)).toHaveLength(3);
-    expect(views.filter((view) => view instanceof Button).map((button) => button.activation.label)).toEqual(expect.arrayContaining(['Add', 'Edit', 'Remove']));
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
   it.each([[80, 24], [48, 12]])('keeps every single-line input one row and reachable through vertical scrolling at %sx%s', async (width, height) => {
     const host = createApplication({ viewport: { width, height } });
     const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'edit', organization, client, initialTab: 'Protocol' });
@@ -377,30 +354,6 @@ describe('OIDC client configuration dialogs', () => {
     expect(frameText(host)).not.toContain('[jsvision/ui');
     host.loop.endModal('cancel');
     await pending;
-  });
-
-  it('omits untouched server defaults and immutable generated/context fields from create payload', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = (await dialogExports()).showClientConfigurationDialog(host, new AbortController().signal, { mode: 'create', organization, applications: [application], initialTab: 'Basic' });
-    await settle();
-    const dialog = activeDialog(host);
-    const inputs = descendants(dialog).filter((view) => view instanceof Input);
-    inputs.find((input) => input.getMaxLength() === 255)?.getValueSignal().set('New Client');
-    const redirectGrid = descendants(dialog).find((view) => view instanceof DataGrid);
-    if (!(redirectGrid instanceof DataGrid)) throw new Error('Redirect collection grid missing.');
-    redirectGrid.setRows([{ id: 'redirect', value: 'https://portal.example.test/callback' }]);
-    expect(frameText(host)).toContain('Server default');
-    submit(host, dialog);
-    await expect(pending).resolves.toEqual({
-      kind: 'create',
-      input: {
-        applicationId: application.id,
-        clientName: 'New Client',
-        clientType: 'confidential',
-        applicationType: 'web',
-        redirectUris: ['https://portal.example.test/callback'],
-      },
-    });
   });
 
   it.each([
