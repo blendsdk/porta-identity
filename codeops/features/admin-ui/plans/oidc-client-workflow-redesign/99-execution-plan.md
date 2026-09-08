@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 07:55
-> **Progress**: 4/37 tasks (11%)
+> **Last Updated**: 2026-09-08 07:56
+> **Progress**: 5/37 tasks (14%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -66,7 +66,7 @@ AR-11
 
 - [x] 1.2.1 Add one route-local strict ISO/future expiry schema, one route-local control-free label schema, and initial-secret plumbing — `packages/server/src/routes/clients.ts` ✅ (completed: 2026-09-08 07:52)
 - [x] 1.2.2 Add the optional create input field and request contract; align the existing exact type oracle with the additive field — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/domains/clients.ts`, `packages/sdk/tests/clients-rd04.spec.test.ts` ✅ (completed: 2026-09-08 07:55; the existing domain already forwards create input unchanged)
-- [ ] 1.2.3 Run ST-1–ST-9 and make the immutable expectations green
+- [x] 1.2.3 Run ST-1–ST-9 and make the immutable expectations green ✅ (completed: 2026-09-08 07:56; server: 22 passed, SDK: 13 passed plus exact type contract)
 
 ### Step 1.3: Implementation Tests and Hardening
 
