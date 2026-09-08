@@ -2,14 +2,11 @@
 
 import {
   Button,
-  CheckGroup,
   ComboBox,
   createApplication,
   Dialog,
   Group,
-  Input,
   Scroller,
-  Switch,
   View,
 } from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
@@ -81,85 +78,8 @@ function activeDialog(host: ReturnType<typeof createApplication>): Dialog {
   return dialog;
 }
 
-/** Verifies that a focused control is revealed while the fixed action row stays visible. */
-async function expectRevealed(
-  host: ReturnType<typeof createApplication>,
-  dialog: Dialog,
-  target: View,
-  visibleText: string,
-): Promise<Scroller> {
-  const scroller = descendants(dialog).find((view) => view instanceof Scroller);
-  if (!(scroller instanceof Scroller)) throw new Error('Focused editor scroller missing.');
-  host.loop.focusView(target);
-  await settle();
-  expect(scroller.bounds.height).toBeGreaterThan(0);
-  expect(frameText(host)).toContain(visibleText);
-  expect(frameText(host)).toContain('Cancel');
-  return scroller;
-}
-
 describe('focused OIDC editors at 48×12', () => {
-  it('reveals the authentication value editor', async () => {
-    const host = createApplication({ viewport: { width: 48, height: 12 } });
-    const { showClientAuthenticationDialog } = await import('../../src/admin/client-dialogs.js');
-    const pending = showClientAuthenticationDialog(
-      host,
-      new AbortController().signal,
-      organization,
-      client,
-    );
-    await settle();
-    const dialog = activeDialog(host);
-    const value = descendants(dialog).find(
-      (view) => view instanceof Input && view.getMaxLength() === 2_048,
-    );
-    if (!(value instanceof Input)) throw new Error('Authentication value input missing.');
-    const scroller = await expectRevealed(host, dialog, value, 'Value');
-    expect(scroller.delta.y).toBeGreaterThan(0);
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it('reveals the protocol scope editor', async () => {
-    const host = createApplication({ viewport: { width: 48, height: 12 } });
-    const { showClientProtocolDialog } = await import('../../src/admin/client-dialogs.js');
-    const pending = showClientProtocolDialog(
-      host,
-      new AbortController().signal,
-      organization,
-      client,
-    );
-    await settle();
-    const dialog = activeDialog(host);
-    const scope = descendants(dialog).find((view) => view instanceof Input);
-    if (!(scope instanceof Input)) throw new Error('Protocol scope input missing.');
-    const scroller = await expectRevealed(host, dialog, scope, 'Scope');
-    expect(scroller.delta.y).toBeGreaterThan(0);
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it('reveals explicit login methods', async () => {
-    const host = createApplication({ viewport: { width: 48, height: 12 } });
-    const { showClientLoginDialog } = await import('../../src/admin/client-dialogs.js');
-    const pending = showClientLoginDialog(host, new AbortController().signal, organization, client);
-    await settle();
-    const dialog = activeDialog(host);
-    const views = descendants(dialog);
-    const inheritance = views.find((view) => view instanceof Switch);
-    const methods = views.find((view) => view instanceof CheckGroup);
-    if (!(inheritance instanceof Switch) || !(methods instanceof CheckGroup)) {
-      throw new Error('Login controls missing.');
-    }
-    inheritance.select(false);
-    const scroller = await expectRevealed(host, dialog, methods, 'Magic link');
-    expect(scroller.delta.y).toBeGreaterThan(0);
-    expect(frameText(host)).toMatch(/\[ \] Magic link/);
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it('reveals secret expiry while keeping Generate and Cancel visible', async () => {
+  it('keeps secret creation unscrolled with Add and Cancel visible', async () => {
     const host = createApplication({ viewport: { width: 48, height: 12 } });
     const { showGenerateClientSecretDialog } = await import('../../src/admin/client-dialogs.js');
     const pending = showGenerateClientSecretDialog(host, new AbortController().signal, client);
@@ -167,9 +87,11 @@ describe('focused OIDC editors at 48×12', () => {
     const dialog = activeDialog(host);
     const expiry = descendants(dialog).find((view) => view instanceof ComboBox);
     if (!(expiry instanceof ComboBox)) throw new Error('Secret expiry choice missing.');
-    await expectRevealed(host, dialog, expiry.input, 'Expires');
+    expect(descendants(dialog).some((view) => view instanceof Scroller)).toBe(false);
+    host.loop.focusView(expiry.input);
+    await settle();
     const visible = frameText(host);
-    expect(visible).toContain('Generate');
+    expect(visible).toContain('Add');
     expect(visible).toContain('Cancel');
     expect(
       descendants(dialog)

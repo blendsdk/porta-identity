@@ -42,8 +42,7 @@ export const bulkUserStatusSchema = z.object({
     .refine((ids) => new Set(ids).size === ids.length, {
       message: 'Bulk entity identifiers must be unique',
     }),
-  action: z.enum(['activate', 'deactivate', 'suspend', 'lock', 'unlock']),
-  reason: z.string().max(500).optional(),
+  action: z.enum(['activate', 'deactivate']),
   organizationId: z.string().uuid(),
 });
 
@@ -84,7 +83,7 @@ export function createBulkRouter(): Router {
   // -------------------------------------------------------------------------
   // POST /users/status — Bulk user status change
   // -------------------------------------------------------------------------
-  router.post('/users/status', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
+  router.post('/users/status', requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE), async (ctx) => {
     const parsed = bulkUserStatusSchema.safeParse(ctx.request.body);
     if (!parsed.success) {
       ctx.status = 400;
@@ -96,7 +95,6 @@ export function createBulkRouter(): Router {
       entityType: 'user',
       entityIds: body.ids,
       action: body.action,
-      reason: body.reason,
       organizationId: body.organizationId,
       actorId: ctx.state.adminUser?.id,
     });

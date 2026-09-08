@@ -40,7 +40,7 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | Active organization      | The session-memory working context selected for organization-scoped administration. |
 | UserInfo                 | The tenant-scoped OIDC `/me` response containing verified identity and RBAC claims. |
 | User                     | An identity account owned by exactly one Porta organization.                        |
-| User lifecycle           | Porta's active, inactive, suspended, and locked account states and transitions.     |
+| User lifecycle           | Active/Inactive administration plus automatic failed-login lockout and recovery.    |
 | Application              | A global product, service, or authorization definition shared by organizations.     |
 | Application module       | A global feature grouping within an application and permission namespace.           |
 | OIDC client              | An organization-owned OIDC deployment connected to one global application.          |
@@ -56,6 +56,26 @@ These directives apply to every current and future Admin UI requirement:
    Small non-tabular choosers do not need to be forced into a grid.
 3. Keep every single-line input at its natural one-row height. A Layout DSL container must never
    assign vertical growth or fill behavior that stretches a single-line input.
+
+### Primary Module Workspace Recipe
+
+Apply this directive to every primary administration module:
+
+1. Present the module on one maximized, non-closable, non-resizable, and
+   non-zoomable dialog surface. Use the dialog caption as the module title and do not repeat that
+   title inside the content.
+2. Give the primary DataGrid the growing list area and keep its columns visible when the collection
+   is empty. Place search and filter controls above it. Place empty or no-match messages,
+   interaction hints, record counts, paging, and short operation outcomes in a compact footer.
+3. Divide detail views into captioned GroupBox sections that reflect the record's logical parts.
+   Keep operational controls together in the section they affect, and keep navigation in a separate
+   bottom row.
+4. Let Layout DSL rows determine every button's natural measured width. Keep selection-dependent
+   operations visible but disabled until the selected record makes them applicable.
+5. Render empty, loading, failure, retry, and indeterminate states within the same module surface.
+   Preserve validated content beneath temporary status feedback when it remains safe to display.
+6. On a compact terminal, logical detail sections may collapse into one bounded selectable list so
+   every value and operation remains reachable. Navigation must remain in its separate bottom row.
 
 ## Document Index
 

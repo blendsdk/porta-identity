@@ -60,12 +60,7 @@ export const staleAuthoritySentinel = {
   id: 'ST-31',
   implementationBoundary: 'dedicated-stale-authority-orchestration',
   includedHere: false,
-  supportedTransitions: [
-    'role-removal',
-    'actor-deactivation',
-    'actor-suspension',
-    'session-revocation',
-  ],
+  supportedTransitions: ['role-removal', 'actor-deactivation', 'session-revocation'],
   unavailableTransitions: ['organization-membership-removal', 'organization-reassignment'],
 } as const;
 
@@ -92,13 +87,6 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
     expectedResult: 'unauthenticated',
   },
   {
-    transition: 'actor-suspension',
-    authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
-    mutationMethod: 'POST',
-    mutationRoute: '/api/admin/organizations/:orgId/users/:userId/suspend',
-    expectedResult: 'unauthenticated',
-  },
-  {
     transition: 'session-revocation',
     authorizedControlCaseId: 'alpha-principal-resume-session-alpha-session',
     mutationMethod: 'DELETE',
@@ -111,10 +99,8 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
 export const protectedSuperAdminOperations = [
   'deactivate',
   'delete',
-  'lock',
   'manage-2fa',
   'remove-super-admin-role',
-  'suspend',
 ] as const;
 
 /** Bootstrap-user operations that have no current public product lifecycle. */

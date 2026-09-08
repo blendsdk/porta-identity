@@ -154,8 +154,7 @@ export interface OrganizationCacheIsolationObservation {
 /** One documented protection for the bootstrap super-admin user. */
 export interface SuperAdminExceptionObservation {
   /** Protected destructive operation. */
-  readonly operation:
-    'delete' | 'suspend' | 'lock' | 'deactivate' | 'remove-super-admin-role' | 'manage-2fa';
+  readonly operation: 'delete' | 'deactivate' | 'remove-super-admin-role' | 'manage-2fa';
   /** Public result observed after the protected operation. */
   readonly result: AuthorizationResult;
   /** Whether independently verified bootstrap-user state remained unchanged. */
@@ -164,7 +163,7 @@ export interface SuperAdminExceptionObservation {
 
 /** Supported public authority transition exercised by the stale-state sentinel. */
 export type SupportedStaleAuthorityTransition =
-  'role-removal' | 'actor-deactivation' | 'actor-suspension' | 'session-revocation';
+  'role-removal' | 'actor-deactivation' | 'session-revocation';
 
 /** Client/process context used to retry authority after a durable transition. */
 export type StaleAuthorityRetryContext = 'existing-client' | 'fresh-client' | 'fresh-porta-process';

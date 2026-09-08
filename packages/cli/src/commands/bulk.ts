@@ -56,7 +56,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('action', {
               type: 'string',
               describe: 'Status action',
-              choices: ['suspend', 'activate', 'deactivate', 'lock', 'unlock'] as const,
+              choices: ['suspend', 'activate', 'deactivate'] as const,
               demandOption: true,
             })
             .option('ids', {
@@ -81,6 +81,15 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
             if (ids.length === 0) {
               printError('No IDs provided');
+              return;
+            }
+
+            if (argv['entity-type'] === 'users' && argv.action === 'suspend') {
+              printError('User bulk actions are activate or deactivate');
+              return;
+            }
+            if (argv['entity-type'] === 'organizations' && argv.action === 'deactivate') {
+              printError('Organization bulk actions are activate or suspend');
               return;
             }
 
@@ -110,9 +119,8 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
               result = await client.bulk.userStatus({
                 ids,
-                action: argv.action as 'activate' | 'deactivate' | 'suspend' | 'lock' | 'unlock',
+                action: argv.action as 'activate' | 'deactivate',
                 organizationId: argv['organization-id'],
-                reason: argv.reason,
               });
             }
 

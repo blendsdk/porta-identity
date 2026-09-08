@@ -52,7 +52,7 @@ does not expose those controls outside the module. Remote values enter only thro
 
 - Shows email, optional given/family name, and textual status for at most 20 rows.
 - Search submits on deliberate activation and is limited to 255 characters.
-- Status offers only All, Active, Inactive, Suspended, and Locked.
+- Status offers only All, Active, Inactive, and Locked.
 - Previous is enabled only above page 1; Next is enabled only below `totalPages`.
 - Loading, empty, no-match, forbidden, unavailable, invalid-response, and retry states are explicit.
 - A failed request leaves the last validated page mounted and non-malformed rows are never recovered
@@ -70,8 +70,7 @@ Available action controls follow state and capability:
 
 - profile edit, password set/clear, and verify email require update capability;
 - verify email appears only when unverified; clear password appears only when a password exists;
-- active exposes suspend, lock, and deactivate; suspended exposes unsuspend; locked exposes unlock;
-  inactive exposes reactivate;
+- active exposes deactivate; inactive exposes activate; locked exposes no lifecycle mutation;
 - lifecycle actions require lifecycle capability and purge independently requires purge capability;
 - history requires read capability.
 
@@ -114,9 +113,8 @@ dialog-local values or cancellation; they contain no application state.
 
 - Set password uses masked password/confirmation and the same unconditional clearing rule.
 - Clear password and verify email show exact email and require explicit confirmation.
-- Suspend optionally collects a reason; lock requires one. Control-bearing reasons are rejected.
-  Suspend, lock, and deactivate show exact email plus target state before dispatch.
-- Unsuspend, unlock, and reactivate require one deliberate activation without a second confirmation.
+- Deactivate shows the exact email and target state before dispatch.
+- Activate requires one deliberate activation without a second confirmation.
 - Purge shows exact email, a fixed irreversible warning, initially focuses Cancel, and labels the
   distinct action `Purge permanently`.
 

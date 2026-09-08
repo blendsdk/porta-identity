@@ -19,7 +19,9 @@ describe('domains/bulk', () => {
     it('calls POST /bulk/organizations/status with input', async () => {
       const input = { ids: ['o1', 'o2'], action: 'suspend' as const, reason: 'Maintenance' };
       const body = {
-        total: 2, succeeded: 2, failed: 0,
+        total: 2,
+        succeeded: 2,
+        failed: 0,
         results: [
           { id: 'o1', success: true, previousStatus: 'active', newStatus: 'suspended' },
           { id: 'o2', success: true, previousStatus: 'active', newStatus: 'suspended' },
@@ -30,7 +32,9 @@ describe('domains/bulk', () => {
       const result = await bulk.organizationStatus(input);
 
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/bulk/organizations/status', body: input,
+        method: 'POST',
+        path: '/bulk/organizations/status',
+        body: input,
       });
       expect(result.total).toBe(2);
       expect(result.succeeded).toBe(2);
@@ -41,10 +45,12 @@ describe('domains/bulk', () => {
 
     it('returns partial failure results', async () => {
       const body = {
-        total: 2, succeeded: 1, failed: 1,
+        total: 2,
+        succeeded: 1,
+        failed: 1,
         results: [
           { id: 'o1', success: true, previousStatus: 'active', newStatus: 'suspended' },
-          { id: 'o2', success: false, error: 'Cannot suspend from status \'suspended\'' },
+          { id: 'o2', success: false, error: "Cannot suspend from status 'suspended'" },
         ],
       };
       const transport = mockTransport({ body });
@@ -55,7 +61,6 @@ describe('domains/bulk', () => {
       expect(result.results[1].success).toBe(false);
       expect(result.results[1].error).toContain('Cannot suspend');
     });
-
   });
 
   // ── userStatus ──────────────────────────────────────────────
@@ -63,16 +68,17 @@ describe('domains/bulk', () => {
     it('calls POST /bulk/users/status with input including organizationId', async () => {
       const input = {
         ids: ['u1', 'u2', 'u3'],
-        action: 'suspend' as const,
+        action: 'deactivate' as const,
         organizationId: 'org-id',
-        reason: 'Policy violation',
       };
       const body = {
-        total: 3, succeeded: 3, failed: 0,
+        total: 3,
+        succeeded: 3,
+        failed: 0,
         results: [
-          { id: 'u1', success: true, previousStatus: 'active', newStatus: 'suspended' },
-          { id: 'u2', success: true, previousStatus: 'active', newStatus: 'suspended' },
-          { id: 'u3', success: true, previousStatus: 'active', newStatus: 'suspended' },
+          { id: 'u1', success: true, previousStatus: 'active', newStatus: 'inactive' },
+          { id: 'u2', success: true, previousStatus: 'active', newStatus: 'inactive' },
+          { id: 'u3', success: true, previousStatus: 'active', newStatus: 'inactive' },
         ],
       };
       const transport = mockTransport({ body });
@@ -80,23 +86,27 @@ describe('domains/bulk', () => {
       const result = await bulk.userStatus(input);
 
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/bulk/users/status', body: input,
+        method: 'POST',
+        path: '/bulk/users/status',
+        body: input,
       });
       expect(result.total).toBe(3);
       expect(result.succeeded).toBe(3);
     });
 
-    it('supports lock/unlock actions', async () => {
-      const input = { ids: ['u1'], action: 'lock' as const, organizationId: 'org-id' };
+    it('supports activation', async () => {
+      const input = { ids: ['u1'], action: 'activate' as const, organizationId: 'org-id' };
       const body = {
-        total: 1, succeeded: 1, failed: 0,
-        results: [{ id: 'u1', success: true, previousStatus: 'active', newStatus: 'locked' }],
+        total: 1,
+        succeeded: 1,
+        failed: 0,
+        results: [{ id: 'u1', success: true, previousStatus: 'inactive', newStatus: 'active' }],
       };
       const transport = mockTransport({ body });
       const bulk = createBulkDomain(transport);
       const result = await bulk.userStatus(input);
 
-      expect(result.results[0].newStatus).toBe('locked');
+      expect(result.results[0].newStatus).toBe('active');
     });
   });
 });

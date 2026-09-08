@@ -133,12 +133,8 @@ describe('admin session production wiring', () => {
       verifyEmail: unused,
       exportData: unused,
       delete: unused,
-      suspend: unused,
-      unsuspend: unused,
-      lock: unused,
-      unlock: unused,
       deactivate: unused,
-      reactivate: unused,
+      activate: unused,
       getHistory: unused,
     };
     const userDomain = vi.fn(() => users);

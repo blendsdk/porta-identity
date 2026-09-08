@@ -285,11 +285,10 @@ describe('Cursor Pagination (Integration)', () => {
     it('should filter by status', async () => {
       const org = await createTestOrganization();
       await createTestUser(org.id, { email: 'active@test.com' });
-      const suspUser = await createTestUser(org.id, { email: 'suspended@test.com' });
-      // Change status to suspended via direct update
+      const inactiveUser = await createTestUser(org.id, { email: 'inactive@test.com' });
+      // Change status so the active filter has a record to exclude.
       const { updateUser } = await import('../../../src/users/repository.js');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial update for test setup
-      await updateUser(suspUser.id, { status: 'suspended' } as any);
+      await updateUser(inactiveUser.id, { status: 'inactive' });
 
       const result = await listUsersCursor({
         organizationId: org.id,

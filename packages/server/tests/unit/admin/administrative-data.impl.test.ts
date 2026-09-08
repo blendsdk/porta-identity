@@ -45,7 +45,7 @@ describe('administrative data implementation', () => {
       bulkStatusChange({
         entityType: 'user',
         entityIds: ['user-1'],
-        action: 'suspend',
+        action: 'deactivate',
         organizationId: 'organization-1',
         actorId: 'actor-1',
       }),
@@ -105,7 +105,7 @@ describe('administrative data implementation', () => {
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['user-1'],
-      action: 'suspend',
+      action: 'deactivate',
       organizationId: 'organization-1',
       actorId: 'actor-1',
     });

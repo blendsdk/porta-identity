@@ -8,7 +8,6 @@ import {
   showDeleteUserDialog,
   showSetUserPasswordDialog,
   showUserConfirmationDialog,
-  showUserReasonDialog,
 } from './user-dialogs.js';
 import type { AdminUserMutationResult, AdminUserOperations } from './user-service.js';
 import type {
@@ -40,7 +39,6 @@ const DEFAULT_DIALOGS: AdminUserControllerDialogs = {
   edit: showEditUserDialog,
   setPassword: showSetUserPasswordDialog,
   confirm: showUserConfirmationDialog,
-  reason: showUserReasonDialog,
   delete: showDeleteUserDialog,
 };
 
@@ -250,10 +248,7 @@ export function createAdminUserController(
   };
 
   /** Reloads the current target or page after a definite mutation success. */
-  const reconcile = (
-    previous: AdminUserProjection | undefined,
-    deleted = false,
-  ): Promise<void> => {
+  const reconcile = (previous: AdminUserProjection | undefined, deleted = false): Promise<void> => {
     if (!previous || previous.kind === 'page' || deleted) {
       return loadPage();
     }
@@ -403,12 +398,7 @@ export function createAdminUserController(
             intent.kind === 'clear-password' ||
             intent.kind === 'verify-email'
           ? 'canUpdateUsers'
-          : intent.kind === 'suspend' ||
-              intent.kind === 'unsuspend' ||
-              intent.kind === 'lock' ||
-              intent.kind === 'unlock' ||
-              intent.kind === 'deactivate' ||
-              intent.kind === 'reactivate'
+          : intent.kind === 'deactivate' || intent.kind === 'activate'
             ? 'canManageUserLifecycle'
             : 'canReadUsers';
     if (intent.kind !== 'back' && !current.capabilities[requiredCapability]) return;
@@ -442,7 +432,17 @@ export function createAdminUserController(
     if (intent.kind === 'back') {
       cancelRead();
       const previous = projection(state);
-      if (previous && previous.kind !== 'page') publish({ kind: 'page', page: previous.page });
+      if (previous?.kind === 'history') {
+        publish({
+          kind: 'detail',
+          page: previous.page,
+          selected: previous.selected,
+          detail: previous.detail,
+          etag: previous.etag,
+        });
+      } else if (previous?.kind === 'detail') {
+        publish({ kind: 'page', page: previous.page });
+      }
       return;
     }
     if (intent.kind === 'retry') {
@@ -494,21 +494,6 @@ export function createAdminUserController(
       );
       return;
     }
-    if (intent.kind === 'suspend' || intent.kind === 'lock') {
-      const action = intent.kind;
-      selectedMutation(
-        (selected, signal) => dialogs.reason(options.host, signal, action, selected.detail.email),
-        (selected, choice, operations, selectedOrganization) => {
-          if (choice.kind === 'suspend')
-            return operations.suspend(selectedOrganization, selected.selected.id, choice.reason);
-          if (choice.kind === 'lock')
-            return operations.lock(selectedOrganization, selected.selected.id, choice.reason);
-          return undefined;
-        },
-        'canManageUserLifecycle',
-      );
-      return;
-    }
     if (intent.kind === 'delete') {
       const organization = current.organization;
       selectedMutation(
@@ -526,10 +511,8 @@ export function createAdminUserController(
     if (
       action === 'clear-password' ||
       action === 'verify-email' ||
-      action === 'unsuspend' ||
-      action === 'unlock' ||
       action === 'deactivate' ||
-      action === 'reactivate'
+      action === 'activate'
     ) {
       selectedMutation(
         (selected, signal) => dialogs.confirm(options.host, signal, action, selected.detail.email),
@@ -540,12 +523,9 @@ export function createAdminUserController(
             return operations.clearPassword(selectedOrganization, userId);
           if (choice.kind === 'verify-email')
             return operations.verifyEmail(selectedOrganization, userId);
-          if (choice.kind === 'unsuspend')
-            return operations.unsuspend(selectedOrganization, userId);
-          if (choice.kind === 'unlock') return operations.unlock(selectedOrganization, userId);
           if (choice.kind === 'deactivate')
             return operations.deactivate(selectedOrganization, userId);
-          return operations.reactivate(selectedOrganization, userId);
+          return operations.activate(selectedOrganization, userId);
         },
         action === 'clear-password' || action === 'verify-email'
           ? 'canUpdateUsers'

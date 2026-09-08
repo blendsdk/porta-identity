@@ -100,15 +100,9 @@ function createUser(fixture: IdentityFixture): User | null {
     twoFactorEnabled: false,
     twoFactorMethod: null,
     status:
-      fixture.state === 'disabled'
-        ? 'inactive'
-        : fixture.state === 'suspended'
-          ? 'suspended'
-          : fixture.state === 'locked'
-            ? 'locked'
-            : 'active',
+      fixture.state === 'disabled' ? 'inactive' : fixture.state === 'locked' ? 'locked' : 'active',
     lockedAt: fixture.state === 'locked' ? now : null,
-    lockedReason: fixture.state === 'locked' ? 'manual' : null,
+    lockedReason: fixture.state === 'locked' ? 'auto_lockout' : null,
     lastLoginAt: null,
     loginCount: 0,
     failedLoginCount: 0,

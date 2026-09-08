@@ -10,7 +10,7 @@
  * - Insert hashed secret
  * - List secrets (metadata only, no hashes)
  * - Find active secrets with hashes (for verification only)
- * - Revoke secrets
+ * - Permanently delete secrets
  * - Update last_used_at timestamp
  * - Cleanup expired secrets
  */
@@ -153,20 +153,18 @@ export async function getActiveSecretHashes(
 // ===========================================================================
 
 /**
- * Revoke a secret (set status = 'revoked').
- *
- * This is a permanent operation — revoked secrets cannot be reactivated.
+ * Permanently delete a secret.
  *
  * @param clientId - Authoritative parent client UUID
  * @param id - Secret UUID
- * @returns Updated secret metadata, or null if absent, cross-parent, or already revoked
+ * @returns Deleted secret metadata, or null if absent or owned by another client
  */
 export async function revokeSecret(clientId: string, id: string): Promise<ClientSecret | null> {
   const pool = getPool();
 
   const result = await pool.query<ClientSecretRow>(
-    `UPDATE client_secrets SET status = 'revoked'
-     WHERE client_id = $1 AND id = $2 AND status = 'active'
+    `DELETE FROM client_secrets
+     WHERE client_id = $1 AND id = $2
      RETURNING *`,
     [clientId, id],
   );

@@ -138,9 +138,7 @@ async function collectAdminUserDetails(argv: InitOptions): Promise<{
 
   // Validate all required fields are present
   if (!email || !givenName || !familyName || !password) {
-    throw new Error(
-      'All fields are required: email, given-name, family-name, password',
-    );
+    throw new Error('All fields are required: email, given-name, family-name, password');
   }
 
   return { email, givenName, familyName, password };
@@ -164,45 +162,21 @@ function printSuccessBox(
 ): void {
   const w = 43; // Content width inside the box
   console.log('');
-  console.log(
-    '╔══════════════════════════════════════════════════════════════╗',
-  );
-  console.log(
-    '║                    Porta Initialized                        ║',
-  );
-  console.log(
-    '╠══════════════════════════════════════════════════════════════╣',
-  );
+  console.log('╔══════════════════════════════════════════════════════════════╗');
+  console.log('║                    Porta Initialized                        ║');
+  console.log('╠══════════════════════════════════════════════════════════════╣');
   console.log(`║  Organization:  ${padRight(`${orgName} (${orgSlug})`, w)}║`);
-  console.log(
-    `║  Application:   ${padRight(`Porta Admin (${appSlug})`, w)}║`,
-  );
+  console.log(`║  Application:   ${padRight(`Porta Admin (${appSlug})`, w)}║`);
   console.log(`║  Client ID:     ${padRight(cliClientId, w)}║`);
   console.log(`║  Admin User:    ${padRight(adminEmail, w)}║`);
-  console.log(
-    `║  Admin Role:    ${padRight(`${roleSlug} (${permissionCount} permissions)`, w)}║`,
-  );
-  console.log(
-    `║  Admin Roles:   ${padRight(`${roleCount} roles seeded`, w)}║`,
-  );
-  console.log(
-    '╠══════════════════════════════════════════════════════════════╣',
-  );
-  console.log(
-    '║  Next steps:                                                ║',
-  );
-  console.log(
-    '║  1. Start the server:  yarn dev                             ║',
-  );
-  console.log(
-    '║  2. Authenticate:      porta login                          ║',
-  );
-  console.log(
-    '║  3. Open administration: porta admin                        ║',
-  );
-  console.log(
-    '╚══════════════════════════════════════════════════════════════╝',
-  );
+  console.log(`║  Admin Role:    ${padRight(`${roleSlug} (${permissionCount} permissions)`, w)}║`);
+  console.log(`║  Admin Roles:   ${padRight(`${roleCount} roles seeded`, w)}║`);
+  console.log('╠══════════════════════════════════════════════════════════════╣');
+  console.log('║  Next steps:                                                ║');
+  console.log('║  1. Start the server:  yarn dev                             ║');
+  console.log('║  2. Authenticate:      porta login                          ║');
+  console.log('║  3. Open administration: porta admin                        ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝');
 }
 
 // ---------------------------------------------------------------------------
@@ -218,8 +192,7 @@ function printSuccessBox(
  */
 export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
   command: 'init',
-  describe:
-    'Initialize Porta — create admin application, client, and first admin user',
+  describe: 'Initialize Porta — create admin application, client, and first admin user',
   builder: (yargs) =>
     yargs
       .option('email', {
@@ -244,29 +217,15 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
       await withBootstrap(argv, async () => {
         // Dynamic imports — loaded after bootstrap connects DB + Redis.
         // This ensures config is parsed with any CLI flag overrides.
-        const { findSuperAdminOrganization } = await import(
-          '../../organizations/repository.js'
-        );
-        const { getApplicationBySlug, createApplication } = await import(
-          '../../applications/index.js'
-        );
-        const { createClient } = await import(
-          '../../clients/index.js'
-        );
-        const {
-          createUser,
-          reactivateUser,
-          markEmailVerified,
-        } = await import('../../users/index.js');
-        const {
-          createRole,
-          createPermission,
-          assignPermissionsToRole,
-          assignRolesToUser,
-        } = await import('../../rbac/index.js');
-        const { ensureSigningKeys } = await import(
-          '../../lib/signing-keys.js'
-        );
+        const { findSuperAdminOrganization } = await import('../../organizations/repository.js');
+        const { getApplicationBySlug, createApplication } =
+          await import('../../applications/index.js');
+        const { createClient } = await import('../../clients/index.js');
+        const { createUser, activateUser, markEmailVerified } =
+          await import('../../users/index.js');
+        const { createRole, createPermission, assignPermissionsToRole, assignRolesToUser } =
+          await import('../../rbac/index.js');
+        const { ensureSigningKeys } = await import('../../lib/signing-keys.js');
         const { getPool } = await import('../../lib/database.js');
 
         console.log('Initializing Porta...\n');
@@ -276,9 +235,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // -----------------------------------------------------------------
         const superAdminOrg = await findSuperAdminOrganization();
         if (!superAdminOrg) {
-          throw new Error(
-            'Super-admin organization not found. Run "porta migrate up" first.',
-          );
+          throw new Error('Super-admin organization not found. Run "porta migrate up" first.');
         }
 
         // -----------------------------------------------------------------
@@ -286,9 +243,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // -----------------------------------------------------------------
         const existingApp = await getApplicationBySlug('porta-admin');
         if (existingApp && !argv.force) {
-          throw new Error(
-            'System already initialized. Use --force to re-initialize.',
-          );
+          throw new Error('System already initialized. Use --force to re-initialize.');
         }
         if (existingApp && argv.force) {
           // Re-initialization with --force: confirm the destructive action.
@@ -321,9 +276,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
           description:
             'Porta administration application — manages the admin API and CLI authentication',
         });
-        console.log(
-          `  ✅ Application created: ${adminApp.name} (${adminApp.slug})`,
-        );
+        console.log(`  ✅ Application created: ${adminApp.name} (${adminApp.slug})`);
 
         // -----------------------------------------------------------------
         // Step 5: Create granular admin permissions (resource:action format)
@@ -340,9 +293,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
           });
           permissionIdMap.set(permSlug, permission.id);
         }
-        console.log(
-          `  ✅ ${permissionIdMap.size} granular permissions created`,
-        );
+        console.log(`  ✅ ${permissionIdMap.size} granular permissions created`);
 
         // -----------------------------------------------------------------
         // Step 6: Create all 5 admin roles and assign permissions
@@ -392,16 +343,12 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
             'http://localhost/callback',
             'http://127.0.0.1/auth/callback',
           ],
-          postLogoutRedirectUris: [
-            'http://127.0.0.1',
-          ],
+          postLogoutRedirectUris: ['http://127.0.0.1'],
           grantTypes: ['authorization_code', 'refresh_token'],
           scope: 'openid profile email offline_access',
           requirePkce: true,
         });
-        console.log(
-          `  ✅ Client created: ${adminClient.clientName} (${adminClient.clientId})`,
-        );
+        console.log(`  ✅ Client created: ${adminClient.clientName} (${adminClient.clientId})`);
 
         // -----------------------------------------------------------------
         // Step 8: Collect admin user details (interactive or from flags)
@@ -424,7 +371,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // Step 10: Activate user (if not already active)
         // -----------------------------------------------------------------
         if (adminUser.status !== 'active') {
-          await reactivateUser(adminUser.id);
+          await activateUser(adminUser.id);
         }
         console.log('  ✅ User activated');
 
@@ -437,16 +384,12 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // -----------------------------------------------------------------
         // Step 12: Assign super-admin role to the new user
         // -----------------------------------------------------------------
-        const superAdminRoleId = createdRoles.get(
-          ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
-        );
+        const superAdminRoleId = createdRoles.get(ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug);
         if (!superAdminRoleId) {
           throw new Error('Super-admin role was not created — init is broken');
         }
         await assignRolesToUser(adminUser.id, [superAdminRoleId]);
-        console.log(
-          `  ✅ Role "${ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug}" assigned to user`,
-        );
+        console.log(`  ✅ Role "${ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug}" assigned to user`);
 
         // -----------------------------------------------------------------
         // Step 13: Store super-admin user ID in system_config

@@ -176,7 +176,6 @@ export interface StaleAuthorityTransition {
   readonly id:
     | 'role-removal'
     | 'actor-deactivation'
-    | 'actor-suspension'
     | 'session-revocation'
     | 'organization-membership-removal'
     | 'organization-reassignment';
@@ -557,7 +556,6 @@ export const controlPlaneAuthorityProfile: ControlPlaneAuthorityProfile = {
   staleTransitions: [
     { id: 'role-removal', status: 'supported', expected: 'removed role grants no authority' },
     { id: 'actor-deactivation', status: 'supported', expected: 'deactivated actor is rejected' },
-    { id: 'actor-suspension', status: 'supported', expected: 'suspended actor is rejected' },
     { id: 'session-revocation', status: 'supported', expected: 'revoked session is rejected' },
     {
       id: 'organization-membership-removal',

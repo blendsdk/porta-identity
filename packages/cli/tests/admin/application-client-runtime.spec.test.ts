@@ -116,7 +116,9 @@ function featureSession(overrides: Partial<AdminApplicationSession> = {}): Admin
   return {
     applications: {
       listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [applicationRow] }),
-      get: vi.fn().mockResolvedValue({ kind: 'success', value: { application: applicationRow, etag: null } }),
+      get: vi
+        .fn()
+        .mockResolvedValue({ kind: 'success', value: { application: applicationRow, etag: null } }),
       create: vi.fn(),
       update: vi.fn(),
       activate: mutation,
@@ -161,7 +163,14 @@ describe('application and client shell navigation', () => {
         await settle();
         expect(frameText(application)).toContain('Enter View details');
         expect(frameText(application)).not.toContain('Deployment-global');
-        application.loop.dispatch({ type: 'key', key: 'c', codepoint: 99, ctrl: false, alt: true, shift: false });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'c',
+          codepoint: 99,
+          ctrl: false,
+          alt: true,
+          shift: false,
+        });
         await settle();
         const matches = frameText(application).match(/OIDC Clients \(organization required\)/g);
         expect(matches).toHaveLength(1);
@@ -208,7 +217,7 @@ describe('application and client shell navigation', () => {
         application.loop.emitCommand(commands.browseClients);
         await settle();
         expect(frameText(application)).toContain('Portal Web Client');
-        expect(frameText(application)).not.toContain('Enter View details');
+        expect(frameText(application)).toContain('Enter View details · 1 client');
         expect(application.loop.getFocused()?.focusable).toBe(true);
         return 0;
       },
@@ -217,7 +226,12 @@ describe('application and client shell navigation', () => {
 });
 describe('application and client shell ownership', () => {
   it('clears organization client work on switch while retaining global application ownership', async () => {
-    const switched = { ...organization, id: '44444444-4444-4444-8444-444444444444', name: 'Other Organization', slug: 'other' };
+    const switched = {
+      ...organization,
+      id: '44444444-4444-4444-8444-444444444444',
+      name: 'Other Organization',
+      slug: 'other',
+    };
     const reauthenticate = vi.fn().mockResolvedValue(authenticated(switched));
     const session = featureSession({ reauthenticate });
     await runAdminApplication({
@@ -244,37 +258,47 @@ describe('application and client shell ownership', () => {
     });
   });
 
-  it.each(['replacement', 'invalidation'] as const)('clears both features, dialogs, and plaintext on authentication %s', async (outcome) => {
-    const reauthenticate = vi.fn().mockResolvedValue(
-      outcome === 'replacement'
-        ? authenticated(organization)
-        : { kind: 'unauthenticated', server } satisfies AdminConnectionState,
-    );
-    await runAdminApplication({
-      server,
-      insecure: false,
-      viewport: { width: 80, height: 24 },
-      initialState: authenticated(),
-      session: featureSession({ reauthenticate }),
-      applicationFactory: createApplication,
-      applicationRunner: async (application) => {
-        application.loop.emitCommand(commands.browseClients);
-        await settle();
-        application.loop.emitCommand(commands.createClient);
-        await settle();
-        application.loop.emitCommand('reauthenticate');
-        await settle();
-        expect(application.desktop.activeWindow()).not.toBeInstanceOf(Dialog);
-        expect(frameText(application)).not.toMatch(/Portal Web Client|one-time-secret-value/);
-        return 0;
-      },
-    });
-  });
+  it.each(['replacement', 'invalidation'] as const)(
+    'clears both features, dialogs, and plaintext on authentication %s',
+    async (outcome) => {
+      const reauthenticate = vi
+        .fn()
+        .mockResolvedValue(
+          outcome === 'replacement'
+            ? authenticated(organization)
+            : ({ kind: 'unauthenticated', server } satisfies AdminConnectionState),
+        );
+      await runAdminApplication({
+        server,
+        insecure: false,
+        viewport: { width: 80, height: 24 },
+        initialState: authenticated(),
+        session: featureSession({ reauthenticate }),
+        applicationFactory: createApplication,
+        applicationRunner: async (application) => {
+          application.loop.emitCommand(commands.browseClients);
+          await settle();
+          application.loop.emitCommand(commands.createClient);
+          await settle();
+          application.loop.emitCommand('reauthenticate');
+          await settle();
+          expect(application.desktop.activeWindow()).not.toBeInstanceOf(Dialog);
+          expect(frameText(application)).not.toMatch(/Portal Web Client|one-time-secret-value/);
+          return 0;
+        },
+      });
+    },
+  );
 
   it('does not open an old-organization client dialog after a deferred application load', async () => {
-    const applications = deferred<Awaited<ReturnType<NonNullable<AdminApplicationSession['applications']>['listAll']>>>();
+    const applications =
+      deferred<
+        Awaited<ReturnType<NonNullable<AdminApplicationSession['applications']>['listAll']>>
+      >();
     const switched = { ...organization, id: '44444444-4444-4444-8444-444444444444' };
-    const base = featureSession({ reauthenticate: vi.fn().mockResolvedValue(authenticated(switched)) });
+    const base = featureSession({
+      reauthenticate: vi.fn().mockResolvedValue(authenticated(switched)),
+    });
     if (!base.applications) throw new Error('Application operations missing.');
     const session: AdminApplicationSession = {
       ...base,
@@ -302,7 +326,10 @@ describe('application and client shell ownership', () => {
   });
 
   it('owns one deferred application preload across duplicate create-client commands', async () => {
-    const applications = deferred<Awaited<ReturnType<NonNullable<AdminApplicationSession['applications']>['listAll']>>>();
+    const applications =
+      deferred<
+        Awaited<ReturnType<NonNullable<AdminApplicationSession['applications']>['listAll']>>
+      >();
     const base = featureSession();
     if (!base.applications) throw new Error('Application operations missing.');
     const listAll = vi.fn(() => applications.promise);
@@ -322,7 +349,8 @@ describe('application and client shell ownership', () => {
         application.loop.emitCommand(commands.createClient);
         await settle();
         expect(listAll).toHaveBeenCalledOnce();
-        expect(application.desktop.activeWindow()).not.toBeInstanceOf(Dialog);
+        expect(application.desktop.activeWindow()?.title()).toBe('OIDC Clients');
+        expect(frameText(application)).not.toContain('Register OIDC client');
 
         applications.resolve({ kind: 'success', value: [applicationRow] });
         await settle();
@@ -402,7 +430,14 @@ describe('application and client shell ownership', () => {
       applicationRunner: async (application) => {
         application.loop.emitCommand(commands.browseClients);
         await settle();
-        application.loop.dispatch({ type: 'key', key: 'enter', codepoint: 13, ctrl: false, alt: false, shift: false });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'enter',
+          codepoint: 13,
+          ctrl: false,
+          alt: false,
+          shift: false,
+        });
         await settle();
         for (let index = 0; index < 4; index += 1)
           application.loop.dispatch({
@@ -421,12 +456,33 @@ describe('application and client shell ownership', () => {
           shift: false,
         });
         await settle();
-        application.loop.dispatch({ type: 'key', key: 'g', codepoint: 103, ctrl: false, alt: true, shift: false });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'd',
+          codepoint: 100,
+          ctrl: false,
+          alt: true,
+          shift: false,
+        });
         await settle();
-        application.loop.dispatch({ type: 'key', key: 'enter', codepoint: 13, ctrl: false, alt: false, shift: false });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'enter',
+          codepoint: 13,
+          ctrl: false,
+          alt: false,
+          shift: false,
+        });
         await settle();
         expect(frameText(application)).toContain('one-time-secret-value');
-        application.loop.dispatch({ type: 'key', key: 'x', codepoint: 120, ctrl: false, alt: true, shift: false });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'x',
+          codepoint: 120,
+          ctrl: false,
+          alt: true,
+          shift: false,
+        });
         await settle();
         expect(application.desktop.activeWindow()).not.toBeInstanceOf(Dialog);
         expect(frameText(application)).not.toContain('one-time-secret-value');
@@ -451,14 +507,23 @@ describe('application and client shell ownership', () => {
         application.loop.emitCommand(commands.createApplication);
         await settle();
         expect(application.desktop.activeWindow()).toBeInstanceOf(Dialog);
-        application.loop.dispatch({ type: 'key', key: 'x', codepoint: 120, ctrl: false, alt: true, shift: false });
+        application.loop.dispatch({
+          type: 'key',
+          key: 'x',
+          codepoint: 120,
+          ctrl: false,
+          alt: true,
+          shift: false,
+        });
         await settle();
         expect(application.desktop.activeWindow()).not.toBeInstanceOf(Dialog);
         return 0;
       },
     });
     expect(exit).toBe(0);
-    expect(warning.mock.calls.flat().join(' ')).not.toMatch(/command.*not handled|focusView.*did nothing/i);
+    expect(warning.mock.calls.flat().join(' ')).not.toMatch(
+      /command.*not handled|focusView.*did nothing/i,
+    );
     warning.mockRestore();
   });
 
@@ -485,7 +550,9 @@ describe('application and client shell ownership', () => {
   });
 
   it('disposes both feature owners exactly once on ordinary quit', async () => {
-    const applicationsList = vi.fn().mockResolvedValue({ kind: 'success', value: [applicationRow] });
+    const applicationsList = vi
+      .fn()
+      .mockResolvedValue({ kind: 'success', value: [applicationRow] });
     const clientsList = vi.fn().mockResolvedValue({ kind: 'success', value: [clientRow] });
     const base = featureSession();
     if (!base.applications || !base.clients) throw new Error('Feature operations missing.');

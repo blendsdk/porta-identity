@@ -40,7 +40,7 @@ export interface AdminCapabilities {
   readonly canUpdateClients: boolean;
   /** Whether clients may be permanently deleted. */
   readonly canDeleteClients: boolean;
-  /** Whether nested client secrets may be permanently revoked. */
+  /** Whether nested client secrets may be permanently deleted. */
   readonly canRevokeClientSecrets: boolean;
 }
 

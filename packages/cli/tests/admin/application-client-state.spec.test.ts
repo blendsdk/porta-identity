@@ -228,6 +228,28 @@ describe('global application administration workflow', () => {
     expect(JSON.stringify([listed, listedModules])).not.toContain('internalDetail');
   });
 
+  it('ST-24 accepts multiline descriptions in application and module projections', async () => {
+    const { createAdminApplicationOperations } =
+      await import('../../src/admin/application-service.js');
+    const rows = [application({ description: 'First line\nSecond line' })];
+    const modules = [applicationModule({ description: 'First line\nSecond line' })];
+    const operations = createAdminApplicationOperations(() =>
+      applicationDomain({
+        listAll: vi.fn().mockResolvedValue(rows),
+        listModules: vi.fn().mockResolvedValue(modules),
+      }),
+    );
+
+    await expect(operations.listAll()).resolves.toMatchObject({
+      kind: 'success',
+      value: [{ description: 'First line\nSecond line' }],
+    });
+    await expect(operations.listModules(applicationId)).resolves.toMatchObject({
+      kind: 'success',
+      value: [{ description: 'First line\nSecond line' }],
+    });
+  });
+
   it.each([
     ['malformed UUID', { id: 'not-a-uuid' }],
     ['unknown status', { status: 'deleted' }],
@@ -320,7 +342,13 @@ describe('global application administration workflow', () => {
   it('parses every application capability independently and never organization-scopes it', () => {
     const capabilities = validateAdminCapabilities(
       [],
-      ['admin:app:read', 'admin:app:create', 'admin:app:update', 'admin:app:delete', 'admin:module:delete'],
+      [
+        'admin:app:read',
+        'admin:app:create',
+        'admin:app:update',
+        'admin:app:delete',
+        'admin:module:delete',
+      ],
     );
 
     expect(capabilities).toMatchObject({
@@ -594,7 +622,13 @@ describe('selected-organization OIDC client administration workflow', () => {
     expect(
       validateAdminCapabilities(
         [],
-        ['admin:client:read', 'admin:client:create', 'admin:client:update', 'admin:client:revoke', 'admin:client:delete'],
+        [
+          'admin:client:read',
+          'admin:client:create',
+          'admin:client:update',
+          'admin:client:revoke',
+          'admin:client:delete',
+        ],
       ),
     ).toMatchObject({
       canReadClients: true,

@@ -91,7 +91,7 @@ describe('Bulk Operations (Integration)', () => {
   // ── Bulk User Status Changes ───────────────────────────────────────
 
   describe('bulk user status changes', () => {
-    it('should suspend multiple active users', async () => {
+    it('should deactivate multiple active users', async () => {
       const org = await createTestOrganization();
       const user1 = await createTestUser(org.id, { email: 'bu1@bulk.com' });
       const user2 = await createTestUser(org.id, { email: 'bu2@bulk.com' });
@@ -99,7 +99,7 @@ describe('Bulk Operations (Integration)', () => {
       const result = await bulkStatusChange({
         entityType: 'user',
         entityIds: [user1.id, user2.id],
-        action: 'suspend',
+        action: 'deactivate',
         organizationId: org.id,
       });
 
@@ -107,20 +107,20 @@ describe('Bulk Operations (Integration)', () => {
 
       const updated1 = await findUserById(user1.id);
       const updated2 = await findUserById(user2.id);
-      expect(updated1!.status).toBe('suspended');
-      expect(updated2!.status).toBe('suspended');
+      expect(updated1!.status).toBe('inactive');
+      expect(updated2!.status).toBe('inactive');
     });
 
-    it('should activate multiple suspended users', async () => {
+    it('should activate multiple inactive users', async () => {
       const org = await createTestOrganization();
       const user1 = await createTestUser(org.id, { email: 'act1@bulk.com' });
       const user2 = await createTestUser(org.id, { email: 'act2@bulk.com' });
 
-      // Suspend them first so they can be activated
+      // Deactivate them first so they can be activated.
       await bulkStatusChange({
         entityType: 'user',
         entityIds: [user1.id, user2.id],
-        action: 'suspend',
+        action: 'deactivate',
         organizationId: org.id,
       });
 
@@ -137,23 +137,6 @@ describe('Bulk Operations (Integration)', () => {
       expect(updated1!.status).toBe('active');
     });
 
-    it('should lock multiple active users', async () => {
-      const org = await createTestOrganization();
-      const user1 = await createTestUser(org.id, { email: 'lock1@bulk.com' });
-
-      const result = await bulkStatusChange({
-        entityType: 'user',
-        entityIds: [user1.id],
-        action: 'lock',
-        organizationId: org.id,
-      });
-
-      expect(result.succeeded).toBe(1);
-
-      const updated1 = await findUserById(user1.id);
-      expect(updated1!.status).toBe('locked');
-    });
-
     it('should report failures for non-existent IDs', async () => {
       const org = await createTestOrganization();
       const fakeId = '00000000-0000-0000-0000-000000000099';
@@ -161,7 +144,7 @@ describe('Bulk Operations (Integration)', () => {
       const result = await bulkStatusChange({
         entityType: 'user',
         entityIds: [fakeId],
-        action: 'suspend',
+        action: 'deactivate',
         organizationId: org.id,
       });
 

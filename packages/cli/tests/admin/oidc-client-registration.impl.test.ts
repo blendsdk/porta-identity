@@ -76,9 +76,7 @@ describe('compact OIDC registration implementation', () => {
     expect(showFacadeRegistration).toBe(showDirectRegistration);
   });
 
-  it('focuses the first field and emits only compact payload values', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
+  it('focuses the first field and emits only Client details payload values', async () => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
     const pending = showDirectRegistration(host, new AbortController().signal, {
       organization,
@@ -88,18 +86,16 @@ describe('compact OIDC registration implementation', () => {
     const dialog = activeDialog(host);
     const inputs = descendants(dialog).filter((view) => view instanceof Input);
     const name = inputs.filter((input) => input.getMaxLength() === 255)[0];
-    const label = inputs.filter((input) => input.getMaxLength() === 255)[1];
     const redirect = inputs.find((input) => input.getMaxLength() === 2_048);
     const create = descendants(dialog)
       .filter((view) => view instanceof Button)
       .find((button) => button.activation.command === 'ok');
-    if (!name || !label || !redirect || !create) {
+    if (!name || !redirect || !create) {
       throw new Error('Compact registration controls are incomplete.');
     }
 
     expect(host.loop.getFocused()).toBe(name);
     name.getValueSignal().set('Operations portal');
-    label.getValueSignal().set('initial');
     redirect.getValueSignal().set('https://operations.example.test/callback');
     activate(host, create);
 
@@ -111,8 +107,6 @@ describe('compact OIDC registration implementation', () => {
         clientType: 'confidential',
         applicationType: 'web',
         redirectUris: ['https://operations.example.test/callback'],
-        secretLabel: 'initial',
-        secretExpiresAt: '2027-03-08T00:00:00.000Z',
       },
     });
   });

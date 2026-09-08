@@ -28,11 +28,7 @@ export {
   listUsersByOrganization,
   listUsersCursor,
   deactivateUser,
-  reactivateUser,
-  suspendUser,
-  unsuspendUser,
-  lockUser,
-  unlockUser,
+  activateUser,
   setUserPassword,
   verifyUserPassword,
   clearUserPassword,
@@ -56,11 +52,7 @@ export type { CursorPaginatedResult } from '../lib/cursor.js';
 export { UserNotFoundError, UserValidationError } from './errors.js';
 
 // Password utilities (for external consumers like CLI)
-export {
-  validatePassword,
-  MIN_PASSWORD_LENGTH,
-  MAX_PASSWORD_LENGTH,
-} from './password.js';
+export { validatePassword, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from './password.js';
 export type { PasswordValidationResult } from './password.js';
 
 // User data export

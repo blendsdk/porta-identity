@@ -89,9 +89,9 @@ describe('User Repository (Integration)', () => {
     expect(found).not.toBeNull();
 
     // Inserting with different case should fail (CITEXT uniqueness)
-    await expect(
-      insertUser(buildUserInput(orgId, { email: 'USER@TEST.COM' })),
-    ).rejects.toThrow(/duplicate key|unique/i);
+    await expect(insertUser(buildUserInput(orgId, { email: 'USER@TEST.COM' }))).rejects.toThrow(
+      /duplicate key|unique/i,
+    );
   });
 
   // ── Update ───────────────────────────────────────────────────
@@ -158,13 +158,13 @@ describe('User Repository (Integration)', () => {
 
   it('should list users filtered by status', async () => {
     const user = await createTestUser(orgId);
-    await updateUser(user.id, { status: 'suspended' });
+    await updateUser(user.id, { status: 'inactive' });
 
     const result = await listUsers({
       organizationId: orgId,
       page: 1,
       pageSize: 50,
-      status: 'suspended',
+      status: 'inactive',
     });
 
     expect(result.data).toHaveLength(1);
@@ -196,28 +196,14 @@ describe('User Repository (Integration)', () => {
 
   // ── Status Transitions ───────────────────────────────────────
 
-  it('should support all valid status transitions', async () => {
+  it('should support administrator lifecycle status transitions', async () => {
     const user = await createTestUser(orgId);
 
-    // active → suspended
-    const suspended = await updateUser(user.id, { status: 'suspended' });
-    expect(suspended.status).toBe('suspended');
-
-    // suspended → active
-    const reactivated = await updateUser(user.id, { status: 'active' });
-    expect(reactivated.status).toBe('active');
-
-    // active → locked
-    const locked = await updateUser(user.id, { status: 'locked' });
-    expect(locked.status).toBe('locked');
-
-    // locked → active
-    const unlocked = await updateUser(user.id, { status: 'active' });
-    expect(unlocked.status).toBe('active');
-
-    // active → inactive
     const inactive = await updateUser(user.id, { status: 'inactive' });
     expect(inactive.status).toBe('inactive');
+
+    const activated = await updateUser(user.id, { status: 'active' });
+    expect(activated.status).toBe('active');
   });
 
   // ── Cascade Delete ───────────────────────────────────────────

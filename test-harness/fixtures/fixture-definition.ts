@@ -126,7 +126,6 @@ function ordinaryTenant(tenant: 'alpha' | 'bravo'): OrdinaryTenantFixture {
     users: [
       user(tenant, 'active', 'active'),
       user(tenant, 'locked', 'locked'),
-      user(tenant, 'suspended', 'suspended'),
       user(tenant, 'two-factor', 'active', {
         twoFactorEnabled: true,
         recoveryEnabled: true,
@@ -198,7 +197,7 @@ export const fullAdminPermissions = [
   'admin:user:create',
   'admin:user:read',
   'admin:user:update',
-  'admin:user:suspend',
+  'admin:user:lifecycle',
   'admin:user:archive',
   'admin:user:invite',
   'admin:user:2fa',

@@ -12,7 +12,6 @@ import type {
   SetUserPasswordDialogResult,
   UserConfirmationAction,
   UserConfirmationDialogResult,
-  UserReasonDialogResult,
 } from './user-dialogs.js';
 import type { AdminInviteUserInput, AdminUserOperations } from './user-service.js';
 import type { AdminUserSelection } from './user-state.js';
@@ -50,13 +49,6 @@ export interface AdminUserControllerDialogs {
     action: UserConfirmationAction,
     email: string,
   ) => Promise<UserConfirmationDialogResult>;
-  /** Collects the optional or required lifecycle reason. */
-  readonly reason: (
-    host: AdminUserDialogHost,
-    signal: AbortSignal,
-    action: 'suspend' | 'lock',
-    email: string,
-  ) => Promise<UserReasonDialogResult>;
   /** Collects the irreversible user-deletion decision. */
   readonly delete: (
     host: AdminUserDialogHost,

@@ -84,13 +84,13 @@ describe('parent-qualified repository SQL mechanics', () => {
     expect(query.mock.calls[0]?.[1]).toEqual([CLIENT_ID, SECRET_ID]);
   });
 
-  it('qualifies secret revocation by client and child IDs in that parameter order', async () => {
-    query.mockResolvedValue({ rows: [{ ...secretRow(), status: 'revoked' }] });
+  it('qualifies permanent secret deletion by client and child IDs in that parameter order', async () => {
+    query.mockResolvedValue({ rows: [secretRow()] });
 
     await revokeSecret(CLIENT_ID, SECRET_ID);
 
     expect(normalizedSql(query.mock.calls[0]?.[0])).toContain(
-      "UPDATE client_secrets SET status = 'revoked' WHERE client_id = $1 AND id = $2",
+      'DELETE FROM client_secrets WHERE client_id = $1 AND id = $2',
     );
     expect(query.mock.calls[0]?.[1]).toEqual([CLIENT_ID, SECRET_ID]);
   });

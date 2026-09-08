@@ -81,13 +81,6 @@ test('should use only the supported public stale-authority transitions', () => {
       expectedResult: 'unauthenticated',
     },
     {
-      transition: 'actor-suspension',
-      authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
-      mutationMethod: 'POST',
-      mutationRoute: '/api/admin/organizations/:orgId/users/:userId/suspend',
-      expectedResult: 'unauthenticated',
-    },
-    {
       transition: 'session-revocation',
       authorizedControlCaseId: 'alpha-principal-resume-session-alpha-session',
       mutationMethod: 'DELETE',

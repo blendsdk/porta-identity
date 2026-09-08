@@ -213,7 +213,7 @@ describe('checkAutoUnlock', () => {
     expect(mockResetFailedLoginCount).not.toHaveBeenCalled();
   });
 
-  it('should return false for manually locked users', async () => {
+  it('should return false for a locked row not created by automatic lockout', async () => {
     const user = makeUser({
       status: 'locked',
       lockedReason: 'admin_action',

@@ -64,11 +64,6 @@ const RESETTABLE_USER_PASSWORD = 'OldPassword123!';
  */
 const ADDITIONAL_USERS = [
   {
-    email: 'suspended@test.example.com',
-    status: 'suspended' as const,
-    password: ADDITIONAL_USER_PASSWORD,
-  },
-  {
     email: 'inactive@test.example.com',
     status: 'inactive' as const,
     password: ADDITIONAL_USER_PASSWORD,
@@ -438,7 +433,6 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.TEST_CONF_USER_PASSWORD = confTenant.password ?? DEFAULT_TEST_PASSWORD;
 
   // Phase 2: Additional user emails and passwords for status tests
-  process.env.UI_TEST_SUSPENDED_USER_EMAIL = 'suspended@test.example.com';
   process.env.UI_TEST_INACTIVE_USER_EMAIL = 'inactive@test.example.com';
   process.env.UI_TEST_LOCKED_USER_EMAIL = 'locked@test.example.com';
   process.env.UI_TEST_LOCKABLE_USER_EMAIL = 'lockable@test.example.com';

@@ -10,6 +10,8 @@ import {
   Dialog,
   Group,
   Input,
+  Label,
+  Memo,
   row,
   signal,
   TabView,
@@ -57,18 +59,11 @@ export type SetUserPasswordDialogResult =
   | { readonly kind: 'cancel' };
 
 /** User actions that require a simple explicit modal activation. */
-export type UserConfirmationAction =
-  'clear-password' | 'verify-email' | 'unsuspend' | 'unlock' | 'deactivate' | 'reactivate';
+export type UserConfirmationAction = 'clear-password' | 'verify-email' | 'deactivate' | 'activate';
 
 /** Result of a simple explicit user confirmation. */
 export type UserConfirmationDialogResult =
   { readonly kind: UserConfirmationAction } | { readonly kind: 'cancel' };
-
-/** Result of a lifecycle action that accepts a reason. */
-export type UserReasonDialogResult =
-  | { readonly kind: 'suspend'; readonly reason?: string }
-  | { readonly kind: 'lock'; readonly reason: string }
-  | { readonly kind: 'cancel' };
 
 /** Result of the irreversible user-deletion dialog. */
 export type DeleteUserDialogResult = { readonly kind: 'delete' } | { readonly kind: 'cancel' };
@@ -89,6 +84,17 @@ function dialogSize(
     width: Math.max(1, Math.min(preferredWidth, host.desktop.bounds.width)),
     height: Math.max(1, Math.min(preferredHeight, host.desktop.bounds.height)),
   };
+}
+
+/** Validates bounded multiline text while rejecting terminal control sequences. */
+function validMultilineText(value: string, maximum: number): boolean {
+  if (value.length > maximum) return false;
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint === 0x0a || codePoint === 0x0d) continue;
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return false;
+  }
+  return true;
 }
 
 /** Adds naturally sized buttons to one trailing Layout DSL row. */
@@ -140,29 +146,33 @@ export async function showCreateUserDialog(
   const values = profileSignals();
   const password = signal('');
   const confirmation = signal('');
+  const emailValidator = textValidator(3, 255, false);
+  const passwordValidator = textValidator(8, 128);
+  const confirmationValidator = textValidator(8, 128);
   const emailInput = new Input({
     value: email,
     maxLength: 255,
-    validator: textValidator(3, 255, false),
+    validator: emailValidator,
   });
   const givenNameInput = profileInput(values.givenName, 255);
   const familyNameInput = profileInput(values.familyName, 255);
   const passwordInput = new SecretInput({
     value: password,
     maxLength: 128,
-    validator: textValidator(8, 128),
+    validator: passwordValidator,
   });
   const confirmationInput = new SecretInput({
     value: confirmation,
     maxLength: 128,
-    validator: textValidator(8, 128),
+    validator: confirmationValidator,
   });
   const basic = new Group();
-  addField(basic, 'Email', emailInput, 1, width - 4);
+  addField(basic, 'Email *', emailInput, 1, width - 4);
   addField(basic, 'Given name', givenNameInput, 3, width - 4);
   addField(basic, 'Family name', familyNameInput, 5, width - 4);
   addField(basic, 'Password', passwordInput, 7, width - 4);
   addField(basic, 'Confirm password', confirmationInput, 9, width - 4);
+  basic.add(at(new Text('* Required'), 1, 11, Math.max(1, width - 8), 1));
   const tabs = signal<Tab[]>([
     { title: '~B~asic', content: basic },
     ...profileTabs(values, width - 4),
@@ -177,28 +187,43 @@ export async function showCreateUserDialog(
       Math.max(1, height - 7),
     ),
   );
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button('~C~reate', { command: Commands.ok, default: true }),
-    new Button('Cancel', { command: Commands.cancel }),
-  );
   const inputs = [emailInput, givenNameInput, familyNameInput, passwordInput, confirmationInput];
   for (const tab of tabs.peek().slice(1)) {
     for (const child of tab.content.children) if (child instanceof Input) inputs.push(child);
   }
+  const canCreate = (): boolean => {
+    const emailValue = email();
+    const passwordValue = password();
+    const confirmationValue = confirmation();
+    const inputsAreBounded = inputs.every((input) =>
+      textValidator(0, input.getMaxLength()).isValid(input.getValueSignal()()),
+    );
+    return (
+      inputsAreBounded &&
+      emailValidator.isValid(emailValue) &&
+      emailValue.includes('@') &&
+      passwordValidator.isValid(passwordValue) &&
+      confirmationValidator.isValid(confirmationValue) &&
+      passwordValue === confirmationValue
+    );
+  };
+  addDialogActions(
+    dialog,
+    width,
+    height,
+    new Button('~C~reate', {
+      command: Commands.ok,
+      default: true,
+      disabled: () => !canCreate(),
+    }),
+    new Button('Cancel', { command: Commands.cancel }),
+  );
 
   try {
     while (true) {
       const command = await runDialog(host, dialog, operationSignal);
       if (command !== Commands.ok) return { kind: 'cancel' };
-      if (
-        !validInputs(inputs) ||
-        !email.peek().includes('@') ||
-        password.peek() !== confirmation.peek()
-      )
-        continue;
+      if (!validInputs(inputs) || !canCreate()) continue;
       const input: AdminCreateUserInput = {
         email: email.peek(),
         ...(password.peek()
@@ -248,7 +273,7 @@ export async function showInviteUserDialog(
     input: AdminInviteUserInput,
   ) => Promise<AdminUserReadResult<AdminInvitationPreview>>,
 ): Promise<InviteUserDialogResult> {
-  const { width, height } = dialogSize(host, 68, 18);
+  const { width, height } = dialogSize(host, 68, 21);
   const email = signal('');
   const givenName = signal('');
   const familyName = signal('');
@@ -260,18 +285,25 @@ export async function showInviteUserDialog(
     new Input({ value: givenName, maxLength: 255, validator: textValidator(1, 255) }),
     new Input({ value: familyName, maxLength: 255, validator: textValidator(1, 255) }),
     new Input({ value: locale, maxLength: 10, validator: textValidator(0, 10) }),
-    new Input({ value: personalMessage, maxLength: 500, validator: textValidator(0, 500) }),
   ];
+  const personalMessageMemo = new Memo({ value: personalMessage });
   const dialog = new Dialog({ title: 'Invite user', width, height, centered: true });
-  ['Email', 'Given name', 'Family name', 'Locale', 'Personal message'].forEach((label, index) =>
+  ['Email', 'Given name', 'Family name', 'Locale'].forEach((label, index) =>
     addField(dialog, label, inputs[index]!, 1 + index * 2, width),
   );
-  dialog.add(at(new Text(message), 2, 11, Math.max(1, width - 6), 1));
+  dialog.add(at(new Label('Personal message', personalMessageMemo), 1, 9, 18, 1));
+  dialog.add(at(personalMessageMemo, 19, 9, Math.max(1, width - 21), 4));
+  dialog.add(at(new Text(message), 2, 14, Math.max(1, width - 6), 1));
   let previewBusy = false;
   let parentOpen = true;
   let previewGeneration = 0;
   const collect = (): AdminInviteUserInput | undefined => {
-    if (!validInputs(inputs) || !email.peek().includes('@')) return undefined;
+    if (
+      !validInputs(inputs) ||
+      !email.peek().includes('@') ||
+      !validMultilineText(personalMessage.peek(), 500)
+    )
+      return undefined;
     return {
       email: email.peek(),
       ...(givenName.peek() ? { givenName: givenName.peek() } : {}),
@@ -493,15 +525,13 @@ export async function showUserConfirmationDialog(
   const labels: Readonly<Record<UserConfirmationAction, string>> = {
     'clear-password': 'Clear password',
     'verify-email': 'Verify email',
-    unsuspend: 'Unsuspend',
-    unlock: 'Unlock',
     deactivate: 'Deactivate',
-    reactivate: 'Reactivate',
+    activate: 'Activate',
   };
   const { width, height } = dialogSize(host, 58, 11);
   const label = labels[action];
   const targetState =
-    action === 'deactivate' ? 'inactive' : action === 'reactivate' ? 'active' : undefined;
+    action === 'deactivate' ? 'inactive' : action === 'activate' ? 'active' : undefined;
   const dialog = new Dialog({ title: label, width, height, centered: true });
   dialog.add(
     at(
@@ -522,55 +552,6 @@ export async function showUserConfirmationDialog(
   return (await runDialog(host, dialog, operationSignal)) === Commands.ok
     ? { kind: action }
     : { kind: 'cancel' };
-}
-
-/** Shows suspend or lock input with the required reason rule. */
-export async function showUserReasonDialog(
-  host: AdminUserDialogHost,
-  operationSignal: AbortSignal,
-  action: 'suspend' | 'lock',
-  email: string,
-): Promise<UserReasonDialogResult> {
-  const { width, height } = dialogSize(host, 62, 13);
-  const reason = signal('');
-  const reasonInput = new Input({
-    value: reason,
-    maxLength: 500,
-    validator: textValidator(action === 'lock' ? 1 : 0, 500, action === 'suspend'),
-  });
-  const dialog = new Dialog({
-    title: action === 'lock' ? 'Lock user' : 'Suspend user',
-    width,
-    height,
-    centered: true,
-  });
-  dialog.add(
-    at(
-      new Text(`User: ${email}\nTarget state: ${action === 'lock' ? 'locked' : 'suspended'}`),
-      2,
-      1,
-      Math.max(1, width - 6),
-      2,
-    ),
-  );
-  addField(dialog, 'Reason', reasonInput, 4, width);
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button(action === 'lock' ? 'Lock' : 'Suspend', {
-      command: Commands.ok,
-      default: true,
-    }),
-    new Button('Cancel', { command: Commands.cancel }),
-  );
-  while (true) {
-    const command = await runDialog(host, dialog, operationSignal);
-    if (command !== Commands.ok) return { kind: 'cancel' };
-    if (!reasonInput.valid()) continue;
-    if (action === 'lock') return { kind: 'lock', reason: reason.peek() };
-    return reason.peek() ? { kind: 'suspend', reason: reason.peek() } : { kind: 'suspend' };
-  }
 }
 
 /** Shows the irreversible physical user-deletion warning with Keep initially focused. */

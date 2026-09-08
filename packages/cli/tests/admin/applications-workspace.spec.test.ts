@@ -6,9 +6,9 @@ import {
   DataGrid,
   Dialog,
   Group,
-  GroupBox,
   Input,
   Memo,
+  TabView,
   View,
 } from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
@@ -170,6 +170,20 @@ function click(host: ReturnType<typeof createApplication>, button: Button): void
   }
 }
 
+/** Selects one Application detail tab through the public TabView API. */
+async function selectDetailTab(
+  host: ReturnType<typeof createApplication>,
+  root: View,
+  index: number,
+): Promise<TabView> {
+  const tabs = descendants(root).find((view) => view instanceof TabView);
+  if (!(tabs instanceof TabView)) throw new Error('Application tab pane missing.');
+  tabs.select(index);
+  host.loop.focusView(tabs.strip);
+  await settle();
+  return tabs;
+}
+
 /** Opens a create-style dialog, fills its fields, and accepts it. */
 async function submitCreateDialog<T>(
   open: (host: ReturnType<typeof createApplication>) => Promise<T>,
@@ -238,7 +252,7 @@ describe('global applications workspace', () => {
     expect(frameText(mounted.host)).not.toContain('Customer Portal');
   });
 
-  it('shows safe detail, timestamps, modules, and permitted actions without scope jargon', async () => {
+  it('separates application details and modules into direct tab pages', async () => {
     const mounted = mountWorkspace({
       kind: 'detail',
       scope: 'global',
@@ -250,31 +264,37 @@ describe('global applications workspace', () => {
     await settle();
     const text = frameText(mounted.host);
     const views = descendants(mounted.window);
-    const grids = views.filter((view) => view instanceof DataGrid);
-    const groupBoxes = views.filter((view) => view instanceof GroupBox);
+    const tabs = views.find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Application tab pane missing.');
+    const [overviewTab, modulesTab] = tabs.tabs.peek();
+    if (!overviewTab || !modulesTab) throw new Error('Application detail tabs missing.');
+    const overviewViews = descendants(overviewTab.content);
+    const moduleViews = descendants(modulesTab.content);
 
-    expect(grids).toHaveLength(1);
-    expect(groupBoxes).toHaveLength(2);
+    expect(tabs.tabs.peek().map((tab) => tab.title)).toEqual(['Overview', 'Modules']);
+    expect(views.filter((view) => view instanceof TabView)).toEqual([tabs]);
+    expect(views.some((view) => view.constructor.name === 'GroupBox')).toBe(false);
     expect(text).not.toContain('Deployment-global');
     expect(text).toContain('Customer Portal');
     expect(text).toContain('ACTIVE');
     expect(text).toContain('customer-portal');
     expect(text).toContain('The deployment-wide customer product.');
-    expect(text).toContain('Created: 2026-01-01T00:00:00Z');
-    expect(text).toContain('Updated: 2026-08-01T00:00:00Z');
-    expect(text).toContain('Modules · 1 module');
-    expect(text).toContain('Billing');
+    expect(text).toContain('Created: 01 Jan 2026, 00:00 UTC');
+    expect(text).toContain('Updated: 01 Aug 2026, 00:00 UTC');
+    expect(text).toContain('Overview');
+    expect(text).toContain('Modules');
     expect(text).toContain('Edit');
     expect(text).toContain('Deactivate');
     expect(text).toContain('Delete');
-    expect(text).toContain('Add module');
 
-    const applicationActions = descendants(groupBoxes[0]!)
+    const applicationActions = overviewViews
       .filter((view) => view instanceof Button)
       .map((button) => button.activation.label);
-    const moduleActions = descendants(groupBoxes[1]!)
+    const moduleActions = moduleViews
       .filter((view) => view instanceof Button)
       .map((button) => button.activation.label);
+    expect(overviewViews.some((view) => view instanceof DataGrid)).toBe(false);
+    expect(moduleViews.filter((view) => view instanceof DataGrid)).toHaveLength(1);
     expect(applicationActions).toEqual(expect.arrayContaining(['Edit', 'Deactivate', 'Delete']));
     expect(applicationActions).not.toContain('Back to applications');
     expect(applicationActions).not.toContain('Add module');
@@ -286,7 +306,7 @@ describe('global applications workspace', () => {
       views.filter((view) => view instanceof Button).map((button) => button.activation.label),
     ).toContain('Back to applications');
 
-    // Every detail action keeps both face-padding cells and its shadow column.
+    // Every detail action delegates its natural dimensions to the Layout DSL.
     const detailActionLabels = new Set([
       'Edit',
       'Deactivate',
@@ -302,8 +322,27 @@ describe('global applications workspace', () => {
         view instanceof Button && detailActionLabels.has(view.activation.label),
     )) {
       expect(button.layout.size).toBeUndefined();
-      expect(button.bounds.width).toBe(button.measure().width);
     }
+  });
+
+  it('keeps the Modules DataGrid available when the application has no modules', async () => {
+    const mounted = mountWorkspace({
+      kind: 'detail',
+      scope: 'global',
+      applications: [application],
+      application,
+      etag: null,
+      modules: [],
+    });
+    await settle();
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Application tab pane missing.');
+    const modulesTab = tabs.tabs.peek()[1];
+    if (!modulesTab) throw new Error('Modules tab missing.');
+
+    expect(descendants(modulesTab.content).filter((view) => view instanceof DataGrid)).toHaveLength(
+      1,
+    );
   });
 
   it('enables parent-qualified module actions only after selecting a module record', async () => {
@@ -316,6 +355,7 @@ describe('global applications workspace', () => {
       modules: [moduleRow],
     });
     await settle();
+    await selectDetailTab(mounted.host, mounted.window, 1);
     const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
     if (!(grid instanceof DataGrid)) throw new Error('Module grid missing.');
     const edit = descendants(mounted.window)
@@ -380,6 +420,7 @@ describe('global applications workspace', () => {
       modules: [inactiveModule],
     });
     await settle();
+    await selectDetailTab(mounted.host, mounted.window, 1);
     const grid = descendants(mounted.window).find((view) => view instanceof DataGrid);
     if (!(grid instanceof DataGrid)) throw new Error('Module grid missing.');
 
@@ -423,9 +464,11 @@ describe('global applications workspace', () => {
       etag: null,
       modules: [moduleRow],
     };
-    const mounted = mountWorkspace({ kind: 'failure', failure: 'unavailable', previous });
+    const mounted = mountWorkspace(previous);
     await settle();
-    expect(frameText(mounted.host)).toContain('Customer Portal');
+    await selectDetailTab(mounted.host, mounted.window, 1);
+    mounted.workspace.setState({ kind: 'failure', failure: 'unavailable', previous });
+    await settle();
     expect(frameText(mounted.host)).toContain('Billing');
     expect(frameText(mounted.host)).toContain('Service unavailable');
     const retry = descendants(mounted.window)
@@ -474,6 +517,38 @@ describe('global applications workspace', () => {
   });
 });
 describe('application and module dialogs', () => {
+  it('accepts multiline module descriptions and gives the memo room for several lines', async () => {
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const operation = new AbortController();
+    const result = showCreateModuleDialog(host, operation.signal, applicationId);
+    await settle();
+    const views = descendants(activeDialog(host));
+    const inputs = views.filter((view) => view instanceof Input);
+    const memo = views.find((view) => view instanceof Memo);
+    const submit = views
+      .filter((view) => view instanceof Button)
+      .find((button) => button.activation.command === 'ok');
+    if (!memo || !submit) throw new Error('Module form controls missing.');
+    inputs[0]?.getValueSignal().set('Billing');
+    inputs[1]?.getValueSignal().set('billing');
+    memo.setText('First line\nSecond line');
+
+    const visibleMemoHeight = memo.bounds.height;
+    activate(host, submit);
+    await settle();
+    const closedDialog = host.desktop.activeWindow();
+    if (closedDialog) operation.abort();
+    const outcome = await result;
+
+    expect(visibleMemoHeight).toBeGreaterThanOrEqual(4);
+    expect(closedDialog).toBeNull();
+    expect(outcome).toEqual({
+      kind: 'create-module',
+      applicationId,
+      input: { name: 'Billing', slug: 'billing', description: 'First line\nSecond line' },
+    });
+  });
+
   it('places plain-language scope guidance only inside mutation dialogs', async () => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
     const dialogs = [

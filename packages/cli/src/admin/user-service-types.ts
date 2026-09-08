@@ -137,26 +137,10 @@ export interface AdminUserOperations {
     organizationId: string,
     userId: string,
   ) => Promise<AdminUserMutationResult>;
-  /** Suspends the user with an optional reason. */
-  readonly suspend: (
-    organizationId: string,
-    userId: string,
-    reason?: string,
-  ) => Promise<AdminUserMutationResult>;
-  /** Restores a suspended user. */
-  readonly unsuspend: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
-  /** Locks the user with a required reason. */
-  readonly lock: (
-    organizationId: string,
-    userId: string,
-    reason: string,
-  ) => Promise<AdminUserMutationResult>;
-  /** Unlocks the user. */
-  readonly unlock: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
   /** Deactivates the user. */
   readonly deactivate: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
-  /** Reactivates the user. */
-  readonly reactivate: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
+  /** Activates the user. */
+  readonly activate: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
   /** Permanently deletes the user. */
   readonly delete: (organizationId: string, userId: string) => Promise<AdminUserMutationResult>;
 }

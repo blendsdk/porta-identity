@@ -86,8 +86,9 @@ mutation reloads authoritative application or same-parent module data. Dialog ca
 authentication replacement, and resize recovery release operation ownership so late results cannot
 repopulate a cleared view.
 The organization OIDC Clients workspace follows the same direct pattern with a full-height client
-`DataGrid`, a sectioned detail surface, and metadata-only secret projection. Registration collects
-only the initial client settings and may generate one expiring or non-expiring confidential secret.
+`DataGrid`, a sectioned detail surface, and metadata-only secret projection. Registration uses one
+ordinary centered Client details dialog; it does not collect initial-secret or advanced settings.
+The dialog derives its height from its fixed component heights and DSL gaps without a scroller.
 Authentication, Protocol, and Login experience open as focused fixed dialogs. Their complete forms
 scroll while naturally sized action rows stay fixed, including on a 48×12 terminal. Authentication
 stages redirect URIs, post-logout redirect URIs, and allowed origins in one reused local `DataGrid`;

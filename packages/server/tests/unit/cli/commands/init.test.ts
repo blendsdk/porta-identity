@@ -21,16 +21,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
   withBootstrap: vi
     .fn()
-    .mockImplementation(
-      async (_argv: unknown, fn: () => Promise<unknown>) => fn(),
-    ),
+    .mockImplementation(async (_argv: unknown, fn: () => Promise<unknown>) => fn()),
 }));
 
 // Mock error handler — run fn directly, skip process.exit
 vi.mock('../../../../src/cli/error-handler.js', () => ({
-  withErrorHandling: vi
-    .fn()
-    .mockImplementation(async (fn: () => Promise<void>) => fn()),
+  withErrorHandling: vi.fn().mockImplementation(async (fn: () => Promise<void>) => fn()),
 }));
 
 // Mock output helpers
@@ -64,7 +60,7 @@ vi.mock('../../../../src/clients/index.js', () => ({
 
 vi.mock('../../../../src/users/index.js', () => ({
   createUser: vi.fn(),
-  reactivateUser: vi.fn(),
+  activateUser: vi.fn(),
   markEmailVerified: vi.fn(),
 }));
 
@@ -94,16 +90,9 @@ import { initCommand } from '../../../../src/cli/commands/init.js';
 import { success, warn } from '../../../../src/cli/output.js';
 import { confirm } from '../../../../src/cli/prompt.js';
 import { findSuperAdminOrganization } from '../../../../src/organizations/repository.js';
-import {
-  getApplicationBySlug,
-  createApplication,
-} from '../../../../src/applications/index.js';
+import { getApplicationBySlug, createApplication } from '../../../../src/applications/index.js';
 import { createClient, generateSecret } from '../../../../src/clients/index.js';
-import {
-  createUser,
-  reactivateUser,
-  markEmailVerified,
-} from '../../../../src/users/index.js';
+import { createUser, activateUser, markEmailVerified } from '../../../../src/users/index.js';
 import {
   createRole,
   createPermission,
@@ -193,9 +182,7 @@ function createArgv(overrides: Partial<InitTestOptions> = {}): InitTestOptions {
 }
 
 async function runInit(argv: InitTestOptions): Promise<void> {
-  await (
-    initCommand.handler as (args: InitTestOptions) => Promise<void>
-  )(argv);
+  await (initCommand.handler as (args: InitTestOptions) => Promise<void>)(argv);
 }
 
 // ---------------------------------------------------------------------------
@@ -210,9 +197,7 @@ describe('CLI Init Command', () => {
     permissionCounter = 0;
 
     // Set up default mock implementations
-    vi.mocked(findSuperAdminOrganization).mockResolvedValue(
-      fakeSuperAdminOrg as never,
-    );
+    vi.mocked(findSuperAdminOrganization).mockResolvedValue(fakeSuperAdminOrg as never);
     vi.mocked(getApplicationBySlug).mockResolvedValue(null);
     vi.mocked(createApplication).mockResolvedValue(fakeAdminApp as never);
 
@@ -221,11 +206,16 @@ describe('CLI Init Command', () => {
       secret: null,
     });
     vi.mocked(createUser).mockResolvedValue(fakeAdminUser as never);
-    vi.mocked(reactivateUser).mockResolvedValue(undefined as never);
+    vi.mocked(activateUser).mockResolvedValue(undefined as never);
     vi.mocked(markEmailVerified).mockResolvedValue(undefined as never);
     vi.mocked(createRole).mockResolvedValue(fakeAdminRole as never);
     vi.mocked(createPermission).mockImplementation(
-      async (input: { applicationId: string; slug: string; name: string; description?: string }) => ({
+      async (input: {
+        applicationId: string;
+        slug: string;
+        name: string;
+        description?: string;
+      }) => ({
         id: `perm-${++permissionCounter}`,
         applicationId: input.applicationId,
         moduleId: null,
@@ -305,11 +295,9 @@ describe('CLI Init Command', () => {
         }),
       );
 
-      expect(reactivateUser).toHaveBeenCalledWith('user-admin-id');
+      expect(activateUser).toHaveBeenCalledWith('user-admin-id');
       expect(markEmailVerified).toHaveBeenCalledWith('user-admin-id');
-      expect(assignRolesToUser).toHaveBeenCalledWith('user-admin-id', [
-        'role-admin-id',
-      ]);
+      expect(assignRolesToUser).toHaveBeenCalledWith('user-admin-id', ['role-admin-id']);
 
       expect(success).toHaveBeenCalledWith('Porta initialization complete!');
     });
@@ -351,9 +339,7 @@ describe('CLI Init Command', () => {
     it('should refuse when admin app already exists and --force is not set', async () => {
       vi.mocked(getApplicationBySlug).mockResolvedValue(fakeAdminApp as never);
 
-      await expect(runInit(createArgv())).rejects.toThrow(
-        'System already initialized',
-      );
+      await expect(runInit(createArgv())).rejects.toThrow('System already initialized');
 
       expect(createApplication).not.toHaveBeenCalled();
       expect(createClient).not.toHaveBeenCalled();
@@ -379,9 +365,7 @@ describe('CLI Init Command', () => {
     it('should throw error when super-admin org does not exist', async () => {
       vi.mocked(findSuperAdminOrganization).mockResolvedValue(null as never);
 
-      await expect(runInit(createArgv())).rejects.toThrow(
-        'Super-admin organization not found',
-      );
+      await expect(runInit(createArgv())).rejects.toThrow('Super-admin organization not found');
 
       expect(createApplication).not.toHaveBeenCalled();
     });

@@ -1,7 +1,16 @@
 /** Observable specifications for focused user administration dialogs. */
 
 import { defaultTheme } from '@jsvision/core';
-import { Button, CheckGroup, createApplication, Dialog, Group, Input, View } from '@jsvision/ui';
+import {
+  Button,
+  CheckGroup,
+  createApplication,
+  Dialog,
+  Group,
+  Input,
+  Memo,
+  View,
+} from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAdminDialogSurface } from '../../src/admin/application-runtime.js';
@@ -14,7 +23,6 @@ import {
   showDeleteUserDialog,
   showSetUserPasswordDialog,
   showUserConfirmationDialog,
-  showUserReasonDialog,
 } from '../../src/admin/user-dialogs.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
@@ -79,6 +87,7 @@ function descendants(root: View): View[] {
 function activeForm(application: ReturnType<typeof createApplication>): {
   readonly dialog: Dialog;
   readonly inputs: Input[];
+  readonly memos: Memo[];
   readonly buttons: Button[];
 } {
   const dialog = application.desktop.activeWindow();
@@ -87,6 +96,7 @@ function activeForm(application: ReturnType<typeof createApplication>): {
   return {
     dialog,
     inputs: views.filter((view) => view instanceof Input),
+    memos: views.filter((view) => view instanceof Memo),
     buttons: views.filter((view) => view instanceof Button),
   };
 }
@@ -253,17 +263,12 @@ describe('user dialogs', () => {
             kind: 'failure',
             failure: 'unavailable',
           })),
-        maxima: [10, 255, 255, 255, 500],
+        maxima: [10, 255, 255, 255],
       },
       {
         open: (application) =>
           showSetUserPasswordDialog(application, new AbortController().signal, detail.email),
         maxima: [128, 128],
-      },
-      {
-        open: (application) =>
-          showUserReasonDialog(application, new AbortController().signal, 'lock', detail.email),
-        maxima: [500],
       },
     ];
 
@@ -287,6 +292,37 @@ describe('user dialogs', () => {
       application.loop.endModal('cancel');
       await expect(operation).resolves.toEqual({ kind: 'cancel' });
     }
+  });
+
+  // Required fields are visible, and Create cannot run until the complete form is valid.
+  it('should mark required create fields and reactively enable Create for valid input', async () => {
+    const application = createApplication({ viewport: { width: 80, height: 24 } });
+    const operation = showCreateUserDialog(application, new AbortController().signal);
+    await settle();
+    const form = activeForm(application);
+    const create = form.buttons.find((button) => button.activation.label === 'Create');
+    const [email, _givenName, _familyName, password, confirmation] = form.inputs;
+    if (!create || !email || !password || !confirmation)
+      throw new Error('Create-user controls missing.');
+
+    expect(frameText(application)).toContain('Email *');
+    expect(frameText(application)).toContain('* Required');
+    expect(create.state.disabled).toBe(true);
+
+    email.getValueSignal().set('alice@example.test');
+    await settle();
+    expect(create.state.disabled).toBe(false);
+
+    password.getValueSignal().set('Password-123');
+    await settle();
+    expect(create.state.disabled).toBe(true);
+
+    confirmation.getValueSignal().set('Password-123');
+    await settle();
+    expect(create.state.disabled).toBe(false);
+
+    application.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
   });
 
   it('should return bounded create input without phone verification and clear secret signals', async () => {
@@ -367,6 +403,52 @@ describe('user dialogs', () => {
     });
     expect((await operation).input).not.toHaveProperty('roles');
     expect((await operation).input).not.toHaveProperty('claims');
+  });
+
+  // Personal invitation text is a bounded multiline value, not a stretched single-line field.
+  it('should collect a multiline personal invitation message from a visible memo', async () => {
+    const application = createApplication({ viewport: { width: 80, height: 24 } });
+    const operation = showInviteUserDialog(application, new AbortController().signal, async () => ({
+      kind: 'failure',
+      failure: 'unavailable',
+    }));
+    await settle();
+    const form = activeForm(application);
+    const email = form.inputs[0];
+    const personalMessage = form.memos[0];
+    if (!email || !personalMessage) throw new Error('Invitation fields missing.');
+
+    expect(personalMessage.bounds.height).toBeGreaterThanOrEqual(4);
+    email.getValueSignal().set('alice@example.test');
+    personalMessage.setText('First line\nSecond line');
+    application.loop.endModal('ok');
+
+    await expect(operation).resolves.toEqual({
+      kind: 'invite',
+      input: {
+        email: 'alice@example.test',
+        personalMessage: 'First line\nSecond line',
+      },
+    });
+  });
+
+  it('should keep the invitation dialog open for an overlong personal message', async () => {
+    const application = createApplication({ viewport: { width: 80, height: 24 } });
+    const operation = showInviteUserDialog(application, new AbortController().signal, async () => ({
+      kind: 'failure',
+      failure: 'unavailable',
+    }));
+    await settle();
+    const form = activeForm(application);
+    form.inputs[0]?.getValueSignal().set('alice@example.test');
+    form.memos[0]?.setText('x'.repeat(501));
+    application.loop.endModal('ok');
+    await settle();
+
+    expect(application.desktop.activeWindow()).toBe(form.dialog);
+    expect(frameText(application)).toContain('Validation failed');
+    application.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
   });
 
   it('should keep populated invite fields after a fixed invalid preview response', async () => {
@@ -502,31 +584,6 @@ describe('user dialogs', () => {
     await expect(operation).resolves.toEqual({ kind: 'cancel' });
   });
 
-  it('should require a bounded control-free lock reason while allowing an empty suspend reason', async () => {
-    const lockApp = createApplication({ viewport: { width: 80, height: 24 } });
-    const lock = showUserReasonDialog(lockApp, new AbortController().signal, 'lock', detail.email);
-    await settle();
-    const lockForm = activeForm(lockApp);
-    lockForm.inputs[0]?.getValueSignal().set('');
-    lockApp.loop.endModal('ok');
-    await settle();
-    expect(lockApp.desktop.activeWindow()).toBe(lockForm.dialog);
-    lockForm.inputs[0]?.getValueSignal().set('Security review');
-    lockApp.loop.endModal('ok');
-    await expect(lock).resolves.toEqual({ kind: 'lock', reason: 'Security review' });
-
-    const suspendApp = createApplication({ viewport: { width: 80, height: 24 } });
-    const suspend = showUserReasonDialog(
-      suspendApp,
-      new AbortController().signal,
-      'suspend',
-      detail.email,
-    );
-    await settle();
-    suspendApp.loop.endModal('ok');
-    await expect(suspend).resolves.toEqual({ kind: 'suspend' });
-  });
-
   it('should initially focus Keep and require the named Delete action', async () => {
     const application = createApplication({ viewport: { width: 80, height: 24 } });
     const operation = showDeleteUserDialog(
@@ -540,7 +597,9 @@ describe('user dialogs', () => {
     const focused = application.loop.getFocused();
     expect(focused).toBeInstanceOf(Button);
     expect((focused as Button).activation.label).toBe('Keep');
-    expect(form.buttons.map((button) => button.activation.label)).toContain(`Delete ${detail.email}`);
+    expect(form.buttons.map((button) => button.activation.label)).toContain(
+      `Delete ${detail.email}`,
+    );
     application.loop.endModal('yes');
     await expect(operation).resolves.toEqual({ kind: 'delete' });
 

@@ -50,7 +50,7 @@ export const ADMIN_PERMISSIONS = {
   USER_CREATE: 'admin:user:create',
   USER_READ: 'admin:user:read',
   USER_UPDATE: 'admin:user:update',
-  USER_SUSPEND: 'admin:user:suspend',
+  USER_LIFECYCLE: 'admin:user:lifecycle',
   USER_DELETE: 'admin:user:delete',
   USER_INVITE: 'admin:user:invite',
   USER_2FA: 'admin:user:2fa',
@@ -162,7 +162,7 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
       ADMIN_PERMISSIONS.USER_CREATE,
       ADMIN_PERMISSIONS.USER_READ,
       ADMIN_PERMISSIONS.USER_UPDATE,
-      ADMIN_PERMISSIONS.USER_SUSPEND,
+      ADMIN_PERMISSIONS.USER_LIFECYCLE,
       ADMIN_PERMISSIONS.USER_DELETE,
       ADMIN_PERMISSIONS.USER_INVITE,
       ADMIN_PERMISSIONS.USER_2FA,
@@ -225,7 +225,8 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
 } as const;
 
 /** All admin role definition values as an array (for iteration) */
-export const ALL_ADMIN_ROLES: readonly AdminRoleDefinition[] = Object.values(ADMIN_ROLE_DEFINITIONS);
+export const ALL_ADMIN_ROLES: readonly AdminRoleDefinition[] =
+  Object.values(ADMIN_ROLE_DEFINITIONS);
 
 // ============================================================================
 // Legacy Compatibility
@@ -246,9 +247,7 @@ export const LEGACY_ADMIN_ROLE = 'porta-admin';
  * @returns true if the role grants super-admin level access
  */
 export function isSuperAdminRole(roleSlug: string): boolean {
-  return (
-    roleSlug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug || roleSlug === LEGACY_ADMIN_ROLE
-  );
+  return roleSlug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug || roleSlug === LEGACY_ADMIN_ROLE;
 }
 
 /**

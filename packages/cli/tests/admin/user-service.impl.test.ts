@@ -62,12 +62,8 @@ function domain(overrides: Record<string, unknown> = {}) {
     setPassword: vi.fn(),
     clearPassword: vi.fn(),
     verifyEmail: vi.fn(),
-    suspend: vi.fn(),
-    unsuspend: vi.fn(),
-    lock: vi.fn(),
-    unlock: vi.fn(),
     deactivate: vi.fn(),
-    reactivate: vi.fn(),
+    activate: vi.fn(),
     delete: vi.fn(),
     ...overrides,
   };

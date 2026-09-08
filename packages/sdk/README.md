@@ -67,8 +67,8 @@ const client = createPortaClient(transport);
 // List all organizations (auto-pagination)
 const allOrgs = await client.organizations.listAll();
 
-// Suspend a user
-await client.users.suspend('org-id', 'user-id');
+// Deactivate a user
+await client.users.deactivate('org-id', 'user-id');
 
 // Assign a role
 await client.userRoles.assign('org-id', 'user-id', { roleId: 'role-id' });
@@ -118,27 +118,27 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 
 ## Domain Namespaces
 
-| Namespace       | Methods | Description                                                |
-| --------------- | ------- | ---------------------------------------------------------- |
-| `organizations` | 10      | CRUD, status lifecycle, slug validation, history           |
-| `applications`  | 13      | CRUD, status, module management, history                   |
-| `clients`       | 12      | CRUD, status, secret management, history                   |
-| `users`         | 19      | CRUD, status transitions, password, email, and export      |
-| `roles`         | 9       | CRUD and permission assignment                             |
-| `permissions`   | 6       | CRUD                                                       |
-| `userRoles`     | 3       | List, assign, remove role assignments                      |
-| `userClaims`    | 3       | List, set, remove claim values                             |
-| `customClaims`  | 6       | Claim definition CRUD                                      |
-| `config`        | 3       | System configuration get/set/list                          |
-| `keys`          | 3       | Signing key list/generate/rotate                           |
-| `audit`         | 1       | Audit log listing with filters                             |
-| `stats`         | 1       | Dashboard statistics                                       |
-| `sessions`      | 3       | Session listing and revocation                             |
-| `bulk`          | 1       | Bulk status operations                                     |
-| `branding`      | 5       | Org branding settings and asset management                 |
-| `exports`       | 1       | CSV/JSON data export                                       |
-| `twoFactor`     | 3       | 2FA status, disable, reset                                 |
-| `imports`       | 1       | Declarative provisioning                                   |
+| Namespace       | Methods | Description                                           |
+| --------------- | ------- | ----------------------------------------------------- |
+| `organizations` | 10      | CRUD, status lifecycle, slug validation, history      |
+| `applications`  | 13      | CRUD, status, module management, history              |
+| `clients`       | 12      | CRUD, status, secret management, history              |
+| `users`         | 19      | CRUD, status transitions, password, email, and export |
+| `roles`         | 9       | CRUD and permission assignment                        |
+| `permissions`   | 6       | CRUD                                                  |
+| `userRoles`     | 3       | List, assign, remove role assignments                 |
+| `userClaims`    | 3       | List, set, remove claim values                        |
+| `customClaims`  | 6       | Claim definition CRUD                                 |
+| `config`        | 3       | System configuration get/set/list                     |
+| `keys`          | 3       | Signing key list/generate/rotate                      |
+| `audit`         | 1       | Audit log listing with filters                        |
+| `stats`         | 1       | Dashboard statistics                                  |
+| `sessions`      | 3       | Session listing and revocation                        |
+| `bulk`          | 1       | Bulk status operations                                |
+| `branding`      | 5       | Org branding settings and asset management            |
+| `exports`       | 1       | CSV/JSON data export                                  |
+| `twoFactor`     | 3       | 2FA status, disable, reset                            |
+| `imports`       | 1       | Declarative provisioning                              |
 
 ## Auth Providers
 
@@ -178,9 +178,9 @@ const allUsers = await client.users.listAll('org-id');
 // → User[]
 ```
 
-`users.invite()` returns an `InviteUserResult`. Suspension accepts an optional reason;
-`users.lock()` requires a reason. `users.getHistory()` returns the first-page
-`{ data, hasMore, nextCursor }` history envelope.
+`users.invite()` returns an `InviteUserResult`. Administrators can activate and deactivate users.
+User lockout is automatic and is not an administrator mutation. `users.getHistory()` returns the
+first-page `{ data, hasMore, nextCursor }` history envelope.
 
 ## Architecture
 

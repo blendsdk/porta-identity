@@ -54,7 +54,7 @@ describe('SDK↔Server contract: Bulk Operations', () => {
     it('SDK shape passes server Zod validation', () => {
       const input: BulkUserStatusInput = {
         ids: ['550e8400-e29b-41d4-a716-446655440000'],
-        action: 'suspend',
+        action: 'deactivate',
         organizationId: '660e8400-e29b-41d4-a716-446655440000',
       };
 
@@ -63,7 +63,7 @@ describe('SDK↔Server contract: Bulk Operations', () => {
     });
 
     it('supports all user actions', () => {
-      for (const action of ['activate', 'deactivate', 'suspend', 'lock', 'unlock'] as const) {
+      for (const action of ['activate', 'deactivate'] as const) {
         const input: BulkUserStatusInput = {
           ids: ['550e8400-e29b-41d4-a716-446655440000'],
           action,
@@ -74,10 +74,20 @@ describe('SDK↔Server contract: Bulk Operations', () => {
       }
     });
 
+    it.each(['suspend', 'lock', 'unlock'])('rejects removed user action %s', (action) => {
+      const result = bulkUserStatusSchema.safeParse({
+        ids: ['550e8400-e29b-41d4-a716-446655440000'],
+        action,
+        organizationId: '660e8400-e29b-41d4-a716-446655440000',
+      });
+
+      expect(result.success).toBe(false);
+    });
+
     it('requires organizationId for user bulk', () => {
       const invalid = {
         ids: ['550e8400-e29b-41d4-a716-446655440000'],
-        action: 'suspend',
+        action: 'deactivate',
         // missing organizationId
       };
       const result = bulkUserStatusSchema.safeParse(invalid);

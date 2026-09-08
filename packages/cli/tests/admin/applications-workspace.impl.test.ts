@@ -7,6 +7,8 @@ import {
   Dialog,
   Group,
   Input,
+  Scroller,
+  TabView,
   Text,
   View,
   Window,
@@ -185,9 +187,12 @@ describe('application workspace implementation', () => {
       modules: [moduleRow],
     });
     await settle();
-    const buttons = descendants(mounted.window).filter((view) => view instanceof Button);
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Application tab pane missing.');
     const byLabel = (label: string): Button => {
-      const button = buttons.find((candidate) => candidate.activation.label === label);
+      const button = descendants(mounted.window)
+        .filter((view) => view instanceof Button)
+        .find((candidate) => candidate.activation.label === label);
       if (!button) throw new Error(`${label} button missing.`);
       return button;
     };
@@ -216,6 +221,9 @@ describe('application workspace implementation', () => {
 
     expect(byLabel('Edit').bounds.x).toBeLessThan(byLabel('Deactivate').bounds.x);
     expect(byLabel('Deactivate').bounds.x).toBeLessThan(byLabel('Delete').bounds.x);
+    tabs.select(1);
+    mounted.host.loop.focusView(tabs.strip);
+    await settle();
     expect(xOf('Add module')).toBeLessThan(xOf('Edit module'));
     expect(xOf('Edit module')).toBeLessThan(xOf('Deactivate module'));
     expect(xOf('Back to applications')).toBeLessThan(xOf('Add module'));
@@ -225,7 +233,105 @@ describe('application workspace implementation', () => {
     const gridOrigin = mounted.host.loop.renderRoot.originOf(grid);
     const moduleActionOrigin = mounted.host.loop.renderRoot.originOf(byLabel('Add module'));
     if (!gridOrigin || !moduleActionOrigin) throw new Error('Module layout origins missing.');
-    expect(moduleActionOrigin.y).toBe(gridOrigin.y + grid.bounds.height + 1);
+    expect(moduleActionOrigin.y).toBeGreaterThan(gridOrigin.y + grid.bounds.height);
+  });
+
+  it('retains the selected tab for one application and resets it for another', async () => {
+    const mounted = mount(80, 24);
+    const detail = {
+      kind: 'detail' as const,
+      scope: 'global' as const,
+      applications: [application],
+      application,
+      etag: null,
+      modules: [moduleRow],
+    };
+    mounted.workspace.setState(detail);
+    await settle();
+    let tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Application tab pane missing.');
+    tabs.select(1);
+    await settle();
+
+    mounted.workspace.setState({ ...detail, modules: [] });
+    await settle();
+    tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Reloaded application tab pane missing.');
+    expect(tabs.active.peek()).toBe(1);
+    mounted.workspace.focusCurrent();
+    expect(mounted.host.loop.getFocused()).toBe(tabs.strip);
+
+    const nextApplication = {
+      ...application,
+      id: '33333333-3333-4333-8333-333333333333',
+      name: 'Operations Portal',
+    };
+    mounted.workspace.setState({
+      ...detail,
+      applications: [nextApplication],
+      application: nextApplication,
+      modules: [],
+    });
+    await settle();
+    tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Replacement application tab pane missing.');
+    expect(tabs.active.peek()).toBe(0);
+    expect(descendants(mounted.window).filter((view) => view instanceof TabView)).toEqual([tabs]);
+
+    mounted.host.loop.resize({ width: 48, height: 12 });
+    await settle();
+    const expectVisibleWithin = (view: View, container: View): void => {
+      const origin = mounted.host.loop.renderRoot.originOf(view);
+      const containerOrigin = mounted.host.loop.renderRoot.originOf(container);
+      if (!origin) throw new Error(`${view.constructor.name} render origin missing.`);
+      if (!containerOrigin)
+        throw new Error(`${container.constructor.name} render origin missing.`);
+      expect(view.bounds.width).toBeGreaterThan(0);
+      expect(view.bounds.height).toBeGreaterThan(0);
+      expect(origin.x).toBeGreaterThanOrEqual(containerOrigin.x);
+      expect(origin.y).toBeGreaterThanOrEqual(containerOrigin.y);
+      expect(origin.x + view.bounds.width).toBeLessThanOrEqual(
+        containerOrigin.x + container.bounds.width,
+      );
+      expect(origin.y + view.bounds.height).toBeLessThanOrEqual(
+        containerOrigin.y + container.bounds.height,
+      );
+    };
+    const overview = tabs.tabs.peek()[0];
+    if (!overview) throw new Error('Overview tab missing.');
+    for (const button of descendants(overview.content).filter((view) => view instanceof Button))
+      expectVisibleWithin(button, overview.content);
+
+    tabs.select(1);
+    mounted.host.loop.focusView(tabs.strip);
+    await settle();
+    const modules = tabs.tabs.peek()[1];
+    if (!modules) throw new Error('Modules tab missing.');
+    const grid = descendants(modules.content).find((view) => view instanceof DataGrid);
+    if (!(grid instanceof DataGrid)) throw new Error('Compact module grid missing.');
+    expectVisibleWithin(grid, modules.content);
+    const actionScroller = descendants(modules.content).find((view) => view instanceof Scroller);
+    if (!(actionScroller instanceof Scroller)) throw new Error('Module action scroller missing.');
+    expectVisibleWithin(actionScroller, modules.content);
+    mounted.host.loop.focusView(actionScroller);
+    for (let index = 0; index < 100; index += 1)
+      mounted.host.loop.dispatch({
+        type: 'key',
+        key: 'right',
+        ctrl: false,
+        alt: false,
+        shift: false,
+      });
+    await settle();
+    expect(actionScroller.delta.x).toBeGreaterThan(0);
+    const remove = descendants(modules.content)
+      .filter((view) => view instanceof Button)
+      .find((button) => button.activation.label === 'Delete module');
+    if (!remove) throw new Error('Delete module button missing.');
+    expectVisibleWithin(remove, actionScroller);
+
+    expect(frameText(mounted.host)).toContain('Back to applications');
+    expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
   });
 
   it('removes retained projections on clear and ignores state after disposal', async () => {

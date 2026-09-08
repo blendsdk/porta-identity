@@ -118,12 +118,8 @@ function operations(overrides: Partial<AdminUserOperations> = {}): AdminUserOper
     setPassword: mutation,
     clearPassword: mutation,
     verifyEmail: mutation,
-    suspend: mutation,
-    unsuspend: mutation,
-    lock: mutation,
-    unlock: mutation,
     deactivate: mutation,
-    reactivate: mutation,
+    activate: mutation,
     delete: mutation,
     ...overrides,
   };
@@ -359,7 +355,13 @@ describe('admin user controller ownership', () => {
     };
     controller.syncContext(connection, 1);
     intent?.({ kind: 'back' });
-    expect(states.at(-1)).toEqual({ kind: 'page', page });
+    expect(states.at(-1)).toEqual({
+      kind: 'detail',
+      page,
+      selected: user,
+      detail,
+      etag: null,
+    });
   });
 
   it('should preserve validated content across recoverable resize and dispose once', async () => {

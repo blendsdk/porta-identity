@@ -39,11 +39,7 @@ import {
   updateUser,
   listUsersByOrganization,
   deactivateUser,
-  reactivateUser,
-  suspendUser,
-  unsuspendUser,
-  lockUser,
-  unlockUser,
+  activateUser,
   setUserPassword,
   verifyUserPassword,
   clearUserPassword,
@@ -294,13 +290,13 @@ describe('user service', () => {
     });
   });
 
-  describe('reactivateUser', () => {
-    it('should reactivate inactive user', async () => {
+  describe('activateUser', () => {
+    it('should activate inactive user', async () => {
       const user = createTestUser({ status: 'inactive' });
       (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
       (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await reactivateUser('user-uuid-1');
+      await activateUser('user-uuid-1');
 
       expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', { status: 'active' });
     });
@@ -309,93 +305,7 @@ describe('user service', () => {
       const user = createTestUser({ status: 'active' });
       (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await expect(reactivateUser('user-uuid-1')).rejects.toThrow(UserValidationError);
-    });
-  });
-
-  describe('suspendUser', () => {
-    it('should suspend active user', async () => {
-      const user = createTestUser({ status: 'active' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await suspendUser('user-uuid-1', 'policy violation');
-
-      expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', { status: 'suspended' });
-    });
-
-    it('should reject non-active user', async () => {
-      const user = createTestUser({ status: 'suspended' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await expect(suspendUser('user-uuid-1')).rejects.toThrow(UserValidationError);
-    });
-  });
-
-  describe('unsuspendUser', () => {
-    it('should unsuspend suspended user', async () => {
-      const user = createTestUser({ status: 'suspended' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await unsuspendUser('user-uuid-1');
-
-      expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', { status: 'active' });
-    });
-
-    it('should reject non-suspended user', async () => {
-      const user = createTestUser({ status: 'active' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await expect(unsuspendUser('user-uuid-1')).rejects.toThrow(UserValidationError);
-    });
-  });
-
-  describe('lockUser', () => {
-    it('should lock active user with reason', async () => {
-      const user = createTestUser({ status: 'active' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await lockUser('user-uuid-1', 'too many failed attempts');
-
-      expect(repo.updateUser).toHaveBeenCalledWith(
-        'user-uuid-1',
-        expect.objectContaining({
-          status: 'locked',
-          lockedReason: 'too many failed attempts',
-        }),
-      );
-    });
-
-    it('should reject non-active user', async () => {
-      const user = createTestUser({ status: 'locked' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await expect(lockUser('user-uuid-1', 'reason')).rejects.toThrow(UserValidationError);
-    });
-  });
-
-  describe('unlockUser', () => {
-    it('should unlock locked user and clear lock fields', async () => {
-      const user = createTestUser({ status: 'locked' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await unlockUser('user-uuid-1');
-
-      expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', {
-        status: 'active',
-        lockedAt: null,
-        lockedReason: null,
-      });
-    });
-
-    it('should reject non-locked user', async () => {
-      const user = createTestUser({ status: 'active' });
-      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
-
-      await expect(unlockUser('user-uuid-1')).rejects.toThrow(UserValidationError);
+      await expect(activateUser('user-uuid-1')).rejects.toThrow(UserValidationError);
     });
   });
 
@@ -517,7 +427,7 @@ describe('user service', () => {
     });
 
     it('should return null for non-active user', async () => {
-      const user = createTestUser({ status: 'suspended' });
+      const user = createTestUser({ status: 'inactive' });
       (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
       const result = await findUserForOidc('user-uuid-1');

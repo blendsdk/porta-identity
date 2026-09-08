@@ -36,6 +36,33 @@ const page = {
   pageSize: 20,
   totalPages: 1,
 };
+const detail = {
+  ...page.data[0],
+  emailVerified: false,
+  hasPassword: false,
+  middleName: null,
+  nickname: null,
+  preferredUsername: null,
+  profileUrl: null,
+  pictureUrl: null,
+  websiteUrl: null,
+  gender: null,
+  birthdate: null,
+  zoneinfo: null,
+  locale: null,
+  phoneNumber: null,
+  phoneNumberVerified: false,
+  addressStreet: null,
+  addressLocality: null,
+  addressRegion: null,
+  addressPostalCode: null,
+  addressCountry: null,
+  twoFactorEnabled: false,
+  lastLoginAt: null,
+  loginCount: 0,
+  createdAt: '2026-09-01T00:00:00Z',
+  updatedAt: '2026-09-01T00:00:00Z',
+};
 
 /** Builds one authenticated state with independently selectable user capabilities. */
 function authenticated(
@@ -119,12 +146,8 @@ function harness(
     setPassword: successfulMutation,
     clearPassword: successfulMutation,
     verifyEmail: successfulMutation,
-    suspend: successfulMutation,
-    unsuspend: successfulMutation,
-    lock: successfulMutation,
-    unlock: successfulMutation,
     deactivate: successfulMutation,
-    reactivate: successfulMutation,
+    activate: successfulMutation,
     delete: successfulMutation,
     ...overrides.operations,
   } satisfies AdminUserOperations;
@@ -184,6 +207,41 @@ describe('admin user workflow', () => {
       page: 1,
       search: 'alice',
       status: 'active',
+    });
+  });
+
+  it('should return from history to the selected user detail', async () => {
+    const history = { entries: [], hasMore: false };
+    const mounted = harness({
+      operations: {
+        get: vi.fn().mockResolvedValue({ kind: 'success', value: { detail, etag: null } }),
+        getHistory: vi.fn().mockResolvedValue({ kind: 'success', value: history }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.browseUsers);
+    await settle();
+    mounted.getIntent()?.({ kind: 'select', userId });
+    await settle();
+    mounted.getIntent()?.({ kind: 'history' });
+    await settle();
+
+    expect(mounted.states.at(-1)).toEqual({
+      kind: 'history',
+      page,
+      selected: page.data[0],
+      detail,
+      etag: null,
+      history,
+    });
+
+    mounted.getIntent()?.({ kind: 'back' });
+
+    expect(mounted.states.at(-1)).toEqual({
+      kind: 'detail',
+      page,
+      selected: page.data[0],
+      detail,
+      etag: null,
     });
   });
 

@@ -2,30 +2,21 @@
 
 import {
   Button,
-  CheckGroup,
   ComboBox,
   cover,
   createApplication,
-  DataGrid,
   DatePicker,
   Dialog,
   Group,
-  Input,
-  Switch,
   View,
 } from '@jsvision/ui';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { showClientAuthenticationDialog } from '../../src/admin/client-authentication-dialog.js';
 import {
   createClientSecretExpiryFields,
   LONG_SECRET_EXPIRY_WARNING,
   showGenerateClientSecretDialog,
 } from '../../src/admin/client-credential-dialogs.js';
-import {
-  showClientLoginDialog,
-  showClientProtocolDialog,
-} from '../../src/admin/client-protocol-login-dialogs.js';
 import type { AdminClient } from '../../src/admin/client-state.js';
 import type { AdminOrganizationContext } from '../../src/admin/state.js';
 
@@ -118,90 +109,13 @@ describe('focused editor implementation', () => {
   it('keeps the stable facade while removing the obsolete shared configuration export', async () => {
     const facade = await import('../../src/admin/client-dialogs.js');
 
-    expect(facade.showClientAuthenticationDialog).toBe(showClientAuthenticationDialog);
-    expect(facade.showClientProtocolDialog).toBe(showClientProtocolDialog);
-    expect(facade.showClientLoginDialog).toBe(showClientLoginDialog);
+    expect(typeof facade.showAuthenticationUrlDialog).toBe('function');
+    expect(typeof facade.showDeleteAuthenticationUrlDialog).toBe('function');
+    expect(typeof facade.buildAuthenticationUrlUpdate).toBe('function');
+    expect('showClientAuthenticationDialog' in facade).toBe(false);
     expect(facade.showGenerateClientSecretDialog).toBe(showGenerateClientSecretDialog);
+    expect('showClientProtocolDialog' in facade).toBe(false);
     expect('showClientConfigurationDialog' in facade).toBe(false);
-  });
-
-  it('uses one reusable collection grid and naturally sized actions at compact geometry', async () => {
-    const host = createApplication({ viewport: { width: 48, height: 12 } });
-    const pending = showClientAuthenticationDialog(
-      host,
-      new AbortController().signal,
-      organization,
-      client,
-    );
-    await settle();
-    const dialog = host.desktop.activeWindow();
-    if (!(dialog instanceof Dialog)) throw new Error('Authentication dialog missing.');
-    const views = descendants(dialog);
-    const selector = views.find((view) => view instanceof ComboBox);
-    if (!(selector instanceof ComboBox)) throw new Error('Collection selector missing.');
-
-    expect(selector.items.peek()).toHaveLength(3);
-    expect(views.filter((view) => view instanceof DataGrid)).toHaveLength(1);
-    expect(
-      views.filter((view) => view instanceof Input).every((input) => input.bounds.height <= 1),
-    ).toBe(true);
-    for (const label of ['Add', 'Edit', 'Remove', 'Save', 'Cancel']) {
-      expect(button(dialog, label).layout.size).toBeUndefined();
-    }
-
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it('disables an incompatible public protocol configuration', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const publicClient: AdminClient = {
-      ...client,
-      clientType: 'public',
-      tokenEndpointAuthMethod: 'none',
-      requirePkce: true,
-    };
-    const pending = showClientProtocolDialog(
-      host,
-      new AbortController().signal,
-      organization,
-      publicClient,
-    );
-    await settle();
-    const dialog = host.desktop.activeWindow();
-    if (!(dialog instanceof Dialog)) throw new Error('Protocol dialog missing.');
-    const pkce = descendants(dialog).find((view) => view instanceof Switch);
-    if (!(pkce instanceof Switch)) throw new Error('PKCE switch missing.');
-
-    pkce.select(false);
-    await settle();
-    expect(button(dialog, 'Save').state.disabled).toBe(true);
-
-    host.loop.endModal('cancel');
-    await pending;
-  });
-
-  it('requires an explicit method after leaving inherited login defaults', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const pending = showClientLoginDialog(host, new AbortController().signal, organization, client);
-    await settle();
-    const dialog = host.desktop.activeWindow();
-    if (!(dialog instanceof Dialog)) throw new Error('Login dialog missing.');
-    const views = descendants(dialog);
-    const inheritance = views.find((view) => view instanceof Switch);
-    const methods = views.find((view) => view instanceof CheckGroup);
-    if (!(inheritance instanceof Switch) || !(methods instanceof CheckGroup)) {
-      throw new Error('Login controls missing.');
-    }
-
-    expect(methods.focusable).toBe(false);
-    inheritance.select(false);
-    await settle();
-    expect(methods.focusable).toBe(true);
-    expect(button(dialog, 'Save').state.disabled).toBe(true);
-
-    host.loop.endModal('cancel');
-    await pending;
   });
 
   it('uses an exact next-day UTC custom expiry and a non-blocking long-term warning', async () => {
@@ -231,8 +145,8 @@ describe('focused editor implementation', () => {
     await settle();
     const dialog = host.desktop.activeWindow();
     if (!(dialog instanceof Dialog)) throw new Error('Secret dialog missing.');
-    const generate = button(dialog, 'Generate');
-    host.loop.focusView(generate);
+    const add = button(dialog, 'Add');
+    host.loop.focusView(add);
     host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
 
     await expect(pending).resolves.toEqual({
@@ -242,15 +156,4 @@ describe('focused editor implementation', () => {
     });
   });
 
-  it('removes a focused editor immediately when its owner aborts', async () => {
-    const host = createApplication({ viewport: { width: 80, height: 24 } });
-    const controller = new AbortController();
-    const pending = showClientProtocolDialog(host, controller.signal, organization, client);
-    await settle();
-
-    controller.abort();
-
-    await expect(pending).resolves.toEqual({ kind: 'cancel' });
-    expect(host.desktop.activeWindow()).toBeNull();
-  });
 });

@@ -42,6 +42,12 @@ const application = {
   createdAt: '2026-01-01T00:00:00Z',
   updatedAt: '2026-08-01T00:00:00Z',
 };
+const secondApplication = {
+  ...application,
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  name: 'Operations Console',
+  slug: 'operations-console',
+};
 const client: AdminClient = {
   id: '33333333-3333-4333-8333-333333333333',
   organizationId: organization.id,
@@ -162,12 +168,16 @@ function createButton(dialog: Dialog): Button {
 }
 
 /** Opens registration on a real terminal surface. */
-async function openRegistration(width = 80, height = 24) {
+async function openRegistration(
+  width = 80,
+  height = 30,
+  applications: readonly (typeof application)[] = [application],
+) {
   const host = createApplication({ viewport: { width, height } });
   const pending = (await registrationExports()).showClientRegistrationDialog(
     host,
     new AbortController().signal,
-    { organization, applications: [application] },
+    { organization, applications },
   );
   await settle();
   return { host, pending, dialog: activeDialog(host) };
@@ -225,22 +235,52 @@ afterEach(() => {
 });
 
 describe('compact OIDC client registration', () => {
-  it('uses a maximized grouped surface with reachable naturally sized actions', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
+  it('allows an administrator to select a different active application', async () => {
+    const { host, pending, dialog } = await openRegistration(80, 30, [
+      application,
+      secondApplication,
+    ]);
+    const picker = descendants(dialog).find((view) => view instanceof ComboBox);
+    if (!picker) throw new Error('Application picker missing.');
+
+    host.loop.focusView(picker.input);
+    host.loop.dispatch({ type: 'key', key: 'down', ctrl: false, alt: false, shift: false });
+    host.loop.dispatch({ type: 'key', key: 'down', ctrl: false, alt: false, shift: false });
+    host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
+    await settle();
+
+    expect(picker.value.peek()).toEqual(secondApplication);
+    host.loop.endModal('cancel');
+    await expect(pending).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('uses one ordinary Client details dialog with reachable naturally sized actions', async () => {
     const { host, pending, dialog } = await openRegistration();
     const views = descendants(dialog);
-    const scroller = views.find((view) => view instanceof Scroller);
-    if (!(scroller instanceof Scroller)) throw new Error('Registration form scroller missing.');
 
     expect(dialog.title()).toBe('Register OIDC client');
-    expect(dialog.isZoomed()).toBe(true);
+    expect(dialog.isZoomed()).toBe(false);
+    expect(dialog.bounds.height).toBe(22);
+    expect(dialog.bounds.width).toBeLessThan(host.desktop.bounds.width);
+    expect(dialog.bounds.height).toBeLessThan(host.desktop.bounds.height);
     expect(dialog.closable).toBe(false);
     expect(dialog.resizable).toBe(false);
     expect(dialog.zoomable).toBe(false);
-    expect(views.filter((view) => view instanceof GroupBox)).toHaveLength(2);
+    const groups = views.filter((view) => view instanceof GroupBox);
+    expect(groups).toHaveLength(1);
+    expect(groups[0]?.bounds.height).toBe(16);
+    expect(views.filter((view) => view instanceof Scroller)).toHaveLength(0);
     const initialFrame = frameText(host);
-    for (const label of ['Client details', 'Client name', 'Application', 'Client type']) {
+    for (const label of [
+      'Client details',
+      'Client name',
+      'Application',
+      'Client type',
+      'Application type',
+      'Redirect URI',
+      'Create',
+      'Cancel',
+    ]) {
       expect(initialFrame).toContain(label);
     }
     expect(initialFrame).toContain(application.name);
@@ -248,6 +288,9 @@ describe('compact OIDC client registration', () => {
     expect(views.filter((view) => view instanceof DataGrid)).toHaveLength(0);
     for (const advanced of ['Grant types', 'Response types', 'Scope', 'PKCE', 'Login methods']) {
       expect(initialFrame).not.toContain(advanced);
+    }
+    for (const secretField of ['Initial secret', 'Secret label', 'Expires']) {
+      expect(initialFrame).not.toContain(secretField);
     }
     expect(
       views
@@ -258,61 +301,6 @@ describe('compact OIDC client registration', () => {
       expect(button.bounds.y).toBeGreaterThanOrEqual(0);
       expect(button.bounds.y + button.bounds.height).toBeLessThanOrEqual(dialog.bounds.height);
     }
-
-    const secretLabel = views
-      .filter((view) => view instanceof Input)
-      .filter((input) => input.getMaxLength() === 255)[1];
-    if (!secretLabel) throw new Error('Initial secret label input missing.');
-    host.loop.focusView(secretLabel);
-    await settle();
-    for (const label of ['Redirect URI', 'Initial secret', 'Secret label']) {
-      expect(frameText(host)).toContain(label);
-    }
-    const expiry = views.filter((view) => view instanceof ComboBox).at(-1);
-    if (!(expiry instanceof ComboBox)) throw new Error('Initial secret expiry picker missing.');
-    host.loop.focusView(expiry.input);
-    await settle();
-    expect(frameText(host)).toContain('Expires');
-    expiry.value.set(expiry.items.peek().at(-1) ?? null);
-    for (let index = 0; index < 4; index += 1) {
-      host.loop.dispatch({
-        type: 'wheel',
-        dir: 'down',
-        x: scroller.bounds.x + 2,
-        y: scroller.bounds.y + 2,
-        ctrl: false,
-        alt: false,
-        shift: false,
-      });
-    }
-    await settle();
-    const warningFrame = frameText(host);
-    expect(warningFrame).toContain(
-      'This secret will remain valid until it is revoked. Regular rotation is',
-    );
-    expect(warningFrame).toContain('recommended.');
-
-    host.loop.endModal('cancel');
-    await expect(pending).resolves.toEqual({ kind: 'cancel' });
-  });
-
-  it('keeps registration actions visible while the complete form scrolls at 48×12', async () => {
-    const { host, pending, dialog } = await openRegistration(48, 12);
-    const views = descendants(dialog);
-    const scroller = views.find((view) => view instanceof Scroller);
-    if (!(scroller instanceof Scroller)) throw new Error('Registration form scroller missing.');
-
-    expect(dialog.isZoomed()).toBe(true);
-    expect(frameText(host)).toContain('Create');
-    expect(frameText(host)).toContain('Cancel');
-    const expiry = views.filter((view) => view instanceof ComboBox).at(-1);
-    if (!(expiry instanceof ComboBox)) throw new Error('Initial secret expiry picker missing.');
-    host.loop.focusView(expiry.input);
-    await settle();
-    expect(scroller.delta.y).toBeGreaterThan(0);
-    expect(frameText(host)).toContain('Expires');
-    expect(frameText(host)).toContain('Create');
-    expect(frameText(host)).toContain('Cancel');
 
     host.loop.endModal('cancel');
     await expect(pending).resolves.toEqual({ kind: 'cancel' });
@@ -341,9 +329,7 @@ describe('compact OIDC client registration', () => {
     },
   );
 
-  it('defaults confidential registration to an optional label and six civil months', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
+  it('creates a confidential client without generating an initial secret', async () => {
     const { host, pending, dialog } = await openRegistration();
     const inputs = descendants(dialog).filter((view) => view instanceof Input);
     const bounded = inputs.filter((input) => input.getMaxLength() === 255);
@@ -361,14 +347,11 @@ describe('compact OIDC client registration', () => {
         clientType: 'confidential',
         applicationType: 'web',
         redirectUris: ['https://portal.example.test/callback'],
-        secretExpiresAt: '2027-03-08T00:00:00.000Z',
       },
     });
   });
 
-  it('makes secret controls unavailable and omits secret fields for public registration', async () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-09-07T12:00:00.000Z'));
+  it('omits secret fields for public registration', async () => {
     const { host, pending, dialog } = await openRegistration();
     const views = descendants(dialog);
     const inputs = views.filter((view) => view instanceof Input);
@@ -377,17 +360,14 @@ describe('compact OIDC client registration', () => {
     const clientTypes = views
       .filter((view) => view instanceof RadioGroup)
       .find((group) => group.bounds.height === 2);
-    if (!bounded[0] || !bounded[1] || !redirect || !clientTypes) {
+    if (!bounded[0] || !redirect || !clientTypes) {
       throw new Error('Public registration controls missing.');
     }
     bounded[0].getValueSignal().set('Public client');
-    bounded[1].getValueSignal().set('must-not-leak');
     redirect.getValueSignal().set('https://public.example.test/callback');
     host.loop.focusView(clientTypes);
     host.loop.dispatch({ type: 'key', key: 'up', ctrl: false, alt: false, shift: false });
     await settle();
-
-    expect(frameText(host)).not.toContain('must-not-leak');
     activate(host, createButton(dialog));
     const result = await pending;
     expect(result).toEqual({
@@ -409,7 +389,7 @@ describe('compact OIDC client registration', () => {
 
 describe('post-create OIDC client continuation', () => {
   it.each([
-    ['2027-03-08T00:00:00.000Z', '2027-03-08T00:00:00.000Z'],
+    ['2027-03-08T00:00:00.000Z', '08 Mar 2027, 00:00 UTC'],
     [null, 'Never'],
   ] as const)(
     'shows returned expiry %j in the one-time secret dialog',

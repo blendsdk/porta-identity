@@ -1,6 +1,6 @@
 /** Compact registration dialog for creating one OIDC client from server-backed defaults. */
 
-import type { CreateClientInput } from '@portaidentity/sdk';
+import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 import {
   Button,
   col,
@@ -9,28 +9,55 @@ import {
   cover,
   Dialog,
   fixed,
-  grow,
   GroupBox,
+  grow,
   Input,
   Label,
   RadioGroup,
   row,
-  Show,
   signal,
   spacer,
   Text,
 } from '@jsvision/ui';
-import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
+import type { CreateClientInput } from '@portaidentity/sdk';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication } from './application-state.js';
-import {
-  createClientSecretExpiryFields,
-  type ClientSecretExpiryFields,
-} from './client-credential-dialogs.js';
-import { ClientFormScroller } from './client-form-scroller.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
+
+/** One empty row separates each adjacent form component and the dialog action area. */
+const REGISTRATION_FORM_GAP = 1;
+
+/** Create and Cancel use their natural two-row button height, including the button shadow. */
+const REGISTRATION_ACTIONS_HEIGHT = 2;
+
+/**
+ * Calculates the Client details group height from its visible component heights and spacing.
+ * GroupBox padding provides the one-row inset needed to keep content inside each frame edge.
+ */
+function clientDetailsGroupHeight(): number {
+  const componentHeights = [1, 1, 1, 2, 3, 1];
+  const componentGaps = (componentHeights.length - 1) * REGISTRATION_FORM_GAP;
+  const groupFrameInset = 2;
+  return (
+    componentHeights.reduce((total, height) => total + height, 0) + componentGaps + groupFrameInset
+  );
+}
+
+/**
+ * Calculates the complete dialog height without relying on a scrolling content surface.
+ * The dialog frame contributes two rows and the form keeps one top-padding row.
+ */
+function registrationDialogHeight(): number {
+  const dialogFrameAndFormPadding = 3;
+  return (
+    clientDetailsGroupHeight() +
+    REGISTRATION_FORM_GAP +
+    REGISTRATION_ACTIONS_HEIGHT +
+    dialogFrameAndFormPadding
+  );
+}
 
 /** Modal host needed for abort-driven registration dialog closure. */
 export interface AdminClientRegistrationDialogHost extends ModalDialogHost {
@@ -63,16 +90,10 @@ interface RegistrationForm {
   readonly applicationType: Signal<number>;
   /** Initial exact redirect URI. */
   readonly redirectUri: Signal<string>;
-  /** Optional initial-secret label. */
-  readonly secretLabel: Signal<string>;
-  /** Initial-secret expiry selection shared with credential generation. */
-  readonly secretExpiry: ClientSecretExpiryFields;
   /** Client-name control used when validation rejects submission. */
   readonly nameInput: Input;
   /** Redirect control used when validation rejects submission. */
   readonly redirectInput: Input;
-  /** Optional initial-secret label control. */
-  readonly secretLabelInput: Input;
   /** Application picker used when no active application is available. */
   readonly applicationPicker: ComboBox<AdminApplication>;
 }
@@ -132,9 +153,7 @@ function registrationIsValid(form: RegistrationForm): boolean {
     form.clientType() <= 1 &&
     form.applicationType() >= 0 &&
     form.applicationType() <= 2 &&
-    validRedirectUri(form.redirectUri()) &&
-    (form.clientType() === 0 ||
-      (validText(form.secretLabel(), 0, 255) && form.secretExpiry.isValid()))
+    validRedirectUri(form.redirectUri())
   );
 }
 
@@ -152,16 +171,8 @@ function registrationDialogSize(host: AdminClientRegistrationDialogHost): {
 } {
   return {
     width: Math.max(1, Math.min(68, host.desktop.bounds.width)),
-    height: Math.max(1, Math.min(20, host.desktop.bounds.height)),
+    height: Math.max(1, Math.min(registrationDialogHeight(), host.desktop.bounds.height)),
   };
-}
-
-/** Maximizes a fixed dialog while keeping restore and resize operations unavailable to the user. */
-function maximizeRegistrationDialog(dialog: Dialog): void {
-  if (dialog.isZoomed()) return;
-  dialog.zoomable = true;
-  dialog.zoom();
-  dialog.zoomable = false;
 }
 
 /** Runs one abortable modal and removes it regardless of its completion path. */
@@ -171,7 +182,6 @@ async function runRegistrationDialog(
   operationSignal: AbortSignal,
 ): Promise<string> {
   host.desktop.addWindow(dialog);
-  maximizeRegistrationDialog(dialog);
   try {
     return await runAbortableAdminDialog(
       host.loop,
@@ -237,41 +247,31 @@ function clientDetailsGroup(
   return details;
 }
 
-/** Builds the optional initial-secret region shown only for confidential clients. */
-function initialSecretGroup(form: RegistrationForm): GroupBox {
-  const secret = new GroupBox({ title: 'Initial secret', padding: 1 });
-  secret.add(
-    cover(
-      col(
-        { gap: 1 },
-        registrationInputRow('Secret label', form.secretLabelInput),
-        fixed(form.secretExpiry.content, 4),
-      ),
-    ),
-  );
-  return secret;
-}
-
-/** Creates a vertically scrollable form whose logical regions retain comfortable spacing. */
-function registrationFormScroller(
-  dialog: Dialog,
+/** Builds the complete non-scrolling registration layout. */
+function registrationLayout(
   form: RegistrationForm,
   organization: AdminOrganizationContext,
-): ClientFormScroller {
-  const formContent = col(
-    { gap: 1, padding: 1 },
-    fixed(clientDetailsGroup(form, organization), 16),
-  );
-  formContent.addDynamic(() =>
-    Show(
-      () => form.clientType() === 1,
-      () => fixed(initialSecretGroup(form), 8),
+): ReturnType<typeof col> {
+  return col(
+    {
+      gap: REGISTRATION_FORM_GAP,
+      padding: { top: 1, right: 2, bottom: 0, left: 2 },
+    },
+    fixed(clientDetailsGroup(form, organization), clientDetailsGroupHeight()),
+    fixed(
+      row(
+        { gap: 1 },
+        spacer(),
+        new Button('~C~reate', {
+          command: Commands.ok,
+          default: true,
+          disabled: () => !registrationIsValid(form),
+        }),
+        new Button('Cancel', { command: Commands.cancel }),
+      ),
+      REGISTRATION_ACTIONS_HEIGHT,
     ),
   );
-  return new ClientFormScroller(formContent, () => ({
-    width: Math.max(1, (dialog.bounds.width || 68) - 6),
-    height: form.clientType() === 1 ? 27 : 18,
-  }));
 }
 
 /** Creates the signals and controls for one compact registration attempt. */
@@ -282,27 +282,18 @@ function createRegistrationForm(applications: readonly AdminApplication[]): Regi
   const clientType = signal(1);
   const applicationType = signal(0);
   const redirectUri = signal('');
-  const secretLabel = signal('');
-  const secretExpiry = createClientSecretExpiryFields();
   return {
     clientName,
     application,
     clientType,
     applicationType,
     redirectUri,
-    secretLabel,
-    secretExpiry,
     nameInput: new Input({
       value: clientName,
       maxLength: 255,
       validator: textValidator(1, 255, false),
     }),
     redirectInput: new Input({ value: redirectUri, maxLength: 2_048 }),
-    secretLabelInput: new Input({
-      value: secretLabel,
-      maxLength: 255,
-      validator: textValidator(0, 255),
-    }),
     applicationPicker: new ComboBox<AdminApplication>({
       items: signal(activeApplications),
       getText: (item) => item.name,
@@ -327,12 +318,6 @@ function registrationPayload(form: RegistrationForm): Omit<CreateClientInput, 'o
     applicationType,
     redirectUris: [form.redirectUri.peek()],
   };
-  const secretLabel = form.secretLabel.peek();
-  if (clientType === 'confidential') {
-    if (secretLabel) input.secretLabel = secretLabel;
-    const secretExpiresAt = form.secretExpiry.expiresAt();
-    if (secretExpiresAt) input.secretExpiresAt = secretExpiresAt;
-  }
   return input;
 }
 
@@ -345,28 +330,7 @@ export async function showClientRegistrationDialog(
   const form = createRegistrationForm(options.applications);
   const { width, height } = registrationDialogSize(host);
   const dialog = new ClientRegistrationDialog(width, height, form);
-  const formScroller = registrationFormScroller(dialog, form, options.organization);
-  dialog.add(
-    cover(
-      col(
-        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        grow(formScroller),
-        fixed(
-          row(
-            { gap: 1 },
-            spacer(),
-            new Button('~C~reate', {
-              command: Commands.ok,
-              default: true,
-              disabled: () => !registrationIsValid(form),
-            }),
-            new Button('Cancel', { command: Commands.cancel }),
-          ),
-          2,
-        ),
-      ),
-    ),
-  );
+  dialog.add(cover(registrationLayout(form, options.organization)));
   const command = await runRegistrationDialog(host, dialog, operationSignal);
   return command === Commands.ok
     ? { kind: 'create', input: registrationPayload(form) }

@@ -142,34 +142,29 @@ Email changes are not supported through this endpoint to prevent authentication 
 
 ## Status Lifecycle
 
-Users have four possible statuses (`UserStatus`): `active`, `inactive`,
-`suspended`, and `locked`. (Invitation is a token flow, not a status — a freshly
-invited user is created `active` and sets a password on accepting.)
+Users have three possible statuses (`UserStatus`): `active`, `inactive`, and
+`locked`. Administrators can activate and deactivate users. The server uses
+`locked` only for automatic failed-login lockout and cooldown recovery.
+Invitation is a token flow, not a status: a freshly invited user is created
+`active` and sets a password on accepting.
 
 ```mermaid
 stateDiagram-v2
     [*] --> active: Create / Invite
     active --> inactive: Deactivate
-    inactive --> active: Reactivate
-    active --> suspended: Suspend
-    suspended --> active: Unsuspend
-    active --> locked: Lock (security)
-    locked --> active: Unlock
+    inactive --> active: Activate
+    active --> locked: Failed-login threshold
+    locked --> active: Automatic cooldown recovery
 ```
 
 ### Status Transition Endpoints
 
 ```http
 POST /api/admin/organizations/:orgId/users/:userId/deactivate
-POST /api/admin/organizations/:orgId/users/:userId/reactivate
-POST /api/admin/organizations/:orgId/users/:userId/suspend
-POST /api/admin/organizations/:orgId/users/:userId/unsuspend
-POST /api/admin/organizations/:orgId/users/:userId/lock
-POST /api/admin/organizations/:orgId/users/:userId/unlock
+POST /api/admin/organizations/:orgId/users/:userId/activate
 ```
 
-Each returns `204 No Content`. A `POST .../activate` alias for `reactivate`
-exists on the standalone (`/api/admin/users/:userId`) router for SPA compatibility.
+Each returns `204 No Content`.
 
 ## Set Password
 
@@ -361,9 +356,9 @@ Returns aggregate 2FA enrollment statistics for the organization.
 
 ## Account Lockout
 
-Porta automatically locks accounts after repeated failed login attempts (default: 5 attempts). Locked accounts auto-unlock after a cooldown period (default: 15 minutes).
-
-The `POST .../lock` and `POST .../unlock` endpoints (see [Status Transitions](#status-transition-endpoints) above) allow administrators to manually lock or unlock a user at any time. The auto-lockout system uses the same underlying status transitions.
+Porta automatically locks accounts after repeated failed login attempts (default: 5 attempts).
+Locked accounts auto-unlock after a cooldown period (default: 15 minutes). Administrators cannot
+manually lock or unlock accounts.
 
 Lockout thresholds are configurable via the [System Configuration API](/api/config):
 
@@ -419,22 +414,17 @@ These routes support administrative clients that navigate by user ID without an 
 
 ### Available Standalone Endpoints
 
-| Method   | Path                    | Description          | Permission     |
-| -------- | ----------------------- | -------------------- | -------------- |
-| `GET`    | `/:userId`              | Get user by ID       | `user:read`    |
-| `PUT`    | `/:userId`              | Update user profile  | `user:update`  |
-| `POST`   | `/:userId/deactivate`   | Deactivate user      | `user:suspend` |
-| `POST`   | `/:userId/reactivate`   | Reactivate user      | `user:suspend` |
-| `POST`   | `/:userId/activate`     | Alias for reactivate | `user:suspend` |
-| `POST`   | `/:userId/suspend`      | Suspend user         | `user:suspend` |
-| `POST`   | `/:userId/unsuspend`    | Unsuspend user       | `user:suspend` |
-| `POST`   | `/:userId/lock`         | Lock user            | `user:suspend` |
-| `POST`   | `/:userId/unlock`       | Unlock user          | `user:suspend` |
-| `POST`   | `/:userId/password`     | Set password         | `user:update`  |
-| `DELETE` | `/:userId/password`     | Clear password       | `user:update`  |
-| `POST`   | `/:userId/verify-email` | Mark email verified  | `user:update`  |
-| `GET`    | `/:userId/history`      | Change history       | `user:read`    |
+| Method   | Path                    | Description         | Permission       |
+| -------- | ----------------------- | ------------------- | ---------------- |
+| `GET`    | `/:userId`              | Get user by ID      | `user:read`      |
+| `PUT`    | `/:userId`              | Update user profile | `user:update`    |
+| `POST`   | `/:userId/deactivate`   | Deactivate user     | `user:lifecycle` |
+| `POST`   | `/:userId/activate`     | Activate user       | `user:lifecycle` |
+| `POST`   | `/:userId/password`     | Set password        | `user:update`    |
+| `DELETE` | `/:userId/password`     | Clear password      | `user:update`    |
+| `POST`   | `/:userId/verify-email` | Mark email verified | `user:update`    |
+| `GET`    | `/:userId/history`      | Change history      | `user:read`      |
 
 ::: tip
-The `activate` endpoint is an alias for `reactivate`, provided for client compatibility. Both perform the same `inactive → active` status transition.
+The `activate` endpoint performs the `inactive → active` status transition.
 :::

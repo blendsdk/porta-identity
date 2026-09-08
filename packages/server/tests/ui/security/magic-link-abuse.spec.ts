@@ -3,7 +3,7 @@
  *
  * Tests security properties of the magic link system:
  *   - Brute-force token guessing always fails
- *   - Non-existent and suspended user emails show the same success page
+ *   - Non-existent and inactive user emails show the same success page
  *     (anti-enumeration)
  *   - No information leakage in error messages
  *
@@ -24,10 +24,7 @@ test.describe('Magic Link Abuse', () => {
    * the error messages should be generic and not reveal whether a
    * token existed, was expired, or was already used.
    */
-  test('random tokens all fail with error pages', async ({
-    page,
-    testData,
-  }) => {
+  test('random tokens all fail with error pages', async ({ page, testData }) => {
     // Try 5 random token-like strings
     const fakeTokens = [
       'aaabbbccc111222333dddeeefff444555',
@@ -62,10 +59,7 @@ test.describe('Magic Link Abuse', () => {
    * email" confirmation page — indistinguishable from a valid request.
    * This prevents email enumeration attacks.
    */
-  test('non-existent email shows same success message', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('non-existent email shows same success message', async ({ page, startAuthFlow }) => {
     // 1. Start auth flow to get to login page
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
@@ -85,13 +79,13 @@ test.describe('Magic Link Abuse', () => {
   });
 
   /**
-   * Test 4.3: Suspended user email shows same success page.
+   * Test 4.3: Inactive user email shows same success page.
    *
-   * Requests a magic link for a user whose account is suspended.
+   * Requests a magic link for a user whose account is inactive.
    * The system should show the same confirmation page to prevent
    * account status enumeration.
    */
-  test('suspended user email shows same success message', async ({
+  test('inactive user email shows same success message', async ({
     page,
     testData,
     startAuthFlow,
@@ -100,8 +94,8 @@ test.describe('Magic Link Abuse', () => {
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
-    // 2. Submit magic link request with the suspended user's email
-    await page.fill('#email', testData.suspendedUserEmail);
+    // 2. Submit magic link request with the inactive user's email
+    await page.fill('#email', testData.inactiveUserEmail);
     await page.click('#magic-link-btn');
 
     // 3. Should show the same "check your email" page
@@ -109,14 +103,14 @@ test.describe('Magic Link Abuse', () => {
     const bodyText = await page.textContent('body');
     expect(bodyText?.toLowerCase()).toContain('email');
 
-    // 4. Should not reveal that the account is suspended
+    // 4. Should not reveal that the account is inactive
     //    Strip the email address from the body text before checking, since the
-    //    email itself may contain status words (e.g., "suspended@test.example.com")
+    //    email itself may contain status words (e.g., "inactive@test.example.com")
     //    and the magic-link-sent template correctly displays the submitted email.
     const bodyWithoutEmail = bodyText
       ?.toLowerCase()
-      .replace(testData.suspendedUserEmail.toLowerCase(), '[email]');
-    expect(bodyWithoutEmail).not.toContain('suspended');
+      .replace(testData.inactiveUserEmail.toLowerCase(), '[email]');
+    expect(bodyWithoutEmail).not.toContain('inactive');
     expect(bodyWithoutEmail).not.toContain('disabled');
   });
 

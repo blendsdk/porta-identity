@@ -393,7 +393,7 @@ describe('live administration capabilities', () => {
     ['admin:user:create', 'canCreateUsers'],
     ['admin:user:invite', 'canInviteUsers'],
     ['admin:user:update', 'canUpdateUsers'],
-    ['admin:user:suspend', 'canManageUserLifecycle'],
+    ['admin:user:lifecycle', 'canManageUserLifecycle'],
     ['admin:user:delete', 'canDeleteUsers'],
   ])('should map exact %s permission to only %s', async (permission, enabledCapability) => {
     // Each exact user permission enables one independently evaluated application capability.

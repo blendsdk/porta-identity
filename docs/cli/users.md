@@ -32,11 +32,11 @@ Sends an invitation email. The `--name` value is split into OIDC
 ### `porta user list`
 
 ```bash
-porta user list --org <id> [--status active|inactive|suspended|locked] \
+porta user list --org <id> [--status active|inactive|locked] \
   [--search "alice"] [--page 1] [--page-size 20]
 ```
 
-The `--status` choices are `active`, `inactive`, `suspended`, and `locked`
+The `--status` choices are `active`, `inactive`, and `locked`
 (matching the server `UserStatus`).
 
 ### `porta user show`
@@ -61,19 +61,13 @@ porta user update --org <id> <user-id> [--name "Alice Johnson"]
 ## Status Management
 
 ```bash
-porta user suspend     --org <id> <user-id>
-porta user unsuspend   --org <id> <user-id>   # suspended → active
 porta user deactivate  --org <id> <user-id>   # active → inactive
-porta user reactivate  --org <id> <user-id>   # inactive → active
-porta user lock        --org <id> <user-id>
-porta user unlock      --org <id> <user-id>
+porta user activate    --org <id> <user-id>   # inactive → active
 ```
 
-The lifecycle statuses are `active`, `inactive`, `suspended`, and `locked`.
-`unsuspend` returns a suspended user to active; `reactivate` returns a
-deactivated (inactive) user to active.
-
-`suspend` accepts an optional `--reason`. `lock` requires `--reason`.
+Administrators manage only the `active` and `inactive` lifecycle states. The
+server may temporarily report `locked` after failed login attempts and restores
+the account automatically after the configured cooldown.
 
 ### `porta user set-password`
 

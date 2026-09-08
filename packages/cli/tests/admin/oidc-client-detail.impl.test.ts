@@ -7,8 +7,7 @@ import {
   Dialog,
   Group,
   GroupBox,
-  ListBox,
-  Scroller,
+  TabView,
   View,
 } from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
@@ -166,41 +165,40 @@ async function mountDetail(width = 80, height = 24) {
   workspace.focusCurrent();
   await settle();
   if (!(workspace.content instanceof Dialog)) throw new Error('Expected the client workspace.');
-  const navigation = descendants(workspace.content).find((view) => view instanceof ListBox);
-  if (!(navigation instanceof ListBox)) throw new Error('Expected detail navigation.');
-  return { host, intents, navigation, window: workspace.content, workspace };
+  const tabs = descendants(workspace.content).find((view) => view instanceof TabView);
+  if (!(tabs instanceof TabView)) throw new Error('Expected client tab pane.');
+  return { host, intents, tabs, window: workspace.content, workspace };
 }
 
-/** Activates one section through the real keyboard path. */
+/** Activates one section through the tab pane and keeps keyboard focus on its strip. */
 async function selectSection(
   host: ReturnType<typeof createApplication>,
-  navigation: ListBox,
+  tabs: TabView,
   index: number,
 ): Promise<void> {
-  navigation.focused.set(index);
-  host.loop.focusView(navigation.rows);
-  host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
+  tabs.select(index);
+  host.loop.focusView(tabs.strip);
   await settle();
 }
 
 describe('OIDC client detail implementation', () => {
-  it('retains selector identity and focus while replacing only selected content', async () => {
+  it('retains the tab pane, its pages, and strip focus while changing the visible page', async () => {
     const mounted = await mountDetail();
     const overview = descendants(mounted.window).find((view) => view instanceof GroupBox);
 
-    await selectSection(mounted.host, mounted.navigation, 1);
+    await selectSection(mounted.host, mounted.tabs, 1);
 
     const currentViews = descendants(mounted.window);
-    expect(currentViews.filter((view) => view instanceof ListBox)).toEqual([mounted.navigation]);
-    expect(mounted.host.loop.getFocused()).toBe(mounted.navigation.rows);
-    expect(currentViews).not.toContain(overview);
-    expect(frameText(mounted.host)).toContain('Redirect URIs');
+    expect(currentViews.filter((view) => view instanceof TabView)).toEqual([mounted.tabs]);
+    expect(mounted.host.loop.getFocused()).toBe(mounted.tabs.strip);
+    expect(currentViews).toContain(overview);
+    expect(frameText(mounted.host)).toContain('URL / origin');
     expect(frameText(mounted.host)).not.toContain('Protocol summary');
   });
 
   it('reflows the same selected section without leaving stale cells', async () => {
     const mounted = await mountDetail();
-    await selectSection(mounted.host, mounted.navigation, 2);
+    await selectSection(mounted.host, mounted.tabs, 2);
 
     for (const viewport of [
       { width: 48, height: 12 },
@@ -210,38 +208,30 @@ describe('OIDC client detail implementation', () => {
       mounted.host.loop.resize(viewport);
       await settle();
       const currentViews = descendants(mounted.window);
-      const section = currentViews.find((view) => view instanceof GroupBox);
-      expect(currentViews.filter((view) => view instanceof ListBox)).toEqual([mounted.navigation]);
-      expect(mounted.navigation.selected.peek()).toBe(2);
-      expect(frameText(mounted.host)).toContain(
-        viewport.width === 48 ? 'Edit protocol' : 'Protocol configuration',
-      );
+      expect(currentViews.filter((view) => view instanceof TabView)).toEqual([mounted.tabs]);
+      expect(mounted.tabs.active.peek()).toBe(2);
+      expect(frameText(mounted.host)).toContain('Save');
       expect(frameText(mounted.host)).not.toContain('Redirect URIs');
       expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
-      expect(section).toBeInstanceOf(GroupBox);
-      expect(currentViews.some((view) => view instanceof Scroller)).toBe(viewport.width === 48);
-      if (viewport.width === 48 && section instanceof GroupBox) {
-        expect(section.bounds.height).toBeGreaterThan(0);
-      }
     }
   });
 
   it('preserves a newer section choice when secret metadata arrives or the viewport changes', async () => {
     const mounted = await mountDetail();
-    await selectSection(mounted.host, mounted.navigation, 4);
-    await selectSection(mounted.host, mounted.navigation, 2);
+    await selectSection(mounted.host, mounted.tabs, 4);
+    await selectSection(mounted.host, mounted.tabs, 2);
 
     mounted.workspace.setState({ ...detail, kind: 'secrets', secrets });
     mounted.host.loop.resize({ width: 48, height: 12 });
     await settle();
 
-    expect(mounted.navigation.selected.peek()).toBe(2);
+    expect(mounted.tabs.active.peek()).toBe(2);
     expect(frameText(mounted.host)).toContain('Protocol');
   });
 
   it('restores credential grid focus from the retained secret selection', async () => {
     const mounted = await mountDetail();
-    await selectSection(mounted.host, mounted.navigation, 4);
+    await selectSection(mounted.host, mounted.tabs, 4);
     mounted.workspace.setState({ ...detail, kind: 'secrets', secrets });
     await settle();
     const firstGrid = descendants(mounted.window).find((view) => view instanceof DataGrid);
@@ -255,8 +245,8 @@ describe('OIDC client detail implementation', () => {
       alt: false,
       shift: false,
     });
-    await selectSection(mounted.host, mounted.navigation, 2);
-    await selectSection(mounted.host, mounted.navigation, 4);
+    await selectSection(mounted.host, mounted.tabs, 2);
+    await selectSection(mounted.host, mounted.tabs, 4);
 
     const restoredGrid = descendants(mounted.window).find((view) => view instanceof DataGrid);
     if (!(restoredGrid instanceof DataGrid))
@@ -268,11 +258,9 @@ describe('OIDC client detail implementation', () => {
     const mounted = await mountDetail();
     const actionLabels = new Set([
       'Edit name',
-      'Edit authentication',
-      'Edit protocol',
+      'Save',
       'Edit login experience',
-      'Generate',
-      'Revoke',
+      'Add',
       'Activate',
       'Deactivate',
       'Delete',
@@ -280,7 +268,7 @@ describe('OIDC client detail implementation', () => {
     ]);
 
     for (let index = 0; index < 6; index += 1) {
-      await selectSection(mounted.host, mounted.navigation, index);
+      await selectSection(mounted.host, mounted.tabs, index);
       const actions = descendants(mounted.window).filter(
         (view): view is Button => view instanceof Button && actionLabels.has(view.activation.label),
       );

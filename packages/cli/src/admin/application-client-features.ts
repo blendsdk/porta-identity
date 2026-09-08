@@ -20,15 +20,12 @@ import type {
   AdminApplicationViewState,
 } from './application-state.js';
 import { createAdminApplicationWorkspace } from './application-workspace.js';
-import type {
-  AdminApplicationIntent,
-  AdminApplicationWorkspace,
-} from './application-workspace.js';
+import type { AdminApplicationIntent, AdminApplicationWorkspace } from './application-workspace.js';
 import {
-  showClientAuthenticationDialog,
-  showClientLoginDialog,
+  buildAuthenticationUrlUpdate,
+  showAuthenticationUrlDialog,
+  showDeleteAuthenticationUrlDialog,
   showClientLifecycleDialog,
-  showClientProtocolDialog,
   showDeleteClientDialog,
   showEditClientNameDialog,
   showGenerateClientSecretDialog,
@@ -38,11 +35,7 @@ import {
 } from './client-dialogs.js';
 import { createAdminClientController } from './client-controller.js';
 import type { AdminClientController } from './client-controller.js';
-import type {
-  AdminClient,
-  AdminClientSecret,
-  AdminClientViewState,
-} from './client-state.js';
+import type { AdminClient, AdminClientSecret, AdminClientViewState } from './client-state.js';
 import { createAdminClientWorkspace } from './client-workspace.js';
 import type { AdminClientIntent, AdminClientWorkspace } from './client-workspace.js';
 import type { AdminDialogSurface } from './application-runtime.js';
@@ -213,7 +206,9 @@ export function createAdminApplicationClientFeatures(
   };
 
   /** Runs one shell-owned form while allowing resize, reauthentication, and Quit to abort it. */
-  const runDialog = async <T>(work: (signal: AbortSignal) => Promise<T>): Promise<T | undefined> => {
+  const runDialog = async <T>(
+    work: (signal: AbortSignal) => Promise<T>,
+  ): Promise<T | undefined> => {
     if (disposed || dialogController) return undefined;
     const controller = new AbortController();
     const generation = ++dialogGeneration;
@@ -254,12 +249,10 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'edit') void editApplication(intent.applicationId);
     else if (intent.kind === 'activate')
       void applicationController.activate(intent.applicationId, async () => true);
-    else if (intent.kind === 'deactivate')
-      void changeApplicationLifecycle(intent.applicationId);
+    else if (intent.kind === 'deactivate') void changeApplicationLifecycle(intent.applicationId);
     else if (intent.kind === 'delete') void deleteApplication(intent.applicationId);
     else if (intent.kind === 'add-module') void addModule(intent.applicationId);
-    else if (intent.kind === 'edit-module')
-      void editModule(intent.applicationId, intent.moduleId);
+    else if (intent.kind === 'edit-module') void editModule(intent.applicationId, intent.moduleId);
     else if (intent.kind === 'activate-module')
       void applicationController.activateModule(intent.applicationId, intent.moduleId);
     else if (intent.kind === 'deactivate-module')
@@ -275,13 +268,18 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'back') void clientController.load();
     else if (intent.kind === 'create') void createClient();
     else if (intent.kind === 'edit-name') void editClientName(intent.clientId);
-    else if (
-      intent.kind === 'edit-authentication' ||
-      intent.kind === 'edit-protocol' ||
-      intent.kind === 'edit-login'
-    )
-      void editClient(intent.clientId, intent.kind);
-    else if (intent.kind === 'activate')
+    else if (intent.kind === 'add-authentication-url') void addClientAuthenticationUrl(intent.clientId);
+    else if (intent.kind === 'edit-authentication-url')
+      void editClientAuthenticationUrl(intent.clientId, intent.row);
+    else if (intent.kind === 'delete-authentication-url')
+      void deleteClientAuthenticationUrl(intent.clientId, intent.row);
+    else if (intent.kind === 'save-protocol' || intent.kind === 'save-login') {
+      const etag =
+        clientState.kind === 'detail' || clientState.kind === 'secrets'
+          ? (clientState.etag ?? undefined)
+          : undefined;
+      void clientController.update(intent.clientId, intent.input, etag);
+    } else if (intent.kind === 'activate')
       void clientController.activate(intent.clientId, async () => true);
     else if (intent.kind === 'deactivate') void changeClientLifecycle(intent.clientId);
     else if (intent.kind === 'delete') void deleteClient(intent.clientId);
@@ -302,7 +300,8 @@ export function createAdminApplicationClientFeatures(
   async function editApplication(applicationId: string): Promise<void> {
     const application = selectedApplication();
     if (!application || application.id !== applicationId) return;
-    const etag = applicationState.kind === 'detail' ? applicationState.etag ?? undefined : undefined;
+    const etag =
+      applicationState.kind === 'detail' ? (applicationState.etag ?? undefined) : undefined;
     const result = await runDialog((signal) =>
       showEditApplicationDialog(options.dialogs.host, signal, application, etag),
     );
@@ -332,9 +331,10 @@ export function createAdminApplicationClientFeatures(
     const application = selectedApplication();
     if (!application || application.id !== applicationId) return;
     await applicationController.delete(applicationId, (signal) =>
-      confirm(async () =>
-        (await showDeleteApplicationDialog(options.dialogs.host, signal, application)).kind ===
-        'delete',
+      confirm(
+        async () =>
+          (await showDeleteApplicationDialog(options.dialogs.host, signal, application)).kind ===
+          'delete',
       ),
     );
   }
@@ -372,9 +372,10 @@ export function createAdminApplicationClientFeatures(
     const target = module(applicationId, moduleId);
     if (!application || !target) return;
     await applicationController.deactivateModule(applicationId, moduleId, (signal) =>
-      confirm(async () =>
-        (await showModuleDeactivationDialog(options.dialogs.host, signal, application, target)).kind ===
-        'deactivate-module',
+      confirm(
+        async () =>
+          (await showModuleDeactivationDialog(options.dialogs.host, signal, application, target))
+            .kind === 'deactivate-module',
       ),
     );
   }
@@ -385,9 +386,10 @@ export function createAdminApplicationClientFeatures(
     const target = module(applicationId, moduleId);
     if (!application || !target) return;
     await applicationController.deleteModule(applicationId, moduleId, (signal) =>
-      confirm(async () =>
-        (await showDeleteModuleDialog(options.dialogs.host, signal, application, target)).kind ===
-        'delete',
+      confirm(
+        async () =>
+          (await showDeleteModuleDialog(options.dialogs.host, signal, application, target)).kind ===
+          'delete',
       ),
     );
   }
@@ -448,32 +450,57 @@ export function createAdminApplicationClientFeatures(
     await clientController.update(result.clientId, result.input, etag);
   }
 
-  /** Opens the focused editor for one selected client configuration section. */
-  async function editClient(
+  /** Returns the current ETag retained beside the selected client detail. */
+  function selectedClientEtag(): string | undefined {
+    return clientState.kind === 'detail' || clientState.kind === 'secrets'
+      ? (clientState.etag ?? undefined)
+      : undefined;
+  }
+
+  /** Opens and submits one new authentication URL for the retained client. */
+  async function addClientAuthenticationUrl(clientId: string): Promise<void> {
+    const client = selectedClient();
+    if (!client || client.id !== clientId) return;
+    const result = await runDialog((signal) =>
+      showAuthenticationUrlDialog(options.dialogs.host, signal, client, null),
+    );
+    if (result?.kind !== 'save') return;
+    const input = buildAuthenticationUrlUpdate(client, { kind: 'add', next: result.row });
+    if (input) await clientController.update(client.id, input, selectedClientEtag());
+  }
+
+  /** Opens and submits one exact retained authentication URL edit. */
+  async function editClientAuthenticationUrl(
     clientId: string,
-    editor: 'edit-authentication' | 'edit-protocol' | 'edit-login',
+    row: Extract<AdminClientIntent, { kind: 'edit-authentication-url' }>['row'],
   ): Promise<void> {
     const client = selectedClient();
-    const state = options.readState();
-    if (!client || client.id !== clientId || state.kind !== 'authenticated' || !state.organization)
-      return;
-    const organization = state.organization;
-    const result = await runDialog((signal) => {
-      if (editor === 'edit-authentication') {
-        return showClientAuthenticationDialog(options.dialogs.host, signal, organization, client);
-      }
-      if (editor === 'edit-protocol') {
-        return showClientProtocolDialog(options.dialogs.host, signal, organization, client);
-      }
-      return showClientLoginDialog(options.dialogs.host, signal, organization, client);
+    if (!client || client.id !== clientId) return;
+    const result = await runDialog((signal) =>
+      showAuthenticationUrlDialog(options.dialogs.host, signal, client, row),
+    );
+    if (result?.kind !== 'save') return;
+    const input = buildAuthenticationUrlUpdate(client, {
+      kind: 'edit',
+      previous: row,
+      next: result.row,
     });
-    if (result?.kind === 'update') {
-      const etag =
-        clientState.kind === 'detail' || clientState.kind === 'secrets'
-          ? (clientState.etag ?? undefined)
-          : undefined;
-      await clientController.update(result.clientId, result.input, etag);
-    }
+    if (input) await clientController.update(client.id, input, selectedClientEtag());
+  }
+
+  /** Confirms and removes one exact retained authentication URL. */
+  async function deleteClientAuthenticationUrl(
+    clientId: string,
+    row: Extract<AdminClientIntent, { kind: 'delete-authentication-url' }>['row'],
+  ): Promise<void> {
+    const client = selectedClient();
+    if (!client || client.id !== clientId) return;
+    const result = await runDialog((signal) =>
+      showDeleteAuthenticationUrlDialog(options.dialogs.host, signal, client, row),
+    );
+    if (result?.kind !== 'delete') return;
+    const input = buildAuthenticationUrlUpdate(client, { kind: 'delete', previous: row });
+    if (input) await clientController.update(client.id, input, selectedClientEtag());
   }
 
   /** Confirms a client transition with its selected organization and retained row. */
@@ -484,14 +511,17 @@ export function createAdminApplicationClientFeatures(
       return;
     const organization = state.organization;
     const confirmation = (signal: AbortSignal) =>
-      confirm(async () =>
-        (await showClientLifecycleDialog(
-          options.dialogs.host,
-          signal,
-          'deactivate',
-          organization,
-          client,
-        )).kind === 'deactivate',
+      confirm(
+        async () =>
+          (
+            await showClientLifecycleDialog(
+              options.dialogs.host,
+              signal,
+              'deactivate',
+              organization,
+              client,
+            )
+          ).kind === 'deactivate',
       );
     await clientController.deactivate(clientId, confirmation);
   }
@@ -504,9 +534,10 @@ export function createAdminApplicationClientFeatures(
       return;
     const organization = state.organization;
     await clientController.delete(clientId, (signal) =>
-      confirm(async () =>
-        (await showDeleteClientDialog(options.dialogs.host, signal, organization, client))
-          .kind === 'delete',
+      confirm(
+        async () =>
+          (await showDeleteClientDialog(options.dialogs.host, signal, organization, client))
+            .kind === 'delete',
       ),
     );
   }
@@ -522,7 +553,7 @@ export function createAdminApplicationClientFeatures(
       await clientController.generateSecret(result.clientId, result.input);
   }
 
-  /** Confirms permanent revocation for one retained same-parent active secret. */
+  /** Confirms permanent deletion for one retained same-parent secret. */
   async function revokeSecret(clientId: string, secretId: string): Promise<void> {
     const client = selectedClient();
     const secret = selectedSecret(secretId);
@@ -537,14 +568,17 @@ export function createAdminApplicationClientFeatures(
       return;
     const organization = state.organization;
     await clientController.revokeSecret(clientId, secretId, (signal) =>
-      confirm(async () =>
-        (await showRevokeClientSecretDialog(
-          options.dialogs.host,
-          signal,
-          organization,
-          client,
-          secret,
-        )).kind === 'revoke-secret',
+      confirm(
+        async () =>
+          (
+            await showRevokeClientSecretDialog(
+              options.dialogs.host,
+              signal,
+              organization,
+              client,
+              secret,
+            )
+          ).kind === 'revoke-secret',
       ),
     );
   }

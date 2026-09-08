@@ -21,34 +21,18 @@ import { flushTestRedis } from '../helpers/redis.js';
 
 // Repository-level imports for direct DB operations
 import { findSuperAdminOrganization } from '../../../src/organizations/repository.js';
-import {
-  findApplicationBySlug,
-} from '../../../src/applications/repository.js';
-import {
-  createApplication,
-  getApplicationBySlug,
-} from '../../../src/applications/index.js';
-import {
-  createPermission,
-  listPermissionsByApplication,
-} from '../../../src/rbac/index.js';
+import { findApplicationBySlug } from '../../../src/applications/repository.js';
+import { createApplication, getApplicationBySlug } from '../../../src/applications/index.js';
+import { createPermission, listPermissionsByApplication } from '../../../src/rbac/index.js';
 import {
   createRole,
   assignPermissionsToRole,
   assignRolesToUser,
   getUserRoles,
 } from '../../../src/rbac/index.js';
-import {
-  getPermissionsForRole,
-} from '../../../src/rbac/mapping-repository.js';
-import {
-  createClient,
-} from '../../../src/clients/index.js';
-import {
-  createUser,
-  reactivateUser,
-  markEmailVerified,
-} from '../../../src/users/index.js';
+import { getPermissionsForRole } from '../../../src/rbac/mapping-repository.js';
+import { createClient } from '../../../src/clients/index.js';
+import { createUser, activateUser, markEmailVerified } from '../../../src/users/index.js';
 import { findUserByEmail } from '../../../src/users/repository.js';
 import { ensureSigningKeys } from '../../../src/lib/signing-keys.js';
 import { getPool } from '../../../src/lib/database.js';
@@ -70,11 +54,11 @@ const ADMIN_PERMISSION_SLUGS = [
 
 const ADMIN_PERMISSION_DEFS = ADMIN_PERMISSION_SLUGS.map((slug) => ({
   slug,
-  name: slug
-    .replace('admin:', '')
-    .replace(':manage', '')
-    .replace(/^\w/, (c) => c.toUpperCase()) +
-    ' Management',
+  name:
+    slug
+      .replace('admin:', '')
+      .replace(':manage', '')
+      .replace(/^\w/, (c) => c.toUpperCase()) + ' Management',
   description: `Manage ${slug.split(':')[1]}`,
 }));
 
@@ -149,10 +133,7 @@ describe('Init Flow (Integration)', () => {
         clientName: 'Porta Admin CLI',
         clientType: 'public',
         applicationType: 'native',
-        redirectUris: [
-          'http://127.0.0.1/callback',
-          'http://localhost/callback',
-        ],
+        redirectUris: ['http://127.0.0.1/callback', 'http://localhost/callback'],
         postLogoutRedirectUris: [],
         grantTypes: ['authorization_code', 'refresh_token'],
         scope: 'openid profile email offline_access',
@@ -162,10 +143,9 @@ describe('Init Flow (Integration)', () => {
 
       // Verify client in DB
       const pool = getPool();
-      const clientResult = await pool.query(
-        'SELECT * FROM clients WHERE application_id = $1',
-        [adminApp.id],
-      );
+      const clientResult = await pool.query('SELECT * FROM clients WHERE application_id = $1', [
+        adminApp.id,
+      ]);
       expect(clientResult.rows).toHaveLength(1);
       expect(clientResult.rows[0].client_type).toBe('public');
       expect(clientResult.rows[0].require_pkce).toBe(true);
@@ -182,15 +162,12 @@ describe('Init Flow (Integration)', () => {
       // Step 9: Activate user (if not already active) and verify email.
       // The service may create users as 'active' when a password is provided.
       if (adminUser.status !== 'active') {
-        await reactivateUser(adminUser.id);
+        await activateUser(adminUser.id);
       }
       await markEmailVerified(adminUser.id);
 
       // Verify user state in DB
-      const verifiedUser = await findUserByEmail(
-        superAdminOrg!.id,
-        'admin@test.example.com',
-      );
+      const verifiedUser = await findUserByEmail(superAdminOrg!.id, 'admin@test.example.com');
       expect(verifiedUser).not.toBeNull();
       expect(verifiedUser!.status).toBe('active');
       expect(verifiedUser!.emailVerified).toBe(true);

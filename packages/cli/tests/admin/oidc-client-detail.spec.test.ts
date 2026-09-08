@@ -2,13 +2,16 @@
 
 import {
   Button,
+  CheckGroup,
   createApplication,
   DataGrid,
   Dialog,
   Group,
   GroupBox,
   Input,
-  ListBox,
+  RadioGroup,
+  Scroller,
+  Switch,
   TabView,
   View,
 } from '@jsvision/ui';
@@ -207,15 +210,9 @@ async function mountDetail(value: AdminClient = client, width = 80, height = 24)
   return { host, intents, window: workspace.content, workspace };
 }
 
-/** Selects a detail section through the ListBox's normal keyboard activation. */
-async function selectSection(
-  host: ReturnType<typeof createApplication>,
-  navigation: ListBox,
-  index: number,
-): Promise<void> {
-  navigation.focused.set(index);
-  host.loop.focusView(navigation.rows);
-  host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
+/** Selects a client subview through the tab pane's public navigation API. */
+async function selectSection(tabs: TabView, index: number): Promise<void> {
+  tabs.select(index);
   await settle();
 }
 
@@ -252,17 +249,17 @@ function authenticated(): Extract<AdminConnectionState, { kind: 'authenticated' 
 }
 
 describe('OIDC client detail surface', () => {
-  // Selecting a client opens Overview with separately captioned identity, protocol, and login facts.
-  it('shows authoritative Overview regions and separate section navigation', async () => {
+  // Selecting a client opens a full-width tab pane on its authoritative Overview.
+  it('shows authoritative Overview regions inside one tab pane', async () => {
     const mounted = await mountDetail();
     const views = descendants(mounted.window);
-    const navigation = views.filter((view) => view instanceof ListBox);
+    const tabs = views.filter((view) => view instanceof TabView);
     const titles = views.filter((view) => view instanceof GroupBox).map((section) => section.title);
     const frame = frameText(mounted.host);
 
     expect(mounted.window.title()).toBe('OIDC Clients');
     expect(mounted.window.isZoomed()).toBe(true);
-    expect(navigation).toHaveLength(1);
+    expect(tabs).toHaveLength(1);
     expect(titles.join(' ')).toMatch(/Identity/i);
     expect(titles.join(' ')).toMatch(/Context/i);
     expect(titles.join(' ')).toMatch(/Protocol/i);
@@ -275,8 +272,8 @@ describe('OIDC client detail surface', () => {
       client.clientType,
       client.applicationType,
       client.status,
-      client.createdAt,
-      client.updatedAt,
+      'Created: 02 Jan 2026, 00:00 UTC',
+      'Updated: 02 Aug 2026, 00:00 UTC',
       'authorization_code',
       'client_secret_basic',
       'password',
@@ -284,14 +281,13 @@ describe('OIDC client detail surface', () => {
     ]) {
       expect(frame).toContain(expected);
     }
-    expect(views.filter((view) => view instanceof TabView)).toHaveLength(0);
   });
 
-  // One ListBox selects every detail section without replacing the maximized workspace.
-  it('navigates every section through exactly one persistent ListBox', async () => {
+  // One TabView selects every detail section without replacing the maximized workspace.
+  it('navigates every section through exactly one tab pane', async () => {
     const mounted = await mountDetail();
-    const navigation = descendants(mounted.window).find((view) => view instanceof ListBox);
-    if (!(navigation instanceof ListBox)) throw new Error('Section navigation missing.');
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
     const expectedItems = [
       'Overview',
       'Authentication',
@@ -300,29 +296,128 @@ describe('OIDC client detail surface', () => {
       'Credentials',
       'Lifecycle',
     ];
-    for (const item of expectedItems) expect(frameText(mounted.host)).toContain(item);
+    expect(tabs.tabs.peek().map((tab) => tab.title)).toEqual(expectedItems);
 
     const sectionContent = [
       client.clientId,
-      'Redirect URIs',
+      'URL / origin',
       'Grant types',
       'Effective methods',
       'Expires',
       'Delete',
     ];
     for (const [index, expected] of sectionContent.entries()) {
-      await selectSection(mounted.host, navigation, index);
+      await selectSection(tabs, index);
       expect(frameText(mounted.host)).toContain(expected);
       if (index === 4) {
         expect(descendants(mounted.window).find((view) => view instanceof DataGrid)).toBeInstanceOf(
           DataGrid,
         );
       }
-      expect(descendants(mounted.window).filter((view) => view instanceof ListBox)).toEqual([
-        navigation,
-      ]);
+      expect(descendants(mounted.window).filter((view) => view instanceof TabView)).toEqual([tabs]);
       expect(mounted.host.desktop.activeWindow()).toBe(mounted.window);
     }
+  });
+
+  // Protocol configuration is edited and saved directly on its tab without another surface.
+  it('edits and saves protocol configuration directly on the Protocol tab', async () => {
+    const mounted = await mountDetail();
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
+    await selectSection(tabs, 2);
+
+    const views = descendants(mounted.window);
+    const grants = views.find((view) => view instanceof CheckGroup);
+    const scope = views.find((view) => view instanceof Input);
+    const authentication = views.find((view) => view instanceof RadioGroup);
+    const pkce = views.find((view) => view instanceof Switch);
+    const save = button(mounted.window, 'Save');
+    expect(grants).toBeInstanceOf(CheckGroup);
+    expect(scope).toBeInstanceOf(Input);
+    expect(authentication).toBeInstanceOf(RadioGroup);
+    expect(pkce).toBeInstanceOf(Switch);
+    if (!(pkce instanceof Switch)) throw new Error('Protocol PKCE switch missing.');
+    expect(pkce.layout.size).toBeUndefined();
+    expect(pkce.bounds.width).toBe(pkce.measure().width);
+    expect(
+      views.some(
+        (view) => view instanceof GroupBox && view.title === 'Protocol configuration',
+      ),
+    ).toBe(false);
+    expect(frameText(mounted.host)).not.toContain('Edit protocol');
+    expect(frameText(mounted.host)).not.toContain('( ) None');
+    expect(save.state.disabled).toBe(true);
+
+    if (!(scope instanceof Input)) throw new Error('Protocol scope input missing.');
+    scope.getValueSignal().set('openid profile email offline_access');
+    await settle();
+    expect(save.state.disabled).toBe(false);
+    activate(mounted.host, save);
+
+    expect(mounted.intents).toContainEqual({
+      kind: 'save-protocol',
+      clientId: client.id,
+      input: {
+        grantTypes: ['authorization_code', 'refresh_token'],
+        responseTypes: ['code'],
+        scope: 'openid profile email offline_access',
+        tokenEndpointAuthMethod: 'client_secret_basic',
+        requirePkce: true,
+      },
+    });
+  });
+
+  // Login methods are edited and saved directly on their tab without another surface.
+  it('edits and saves login experience directly on the Login experience tab', async () => {
+    const mounted = await mountDetail();
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
+    await selectSection(tabs, 3);
+
+    const loginPage = tabs.tabs.peek()[3]?.content;
+    if (!loginPage) throw new Error('Login experience tab missing.');
+    const views = descendants(loginPage);
+    const inheritance = views.find((view) => view instanceof Switch);
+    const methods = views.find((view) => view instanceof CheckGroup);
+    const save = button(loginPage, 'Save');
+    if (!inheritance || !(methods instanceof CheckGroup)) throw new Error('Login controls missing.');
+
+    expect(views.some((view) => view instanceof GroupBox)).toBe(false);
+    expect(frameText(mounted.host)).not.toContain('Edit login experience');
+    expect(methods.focusable).toBe(false);
+    expect(save.state.disabled).toBe(true);
+
+    inheritance.select(false);
+    await settle();
+    expect(methods.focusable).toBe(true);
+    expect(save.state.disabled).toBe(true);
+    mounted.host.loop.focusView(methods);
+    mounted.host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
+    await settle();
+    expect(save.state.disabled).toBe(false);
+    activate(mounted.host, save);
+
+    expect(mounted.intents).toContainEqual({
+      kind: 'save-login',
+      clientId: client.id,
+      input: { loginMethods: ['password'] },
+    });
+  });
+
+  // Lifecycle information and operations live directly on the tab; only confirmations are modal.
+  it('shows lifecycle operations directly on the padded Lifecycle tab', async () => {
+    const mounted = await mountDetail();
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
+    await selectSection(tabs, 5);
+
+    const lifecyclePage = tabs.tabs.peek()[5]?.content;
+    if (!lifecyclePage) throw new Error('Lifecycle tab missing.');
+    const views = descendants(lifecyclePage);
+    expect(views.some((view) => view instanceof GroupBox)).toBe(false);
+    expect(frameText(mounted.host)).toContain('Current status: active');
+    expect(button(lifecyclePage, 'Deactivate').layout.size).toBeUndefined();
+    expect(button(lifecyclePage, 'Delete').layout.size).toBeUndefined();
   });
 
   // Public clients keep all applicable sections but expose no client-secret operations.
@@ -333,31 +428,58 @@ describe('OIDC client detail surface', () => {
       tokenEndpointAuthMethod: 'none',
     };
     const mounted = await mountDetail(publicClient);
-    const navigation = descendants(mounted.window).find((view) => view instanceof ListBox);
-    if (!(navigation instanceof ListBox)) throw new Error('Section navigation missing.');
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
 
-    await selectSection(mounted.host, navigation, 4);
-    const credentialActions = descendants(mounted.window)
+    await selectSection(tabs, 4);
+    const credentials = tabs.tabs.peek()[4]?.content;
+    if (!credentials) throw new Error('Credentials tab missing.');
+    const credentialActions = descendants(credentials)
       .filter((view) => view instanceof Button)
       .map((action) => action.activation.label);
-    expect(credentialActions).not.toEqual(expect.arrayContaining(['Generate', 'Revoke']));
+    expect(credentialActions).not.toEqual(expect.arrayContaining(['Add', 'Delete']));
+
+    await selectSection(tabs, 2);
+    const protocolViews = descendants(mounted.window);
+    const pkce = protocolViews.find((view) => view instanceof Switch);
+    const authentication = protocolViews.find((view) => view instanceof RadioGroup);
+    const scope = protocolViews.find((view) => view instanceof Input);
+    if (!(pkce instanceof Switch)) throw new Error('Protocol PKCE switch missing.');
+    if (!(scope instanceof Input)) throw new Error('Protocol scope input missing.');
+    expect(authentication).toBeUndefined();
+    expect(frameText(mounted.host)).toContain('None (required, read only)');
+    expect(pkce.state.disabled).toBe(true);
+    pkce.select(false);
+    scope.getValueSignal().set('openid profile');
+    await settle();
+    const save = button(mounted.window, 'Save');
+    expect(save.state.disabled).toBe(false);
+    activate(mounted.host, save);
+    expect(mounted.intents).toContainEqual({
+      kind: 'save-protocol',
+      clientId: publicClient.id,
+      input: {
+        grantTypes: ['authorization_code', 'refresh_token'],
+        responseTypes: ['code'],
+        scope: 'openid profile',
+        tokenEndpointAuthMethod: 'none',
+        requirePkce: true,
+      },
+    });
 
     for (const index of [0, 1, 2, 3, 5]) {
-      await selectSection(mounted.host, navigation, index);
-      expect(navigation.selected.peek()).toBe(index);
-      expect(descendants(mounted.window)).toContain(navigation);
+      await selectSection(tabs, index);
+      expect(tabs.active.peek()).toBe(index);
+      expect(descendants(mounted.window)).toContain(tabs);
     }
   });
 
-  // Responsive layout moves the same selected navigation above compact content and leaves Back reachable.
-  it('preserves one selected ListBox and bottom navigation across repeated shrink and grow', async () => {
+  // Responsive layout keeps the selected tab and bottom navigation across viewport changes.
+  it('preserves the selected tab and bottom navigation across repeated shrink and grow', async () => {
     const mounted = await mountDetail();
-    const navigation = descendants(mounted.window).find((view) => view instanceof ListBox);
-    if (!(navigation instanceof ListBox)) throw new Error('Section navigation missing.');
-    await selectSection(mounted.host, navigation, 2);
-    const normalSection = descendants(mounted.window).find((view) => view instanceof GroupBox);
-    if (!(normalSection instanceof GroupBox)) throw new Error('Selected section missing.');
-    expect(navigation.bounds.x).toBeLessThan(normalSection.bounds.x);
+    let tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
+    await selectSection(tabs, 2);
 
     for (const viewport of [
       { width: 48, height: 12 },
@@ -368,41 +490,34 @@ describe('OIDC client detail surface', () => {
       mounted.host.loop.resize(viewport);
       await settle();
       const currentViews = descendants(mounted.window);
-      const currentNavigation = currentViews.filter((view) => view instanceof ListBox);
-      const currentSection = currentViews.find((view) => view instanceof GroupBox);
+      const currentTabs = currentViews.filter((view) => view instanceof TabView);
       const back = button(mounted.window, 'Back to OIDC clients');
-      expect(currentNavigation).toEqual([navigation]);
-      expect(navigation.selected.peek()).toBe(2);
+      expect(currentTabs).toHaveLength(1);
+      [tabs] = currentTabs;
+      expect(tabs.active.peek()).toBe(2);
       expect(back.bounds.y).toBeLessThan(viewport.height);
-      expect(currentViews.filter((view) => view instanceof TabView)).toHaveLength(0);
       expect(frameText(mounted.host)).not.toContain('[jsvision/ui');
-      expect(currentSection).toBeInstanceOf(GroupBox);
-      if (viewport.width === 48 && currentSection instanceof GroupBox) {
-        expect(currentSection.bounds.height).toBeGreaterThan(0);
-        expect(frameText(mounted.host)).toContain('Edit protocol');
-      }
+      expect(frameText(mounted.host)).toContain('Save');
     }
   });
 
   // Detail actions use natural Layout DSL measurement so both face-padding cells remain visible.
   it('uses natural width for complete detail action labels', async () => {
     const mounted = await mountDetail();
-    const navigation = descendants(mounted.window).find((view) => view instanceof ListBox);
-    if (!(navigation instanceof ListBox)) throw new Error('Section navigation missing.');
+    const tabs = descendants(mounted.window).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
     const labels = new Set([
       'Edit name',
-      'Edit authentication',
-      'Edit protocol',
-      'Edit login experience',
-      'Generate',
-      'Revoke',
+      'Save',
+      'Add',
+      'Delete',
       'Activate',
       'Deactivate',
       'Delete',
       'Back to OIDC clients',
     ]);
     for (const index of [0, 1, 2, 3, 4, 5]) {
-      await selectSection(mounted.host, navigation, index);
+      await selectSection(tabs, index);
       for (const action of descendants(mounted.window).filter(
         (view): view is Button => view instanceof Button && labels.has(view.activation.label),
       )) {
@@ -436,6 +551,8 @@ describe('focused OIDC client name edit', () => {
     await settle();
     const dialog = activeDialog(host);
     const views = descendants(dialog);
+    expect(views.some((view) => view instanceof GroupBox)).toBe(false);
+    expect(views.some((view) => view instanceof Scroller)).toBe(false);
     expect(views.filter((view) => view instanceof Input)).toHaveLength(1);
     const actions = views.filter(
       (view): view is Button =>

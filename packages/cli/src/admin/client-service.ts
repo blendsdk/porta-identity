@@ -415,7 +415,7 @@ export interface AdminClientOperations {
     input?: GenerateSecretInput,
     signal?: AbortSignal,
   ) => Promise<AdminClientMutationResult<AdminGeneratedClientSecret>>;
-  /** Permanently revokes one nested secret. */
+  /** Permanently deletes one nested secret through the SDK compatibility operation. */
   readonly revokeSecret: (
     organizationId: string,
     clientId: string,

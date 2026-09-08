@@ -1,6 +1,6 @@
 /** Lifecycle and command routing for one embedded administration application. */
 
-import { resolveCapabilities } from '@jsvision/core';
+import { janusTheme, resolveCapabilities } from '@jsvision/core';
 import type { Keymap } from '@jsvision/core';
 import { Commands, createApplication, createKeymap } from '@jsvision/ui';
 import type { Application, ApplicationOptions, Size2D } from '@jsvision/ui';
@@ -195,6 +195,7 @@ export async function runAdminApplication(
     viewport: options.viewport,
     systemClipboard: false,
     caps,
+    theme: janusTheme,
     keymap: applicationKeymap,
   });
   emitDeferredQuit = () => application.loop.emitCommand(Commands.quit);

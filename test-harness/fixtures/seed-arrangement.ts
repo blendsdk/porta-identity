@@ -105,15 +105,8 @@ export async function arrangeFixtureBaseline(
     await import('../../packages/server/src/applications/index.js');
   const { createClient, generateSecret, listClientsByApplication } =
     await import('../../packages/server/src/clients/index.js');
-  const {
-    createUser,
-    getUserByEmail,
-    lockUser,
-    markEmailVerified,
-    reactivateUser,
-    setUserPassword,
-    suspendUser,
-  } = await import('../../packages/server/src/users/index.js');
+  const { activateUser, createUser, getUserByEmail, markEmailVerified, setUserPassword } =
+    await import('../../packages/server/src/users/index.js');
   const {
     assignPermissionsToRole,
     assignRolesToUser,
@@ -163,13 +156,15 @@ export async function arrangeFixtureBaseline(
         password: userPassword,
       });
       await setUserPassword(user.id, userPassword);
-      if (user.status === 'inactive') await reactivateUser(user.id);
+      if (user.status === 'inactive') await activateUser(user.id);
       await markEmailVerified(user.id);
       if (userDefinition.state === 'locked' && user.status !== 'locked') {
-        await lockUser(user.id, 'assurance fixture');
-      }
-      if (userDefinition.state === 'suspended' && user.status !== 'suspended') {
-        await suspendUser(user.id, 'assurance fixture');
+        await pool.query(
+          `UPDATE users
+           SET status = 'locked', locked_at = NOW(), locked_reason = 'auto_lockout'
+           WHERE id = $1`,
+          [user.id],
+        );
       }
       if (userDefinition.twoFactorEnabled && !user.twoFactorEnabled) {
         const setup = await setupTotp(user.id, email, fixture.id);
@@ -342,7 +337,7 @@ export async function arrangeFixtureBaseline(
       password: actorPassword,
     });
     await setUserPassword(user.id, actorPassword);
-    if (user.status === 'inactive') await reactivateUser(user.id);
+    if (user.status === 'inactive') await activateUser(user.id);
     await markEmailVerified(user.id);
     let role = await findRoleBySlug(adminApplication.id, actor.roleId);
     if (role === null && actor.permissionSet === 'unprivileged') {

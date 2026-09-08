@@ -31,7 +31,7 @@ global audit, bulk operations, and import/export remain owned by their later roa
 - [ ] **UM-02 — User list:** the list requests one server page of 20 users for the selected
       organization and displays email, given and family name when present, and textual status. It
       provides submitted search bounded to 255 characters, an optional status filter with the exact
-      values `active`, `inactive`, `suspended`, and `locked`, and Previous/Next navigation. It does
+      values `active`, `inactive`, and `locked`, and Previous/Next navigation. It does
       not add live search, a generalized table engine, or configurable sorting. (AR-60, AR-61)
 - [ ] **UM-03 — List states:** loading, empty, forbidden, unavailable, invalid-response, and no
       matching users are explicit bounded states. A failed search or page request preserves the
@@ -51,12 +51,14 @@ global audit, bulk operations, and import/export remain owned by their later roa
       Password and confirmation are masked, must match, accept 8–128 characters, and are cleared
       after submission or cancellation. Email and profile bounds match the existing server contract.
       (AR-60, AR-62)
-- [ ] **UM-06 — Invite user:** an independently authorized administrator can invite a new or
-      existing user using required email and optional given name, family name, locale, and personal
-      message. Names accept 1–255 characters, locale at most 10, and message at most 500. The dialog
-      previews only the bounded, control-free subject and plain-text body before sending; HTML is
-      never rendered, and malformed preview output produces the fixed invalid-response outcome.
-      Role and claim pre-assignment controls are absent until RD-05. (AR-60, AR-63)
+- [ ] **UM-06 — Invite user:** an independently authorized administrator can invite a new user
+      using required email and optional given name, family name, locale, and personal message. An
+      email that already belongs to the selected organization is rejected as a conflict; invitation
+      never acts as an implicit resend operation. Names accept 1–255 characters, locale at most 10,
+      and message at most 500. The dialog previews only the bounded subject and plain-text body;
+      ordinary line endings are retained, other terminal controls are rejected, HTML is never
+      rendered, and malformed preview output produces the fixed invalid-response outcome. Role and
+      claim pre-assignment controls are absent until RD-05. (AR-60, AR-63)
 - [ ] **UM-07 — Edit profile:** an administrator with update permission can edit every profile,
       contact, locale, and address field currently accepted by the server update schema. Email is
       read-only because the current server update contract does not accept it. Empty nullable fields
@@ -67,12 +69,12 @@ global audit, bulk operations, and import/export remain owned by their later roa
       confirmation, and mark an unverified email as verified after explicit confirmation. The UI
       never reveals an existing password. A credential mutation follows the same one-logical-submit
       rule as other mutations in UM-13. (AR-60, AR-64)
-- [ ] **UM-09 — Lifecycle actions:** the detail view exposes only valid actions for the current
-      status: suspend, unsuspend, lock, unlock, deactivate, and reactivate. Suspend accepts an
-      optional reason of at most 500 characters; lock requires a reason of 1–500 characters.
-      Suspend, lock, and deactivate show the exact target email, resulting state, and an explicit
-      confirmation. Recovery actions require one deliberate activation but no second confirmation.
-      Existing super-admin protections remain authoritative. (AR-60, AR-64)
+- [ ] **UM-09 — Lifecycle actions:** administrators can only deactivate an active user and
+      activate an inactive user. Deactivation shows the exact target email, resulting state, and
+      an explicit confirmation; activation requires one deliberate action but no second
+      confirmation. `locked` remains a readable automatic failed-login protection state and has no
+      manual Lock or Unlock action. The `suspended` user state and its actions are removed. Existing
+      super-admin protections remain authoritative. (AR-60, AR-64)
 - [ ] **UM-10 — User history:** an administrator with read permission can open the first 20 existing
       history entries newest first. It shows event type, actor identifier or `System`, and timestamp,
       plus a fixed indication when more entries exist. RD-03 adds no history paging or filtering UI
@@ -109,7 +111,7 @@ global audit, bulk operations, and import/export remain owned by their later roa
       organization cannot redraw or become selectable. No polling or special flow is added for rare
       external organization deletion. (AR-67)
 - [ ] **UM-15 — SDK alignment:** RD-03 corrects only the named user-domain inputs, invitation result,
-      list parameters, history result, suspend/lock reason parameters, and directly blocking
+      list parameters, history result, simplified lifecycle methods, and directly blocking
       mismatches proven by their focused specifications. The same change updates affected current
       CLI user commands, SDK agent metadata, the existing packed P1 user-list cursor journey,
       focused tests, and documentation without legacy shims. It does not add cursor controls to the
@@ -153,14 +155,14 @@ global audit, bulk operations, and import/export remain owned by their later roa
 
 ### SDK contract corrections
 
-| SDK surface            | Required alignment with the existing Admin API                                                                                                                                                                                                        |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `UserListParams`       | Use `page`, `pageSize`, `search`, `status`, `sortBy`, and `sortOrder` for the Admin UI's offset requests. Preserve the current SDK `{ cursor, pageSize }` invocation and map `pageSize` to the server's `limit` only when cursor mode is selected.    |
-| Create/update inputs   | Represent fields the server actually persists; omit `phoneNumberVerified` from create until server defect [#87](https://github.com/blendsdk/porta-identity/issues/87) is fixed, retain it for update, and do not advertise unsupported email editing. |
-| `invite()`             | Return the server's invitation result containing `userId`, `email`, `created`, `invitationSent`, and `expiresAt`.                                                                                                                                     |
-| `suspend()` / `lock()` | Carry the optional suspend reason and required lock reason accepted by the server.                                                                                                                                                                    |
-| History                | Return the existing `{ data, hasMore, nextCursor }` result with its default limit of 20 instead of unwrapping it as an array; RD-03 does not expose history paging, filtering, or arbitrary metadata.                                                 |
-| `delete()`             | Issue `DELETE /organizations/:orgId/users/:userId`, resolve `void` only on `204`, and expose no Purge alias or result placeholder.                                                                                                                    |
+| SDK surface          | Required alignment with the existing Admin API                                                                                                                                                                                                        |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `UserListParams`     | Use `page`, `pageSize`, `search`, `status`, `sortBy`, and `sortOrder` for the Admin UI's offset requests. Preserve the current SDK `{ cursor, pageSize }` invocation and map `pageSize` to the server's `limit` only when cursor mode is selected.    |
+| Create/update inputs | Represent fields the server actually persists; omit `phoneNumberVerified` from create until server defect [#87](https://github.com/blendsdk/porta-identity/issues/87) is fixed, retain it for update, and do not advertise unsupported email editing. |
+| `invite()`           | Return the server's invitation result containing `userId`, `email`, `created`, `invitationSent`, and `expiresAt`.                                                                                                                                     |
+| User lifecycle       | Expose only `activate()` and `deactivate()`; manual suspend and lock methods are absent.                                                                                                                                                              |
+| History              | Return the existing `{ data, hasMore, nextCursor }` result with its default limit of 20 instead of unwrapping it as an array; RD-03 does not expose history paging, filtering, or arbitrary metadata.                                                 |
+| `delete()`           | Issue `DELETE /organizations/:orgId/users/:userId`, resolve `void` only on `204`, and expose no Purge alias or result placeholder.                                                                                                                    |
 
 The corrections are public SDK contract changes and require focused SDK specifications,
 documentation, package verification, and clean compatibility assurance before completion. Porta's
@@ -169,14 +171,14 @@ updated with the SDK, without preserving aliases for contracts that do not match
 
 ### Authorization matrix
 
-| UI capability                            | UserInfo permission  | Existing server permission |
-| ---------------------------------------- | -------------------- | -------------------------- |
-| List, detail, history                    | `admin:user:read`    | `admin:user:read`          |
-| Create user                              | `admin:user:create`  | `admin:user:create`        |
-| Invite and preview                       | `admin:user:invite`  | `admin:user:invite`        |
-| Edit, password, verify email             | `admin:user:update`  | `admin:user:update`        |
-| Suspend, lock, deactivate, and reversals | `admin:user:suspend` | `admin:user:suspend`       |
-| Delete                                   | `admin:user:delete`  | `admin:user:delete`        |
+| UI capability                | UserInfo permission    | Existing server permission |
+| ---------------------------- | ---------------------- | -------------------------- |
+| List, detail, history        | `admin:user:read`      | `admin:user:read`          |
+| Create user                  | `admin:user:create`    | `admin:user:create`        |
+| Invite and preview           | `admin:user:invite`    | `admin:user:invite`        |
+| Edit, password, verify email | `admin:user:update`    | `admin:user:update`        |
+| Activate and deactivate      | `admin:user:lifecycle` | `admin:user:lifecycle`     |
+| Delete                       | `admin:user:delete`    | `admin:user:delete`        |
 
 The UI permissions are an ephemeral presentation snapshot. Every request must accept the current
 server decision as authoritative, including a `403` after an action was displayed as enabled.
@@ -242,7 +244,7 @@ server decision as authoritative, including a `403` after an action was displaye
 - **Transport and storage:** existing TLS and credential protections remain unchanged. RD-03 adds no
   local user-data store or export file.
 - **Irreversible and authentication-sensitive actions:** Delete, passwords, verification, and
-  lifecycle transitions use explicit focused dialogs, fixed warnings, duplicate-submit prevention,
+  deactivation use explicit focused dialogs, fixed warnings, duplicate-submit prevention,
   and no automatic mutation retry.
 - **Security testing:** specifications cover missing/stale permissions, server `403`, cross-tenant
   responses, malformed users, terminal injection, password cleanup, duplicate mutation,
@@ -275,10 +277,11 @@ server decision as authoritative, including a `403` after an action was displaye
 6. [ ] Set password accepts matching masked values of 8–128 characters; clear password and verify
        email require explicit confirmation. Each definite success reloads the user, while
        cancellation and every failed outcome leave the last validated detail unchanged.
-7. [ ] Active, suspended, locked, and inactive users expose only their valid lifecycle actions.
-       Suspend accepts an absent or at-most-500-character reason; lock requires 1–500 characters.
-       Suspend, lock, and deactivate identify the exact email and target state before one request is
-       dispatched; recovery actions also dispatch at most once.
+7. [ ] Active users expose Deactivate and inactive users expose Activate. Locked users expose no
+       lifecycle mutation because lockout and cooldown recovery are automatic. No user can be
+       suspended or manually locked or unlocked through the Admin API, SDK, CLI, bulk operations,
+       or Admin UI. Deactivation identifies the exact email and target state before one request is
+       dispatched; activation also dispatches at most once.
 8. [ ] The Delete dialog initially focuses Keep, displays the exact email and irreversible warning,
        and sends no request until `Delete <email>` is deliberately activated. Success removes the
        stale detail and refreshes the list; server rejection leaves validated state intact.
@@ -293,7 +296,7 @@ server decision as authoritative, including a `403` after an action was displaye
         clear it. No late result can display data from the prior organization or redraw after
         teardown.
 11. [ ] The corrected SDK types and methods represent the server list, profile, invitation,
-        history, suspend, lock, and Delete contracts. The conventional CLI exposes `porta user
+        history, activate/deactivate, and Delete contracts. The conventional CLI exposes `porta user
 delete` and no Purge alias; SDK agent metadata uses Delete. Focused tests fail against the
         former mismatches and pass without compatibility shims. The existing packed P1 user-list
         cursor journey proves `{ cursor, pageSize }` sends `cursor` plus `limit`, while the Admin UI

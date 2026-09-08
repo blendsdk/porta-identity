@@ -9,8 +9,6 @@ const mockUsers = {
   get: vi.fn(),
   getHistory: vi.fn(),
   invite: vi.fn(),
-  lock: vi.fn(),
-  suspend: vi.fn(),
   update: vi.fn(),
 };
 
@@ -118,71 +116,6 @@ describe('user command SDK contract', () => {
     });
   });
 
-  describe('suspend', () => {
-    it('allows suspension without a reason', async () => {
-      await invokeUserCommand('suspend', { org: organizationId, _positionals: userId });
-
-      expect(mockUsers.suspend).toHaveBeenCalledWith(organizationId, userId);
-    });
-
-    it('forwards a reason of up to 500 characters', async () => {
-      const reason = 's'.repeat(500);
-
-      await invokeUserCommand('suspend', {
-        org: organizationId,
-        _positionals: userId,
-        reason,
-      });
-
-      expect(mockUsers.suspend).toHaveBeenCalledWith(organizationId, userId, reason);
-    });
-
-    it('rejects a reason longer than 500 characters', async () => {
-      await invokeUserCommand('suspend', {
-        org: organizationId,
-        _positionals: userId,
-        reason: 's'.repeat(501),
-      });
-
-      expect(mockUsers.suspend).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('lock', () => {
-    it('requires a non-empty reason', async () => {
-      await invokeUserCommand('lock', { org: organizationId, _positionals: userId });
-      await invokeUserCommand('lock', {
-        org: organizationId,
-        _positionals: userId,
-        reason: '',
-      });
-
-      expect(mockUsers.lock).not.toHaveBeenCalled();
-    });
-
-    it('forwards a reason of up to 500 characters', async () => {
-      const reason = 'l'.repeat(500);
-
-      await invokeUserCommand('lock', {
-        org: organizationId,
-        _positionals: userId,
-        reason,
-      });
-
-      expect(mockUsers.lock).toHaveBeenCalledWith(organizationId, userId, reason);
-    });
-
-    it('rejects a reason longer than 500 characters', async () => {
-      await invokeUserCommand('lock', {
-        org: organizationId,
-        _positionals: userId,
-        reason: 'l'.repeat(501),
-      });
-
-      expect(mockUsers.lock).not.toHaveBeenCalled();
-    });
-  });
-
   describe('invite', () => {
     const invitation = {
       userId,
@@ -225,7 +158,7 @@ describe('user command SDK contract', () => {
   describe('history', () => {
     const entry = {
       id: 'history-1',
-      eventType: 'user.suspended',
+      eventType: 'user.deactivated',
       actorId: 'admin-1',
       metadata: { reason: 'Policy review' },
       createdAt: '2026-08-30T10:00:00.000Z',
@@ -238,7 +171,9 @@ describe('user command SDK contract', () => {
 
       expect(mockUsers.getHistory).toHaveBeenCalledWith(organizationId, userId);
       expect(printTable).toHaveBeenCalled();
-      expect(JSON.stringify((printTable as ReturnType<typeof vi.fn>).mock.calls)).toContain(entry.id);
+      expect(JSON.stringify((printTable as ReturnType<typeof vi.fn>).mock.calls)).toContain(
+        entry.id,
+      );
       expect(warn).not.toHaveBeenCalled();
     });
 

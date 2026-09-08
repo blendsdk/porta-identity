@@ -13,11 +13,10 @@ import type { TwoFactorMethod } from './two-factor.js';
 /**
  * User status values — mirrors the server `UserStatus` (src/users/types.ts).
  *
- * Lifecycle: active → inactive (deactivate) / suspended / locked, and back
- * to active via reactivate / unsuspend / unlock. There is no `invited` or
- * `deactivated` status on the server.
+ * Administrators move accounts between active and inactive. Locked is an
+ * automatic failed-login protection state cleared by the server cooldown.
  */
-export type UserStatus = 'active' | 'inactive' | 'suspended' | 'locked';
+export type UserStatus = 'active' | 'inactive' | 'locked';
 
 // ---------------------------------------------------------------------------
 // Entity
@@ -211,7 +210,6 @@ export interface InviteUserResult {
   /** ISO 8601 expiration time for the invitation. */
   expiresAt: string;
 }
-
 
 export interface SetPasswordInput {
   password: string;

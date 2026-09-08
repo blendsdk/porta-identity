@@ -60,19 +60,17 @@ GET /api/admin/audit
 
 ### User Events
 
-| Action                  | Description            |
-| ----------------------- | ---------------------- |
-| `user.created`          | New user created       |
-| `user.invited`          | User invitation sent   |
-| `user.updated`          | User profile updated   |
-| `user.suspended`        | User suspended         |
-| `user.activated`        | User activated         |
-| `user.locked`           | User locked (security) |
-| `user.unlocked`         | User unlocked          |
-| `user.deleted`          | User deleted           |
-| `user.password_changed` | Password changed       |
-| `user.login_success`    | Successful login       |
-| `user.login_failure`    | Failed login attempt   |
+| Action                  | Description          |
+| ----------------------- | -------------------- |
+| `user.created`          | New user created     |
+| `user.invited`          | User invitation sent |
+| `user.updated`          | User profile updated |
+| `user.deactivated`      | User deactivated     |
+| `user.activated`        | User activated       |
+| `user.deleted`          | User deleted         |
+| `user.password_changed` | Password changed     |
+| `user.login_success`    | Successful login     |
+| `user.login_failure`    | Failed login attempt |
 
 ### Client Events
 

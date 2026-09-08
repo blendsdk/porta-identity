@@ -17,7 +17,6 @@ import {
   fromDate,
   grow,
   Group,
-  GroupBox,
   Input,
   Label,
   row,
@@ -30,13 +29,12 @@ import {
 import type { CalendarDate, EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
-import { ClientFormScroller } from './client-form-scroller.js';
 import type { AdminClient } from './client-state.js';
 import { textValidator } from './user-dialog-fields.js';
 
 /** Exact warning shown when an administrator chooses a non-expiring secret. */
 export const NEVER_SECRET_EXPIRY_WARNING =
-  'This secret will remain valid until it is revoked. Regular rotation is recommended.';
+  'This secret will remain valid until it is deleted. Regular rotation is recommended.';
 
 /** Non-blocking warning shown for a selected date beyond the 24-month preset boundary. */
 export const LONG_SECRET_EXPIRY_WARNING =
@@ -88,7 +86,7 @@ class GenerateClientSecretDialog extends Dialog {
     private readonly labelInput: Input,
     private readonly expiry: ClientSecretExpiryFields,
   ) {
-    super({ title: 'Generate client secret', width, height, centered: true });
+    super({ title: 'Add client secret', width, height, centered: true });
   }
 
   /** Rejects unsafe labels and invalid custom expiry dates before closing. */
@@ -131,7 +129,7 @@ export function createClientSecretExpiryFields(now: Date = new Date()): ClientSe
     editable: false,
   });
   const content = col(
-    { gap: 0 },
+    { gap: 1 },
     fixed(row({ gap: 1 }, fixed(new Label('Expires', choicePicker), 18), grow(choicePicker)), 1),
   );
   content.addDynamic(() =>
@@ -228,40 +226,27 @@ export async function showGenerateClientSecretDialog(
   const width = Math.max(1, Math.min(68, host.desktop.bounds.width));
   const height = Math.max(1, Math.min(18, host.desktop.bounds.height));
   const dialog = new GenerateClientSecretDialog(width, height, label, labelInput, expiry);
-  const fields = new GroupBox({ title: 'Secret details', padding: 1 });
-  fields.add(
-    cover(
-      col(
-        { gap: 1 },
-        fixed(new Text(`Client: ${client.clientName}`), 1),
-        fixed(row({ gap: 1 }, fixed(new Label('Label', labelInput), 18), grow(labelInput)), 1),
-        fixed(expiry.content, 7),
-        fixed(new Text('The secret value is shown only once after generation.'), 2),
-      ),
-    ),
+  const fields = col(
+    { gap: 1 },
+    fixed(new Text(`Client: ${client.clientName}`), 1),
+    fixed(row({ gap: 1 }, fixed(new Label('Label', labelInput), 18), grow(labelInput)), 1),
+    fixed(expiry.content, 7),
+    fixed(new Text('The secret value is shown only once after creation.'), 2),
   );
-  const compact = host.desktop.bounds.height <= 12;
-  const formContent = col(fixed(fields, 15));
-  const formScroller = new ClientFormScroller(formContent, () => ({
-    width: Math.max(1, (dialog.bounds.width || width) - (compact ? 4 : 6)),
-    height: 15,
-  }));
   const canGenerate = () => validLabel(label()) && expiry.isValid();
   dialog.add(
     cover(
       col(
         {
-          gap: compact ? 0 : 1,
-          padding: compact
-            ? { top: 0, right: 1, bottom: 0, left: 1 }
-            : { top: 1, right: 2, bottom: 1, left: 2 },
+          gap: 1,
+          padding: { top: 1, right: 1, bottom: 1, left: 1 },
         },
-        grow(formScroller),
+        grow(fields),
         fixed(
           row(
             { gap: 1 },
             spacer(),
-            new Button('~G~enerate', {
+            new Button('~A~dd', {
               command: Commands.ok,
               default: true,
               disabled: () => !canGenerate(),

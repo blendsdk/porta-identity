@@ -49,15 +49,16 @@ describe('agent', () => {
         expect.objectContaining({ name: 'params', type: 'object', required: false }),
       ]);
       expect(byName('users.invite')?.returns).toBe('InviteUserResult');
-      expect(byName('users.suspend')?.parameters.map((parameter) => parameter.name)).toEqual([
+      expect(byName('users.deactivate')?.parameters.map((parameter) => parameter.name)).toEqual([
         'orgId',
         'userId',
-        'reason',
       ]);
-      expect(byName('users.suspend')?.parameters.at(-1)?.required).toBe(false);
-      expect(byName('users.lock')?.parameters.at(-1)).toEqual(
-        expect.objectContaining({ name: 'reason', required: true }),
-      );
+      expect(byName('users.activate')?.parameters.map((parameter) => parameter.name)).toEqual([
+        'orgId',
+        'userId',
+      ]);
+      expect(byName('users.suspend')).toBeUndefined();
+      expect(byName('users.lock')).toBeUndefined();
       expect(byName('users.getHistory')).toEqual(
         expect.objectContaining({
           parameters: [
@@ -88,8 +89,8 @@ describe('agent', () => {
         organizations: { list: vi.fn().mockResolvedValue({ data: [], total: 0 }) },
         users: {
           list: vi.fn().mockResolvedValue({ data: [], total: 0 }),
-          suspend: vi.fn().mockResolvedValue(undefined),
-          lock: vi.fn().mockResolvedValue(undefined),
+          deactivate: vi.fn().mockResolvedValue(undefined),
+          activate: vi.fn().mockResolvedValue(undefined),
           getHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
         },
         stats: { get: vi.fn().mockResolvedValue({ orgs: 5 }) },
@@ -107,7 +108,7 @@ describe('agent', () => {
     it('passes arguments based on tool definition', async () => {
       const client = mockClient();
       await executeTool(client, 'organizations.list', { page: 2, pageSize: 10 });
-      expect((client.organizations.list as ReturnType<typeof vi.fn>)).toHaveBeenCalled();
+      expect(client.organizations.list as ReturnType<typeof vi.fn>).toHaveBeenCalled();
     });
 
     it('passes user parameters as exact positional domain arguments', async () => {
@@ -115,29 +116,13 @@ describe('agent', () => {
       const params = { page: 2, pageSize: 10 };
 
       await executeTool(client, 'users.list', { orgId: 'org-1', params });
-      await executeTool(client, 'users.suspend', {
-        orgId: 'org-1',
-        userId: 'user-1',
-        reason: 'Policy review',
-      });
-      await executeTool(client, 'users.lock', {
-        orgId: 'org-1',
-        userId: 'user-1',
-        reason: 'Repeated failures',
-      });
+      await executeTool(client, 'users.deactivate', { orgId: 'org-1', userId: 'user-1' });
+      await executeTool(client, 'users.activate', { orgId: 'org-1', userId: 'user-1' });
       await executeTool(client, 'users.getHistory', { orgId: 'org-1', userId: 'user-1' });
 
       expect(vi.mocked(client.users.list)).toHaveBeenCalledWith('org-1', params);
-      expect(vi.mocked(client.users.suspend)).toHaveBeenCalledWith(
-        'org-1',
-        'user-1',
-        'Policy review',
-      );
-      expect(vi.mocked(client.users.lock)).toHaveBeenCalledWith(
-        'org-1',
-        'user-1',
-        'Repeated failures',
-      );
+      expect(vi.mocked(client.users.deactivate)).toHaveBeenCalledWith('org-1', 'user-1');
+      expect(vi.mocked(client.users.activate)).toHaveBeenCalledWith('org-1', 'user-1');
       expect(vi.mocked(client.users.getHistory)).toHaveBeenCalledWith('org-1', 'user-1');
     });
 
@@ -164,7 +149,9 @@ describe('agent', () => {
 
     it('catches thrown errors and returns them', async () => {
       const client = mockClient();
-      (client.organizations.list as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Network failure'));
+      (client.organizations.list as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Network failure'),
+      );
       const result = await executeTool(client, 'organizations.list', {});
       expect(result.success).toBe(false);
       expect(result.error).toBe('Network failure');

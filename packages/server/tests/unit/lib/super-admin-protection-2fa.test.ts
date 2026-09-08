@@ -39,8 +39,6 @@ describe('manage-2fa protected operation', () => {
 
     it('should include "manage-2fa" alongside the other supported operations', () => {
       expect(PROTECTED_OPERATIONS).toContain('delete');
-      expect(PROTECTED_OPERATIONS).toContain('suspend');
-      expect(PROTECTED_OPERATIONS).toContain('lock');
       expect(PROTECTED_OPERATIONS).toContain('deactivate');
       expect(PROTECTED_OPERATIONS).toContain('remove-super-admin-role');
       expect(PROTECTED_OPERATIONS).toContain('manage-2fa');

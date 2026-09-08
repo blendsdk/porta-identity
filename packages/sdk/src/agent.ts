@@ -52,12 +52,17 @@ export interface ToolResult {
 // Parameter helpers
 // ---------------------------------------------------------------------------
 
-function param(name: string, type: ToolParameter['type'], description: string, required = true, enumValues?: string[]): ToolParameter {
+function param(
+  name: string,
+  type: ToolParameter['type'],
+  description: string,
+  required = true,
+  enumValues?: string[],
+): ToolParameter {
   return { name, type, description, required, ...(enumValues ? { enum: enumValues } : {}) };
 }
 
 const ID = (name: string, desc: string) => param(name, 'string', desc);
-const STR = (name: string, desc: string) => param(name, 'string', desc);
 const OPT_STR = (name: string, desc: string) => param(name, 'string', desc, false);
 const OPT_NUM = (name: string, desc: string) => param(name, 'number', desc, false);
 const OPT_OBJ = (name: string, desc: string) => param(name, 'object', desc, false);
@@ -78,111 +83,464 @@ const LIST_PARAMS: ToolParameter[] = [
 
 const TOOL_DEFINITIONS: ToolDefinition[] = [
   // Organizations
-  { name: 'organizations.list', description: 'List organizations with pagination', parameters: [...LIST_PARAMS], returns: 'PaginatedResponse<Organization>' },
-  { name: 'organizations.get', description: 'Get an organization by ID or slug', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: '{ data: Organization, etag: string | null }' },
-  { name: 'organizations.create', description: 'Create a new organization', parameters: [OBJ('input', 'CreateOrganizationInput')], returns: 'Organization' },
-  { name: 'organizations.update', description: 'Update an organization', parameters: [ID('idOrSlug', 'Organization ID or slug'), OBJ('input', 'UpdateOrganizationInput'), OPT_STR('etag', 'ETag for concurrency')], returns: 'Organization' },
-  { name: 'organizations.suspend', description: 'Suspend an organization', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
-  { name: 'organizations.activate', description: 'Activate an organization', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
-  { name: 'organizations.delete', description: 'Permanently delete an organization and its owned data', parameters: [ID('idOrSlug', 'Organization ID or slug')], returns: 'void' },
+  {
+    name: 'organizations.list',
+    description: 'List organizations with pagination',
+    parameters: [...LIST_PARAMS],
+    returns: 'PaginatedResponse<Organization>',
+  },
+  {
+    name: 'organizations.get',
+    description: 'Get an organization by ID or slug',
+    parameters: [ID('idOrSlug', 'Organization ID or slug')],
+    returns: '{ data: Organization, etag: string | null }',
+  },
+  {
+    name: 'organizations.create',
+    description: 'Create a new organization',
+    parameters: [OBJ('input', 'CreateOrganizationInput')],
+    returns: 'Organization',
+  },
+  {
+    name: 'organizations.update',
+    description: 'Update an organization',
+    parameters: [
+      ID('idOrSlug', 'Organization ID or slug'),
+      OBJ('input', 'UpdateOrganizationInput'),
+      OPT_STR('etag', 'ETag for concurrency'),
+    ],
+    returns: 'Organization',
+  },
+  {
+    name: 'organizations.suspend',
+    description: 'Suspend an organization',
+    parameters: [ID('idOrSlug', 'Organization ID or slug')],
+    returns: 'void',
+  },
+  {
+    name: 'organizations.activate',
+    description: 'Activate an organization',
+    parameters: [ID('idOrSlug', 'Organization ID or slug')],
+    returns: 'void',
+  },
+  {
+    name: 'organizations.delete',
+    description: 'Permanently delete an organization and its owned data',
+    parameters: [ID('idOrSlug', 'Organization ID or slug')],
+    returns: 'void',
+  },
 
   // Applications
-  { name: 'applications.list', description: 'List applications', parameters: [...LIST_PARAMS], returns: 'PaginatedResponse<Application>' },
-  { name: 'applications.get', description: 'Get an application by ID or slug', parameters: [ID('idOrSlug', 'Application ID or slug')], returns: '{ data: Application, etag: string | null }' },
-  { name: 'applications.create', description: 'Create a new application', parameters: [OBJ('input', 'CreateApplicationInput')], returns: 'Application' },
-  { name: 'applications.update', description: 'Update an application', parameters: [ID('idOrSlug', 'Application ID or slug'), OBJ('input', 'UpdateApplicationInput'), OPT_STR('etag', 'ETag')], returns: 'Application' },
-  { name: 'applications.delete', description: 'Permanently delete a deployment-global application', parameters: [ID('id', 'Application ID')], returns: 'void' },
-  { name: 'applications.deleteModule', description: 'Permanently delete an application module', parameters: [ID('appId', 'Application ID'), ID('moduleId', 'Module ID')], returns: 'void' },
+  {
+    name: 'applications.list',
+    description: 'List applications',
+    parameters: [...LIST_PARAMS],
+    returns: 'PaginatedResponse<Application>',
+  },
+  {
+    name: 'applications.get',
+    description: 'Get an application by ID or slug',
+    parameters: [ID('idOrSlug', 'Application ID or slug')],
+    returns: '{ data: Application, etag: string | null }',
+  },
+  {
+    name: 'applications.create',
+    description: 'Create a new application',
+    parameters: [OBJ('input', 'CreateApplicationInput')],
+    returns: 'Application',
+  },
+  {
+    name: 'applications.update',
+    description: 'Update an application',
+    parameters: [
+      ID('idOrSlug', 'Application ID or slug'),
+      OBJ('input', 'UpdateApplicationInput'),
+      OPT_STR('etag', 'ETag'),
+    ],
+    returns: 'Application',
+  },
+  {
+    name: 'applications.delete',
+    description: 'Permanently delete a deployment-global application',
+    parameters: [ID('id', 'Application ID')],
+    returns: 'void',
+  },
+  {
+    name: 'applications.deleteModule',
+    description: 'Permanently delete an application module',
+    parameters: [ID('appId', 'Application ID'), ID('moduleId', 'Module ID')],
+    returns: 'void',
+  },
 
   // Clients
-  { name: 'clients.list', description: 'List clients', parameters: [...LIST_PARAMS], returns: 'PaginatedResponse<Client>' },
-  { name: 'clients.get', description: 'Get a client by ID', parameters: [ID('idOrClientId', 'Client ID or clientId')], returns: '{ data: Client, etag: string | null }' },
-  { name: 'clients.create', description: 'Create a new client', parameters: [OBJ('input', 'CreateClientInput')], returns: 'Client' },
-  { name: 'clients.update', description: 'Update a client', parameters: [ID('idOrClientId', 'Client ID'), OBJ('input', 'UpdateClientInput'), OPT_STR('etag', 'ETag')], returns: 'Client' },
-  { name: 'clients.delete', description: 'Permanently delete a client and its credentials', parameters: [ID('id', 'Client ID')], returns: 'void' },
-  { name: 'clients.generateSecret', description: 'Generate a new secret for a client', parameters: [ID('clientId', 'Client ID'), OPT_OBJ('input', 'GenerateSecretInput')], returns: 'GeneratedSecret' },
-  { name: 'clients.revokeSecret', description: 'Revoke one client secret', parameters: [ID('clientId', 'Client ID'), ID('secretId', 'Secret ID')], returns: 'void' },
+  {
+    name: 'clients.list',
+    description: 'List clients',
+    parameters: [...LIST_PARAMS],
+    returns: 'PaginatedResponse<Client>',
+  },
+  {
+    name: 'clients.get',
+    description: 'Get a client by ID',
+    parameters: [ID('idOrClientId', 'Client ID or clientId')],
+    returns: '{ data: Client, etag: string | null }',
+  },
+  {
+    name: 'clients.create',
+    description: 'Create a new client',
+    parameters: [OBJ('input', 'CreateClientInput')],
+    returns: 'Client',
+  },
+  {
+    name: 'clients.update',
+    description: 'Update a client',
+    parameters: [
+      ID('idOrClientId', 'Client ID'),
+      OBJ('input', 'UpdateClientInput'),
+      OPT_STR('etag', 'ETag'),
+    ],
+    returns: 'Client',
+  },
+  {
+    name: 'clients.delete',
+    description: 'Permanently delete a client and its credentials',
+    parameters: [ID('id', 'Client ID')],
+    returns: 'void',
+  },
+  {
+    name: 'clients.generateSecret',
+    description: 'Generate a new secret for a client',
+    parameters: [ID('clientId', 'Client ID'), OPT_OBJ('input', 'GenerateSecretInput')],
+    returns: 'GeneratedSecret',
+  },
+  {
+    name: 'clients.revokeSecret',
+    description: 'Permanently delete one client secret',
+    parameters: [ID('clientId', 'Client ID'), ID('secretId', 'Secret ID')],
+    returns: 'void',
+  },
 
   // Users
-  { name: 'users.list', description: 'List users in an organization', parameters: [ID('orgId', 'Organization ID'), OPT_OBJ('params', 'UserListParams')], returns: 'PaginatedResponse<User>' },
-  { name: 'users.get', description: 'Get a user by ID', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: '{ data: User, etag: string | null }' },
-  { name: 'users.create', description: 'Create a new user', parameters: [OBJ('input', 'CreateUserInput')], returns: 'User' },
-  { name: 'users.invite', description: 'Invite a user', parameters: [OBJ('input', 'InviteUserInput')], returns: 'InviteUserResult' },
-  { name: 'users.invitePreview', description: 'Preview the invitation email without sending', parameters: [OBJ('input', 'InviteUserInput')], returns: 'InvitePreviewResult' },
-  { name: 'users.suspend', description: 'Suspend a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), OPT_STR('reason', 'Administrative reason')], returns: 'void' },
-  { name: 'users.unsuspend', description: 'Unsuspend a user (suspended → active)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.deactivate', description: 'Deactivate a user (active → inactive)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.reactivate', description: 'Reactivate a user (inactive → active)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.lock', description: 'Lock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), STR('reason', 'Administrative reason')], returns: 'void' },
-  { name: 'users.unlock', description: 'Unlock a user account', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.clearPassword', description: 'Clear a user password (make passwordless)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.verifyEmail', description: 'Mark a user email as verified', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.exportData', description: 'GDPR data export for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserExportData' },
-  { name: 'users.delete', description: 'Permanently delete a user and owned identity data', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'users.getHistory', description: 'Get user change history', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'HistoryResult' },
-
+  {
+    name: 'users.list',
+    description: 'List users in an organization',
+    parameters: [ID('orgId', 'Organization ID'), OPT_OBJ('params', 'UserListParams')],
+    returns: 'PaginatedResponse<User>',
+  },
+  {
+    name: 'users.get',
+    description: 'Get a user by ID',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: '{ data: User, etag: string | null }',
+  },
+  {
+    name: 'users.create',
+    description: 'Create a new user',
+    parameters: [OBJ('input', 'CreateUserInput')],
+    returns: 'User',
+  },
+  {
+    name: 'users.invite',
+    description: 'Invite a user',
+    parameters: [OBJ('input', 'InviteUserInput')],
+    returns: 'InviteUserResult',
+  },
+  {
+    name: 'users.invitePreview',
+    description: 'Preview the invitation email without sending',
+    parameters: [OBJ('input', 'InviteUserInput')],
+    returns: 'InvitePreviewResult',
+  },
+  {
+    name: 'users.deactivate',
+    description: 'Deactivate a user (active → inactive)',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'users.activate',
+    description: 'Activate a user (inactive → active)',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'users.clearPassword',
+    description: 'Clear a user password (make passwordless)',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'users.verifyEmail',
+    description: 'Mark a user email as verified',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'users.exportData',
+    description: 'GDPR data export for a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'UserExportData',
+  },
+  {
+    name: 'users.delete',
+    description: 'Permanently delete a user and owned identity data',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'users.getHistory',
+    description: 'Get user change history',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'HistoryResult',
+  },
 
   // Roles
-  { name: 'roles.list', description: 'List roles for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<Role>' },
-  { name: 'roles.get', description: 'Get a role by ID', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'Role' },
-  { name: 'roles.listPermissions', description: 'List permissions assigned to a role', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'Permission[]' },
-  { name: 'roles.create', description: 'Create a role', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateRoleInput')], returns: 'Role' },
-  { name: 'roles.delete', description: 'Permanently delete a role', parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')], returns: 'void' },
+  {
+    name: 'roles.list',
+    description: 'List roles for an application',
+    parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS],
+    returns: 'PaginatedResponse<Role>',
+  },
+  {
+    name: 'roles.get',
+    description: 'Get a role by ID',
+    parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')],
+    returns: 'Role',
+  },
+  {
+    name: 'roles.listPermissions',
+    description: 'List permissions assigned to a role',
+    parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')],
+    returns: 'Permission[]',
+  },
+  {
+    name: 'roles.create',
+    description: 'Create a role',
+    parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateRoleInput')],
+    returns: 'Role',
+  },
+  {
+    name: 'roles.delete',
+    description: 'Permanently delete a role',
+    parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')],
+    returns: 'void',
+  },
 
   // Permissions
-  { name: 'permissions.list', description: 'List permissions for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<Permission>' },
-  { name: 'permissions.create', description: 'Create a permission', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreatePermissionInput')], returns: 'Permission' },
-  { name: 'permissions.delete', description: 'Permanently delete a permission', parameters: [ID('appId', 'Application ID'), ID('permissionId', 'Permission ID')], returns: 'void' },
+  {
+    name: 'permissions.list',
+    description: 'List permissions for an application',
+    parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS],
+    returns: 'PaginatedResponse<Permission>',
+  },
+  {
+    name: 'permissions.create',
+    description: 'Create a permission',
+    parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreatePermissionInput')],
+    returns: 'Permission',
+  },
+  {
+    name: 'permissions.delete',
+    description: 'Permanently delete a permission',
+    parameters: [ID('appId', 'Application ID'), ID('permissionId', 'Permission ID')],
+    returns: 'void',
+  },
 
   // User Roles
-  { name: 'userRoles.list', description: 'List role assignments for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'UserRoleAssignment[]' },
-  { name: 'userRoles.assign', description: 'Assign a role to a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), ID('roleId', 'Role ID')], returns: 'void' },
-  { name: 'userRoles.remove', description: 'Remove a role from a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), ID('roleId', 'Role ID')], returns: 'void' },
+  {
+    name: 'userRoles.list',
+    description: 'List role assignments for a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'UserRoleAssignment[]',
+  },
+  {
+    name: 'userRoles.assign',
+    description: 'Assign a role to a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), ID('roleId', 'Role ID')],
+    returns: 'void',
+  },
+  {
+    name: 'userRoles.remove',
+    description: 'Remove a role from a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), ID('roleId', 'Role ID')],
+    returns: 'void',
+  },
 
   // Custom Claims
-  { name: 'customClaims.list', description: 'List claim definitions for an application', parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS], returns: 'PaginatedResponse<ClaimDefinition>' },
-  { name: 'customClaims.create', description: 'Create a claim definition', parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateClaimDefinitionInput')], returns: 'ClaimDefinition' },
-  { name: 'customClaims.delete', description: 'Permanently delete a claim definition', parameters: [ID('appId', 'Application ID'), ID('claimId', 'Claim definition ID')], returns: 'void' },
+  {
+    name: 'customClaims.list',
+    description: 'List claim definitions for an application',
+    parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS],
+    returns: 'PaginatedResponse<ClaimDefinition>',
+  },
+  {
+    name: 'customClaims.create',
+    description: 'Create a claim definition',
+    parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateClaimDefinitionInput')],
+    returns: 'ClaimDefinition',
+  },
+  {
+    name: 'customClaims.delete',
+    description: 'Permanently delete a claim definition',
+    parameters: [ID('appId', 'Application ID'), ID('claimId', 'Claim definition ID')],
+    returns: 'void',
+  },
 
   // Config
-  { name: 'config.list', description: 'List all system configuration entries', parameters: [], returns: 'ConfigEntry[]' },
-  { name: 'config.get', description: 'Get a config entry', parameters: [ID('key', 'Configuration key')], returns: 'ConfigEntry' },
-  { name: 'config.set', description: 'Set a config entry value', parameters: [ID('key', 'Configuration key'), ID('value', 'New value')], returns: 'ConfigEntry' },
+  {
+    name: 'config.list',
+    description: 'List all system configuration entries',
+    parameters: [],
+    returns: 'ConfigEntry[]',
+  },
+  {
+    name: 'config.get',
+    description: 'Get a config entry',
+    parameters: [ID('key', 'Configuration key')],
+    returns: 'ConfigEntry',
+  },
+  {
+    name: 'config.set',
+    description: 'Set a config entry value',
+    parameters: [ID('key', 'Configuration key'), ID('value', 'New value')],
+    returns: 'ConfigEntry',
+  },
 
   // Keys
   { name: 'keys.list', description: 'List signing keys', parameters: [], returns: 'SigningKey[]' },
-  { name: 'keys.generate', description: 'Generate a new signing key', parameters: [], returns: 'SigningKey' },
-  { name: 'keys.rotate', description: 'Rotate signing keys', parameters: [], returns: 'SigningKey' },
+  {
+    name: 'keys.generate',
+    description: 'Generate a new signing key',
+    parameters: [],
+    returns: 'SigningKey',
+  },
+  {
+    name: 'keys.rotate',
+    description: 'Rotate signing keys',
+    parameters: [],
+    returns: 'SigningKey',
+  },
 
   // Audit
-  { name: 'audit.list', description: 'List audit log entries', parameters: [OPT_NUM('limit', 'Max results (default 50, max 500)'), OPT_STR('event', 'Filter by event_type'), OPT_STR('org', 'Filter by organization_id'), OPT_STR('user', 'Filter by user_id'), OPT_STR('since', 'Filter events after ISO 8601 date')], returns: '{ data: AuditEntry[], total: number }' },
+  {
+    name: 'audit.list',
+    description: 'List audit log entries',
+    parameters: [
+      OPT_NUM('limit', 'Max results (default 50, max 500)'),
+      OPT_STR('event', 'Filter by event_type'),
+      OPT_STR('org', 'Filter by organization_id'),
+      OPT_STR('user', 'Filter by user_id'),
+      OPT_STR('since', 'Filter events after ISO 8601 date'),
+    ],
+    returns: '{ data: AuditEntry[], total: number }',
+  },
 
   // Stats
-  { name: 'stats.get', description: 'Get system-wide dashboard statistics', parameters: [], returns: 'DashboardStats' },
-  { name: 'stats.getOrganizationStats', description: 'Get per-organization dashboard statistics', parameters: [ID('orgId', 'Organization ID')], returns: 'OrgStats' },
-
+  {
+    name: 'stats.get',
+    description: 'Get system-wide dashboard statistics',
+    parameters: [],
+    returns: 'DashboardStats',
+  },
+  {
+    name: 'stats.getOrganizationStats',
+    description: 'Get per-organization dashboard statistics',
+    parameters: [ID('orgId', 'Organization ID')],
+    returns: 'OrgStats',
+  },
 
   // Sessions
-  { name: 'sessions.list', description: 'List active sessions', parameters: [OPT_NUM('page', 'Page'), OPT_NUM('pageSize', 'Page size'), OPT_STR('userId', 'Filter by user')], returns: 'PaginatedResponse<AdminSession>' },
-  { name: 'sessions.revoke', description: 'Revoke a session', parameters: [ID('sessionId', 'Session ID')], returns: 'void' },
-  { name: 'sessions.revokeForUser', description: 'Revoke all sessions for a user', parameters: [ID('userId', 'User ID')], returns: 'RevokeUserSessionsResult' },
+  {
+    name: 'sessions.list',
+    description: 'List active sessions',
+    parameters: [
+      OPT_NUM('page', 'Page'),
+      OPT_NUM('pageSize', 'Page size'),
+      OPT_STR('userId', 'Filter by user'),
+    ],
+    returns: 'PaginatedResponse<AdminSession>',
+  },
+  {
+    name: 'sessions.revoke',
+    description: 'Revoke a session',
+    parameters: [ID('sessionId', 'Session ID')],
+    returns: 'void',
+  },
+  {
+    name: 'sessions.revokeForUser',
+    description: 'Revoke all sessions for a user',
+    parameters: [ID('userId', 'User ID')],
+    returns: 'RevokeUserSessionsResult',
+  },
 
   // Bulk
-  { name: 'bulk.organizationStatus', description: 'Bulk status change for organizations', parameters: [OBJ('input', 'BulkOrgStatusInput: { ids, action, reason? }')], returns: 'BulkOperationResult' },
-  { name: 'bulk.userStatus', description: 'Bulk status change for users', parameters: [OBJ('input', 'BulkUserStatusInput: { ids, action, reason?, organizationId }')], returns: 'BulkOperationResult' },
+  {
+    name: 'bulk.organizationStatus',
+    description: 'Bulk status change for organizations',
+    parameters: [OBJ('input', 'BulkOrgStatusInput: { ids, action, reason? }')],
+    returns: 'BulkOperationResult',
+  },
+  {
+    name: 'bulk.userStatus',
+    description: 'Bulk status change for users',
+    parameters: [OBJ('input', 'BulkUserStatusInput: { ids, action, organizationId }')],
+    returns: 'BulkOperationResult',
+  },
 
   // Two-Factor
-  { name: 'twoFactor.getStatus', description: 'Get 2FA status for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'TwoFactorStatus' },
-  { name: 'twoFactor.disable', description: 'Disable 2FA for a user', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'twoFactor.reset', description: 'Reset 2FA for a user (force re-enrollment)', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'void' },
-  { name: 'twoFactor.regenerateRecoveryCodes', description: 'Regenerate a user 2FA recovery codes', parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')], returns: 'RegenerateRecoveryCodesResult' },
-  { name: 'twoFactor.getPolicy', description: 'Get the org 2FA policy', parameters: [ID('orgId', 'Organization ID')], returns: 'TwoFactorPolicyResult' },
-  { name: 'twoFactor.setPolicy', description: 'Set the org 2FA policy', parameters: [ID('orgId', 'Organization ID'), ID('policy', '2FA policy (optional|required_email|required_totp|required_any)')], returns: 'TwoFactorPolicyResult' },
-  { name: 'twoFactor.getSummary', description: 'Get the org 2FA enrollment summary', parameters: [ID('orgId', 'Organization ID')], returns: 'TwoFactorSummary' },
-
+  {
+    name: 'twoFactor.getStatus',
+    description: 'Get 2FA status for a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'TwoFactorStatus',
+  },
+  {
+    name: 'twoFactor.disable',
+    description: 'Disable 2FA for a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'twoFactor.reset',
+    description: 'Reset 2FA for a user (force re-enrollment)',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'void',
+  },
+  {
+    name: 'twoFactor.regenerateRecoveryCodes',
+    description: 'Regenerate a user 2FA recovery codes',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'RegenerateRecoveryCodesResult',
+  },
+  {
+    name: 'twoFactor.getPolicy',
+    description: 'Get the org 2FA policy',
+    parameters: [ID('orgId', 'Organization ID')],
+    returns: 'TwoFactorPolicyResult',
+  },
+  {
+    name: 'twoFactor.setPolicy',
+    description: 'Set the org 2FA policy',
+    parameters: [
+      ID('orgId', 'Organization ID'),
+      ID('policy', '2FA policy (optional|required_email|required_totp|required_any)'),
+    ],
+    returns: 'TwoFactorPolicyResult',
+  },
+  {
+    name: 'twoFactor.getSummary',
+    description: 'Get the org 2FA enrollment summary',
+    parameters: [ID('orgId', 'Organization ID')],
+    returns: 'TwoFactorSummary',
+  },
 
   // Imports
-  { name: 'imports.provision', description: 'Import/provision data declaratively', parameters: [OBJ('manifest', 'ImportManifest')], returns: 'ImportResult' },
+  {
+    name: 'imports.provision',
+    description: 'Import/provision data declaratively',
+    parameters: [OBJ('manifest', 'ImportManifest')],
+    returns: 'ImportResult',
+  },
 ];
 
 // ---------------------------------------------------------------------------
@@ -213,7 +571,10 @@ export async function executeTool(
   try {
     const [domain, method] = toolName.split('.');
     if (!domain || !method) {
-      return { success: false, error: `Invalid tool name: ${toolName}. Expected format: domain.method` };
+      return {
+        success: false,
+        error: `Invalid tool name: ${toolName}. Expected format: domain.method`,
+      };
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type

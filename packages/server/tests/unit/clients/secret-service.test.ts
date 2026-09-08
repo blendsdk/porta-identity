@@ -232,20 +232,17 @@ describe('secret service', () => {
   // =========================================================================
 
   describe('revoke', () => {
-    it('should revoke an active secret', async () => {
+    it('should permanently delete an active secret', async () => {
       const secret = createTestSecret({ status: 'active' });
       (findSecretById as ReturnType<typeof vi.fn>).mockResolvedValue(secret);
-      (repoRevokeSecret as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ...secret,
-        status: 'revoked',
-      });
+      (repoRevokeSecret as ReturnType<typeof vi.fn>).mockResolvedValue(secret);
 
       await revoke('client-db-uuid-1', 'secret-uuid-1', 'actor-1');
 
       expect(repoRevokeSecret).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
       expect(writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({
-          eventType: 'client.secret.revoked',
+          eventType: 'client.secret.deleted',
           eventCategory: 'admin',
           actorId: 'actor-1',
         }),
@@ -260,13 +257,13 @@ describe('secret service', () => {
       );
     });
 
-    it('should throw ClientValidationError when already revoked', async () => {
+    it('should delete a retained legacy revoked secret', async () => {
       const secret = createTestSecret({ status: 'revoked' });
       (findSecretById as ReturnType<typeof vi.fn>).mockResolvedValue(secret);
+      (repoRevokeSecret as ReturnType<typeof vi.fn>).mockResolvedValue(secret);
 
-      await expect(revoke('client-db-uuid-1', 'secret-uuid-1')).rejects.toThrow(
-        'Secret is already revoked',
-      );
+      await expect(revoke('client-db-uuid-1', 'secret-uuid-1')).resolves.toBeUndefined();
+      expect(repoRevokeSecret).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
     });
   });
 

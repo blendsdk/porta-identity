@@ -99,7 +99,7 @@ async function observeTenantResource(
     const probes = [
       ['read', 'GET', foreignBase, undefined],
       ['update', 'PUT', foreignBase, { nickname: 'cross-tenant-write-must-not-persist' }],
-      ['suspend', 'POST', `${foreignBase}/suspend`, { reason: 'cross-tenant-status-probe' }],
+      ['deactivate', 'POST', `${foreignBase}/deactivate`, undefined],
       ['roles', 'GET', `${foreignBase}/roles`, undefined],
       ['two-factor', 'GET', `${foreignBase}/two-factor/status`, undefined],
       ['export', 'GET', `${foreignBase}/export`, undefined],

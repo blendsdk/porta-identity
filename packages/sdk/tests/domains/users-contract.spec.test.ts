@@ -100,46 +100,6 @@ describe('user domain contracts', () => {
     expect(result).toEqual(invitation);
   });
 
-  describe('status transition reasons', () => {
-    it('sends an optional suspension reason for both user domains', async () => {
-      const orgUsers = createUsersDomain(transport);
-      const standaloneUsers = createStandaloneUsersDomain(transport);
-
-      await orgUsers.suspend('org-1', 'user-1', 'Policy review');
-      await standaloneUsers.suspend('user-1', 'Policy review');
-
-      expect(transport.request).toHaveBeenNthCalledWith(1, {
-        method: 'POST',
-        path: '/organizations/org-1/users/user-1/suspend',
-        body: { reason: 'Policy review' },
-      });
-      expect(transport.request).toHaveBeenNthCalledWith(2, {
-        method: 'POST',
-        path: '/users/user-1/suspend',
-        body: { reason: 'Policy review' },
-      });
-    });
-
-    it('sends the required lock reason for both user domains', async () => {
-      const orgUsers = createUsersDomain(transport);
-      const standaloneUsers = createStandaloneUsersDomain(transport);
-
-      await orgUsers.lock('org-1', 'user-1', 'Repeated failed authentication');
-      await standaloneUsers.lock('user-1', 'Repeated failed authentication');
-
-      expect(transport.request).toHaveBeenNthCalledWith(1, {
-        method: 'POST',
-        path: '/organizations/org-1/users/user-1/lock',
-        body: { reason: 'Repeated failed authentication' },
-      });
-      expect(transport.request).toHaveBeenNthCalledWith(2, {
-        method: 'POST',
-        path: '/users/user-1/lock',
-        body: { reason: 'Repeated failed authentication' },
-      });
-    });
-  });
-
   describe('history envelopes', () => {
     it('retains the organization-scoped history result', async () => {
       const history = {

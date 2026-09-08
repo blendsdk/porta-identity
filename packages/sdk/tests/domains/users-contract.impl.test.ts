@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createStandaloneUsersDomain, createUsersDomain } from '../../src/domains/users.js';
+import { createUsersDomain } from '../../src/domains/users.js';
 import type { HttpTransport, TransportResponse } from '../../src/transport/types.js';
 
 function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport {
@@ -45,30 +45,6 @@ describe('user domain contract implementation', () => {
     expect(transport.request).toHaveBeenNthCalledWith(2, {
       method: 'DELETE',
       path: '/organizations/org-1/users/user-1',
-    });
-  });
-
-  it('keeps standalone reason requests equivalent to organization-scoped requests', async () => {
-    const transport = mockTransport();
-    const users = createStandaloneUsersDomain(transport);
-
-    await users.suspend('user-1');
-    await users.suspend('user-1', 'Policy review');
-    await users.lock('user-1', 'Repeated failures');
-
-    expect(transport.request).toHaveBeenNthCalledWith(1, {
-      method: 'POST',
-      path: '/users/user-1/suspend',
-    });
-    expect(transport.request).toHaveBeenNthCalledWith(2, {
-      method: 'POST',
-      path: '/users/user-1/suspend',
-      body: { reason: 'Policy review' },
-    });
-    expect(transport.request).toHaveBeenNthCalledWith(3, {
-      method: 'POST',
-      path: '/users/user-1/lock',
-      body: { reason: 'Repeated failures' },
     });
   });
 });

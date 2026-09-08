@@ -45,7 +45,6 @@ describe('stats service', () => {
           rows: [
             { status: 'active', count: '100' },
             { status: 'inactive', count: '10' },
-            { status: 'suspended', count: '3' },
             { status: 'locked', count: '2' },
           ],
         })
@@ -97,7 +96,7 @@ describe('stats service', () => {
       const stats = await getStatsOverview();
 
       expect(stats.organizations).toEqual({ total: 8, active: 5, suspended: 3 });
-      expect(stats.users.total).toBe(115);
+      expect(stats.users.total).toBe(112);
       expect(stats.users.active).toBe(100);
       expect(stats.users.newLast7d).toBe(12);
       expect(stats.users.newLast30d).toBe(45);

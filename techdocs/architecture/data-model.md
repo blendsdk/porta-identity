@@ -127,7 +127,7 @@ User accounts, scoped to an organization.
 | `password_hash`              | TEXT         | Argon2id hash (nullable for passwordless users)     |
 | `name`                       | VARCHAR(255) | Display name                                        |
 | `given_name` / `family_name` | VARCHAR(255) | Name components                                     |
-| `status`                     | VARCHAR(20)  | `active`, `inactive`, `suspended`, `locked`         |
+| `status`                     | VARCHAR(20)  | `active`, `inactive`, `locked`                      |
 | `failed_login_count`         | INTEGER      | Brute-force tracking                                |
 | `last_login_at`              | TIMESTAMPTZ  | Login tracking                                      |
 | `locale`                     | VARCHAR(10)  | User's preferred locale                             |
@@ -135,9 +135,10 @@ User accounts, scoped to an organization.
 
 **Key constraint**: Composite unique index on `(organization_id, email)` — ensures email uniqueness per tenant.
 
-**Status lifecycle**: `active` can be reversibly changed to `inactive`, `suspended`, or `locked`;
-each of those states can return to `active`. Invitations are token-backed setup flows rather than a
-user status. Permanent removal physically deletes the user and its owned rows.
+**Status lifecycle**: administrators can move users between `active` and `inactive`. The security
+system moves an account to `locked` after repeated failed login attempts and returns it to `active`
+after the cooldown. Invitations are token-backed setup flows rather than a user status. Permanent
+removal physically deletes the user and its owned rows.
 
 ## RBAC Entities
 
@@ -214,11 +215,11 @@ Application-scoped claim type definitions.
 
 Per-user claim values, referencing a claim definition.
 
-| Column     | Type  | Description                         |
-| ---------- | ----- | ----------------------------------- |
-| `id`       | UUID  | Primary key                         |
-| `user_id`  | UUID  | FK → users                          |
-| `claim_id` | UUID  | FK → custom_claim_definitions       |
+| Column     | Type  | Description                          |
+| ---------- | ----- | ------------------------------------ |
+| `id`       | UUID  | Primary key                          |
+| `user_id`  | UUID  | FK → users                           |
+| `claim_id` | UUID  | FK → custom_claim_definitions        |
 | `value`    | JSONB | Typed value for the claim definition |
 
 Composite unique constraint `(user_id, claim_id)`.

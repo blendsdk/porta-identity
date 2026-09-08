@@ -97,28 +97,28 @@ const auth = createCliAuth({
 
 The `PortaClient` provides 20 domain namespaces:
 
-| Namespace       | Description                                          | Key Methods                                                                                                                                                                                    |
-| --------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `organizations` | Org CRUD and status lifecycle                        | `list`, `listAll`, `get`, `create`, `update`, `suspend`, `activate`, `delete`, `validateSlug`, `getHistory`                                                                                     |
-| `applications`  | App CRUD and modules                                 | `list`, `listAll`, `get`, `create`, `update`, `activate`, `deactivate`, `delete`, `getHistory`, `listModules`, `addModule`, `updateModule`, `deactivateModule`, `deleteModule`                  |
-| `clients`       | Client CRUD and secrets                              | `list`, `listAll`, `get`, `create`, `update`, `activate`, `deactivate`, `delete`, `getHistory`, `listSecrets`, `generateSecret`, `revokeSecret`                                               |
-| `users`         | Org-scoped user CRUD, invite, password, and status   | `list`, `listAll`, `get`, `create`, `invite`, `invitePreview`, `setPassword`, `clearPassword`, `verifyEmail`, `exportData`, `delete`, `suspend`, `unsuspend`, `deactivate`, `reactivate`, `lock`, `unlock`, `getHistory` |
-| `usersById`     | Organization-independent user operations             | `get`, `update`, `suspend`, `unsuspend`, `activate`, `verifyEmail`, `getHistory`                                                                                                               |
-| `roles`         | Application roles, permission mapping                | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission`                                                                                                                      |
-| `permissions`   | Application permissions                              | `list`, `listAll`, `get`, `create`, `delete`                                                                                                                                                   |
-| `userRoles`     | User-role assignments                                | `list`, `assign`, `remove`                                                                                                                                                                     |
-| `customClaims`  | Claim definitions                                    | `list`, `listAll`, `get`, `create`, `update`, `delete`                                                                                                                                         |
-| `userClaims`    | User claim values                                    | `list`, `set`, `remove`                                                                                                                                                                        |
-| `config`        | System configuration                                 | `list`, `get`, `set`                                                                                                                                                                           |
-| `keys`          | Signing key management                               | `list`, `generate`, `rotate`                                                                                                                                                                   |
-| `audit`         | Audit log                                            | `list`, `listAll`                                                                                                                                                                              |
-| `stats`         | Dashboard statistics                                 | `get`, `getOrganizationStats`                                                                                                                                                                  |
-| `sessions`      | Session management                                   | `list`, `revoke`, `revokeForUser`                                                                                                                                                              |
-| `bulk`          | Bulk status operations                               | `execute`                                                                                                                                                                                      |
-| `branding`      | Org branding & assets                                | `getSettings`, `updateSettings`, `uploadAsset`                                                                                                                                                 |
-| `exports`       | CSV/JSON data export                                 | `download`                                                                                                                                                                                     |
-| `twoFactor`     | 2FA admin management (user + org)                    | `getStatus`, `disable`, `reset`, `regenerateRecoveryCodes`, `getPolicy`, `setPolicy`, `getSummary`                                                                                             |
-| `imports`       | Declarative provisioning                             | `provision`                                                                                                                                                                                    |
+| Namespace       | Description                                        | Key Methods                                                                                                                                                                    |
+| --------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `organizations` | Org CRUD and status lifecycle                      | `list`, `listAll`, `get`, `create`, `update`, `suspend`, `activate`, `delete`, `validateSlug`, `getHistory`                                                                    |
+| `applications`  | App CRUD and modules                               | `list`, `listAll`, `get`, `create`, `update`, `activate`, `deactivate`, `delete`, `getHistory`, `listModules`, `addModule`, `updateModule`, `deactivateModule`, `deleteModule` |
+| `clients`       | Client CRUD and secrets                            | `list`, `listAll`, `get`, `create`, `update`, `activate`, `deactivate`, `delete`, `getHistory`, `listSecrets`, `generateSecret`, `revokeSecret`                                |
+| `users`         | Org-scoped user CRUD, invite, password, and status | `list`, `listAll`, `get`, `create`, `invite`, `invitePreview`, `setPassword`, `clearPassword`, `verifyEmail`, `exportData`, `delete`, `activate`, `deactivate`, `getHistory`   |
+| `usersById`     | Organization-independent user operations           | `get`, `update`, `activate`, `deactivate`, `verifyEmail`, `getHistory`                                                                                                         |
+| `roles`         | Application roles, permission mapping              | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission`                                                                                                      |
+| `permissions`   | Application permissions                            | `list`, `listAll`, `get`, `create`, `delete`                                                                                                                                   |
+| `userRoles`     | User-role assignments                              | `list`, `assign`, `remove`                                                                                                                                                     |
+| `customClaims`  | Claim definitions                                  | `list`, `listAll`, `get`, `create`, `update`, `delete`                                                                                                                         |
+| `userClaims`    | User claim values                                  | `list`, `set`, `remove`                                                                                                                                                        |
+| `config`        | System configuration                               | `list`, `get`, `set`                                                                                                                                                           |
+| `keys`          | Signing key management                             | `list`, `generate`, `rotate`                                                                                                                                                   |
+| `audit`         | Audit log                                          | `list`, `listAll`                                                                                                                                                              |
+| `stats`         | Dashboard statistics                               | `get`, `getOrganizationStats`                                                                                                                                                  |
+| `sessions`      | Session management                                 | `list`, `revoke`, `revokeForUser`                                                                                                                                              |
+| `bulk`          | Bulk status operations                             | `execute`                                                                                                                                                                      |
+| `branding`      | Org branding & assets                              | `getSettings`, `updateSettings`, `uploadAsset`                                                                                                                                 |
+| `exports`       | CSV/JSON data export                               | `download`                                                                                                                                                                     |
+| `twoFactor`     | 2FA admin management (user + org)                  | `getStatus`, `disable`, `reset`, `regenerateRecoveryCodes`, `getPolicy`, `setPolicy`, `getSummary`                                                                             |
+| `imports`       | Declarative provisioning                           | `provision`                                                                                                                                                                    |
 
 The `users` domain mirrors the org-scoped user routes; `usersById` mirrors the
 organization-independent user routes used by administrative clients. `stats.get()` returns
@@ -155,8 +155,9 @@ For organization-scoped users, offset pagination uses `page` and `pageSize`. Cur
 
 Create and invite calls carry `organizationId` in the input object. `users.invite()` returns the
 invitation outcome (`userId`, `email`, `created`, `invitationSent`, and `expiresAt`), not a full user.
-`users.suspend()` accepts an optional reason, while `users.lock()` requires one. `users.getHistory()`
-returns the server's first-page history envelope with `data`, `hasMore`, and `nextCursor`.
+Administrators can activate and deactivate users. Account lockout and cooldown recovery are
+automatic. `users.getHistory()` returns the server's first-page history envelope with `data`,
+`hasMore`, and `nextCursor`.
 
 ## Error Handling
 

@@ -52,7 +52,7 @@ export interface AdministrativeDataOracle {
       /** Organization status actions retained by the published API. */
       readonly organization: readonly ['activate', 'suspend', 'archive'];
       /** User status actions retained by the published API. */
-      readonly user: readonly ['activate', 'deactivate', 'suspend', 'lock', 'unlock'];
+      readonly user: readonly ['activate', 'deactivate'];
     };
     /** Published ordered partial-result envelope. */
     readonly envelopeFields: readonly ['total', 'succeeded', 'failed', 'results'];
@@ -112,7 +112,7 @@ export const ADMINISTRATIVE_DATA_ORACLE = Object.freeze({
     maximumReasonCharacters: 500,
     actions: {
       organization: ['activate', 'suspend', 'archive'],
-      user: ['activate', 'deactivate', 'suspend', 'lock', 'unlock'],
+      user: ['activate', 'deactivate'],
     },
     envelopeFields: ['total', 'succeeded', 'failed', 'results'],
     concealedItemCode: 'not_found_or_not_authorized',

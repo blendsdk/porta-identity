@@ -4,7 +4,7 @@
  * Handles the full lifecycle of OIDC client secrets:
  *   - Generate and store new secrets (Argon2id hashed)
  *   - Verify secrets during token endpoint authentication
- *   - Revoke secrets permanently
+ *   - Delete secrets permanently
  *   - List secrets (metadata only, never hashes)
  *   - Cleanup expired secrets
  *
@@ -17,7 +17,7 @@
  *
  * This service is consumed by:
  *   - The client service (initial secret on confidential client creation)
- *   - The API routes (secret rotation, revocation)
+ *   - The API routes (secret creation and deletion)
  *   - The OIDC token endpoint (secret verification via admin API)
  */
 
@@ -34,7 +34,7 @@ import {
 import { generateSecret, hashSecret, sha256Secret, verifySecretHash } from './crypto.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
-import { ClientNotFoundError, ClientValidationError } from './errors.js';
+import { ClientNotFoundError } from './errors.js';
 
 // ===========================================================================
 // Secret generation
@@ -166,21 +166,16 @@ export async function verify(clientDbId: string, plaintext: string): Promise<boo
 }
 
 // ===========================================================================
-// Secret revocation
+// Secret deletion
 // ===========================================================================
 
 /**
- * Revoke a client secret permanently.
- *
- * Revocation is irreversible — once revoked, a secret cannot be
- * reactivated. The revoked secret remains in the database for
- * audit trail purposes until cleanup removes it.
+ * Permanently delete a client secret.
  *
  * @param clientDbId - Authoritative parent client UUID
  * @param secretId - Secret UUID
  * @param actorId - UUID of the user performing the action
  * @throws ClientNotFoundError if secret not found
- * @throws ClientValidationError if secret already revoked
  */
 export async function revoke(
   clientDbId: string,
@@ -189,20 +184,12 @@ export async function revoke(
 ): Promise<void> {
   const existing = await findSecretById(clientDbId, secretId);
   if (!existing || existing.clientId !== clientDbId) throw new ClientNotFoundError(secretId);
-  if (existing.status === 'revoked') {
-    throw new ClientValidationError('Secret is already revoked');
-  }
-
   const secret = await repoRevokeSecret(clientDbId, secretId);
-  if (!secret) {
-    const current = await findSecretById(clientDbId, secretId);
-    if (!current || current.clientId !== clientDbId) throw new ClientNotFoundError(secretId);
-    throw new ClientValidationError('Secret is already revoked');
-  }
+  if (!secret) throw new ClientNotFoundError(secretId);
 
   // Audit log (fire-and-forget)
   await writeAuditLog({
-    eventType: 'client.secret.revoked',
+    eventType: 'client.secret.deleted',
     eventCategory: 'admin',
     actorId,
     metadata: {

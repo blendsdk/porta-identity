@@ -1,15 +1,15 @@
 /** Observable specifications for the user administration workspace. */
 
 import {
-  at,
   Button,
   createApplication,
   DataGrid,
+  Dialog,
   Group,
+  GroupBox,
   Input,
   ListView,
   View,
-  Window,
 } from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
 
@@ -20,6 +20,7 @@ import type {
   AdminUserViewState,
 } from '../../src/admin/user-state.js';
 import { createAdminUserWorkspace, type AdminUserIntent } from '../../src/admin/user-workspace.js';
+import { createAdminPresentation } from '../../src/admin/presentation.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
 const capabilities: AdminCapabilities = {
@@ -113,20 +114,35 @@ function descendants(root: View): View[] {
   return result;
 }
 
-/** Mounts a workspace into a real headless application. */
-function mount(initialState: AdminUserViewState = { kind: 'closed' }) {
+/** Mounts a workspace into the real administration presentation. */
+function mount(initialState: AdminUserViewState = { kind: 'closed' }, width = 80, height = 24) {
   const intents: AdminUserIntent[] = [];
-  const application = createApplication({ viewport: { width: 80, height: 24 } });
+  const presentation = createAdminPresentation(
+    {
+      kind: 'authenticated',
+      server: new URL('https://porta.example.test'),
+      identity: { sub: 'administrator' },
+      organization: { id: organizationId, name: 'Example', slug: 'example' },
+      capabilities,
+    },
+    false,
+    { width, height },
+  );
+  const application = createApplication({
+    content: presentation.content,
+    menuBar: presentation.menu,
+    statusLine: presentation.status,
+    viewport: { width, height },
+  });
   const workspace = createAdminUserWorkspace({
     capabilities,
     onIntent: (intent) => intents.push(intent),
   });
-  const window = new Window('Users');
-  window.setLayout({ rect: { x: 0, y: 0, width: 80, height: 24 } });
-  window.add(at(workspace.content, 1, 1, 76, 20));
-  application.desktop.addWindow(window);
+  presentation.setWorkspace(workspace.content);
   workspace.setState(initialState);
   workspace.focusCurrent();
+  if (!(workspace.content instanceof Dialog)) throw new Error('Expected a Users dialog surface.');
+  const window = workspace.content;
   return { application, intents, window, workspace };
 }
 
@@ -159,6 +175,38 @@ async function settle(): Promise<void> {
 }
 
 describe('user workspace', () => {
+  // A primary module uses one maximized fixed dialog, with its caption as the only content title.
+  it('should use the standard fixed module surface and Layout DSL list composition', async () => {
+    const mounted = mount({ kind: 'page', page });
+    await settle();
+    const views = descendants(mounted.window);
+    const grid = views.find((view) => view instanceof DataGrid);
+
+    expect(mounted.window.title()).toBe('Users');
+    expect(mounted.window.isZoomed()).toBe(true);
+    expect(mounted.window.closable).toBe(false);
+    expect(mounted.window.resizable).toBe(false);
+    expect(mounted.window.zoomable).toBe(false);
+    expect(grid).toBeInstanceOf(DataGrid);
+    expect((grid as DataGrid<unknown>).layout.size).toEqual({ kind: 'fr', weight: 1 });
+    const searchInput = views.find((view) => view instanceof Input);
+    expect(searchInput).toBeInstanceOf(Input);
+    expect((searchInput as Input).bounds.height).toBe(1);
+    expect(
+      views
+        .filter(
+          (view) =>
+            view instanceof Button ||
+            view instanceof DataGrid ||
+            view instanceof GroupBox ||
+            view instanceof Input,
+        )
+        .every((view) => view.layout.position !== 'absolute'),
+    ).toBe(true);
+    expect(frameText(mounted.application).match(/Users/g)).toHaveLength(2);
+    expect(frameText(mounted.application)).toContain('Enter View details · 21 users');
+  });
+
   it('should render explicit loading, empty, no-match, and fixed failure states', async () => {
     const mounted = mount({ kind: 'loading' });
     await settle();
@@ -170,6 +218,10 @@ describe('user workspace', () => {
     });
     await settle();
     expect(frameText(mounted.application)).toContain('No users');
+    expect(frameText(mounted.application)).toContain('Email');
+    expect(frameText(mounted.application)).toContain('Name');
+    expect(frameText(mounted.application)).toContain('Status');
+    expect(descendants(mounted.window).some((view) => view instanceof DataGrid)).toBe(true);
 
     mounted.workspace.setState({ kind: 'page', page });
     await settle();
@@ -187,6 +239,7 @@ describe('user workspace', () => {
     });
     await settle();
     expect(frameText(mounted.application)).toContain('No matching users');
+    expect(descendants(mounted.window).some((view) => view instanceof DataGrid)).toBe(true);
 
     mounted.workspace.setState({
       kind: 'failure',
@@ -207,10 +260,9 @@ describe('user workspace', () => {
     const search = buttons.find((button) => button.activation.label === 'Search');
     const active = buttons.find((button) => button.activation.label === 'Active');
     const inactive = buttons.find((button) => button.activation.label === 'Inactive');
-    const suspended = buttons.find((button) => button.activation.label === 'Suspended');
     const locked = buttons.find((button) => button.activation.label === 'Locked');
     const all = buttons.find((button) => button.activation.label === 'All');
-    if (!search || !active || !inactive || !suspended || !locked || !all)
+    if (!search || !active || !inactive || !locked || !all)
       throw new Error('Search/filter controls were not mounted.');
 
     mounted.application.loop.focusView(input);
@@ -227,7 +279,6 @@ describe('user workspace', () => {
     activate(mounted.application, search);
     activate(mounted.application, active);
     activate(mounted.application, inactive);
-    activate(mounted.application, suspended);
     activate(mounted.application, locked);
     input.getValueSignal().set('');
     activate(mounted.application, search);
@@ -239,7 +290,6 @@ describe('user workspace', () => {
       { kind: 'search', value: 'x'.repeat(255) },
       { kind: 'filter', status: 'active' },
       { kind: 'filter', status: 'inactive' },
-      { kind: 'filter', status: 'suspended' },
       { kind: 'filter', status: 'locked' },
       { kind: 'search' },
       { kind: 'filter' },
@@ -340,6 +390,7 @@ describe('user workspace', () => {
     const actions = descendants(mounted.window)
       .filter((view) => view instanceof Button)
       .map((button) => button.activation.label);
+    const sections = descendants(mounted.window).filter((view) => view instanceof GroupBox);
 
     expect(frame).toContain('alice@example.test');
     expect(frame).toContain('Two-factor: enabled');
@@ -350,21 +401,40 @@ describe('user workspace', () => {
     expect(frame).toContain('Birthdate: 1990-01-02');
     expect(frame).toContain('Region: ZH');
     expect(frame).toContain('Postal: 2311AA');
+    expect(frame).toContain('Last login: 29 Aug 2026, 10:00 UT');
+    expect(frame).toContain('Created: 01 Jan 2026, 10:00 UTC');
+    expect(frame).not.toContain('2026-08-29T10:00:00Z');
     expect(frame).not.toContain('opaque-never-rendered');
+    expect(sections.map((section) => section.title)).toEqual(
+      expect.arrayContaining(['Identity', 'Account & security', 'Operations']),
+    );
     expect(actions).toEqual(
       expect.arrayContaining([
         'Edit',
         'Set password',
         'Clear password',
         'Verify email',
-        'Suspend',
-        'Lock',
         'Deactivate',
         'History',
         'Delete',
       ]),
     );
-    expect(actions).not.toEqual(expect.arrayContaining(['Unsuspend', 'Unlock', 'Reactivate']));
+    expect(actions).not.toEqual(
+      expect.arrayContaining(['Suspend', 'Unsuspend', 'Lock', 'Unlock', 'Activate']),
+    );
+    expect(actions).toContain('Back to users');
+    const sectionActions = sections.flatMap((section) =>
+      descendants(section)
+        .filter((view) => view instanceof Button)
+        .map((button) => button.activation.label),
+    );
+    expect(sectionActions).not.toContain('Back to users');
+    for (const button of descendants(mounted.window).filter(
+      (view): view is Button => view instanceof Button,
+    )) {
+      expect(button.layout.size).toBeUndefined();
+      expect(button.bounds.width).toBe(button.measure().width);
+    }
   });
 
   it('should render bounded history without metadata or paging controls', async () => {
@@ -388,10 +458,21 @@ describe('user workspace', () => {
       .map((button) => button.activation.label);
 
     expect(frame).toContain('event-0');
+    expect(frame).toContain('29 Aug 2026, 10:00 UTC');
+    expect(frame).not.toContain('2026-08-29T10:00:00Z');
     expect(frame).toContain('More entries exist');
     expect(frame).not.toContain('metadata');
-    expect(actions).toContain('Back');
+    expect(actions).toContain('Back to user');
     expect(actions).not.toEqual(expect.arrayContaining(['Previous', 'Next']));
+    const historySection = descendants(mounted.window).find(
+      (view) => view instanceof GroupBox && view.title.startsWith('History for '),
+    );
+    expect(historySection).toBeInstanceOf(GroupBox);
+    expect(
+      descendants(historySection as GroupBox)
+        .filter((view) => view instanceof Button)
+        .map((button) => button.activation.label),
+    ).not.toContain('Back to user');
 
     const list = descendants(mounted.window).find((view) => view instanceof ListView);
     if (!(list instanceof ListView)) throw new Error('History list missing.');

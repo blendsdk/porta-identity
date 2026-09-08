@@ -4,7 +4,7 @@
  * All routes are under `/api/admin/clients` and require
  * admin authentication (Bearer JWT). Provides CRUD for clients,
  * status lifecycle (activate, deactivate), and nested
- * secret management (generate, list, revoke).
+ * secret management (generate, list, delete).
  *
  * Route structure:
  *   POST   /                               — Create a new client
@@ -16,7 +16,7 @@
  *   POST   /:id/deactivate                 — Deactivate client
  *   POST   /:id/secrets                    — Generate new secret
  *   GET    /:id/secrets                    — List secrets (no hashes)
- *   POST   /:id/secrets/:secretId/revoke   — Revoke a secret
+ *   POST   /:id/secrets/:secretId/revoke   — Permanently delete a secret
  *
  * Error mapping:
  *   ClientNotFoundError → 404
@@ -457,7 +457,7 @@ export function createClientRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/secrets/:secretId/revoke — Revoke a secret
+  // POST /:id/secrets/:secretId/revoke — Permanently delete a secret
   // -------------------------------------------------------------------------
   router.post(
     '/:id/secrets/:secretId/revoke',

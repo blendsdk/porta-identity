@@ -715,7 +715,7 @@ describe('client routes', () => {
     });
   });
 
-  describe('POST /:id/secrets/:secretId/revoke — Revoke secret', () => {
+  describe('POST /:id/secrets/:secretId/revoke — Permanently delete secret', () => {
     it('should return 204 on success', async () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
@@ -731,9 +731,9 @@ describe('client routes', () => {
       expect(secretService.revoke).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
     });
 
-    it('should throw 400 when secret already revoked', async () => {
+    it('should throw 404 when the secret no longer exists', async () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new ClientValidationError('Secret is already revoked'),
+        new ClientNotFoundError('secret-uuid-1'),
       );
 
       const router = createClientRouter();
@@ -742,7 +742,7 @@ describe('client routes', () => {
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client not found');
     });
   });
 

@@ -1,25 +1,34 @@
 /** Direct JSVision workspace for clients owned by the selected organization. */
 
+import type { UpdateClientInput } from '@portaidentity/sdk';
 import {
   Button,
+  CheckGroup,
   col,
   cover,
   DataGrid,
   Dialog,
   fixed,
+  Group,
   GroupBox,
   grow,
-  ListBox,
+  Input,
+  Label,
+  RadioGroup,
   row,
-  Scroller,
   signal,
   spacer,
+  Switch,
+  TabView,
   Text,
   View,
 } from '@jsvision/ui';
-import type { Column, Signal } from '@jsvision/ui';
+import type { Column, Signal, Tab } from '@jsvision/ui';
 
+import { formatAdminDateTime, formatOptionalAdminDateTime } from './admin-date-time.js';
 import type { AdminApplication } from './application-state.js';
+import { authenticationUrlRows } from './client-authentication-dialog.js';
+import type { AdminAuthenticationUrlRow } from './client-authentication-dialog.js';
 import type {
   AdminClient,
   AdminClientProjection,
@@ -27,6 +36,7 @@ import type {
   AdminClientViewState,
 } from './client-state.js';
 import type { AdminCapabilities, AdminOrganizationContext } from './state.js';
+import { textValidator } from './user-dialog-fields.js';
 
 /** Closed set of intents emitted by the organization client workspace. */
 export type AdminClientIntent =
@@ -35,15 +45,33 @@ export type AdminClientIntent =
   | { readonly kind: 'retry' }
   | { readonly kind: 'back' }
   | { readonly kind: 'edit-name'; readonly clientId: string }
-  | { readonly kind: 'edit-authentication'; readonly clientId: string }
-  | { readonly kind: 'edit-protocol'; readonly clientId: string }
-  | { readonly kind: 'edit-login'; readonly clientId: string }
+  | { readonly kind: 'add-authentication-url'; readonly clientId: string }
+  | {
+      readonly kind: 'edit-authentication-url';
+      readonly clientId: string;
+      readonly row: AdminAuthenticationUrlRow;
+    }
+  | {
+      readonly kind: 'delete-authentication-url';
+      readonly clientId: string;
+      readonly row: AdminAuthenticationUrlRow;
+    }
+  | {
+      readonly kind: 'save-protocol';
+      readonly clientId: string;
+      readonly input: UpdateClientInput;
+    }
+  | {
+      readonly kind: 'save-login';
+      readonly clientId: string;
+      readonly input: UpdateClientInput;
+    }
   | { readonly kind: 'activate'; readonly clientId: string }
   | { readonly kind: 'deactivate'; readonly clientId: string }
   | { readonly kind: 'delete'; readonly clientId: string }
   | { readonly kind: 'secrets'; readonly clientId: string }
   | { readonly kind: 'generate-secret'; readonly clientId: string }
-  | { readonly kind: 'revoke-secret'; readonly clientId: string; readonly secretId: string };
+  | { readonly kind: 'delete-secret'; readonly clientId: string; readonly secretId: string };
 
 /** Inputs for one selected-organization client workspace. */
 export interface AdminClientWorkspaceOptions {
@@ -91,15 +119,18 @@ function applicationLabel(client: AdminClient, options: AdminClientWorkspaceOpti
   );
 }
 
-/** Builds the required complete client catalog columns. */
+/** Builds the compact identity and status columns used by the client overview. */
 function clientColumns(options: AdminClientWorkspaceOptions): Column<AdminClient>[] {
   return [
-    { title: 'Name', accessor: (client) => client.clientName, width: 10 },
-    { title: 'Client ID', accessor: (client) => client.clientId, width: 10 },
-    { title: 'Application', accessor: (client) => applicationLabel(client, options), width: 11 },
-    { title: 'Application Type', accessor: (client) => client.applicationType, width: 17 },
-    { title: 'Client Type', accessor: (client) => client.clientType, width: 12 },
-    { title: 'Status', accessor: (client) => client.status, width: 7 },
+    { title: 'Name', accessor: (client) => client.clientName, width: '2fr', minWidth: 16 },
+    { title: 'Client ID', accessor: (client) => client.clientId, width: '2fr', minWidth: 16 },
+    {
+      title: 'Application',
+      accessor: (client) => applicationLabel(client, options),
+      width: '2fr',
+      minWidth: 16,
+    },
+    { title: 'Status', accessor: (client) => client.status, width: 10 },
   ];
 }
 
@@ -107,9 +138,17 @@ function clientColumns(options: AdminClientWorkspaceOptions): Column<AdminClient
 const SECRET_COLUMNS: Column<AdminClientSecret>[] = [
   { title: 'Label', accessor: (secret) => secret.label ?? 'Not provided', width: 14 },
   { title: 'Status', accessor: (secret) => secret.status, width: 8 },
-  { title: 'Last used', accessor: (secret) => secret.lastUsedAt ?? 'Never', width: 14 },
-  { title: 'Expires', accessor: (secret) => secret.expiresAt ?? 'Never', width: 14 },
-  { title: 'Created', accessor: (secret) => secret.createdAt, width: 14 },
+  {
+    title: 'Last used',
+    accessor: (secret) => formatOptionalAdminDateTime(secret.lastUsedAt, 'Never'),
+    width: 23,
+  },
+  {
+    title: 'Expires',
+    accessor: (secret) => formatOptionalAdminDateTime(secret.expiresAt, 'Never'),
+    width: 23,
+  },
+  { title: 'Created', accessor: (secret) => formatAdminDateTime(secret.createdAt), width: 23 },
 ];
 
 /** Optional operation status shown without obscuring retained validated content. */
@@ -120,7 +159,7 @@ interface ProjectionStatus {
   readonly retry: boolean;
 }
 
-/** Labels owned by the single persistent detail-section selector. */
+/** Labels for the client subviews shown by the detail tab pane. */
 const CLIENT_DETAIL_SECTIONS = [
   'Overview',
   'Authentication',
@@ -130,23 +169,35 @@ const CLIENT_DETAIL_SECTIONS = [
   'Lifecycle',
 ] as const;
 
-/** Maximized workspace dialog that asks its owner to recompute responsive composition on resize. */
-class ClientWorkspaceDialog extends Dialog {
-  /** Rebuilds only the current projection after the desktop changes size. */
-  onWorkspaceResize?: () => void;
+/** Returns true for bounded scope text that cannot alter terminal rendering. */
+function validScope(value: string): boolean {
+  if (value.length > 2_048) return false;
+  return ![...value].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+  });
+}
 
-  /** Keeps the selected detail section while switching between rail and stacked geometry. */
-  override onResized(): void {
-    super.onResized();
-    this.onWorkspaceResize?.();
+/** Returns whether the selected protocol combination matches server compatibility rules. */
+function protocolIsValid(
+  client: AdminClient,
+  grants: readonly boolean[],
+  authenticationMethod: number,
+  requirePkce: boolean,
+  scope: string,
+): boolean {
+  if (!grants.some(Boolean) || !validScope(scope)) return false;
+  if (client.clientType === 'public') {
+    return authenticationMethod === 2 && requirePkce && !grants[1];
   }
+  return authenticationMethod !== 2;
 }
 
 /** Creates the feature-specific client workspace with ordinary Layout DSL primitives. */
 export function createAdminClientWorkspace(
   options: AdminClientWorkspaceOptions,
 ): AdminClientWorkspace {
-  const content = new ClientWorkspaceDialog({ title: 'OIDC Clients', width: 72, height: 20 });
+  const content = new Dialog({ title: 'OIDC Clients', width: 72, height: 20 });
   content.closable = false;
   content.resizable = false;
   content.zoomable = false;
@@ -156,19 +207,8 @@ export function createAdminClientWorkspace(
   let focusedClientId: string | null = null;
   let detailClientId: string | null = null;
   const selectedSection = signal(0);
-  const focusedSection = signal(0);
   const selectedSecretId = signal<string | null>(null);
-  let updateDetailSection: (() => void) | undefined;
   let disposed = false;
-
-  /** Reports when the maximized workspace needs its narrow stacked detail composition. */
-  const isCompact = (): boolean => {
-    // During a desktop resize the window rect is current before the next reflow updates `bounds`.
-    // Reading the rect first lets the responsive composition switch in that same resize cycle.
-    const width = content.layout.rect?.width ?? (content.bounds.width || 74);
-    const height = content.layout.rect?.height ?? (content.bounds.height || 18);
-    return width < 60 || height < 15;
-  };
 
   /** Creates an action button whose natural size is resolved by its Layout DSL row. */
   const action = (
@@ -197,69 +237,38 @@ export function createAdminClientWorkspace(
       options.capabilities.canCreateClients &&
       options.capabilities.canReadApplications &&
       options.applications.some((application) => application.status === 'active');
-    const create = new Button('~C~reate', {
-      disabled: !canCreate,
-      onClick: () => options.onIntent({ kind: 'create' }),
-    });
-    const heading = row(
-      { gap: 1 },
-      fixed(
-        new Text(`OIDC Clients — ${options.organization?.name ?? 'organization required'}`),
-        40,
+    const rows: Signal<AdminClient[]> = signal([...projection.clients]);
+    const focused = signal(
+      Math.max(
+        0,
+        projection.clients.findIndex((item) => item.id === focusedClientId),
       ),
-      spacer(),
-      create,
     );
-    let body: View;
-    if (projection.clients.length === 0) {
-      body = new Text('No OIDC clients');
-      currentFocus = canCreate ? create : null;
-    } else {
-      const rows: Signal<AdminClient[]> = signal([...projection.clients]);
-      const focused = signal(
-        Math.max(
-          0,
-          projection.clients.findIndex((item) => item.id === focusedClientId),
-        ),
-      );
-      const grid = new DataGrid({
-        rows,
-        focused,
-        columns: clientColumns(options),
-        zebra: true,
-        onSelect: (_index, selected) => {
-          focusedClientId = selected.id;
-          options.onIntent({ kind: 'select', clientId: selected.id });
-        },
-      });
-      body = grid;
-      currentFocus = grid.rows;
-    }
-    const denial =
-      options.organization?.status !== 'active'
-        ? 'Create requires an active organization'
-        : !options.capabilities.canCreateClients
-          ? 'Create requires client create'
-          : !options.capabilities.canReadApplications
-            ? 'Create requires application read'
-            : !options.applications.some((application) => application.status === 'active')
-              ? 'Create requires an active application'
-              : undefined;
-    const firstClient = projection.clients[0];
-    const applicationSummary = firstClient
-      ? `Application: ${applicationLabel(firstClient, options)}`
-      : undefined;
-    const clientSummary = firstClient ? `Client: ${firstClient.clientName}` : undefined;
+    const grid = new DataGrid({
+      rows,
+      focused,
+      columns: clientColumns(options),
+      zebra: true,
+      onSelect: (_index, selected) => {
+        focusedClientId = selected.id;
+        options.onIntent({ kind: 'select', clientId: selected.id });
+      },
+    });
+    currentFocus = projection.clients.length > 0 ? grid.rows : null;
+    const clientCount = projection.clients.length;
+    const footer =
+      clientCount === 0
+        ? canCreate
+          ? 'No OIDC clients. Use OIDC Clients > Create client.'
+          : 'No OIDC clients'
+        : `↑↓ Move · Enter View details · ${clientCount} ${clientCount === 1 ? 'client' : 'clients'}`;
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          fixed(heading, 2),
           statusRow(status),
-          denial && fixed(new Text(denial), 1),
-          clientSummary ? fixed(new Text(clientSummary), 1) : undefined,
-          applicationSummary ? fixed(new Text(applicationSummary), 1) : undefined,
-          grow(body),
+          grow(grid),
+          fixed(new Text(footer), 1),
         ),
       ),
     );
@@ -286,8 +295,8 @@ export function createAdminClientWorkspace(
           selected.clientId,
           `${selected.clientType} · ${selected.applicationType}`,
           `Status: ${selected.status}`,
-          selected.createdAt,
-          selected.updatedAt,
+          `Created: ${formatAdminDateTime(selected.createdAt)}`,
+          `Updated: ${formatAdminDateTime(selected.updatedAt)}`,
         ].join('\n'),
       ),
     );
@@ -323,29 +332,59 @@ export function createAdminClientWorkspace(
     );
   };
 
-  /** Shows redirect and browser-origin collections with one focused entry action. */
+  /** Shows all redirect and browser-origin collections in one direct CRUD grid. */
   const authenticationSection = (
     projection: Exclude<AdminClientProjection, { kind: 'list' }>,
   ): View => {
     const selected = projection.client;
+    const rows = signal(authenticationUrlRows(selected));
+    const focused = signal(0);
+    const selectedIndex = signal(-1);
+    const selectedRow = signal<AdminAuthenticationUrlRow | null>(null);
+    const grid = new DataGrid<AdminAuthenticationUrlRow>({
+      rows,
+      focused,
+      selected: selectedIndex,
+      columns: [
+        { title: 'Type', accessor: (entry) => entry.type, width: 27 },
+        { title: 'URL / origin', accessor: (entry) => entry.value, width: '1fr', minWidth: 20 },
+      ],
+      zebra: true,
+      onSelect: (index, entry) => {
+        selectedIndex.set(index);
+        selectedRow.set(entry);
+      },
+    });
+    const edit = new Button('Edit', {
+      disabled: () => !options.capabilities.canUpdateClients || selectedRow() === null,
+      onClick: () => {
+        const target = selectedRow.peek();
+        if (target)
+          options.onIntent({ kind: 'edit-authentication-url', clientId: selected.id, row: target });
+      },
+    });
+    const remove = new Button('Delete', {
+      disabled: () => {
+        const target = selectedRow();
+        return !options.capabilities.canUpdateClients || target === null ||
+          (target.kind === 'redirect' && selected.redirectUris.length === 1);
+      },
+      onClick: () => {
+        const target = selectedRow.peek();
+        if (target)
+          options.onIntent({ kind: 'delete-authentication-url', clientId: selected.id, row: target });
+      },
+    });
     return col(
-      { gap: 1 },
-      grow(region('Redirect URIs', new Text(selected.redirectUris.join('\n') || 'None'))),
-      grow(
-        region(
-          'Post-logout redirect URIs',
-          new Text(selected.postLogoutRedirectUris.join('\n') || 'None'),
-        ),
-      ),
-      grow(region('Allowed origins', new Text(selected.allowedOrigins.join('\n') || 'None'))),
+      { gap: 1, padding: 1 },
+      grow(grid),
       fixed(
         row(
           { gap: 1 },
-          action(
-            '~E~dit authentication',
-            { kind: 'edit-authentication', clientId: selected.id },
-            !options.capabilities.canUpdateClients,
-          ),
+          action('Add', { kind: 'add-authentication-url', clientId: selected.id },
+            !options.capabilities.canUpdateClients),
+          edit,
+          remove,
           spacer(),
         ),
         2,
@@ -353,58 +392,208 @@ export function createAdminClientWorkspace(
     );
   };
 
-  /** Shows the effective protocol values with one focused entry action. */
+  /** Edits and saves protocol values directly inside the Protocol tab. */
   const protocolSection = (projection: Exclude<AdminClientProjection, { kind: 'list' }>): View => {
     const selected = projection.client;
-    const details = [
-      `Grant types: ${selected.grantTypes.join(', ')}`,
-      `Response types: ${selected.responseTypes.join(', ')}`,
-      `Scope: ${selected.scope}`,
-      `Token authentication: ${selected.tokenEndpointAuthMethod}`,
-      `PKCE required: ${selected.requirePkce ? 'yes' : 'no'}`,
-    ];
-    return col(
+    const grantNames = ['authorization_code', 'client_credentials', 'refresh_token'] as const;
+    const authenticationNames = ['client_secret_basic', 'client_secret_post', 'none'] as const;
+    const initialGrants = grantNames.map((grant) => selected.grantTypes.includes(grant));
+    const initialAuthentication = authenticationNames.indexOf(selected.tokenEndpointAuthMethod);
+    const grants = signal([...initialGrants]);
+    const authenticationMethod = signal(initialAuthentication);
+    const requirePkce = signal(selected.requirePkce);
+    const scope = signal(selected.scope);
+    const submitted = signal(false);
+    const grantChoices = new CheckGroup({
+      labels: ['Authorization code', 'Client credentials', 'Refresh token'],
+      value: grants,
+    });
+    const scopeInput = new Input({
+      value: scope,
+      maxLength: 2_048,
+      validator: textValidator(0, 2_048),
+    });
+    const authenticationChoices: View =
+      selected.clientType === 'public'
+        ? new Text('None (required, read only)')
+        : new RadioGroup({
+            labels: ['Client secret basic', 'Client secret post'],
+            value: authenticationMethod,
+          });
+    const pkceSwitch = new Switch({
+      value: requirePkce,
+      label: '~P~KCE required',
+      disabled: selected.clientType === 'public',
+    });
+    const isValid = (): boolean =>
+      protocolIsValid(
+        selected,
+        grants(),
+        authenticationMethod(),
+        requirePkce(),
+        scope(),
+      );
+    const isDirty = (): boolean =>
+      grants().some((value, index) => value !== initialGrants[index]) ||
+      authenticationMethod() !== initialAuthentication ||
+      requirePkce() !== selected.requirePkce ||
+      scope() !== selected.scope;
+    const save = new Button('~S~ave', {
+      disabled: () =>
+        !options.capabilities.canUpdateClients || submitted() || !isValid() || !isDirty(),
+      onClick: () => {
+        submitted.set(true);
+        options.onIntent({
+          kind: 'save-protocol',
+          clientId: selected.id,
+          input: {
+            grantTypes: grants
+              .peek()
+              .flatMap((enabled, index) => (enabled ? [grantNames[index]!] : [])),
+            responseTypes: ['code'],
+            scope: scope.peek(),
+            tokenEndpointAuthMethod: authenticationNames[authenticationMethod.peek()]!,
+            requirePkce: requirePkce.peek(),
+          },
+        });
+      },
+    });
+    const form = col(
       { gap: 1 },
-      grow(region('Protocol configuration', new Text(details.join('\n')))),
       fixed(
         row(
           { gap: 1 },
-          action(
-            '~E~dit protocol',
-            { kind: 'edit-protocol', clientId: selected.id },
-            !options.capabilities.canUpdateClients,
+          grow(new Text(`Client type: ${selected.clientType} (read only)`)),
+          grow(new Text('Response type: code (read only)')),
+        ),
+        1,
+      ),
+      fixed(
+        row(
+          { gap: 2 },
+          grow(col({}, fixed(new Text('Grant types'), 1), fixed(grantChoices, 3))),
+          grow(
+            col(
+              {},
+              fixed(new Text('Token endpoint authentication'), 1),
+              fixed(authenticationChoices, 3),
+            ),
           ),
-          spacer(),
+        ),
+        4,
+      ),
+      fixed(row({ gap: 1 }, fixed(new Label('Scope', scopeInput), 18), grow(scopeInput)), 1),
+      fixed(
+        row(
+          { gap: 2 },
+          pkceSwitch,
+          grow(
+            new Text(() =>
+              isValid() ? '' : 'Not supported for this client type.',
+            ),
+          ),
         ),
         2,
       ),
     );
+    return col(
+      { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+      grow(form),
+      fixed(row({ gap: 1 }, save, spacer()), 2),
+    );
   };
 
-  /** Shows inherited and effective login methods with one focused entry action. */
+  /** Edits and saves inherited or explicit login methods directly inside the tab. */
   const loginSection = (projection: Exclude<AdminClientProjection, { kind: 'list' }>): View => {
     const selected = projection.client;
-    const details = [
-      `Override mode: ${selected.loginMethods === null ? 'Inherit' : 'Custom'}`,
-      `Source organization: ${options.organization?.name ?? projection.organizationId}`,
-      `Configured methods: ${selected.loginMethods?.join(', ') ?? 'inherit'}`,
-      `Effective methods: ${selected.effectiveLoginMethods.join(', ')}`,
+    const initiallyInherited = selected.loginMethods === null;
+    const inherited = signal(initiallyInherited);
+    const initialMethods = selected.loginMethods ?? selected.effectiveLoginMethods;
+    const initialSelection = [
+      initialMethods.includes('password'),
+      initialMethods.includes('magic_link'),
     ];
-    return col(
+    const methods = signal([...initialSelection]);
+    const submitted = signal(false);
+    const methodChoices = new CheckGroup({
+      labels: ['~P~assword', '~M~agic link'],
+      value: methods,
+    });
+    const canSave = (): boolean => inherited() || methods().some(Boolean);
+    const isDirty = (): boolean =>
+      inherited() !== initiallyInherited ||
+      (!inherited() && methods().some((value, index) => value !== initialSelection[index]));
+    const form = col(
       { gap: 1 },
-      grow(region('Login experience', new Text(details.join('\n')))),
       fixed(
-        row(
-          { gap: 1 },
-          action(
-            '~E~dit login experience',
-            { kind: 'edit-login', clientId: selected.id },
-            !options.capabilities.canUpdateClients,
-          ),
-          spacer(),
+        new Text(`Organization defaults: ${options.organization?.name ?? projection.organizationId}`),
+        1,
+      ),
+      fixed(
+        new Text(
+          `Effective methods: ${selected.effectiveLoginMethods
+            .map((method) => (method === 'magic_link' ? 'Magic link' : 'Password'))
+            .join(', ')}`,
         ),
+        1,
+      ),
+      fixed(new Switch({ value: inherited, label: 'Use organization defaults' }), 1),
+      fixed(new Text('Client login methods'), 1),
+      fixed(methodChoices, 2),
+      fixed(
+        new Text(() => (canSave() ? '' : 'Select Password, Magic link, or both before saving.')),
         2,
       ),
+    );
+    let wasInherited = inherited.peek();
+    form.onMount(() => {
+      form.bind(
+        () => inherited(),
+        (usesDefaults) => {
+          methodChoices.focusable = !usesDefaults;
+          methodChoices.setItemEnabled(0, !usesDefaults);
+          methodChoices.setItemEnabled(1, !usesDefaults);
+          if (wasInherited && !usesDefaults) methods.set([false, false]);
+          if (usesDefaults) {
+            methods.set([
+              selected.effectiveLoginMethods.includes('password'),
+              selected.effectiveLoginMethods.includes('magic_link'),
+            ]);
+          }
+          wasInherited = usesDefaults;
+        },
+        { relayout: true },
+      );
+    });
+    methodChoices.focusable = !inherited.peek();
+    methodChoices.setItemEnabled(0, !inherited.peek());
+    methodChoices.setItemEnabled(1, !inherited.peek());
+    const save = new Button('~S~ave', {
+      disabled: () =>
+        !options.capabilities.canUpdateClients || submitted() || !canSave() || !isDirty(),
+      onClick: () => {
+        submitted.set(true);
+        const selectedMethods = methods.peek();
+        options.onIntent({
+          kind: 'save-login',
+          clientId: selected.id,
+          input: {
+            loginMethods: inherited.peek()
+              ? null
+              : [
+                  selectedMethods[0] ? 'password' : null,
+                  selectedMethods[1] ? 'magic_link' : null,
+                ].filter(
+                  (method): method is 'password' | 'magic_link' => method !== null,
+                ),
+          },
+        });
+      },
+    });
+    return col(
+      { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+      grow(form),
+      fixed(row({ gap: 1 }, save, spacer()), 2),
     );
   };
 
@@ -435,33 +624,32 @@ export function createAdminClientWorkspace(
     if (selected.clientType === 'confidential') {
       actions.push(
         action(
-          '~G~enerate',
+          'A~d~d',
           { kind: 'generate-secret', clientId: selected.id },
           !options.capabilities.canUpdateClients,
         ),
       );
       actions.push(
-        new Button('~R~evoke', {
+        new Button('D~e~lete', {
           disabled: () => {
             const secret = projection.secrets.find(
               (candidate) => candidate.id === selectedSecretId(),
             );
-            return !options.capabilities.canRevokeClientSecrets || secret?.status !== 'active';
+            return !options.capabilities.canRevokeClientSecrets || !secret;
           },
           onClick: () => {
             const secretId = selectedSecretId.peek();
             if (secretId)
-              options.onIntent({ kind: 'revoke-secret', clientId: selected.id, secretId });
+              options.onIntent({ kind: 'delete-secret', clientId: selected.id, secretId });
           },
         }),
       );
     }
-    const credentials = region('Credentials', grid);
     return col(
-      { gap: 1 },
+      { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
       selected.clientType === 'public' &&
         fixed(new Text('Public clients do not use client secrets.'), 1),
-      grow(credentials),
+      grow(grid),
       fixed(row({ gap: 1 }, ...actions, spacer()), 2),
     );
   };
@@ -482,15 +670,21 @@ export function createAdminClientWorkspace(
             !options.capabilities.canUpdateClients,
           );
     return col(
-      { gap: 1 },
-      grow(
-        region(
-          'Lifecycle',
-          new Text(
-            `Status: ${selected.status}\nDeleting this client permanently removes its protocol authority and secrets.`,
-          ),
+      { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+      fixed(new Text(`Current status: ${selected.status}`), 1),
+      fixed(
+        new Text(
+          selected.status === 'active'
+            ? 'Deactivation stops new sign-ins. The client can be activated again later.'
+            : 'Activation allows this client to start new sign-ins again.',
         ),
+        2,
       ),
+      fixed(
+        new Text('Deleting this client permanently removes its protocol authority and secrets.'),
+        2,
+      ),
+      spacer(),
       fixed(
         row(
           { gap: 1 },
@@ -507,7 +701,7 @@ export function createAdminClientWorkspace(
     );
   };
 
-  /** Renders one selected client through stable responsive section navigation. */
+  /** Renders one selected client in a full-width tab pane. */
   const renderDetail = (
     projection: Exclude<AdminClientProjection, { kind: 'list' }>,
     status?: ProjectionStatus,
@@ -519,82 +713,48 @@ export function createAdminClientWorkspace(
       selectedSecretId.set(null);
       const sectionIndex = projection.kind === 'secrets' ? 4 : 0;
       selectedSection.set(sectionIndex);
-      focusedSection.set(sectionIndex);
     }
     const application = options.capabilities.canReadApplications
       ? (projection.applicationName ?? applicationLabel(selected, options))
       : selected.applicationId;
-    /** Builds only the currently selected section from this authoritative projection. */
-    const selectedContent = (): GroupBox => {
-      const index = Math.max(
-        0,
-        Math.min(selectedSection.peek(), CLIENT_DETAIL_SECTIONS.length - 1),
-      );
-      if (index === 0) return region('Overview', overviewSection(projection, application));
-      if (index === 1) return region('Authentication', authenticationSection(projection));
-      if (index === 2) return region('Protocol', protocolSection(projection));
-      if (index === 3) return region('Login experience', loginSection(projection));
-      if (index === 4) return region('Credentials', credentialsSection(projection));
-      return region('Lifecycle', lifecycleSection(projection));
-    };
-    let section = selectedContent();
-    const compact = isCompact();
     const back = action('~B~ack to OIDC clients', { kind: 'back' });
-    const sectionScroller = compact
-      ? new Scroller({
-          content: grow(section),
-          extent: () => ({
-            width: Math.max(1, (content.layout.rect?.width ?? content.bounds.width) - 6),
-            height: 18,
-          }),
-          scrollbars: 'vertical',
-        })
-      : undefined;
-    const detailBody = compact
-      ? col(
-          fixed(row({ gap: 1 }, grow(sectionNavigation), back), 2),
-          grow(sectionScroller ?? section),
-        )
-      : row({ gap: 1 }, fixed(sectionNavigation, 19), grow(section));
-    updateDetailSection = () => {
-      const nextSection = selectedContent();
-      if (sectionScroller) {
-        sectionScroller.remove(section);
-        sectionScroller.add(grow(nextSection));
-      } else {
-        detailBody.remove(section);
-        detailBody.add(grow(nextSection));
-      }
-      section = nextSection;
+    /** Wraps a subview in the Group required by TabView. */
+    const tabPage = (child: View): Group => {
+      const page = new Group();
+      page.add(cover(child));
+      return page;
     };
+    const pages = [
+      overviewSection(projection, application),
+      authenticationSection(projection),
+      protocolSection(projection),
+      loginSection(projection),
+      credentialsSection(projection),
+      lifecycleSection(projection),
+    ];
+    const tabs = signal<Tab[]>(
+      CLIENT_DETAIL_SECTIONS.map((title, index) => ({ title, content: tabPage(pages[index]!) })),
+    );
+    const tabView = new TabView({
+      tabs,
+      active: selectedSection,
+      onChange: (index) => {
+        if (index === 4 && projection.client.clientType === 'confidential')
+          options.onIntent({ kind: 'secrets', clientId: projection.client.id });
+      },
+    });
     content.add(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           statusRow(status),
-          grow(detailBody),
-          !compact && fixed(row({ gap: 1 }, back, spacer()), 2),
+          grow(tabView),
+          fixed(row({ gap: 1 }, back, spacer()), 2),
         ),
       ),
     );
-    currentFocus = sectionNavigation.rows;
+    currentFocus = tabView.strip;
   };
-
-  /** One selector instance retains focus and selection across detail redraws and viewport changes. */
-  const sectionNavigation = new ListBox({
-    items: signal([...CLIENT_DETAIL_SECTIONS]),
-    focused: focusedSection,
-    selected: selectedSection,
-    onSelect: (index) => {
-      selectedSection.set(index);
-      focusedSection.set(index);
-      const projection = state.kind === 'detail' || state.kind === 'secrets' ? state : undefined;
-      updateDetailSection?.();
-      options.focusView?.(sectionNavigation.rows);
-      if (index === 4 && projection?.client.clientType === 'confidential')
-        options.onIntent({ kind: 'secrets', clientId: projection.client.id });
-    },
-  });
 
   /** Converts a legacy retained list into the current explicit list projection. */
   const normalizePrevious = (
@@ -611,14 +771,11 @@ export function createAdminClientWorkspace(
     currentFocus = null;
     if (disposed) return;
     if (!options.organization) {
-      const disabled = new Button('~C~reate', { disabled: true });
       content.add(
         cover(
           col(
             { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-            fixed(new Text('OIDC Clients'), 1),
             fixed(new Text('organization required'), 1),
-            row(disabled, spacer()),
             spacer(),
           ),
         ),
@@ -626,7 +783,7 @@ export function createAdminClientWorkspace(
       return;
     }
     if (state.kind === 'closed') {
-      content.add(cover(col({ gap: 1 }, fixed(new Text('OIDC Clients'), 1), spacer())));
+      content.add(cover(spacer()));
       return;
     }
     if (state.kind === 'list') {
@@ -654,7 +811,6 @@ export function createAdminClientWorkspace(
       cover(
         col(
           { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
-          fixed(new Text(`OIDC Clients — ${options.organization.name}`), 1),
           fixed(new Text(label), 1),
           state.kind !== 'loading' && row(retry, spacer()),
           spacer(),
@@ -663,8 +819,6 @@ export function createAdminClientWorkspace(
     );
     if (state.kind !== 'loading') currentFocus = retry;
   };
-
-  content.onWorkspaceResize = render;
 
   return {
     content,

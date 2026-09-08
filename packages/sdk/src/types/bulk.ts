@@ -13,7 +13,7 @@
 export type BulkOrgAction = 'activate' | 'suspend';
 
 /** User bulk status actions (matches server Zod schema) */
-export type BulkUserAction = 'activate' | 'deactivate' | 'suspend' | 'lock' | 'unlock';
+export type BulkUserAction = 'activate' | 'deactivate';
 
 /** Input for bulk organization status change */
 export interface BulkOrgStatusInput {
@@ -31,8 +31,6 @@ export interface BulkUserStatusInput {
   ids: string[];
   /** Status action to apply */
   action: BulkUserAction;
-  /** Optional reason for the action */
-  reason?: string;
   /** Organization ID scope — required for user bulk operations */
   organizationId: string;
 }

@@ -50,11 +50,9 @@ async function mutateAdministrativeAuthority(
         )
       : await context.rawRequest(
           'POST',
-          `/api/admin/users/${actorId}/${request.transition === 'actor-deactivation' ? 'deactivate' : 'suspend'}`,
+          `/api/admin/users/${actorId}/deactivate`,
           'admin-full',
-          request.transition === 'actor-suspension'
-            ? { reason: 'assurance-stale-authority-probe' }
-            : undefined,
+          undefined,
         );
   return { token, mutationAccepted: response.status >= 200 && response.status < 300 };
 }

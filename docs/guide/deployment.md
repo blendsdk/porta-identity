@@ -843,7 +843,7 @@ Beyond Prometheus metrics, monitor:
 | Redis memory           | `redis-cli info memory`           | Memory approaching limits                           |
 | Disk usage             | PostgreSQL data volume            | Running out of space                                |
 | Rate limit hits        | Audit log `security.rate_limited` | Brute-force attempts                                |
-| Account lockouts       | Audit log `user.locked`           | Credential-stuffing attacks                         |
+| Account lockouts       | Audit log `user.auto_locked`      | Credential-stuffing attacks                         |
 
 ---
 
@@ -896,8 +896,8 @@ porta config set --key account_lockout_cooldown_minutes --value 30
 ### Security Design
 
 - **No information leakage** — Locked accounts return the same error as invalid credentials, preventing account enumeration
-- **Audit logging** — Every auto-lock event is logged as `user.locked` with metadata indicating the trigger
-- **Admin override** — Administrators can manually unlock a user at any time via `porta user unlock` or the Admin API
+- **Audit logging** — Every auto-lock event is logged as `user.auto_locked` with metadata indicating the trigger
+- **Automatic recovery** — Locked accounts return to active after the configured cooldown
 
 ---
 

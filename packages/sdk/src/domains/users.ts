@@ -77,15 +77,10 @@ export interface UsersDomain {
   exportData(orgId: string, userId: string): Promise<UserExportData>;
   /** Permanently delete a user and their owned identity data. */
   delete(orgId: string, userId: string): Promise<void>;
-  /** Suspend a user with an optional administrative reason. */
-  suspend(orgId: string, userId: string, reason?: string): Promise<void>;
-  /** Unsuspend a user (suspended → active) — POST .../:userId/unsuspend */
-  unsuspend(orgId: string, userId: string): Promise<void>;
-  /** Lock a user with the required administrative reason. */
-  lock(orgId: string, userId: string, reason: string): Promise<void>;
-  unlock(orgId: string, userId: string): Promise<void>;
+  /** Deactivate an active user. */
   deactivate(orgId: string, userId: string): Promise<void>;
-  reactivate(orgId: string, userId: string): Promise<void>;
+  /** Activate an inactive user. */
+  activate(orgId: string, userId: string): Promise<void>;
   /** Fetch the first page of user history. */
   getHistory(orgId: string, userId: string): Promise<HistoryResult>;
 }
@@ -207,36 +202,12 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
       await transport.request({ method: 'DELETE', path: `${userBase(orgId)}/${userId}` });
     },
 
-    async suspend(orgId, userId, reason?) {
-      await transport.request({
-        method: 'POST',
-        path: `${userBase(orgId)}/${userId}/suspend`,
-        ...(reason !== undefined ? { body: { reason } } : {}),
-      });
-    },
-
-    async unsuspend(orgId, userId) {
-      await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/unsuspend` });
-    },
-
-    async lock(orgId, userId, reason) {
-      await transport.request({
-        method: 'POST',
-        path: `${userBase(orgId)}/${userId}/lock`,
-        body: { reason },
-      });
-    },
-
-    async unlock(orgId, userId) {
-      await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/unlock` });
-    },
-
     async deactivate(orgId, userId) {
       await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/deactivate` });
     },
 
-    async reactivate(orgId, userId) {
-      await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/reactivate` });
+    async activate(orgId, userId) {
+      await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/activate` });
     },
 
     async getHistory(orgId, userId) {
@@ -273,18 +244,8 @@ export interface StandaloneUsersDomain {
   verifyEmail(userId: string): Promise<void>;
   /** Deactivate a user — POST /users/:userId/deactivate */
   deactivate(userId: string): Promise<void>;
-  /** Reactivate a user — POST /users/:userId/reactivate */
-  reactivate(userId: string): Promise<void>;
-  /** Activate a user (SPA alias for reactivate) — POST /users/:userId/activate */
+  /** Activate a user — POST /users/:userId/activate */
   activate(userId: string): Promise<void>;
-  /** Suspend a user — POST /users/:userId/suspend */
-  suspend(userId: string, reason?: string): Promise<void>;
-  /** Unsuspend a user — POST /users/:userId/unsuspend */
-  unsuspend(userId: string): Promise<void>;
-  /** Lock a user — POST /users/:userId/lock */
-  lock(userId: string, reason: string): Promise<void>;
-  /** Unlock a user — POST /users/:userId/unlock */
-  unlock(userId: string): Promise<void>;
   /** User change history — GET /users/:userId/history */
   getHistory(userId: string): Promise<HistoryResult>;
 }
@@ -330,32 +291,8 @@ export function createStandaloneUsersDomain(transport: HttpTransport): Standalon
       await transport.request({ method: 'POST', path: `${base}/${userId}/deactivate` });
     },
 
-    async reactivate(userId) {
-      await transport.request({ method: 'POST', path: `${base}/${userId}/reactivate` });
-    },
-
     async activate(userId) {
       await transport.request({ method: 'POST', path: `${base}/${userId}/activate` });
-    },
-
-    async suspend(userId, reason?) {
-      await transport.request({
-        method: 'POST',
-        path: `${base}/${userId}/suspend`,
-        ...(reason !== undefined ? { body: { reason } } : {}),
-      });
-    },
-
-    async unsuspend(userId) {
-      await transport.request({ method: 'POST', path: `${base}/${userId}/unsuspend` });
-    },
-
-    async lock(userId, reason) {
-      await transport.request({ method: 'POST', path: `${base}/${userId}/lock`, body: { reason } });
-    },
-
-    async unlock(userId) {
-      await transport.request({ method: 'POST', path: `${base}/${userId}/unlock` });
     },
 
     async getHistory(userId) {

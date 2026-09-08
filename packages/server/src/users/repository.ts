@@ -162,7 +162,7 @@ export async function findUserByEmail(orgId: string, email: string): Promise<Use
  * Get the password hash for a user (active users only).
  *
  * Returns the raw Argon2id hash for password verification. Only returns
- * the hash if the user status is 'active' — inactive, suspended, and
+ * the hash if the user status is 'active' — inactive and automatically
  * locked users cannot authenticate.
  *
  * This is the only function that exposes password_hash; the User
@@ -678,8 +678,8 @@ export async function unlockEligiblePasswordAccount(
  * Reset the failed login counter and unlock an auto-locked account.
  *
  * Used by `checkAutoUnlock` when the lockout cooldown has elapsed.
- * Only affects rows that are actually auto-locked — the WHERE clause
- * ensures we don't accidentally unlock manually-locked accounts.
+ * Only affects rows created by automatic lockout. The reason predicate keeps
+ * the update limited to that security mechanism.
  *
  * @param id - User UUID
  */

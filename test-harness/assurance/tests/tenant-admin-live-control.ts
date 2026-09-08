@@ -412,14 +412,12 @@ export async function observeLiveSuperAdminExceptions(
   > = {
     deactivate: ['POST', `${readPath}/deactivate`, undefined],
     delete: ['POST', `${organizationPath}/purge`, { confirmPurge: true }],
-    lock: ['POST', `${readPath}/lock`, { reason: 'assurance-protected-user-probe' }],
     'manage-2fa': ['POST', `${organizationPath}/two-factor/disable`, undefined],
     'remove-super-admin-role': [
       'DELETE',
       `/api/admin/organizations/${organizationId}/users/${userId}/roles`,
       { roleIds: [context.entity('porta-super-admin')] },
     ],
-    suspend: ['POST', `${readPath}/suspend`, { reason: 'assurance-protected-user-probe' }],
   };
 
   const observations: SuperAdminExceptionObservation[] = [];

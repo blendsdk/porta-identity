@@ -28,10 +28,11 @@ import type { BulkOperationResult } from '../../../../sdk/src/types/bulk.js';
 import type { HistoryEntry } from '../../../../sdk/src/types/common.js';
 import type { StatsOverview, OrgStats } from '../../../../sdk/src/types/stats.js';
 import type { TwoFactorStatus } from '../../../../sdk/src/types/two-factor.js';
-import type { CreateOrganizationInput, UpdateOrganizationInput } from '../../../../sdk/src/types/organizations.js';
+import type {
+  CreateOrganizationInput,
+  UpdateOrganizationInput,
+} from '../../../../sdk/src/types/organizations.js';
 import type { InviteUserInput } from '../../../../sdk/src/types/users.js';
-
-
 
 // ---------------------------------------------------------------------------
 // Helper: verify that an object's keys are a superset of expected keys
@@ -48,27 +49,53 @@ function expectKeys(obj: Record<string, unknown>, expectedKeys: string[], label:
 // ---------------------------------------------------------------------------
 
 describe('SDK↔Server contract: Domain Types', () => {
-
   it('Organization type covers server response', () => {
     // Server shape from src/organizations/types.ts mapRowToOrganization
     const server = {
-      id: 'uuid', name: 'Acme', slug: 'acme', status: 'active' as const,
-      isSuperAdmin: false, brandingLogoUrl: null, brandingFaviconUrl: null,
-      brandingPrimaryColor: null, brandingCompanyName: null, brandingCustomCss: null,
-      defaultLocale: 'en', twoFactorPolicy: 'optional' as const,
+      id: 'uuid',
+      name: 'Acme',
+      slug: 'acme',
+      status: 'active' as const,
+      isSuperAdmin: false,
+      brandingLogoUrl: null,
+      brandingFaviconUrl: null,
+      brandingPrimaryColor: null,
+      brandingCompanyName: null,
+      brandingCustomCss: null,
+      defaultLocale: 'en',
+      twoFactorPolicy: 'optional' as const,
       defaultLoginMethods: ['password', 'magic_link'],
-      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: Organization = server;
-    expectKeys(server, ['id', 'name', 'slug', 'status', 'isSuperAdmin', 'defaultLocale',
-      'twoFactorPolicy', 'defaultLoginMethods', 'createdAt', 'updatedAt'], 'Organization');
+    expectKeys(
+      server,
+      [
+        'id',
+        'name',
+        'slug',
+        'status',
+        'isSuperAdmin',
+        'defaultLocale',
+        'twoFactorPolicy',
+        'defaultLoginMethods',
+        'createdAt',
+        'updatedAt',
+      ],
+      'Organization',
+    );
     expect(_sdk.id).toBe('uuid');
   });
 
   it('Application type covers server response', () => {
     const server = {
-      id: 'uuid', name: 'My App', slug: 'my-app', description: null,
-      status: 'active' as const, createdAt: '2026-01-01T00:00:00Z',
+      id: 'uuid',
+      name: 'My App',
+      slug: 'my-app',
+      description: null,
+      status: 'active' as const,
+      createdAt: '2026-01-01T00:00:00Z',
       updatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: Application = server;
@@ -78,49 +105,128 @@ describe('SDK↔Server contract: Domain Types', () => {
 
   it('Client type covers server response', () => {
     const server = {
-      id: 'uuid', applicationId: 'app-uuid', clientId: 'client-id',
-      name: 'Web Client', type: 'public' as const, status: 'active' as const,
+      id: 'uuid',
+      applicationId: 'app-uuid',
+      clientId: 'client-id',
+      name: 'Web Client',
+      type: 'public' as const,
+      status: 'active' as const,
       redirectUris: ['http://localhost:3000/callback'],
-      postLogoutRedirectUris: [], grantTypes: ['authorization_code'],
-      responseTypes: ['code'], scopes: ['openid', 'profile'],
-      tokenEndpointAuthMethod: 'none', loginMethods: null,
-      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+      postLogoutRedirectUris: [],
+      grantTypes: ['authorization_code'],
+      responseTypes: ['code'],
+      scopes: ['openid', 'profile'],
+      tokenEndpointAuthMethod: 'none',
+      loginMethods: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: Client = server;
-    expectKeys(server, ['id', 'applicationId', 'clientId', 'name', 'type', 'status',
-      'redirectUris', 'grantTypes', 'scopes', 'createdAt'], 'Client');
+    expectKeys(
+      server,
+      [
+        'id',
+        'applicationId',
+        'clientId',
+        'name',
+        'type',
+        'status',
+        'redirectUris',
+        'grantTypes',
+        'scopes',
+        'createdAt',
+      ],
+      'Client',
+    );
     expect(_sdk.clientId).toBe('client-id');
   });
 
   it('User type covers server response (full 36-field parity — ST-3, ST-4)', () => {
     // Source: src/users/types.ts mapRowToUser (36 fields) — server is source of truth.
     // ST-3: SDK User has the full server field set, uses givenName/familyName (no `name`).
-    // ST-4: UserStatus excludes invited/deactivated and includes inactive.
+    // ST-4: UserStatus excludes invitation pseudo-states and includes inactive.
     const server = {
-      id: 'uuid', organizationId: 'org-uuid', email: 'alice@example.com',
-      emailVerified: true, hasPassword: true, passwordChangedAt: null,
-      givenName: 'Alice', familyName: 'Smith', middleName: null, nickname: null,
-      preferredUsername: null, profileUrl: null, pictureUrl: null, websiteUrl: null,
-      gender: null, birthdate: null, zoneinfo: null, locale: 'en',
-      phoneNumber: null, phoneNumberVerified: false,
-      addressStreet: null, addressLocality: null, addressRegion: null,
-      addressPostalCode: null, addressCountry: null,
-      twoFactorEnabled: false, twoFactorMethod: null,
-      status: 'inactive' as const, lockedAt: null, lockedReason: null,
-      lastLoginAt: null, loginCount: 0, failedLoginCount: 0, lastFailedLoginAt: null,
-      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+      id: 'uuid',
+      organizationId: 'org-uuid',
+      email: 'alice@example.com',
+      emailVerified: true,
+      hasPassword: true,
+      passwordChangedAt: null,
+      givenName: 'Alice',
+      familyName: 'Smith',
+      middleName: null,
+      nickname: null,
+      preferredUsername: null,
+      profileUrl: null,
+      pictureUrl: null,
+      websiteUrl: null,
+      gender: null,
+      birthdate: null,
+      zoneinfo: null,
+      locale: 'en',
+      phoneNumber: null,
+      phoneNumberVerified: false,
+      addressStreet: null,
+      addressLocality: null,
+      addressRegion: null,
+      addressPostalCode: null,
+      addressCountry: null,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      status: 'inactive' as const,
+      lockedAt: null,
+      lockedReason: null,
+      lastLoginAt: null,
+      loginCount: 0,
+      failedLoginCount: 0,
+      lastFailedLoginAt: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: User = server;
     // Assert the full 36-field set is present on the server object the SDK consumes.
-    expectKeys(server, [
-      'id', 'organizationId', 'email', 'emailVerified', 'hasPassword', 'passwordChangedAt',
-      'givenName', 'familyName', 'middleName', 'nickname', 'preferredUsername',
-      'profileUrl', 'pictureUrl', 'websiteUrl', 'gender', 'birthdate', 'zoneinfo', 'locale',
-      'phoneNumber', 'phoneNumberVerified', 'addressStreet', 'addressLocality', 'addressRegion',
-      'addressPostalCode', 'addressCountry', 'twoFactorEnabled', 'twoFactorMethod',
-      'status', 'lockedAt', 'lockedReason', 'lastLoginAt', 'loginCount',
-      'failedLoginCount', 'lastFailedLoginAt', 'createdAt', 'updatedAt',
-    ], 'User');
+    expectKeys(
+      server,
+      [
+        'id',
+        'organizationId',
+        'email',
+        'emailVerified',
+        'hasPassword',
+        'passwordChangedAt',
+        'givenName',
+        'familyName',
+        'middleName',
+        'nickname',
+        'preferredUsername',
+        'profileUrl',
+        'pictureUrl',
+        'websiteUrl',
+        'gender',
+        'birthdate',
+        'zoneinfo',
+        'locale',
+        'phoneNumber',
+        'phoneNumberVerified',
+        'addressStreet',
+        'addressLocality',
+        'addressRegion',
+        'addressPostalCode',
+        'addressCountry',
+        'twoFactorEnabled',
+        'twoFactorMethod',
+        'status',
+        'lockedAt',
+        'lockedReason',
+        'lastLoginAt',
+        'loginCount',
+        'failedLoginCount',
+        'lastFailedLoginAt',
+        'createdAt',
+        'updatedAt',
+      ],
+      'User',
+    );
     // ST-3: the SDK uses OIDC field names, not a flat `name`.
     expect(Object.keys(server)).not.toContain('name');
     expect(_sdk.givenName).toBe('Alice');
@@ -130,12 +236,15 @@ describe('SDK↔Server contract: Domain Types', () => {
     expect(_sdk.email).toBe('alice@example.com');
   });
 
-
   it('Role type covers server response', () => {
     const server = {
-      id: 'uuid', applicationId: 'app-uuid', name: 'Admin',
-      slug: 'admin', description: null,
-      createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
+      id: 'uuid',
+      applicationId: 'app-uuid',
+      name: 'Admin',
+      slug: 'admin',
+      description: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: Role = server;
     expectKeys(server, ['id', 'applicationId', 'name', 'slug', 'createdAt'], 'Role');
@@ -144,13 +253,25 @@ describe('SDK↔Server contract: Domain Types', () => {
 
   it('RoleWithPermissions has Permission[] not string[]', () => {
     const server = {
-      id: 'uuid', applicationId: 'app-uuid', name: 'Admin', slug: 'admin',
-      description: null, createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      permissions: [{
-        id: 'p-uuid', applicationId: 'app-uuid', moduleId: null,
-        name: 'Read', slug: 'read', description: null,
-        createdAt: '2026-01-01T00:00:00Z', updatedAt: '2026-01-01T00:00:00Z',
-      }],
+      id: 'uuid',
+      applicationId: 'app-uuid',
+      name: 'Admin',
+      slug: 'admin',
+      description: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+      permissions: [
+        {
+          id: 'p-uuid',
+          applicationId: 'app-uuid',
+          moduleId: null,
+          name: 'Read',
+          slug: 'read',
+          description: null,
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ],
     };
     const _sdk: RoleWithPermissions = server;
     expect(_sdk.permissions[0].id).toBe('p-uuid');
@@ -160,30 +281,56 @@ describe('SDK↔Server contract: Domain Types', () => {
   it('Permission type covers server response (no updatedAt — ST-8)', () => {
     // Source: src/rbac/types.ts mapRowToPermission — no `updatedAt` field.
     const server = {
-      id: 'uuid', applicationId: 'app-uuid', moduleId: null,
-      name: 'Read Users', slug: 'read-users', description: null,
+      id: 'uuid',
+      applicationId: 'app-uuid',
+      moduleId: null,
+      name: 'Read Users',
+      slug: 'read-users',
+      description: null,
       createdAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: Permission = server;
-    expectKeys(server, ['id', 'applicationId', 'moduleId', 'name', 'slug', 'createdAt'], 'Permission');
+    expectKeys(
+      server,
+      ['id', 'applicationId', 'moduleId', 'name', 'slug', 'createdAt'],
+      'Permission',
+    );
     // ST-8: the server projection does not include updatedAt.
     expect(Object.keys(server)).not.toContain('updatedAt');
     expect(_sdk.name).toBe('Read Users');
   });
 
-
   it('AuditEntry type covers server response', () => {
     // Server shape from src/routes/audit.ts row mapping
     const server = {
-      id: 'uuid', eventType: 'user.login', eventCategory: 'auth',
-      actorId: 'user-uuid', organizationId: 'org-uuid',
-      userId: 'user-uuid', description: 'User logged in',
-      metadata: { method: 'password' }, ipAddress: '192.168.1.1',
+      id: 'uuid',
+      eventType: 'user.login',
+      eventCategory: 'auth',
+      actorId: 'user-uuid',
+      organizationId: 'org-uuid',
+      userId: 'user-uuid',
+      description: 'User logged in',
+      metadata: { method: 'password' },
+      ipAddress: '192.168.1.1',
       createdAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: AuditEntry = server;
-    expectKeys(server, ['id', 'eventType', 'eventCategory', 'actorId', 'organizationId',
-      'userId', 'description', 'metadata', 'ipAddress', 'createdAt'], 'AuditEntry');
+    expectKeys(
+      server,
+      [
+        'id',
+        'eventType',
+        'eventCategory',
+        'actorId',
+        'organizationId',
+        'userId',
+        'description',
+        'metadata',
+        'ipAddress',
+        'createdAt',
+      ],
+      'AuditEntry',
+    );
     expect(_sdk.eventCategory).toBe('auth');
     expect(_sdk.metadata).toEqual({ method: 'password' });
   });
@@ -191,25 +338,43 @@ describe('SDK↔Server contract: Domain Types', () => {
   it('ConfigEntry type covers server response', () => {
     // Server shape from src/routes/config.ts row mapping
     const server = {
-      key: 'session_ttl', value: '3600', valueType: 'number',
-      description: 'Session TTL in seconds', isSensitive: false,
+      key: 'session_ttl',
+      value: '3600',
+      valueType: 'number',
+      description: 'Session TTL in seconds',
+      isSensitive: false,
       updatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: ConfigEntry = server;
-    expectKeys(server, ['key', 'value', 'valueType', 'description', 'isSensitive', 'updatedAt'], 'ConfigEntry');
+    expectKeys(
+      server,
+      ['key', 'value', 'valueType', 'description', 'isSensitive', 'updatedAt'],
+      'ConfigEntry',
+    );
     expect(_sdk.valueType).toBe('number');
     expect(_sdk.isSensitive).toBe(false);
   });
 
   it('AdminSession type covers server response', () => {
     const server = {
-      sessionId: 'sid', userId: 'uid', clientId: null, organizationId: null,
-      grantId: null, ipAddress: '10.0.0.1', userAgent: 'Chrome',
-      lastActivityAt: '2026-01-01T12:00:00Z', createdAt: '2026-01-01T00:00:00Z',
-      expiresAt: '2026-01-02T00:00:00Z', revokedAt: null,
+      sessionId: 'sid',
+      userId: 'uid',
+      clientId: null,
+      organizationId: null,
+      grantId: null,
+      ipAddress: '10.0.0.1',
+      userAgent: 'Chrome',
+      lastActivityAt: '2026-01-01T12:00:00Z',
+      createdAt: '2026-01-01T00:00:00Z',
+      expiresAt: '2026-01-02T00:00:00Z',
+      revokedAt: null,
     };
     const _sdk: AdminSession = server;
-    expectKeys(server, ['sessionId', 'userId', 'ipAddress', 'lastActivityAt', 'expiresAt'], 'AdminSession');
+    expectKeys(
+      server,
+      ['sessionId', 'userId', 'ipAddress', 'lastActivityAt', 'expiresAt'],
+      'AdminSession',
+    );
     expect(_sdk.sessionId).toBe('sid');
   });
 
@@ -221,15 +386,26 @@ describe('SDK↔Server contract: Domain Types', () => {
 
   it('ImportResult type covers server response', () => {
     const server: ImportResult = {
-      mode: 'merge', created: [], updated: [], skipped: [], errors: [], credentials: [],
+      mode: 'merge',
+      created: [],
+      updated: [],
+      skipped: [],
+      errors: [],
+      credentials: [],
     };
-    expectKeys(server, ['mode', 'created', 'updated', 'skipped', 'errors', 'credentials'], 'ImportResult');
+    expectKeys(
+      server,
+      ['mode', 'created', 'updated', 'skipped', 'errors', 'credentials'],
+      'ImportResult',
+    );
     expect(server.mode).toBe('merge');
   });
 
   it('BulkOperationResult type covers server response', () => {
     const server: BulkOperationResult = {
-      total: 1, succeeded: 1, failed: 0,
+      total: 1,
+      succeeded: 1,
+      failed: 0,
       results: [{ id: 'uuid', success: true }],
     };
     expectKeys(server, ['total', 'succeeded', 'failed', 'results'], 'BulkOperationResult');
@@ -239,8 +415,11 @@ describe('SDK↔Server contract: Domain Types', () => {
   it('HistoryEntry type covers server response (ST-5)', () => {
     // Source: src/lib/entity-history.ts — { id, eventType, actorId, metadata, createdAt }.
     const server = {
-      id: 'h-uuid', eventType: 'user.updated', actorId: 'admin-uuid',
-      metadata: { field: 'email' }, createdAt: '2026-01-01T00:00:00Z',
+      id: 'h-uuid',
+      eventType: 'user.updated',
+      actorId: 'admin-uuid',
+      metadata: { field: 'email' },
+      createdAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: HistoryEntry = server;
     expectKeys(server, ['id', 'eventType', 'actorId', 'metadata', 'createdAt'], 'HistoryEntry');
@@ -268,8 +447,19 @@ describe('SDK↔Server contract: Domain Types', () => {
       generatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: StatsOverview = server;
-    expectKeys(server, ['organizations', 'users', 'applications', 'clients',
-      'loginActivity', 'systemHealth', 'generatedAt'], 'StatsOverview');
+    expectKeys(
+      server,
+      [
+        'organizations',
+        'users',
+        'applications',
+        'clients',
+        'loginActivity',
+        'systemHealth',
+        'generatedAt',
+      ],
+      'StatsOverview',
+    );
     expect(_sdk.users.newLast7d).toBe(1);
     expect(_sdk.systemHealth.database).toBe(true);
     expect(_sdk.loginActivity.last24h.successful).toBe(5);
@@ -289,18 +479,28 @@ describe('SDK↔Server contract: Domain Types', () => {
       generatedAt: '2026-01-01T00:00:00Z',
     };
     const _sdk: OrgStats = server;
-    expectKeys(server, ['organizationId', 'users', 'clients', 'loginActivity', 'generatedAt'], 'OrgStats');
+    expectKeys(
+      server,
+      ['organizationId', 'users', 'clients', 'loginActivity', 'generatedAt'],
+      'OrgStats',
+    );
     expect(_sdk.organizationId).toBe('org-uuid');
   });
 
   it('TwoFactorStatus type covers server response (ST-7)', () => {
     // Source: src/two-factor/types.ts TwoFactorStatus.
     const server = {
-      enabled: true, method: 'totp' as const,
-      totpConfigured: true, recoveryCodesRemaining: 8,
+      enabled: true,
+      method: 'totp' as const,
+      totpConfigured: true,
+      recoveryCodesRemaining: 8,
     };
     const _sdk: TwoFactorStatus = server;
-    expectKeys(server, ['enabled', 'method', 'totpConfigured', 'recoveryCodesRemaining'], 'TwoFactorStatus');
+    expectKeys(
+      server,
+      ['enabled', 'method', 'totpConfigured', 'recoveryCodesRemaining'],
+      'TwoFactorStatus',
+    );
     // ST-7: no emailEnabled/totpEnabled/enforcedBy/userId fields.
     for (const stale of ['emailEnabled', 'totpEnabled', 'enforcedBy', 'userId']) {
       expect(Object.keys(server)).not.toContain(stale);
@@ -311,7 +511,9 @@ describe('SDK↔Server contract: Domain Types', () => {
   it('CreateOrganizationInput has no twoFactorPolicy (ST-13)', () => {
     // Source: src/routes/organizations.ts createOrganizationSchema — no twoFactorPolicy.
     const input: CreateOrganizationInput = {
-      name: 'Acme', slug: 'acme', defaultLocale: 'en',
+      name: 'Acme',
+      slug: 'acme',
+      defaultLocale: 'en',
       defaultLoginMethods: ['password'],
       branding: { primaryColor: '#123456', companyName: 'Acme Inc' },
     };
@@ -323,7 +525,8 @@ describe('SDK↔Server contract: Domain Types', () => {
   it('UpdateOrganizationInput has no twoFactorPolicy/slug (ST-13)', () => {
     // Source: src/routes/organizations.ts updateOrganizationSchema.
     const input: UpdateOrganizationInput = {
-      name: 'Acme', defaultLocale: 'en',
+      name: 'Acme',
+      defaultLocale: 'en',
       branding: { logoUrl: 'https://cdn.example.com/logo.png' },
     };
     expect(Object.keys(input)).not.toContain('twoFactorPolicy');
@@ -334,11 +537,13 @@ describe('SDK↔Server contract: Domain Types', () => {
   it('InviteUserInput has givenName/familyName, not displayName (ST-14)', () => {
     // Source: src/routes/users.ts inviteUserSchema — accepts givenName + familyName.
     const input: InviteUserInput = {
-      organizationId: 'org-1', email: 'b@c.com', givenName: 'Bob', familyName: 'Builder',
+      organizationId: 'org-1',
+      email: 'b@c.com',
+      givenName: 'Bob',
+      familyName: 'Builder',
     };
     expect(Object.keys(input)).not.toContain('displayName');
     expect(input.givenName).toBe('Bob');
     expect(input.familyName).toBe('Builder');
   });
 });
-

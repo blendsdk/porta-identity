@@ -40,7 +40,6 @@ export {
   showDeleteUserDialog,
   showSetUserPasswordDialog,
   showUserConfirmationDialog,
-  showUserReasonDialog,
 } from './user-dialogs.js';
 export type {
   AdminUserDialogHost,
@@ -51,7 +50,6 @@ export type {
   SetUserPasswordDialogResult,
   UserConfirmationAction,
   UserConfirmationDialogResult,
-  UserReasonDialogResult,
 } from './user-dialogs.js';
 export type {
   AdminCreateUserInput,
@@ -129,15 +127,9 @@ export type {
   ModuleDeactivationDialogResult,
 } from './application-dialogs.js';
 export { createAdminClientOperations } from './client-service.js';
-export type {
-  AdminClientCreateResult,
-  AdminClientOperations,
-} from './client-service.js';
+export type { AdminClientCreateResult, AdminClientOperations } from './client-service.js';
 export { createAdminClientController } from './client-controller.js';
-export type {
-  AdminClientController,
-  AdminClientControllerOptions,
-} from './client-controller.js';
+export type { AdminClientController, AdminClientControllerOptions } from './client-controller.js';
 export type {
   AdminClient,
   AdminClientDetailProjection,
@@ -159,10 +151,12 @@ export type {
   AdminClientWorkspaceOptions,
 } from './client-workspace.js';
 export {
-  showClientAuthenticationDialog,
+  AUTHENTICATION_URL_CHOICES,
+  authenticationUrlRows,
+  buildAuthenticationUrlUpdate,
+  showAuthenticationUrlDialog,
+  showDeleteAuthenticationUrlDialog,
   showClientLifecycleDialog,
-  showClientLoginDialog,
-  showClientProtocolDialog,
   showClientRegistrationDialog,
   showDeleteClientDialog,
   showEditClientNameDialog,
@@ -176,16 +170,20 @@ export type {
   AdminApplicationClientFeaturesOptions,
 } from './application-client-features.js';
 export type {
+  AdminAuthenticationUrlRow,
+  AuthenticationUrlChoice,
+  AuthenticationUrlDialogResult,
+  AuthenticationUrlDraft,
+  AuthenticationUrlKind,
+  AuthenticationUrlMutation,
   AdminClientRegistrationDialogHost,
   AdminClientRegistrationDialogOptions,
   AdminClientRegistrationDialogResult,
   AdminClientDialogHost,
   ClientAuthenticationDialogHost,
-  ClientAuthenticationDialogResult,
+  DeleteAuthenticationUrlDialogResult,
   ClientCredentialDialogHost,
-  ClientFocusedEditorResult,
   ClientLifecycleDialogResult,
-  ClientProtocolLoginDialogHost,
   DeleteClientDialogResult,
   EditClientNameDialogResult,
   GenerateClientSecretDialogResult,

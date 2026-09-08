@@ -192,11 +192,8 @@ describe('user workspace implementation', () => {
     expect(descendants(mounted.window).some((view) => view instanceof DataGrid)).toBe(false);
   });
 
-  it.each([
-    ['suspended', 'Unsuspend'],
-    ['locked', 'Unlock'],
-    ['inactive', 'Reactivate'],
-  ] as const)('should mount only the %s lifecycle recovery action', async (status, expected) => {
+  it('should mount Activate only for an inactive user', async () => {
+    const status = 'inactive' as const;
     const mounted = mount();
     mounted.workspace.setState({
       kind: 'detail',
@@ -210,7 +207,26 @@ describe('user workspace implementation', () => {
       .filter((view) => view instanceof Button)
       .map((button) => button.activation.label);
 
-    expect(labels).toContain(expected);
+    expect(labels).toContain('Activate');
     expect(labels).not.toEqual(expect.arrayContaining(['Suspend', 'Lock', 'Deactivate']));
+  });
+
+  it('should expose no lifecycle mutation for an automatically locked user', async () => {
+    const mounted = mount();
+    mounted.workspace.setState({
+      kind: 'detail',
+      page,
+      selected: { ...row, status: 'locked' },
+      detail: { ...detail, status: 'locked' },
+      etag: null,
+    });
+    await settle();
+    const labels = descendants(mounted.window)
+      .filter((view) => view instanceof Button)
+      .map((button) => button.activation.label);
+
+    expect(labels).not.toEqual(
+      expect.arrayContaining(['Suspend', 'Unsuspend', 'Lock', 'Unlock', 'Deactivate', 'Activate']),
+    );
   });
 });

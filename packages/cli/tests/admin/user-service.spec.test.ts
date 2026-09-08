@@ -75,12 +75,8 @@ function domain(overrides: Record<string, unknown> = {}): Record<string, unknown
     setPassword: vi.fn(),
     clearPassword: vi.fn(),
     verifyEmail: vi.fn(),
-    suspend: vi.fn(),
-    unsuspend: vi.fn(),
-    lock: vi.fn(),
-    unlock: vi.fn(),
     deactivate: vi.fn(),
-    reactivate: vi.fn(),
+    activate: vi.fn(),
     delete: vi.fn(),
     ...overrides,
   };
@@ -442,13 +438,11 @@ describe('invitation preview', () => {
   it('should retain only bounded plain-text preview fields', async () => {
     // Rendered HTML is discarded before the preview reaches application state.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const invitePreview = vi
-      .fn()
-      .mockResolvedValue({
-        subject: 'Welcome',
-        text: 'Join Porta',
-        html: '<script>secret()</script>',
-      });
+    const invitePreview = vi.fn().mockResolvedValue({
+      subject: 'Welcome',
+      text: 'Join Porta',
+      html: '<script>secret()</script>',
+    });
     const operations = createAdminUserOperations(() => domain({ invitePreview }));
 
     await expect(
@@ -464,6 +458,25 @@ describe('invitation preview', () => {
     // Exact bounds remain usable while the HTML field is still discarded.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
     const response = { subject: 's'.repeat(255), text: 't'.repeat(10_000), html: '<b>ignored</b>' };
+    const operations = createAdminUserOperations(() =>
+      domain({ invitePreview: vi.fn().mockResolvedValue(response) }),
+    );
+
+    await expect(
+      operations.previewInvitation(organizationId, { email: 'person@example.test' }),
+    ).resolves.toEqual({
+      kind: 'success',
+      value: { subject: response.subject, text: response.text },
+    });
+  });
+
+  it('should accept ordinary line endings in the plain-text email preview', async () => {
+    const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
+    const response = {
+      subject: 'Welcome',
+      text: 'Hello Alice,\n\nYou have been invited to Porta.\r\n',
+      html: '<b>ignored</b>',
+    };
     const operations = createAdminUserOperations(() =>
       domain({ invitePreview: vi.fn().mockResolvedValue(response) }),
     );
@@ -556,22 +569,20 @@ describe('user administration input', () => {
   it('should forward only approved invitation fields without role or claim assignment', async () => {
     // Invitations and previews share a narrow input that cannot pre-assign authorization data.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const invite = vi
-      .fn()
-      .mockResolvedValue({
-        userId,
-        email: 'person@example.test',
-        created: true,
-        invitationSent: true,
-        expiresAt: '2026-08-31T10:00:00.000Z',
-      });
+    const invite = vi.fn().mockResolvedValue({
+      userId,
+      email: 'person@example.test',
+      created: true,
+      invitationSent: true,
+      expiresAt: '2026-08-31T10:00:00.000Z',
+    });
     const operations = createAdminUserOperations(() => domain({ invite }));
     const input = {
       email: 'person@example.test',
       givenName: 'Ada',
       familyName: 'Lovelace',
       locale: 'en',
-      personalMessage: 'Welcome',
+      personalMessage: 'Welcome\nYour account is ready.',
     };
 
     await operations.invite(organizationId, input);
@@ -677,6 +688,11 @@ describe('user administration input', () => {
       'overlong personal message',
       'invite',
       { email: 'person@example.test', personalMessage: 'x'.repeat(501) },
+    ],
+    [
+      'control-bearing personal message',
+      'invite',
+      { email: 'person@example.test', personalMessage: 'Safe\u001bmessage' },
     ],
     ['control-bearing profile input', 'update', { givenName: 'Bad\u0085Name' }],
   ])(
@@ -845,14 +861,14 @@ describe('fixed user operation outcomes', () => {
   ])('should invoke a mutation at most once and map %s', async (_label, error, expected) => {
     // A mutation is never replayed; indeterminate post-dispatch failures report an unknown outcome.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const suspend = vi.fn().mockRejectedValue(error);
-    const operations = createAdminUserOperations(() => domain({ suspend }));
+    const deactivate = vi.fn().mockRejectedValue(error);
+    const operations = createAdminUserOperations(() => domain({ deactivate }));
 
-    const result = await operations.suspend(organizationId, userId, 'review');
+    const result = await operations.deactivate(organizationId, userId);
 
     expect(result).toEqual(expected);
     expect(JSON.stringify(result)).not.toMatch(/secret|network|unprocessable|precondition/i);
-    expect(suspend).toHaveBeenCalledOnce();
+    expect(deactivate).toHaveBeenCalledOnce();
   });
 
   it('should map malformed typed mutation success to outcome-unknown', async () => {
@@ -884,55 +900,36 @@ describe('fixed user operation outcomes', () => {
     expect(JSON.stringify(result)).not.toContain('12345678');
   });
 
-  it.each([
-    'clearPassword',
-    'verifyEmail',
-    'suspend',
-    'unsuspend',
-    'lock',
-    'unlock',
-    'deactivate',
-    'reactivate',
-    'delete',
-  ])('should publish success for a successful void %s action', async (method) => {
-    // Successful lifecycle and credential actions produce one fixed result and one organization-scoped SDK call.
-    const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const invocation = vi.fn().mockResolvedValue(undefined);
-    const operations = createAdminUserOperations(() => domain({ [method]: invocation }));
+  it.each(['clearPassword', 'verifyEmail', 'deactivate', 'activate', 'delete'])(
+    'should publish success for a successful void %s action',
+    async (method) => {
+      // Successful lifecycle and credential actions produce one fixed result and one organization-scoped SDK call.
+      const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
+      const invocation = vi.fn().mockResolvedValue(undefined);
+      const operations = createAdminUserOperations(() => domain({ [method]: invocation }));
 
-    let result;
-    switch (method) {
-      case 'clearPassword':
-        result = await operations.clearPassword(organizationId, userId);
-        break;
-      case 'verifyEmail':
-        result = await operations.verifyEmail(organizationId, userId);
-        break;
-      case 'suspend':
-        result = await operations.suspend(organizationId, userId, 'review');
-        break;
-      case 'unsuspend':
-        result = await operations.unsuspend(organizationId, userId);
-        break;
-      case 'lock':
-        result = await operations.lock(organizationId, userId, 'security review');
-        break;
-      case 'unlock':
-        result = await operations.unlock(organizationId, userId);
-        break;
-      case 'deactivate':
-        result = await operations.deactivate(organizationId, userId);
-        break;
-      case 'reactivate':
-        result = await operations.reactivate(organizationId, userId);
-        break;
-      case 'delete':
-        result = await operations.delete(organizationId, userId);
-        break;
-    }
+      let result;
+      switch (method) {
+        case 'clearPassword':
+          result = await operations.clearPassword(organizationId, userId);
+          break;
+        case 'verifyEmail':
+          result = await operations.verifyEmail(organizationId, userId);
+          break;
+        case 'deactivate':
+          result = await operations.deactivate(organizationId, userId);
+          break;
+        case 'activate':
+          result = await operations.activate(organizationId, userId);
+          break;
+        case 'delete':
+          result = await operations.delete(organizationId, userId);
+          break;
+      }
 
-    expect(result).toEqual({ kind: 'success' });
-    expect(invocation).toHaveBeenCalledOnce();
-    expect(invocation.mock.calls[0]?.[0]).toBe(organizationId);
-  });
+      expect(result).toEqual({ kind: 'success' });
+      expect(invocation).toHaveBeenCalledOnce();
+      expect(invocation.mock.calls[0]?.[0]).toBe(organizationId);
+    },
+  );
 });

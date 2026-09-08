@@ -137,7 +137,7 @@ describe('Client Repository (Integration)', () => {
 
   // ── Client Secret CRUD ───────────────────────────────────────
 
-  it('should insert, list, and revoke client secrets', async () => {
+  it('should insert, list, and permanently delete client secrets', async () => {
     const client = await createTestClient(orgId, appId);
 
     // Insert a secret hash
@@ -157,10 +157,10 @@ describe('Client Repository (Integration)', () => {
     const secrets = await listSecretsByClient(client.id);
     expect(secrets).toHaveLength(1);
 
-    // Revoke secret
+    // Delete secret
     await revokeSecret(client.id, secret.id);
     const afterRevoke = await listSecretsByClient(client.id);
-    expect(afterRevoke[0].status).toBe('revoked');
+    expect(afterRevoke).toEqual([]);
   });
 
   // ── Secret Verification ──────────────────────────────────────

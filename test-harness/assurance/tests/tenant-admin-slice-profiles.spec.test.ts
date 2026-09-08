@@ -270,7 +270,7 @@ test('should provide complete threat log and recovery profiles with exact result
   }
 });
 
-// Only role removal, actor deactivation/suspension, and session revocation are supported stale-
+// Only role removal, actor deactivation, and session revocation are supported stale-
 // authority transitions. Membership removal and reassignment stay explicitly unavailable with a
 // named gap, so the test model cannot invent product behavior.
 test('should catalog only supported stale-authority transitions and name unavailable gaps', () => {
@@ -280,7 +280,6 @@ test('should catalog only supported stale-authority transitions and name unavail
 
   assert.deepEqual(supported.map((transition) => transition.id).sort(), [
     'actor-deactivation',
-    'actor-suspension',
     'role-removal',
     'session-revocation',
   ]);

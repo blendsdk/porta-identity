@@ -12,11 +12,7 @@
  *   GET    /:userId              — Get user by ID
  *   PUT    /:userId              — Update user profile
  *   POST   /:userId/deactivate   — Deactivate (active → inactive)
- *   POST   /:userId/reactivate   — Reactivate (inactive → active)
- *   POST   /:userId/suspend      — Suspend (active → suspended)
- *   POST   /:userId/unsuspend    — Unsuspend (suspended → active)
- *   POST   /:userId/lock         — Lock (active → locked)
- *   POST   /:userId/unlock       — Unlock (locked → active)
+ *   POST   /:userId/activate     — Activate (inactive → active)
  *   POST   /:userId/password     — Set/change password
  *   DELETE /:userId/password     — Clear password (passwordless)
  *   POST   /:userId/verify-email — Mark email as verified
@@ -34,7 +30,7 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import type { InvitationEmailOptions } from '../auth/email-service.js';
 import { renderInvitationEmail, sendInvitationEmail } from '../auth/email-service.js';
-import { insertInvitationToken, invalidateUserTokens } from '../auth/token-repository.js';
+import { insertInvitationToken } from '../auth/token-repository.js';
 import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
@@ -123,7 +119,7 @@ const updateUserSchema = z.object({
 const listUsersSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['active', 'inactive', 'suspended', 'locked']).optional(),
+  status: z.enum(['active', 'inactive', 'locked']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z
     .enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at'])
@@ -135,7 +131,7 @@ const listUsersSchema = z.object({
 const listUsersCursorSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.enum(['active', 'inactive', 'suspended', 'locked']).optional(),
+  status: z.enum(['active', 'inactive', 'locked']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z
     .enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at'])
@@ -146,16 +142,6 @@ const listUsersCursorSchema = z.object({
 /** Schema for setting a password */
 const setPasswordSchema = z.object({
   password: z.string().min(8).max(128),
-});
-
-/** Schema for locking a user (reason required) */
-const lockUserSchema = z.object({
-  reason: z.string().min(1).max(500),
-});
-
-/** Schema for suspending a user (reason optional) */
-const suspendUserSchema = z.object({
-  reason: z.string().max(500).optional(),
 });
 
 /** Organization-qualified parameters accepted by user deletion. */
@@ -310,7 +296,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   router.post(
     '/:userId/deactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     requireUserOrganization(),
     async (ctx) => {
       try {
@@ -324,89 +310,15 @@ export function createUserRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
-  // POST /:userId/reactivate — Reactivate user
+  // POST /:userId/activate — Activate user
   // -------------------------------------------------------------------------
   router.post(
-    '/:userId/reactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    '/:userId/activate',
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     requireUserOrganization(),
     async (ctx) => {
       try {
-        await userService.reactivateUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/suspend — Suspend user
-  // Protected: super-admin user cannot be suspended
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/suspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await guardSuperAdmin(ctx.params.userId, 'suspend');
-        const body = suspendUserSchema.parse(ctx.request.body ?? {});
-        await userService.suspendUser(ctx.params.userId, body.reason);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/unsuspend — Unsuspend user
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/unsuspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await userService.unsuspendUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/lock — Lock user
-  // Protected: super-admin user cannot be locked
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/lock',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await guardSuperAdmin(ctx.params.userId, 'lock');
-        const body = lockUserSchema.parse(ctx.request.body);
-        await userService.lockUser(ctx.params.userId, body.reason);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/unlock — Unlock user
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/unlock',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await userService.unlockUser(ctx.params.userId);
+        await userService.activateUser(ctx.params.userId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -520,12 +432,13 @@ export function createUserRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
-  // POST /invite — Send invitation to a new or existing user
+  // POST /invite — Invite a new user
   //
   // Enhanced invitation with optional personal message, role/claim
   // pre-assignment, and inviter tracking. Creates the user if they
   // don't exist, generates an invitation token with pre-assignment
-  // details, and sends the invitation email.
+  // details, and sends the invitation email. Existing organization email
+  // addresses are rejected instead of silently resending an invitation.
   // -------------------------------------------------------------------------
   router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
     try {
@@ -555,21 +468,19 @@ export function createUserRouter(): Router {
         }
       }
 
-      // Find or create the user
-      let user = await userService.getUserByEmail(orgId, body.email);
-      let created = false;
-      if (!user) {
-        user = await userService.createUser({
-          organizationId: orgId,
-          email: body.email,
-          givenName: body.givenName,
-          familyName: body.familyName,
-        });
-        created = true;
+      const existingUser = await userService.getUserByEmail(orgId, body.email);
+      if (existingUser) {
+        ctx.status = 409;
+        ctx.body = { error: 'User already exists in this organization' };
+        return;
       }
 
-      // Invalidate any previous pending invitation tokens for this user
-      await invalidateUserTokens('invitation_tokens', user.id);
+      const user = await userService.createUser({
+        organizationId: orgId,
+        email: body.email,
+        givenName: body.givenName,
+        familyName: body.familyName,
+      });
 
       // Generate a new invitation token
       const { plaintext, hash } = generateToken();
@@ -643,12 +554,12 @@ export function createUserRouter(): Router {
         },
       });
 
-      ctx.status = created ? 201 : 200;
+      ctx.status = 201;
       ctx.body = {
         data: {
           userId: user.id,
           email: user.email,
-          created,
+          created: true,
           invitationSent: true,
           expiresAt: expiresAt.toISOString(),
         },
@@ -889,7 +800,7 @@ export function createStandaloneUserRouter(): Router {
   // POST /:userId/deactivate — Deactivate user
   router.post(
     '/:userId/deactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     async (ctx) => {
       try {
         await guardSuperAdmin(ctx.params.userId, 'deactivate');
@@ -901,85 +812,19 @@ export function createStandaloneUserRouter(): Router {
     },
   );
 
-  // POST /:userId/reactivate — Reactivate user (inactive → active)
-  router.post(
-    '/:userId/reactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    async (ctx) => {
-      try {
-        await userService.reactivateUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // POST /:userId/activate — Alias for reactivate (SPA compatibility)
+  // POST /:userId/activate — Activate user (inactive → active)
   router.post(
     '/:userId/activate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     async (ctx) => {
       try {
-        await userService.reactivateUser(ctx.params.userId);
+        await userService.activateUser(ctx.params.userId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
       }
     },
   );
-
-  // POST /:userId/suspend — Suspend user
-  router.post(
-    '/:userId/suspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    async (ctx) => {
-      try {
-        await guardSuperAdmin(ctx.params.userId, 'suspend');
-        const body = suspendUserSchema.parse(ctx.request.body ?? {});
-        await userService.suspendUser(ctx.params.userId, body.reason);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // POST /:userId/unsuspend — Unsuspend user
-  router.post(
-    '/:userId/unsuspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    async (ctx) => {
-      try {
-        await userService.unsuspendUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // POST /:userId/lock — Lock user
-  router.post('/:userId/lock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    try {
-      await guardSuperAdmin(ctx.params.userId, 'lock');
-      const body = lockUserSchema.parse(ctx.request.body);
-      await userService.lockUser(ctx.params.userId, body.reason);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
-
-  // POST /:userId/unlock — Unlock user
-  router.post('/:userId/unlock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    try {
-      await userService.unlockUser(ctx.params.userId);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
 
   // POST /:userId/password — Set password
   router.post(

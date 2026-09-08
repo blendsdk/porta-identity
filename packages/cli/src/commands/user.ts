@@ -11,7 +11,7 @@
  *   porta user list --org <id> [--status active|invited|...] [--search "..."]
  *   porta user show --org <id> <user-id>
  *   porta user update --org <id> <user-id> [--name "..."]
- *   porta user suspend/reactivate/lock/unlock/deactivate --org <id> <user-id>
+ *   porta user deactivate/activate --org <id> <user-id>
  *   porta user set-password --org <id> <user-id> --password "..."
  *   porta user delete <org-id> <user-id>
  *   porta user history --org <id> <user-id>
@@ -100,14 +100,6 @@ interface UserDeleteArgs extends GlobalOptions {
 
 interface UserUpdateArgs extends UserIdArgs {
   name?: string;
-}
-
-interface UserReasonArgs extends UserIdArgs {
-  reason?: string;
-}
-
-interface UserRequiredReasonArgs extends UserIdArgs {
-  reason: string;
 }
 
 interface SetPasswordArgs extends UserIdArgs {
@@ -244,7 +236,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             withOrgOption(y)
               .option('status', {
                 type: 'string',
-                choices: ['active', 'inactive', 'suspended', 'locked'],
+                choices: ['active', 'inactive', 'locked'],
                 description: 'Filter by status',
               })
 
@@ -269,7 +261,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 page: argv.page,
                 pageSize: argv['page-size'],
                 ...(argv.status && {
-                  status: argv.status as 'active' | 'inactive' | 'suspended' | 'locked',
+                  status: argv.status as 'active' | 'inactive' | 'locked',
                 }),
 
                 ...(argv.search && { search: argv.search }),
@@ -387,64 +379,9 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         )
 
         // ── status lifecycle commands ───────────────────────────────────
-        .command<UserReasonArgs>(
-          'suspend <user-id>',
-          'Suspend a user',
-          (y) =>
-            withOrgOption(
-              y.positional('user-id', {
-                type: 'string',
-                demandOption: true,
-                description: 'User UUID',
-              }),
-            ).option('reason', {
-              type: 'string',
-              description: 'Administrative reason (maximum 500 characters)',
-              coerce: (value: string) => {
-                if (value.length > 500) throw new Error('Reason must not exceed 500 characters');
-                return value;
-              },
-            }),
-          async (argv) => {
-            try {
-              const sdkClient = createClient(argv);
-              if (argv.reason === undefined) {
-                await sdkClient.users.suspend(argv.org, argv['user-id']);
-              } else {
-                await sdkClient.users.suspend(argv.org, argv['user-id'], argv.reason);
-              }
-              success(`User suspended: ${argv['user-id']}`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
         .command<UserIdArgs>(
-          'unsuspend <user-id>',
-          'Unsuspend a user (suspended → active)',
-          (y) =>
-            withOrgOption(
-              y.positional('user-id', {
-                type: 'string',
-                demandOption: true,
-                description: 'User UUID',
-              }),
-            ),
-          async (argv) => {
-            try {
-              const sdkClient = createClient(argv);
-              await sdkClient.users.unsuspend(argv.org, argv['user-id']);
-              success(`User unsuspended: ${argv['user-id']}`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
-        .command<UserIdArgs>(
-          'reactivate <user-id>',
-          'Reactivate a deactivated user',
+          'activate <user-id>',
+          'Activate a deactivated user',
 
           (y) =>
             withOrgOption(
@@ -457,62 +394,8 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.users.reactivate(argv.org, argv['user-id']);
-              success(`User reactivated: ${argv['user-id']}`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
-        .command<UserRequiredReasonArgs>(
-          'lock <user-id>',
-          'Lock a user account',
-          (y) =>
-            withOrgOption(
-              y.positional('user-id', {
-                type: 'string',
-                demandOption: true,
-                description: 'User UUID',
-              }),
-            ).option('reason', {
-              type: 'string',
-              demandOption: true,
-              description: 'Administrative reason (maximum 500 characters)',
-              coerce: (value: string) => {
-                if (value.length < 1 || value.length > 500) {
-                  throw new Error('Reason must contain 1 to 500 characters');
-                }
-                return value;
-              },
-            }),
-          async (argv) => {
-            try {
-              const sdkClient = createClient(argv);
-              await sdkClient.users.lock(argv.org, argv['user-id'], argv.reason);
-              success(`User locked: ${argv['user-id']}`);
-            } catch (err) {
-              handleError(err, argv.verbose);
-            }
-          },
-        )
-
-        .command<UserIdArgs>(
-          'unlock <user-id>',
-          'Unlock a locked user account',
-          (y) =>
-            withOrgOption(
-              y.positional('user-id', {
-                type: 'string',
-                demandOption: true,
-                description: 'User UUID',
-              }),
-            ),
-          async (argv) => {
-            try {
-              const sdkClient = createClient(argv);
-              await sdkClient.users.unlock(argv.org, argv['user-id']);
-              success(`User unlocked: ${argv['user-id']}`);
+              await sdkClient.users.activate(argv.org, argv['user-id']);
+              success(`User activated: ${argv['user-id']}`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -521,7 +404,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
         .command<UserIdArgs>(
           'deactivate <user-id>',
-          'Deactivate a user (permanent)',
+          'Deactivate a user',
           (y) =>
             withOrgOption(
               y.positional('user-id', {
@@ -569,10 +452,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              const { data: user } = await sdkClient.users.get(
-                argv['org-id'],
-                argv['user-id'],
-              );
+              const { data: user } = await sdkClient.users.get(argv['org-id'], argv['user-id']);
               const name = displayName(user);
               const confirmed = await confirm(
                 `Keep user "${name}" (${user.email}), or Delete ${name}? This permanently deletes identity and security data; retained audit history is separate.`,
@@ -665,7 +545,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(userClaimsCommand)
         .demandCommand(
           1,
-          'Specify a user subcommand: create, invite, list, show, update, suspend, unsuspend, reactivate, lock, unlock, deactivate, delete, set-password, history, roles, claims',
+          'Specify a user subcommand: create, invite, list, show, update, activate, deactivate, delete, set-password, history, roles, claims',
         )
     );
   },

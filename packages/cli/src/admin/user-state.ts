@@ -1,7 +1,7 @@
 /** Immutable user administration values retained by the terminal application. */
 
 /** Supported user lifecycle values. */
-export type AdminUserStatus = 'active' | 'inactive' | 'suspended' | 'locked';
+export type AdminUserStatus = 'active' | 'inactive' | 'locked';
 
 /** Bounded row displayed in the user list. */
 export interface AdminUserListItem {

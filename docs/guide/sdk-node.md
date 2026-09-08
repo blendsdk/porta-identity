@@ -56,6 +56,7 @@ const auth = createClientCredentialsAuth({
 ```
 
 Features:
+
 - ✅ Automatic token fetching and caching
 - ✅ Automatic refresh when token expires
 - ✅ Concurrent request deduplication (avoids thundering herd)
@@ -76,6 +77,7 @@ const auth = createCliAuth({
 ```
 
 Features:
+
 - ✅ Reads from `porta login` credential file
 - ✅ Automatic token refresh via refresh_token grant
 - ✅ No manual credential handling
@@ -135,10 +137,10 @@ console.log('Setup complete:', { orgId: org.id, appId: app.id, clientId: client.
 ### Bulk Operations
 
 ```typescript
-// Suspend multiple users at once
+// Deactivate multiple users at once
 const result = await porta.bulk.userStatus({
   ids: ['user-1', 'user-2', 'user-3'],
-  action: 'suspend',
+  action: 'deactivate',
   organizationId: 'org-uuid',
 });
 

@@ -1,148 +1,96 @@
-/** Focused editor for OIDC redirect URIs, logout redirects, and browser origins. */
+/** Compact CRUD dialogs and collection projection for OIDC authentication URLs. */
 
 import type { UpdateClientInput } from '@portaidentity/sdk';
 import {
-  Button,
-  col,
-  ComboBox,
-  Commands,
-  cover,
-  DataGrid,
-  Dialog,
-  fixed,
-  grow,
-  GroupBox,
-  Input,
-  Label,
-  row,
-  signal,
-  spacer,
+  Button, col, ComboBox, Commands, cover, Dialog, fixed, grow, Input, Label, row, signal, spacer,
   Text,
 } from '@jsvision/ui';
-import type { Column, EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
+import type { EventLoop, ModalDialogHost } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminClient } from './client-state.js';
-import { ClientFormScroller } from './client-form-scroller.js';
-import type { AdminOrganizationContext } from './state.js';
+import { deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import { textValidator } from './user-dialog-fields.js';
 
-/** Modal host needed for abort-driven authentication-editor closure. */
-export interface ClientAuthenticationDialogHost extends ModalDialogHost {
-  /** Event loop that can synchronously close an owned modal. */
-  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal'>;
-}
+/** Stable discriminator for one server-owned authentication URL collection. */
+export type AuthenticationUrlKind = 'redirect' | 'post-logout' | 'origin';
 
-/** Result returned by the focused authentication editor. */
-export type ClientAuthenticationDialogResult =
-  | { readonly kind: 'update'; readonly clientId: string; readonly input: UpdateClientInput }
-  | { readonly kind: 'cancel' };
-
-/** Closed collection choices shown by the editor. */
-type CollectionKind = 'redirects' | 'logoutRedirects' | 'origins';
-
-/** Display metadata for one collection choice. */
-interface CollectionChoice {
-  /** Stable internal collection discriminator. */
-  readonly kind: CollectionKind;
-  /** Human-readable selector label. */
+/** Display choice used by the Add and Edit dialog type selector. */
+export interface AuthenticationUrlChoice {
+  /** Stable collection discriminator submitted by the dialog. */
+  readonly kind: AuthenticationUrlKind;
+  /** Human-readable collection name. */
   readonly label: string;
 }
 
-/** One editable row in the reused DataGrid. */
-interface CollectionRow {
-  /** Stable local row key. */
+/** One row in the unified Authentication tab grid. */
+export interface AdminAuthenticationUrlRow {
+  /** Projection-local identity made from the collection and its index. */
   readonly id: string;
-  /** Exact URI or origin value. */
+  /** Server collection that owns this value. */
+  readonly kind: AuthenticationUrlKind;
+  /** Human-readable collection name shown in the grid. */
+  readonly type: string;
+  /** Exact URI or origin stored by the server. */
   readonly value: string;
 }
 
-/** Parent-local staged collections that are returned together on Save. */
-interface AuthenticationCollections {
-  /** Required authorization redirect URIs. */
-  readonly redirects: Signal<CollectionRow[]>;
-  /** Optional post-logout redirect URIs. */
-  readonly logoutRedirects: Signal<CollectionRow[]>;
-  /** Optional allowed browser origins. */
-  readonly origins: Signal<CollectionRow[]>;
+/** One typed value returned by the focused Add or Edit dialog. */
+export interface AuthenticationUrlDraft {
+  /** Destination server collection. */
+  readonly kind: AuthenticationUrlKind;
+  /** Exact URI or origin entered by the administrator. */
+  readonly value: string;
 }
 
-const COLLECTION_CHOICES: readonly CollectionChoice[] = [
-  { kind: 'redirects', label: 'Redirect URIs' },
-  { kind: 'logoutRedirects', label: 'Post-logout redirect URIs' },
-  { kind: 'origins', label: 'Allowed origins' },
+/** Supported local mutation converted into one complete server update. */
+export type AuthenticationUrlMutation =
+  | { readonly kind: 'add'; readonly next: AuthenticationUrlDraft }
+  | { readonly kind: 'edit'; readonly previous: AdminAuthenticationUrlRow; readonly next: AuthenticationUrlDraft }
+  | { readonly kind: 'delete'; readonly previous: AdminAuthenticationUrlRow };
+
+/** Result returned by the focused Add or Edit dialog. */
+export type AuthenticationUrlDialogResult =
+  | { readonly kind: 'save'; readonly row: AuthenticationUrlDraft }
+  | { readonly kind: 'cancel' };
+
+/** Result returned by the permanent authentication URL confirmation. */
+export type DeleteAuthenticationUrlDialogResult =
+  | { readonly kind: 'delete' }
+  | { readonly kind: 'cancel' };
+
+/** Modal host needed for abort-driven authentication URL dialogs. */
+export interface ClientAuthenticationDialogHost extends ModalDialogHost {
+  /** Event loop that can synchronously close and focus an owned modal. */
+  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal' | 'focusView'>;
+}
+
+/** Closed selector choices shared by the grid projection and focused dialog. */
+export const AUTHENTICATION_URL_CHOICES: readonly AuthenticationUrlChoice[] = [
+  { kind: 'redirect', label: 'Redirect URI' },
+  { kind: 'post-logout', label: 'Post-logout redirect URI' },
+  { kind: 'origin', label: 'Allowed origin' },
 ];
 
-const COLLECTION_COLUMNS: Column<CollectionRow>[] = [
-  { title: 'Value', accessor: (entry) => entry.value, width: '1fr', minWidth: 20 },
-];
-
-/** DataGrid that writes complete replacements into the currently selected staged collection. */
-class AuthenticationCollectionGrid extends DataGrid<CollectionRow> {
-  /** Creates the reused grid over its visible-row signal. */
-  constructor(
-    private readonly visibleRows: Signal<CollectionRow[]>,
-    focused: Signal<number>,
-    selected: Signal<number>,
-    private readonly replaceActiveRows: (rows: CollectionRow[]) => void,
-    onSelect: (index: number, row: CollectionRow) => void,
-  ) {
-    super({
-      rows: visibleRows,
-      focused,
-      selected,
-      columns: COLLECTION_COLUMNS,
-      zebra: true,
-      onSelect,
-    });
-  }
-
-  /** Replaces the active collection while retaining one grid instance across selector changes. */
-  setRows(rows: CollectionRow[]): void {
-    this.replaceActiveRows([...rows]);
-  }
-
-  /** Returns a snapshot of the active staged collection for diagnostics and behavior tests. */
-  getRows(): readonly CollectionRow[] {
-    return [...this.visibleRows.peek()];
-  }
+/** Returns the display label for one collection discriminator. */
+function kindLabel(kind: AuthenticationUrlKind): string {
+  return AUTHENTICATION_URL_CHOICES.find((choice) => choice.kind === kind)?.label ?? kind;
 }
 
-/** Fixed full-page surface with validation shared by buttons and keyboard submission. */
-class ClientAuthenticationDialog extends Dialog {
-  /** Creates a non-movable, non-resizable editor that will be maximized after mounting. */
-  constructor(
-    width: number,
-    height: number,
-    private readonly collections: AuthenticationCollections,
-    private readonly valueInput: Input,
-  ) {
-    super({ title: 'OIDC client authentication', width, height, centered: true });
-    this.closable = false;
-    this.movable = false;
-    this.resizable = false;
-    this.zoomable = false;
-  }
-
-  /** Prevents invalid hidden collections from being submitted through any command route. */
-  valid(command: string): boolean {
-    if (command === Commands.cancel) return true;
-    if (!collectionsAreValid(this.collections)) {
-      this.firstInvalid = this.valueInput;
-      return false;
-    }
-    return super.valid(command);
-  }
+/** Flattens the three authoritative ordered arrays without losing collection identity. */
+export function authenticationUrlRows(client: AdminClient): AdminAuthenticationUrlRow[] {
+  const rows = (kind: AuthenticationUrlKind, values: readonly string[]): AdminAuthenticationUrlRow[] =>
+    values.map((value, index) => ({ id: `${kind}:${index}`, kind, type: kindLabel(kind), value }));
+  return [
+    ...rows('redirect', client.redirectUris),
+    ...rows('post-logout', client.postLogoutRedirectUris),
+    ...rows('origin', client.allowedOrigins),
+  ];
 }
 
-/** Returns rows for immutable strings without mutating the source client. */
-function collectionRows(values: readonly string[]): CollectionRow[] {
-  return values.map((value, index) => ({ id: String(index), value }));
-}
-
-/** Returns true for bounded control-free text. */
+/** Returns true for bounded, trimmed text that cannot alter terminal rendering. */
 function validText(value: string): boolean {
-  if (value.length < 1 || value.length > 2_048) return false;
+  if (value.length < 1 || value.length > 2_048 || value.trim() !== value) return false;
   return ![...value].some((character) => {
     const codePoint = character.codePointAt(0) ?? 0;
     return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
@@ -151,7 +99,7 @@ function validText(value: string): boolean {
 
 /** Returns true for one absolute redirect URI without wildcard or fragment syntax. */
 function validRedirectUri(value: string): boolean {
-  if (!validText(value) || value.includes('*')) return false;
+  if (!validText(value) || value.includes('*') || value.includes('#')) return false;
   try {
     const parsed = new URL(value);
     return parsed.protocol.length > 1 && parsed.hash === '';
@@ -160,69 +108,140 @@ function validRedirectUri(value: string): boolean {
   }
 }
 
-/** Returns true for one exact HTTP(S) origin. */
+/** Returns true for one exact HTTP(S) origin without credentials or trailing content. */
 function validOrigin(value: string): boolean {
   if (!validText(value) || value.includes('*')) return false;
   try {
     const parsed = new URL(value);
     return (
-      (parsed.protocol === 'https:' || parsed.protocol === 'http:') &&
-      parsed.username === '' &&
-      parsed.password === '' &&
-      parsed.pathname === '/' &&
-      parsed.search === '' &&
-      parsed.hash === '' &&
-      parsed.origin === value
+      (parsed.protocol === 'https:' || parsed.protocol === 'http:') && parsed.username === '' &&
+      parsed.password === '' && parsed.pathname === '/' && parsed.search === '' &&
+      parsed.hash === '' && parsed.origin === value
     );
   } catch {
     return false;
   }
 }
 
-/** Selects the validator for the active collection. */
-function collectionValueIsValid(kind: CollectionKind, value: string): boolean {
-  return kind === 'origins' ? validOrigin(value) : validRedirectUri(value);
+/** Returns whether one value is valid for its selected destination collection. */
+function valueIsValid(kind: AuthenticationUrlKind, value: string): boolean {
+  return kind === 'origin' ? validOrigin(value) : validRedirectUri(value);
 }
 
-/** Validates count, value syntax, and exact uniqueness for one complete collection. */
-function collectionIsValid(kind: CollectionKind, rows: readonly CollectionRow[]): boolean {
-  const minimum = kind === 'redirects' ? 1 : 0;
-  const values = rows.map((entry) => entry.value);
-  return (
-    values.length >= minimum &&
-    values.length <= 10 &&
-    new Set(values).size === values.length &&
-    values.every((value) => collectionValueIsValid(kind, value))
+/** Converts a client into mutable copies of its three URL collections. */
+function clientCollections(client: AdminClient): Record<AuthenticationUrlKind, string[]> {
+  return {
+    redirect: [...client.redirectUris],
+    'post-logout': [...client.postLogoutRedirectUris],
+    origin: [...client.allowedOrigins],
+  };
+}
+
+/** Finds an exact projected row and rejects stale row identities or values. */
+function rowIndex(client: AdminClient, target: AdminAuthenticationUrlRow): number {
+  const current = authenticationUrlRows(client).find(
+    (row) => row.id === target.id && row.kind === target.kind && row.value === target.value,
   );
+  return current ? Number(current.id.slice(current.id.lastIndexOf(':') + 1)) : -1;
 }
 
-/** Validates all staged collections, including the two that are not currently visible. */
-function collectionsAreValid(collections: AuthenticationCollections): boolean {
-  return COLLECTION_CHOICES.every((choice) =>
-    collectionIsValid(choice.kind, collections[choice.kind]()),
-  );
+/** Validates complete server collections after a local mutation. */
+function collectionsAreValid(collections: Record<AuthenticationUrlKind, string[]>): boolean {
+  return AUTHENTICATION_URL_CHOICES.every(({ kind }) => {
+    const values = collections[kind];
+    return values.length <= 10 && (kind !== 'redirect' || values.length >= 1) &&
+      new Set(values).size === values.length && values.every((value) => valueIsValid(kind, value));
+  });
 }
 
-/** Explains why the current value cannot be added or edited. */
+/**
+ * Rebuilds all three arrays for one confirmed row mutation.
+ *
+ * `undefined` means the row became stale or the mutation violates syntax, count, uniqueness, or
+ * the required final Redirect URI invariant.
+ */
+export function buildAuthenticationUrlUpdate(
+  client: AdminClient,
+  mutation: AuthenticationUrlMutation,
+): UpdateClientInput | undefined {
+  const collections = clientCollections(client);
+  if (mutation.kind !== 'add') {
+    const index = rowIndex(client, mutation.previous);
+    if (index < 0) return undefined;
+    if (mutation.kind === 'edit' && mutation.previous.kind === mutation.next.kind)
+      collections[mutation.previous.kind][index] = mutation.next.value;
+    else collections[mutation.previous.kind].splice(index, 1);
+  }
+  if (
+    mutation.kind === 'add' ||
+    (mutation.kind === 'edit' && mutation.previous.kind !== mutation.next.kind)
+  )
+    collections[mutation.next.kind].push(mutation.next.value);
+  if (!collectionsAreValid(collections)) return undefined;
+  return {
+    redirectUris: collections.redirect,
+    postLogoutRedirectUris: collections['post-logout'],
+    allowedOrigins: collections.origin,
+  };
+}
+
+/** Explains the first validation failure for the current dialog values. */
 function valueGuidance(
-  kind: CollectionKind,
-  value: string,
-  rows: readonly CollectionRow[],
-  selectedIndex: number,
+  client: AdminClient,
+  existing: AdminAuthenticationUrlRow | null,
+  next: AuthenticationUrlDraft,
 ): string {
-  if (value.length === 0) return 'A value is required.';
-  if (!collectionValueIsValid(kind, value))
-    return 'The value is invalid. Enter an exact URI or origin.';
-  const duplicate = rows.some((row, index) => row.value === value && index !== selectedIndex);
-  return duplicate ? 'That exact value already exists.' : '';
+  if (next.value.length === 0) return 'A value is required.';
+  if (!valueIsValid(next.kind, next.value))
+    return next.kind === 'origin'
+      ? 'Enter an exact HTTP(S) origin without a path.'
+      : 'Enter an absolute URL without a wildcard or fragment.';
+  const mutation: AuthenticationUrlMutation = existing
+    ? { kind: 'edit', previous: existing, next }
+    : { kind: 'add', next };
+  if (buildAuthenticationUrlUpdate(client, mutation)) return '';
+  if (existing?.kind === 'redirect' && client.redirectUris.length === 1 && next.kind !== 'redirect')
+    return 'At least one Redirect URI is required.';
+  const values = clientCollections(client)[next.kind];
+  const existingIndex = existing?.kind === next.kind ? rowIndex(client, existing) : -1;
+  if (values.some((value, index) => value === next.value && index !== existingIndex))
+    return 'That value already exists for this type.';
+  if (values.length >= 10 && existing?.kind !== next.kind)
+    return 'This URL type already has the maximum of 10 values.';
+  return 'The value cannot be saved.';
 }
 
-/** Maximizes a fixed editor while leaving user zoom controls disabled. */
-function maximizeDialog(dialog: Dialog): void {
-  if (dialog.isZoomed()) return;
-  dialog.zoomable = true;
-  dialog.zoom();
-  dialog.zoomable = false;
+/** Dialog that protects keyboard submission with the same validation used by its Save button. */
+class AuthenticationUrlDialog extends Dialog {
+  /** Creates one compact validated URL editor. */
+  constructor(
+    title: string,
+    width: number,
+    height: number,
+    private readonly canSave: () => boolean,
+    private readonly valueInput: Input,
+  ) {
+    super({ title, width, height, centered: true });
+  }
+
+  /** Rejects invalid default-command submission and focuses the value field. */
+  override valid(command: string): boolean {
+    if (command === Commands.cancel || this.canSave()) return super.valid(command);
+    this.firstInvalid = this.valueInput;
+    return false;
+  }
+}
+
+/** Returns a compact dialog size capped to the terminal surface. */
+function dialogSize(
+  host: ClientAuthenticationDialogHost,
+  preferredWidth: number,
+  preferredHeight: number,
+): { readonly width: number; readonly height: number } {
+  return {
+    width: Math.max(1, Math.min(preferredWidth, host.desktop.bounds.width)),
+    height: Math.max(1, Math.min(preferredHeight, host.desktop.bounds.height)),
+  };
 }
 
 /** Runs one abortable modal and always removes it from the desktop. */
@@ -232,7 +251,6 @@ async function runDialog(
   operationSignal: AbortSignal,
 ): Promise<string> {
   host.desktop.addWindow(dialog);
-  maximizeDialog(dialog);
   try {
     return await runAbortableAdminDialog(
       host.loop,
@@ -247,171 +265,44 @@ async function runDialog(
   }
 }
 
-/** Opens the focused editor and returns all three arrays in one bounded update. */
-export async function showClientAuthenticationDialog(
+/** Opens one compact direct form that adds or edits a single typed URL or origin. */
+export async function showAuthenticationUrlDialog(
   host: ClientAuthenticationDialogHost,
   operationSignal: AbortSignal,
-  organization: AdminOrganizationContext,
   client: AdminClient,
-): Promise<ClientAuthenticationDialogResult> {
-  if (client.organizationId !== organization.id) return { kind: 'cancel' };
-  const collections: AuthenticationCollections = {
-    redirects: signal(collectionRows(client.redirectUris)),
-    logoutRedirects: signal(collectionRows(client.postLogoutRedirectUris)),
-    origins: signal(collectionRows(client.allowedOrigins)),
-  };
-  const choice = signal<CollectionChoice | null>(COLLECTION_CHOICES[0] ?? null);
-  const visibleRows = signal([...collections.redirects.peek()]);
-  const focused = signal(0);
-  const selected = signal(-1);
-  const value = signal('');
-  const valueInput = new Input({ value, maxLength: 2_048, validator: textValidator(0, 2_048) });
-  const focusedByCollection: Record<CollectionKind, number> = {
-    redirects: 0,
-    logoutRedirects: 0,
-    origins: 0,
-  };
-  const selectedByCollection: Record<CollectionKind, number> = {
-    redirects: -1,
-    logoutRedirects: -1,
-    origins: -1,
-  };
-  let activeKind: CollectionKind = 'redirects';
-  const grid = new AuthenticationCollectionGrid(
-    visibleRows,
-    focused,
-    selected,
-    (rows) => {
-      collections[activeKind].set([...rows]);
-      visibleRows.set([...rows]);
-      const lastIndex = Math.max(0, rows.length - 1);
-      focused.set(Math.min(focused.peek(), lastIndex));
-      selected.set(rows.length === 0 ? -1 : Math.min(selected.peek(), lastIndex));
-    },
-    (index, selectedRow) => {
-      selected.set(index);
-      value.set(selectedRow.value);
-    },
+  existing: AdminAuthenticationUrlRow | null,
+): Promise<AuthenticationUrlDialogResult> {
+  if (existing && rowIndex(client, existing) < 0) return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 68, 13);
+  const initialKind = existing?.kind ?? 'redirect';
+  const choice = signal<AuthenticationUrlChoice | null>(
+    AUTHENTICATION_URL_CHOICES.find((candidate) => candidate.kind === initialKind) ?? null,
   );
-  const selector = new ComboBox<CollectionChoice>({
-    items: signal([...COLLECTION_CHOICES]),
-    getText: (item) => item.label,
-    value: choice,
+  const value = signal(existing?.value ?? '');
+  const selector = new ComboBox<AuthenticationUrlChoice>({
+    items: signal([...AUTHENTICATION_URL_CHOICES]), getText: (item) => item.label, value: choice,
     editable: false,
   });
-  const dialog = new ClientAuthenticationDialog(
-    Math.max(1, Math.min(78, host.desktop.bounds.width)),
-    Math.max(1, Math.min(23, host.desktop.bounds.height)),
-    collections,
+  const valueInput = new Input({ value, maxLength: 2_048, validator: textValidator(0, 2_048) });
+  const draft = (): AuthenticationUrlDraft => ({ kind: choice()?.kind ?? 'redirect', value: value() });
+  const canSave = (): boolean => valueGuidance(client, existing, draft()) === '';
+  const dialog = new AuthenticationUrlDialog(
+    existing ? 'Edit authentication URL' : 'Add authentication URL', width, height, canSave,
     valueInput,
   );
-  dialog.onMount(() => {
-    dialog.bind(
-      () => choice()?.kind ?? 'redirects',
-      (nextKind) => {
-        focusedByCollection[activeKind] = focused.peek();
-        selectedByCollection[activeKind] = selected.peek();
-        activeKind = nextKind;
-        const rows = collections[nextKind].peek();
-        visibleRows.set([...rows]);
-        focused.set(Math.min(focusedByCollection[nextKind], Math.max(0, rows.length - 1)));
-        selected.set(Math.min(selectedByCollection[nextKind], rows.length - 1));
-        value.set('');
-      },
-      { relayout: true },
-    );
-  });
-  const currentRows = (): readonly CollectionRow[] => visibleRows();
-  const currentValueIsValid = (excludeSelected: boolean): boolean => {
-    const selectedIndex = excludeSelected ? selected() : -1;
-    return valueGuidance(activeKind, value(), currentRows(), selectedIndex) === '';
-  };
-  const add = new Button('~A~dd', {
-    disabled: () => visibleRows().length >= 10 || !currentValueIsValid(false),
-    onClick: () => {
-      if (visibleRows.peek().length >= 10 || !currentValueIsValid(false)) return;
-      grid.setRows([
-        ...visibleRows.peek(),
-        { id: `${activeKind}-${visibleRows.peek().length}`, value: value.peek() },
-      ]);
-      value.set('');
-    },
-  });
-  const edit = new Button('~E~dit', {
-    disabled: () => selected() < 0 || !currentValueIsValid(true),
-    onClick: () => {
-      const index = selected.peek();
-      if (index < 0 || !currentValueIsValid(true)) return;
-      grid.setRows(
-        visibleRows
-          .peek()
-          .map((entry, rowIndex) =>
-            rowIndex === index ? { ...entry, value: value.peek() } : entry,
-          ),
-      );
-    },
-  });
-  const remove = new Button('~R~emove', {
-    disabled: () => selected() < 0 || (activeKind === 'redirects' && visibleRows().length <= 1),
-    onClick: () => {
-      const index = selected.peek();
-      if (index < 0 || (activeKind === 'redirects' && visibleRows.peek().length <= 1)) return;
-      grid.setRows(visibleRows.peek().filter((_entry, rowIndex) => rowIndex !== index));
-      value.set('');
-    },
-  });
-  const context = new GroupBox({ title: 'Client', padding: 1 });
-  context.add(
-    cover(
-      col(
-        {},
-        fixed(new Text(`Organization: ${organization.name}`), 1),
-        fixed(new Text(`Client: ${client.clientName}`), 1),
-      ),
-    ),
-  );
-  const editor = new GroupBox({ title: 'Authentication collections', padding: 1 });
-  editor.add(
-    cover(
-      col(
-        { gap: 0 },
-        fixed(row({ gap: 1 }, fixed(new Label('Collection', selector), 18), grow(selector)), 1),
-        grow(grid),
-        fixed(row({ gap: 1 }, fixed(new Label('Value', valueInput), 18), grow(valueInput)), 1),
-        fixed(row({ gap: 1 }, add, edit, remove, spacer()), 2),
-        fixed(new Text(() => valueGuidance(activeKind, value(), currentRows(), selected())), 1),
-      ),
-    ),
-  );
-  const compact = host.desktop.bounds.height <= 12;
-  const compactContext = new GroupBox({ title: 'Client', padding: 0 });
-  compactContext.add(
-    cover(new Text(`Organization: ${organization.name} · Client: ${client.clientName}`)),
-  );
-  const editorContent = col(fixed(editor, 13));
-  const editorScroller = new ClientFormScroller(editorContent, () => ({
-    width: Math.max(1, (dialog.bounds.width || host.desktop.bounds.width) - (compact ? 4 : 6)),
-    height: 13,
-  }));
   dialog.add(
     cover(
       col(
-        {
-          gap: compact ? 0 : 1,
-          padding: compact
-            ? { top: 0, right: 1, bottom: 0, left: 1 }
-            : { top: 1, right: 2, bottom: 1, left: 2 },
-        },
-        fixed(compact ? compactContext : context, compact ? 3 : 4),
-        grow(editorScroller),
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(new Text(`Client: ${client.clientName}`), 1),
+        fixed(row({ gap: 1 }, fixed(new Label('Type', selector), 14), grow(selector)), 1),
+        fixed(row({ gap: 1 }, fixed(new Label('URL / origin', valueInput), 14), grow(valueInput)), 1),
+        grow(new Text(() => valueGuidance(client, existing, draft()))),
         fixed(
           row(
-            { gap: 1 },
-            spacer(),
-            new Button('~S~ave', {
-              command: Commands.ok,
-              default: true,
-              disabled: () => !collectionsAreValid(collections),
+            { gap: 1 }, spacer(),
+            new Button(existing ? '~S~ave' : '~A~dd', {
+              command: Commands.ok, default: true, disabled: () => !canSave(),
             }),
             new Button('Cancel', { command: Commands.cancel }),
           ),
@@ -421,13 +312,29 @@ export async function showClientAuthenticationDialog(
     ),
   );
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
-  return {
-    kind: 'update',
-    clientId: client.id,
-    input: {
-      redirectUris: collections.redirects.peek().map((entry) => entry.value),
-      postLogoutRedirectUris: collections.logoutRedirects.peek().map((entry) => entry.value),
-      allowedOrigins: collections.origins.peek().map((entry) => entry.value),
-    },
-  };
+  return { kind: 'save', row: { kind: choice.peek()?.kind ?? 'redirect', value: value.peek() } };
+}
+
+/** Opens a safe-default confirmation before permanently removing one URL or origin. */
+export async function showDeleteAuthenticationUrlDialog(
+  host: ClientAuthenticationDialogHost,
+  operationSignal: AbortSignal,
+  client: AdminClient,
+  target: AdminAuthenticationUrlRow,
+): Promise<DeleteAuthenticationUrlDialogResult> {
+  if (!buildAuthenticationUrlUpdate(client, { kind: 'delete', previous: target }))
+    return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 72, 13);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button('Delete', { command: Commands.yes });
+  const dialog = new Dialog({ title: 'Delete authentication URL', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Client: ${client.clientName}\nType: ${target.type}\nValue: ${target.value}`,
+    warning: 'Deleting this authentication URL is permanent.', keep, remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes ? { kind: 'delete' } : { kind: 'cancel' };
 }

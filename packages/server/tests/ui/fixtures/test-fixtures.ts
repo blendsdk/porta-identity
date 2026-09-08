@@ -66,8 +66,6 @@ export interface TestData {
 
   // ── Phase 2 fields (user status tests) ─────────────────────────────
 
-  /** Email of a user with 'suspended' status */
-  suspendedUserEmail: string;
   /** Email of a user with 'inactive' status */
   inactiveUserEmail: string;
   /** Email of a user with 'locked' status */
@@ -201,7 +199,6 @@ export const test = base.extend<{
       confUserPassword: process.env.TEST_CONF_USER_PASSWORD!,
 
       // Phase 2: Additional users for status tests
-      suspendedUserEmail: process.env.UI_TEST_SUSPENDED_USER_EMAIL!,
       inactiveUserEmail: process.env.UI_TEST_INACTIVE_USER_EMAIL!,
       lockedUserEmail: process.env.UI_TEST_LOCKED_USER_EMAIL!,
       lockableUserEmail: process.env.UI_TEST_LOCKABLE_USER_EMAIL!,

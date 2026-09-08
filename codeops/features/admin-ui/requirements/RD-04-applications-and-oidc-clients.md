@@ -3,7 +3,7 @@
 > **Document**: RD-04-applications-and-oidc-clients.md
 > **Status**: Approved
 > **Created**: 2026-08-30
-> **Revised**: 2026-09-07 — OIDC client workflow redesign
+> **Revised**: 2026-09-08 — focused client creation dialog
 > **Feature**: Porta Admin UI
 > **Depends On**: RD-02
 > **CodeOps Artifact Schema**: 1
@@ -72,10 +72,12 @@ not a separate server authorization boundary.
       resolved only with `admin:app:read`; otherwise the immutable Application ID is shown. (AR-71,
       AR-73, AR-77, AR-82)
 - [ ] **AC-08 — Create client:** client registration uses the active organization ID and one selected
-      active global application. Its compact Azure-inspired form collects client name, public or
-      confidential client type, web, SPA, or native application type, and exactly one initial redirect
-      URI. Confidential registration also collects an optional initial-secret label and expiry choice.
-      Advanced protocol, authentication, and login settings use authoritative server defaults and are
+      active global application. One ordinary centered dialog contains only the Client details group
+      and naturally sized Create and Cancel actions. Its height is derived from its component heights
+      and spacing; its content does not scroll. The spacious Layout DSL form collects client name,
+      public or confidential client type, web, SPA, or native application type, and exactly one initial
+      redirect URI. It does not collect or submit initial-secret settings. Advanced protocol,
+      authentication, login, and credential settings use authoritative server defaults and are
       configured after creation. The generated Client ID is read-only. A non-active organization or
       application cannot be used. Create requires both `admin:client:create` and `admin:app:read`.
       (AR-71, AR-73, AR-81, AR-112, AR-113, AR-116, AR-119)
@@ -396,9 +398,10 @@ changes.
        with a different application ID is not published.
 6. [ ] Compact client registration sends the active organization UUID, selected active application
        UUID, client name, closed client/application type, and exactly one valid initial redirect URI.
-       It omits advanced configuration so the server applies authoritative defaults. Confidential
-       registration also sends the optional label and chosen `secretExpiresAt`; public registration
-       sends neither secret field.
+       It uses one unmaximized, non-scrolling Client details dialog whose height follows the visible
+       components and spacing. It omits advanced configuration and initial-secret settings so the
+       server applies authoritative defaults. Public and confidential registration send neither
+       `secretLabel` nor `secretExpiresAt`.
 7. [ ] After creation, client detail opens Overview and exposes Authentication, Protocol, Login
        experience, Credentials, and Lifecycle sections inside the maximized module surface. Every
        supported update field can be changed through a focused section without an oversized form,

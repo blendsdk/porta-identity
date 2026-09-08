@@ -1,14 +1,15 @@
 /** Direct JSVision workspace for browsing one organization's users. */
 
 import {
-  at,
   Button,
   col,
   ComboBox,
   cover,
   DataGrid,
+  Dialog,
   fixed,
   Group,
+  GroupBox,
   grow,
   Input,
   Label,
@@ -20,6 +21,7 @@ import {
   row,
 } from '@jsvision/ui';
 import type { Column, Signal } from '@jsvision/ui';
+import { formatAdminDateTime, formatOptionalAdminDateTime } from './admin-date-time.js';
 import type { AdminCapabilities } from './state.js';
 import type {
   AdminUserDetail,
@@ -43,12 +45,8 @@ export type AdminUserIntent =
   | { readonly kind: 'set-password' }
   | { readonly kind: 'clear-password' }
   | { readonly kind: 'verify-email' }
-  | { readonly kind: 'suspend' }
-  | { readonly kind: 'unsuspend' }
-  | { readonly kind: 'lock' }
-  | { readonly kind: 'unlock' }
   | { readonly kind: 'deactivate' }
-  | { readonly kind: 'reactivate' }
+  | { readonly kind: 'activate' }
   | { readonly kind: 'delete' };
 
 /** Construction inputs for one user-specific workspace. */
@@ -94,6 +92,14 @@ interface CompactDetailRow {
   readonly intent?: AdminUserIntent;
 }
 
+/** Temporary status displayed without discarding the last validated projection. */
+interface WorkspaceStatus {
+  /** Safe fixed text shown above retained content. */
+  readonly label: string;
+  /** Whether the user can request an authoritative reload. */
+  readonly retry: boolean;
+}
+
 /** Columns shown in the user browser's standard JSVision data grid. */
 const USER_COLUMNS: Column<AdminUserListItem>[] = [
   { title: 'Email', accessor: (user) => user.email, width: '2fr', minWidth: 18 },
@@ -125,7 +131,10 @@ function previousState(previous: AdminUserProjection): AdminUserViewState {
 
 /** Builds the direct user workspace without a reusable screen abstraction. */
 export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): AdminUserWorkspace {
-  const content = new Group();
+  const content = new Dialog({ title: 'Users', width: 72, height: 20 });
+  content.closable = false;
+  content.resizable = false;
+  content.zoomable = false;
   content.background = 'dialog';
   let currentState: AdminUserViewState = { kind: 'closed' };
   let currentFocus: View | null = null;
@@ -134,16 +143,9 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
   const filterStatus = signal<AdminUserStatus | null>(null);
   let focusedUserId: string | null = null;
 
-  /** Returns current content geometry with safe pre-mount defaults. */
-  const geometry = (): {
-    readonly width: number;
-    readonly height: number;
-    readonly compact: boolean;
-  } => {
-    const width = content.bounds.width || 74;
-    const height = content.bounds.height || 18;
-    return { width, height, compact: width < 76 || height < 20 };
-  };
+  /** Reports when the dialog needs its bounded narrow-terminal presentation. */
+  const isCompact = (): boolean =>
+    (content.bounds.width || 74) < 60 || (content.bounds.height || 18) < 15;
 
   /** Builds an action button whose natural size is resolved by its Layout DSL row. */
   const action = (label: string, intent: AdminUserIntent): Button => {
@@ -153,8 +155,11 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
   };
 
   /** Renders list browsing controls for one validated page. */
-  const renderPage = (state: Extract<AdminUserViewState, { kind: 'page' }>): void => {
-    const { compact } = geometry();
+  const renderPage = (
+    state: Extract<AdminUserViewState, { kind: 'page' }>,
+    status?: WorkspaceStatus,
+  ): void => {
+    const compact = isCompact();
     const searchInput = new Input({ value: searchValue, maxLength: 255 });
     const searchButton = new Button('~S~earch', {
       onClick: () =>
@@ -165,7 +170,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     const searchBar = row(
       { gap: 1 },
       fixed(new Label('~S~earch', searchInput), 7),
-      grow(searchInput),
+      grow(col(fixed(searchInput, 1), spacer())),
       searchButton,
     );
     currentFocus = searchInput;
@@ -174,7 +179,6 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       ['~A~ll', undefined],
       ['Act~i~ve', 'active'],
       ['I~n~active', 'inactive'],
-      ['~S~uspended', 'suspended'],
       ['~L~ocked', 'locked'],
     ];
     let filterBar: Group;
@@ -183,7 +187,6 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
         null,
         'active',
         'inactive',
-        'suspended',
         'locked',
       ]);
       const filter = new ComboBox<AdminUserStatus | null>({
@@ -215,32 +218,24 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       );
     }
 
-    let gridArea: View;
-    if (state.page.data.length === 0) {
-      gridArea = new Text(
-        searchValue.peek() || filterStatus.peek() ? 'No matching users' : 'No users',
-      );
-    } else {
-      const rows: Signal<AdminUserListItem[]> = signal([...state.page.data]);
-      const focused = signal(
-        Math.max(
-          0,
-          state.page.data.findIndex((user) => user.id === focusedUserId),
-        ),
-      );
-      const grid = new DataGrid({
-        rows,
-        columns: USER_COLUMNS,
-        focused,
-        zebra: true,
-        onSelect: (_index, user) => {
-          focusedUserId = user.id;
-          options.onIntent({ kind: 'select', userId: user.id });
-        },
-      });
-      gridArea = grid;
-      currentFocus = grid.rows;
-    }
+    const rows: Signal<AdminUserListItem[]> = signal([...state.page.data]);
+    const focused = signal(
+      Math.max(
+        0,
+        state.page.data.findIndex((user) => user.id === focusedUserId),
+      ),
+    );
+    const grid = new DataGrid({
+      rows,
+      columns: USER_COLUMNS,
+      focused,
+      zebra: true,
+      onSelect: (_index, user) => {
+        focusedUserId = user.id;
+        options.onIntent({ kind: 'select', userId: user.id });
+      },
+    });
+    currentFocus = grid.rows;
 
     const previous = new Button('~P~revious', {
       disabled: state.page.page <= 1,
@@ -253,25 +248,37 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     const pager = row(
       { gap: 1 },
       previous,
-      !compact &&
-        fixed(new Text(`Page ${state.page.page} of ${Math.max(1, state.page.totalPages)}`), 20),
+      grow(new Text(`Page ${state.page.page} of ${Math.max(1, state.page.totalPages)}`)),
       spacer(),
       state.outcome && fixed(new Text(OUTCOME_LABELS[state.outcome]), compact ? 18 : 26),
       next,
     );
+    const retry = status?.retry
+      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
+      : undefined;
     const pageLayout = col(
       {
-        background: 'dialog',
         gap: compact ? 0 : 1,
         padding: { top: 0, right: 1, bottom: 0, left: 1 },
       },
-      fixed(new Text('Users'), 1),
+      status && fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
       fixed(searchBar, 2),
       fixed(filterBar, compact ? 1 : 2),
-      grow(gridArea),
+      grow(grid),
+      fixed(
+        new Text(
+          state.page.data.length === 0
+            ? searchValue.peek() || filterStatus.peek()
+              ? 'No matching users'
+              : 'No users'
+            : `↑↓ Move · Enter View details · ${state.page.total} ${state.page.total === 1 ? 'user' : 'users'}`,
+        ),
+        1,
+      ),
       fixed(pager, 2),
     );
     content.add(cover(pageLayout));
+    if (retry) currentFocus = retry;
   };
 
   /** Returns every action valid for the selected user and current capabilities. */
@@ -284,9 +291,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     const actions: Array<{
       readonly label: string;
       readonly intent: AdminUserIntent;
-    }> = [{ label: '~B~ack', intent: { kind: 'back' } }];
-    if (options.capabilities.canReadUsers)
-      actions.push({ label: '~H~istory', intent: { kind: 'history' } });
+    }> = [];
     if (options.capabilities.canUpdateUsers) {
       actions.push({ label: '~E~dit', intent: { kind: 'edit' } });
       actions.push({ label: 'Set password', intent: { kind: 'set-password' } });
@@ -297,24 +302,30 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     }
     if (options.capabilities.canManageUserLifecycle) {
       if (user.status === 'active') {
-        actions.push({ label: 'Suspend', intent: { kind: 'suspend' } });
-        actions.push({ label: 'Lock', intent: { kind: 'lock' } });
         actions.push({ label: 'Deactivate', intent: { kind: 'deactivate' } });
-      } else if (user.status === 'suspended')
-        actions.push({ label: 'Unsuspend', intent: { kind: 'unsuspend' } });
-      else if (user.status === 'locked')
-        actions.push({ label: 'Unlock', intent: { kind: 'unlock' } });
-      else actions.push({ label: 'Reactivate', intent: { kind: 'reactivate' } });
+      } else if (user.status === 'inactive')
+        actions.push({ label: 'Activate', intent: { kind: 'activate' } });
     }
     if (options.capabilities.canDeleteUsers)
       actions.push({ label: 'Delete', intent: { kind: 'delete' } });
     return actions;
   };
 
+  /** Builds a bounded list for detail values that cannot all fit in a small terminal. */
+  const detailList = (lines: readonly string[]): ListView<string> =>
+    new ListView({
+      items: signal([...lines]),
+      getText: (line) => line,
+      sorted: false,
+    });
+
   /** Renders the allowlisted detail projection and exact available actions. */
-  const renderDetail = (state: Extract<AdminUserViewState, { kind: 'detail' }>): void => {
+  const renderDetail = (
+    state: Extract<AdminUserViewState, { kind: 'detail' }>,
+    status?: WorkspaceStatus,
+  ): void => {
     const user = state.detail;
-    const { width, height, compact } = geometry();
+    const compact = isCompact();
     const identityLines = [
       `Email: ${user.email} (${user.emailVerified ? 'verified' : 'unverified'})`,
       `Name: ${optional(user.givenName)} ${optional(user.middleName)} ${optional(user.familyName)}`,
@@ -333,17 +344,22 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       `Postal: ${optional(user.addressPostalCode)}  Country: ${optional(user.addressCountry)}`,
       `Status: ${user.status}  Password: ${user.hasPassword ? 'set' : 'not set'}`,
       `Two-factor: ${user.twoFactorEnabled ? 'enabled' : 'disabled'}  Logins: ${user.loginCount}`,
-      `Last login: ${optional(user.lastLoginAt)}`,
-      `Created: ${user.createdAt}`,
-      `Updated: ${user.updatedAt}`,
+      `Last login: ${formatOptionalAdminDateTime(user.lastLoginAt, 'Not provided')}`,
+      `Created: ${formatAdminDateTime(user.createdAt)}`,
+      `Updated: ${formatAdminDateTime(user.updatedAt)}`,
     ];
-    const actions =
-      state.outcome === 'outcome-unknown'
-        ? detailActions(user).filter(
-            ({ intent }) => intent.kind === 'back' || intent.kind === 'history',
-          )
-        : detailActions(user);
-    content.add(at(new Text('Users'), 0, 0, 20, 1));
+    const actions = state.outcome === 'outcome-unknown' ? [] : detailActions(user);
+    const navigation = row(
+      { gap: 1 },
+      action('~B~ack to users', { kind: 'back' }),
+      options.capabilities.canReadUsers && action('~H~istory', { kind: 'history' }),
+      spacer(),
+      state.outcome && new Text(OUTCOME_LABELS[state.outcome]),
+    );
+    const retry = status?.retry
+      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
+      : undefined;
+    const statusRow = status && fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2);
 
     if (compact) {
       const rows = signal<CompactDetailRow[]>([
@@ -362,54 +378,106 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
           if (row.intent) options.onIntent(row.intent);
         },
       });
-      content.add(at(list, 0, 1, width, Math.max(1, height - 1)));
+      const section = new GroupBox({ title: 'User details & operations' });
+      section.add(cover(list));
+      content.add(
+        cover(
+          col(
+            { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
+            statusRow,
+            grow(section),
+            fixed(navigation, 2),
+          ),
+        ),
+      );
       currentFocus = list.rows;
     } else {
-      const columnWidth = Math.max(1, Math.floor((width - 2) / 2));
-      content.add(at(new Text(identityLines.join('\n')), 0, 1, columnWidth, 11));
-      content.add(at(new Text(accountLines.join('\n')), columnWidth + 2, 1, columnWidth, 11));
-      let actionRow: Button[] = [];
-      let actionRowWidth = 0;
-      let y = 13;
-      for (const item of actions) {
-        const button = action(item.label, item.intent);
-        const buttonWidth = button.measure().width;
-        if (actionRow.length > 0 && actionRowWidth + 1 + buttonWidth > width) {
-          content.add(at(row({ gap: 1 }, ...actionRow, spacer()), 0, y, width, 2));
-          actionRow = [];
-          actionRowWidth = 0;
-          y += 2;
-        }
-        actionRow.push(button);
-        actionRowWidth += (actionRowWidth > 0 ? 1 : 0) + buttonWidth;
-      }
-      if (actionRow.length > 0)
-        content.add(at(row({ gap: 1 }, ...actionRow, spacer()), 0, y, width, 2));
-      if (state.outcome) content.add(at(new Text(OUTCOME_LABELS[state.outcome]), 0, 10, width, 1));
+      const identity = detailList(identityLines);
+      const account = detailList(accountLines);
+      const identitySection = new GroupBox({ title: 'Identity' });
+      identitySection.add(cover(identity));
+      const accountSection = new GroupBox({ title: 'Account & security' });
+      accountSection.add(cover(account));
+
+      const primaryKinds = new Set<AdminUserIntent['kind']>([
+        'edit',
+        'set-password',
+        'clear-password',
+        'verify-email',
+      ]);
+      const primaryActions = actions.filter(({ intent }) => primaryKinds.has(intent.kind));
+      const lifecycleActions = actions.filter(({ intent }) => !primaryKinds.has(intent.kind));
+      const operationRows = [primaryActions, lifecycleActions]
+        .filter((items) => items.length > 0)
+        .map((items) =>
+          fixed(
+            row({ gap: 1 }, spacer(), ...items.map((item) => action(item.label, item.intent))),
+            2,
+          ),
+        );
+      const operationsSection = new GroupBox({ title: 'Operations' });
+      operationsSection.add(
+        cover(
+          operationRows.length > 0
+            ? col({ gap: 0 }, ...operationRows)
+            : col(grow(new Text('No available operations'))),
+        ),
+      );
+      content.add(
+        cover(
+          col(
+            { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
+            statusRow,
+            grow(row({ gap: 1 }, grow(identitySection), grow(accountSection))),
+            fixed(operationsSection, Math.max(4, operationRows.length * 2 + 2)),
+            fixed(navigation, 2),
+          ),
+        ),
+      );
+      currentFocus = identity.rows;
     }
+    if (retry) currentFocus = retry;
   };
 
   /** Renders the bounded first history page. */
-  const renderHistory = (state: Extract<AdminUserViewState, { kind: 'history' }>): void => {
-    const { width, height, compact } = geometry();
-    const backY = compact ? Math.max(2, height - 2) : 16;
-    content.add(at(new Text('Users'), 0, 0, 20, 1));
-    content.add(at(new Text(`History for ${state.detail.email}`), 0, 1, width, 1));
+  const renderHistory = (
+    state: Extract<AdminUserViewState, { kind: 'history' }>,
+    status?: WorkspaceStatus,
+  ): void => {
     const entries = signal([...state.history.entries]);
     const list = new ListView({
       items: entries,
-      getText: (entry) => `${entry.createdAt} — ${entry.eventType} — ${entry.actor}`,
+      getText: (entry) =>
+        `${formatAdminDateTime(entry.createdAt)} — ${entry.eventType} — ${entry.actor}`,
       sorted: false,
     });
-    content.add(at(list, 0, compact ? 2 : 3, width, compact ? Math.max(1, backY - 2) : 12));
-    const back = action('~B~ack', { kind: 'back' });
-    content.add(at(row(back, spacer()), 0, backY, width, 2));
+    const historySection = new GroupBox({ title: `History for ${state.detail.email}` });
+    historySection.add(cover(list));
+    const back = action('~B~ack to user', { kind: 'back' });
+    const retry = status?.retry
+      ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
+      : undefined;
+    content.add(
+      cover(
+        col(
+          { gap: 1, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
+          status && fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
+          grow(historySection),
+          fixed(
+            row(
+              { gap: 1 },
+              back,
+              spacer(),
+              state.history.hasMore && new Text('More entries exist'),
+              state.outcome && new Text(OUTCOME_LABELS[state.outcome]),
+            ),
+            2,
+          ),
+        ),
+      ),
+    );
     currentFocus = list.rows;
-    if (state.history.hasMore) content.add(at(new Text('More entries exist'), 12, backY, 22, 1));
-    if (state.outcome)
-      content.add(
-        at(new Text(OUTCOME_LABELS[state.outcome]), compact ? 12 : 38, compact ? 0 : backY, 30, 1),
-      );
+    if (retry) currentFocus = retry;
   };
 
   /** Rebuilds only this feature-specific content from validated state. */
@@ -417,53 +485,69 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     for (const child of [...content.children]) content.remove(child);
     currentFocus = null;
     if (disposed || currentState.kind === 'closed') return;
-    const { width, compact } = geometry();
     if (currentState.kind === 'success') {
-      content.add(at(new Text('Users'), 0, 0, 20, 1));
       content.add(
-        at(
-          new Text(currentState.action === 'created' ? 'User created' : 'Invitation sent'),
-          0,
-          2,
-          width,
-          1,
+        cover(
+          col(
+            { padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+            new Text(currentState.action === 'created' ? 'User created' : 'Invitation sent'),
+            spacer(),
+          ),
         ),
       );
       return;
     }
     if (currentState.kind === 'indeterminate') {
-      content.add(at(new Text('Users'), 0, 0, 20, 1));
-      content.add(at(new Text(OUTCOME_LABELS['outcome-unknown']), 0, 2, width, 1));
+      content.add(
+        cover(
+          col(
+            { padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+            new Text(OUTCOME_LABELS['outcome-unknown']),
+            spacer(),
+          ),
+        ),
+      );
       return;
     }
     if (currentState.kind === 'loading') {
       if (currentState.previous) {
         const previous = previousState(currentState.previous);
-        if (previous.kind === 'page') renderPage(previous);
-        else if (previous.kind === 'detail') renderDetail(previous);
-        else if (previous.kind === 'history') renderHistory(previous);
-      } else content.add(at(new Text('Users'), 0, 0, 20, 1));
-      content.add(at(new Text('Loading users…'), compact ? Math.max(0, width - 15) : 50, 0, 15, 1));
+        const status = { label: 'Loading users…', retry: false };
+        if (previous.kind === 'page') renderPage(previous, status);
+        else if (previous.kind === 'detail') renderDetail(previous, status);
+        else if (previous.kind === 'history') renderHistory(previous, status);
+      } else
+        content.add(
+          cover(
+            col(
+              { padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+              new Text('Loading users…'),
+              spacer(),
+            ),
+          ),
+        );
       return;
     }
     if (currentState.kind === 'failure') {
       if (currentState.previous) {
         const previous = previousState(currentState.previous);
-        if (previous.kind === 'page') renderPage(previous);
-        else if (previous.kind === 'detail') renderDetail(previous);
-        else if (previous.kind === 'history') renderHistory(previous);
-      } else content.add(at(new Text('Users'), 0, 0, 20, 1));
-      content.add(
-        at(
-          new Text(OUTCOME_LABELS[currentState.failure]),
-          compact ? 0 : 48,
-          0,
-          compact ? width : 26,
-          1,
-        ),
-      );
-      const retry = action('~R~etry', { kind: 'retry' });
-      content.add(at(row({ justify: 'end' }, retry), 0, 2, width, 2));
+        const status = { label: OUTCOME_LABELS[currentState.failure], retry: true };
+        if (previous.kind === 'page') renderPage(previous, status);
+        else if (previous.kind === 'detail') renderDetail(previous, status);
+        else if (previous.kind === 'history') renderHistory(previous, status);
+      } else {
+        const retry = action('~R~etry', { kind: 'retry' });
+        content.add(
+          cover(
+            col(
+              { gap: 1, padding: { top: 1, right: 1, bottom: 1, left: 1 } },
+              new Text(OUTCOME_LABELS[currentState.failure]),
+              row({ gap: 1 }, spacer(), retry),
+              spacer(),
+            ),
+          ),
+        );
+      }
       return;
     }
     if (currentState.kind === 'page') renderPage(currentState);

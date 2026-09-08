@@ -399,7 +399,7 @@ All security-relevant actions are logged to the `audit_log` table:
 | Event Category | Examples                                                          |
 | -------------- | ----------------------------------------------------------------- |
 | Authentication | `user.login_success`, `user.login_failed`, `user.magic_link_used` |
-| Account        | `user.created`, `user.suspended`, `user.password_changed`         |
+| Account        | `user.created`, `user.deactivated`, `user.password_changed`       |
 | Security       | `security.login_method_disabled`, `security.rate_limited`         |
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
 | System         | `system.config_changed`, `system.key_rotated`                     |

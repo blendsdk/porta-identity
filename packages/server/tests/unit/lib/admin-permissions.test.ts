@@ -85,11 +85,11 @@ describe('ADMIN_PERMISSIONS', () => {
   });
 
   describe('user permissions', () => {
-    it('should include CRUD, suspend, delete, and invite', () => {
+    it('should include CRUD, lifecycle, delete, and invite', () => {
       expect(ADMIN_PERMISSIONS.USER_CREATE).toBe('admin:user:create');
       expect(ADMIN_PERMISSIONS.USER_READ).toBe('admin:user:read');
       expect(ADMIN_PERMISSIONS.USER_UPDATE).toBe('admin:user:update');
-      expect(ADMIN_PERMISSIONS.USER_SUSPEND).toBe('admin:user:suspend');
+      expect(ADMIN_PERMISSIONS.USER_LIFECYCLE).toBe('admin:user:lifecycle');
       expect(ADMIN_PERMISSIONS.USER_DELETE).toBe('admin:user:delete');
       expect(ADMIN_PERMISSIONS.USER_INVITE).toBe('admin:user:invite');
     });
@@ -254,7 +254,7 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
       expect(perms).toContain('admin:user:create');
       expect(perms).toContain('admin:user:read');
       expect(perms).toContain('admin:user:update');
-      expect(perms).toContain('admin:user:suspend');
+      expect(perms).toContain('admin:user:lifecycle');
       expect(perms).toContain('admin:user:delete');
       expect(perms).toContain('admin:user:invite');
     });

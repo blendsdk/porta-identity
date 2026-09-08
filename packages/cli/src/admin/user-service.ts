@@ -31,25 +31,31 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const BIRTHDATE = /^\d{4}-\d{2}-\d{2}$/;
 const ISO_TIMESTAMP =
   /^(\d{4})-(\d{2})-(\d{2})T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
-const USER_STATUSES = new Set<UserStatus>(['active', 'inactive', 'suspended', 'locked']);
+const USER_STATUSES = new Set<UserStatus>(['active', 'inactive', 'locked']);
 const PAGE_SIZE = 20;
 
 /** Returns true when text contains a terminal control character. */
-function containsTerminalControl(value: string): boolean {
+function containsTerminalControl(value: string, allowLineEndings = false): boolean {
   for (const character of value) {
     const codePoint = character.codePointAt(0) ?? 0;
+    if (allowLineEndings && (codePoint === 0x0a || codePoint === 0x0d)) continue;
     if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return true;
   }
   return false;
 }
 
-/** Validates a bounded control-free string. */
-function isText(value: unknown, maximum: number, minimum = 0): value is string {
+/** Validates a bounded string with optional ordinary line endings. */
+function isText(
+  value: unknown,
+  maximum: number,
+  minimum = 0,
+  allowLineEndings = false,
+): value is string {
   return (
     typeof value === 'string' &&
     value.length >= minimum &&
     value.length <= maximum &&
-    !containsTerminalControl(value)
+    !containsTerminalControl(value, allowLineEndings)
   );
 }
 
@@ -315,8 +321,17 @@ function isOptionalUrl(value: unknown): value is string | undefined {
 }
 
 /** Validates optional create or update profile text. */
-function isOptionalText(value: unknown, maximum: number, nullable: boolean): boolean {
-  return value === undefined || (nullable && value === null) || isText(value, maximum);
+function isOptionalText(
+  value: unknown,
+  maximum: number,
+  nullable: boolean,
+  allowLineEndings = false,
+): boolean {
+  return (
+    value === undefined ||
+    (nullable && value === null) ||
+    isText(value, maximum, 0, allowLineEndings)
+  );
 }
 
 /** Validates structured address input. */
@@ -421,7 +436,7 @@ function inviteInput(
     (value.givenName !== undefined && !isText(value.givenName, 255, 1)) ||
     (value.familyName !== undefined && !isText(value.familyName, 255, 1)) ||
     !isOptionalText(value.locale, 10, false) ||
-    !isOptionalText(value.personalMessage, 500, false)
+    !isOptionalText(value.personalMessage, 500, false, true)
   ) {
     return undefined;
   }
@@ -513,12 +528,8 @@ export function createAdminUserOperations(
     | 'setPassword'
     | 'clearPassword'
     | 'verifyEmail'
-    | 'suspend'
-    | 'unsuspend'
-    | 'lock'
-    | 'unlock'
     | 'deactivate'
-    | 'reactivate'
+    | 'activate'
     | 'delete'
   >,
 ): AdminUserOperations {
@@ -590,7 +601,11 @@ export function createAdminUserOperations(
       if (!payload) return { kind: 'failure', failure: 'validation' };
       try {
         const candidate = objectValue(await domain().invitePreview(payload));
-        if (!candidate || !isText(candidate.subject, 255) || !isText(candidate.text, 10_000))
+        if (
+          !candidate ||
+          !isText(candidate.subject, 255) ||
+          !isText(candidate.text, 10_000, 0, true)
+        )
           return { kind: 'failure', failure: 'invalid-response' };
         return {
           kind: 'success',
@@ -662,31 +677,13 @@ export function createAdminUserOperations(
       UUID.test(organizationId) && UUID.test(userId)
         ? voidMutation(() => domain().verifyEmail(organizationId, userId))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    suspend: (organizationId, userId, reason) =>
-      UUID.test(organizationId) &&
-      UUID.test(userId) &&
-      (reason === undefined || isText(reason, 500))
-        ? voidMutation(() => domain().suspend(organizationId, userId, reason))
-        : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    unsuspend: (organizationId, userId) =>
-      UUID.test(organizationId) && UUID.test(userId)
-        ? voidMutation(() => domain().unsuspend(organizationId, userId))
-        : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    lock: (organizationId, userId, reason) =>
-      UUID.test(organizationId) && UUID.test(userId) && isText(reason, 500, 1)
-        ? voidMutation(() => domain().lock(organizationId, userId, reason))
-        : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    unlock: (organizationId, userId) =>
-      UUID.test(organizationId) && UUID.test(userId)
-        ? voidMutation(() => domain().unlock(organizationId, userId))
-        : Promise.resolve({ kind: 'failure', failure: 'validation' }),
     deactivate: (organizationId, userId) =>
       UUID.test(organizationId) && UUID.test(userId)
         ? voidMutation(() => domain().deactivate(organizationId, userId))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
-    reactivate: (organizationId, userId) =>
+    activate: (organizationId, userId) =>
       UUID.test(organizationId) && UUID.test(userId)
-        ? voidMutation(() => domain().reactivate(organizationId, userId))
+        ? voidMutation(() => domain().activate(organizationId, userId))
         : Promise.resolve({ kind: 'failure', failure: 'validation' }),
     delete: (organizationId, userId) =>
       UUID.test(organizationId) && UUID.test(userId)

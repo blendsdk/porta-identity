@@ -274,7 +274,7 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
     canInviteUsers: isLegacyAdministrator || validPermissions.includes('admin:user:invite'),
     canUpdateUsers: isLegacyAdministrator || validPermissions.includes('admin:user:update'),
     canManageUserLifecycle:
-      isLegacyAdministrator || validPermissions.includes('admin:user:suspend'),
+      isLegacyAdministrator || validPermissions.includes('admin:user:lifecycle'),
     canDeleteOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:delete'),
     canDeleteUsers: isLegacyAdministrator || validPermissions.includes('admin:user:delete'),
     canReadApplications: isLegacyAdministrator || validPermissions.includes('admin:app:read'),

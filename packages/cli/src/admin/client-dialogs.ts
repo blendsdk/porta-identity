@@ -11,15 +11,15 @@ import {
   Input,
   Label,
   row,
-  Scroller,
   signal,
   spacer,
   Text,
 } from '@jsvision/ui';
 
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
-import type { EventLoop, ModalDialogHost } from '@jsvision/ui';
+import type { DispatchEvent, EventLoop, ModalDialogHost } from '@jsvision/ui';
 
+import { formatOptionalAdminDateTime } from './admin-date-time.js';
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminClient, AdminClientSecret } from './client-state.js';
 import type { AdminOrganizationContext } from './state.js';
@@ -31,19 +31,23 @@ export type {
   AdminClientRegistrationDialogOptions,
   AdminClientRegistrationDialogResult,
 } from './client-registration-dialog.js';
-export { showClientAuthenticationDialog } from './client-authentication-dialog.js';
-export type {
-  ClientAuthenticationDialogHost,
-  ClientAuthenticationDialogResult,
-} from './client-authentication-dialog.js';
 export {
-  showClientLoginDialog,
-  showClientProtocolDialog,
-} from './client-protocol-login-dialogs.js';
+  AUTHENTICATION_URL_CHOICES,
+  authenticationUrlRows,
+  buildAuthenticationUrlUpdate,
+  showAuthenticationUrlDialog,
+  showDeleteAuthenticationUrlDialog,
+} from './client-authentication-dialog.js';
 export type {
-  ClientFocusedEditorResult,
-  ClientProtocolLoginDialogHost,
-} from './client-protocol-login-dialogs.js';
+  AdminAuthenticationUrlRow,
+  AuthenticationUrlChoice,
+  AuthenticationUrlDialogResult,
+  AuthenticationUrlDraft,
+  AuthenticationUrlKind,
+  AuthenticationUrlMutation,
+  ClientAuthenticationDialogHost,
+  DeleteAuthenticationUrlDialogResult,
+} from './client-authentication-dialog.js';
 export { showGenerateClientSecretDialog } from './client-credential-dialogs.js';
 export type {
   ClientCredentialDialogHost,
@@ -73,7 +77,7 @@ export type EditClientNameDialogResult =
 export type DeleteClientDialogResult =
   { readonly kind: 'delete'; readonly clientId: string } | { readonly kind: 'cancel' };
 
-/** Result of a permanent nested-secret revocation confirmation. */
+/** Result of a permanent nested-secret deletion confirmation. */
 export type RevokeClientSecretDialogResult =
   | { readonly kind: 'revoke-secret'; readonly clientId: string; readonly secretId: string }
   | { readonly kind: 'cancel' };
@@ -116,11 +120,20 @@ function inputRow(label: string, input: Input): ReturnType<typeof row> {
   return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
 }
 
-/** Keeps JSVision's owned vertical bar explicit during its initial Layout DSL pass. */
-class ClientFormScroller extends Scroller {
-  constructor(options: ConstructorParameters<typeof Scroller>[0]) {
-    super(options);
-    this.vbar?.setLayout({ size: { kind: 'fixed', cells: 1 } });
+/** Selectable single-line secret field that restores its value after every editing gesture. */
+class ReadOnlySecretInput extends Input {
+  /** Exact plaintext retained only for the lifetime of the one-time dialog. */
+  protected readonly originalValue: string;
+
+  constructor(value: string) {
+    super({ value: signal(value), maxLength: value.length });
+    this.originalValue = value;
+  }
+
+  /** Allows navigation and copying while discarding cut, paste, delete, and typing mutations. */
+  override onEvent(event: DispatchEvent): void {
+    super.onEvent(event);
+    if (this.value.peek() !== this.originalValue) this.value.set(this.originalValue);
   }
 }
 
@@ -147,16 +160,11 @@ export async function showEditClientNameDialog(
     fixed(new Text(`Application type: ${client.applicationType}`), 1),
     inputRow('Client name', nameInput),
   );
-  const form = new ClientFormScroller({
-    content: grow(fields),
-    extent: { width: Math.max(1, width - 6), height: 8 },
-    scrollbars: 'vertical',
-  });
   dialog.add(
     cover(
       col(
-        { gap: 1, padding: { top: 0, right: 2, bottom: 0, left: 2 } },
-        grow(form),
+        { gap: 1, padding: { top: 1, right: 2, bottom: 0, left: 2 } },
+        grow(fields),
         fixed(
           row(
             { gap: 1 },
@@ -238,7 +246,7 @@ export async function showDeleteClientDialog(
     : { kind: 'cancel' };
 }
 
-/** Shows the permanent nested-secret revocation target. */
+/** Confirms permanent deletion while preserving the stable controller operation contract. */
 export async function showRevokeClientSecretDialog(
   host: AdminClientDialogHost,
   operationSignal: AbortSignal,
@@ -248,22 +256,24 @@ export async function showRevokeClientSecretDialog(
 ): Promise<RevokeClientSecretDialogResult> {
   if (secret.clientId !== client.id) return { kind: 'cancel' };
   const { width, height } = dialogSize(host, 60, 12);
-  const dialog = new Dialog({ title: 'Revoke client secret', width, height, centered: true });
+  const dialog = new Dialog({ title: 'Delete client secret', width, height, centered: true });
   dialog.add(
     cover(
       col(
         { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
         grow(
           new Text(
-            `Organization: ${organization.name}\nClient: ${client.clientName}\nSecret: ${secret.label ?? secret.id}\nRevocation is permanent.`,
+            `Organization: ${organization.name}\nClient: ${client.clientName}\nSecret: ${secret.label ?? secret.id}\nDeleting this secret is permanent.`,
           ),
         ),
         fixed(
           row(
             { gap: 1 },
             spacer(),
-            new Button('Revoke permanently', { command: Commands.ok, default: true }),
-            new Button('Cancel', { command: Commands.cancel }),
+            new Button('Keep', { command: Commands.cancel, default: true }),
+            new Button(deleteActionLabel(secret.label ?? secret.id, width), {
+              command: Commands.ok,
+            }),
           ),
           2,
         ),
@@ -289,6 +299,7 @@ export async function showOneTimeClientSecretDialog(
 ): Promise<void> {
   const { width, height } = dialogSize(host, 76, 15);
   const dialog = new Dialog({ title: 'One-time client secret', width, height, centered: true });
+  const secretInput = new ReadOnlySecretInput(value.plaintext);
   dialog.add(
     cover(
       col(
@@ -296,8 +307,8 @@ export async function showOneTimeClientSecretDialog(
         fixed(new Text(`Client: ${value.clientName}`), 1),
         fixed(new Text(`Client ID: ${value.clientId}`), 1),
         fixed(new Text(`Label: ${value.label ?? 'Not provided'}`), 1),
-        fixed(new Text(`Expires: ${value.expiresAt ?? 'Never'}`), 1),
-        fixed(new Text(value.plaintext), 2),
+        fixed(new Text(`Expires: ${formatOptionalAdminDateTime(value.expiresAt, 'Never')}`), 1),
+        fixed(row({ gap: 1 }, fixed(new Label('Secret', secretInput), 12), grow(secretInput)), 1),
         fixed(new Text('Store this value now. It cannot be shown again.'), 1),
         fixed(
           row({ gap: 1 }, spacer(), new Button('Close', { command: Commands.ok, default: true })),

@@ -195,15 +195,16 @@ describe('secret repository', () => {
   // -------------------------------------------------------------------------
 
   describe('revokeSecret', () => {
-    it('should set status to revoked', async () => {
-      const row = createSecretRow({ status: 'revoked' });
+    it('should permanently delete the selected parent-scoped secret', async () => {
+      const row = createSecretRow();
       mockQuery.mockResolvedValue({ rows: [row] });
 
       const result = await revokeSecret('client-uuid-1', 'secret-uuid-1');
 
       expect(result).not.toBeNull();
-      expect(result!.status).toBe('revoked');
-      expect(String(mockQuery.mock.calls[0][0])).toContain("status = 'active'");
+      expect(result!.id).toBe('secret-uuid-1');
+      expect(String(mockQuery.mock.calls[0][0])).toContain('DELETE FROM client_secrets');
+      expect(String(mockQuery.mock.calls[0][0])).not.toContain('UPDATE client_secrets');
     });
 
     it('should return null when not found', async () => {

@@ -35,6 +35,9 @@ const APPLICATION_CREATE_SCOPE_NOTICE = 'This application will be available to e
 /** Plain-language scope note shown when a shared application or module changes. */
 const APPLICATION_CHANGE_SCOPE_NOTICE = 'Changes apply wherever this application is used.';
 
+/** Preferred height that leaves the shared description memo several visible editing rows. */
+const ENTITY_FORM_DIALOG_HEIGHT = 20;
+
 /** Modal host needed for abort-driven application dialog closure. */
 export interface AdminApplicationDialogHost extends ModalDialogHost {
   /** Event loop that can synchronously close the currently owned modal. */
@@ -132,9 +135,12 @@ class EntityDialog extends Dialog {
     super({ title, width, height, centered: true });
   }
 
-  /** Rejects oversized or control-bearing descriptions before the modal can close. */
+  /** Rejects oversized or unsafe descriptions before the modal can close. */
   valid(command: string): boolean {
-    if (command !== Commands.cancel && !validText(this.description.peek(), 0, 2_000, true)) {
+    if (
+      command !== Commands.cancel &&
+      !validMultilineText(this.description.peek(), 0, 2_000, true)
+    ) {
       this.firstInvalid = this.descriptionMemo;
       return false;
     }
@@ -142,12 +148,18 @@ class EntityDialog extends Dialog {
   }
 }
 
-/** Returns true when a bounded value contains no terminal controls. */
-function validText(value: string, minimum: number, maximum: number, optional = false): boolean {
+/** Accepts bounded memo text with line endings while rejecting other terminal controls. */
+function validMultilineText(
+  value: string,
+  minimum: number,
+  maximum: number,
+  optional = false,
+): boolean {
   if (value.length === 0) return optional || minimum === 0;
   if (value.length < minimum || value.length > maximum) return false;
   for (const character of value) {
     const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint === 0x0a || codePoint === 0x0d) continue;
     if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return false;
   }
   return true;
@@ -242,7 +254,7 @@ function formLayout(
     form.slugInput && inputRow('Slug', form.slugInput),
     readOnlySlug ? fixed(new Text(`Slug: ${readOnlySlug} (read only)`), 1) : undefined,
     fixed(new Text('Description'), 1),
-    grow(form.descriptionMemo),
+    grow(form.descriptionMemo, 1, { min: 4 }),
     fixed(new Text(scopeNotice), 1),
     fixed(
       row(
@@ -261,7 +273,7 @@ export async function showCreateApplicationDialog(
   host: AdminApplicationDialogHost,
   operationSignal: AbortSignal,
 ): Promise<CreateApplicationDialogResult> {
-  const { width, height } = dialogSize(host, 68, 16);
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
   const form = entityForm(undefined, true);
   const dialog = new EntityDialog(
     'Create application',
@@ -285,7 +297,7 @@ export async function showEditApplicationDialog(
   application: AdminApplication,
   etag?: string,
 ): Promise<EditApplicationDialogResult> {
-  const { width, height } = dialogSize(host, 68, 16);
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
   const form = entityForm(application);
   const dialog = new EntityDialog(
     'Edit application',
@@ -380,7 +392,7 @@ export async function showCreateModuleDialog(
   operationSignal: AbortSignal,
   applicationId: string,
 ): Promise<CreateModuleDialogResult> {
-  const { width, height } = dialogSize(host, 68, 16);
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
   const form = entityForm(undefined, true);
   const dialog = new EntityDialog(
     'Add module',
@@ -403,7 +415,7 @@ export async function showEditModuleDialog(
   operationSignal: AbortSignal,
   module: AdminApplicationModule,
 ): Promise<EditModuleDialogResult> {
-  const { width, height } = dialogSize(host, 68, 16);
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
   const form = entityForm(module);
   const dialog = new EntityDialog(
     'Edit module',

@@ -67,7 +67,7 @@ recoverable request failure or cancelled operation; organization/session changes
 
 - IDs use the established UUID validator; every row/detail organization ID must equal the selected
   organization UUID.
-- Status is exactly `active`, `inactive`, `suspended`, or `locked`.
+- Status is exactly `active`, `inactive`, or `locked`.
 - ISO timestamp fields must parse as finite timestamps; required timestamps cannot be null.
 - booleans and bounded non-negative integers are exact types; `loginCount` is non-negative.
 - displayed strings are bounded before retention and reject ASCII/C1 controls. Every locally
@@ -113,7 +113,7 @@ Dialog input is converted to exact SDK inputs in `user-service.ts`:
   cleared field;
 - password and confirmation must match and be 8–128 characters;
 - invite names 1–255 when supplied, locale ≤10, message ≤500, and no roles/claims;
-- suspend reason absent or ≤500; lock reason 1–500.
+- administrator lifecycle actions accept no reason payload.
 
 All locally entered text fields reject ASCII/C1 controls before SDK invocation; values are rejected,
 not sanitized or truncated.

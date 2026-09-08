@@ -25,22 +25,28 @@ export type * from './application-state.js';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const SLUG = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 
-/** Returns true when text contains a terminal control character. */
-function containsTerminalControl(value: string): boolean {
+/** Returns true when text contains a terminal control other than an allowed line ending. */
+function containsTerminalControl(value: string, allowLineEndings = false): boolean {
   for (const character of value) {
     const codePoint = character.codePointAt(0) ?? 0;
+    if (allowLineEndings && (codePoint === 0x0a || codePoint === 0x0d)) continue;
     if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return true;
   }
   return false;
 }
 
 /** Validates bounded text retained by the terminal. */
-function isText(value: unknown, maximum: number, minimum = 0): value is string {
+function isText(
+  value: unknown,
+  maximum: number,
+  minimum = 0,
+  allowLineEndings = false,
+): value is string {
   return (
     typeof value === 'string' &&
     value.length >= minimum &&
     value.length <= maximum &&
-    !containsTerminalControl(value)
+    !containsTerminalControl(value, allowLineEndings)
   );
 }
 
@@ -53,7 +59,9 @@ function isTimestamp(value: unknown): value is string {
     return false;
   }
   const parsed = new Date(value);
-  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 19) === value.slice(0, 19);
+  return (
+    Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 19) === value.slice(0, 19)
+  );
 }
 
 /** Validates an optional bounded, control-free HTTP entity tag. */
@@ -81,7 +89,7 @@ function applicationValue(value: unknown): AdminApplication | undefined {
     !isText(candidate.name, 255, 1) ||
     !isText(candidate.slug, 100, 3) ||
     !SLUG.test(candidate.slug) ||
-    !(candidate.description === null || isText(candidate.description, 2_000)) ||
+    !(candidate.description === null || isText(candidate.description, 2_000, 0, true)) ||
     !(candidate.status === 'active' || candidate.status === 'inactive') ||
     !isTimestamp(candidate.createdAt) ||
     !isTimestamp(candidate.updatedAt)
@@ -110,7 +118,7 @@ function moduleValue(value: unknown, applicationId: string): AdminApplicationMod
     !isText(candidate.name, 255, 1) ||
     !isText(candidate.slug, 100, 3) ||
     !SLUG.test(candidate.slug) ||
-    !(candidate.description === null || isText(candidate.description, 2_000)) ||
+    !(candidate.description === null || isText(candidate.description, 2_000, 0, true)) ||
     !(candidate.status === 'active' || candidate.status === 'inactive') ||
     !isTimestamp(candidate.createdAt) ||
     !isTimestamp(candidate.updatedAt)
@@ -327,9 +335,7 @@ export function createAdminApplicationOperations(
       if (!UUID.test(applicationId)) return { kind: 'failure', failure: 'validation' };
       try {
         const value = moduleValue(await domain().addModule(applicationId, input), applicationId);
-        return value
-          ? { kind: 'success', value }
-          : { kind: 'outcome-unknown' };
+        return value ? { kind: 'success', value } : { kind: 'outcome-unknown' };
       } catch (error) {
         return mutationError(error);
       }
@@ -343,9 +349,7 @@ export function createAdminApplicationOperations(
           await domain().updateModule(applicationId, moduleId, input),
           applicationId,
         );
-        return value
-          ? { kind: 'success', value }
-          : { kind: 'outcome-unknown' };
+        return value ? { kind: 'success', value } : { kind: 'outcome-unknown' };
       } catch (error) {
         return mutationError(error);
       }

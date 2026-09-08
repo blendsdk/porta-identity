@@ -8,6 +8,7 @@ import {
   Group,
   ListView,
   Scroller,
+  TabView,
   View,
 } from '@jsvision/ui';
 import { describe, expect, it } from 'vitest';
@@ -389,7 +390,7 @@ describe('organization deletion eligibility and failure presentation', () => {
 });
 
 describe('Admin deletion workspace placement', () => {
-  it('ST-37 keeps module Delete below its DataGrid with an empty DSL row and requires selection', async () => {
+  it('keeps module Delete below its DataGrid with an empty DSL row and requires selection', async () => {
     const exports = (await import('../../src/admin/application-workspace.js')) as object;
     const create = Reflect.get(exports, 'createAdminApplicationWorkspace');
     expect(typeof create).toBe('function');
@@ -433,6 +434,12 @@ describe('Admin deletion workspace placement', () => {
       etag: null,
       modules: [moduleRow],
     });
+    await settle();
+
+    const tabs = descendants(workspace.content).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Expected Application detail tabs.');
+    tabs.select(1);
+    host.loop.focusView(tabs.strip);
     await settle();
 
     const views = descendants(workspace.content);

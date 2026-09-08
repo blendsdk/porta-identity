@@ -1,24 +1,28 @@
 /** Direct JSVision workspace for deployment-global applications and modules. */
 
 import {
+  at,
   Button,
   col,
   cover,
   DataGrid,
   Dialog,
   fixed,
-  GroupBox,
+  Group,
   grow,
   row,
+  Scroller,
   Show,
   signal,
   sortRows,
   spacer,
+  TabView,
   Text,
   View,
 } from '@jsvision/ui';
-import type { Column, Signal, SortState } from '@jsvision/ui';
+import type { Column, Signal, SortState, Tab } from '@jsvision/ui';
 
+import { formatAdminDateTime } from './admin-date-time.js';
 import type { AdminCapabilities } from './state.js';
 import type {
   AdminApplication,
@@ -106,6 +110,9 @@ const MODULE_COLUMNS: Column<AdminApplicationModule>[] = [
   { title: 'Status', accessor: (module) => module.status, width: 10 },
 ];
 
+/** Labels for the logical subviews of one selected Application. */
+const APPLICATION_DETAIL_SECTIONS = ['Overview', 'Modules'] as const;
+
 /** Optional operation status retained alongside a safe workspace projection. */
 interface ProjectionStatus {
   /** Fixed status text safe for terminal rendering. */
@@ -126,6 +133,8 @@ export function createAdminApplicationWorkspace(
   let currentFocus: View | null = null;
   let disposed = false;
   let focusedApplicationId: string | null = null;
+  let detailApplicationId: string | null = null;
+  const selectedDetailSection = signal(0);
 
   /** Builds an action button whose natural size is resolved by its Layout DSL row. */
   const action = (
@@ -143,6 +152,7 @@ export function createAdminApplicationWorkspace(
     projection: Extract<AdminApplicationProjection, { kind: 'list' }>,
     status?: ProjectionStatus,
   ): void => {
+    detailApplicationId = null;
     const createAllowed = options.capabilities.canCreateApplications;
     let body: View;
     if (projection.applications.length === 0) {
@@ -202,6 +212,10 @@ export function createAdminApplicationWorkspace(
     status?: ProjectionStatus,
   ): void => {
     const selected = projection.application;
+    if (detailApplicationId !== selected.id) {
+      detailApplicationId = selected.id;
+      selectedDetailSection.set(0);
+    }
     const canUpdate = options.capabilities.canUpdateApplications;
     const canDelete = options.capabilities.canDeleteApplications;
     const lifecycle =
@@ -229,8 +243,8 @@ export function createAdminApplicationWorkspace(
       fixed(
         row(
           { gap: 2 },
-          grow(new Text(`Created: ${selected.createdAt}`)),
-          grow(new Text(`Updated: ${selected.updatedAt}`)),
+          grow(new Text(`Created: ${formatAdminDateTime(selected.createdAt)}`)),
+          grow(new Text(`Updated: ${formatAdminDateTime(selected.updatedAt)}`)),
         ),
         1,
       ),
@@ -274,79 +288,119 @@ export function createAdminApplicationWorkspace(
       { kind: 'add-module', applicationId: selected.id },
       !canUpdate,
     );
+    const editModule = moduleAction('~E~dit module', 'edit-module');
+    const activateModule = moduleAction('~A~ctivate module', 'activate-module');
+    const deactivateModule = moduleAction('Deacti~v~ate module', 'deactivate-module');
+    const deleteModule = moduleAction('Delete module', 'delete-module');
     const moduleLifecycle = row();
     moduleLifecycle.addDynamic(() =>
       Show(
         () => selectedModule()?.status === 'inactive',
-        () => moduleAction('~A~ctivate module', 'activate-module'),
-        () => moduleAction('Deacti~v~ate module', 'deactivate-module'),
+        () => activateModule,
+        () => deactivateModule,
       ),
     );
+    const lifecycleWidth = Math.max(
+      activateModule.measure().width,
+      deactivateModule.measure().width,
+    );
+    const moduleCount = projection.modules.length;
+    const moduleCountLabel = new Text(
+      `${moduleCount} ${moduleCount === 1 ? 'module' : 'modules'}`,
+    );
+    const moduleActionsWidth =
+      moduleCountLabel.measure().width +
+      addModule.measure().width +
+      editModule.measure().width +
+      lifecycleWidth +
+      deleteModule.measure().width +
+      5;
     const moduleActions = row(
       { gap: 1 },
+      moduleCountLabel,
       spacer(),
       addModule,
-      moduleAction('~E~dit module', 'edit-module'),
-      moduleLifecycle,
-      moduleAction('Delete module', 'delete-module'),
+      editModule,
+      fixed(moduleLifecycle, lifecycleWidth),
+      deleteModule,
     );
+    /**
+     * Keeps every operation at its natural width while allowing narrow terminals to pan the row.
+     * The first content row stays empty so the toolbar remains visually separate from the grid.
+     */
+    const moduleActionContent = new Group();
+    moduleActionContent.setLayout({ size: { kind: 'fixed', cells: moduleActionsWidth } });
+    moduleActionContent.add(at(moduleActions, 0, 1, moduleActionsWidth, 2));
+    const moduleActionScroller = new Scroller({
+      content: moduleActionContent,
+      extent: () => ({
+        width: Math.max(moduleActionsWidth, moduleActionScroller.bounds.width),
+        height: 3,
+      }),
+      scrollbars: 'none',
+    });
     const back = action('~B~ack to applications', { kind: 'back' });
-    let modules: View;
-    if (projection.modules.length === 0) {
-      modules = new Text('No modules');
-      currentFocus = canUpdate ? addModule : back;
-    } else {
-      const grid = new DataGrid({
-        rows: moduleRows,
-        columns: MODULE_COLUMNS,
-        selected: selectedModuleIndex,
-        sort: moduleSort,
-        zebra: true,
-      });
-      modules = grid;
-      currentFocus = grid.rows;
-    }
-    const denials = [
+    const modules = new DataGrid({
+      rows: moduleRows,
+      columns: MODULE_COLUMNS,
+      selected: selectedModuleIndex,
+      sort: moduleSort,
+      zebra: true,
+    });
+    const applicationNotices = [
       !options.capabilities.canUpdateApplications
-        ? 'Edit, lifecycle, and module actions require application update'
+        ? 'Edit and lifecycle actions require application update'
         : undefined,
       !options.capabilities.canDeleteApplications
         ? 'Delete requires application delete'
+        : undefined,
+    ].filter((value): value is string => Boolean(value));
+    const moduleNotices = [
+      !options.capabilities.canUpdateApplications
+        ? 'Module create, edit, and lifecycle actions require application update'
         : undefined,
       !options.capabilities.canDeleteModules ? 'Module Delete requires module delete' : undefined,
     ].filter((value): value is string => Boolean(value));
     const retry = status?.retry
       ? new Button('~R~etry', { onClick: () => options.onIntent({ kind: 'retry' }) })
       : undefined;
-    const applicationNotices = denials;
-    const applicationSection = new GroupBox({ title: 'Application' });
-    applicationSection.add(
-      cover(
-        col(
-          { gap: 0 },
-          fixed(detail, 4),
-          ...applicationNotices.map((notice) => fixed(new Text(notice), 1)),
-          fixed(applicationActions, 2),
-        ),
-      ),
+    const overviewPage = col(
+      { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
+      grow(detail),
+      ...applicationNotices.map((notice) => fixed(new Text(notice), 1)),
+      fixed(applicationActions, 2),
     );
-    const moduleCount = projection.modules.length;
-    const modulesSection = new GroupBox({
-      title: `Modules · ${moduleCount} ${moduleCount === 1 ? 'module' : 'modules'}`,
-    });
-    modulesSection.add(cover(col({ gap: 1 }, grow(modules), fixed(moduleActions, 2))));
+    const modulesPage = col(
+      { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
+      ...moduleNotices.map((notice) => fixed(new Text(notice), 1)),
+      grow(modules),
+      fixed(moduleActionScroller, 3),
+    );
+    /** Wraps a detail subview in the Group required by TabView. */
+    const tabPage = (child: View): Group => {
+      const page = new Group();
+      page.add(cover(child));
+      return page;
+    };
+    const pages = [overviewPage, modulesPage];
+    const tabs = signal<Tab[]>(
+      APPLICATION_DETAIL_SECTIONS.map((title, index) => ({
+        title,
+        content: tabPage(pages[index]!),
+      })),
+    );
+    const tabView = new TabView({ tabs, active: selectedDetailSection });
     content.add(
       cover(
         col(
           { gap: 0, padding: { top: 0, right: 1, bottom: 0, left: 1 } },
           status && fixed(row({ gap: 1 }, grow(new Text(status.label)), retry), 2),
-          fixed(applicationSection, 8 + applicationNotices.length),
-          grow(modulesSection),
+          grow(tabView),
           fixed(row({ gap: 1 }, back, spacer()), 2),
         ),
       ),
     );
-    if (retry) currentFocus = retry;
+    currentFocus = retry ?? tabView.strip;
   };
 
   /** Rebuilds feature content so removed states cannot leave terminal artifacts. */
@@ -405,12 +459,16 @@ export function createAdminApplicationWorkspace(
       if (disposed) return;
       state = { kind: 'closed' };
       focusedApplicationId = null;
+      detailApplicationId = null;
+      selectedDetailSection.set(0);
       render();
     },
     dispose() {
       if (disposed) return;
       state = { kind: 'closed' };
       focusedApplicationId = null;
+      detailApplicationId = null;
+      selectedDetailSection.set(0);
       render();
       disposed = true;
     },

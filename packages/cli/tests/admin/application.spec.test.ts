@@ -2,7 +2,7 @@
  * Public behavior specifications for the embedded terminal administration shell.
  */
 
-import { defaultTheme } from '@jsvision/core';
+import { janusTheme } from '@jsvision/core';
 import { createApplication } from '@jsvision/ui';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -104,10 +104,10 @@ describe('admin application shell', () => {
         const buffer = application.loop.renderRoot.buffer();
         const frame = frameText(application);
 
-        expect(buffer.get(0, 1)?.char).toBe(defaultTheme.desktop.pattern);
-        expect(buffer.get(0, 1)?.bg).toBe(defaultTheme.desktop.bg);
-        expect(buffer.get(2, 1)?.char).toBe(defaultTheme.desktop.pattern);
-        expect(buffer.get(2, 1)?.bg).toBe(defaultTheme.desktop.bg);
+        expect(buffer.get(0, 1)?.char).toBe(janusTheme.desktop.pattern);
+        expect(buffer.get(0, 1)?.bg).toBe(janusTheme.desktop.bg);
+        expect(buffer.get(2, 1)?.char).toBe(janusTheme.desktop.pattern);
+        expect(buffer.get(2, 1)?.bg).toBe(janusTheme.desktop.bg);
         expect(frame).not.toContain('https://porta.example.test');
         expect(frame).not.toContain('Authenticated');
         expect(frame).not.toContain('Porta Administration');

@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { afterDatabaseCommit, getPool, runDatabaseTransaction } from '../../src/lib/database.js';
 import { insertSecret } from '../../src/clients/secret-repository.js';
 import { generateAndStore, revoke } from '../../src/clients/secret-service.js';
-import { ClientValidationError, ClientNotFoundError } from '../../src/clients/errors.js';
+import { ClientNotFoundError } from '../../src/clients/errors.js';
 import { truncateAllTables } from './helpers/database.js';
 import {
   createTestApplication,
@@ -99,7 +99,7 @@ describe('client-secret administrative transactions', () => {
     expect(persisted.rowCount).toBe(0);
   });
 
-  it('should permit exactly one concurrent revoke and write one success audit', async () => {
+  it('should permit exactly one concurrent deletion and write one success audit', async () => {
     const organization = await createTestOrganization();
     const application = await createTestApplication();
     const client = await createTestClient(organization.id, application.id);
@@ -120,10 +120,10 @@ describe('client-secret administrative transactions', () => {
     const rejected = outcomes.find(({ status }) => status === 'rejected');
     expect(rejected).toMatchObject({
       status: 'rejected',
-      reason: expect.any(ClientValidationError),
+      reason: expect.any(ClientNotFoundError),
     });
     const audits = await getPool().query<{ count: string }>(
-      "SELECT COUNT(*)::text AS count FROM audit_log WHERE event_type = 'client.secret.revoked' AND metadata->>'secretId' = $1",
+      "SELECT COUNT(*)::text AS count FROM audit_log WHERE event_type = 'client.secret.deleted' AND metadata->>'secretId' = $1",
       [secret.id],
     );
     expect(Number(audits.rows[0]?.count ?? '0')).toBe(1);

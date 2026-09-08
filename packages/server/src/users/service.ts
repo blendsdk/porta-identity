@@ -14,11 +14,8 @@
  *
  * Status lifecycle rules:
  *   - deactivate: active → inactive
- *   - reactivate: inactive → active
- *   - suspend: active → suspended
- *   - unsuspend: suspended → active
- *   - lock: active → locked (with reason and timestamp)
- *   - unlock: locked → active (clears reason and timestamp)
+ *   - activate: inactive → active
+ *   - automatic lockout: active → locked → active after the configured cooldown
  */
 
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -357,73 +354,18 @@ export async function deactivateUser(id: string, actorId?: string): Promise<void
 }
 
 /**
- * Reactivate a user (inactive → active).
+ * Activate a user (inactive → active).
  *
  * @param id - User UUID
  * @param actorId - UUID of the user performing the action
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently inactive
  */
-export async function reactivateUser(id: string, actorId?: string): Promise<void> {
+export async function activateUser(id: string, actorId?: string): Promise<void> {
   const user = await loadUserForStatusChange(id);
 
   if (user.status !== 'inactive') {
-    throw new UserValidationError(`Cannot reactivate user from status: ${user.status}`);
-  }
-
-  await repoUpdate(id, { status: 'active' });
-  await invalidateUserCache(id);
-
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.reactivated',
-    eventCategory: 'admin',
-    metadata: { userId: id },
-  });
-}
-
-/**
- * Suspend a user (active → suspended).
- *
- * @param id - User UUID
- * @param reason - Optional reason for suspension
- * @param actorId - UUID of the user performing the action
- * @throws UserNotFoundError if not found
- * @throws UserValidationError if not currently active
- */
-export async function suspendUser(id: string, reason?: string, actorId?: string): Promise<void> {
-  const user = await loadUserForStatusChange(id);
-
-  if (user.status !== 'active') {
-    throw new UserValidationError(`Cannot suspend user from status: ${user.status}`);
-  }
-
-  await repoUpdate(id, { status: 'suspended' });
-  await invalidateUserCache(id);
-
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.suspended',
-    eventCategory: 'admin',
-    metadata: { userId: id, reason: reason ?? null },
-  });
-}
-
-/**
- * Unsuspend a user (suspended → active).
- *
- * @param id - User UUID
- * @param actorId - UUID of the user performing the action
- * @throws UserNotFoundError if not found
- * @throws UserValidationError if not currently suspended
- */
-export async function unsuspendUser(id: string, actorId?: string): Promise<void> {
-  const user = await loadUserForStatusChange(id);
-
-  if (user.status !== 'suspended') {
-    throw new UserValidationError(`Cannot unsuspend user from status: ${user.status}`);
+    throw new UserValidationError(`Cannot activate user from status: ${user.status}`);
   }
 
   await repoUpdate(id, { status: 'active' });
@@ -433,74 +375,6 @@ export async function unsuspendUser(id: string, actorId?: string): Promise<void>
     organizationId: user.organizationId,
     actorId,
     eventType: 'user.activated',
-    eventCategory: 'admin',
-    metadata: { userId: id },
-  });
-}
-
-/**
- * Lock a user (active → locked).
- *
- * Sets the locked_at timestamp and locked_reason. Locked users
- * cannot authenticate (getPasswordHash only returns for active users).
- *
- * @param id - User UUID
- * @param reason - Reason for locking the account
- * @param actorId - UUID of the user performing the action
- * @throws UserNotFoundError if not found
- * @throws UserValidationError if not currently active
- */
-export async function lockUser(id: string, reason: string, actorId?: string): Promise<void> {
-  const user = await loadUserForStatusChange(id);
-
-  if (user.status !== 'active') {
-    throw new UserValidationError(`Cannot lock user from status: ${user.status}`);
-  }
-
-  await repoUpdate(id, {
-    status: 'locked',
-    lockedAt: new Date(),
-    lockedReason: reason,
-  });
-  await invalidateUserCache(id);
-
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.locked',
-    eventCategory: 'admin',
-    metadata: { userId: id, reason },
-  });
-}
-
-/**
- * Unlock a user (locked → active).
- *
- * Clears the locked_at timestamp and locked_reason.
- *
- * @param id - User UUID
- * @param actorId - UUID of the user performing the action
- * @throws UserNotFoundError if not found
- * @throws UserValidationError if not currently locked
- */
-export async function unlockUser(id: string, actorId?: string): Promise<void> {
-  const user = await loadUserForStatusChange(id);
-
-  if (user.status !== 'locked') {
-    throw new UserValidationError(`Cannot unlock user from status: ${user.status}`);
-  }
-
-  await repoUpdate(id, {
-    status: 'active',
-    lockedAt: null,
-    lockedReason: null,
-  });
-  await invalidateUserCache(id);
-
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.unlocked',
     eventCategory: 'admin',
     metadata: { userId: id },
   });
@@ -775,7 +649,7 @@ export async function recordPasswordFailure(
  * Check whether an auto-locked account should be unlocked (cooldown elapsed).
  *
  * Only applies to users with `status = 'locked'` and
- * `lockedReason = 'auto_lockout'`. Manual locks are never auto-unlocked.
+ * `lockedReason = 'auto_lockout'`.
  *
  * The cooldown duration comes from system_config `lockout_duration_seconds`
  * (default 900 = 15 minutes).

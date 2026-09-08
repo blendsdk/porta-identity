@@ -40,4 +40,19 @@ describe('organization-scoped user route registration', () => {
       expect(layer.stack.some((middleware) => middleware.name === scopeMiddlewareName)).toBe(false);
     }
   });
+
+  it('should expose only activate and deactivate as standalone lifecycle mutations', () => {
+    const paths = createStandaloneUserRouter().stack.map(
+      (layer) => `${layer.methods.filter((method) => method !== 'HEAD').join(',')} ${layer.path}`,
+    );
+    const prefix = '/api/admin/users/:userId';
+
+    expect(paths).toContain(`POST ${prefix}/deactivate`);
+    expect(paths).toContain(`POST ${prefix}/activate`);
+    expect(paths).not.toContain(`POST ${prefix}/reactivate`);
+    expect(paths).not.toContain(`POST ${prefix}/suspend`);
+    expect(paths).not.toContain(`POST ${prefix}/unsuspend`);
+    expect(paths).not.toContain(`POST ${prefix}/lock`);
+    expect(paths).not.toContain(`POST ${prefix}/unlock`);
+  });
 });

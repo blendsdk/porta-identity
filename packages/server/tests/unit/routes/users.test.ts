@@ -10,11 +10,7 @@ vi.mock('../../../src/users/service.js', () => ({
   listUsersByOrganization: vi.fn(),
   updateUser: vi.fn(),
   deactivateUser: vi.fn(),
-  reactivateUser: vi.fn(),
-  suspendUser: vi.fn(),
-  unsuspendUser: vi.fn(),
-  lockUser: vi.fn(),
-  unlockUser: vi.fn(),
+  activateUser: vi.fn(),
   deleteUser: vi.fn(),
   setUserPassword: vi.fn(),
   clearUserPassword: vi.fn(),
@@ -351,62 +347,17 @@ describe('user routes', () => {
     });
   });
 
-  describe('POST /:userId/suspend', () => {
-    it('should suspend user with reason', async () => {
-      (userService.suspendUser as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
+  describe('POST /:userId/activate', () => {
+    it('should activate user and return 204', async () => {
+      (userService.activateUser as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const router = createUserRouter();
-      const layer = findLayer(router, 'POST', '/:userId/suspend');
-      const ctx = createMockCtx({
-        params: { userId: 'user-uuid-1' },
-        body: { reason: 'policy violation' },
-      });
-
-      await exec(layer!, ctx);
-
-      expect(ctx.status).toBe(204);
-      expect(userService.suspendUser).toHaveBeenCalledWith('user-uuid-1', 'policy violation');
-    });
-  });
-
-  describe('POST /:userId/lock', () => {
-    it('should lock user with reason', async () => {
-      (userService.lockUser as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-
-      const router = createUserRouter();
-      const layer = findLayer(router, 'POST', '/:userId/lock');
-      const ctx = createMockCtx({
-        params: { userId: 'user-uuid-1' },
-        body: { reason: 'brute force' },
-      });
-
-      await exec(layer!, ctx);
-
-      expect(ctx.status).toBe(204);
-    });
-
-    it('should return 400 without reason', async () => {
-      const router = createUserRouter();
-      const layer = findLayer(router, 'POST', '/:userId/lock');
-      const ctx = createMockCtx({ params: { userId: 'user-uuid-1' }, body: {} });
-
-      await exec(layer!, ctx);
-
-      expect(ctx.status).toBe(400);
-      expect((ctx.body as { error: string }).error).toBe('User request is invalid');
-    });
-  });
-
-  describe('POST /:userId/unlock', () => {
-    it('should unlock user and return 204', async () => {
-      (userService.unlockUser as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-
-      const router = createUserRouter();
-      const layer = findLayer(router, 'POST', '/:userId/unlock');
+      const layer = findLayer(router, 'POST', '/:userId/activate');
       const ctx = createMockCtx({ params: { userId: 'user-uuid-1' } });
 
       await exec(layer!, ctx);
 
+      expect(userService.activateUser).toHaveBeenCalledWith('user-uuid-1');
       expect(ctx.status).toBe(204);
     });
   });
@@ -496,7 +447,8 @@ describe('user routes', () => {
 
     it('should pass an absolute invite URL (config.issuerBaseUrl + /:slug/auth/accept-invite/:token) to the email service (ST-1)', async () => {
       (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(mockOrg);
-      (userService.getUserByEmail as ReturnType<typeof vi.fn>).mockResolvedValue(createTestUser());
+      (userService.getUserByEmail as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      (userService.createUser as ReturnType<typeof vi.fn>).mockResolvedValue(createTestUser());
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '/invite');
@@ -508,6 +460,22 @@ describe('user routes', () => {
       const inviteUrl = (emailService.sendInvitationEmail as ReturnType<typeof vi.fn>).mock
         .calls[0][2];
       expect(inviteUrl).toBe('https://auth.example.com/acme/auth/accept-invite/T');
+    });
+
+    it('should reject an invitation when the email already belongs to this organization', async () => {
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(mockOrg);
+      (userService.getUserByEmail as ReturnType<typeof vi.fn>).mockResolvedValue(createTestUser());
+
+      const router = createUserRouter();
+      const layer = findLayer(router, 'POST', '/invite');
+      const ctx = createMockCtx({ body: { email: 'invitee@example.com' } });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(409);
+      expect(ctx.body).toEqual({ error: 'User already exists in this organization' });
+      expect(userService.createUser).not.toHaveBeenCalled();
+      expect(emailService.sendInvitationEmail).not.toHaveBeenCalled();
     });
 
     it('should render the preview email with an absolute preview URL (ST-2)', async () => {
@@ -548,11 +516,11 @@ describe('user routes', () => {
       expect(paths).toContain(`PUT ${PREFIX}/:userId`);
       expect(paths).toContain(`DELETE ${PREFIX}/:userId`);
       expect(paths).toContain(`POST ${PREFIX}/:userId/deactivate`);
-      expect(paths).toContain(`POST ${PREFIX}/:userId/reactivate`);
-      expect(paths).toContain(`POST ${PREFIX}/:userId/suspend`);
-      expect(paths).toContain(`POST ${PREFIX}/:userId/unsuspend`);
-      expect(paths).toContain(`POST ${PREFIX}/:userId/lock`);
-      expect(paths).toContain(`POST ${PREFIX}/:userId/unlock`);
+      expect(paths).toContain(`POST ${PREFIX}/:userId/activate`);
+      expect(paths).not.toContain(`POST ${PREFIX}/:userId/suspend`);
+      expect(paths).not.toContain(`POST ${PREFIX}/:userId/unsuspend`);
+      expect(paths).not.toContain(`POST ${PREFIX}/:userId/lock`);
+      expect(paths).not.toContain(`POST ${PREFIX}/:userId/unlock`);
       expect(paths).toContain(`POST ${PREFIX}/:userId/password`);
       expect(paths).toContain(`DELETE ${PREFIX}/:userId/password`);
       expect(paths).toContain(`POST ${PREFIX}/:userId/verify-email`);

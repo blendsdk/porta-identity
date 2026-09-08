@@ -25,7 +25,7 @@ Keep that architecture and correct its existing contracts:
 1. complete persisted create/update profile inputs;
 2. select offset or cursor list query names explicitly;
 3. return the invitation result rather than a `User`;
-4. carry suspend and lock reasons;
+4. expose only activate and deactivate lifecycle mutations;
 5. return the existing paginated history envelope for both user domains;
 6. update only affected current CLI commands, agent metadata, tests, docs, and packed P1 proof.
 
@@ -96,8 +96,8 @@ No cursor control enters the Admin UI (AR-3).
 
 ```ts
 invite(input: InviteUserInput): Promise<InviteUserResult>;
-suspend(orgId: string, userId: string, reason?: string): Promise<void>;
-lock(orgId: string, userId: string, reason: string): Promise<void>;
+deactivate(orgId: string, userId: string): Promise<void>;
+activate(orgId: string, userId: string): Promise<void>;
 getHistory(orgId: string, userId: string): Promise<HistoryResult>;
 ```
 
@@ -105,19 +105,18 @@ The organization-scoped domain returns the server's existing paginated history e
 standalone route wraps that same envelope as `{ data: HistoryResult }`; its SDK domain unwraps the
 outer `data` property and preserves the real `hasMore` and `nextCursor` values without a server
 change. RD-03 uses only the default first 20 history entries and does not expose history paging
-parameters or controls. The standalone domain also receives the equivalent reason corrections.
+parameters or controls. Both domains expose the same two administrator lifecycle operations.
 Existing route paths, ETag behavior, purge confirmation header, and one-time transport refresh
 remain unchanged.
 
 ## Current Consumer Alignment
 
 - `porta user update` stops advertising or sending email updates.
-- `porta user suspend` accepts an optional bounded `--reason`; `porta user lock` requires a bounded
-  `--reason` and sends it.
+- `porta user` exposes only `activate` and `deactivate` lifecycle commands.
 - `porta user invite` reads the invitation result fields rather than treating it as a user.
 - `porta user history` reads `result.data`; JSON output may print the full SDK envelope, while the
   Admin UI projection remains metadata-free.
-- SDK agent definitions describe the exact list names, invitation result, reasons, and history
+- SDK agent definitions describe the exact list names, invitation result, lifecycle, and history
   envelope. Existing exports are updated without an alias.
 - The packed P1 cursor consumer remains unchanged at its call site and proves `pageSize=2` becomes
   `limit=2` in the request.
@@ -139,15 +138,15 @@ remain unchanged.
   `packages/sdk/tests/type-contracts/users-contract.spec.test.ts` uses its own minimal
   `tsconfig.json`, the repository's existing TypeScript binary, positive assignments, and
   `@ts-expect-error` cases to prove every allowed create/update/address/list field, the exact
-  invite, reason-bearing action, and history result signatures, and rejection of removed fields,
+  invite, lifecycle action, and history result signatures, and rejection of removed fields,
   top-level update `address: null`, invalid nullability, invalid sort values, and arbitrary keys.
   Vitest runtime files do not substitute for this compile-time oracle because the SDK build
   excludes `tests/`.
 - Focused implementation tests cover query omission/mapping and unchanged route/header behavior.
 - Current CLI and agent tests cover corrected arguments and result handling. User agent metadata
   uses user-specific positional parameters matching `executeTool`: `users.list` declares
-  `orgId` followed by one optional `params` object; suspend declares optional `reason`; lock
-  declares required `reason`; and history is represented by a `users.getHistory` tool with only
+  `orgId` followed by one optional `params` object; lifecycle exposes only activate/deactivate;
+  and history is represented by a `users.getHistory` tool with only
   `orgId` and `userId`. The shared `LIST_PARAMS` helper remains unchanged for unrelated domains.
   Executor tests assert the exact positional calls.
 - The existing packed P1 current-SDK journey proves both cursor and offset raw requests.

@@ -150,7 +150,7 @@ export interface ClientsDomain {
   listSecrets(clientId: string): Promise<ClientSecret[]>;
   /** Generate a one-time plaintext secret for one confidential client. */
   generateSecret(clientId: string, input?: GenerateSecretInput): Promise<GeneratedSecret>;
-  /** Permanently revoke one secret through its parent-qualified route. */
+  /** Permanently delete one secret through the retained parent-qualified route. */
   revokeSecret(clientId: string, secretId: string): Promise<void>;
 }
 

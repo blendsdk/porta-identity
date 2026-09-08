@@ -144,10 +144,18 @@ describe('user type contracts', () => {
     const createWithoutOrganization: CreateUserInput = { email: 'person@example.com' };
     // @ts-expect-error Email is required when creating a user.
     const createWithoutEmail: CreateUserInput = { organizationId: 'org-1' };
-    // @ts-expect-error Creation profile fields cannot be cleared with null.
-    const createWithNullProfile: CreateUserInput = { organizationId: 'org-1', email: 'person@example.com', locale: null };
-    // @ts-expect-error Verification state is not accepted during creation.
-    const createWithVerification: CreateUserInput = { organizationId: 'org-1', email: 'person@example.com', phoneNumberVerified: true };
+    const createWithNullProfile: CreateUserInput = {
+      organizationId: 'org-1',
+      email: 'person@example.com',
+      // @ts-expect-error Creation profile fields cannot be cleared with null.
+      locale: null,
+    };
+    const createWithVerification: CreateUserInput = {
+      organizationId: 'org-1',
+      email: 'person@example.com',
+      // @ts-expect-error Verification state is not accepted during creation.
+      phoneNumberVerified: true,
+    };
     // @ts-expect-error Email is immutable through the profile update input.
     const updateWithEmail: UpdateUserInput = { email: 'other@example.com' };
     // @ts-expect-error Email verification uses its dedicated operation.
@@ -155,7 +163,7 @@ describe('user type contracts', () => {
     // @ts-expect-error Password changes use the dedicated password operation.
     const updateWithPassword: UpdateUserInput = { password: 'replacement password' };
     // @ts-expect-error Lifecycle status changes use dedicated transition operations.
-    const updateWithStatus: UpdateUserInput = { status: 'suspended' };
+    const updateWithStatus: UpdateUserInput = { status: 'locked' };
     // @ts-expect-error Organization scope is not mutable through profile updates.
     const updateWithOrganization: UpdateUserInput = { organizationId: 'org-2' };
     // @ts-expect-error Address can be omitted but cannot be null.
@@ -216,20 +224,20 @@ describe('user type contracts', () => {
     expectTypeOf<UsersDomain['invite']>().toEqualTypeOf<
       (input: InviteUserInput) => Promise<InviteUserResult>
     >();
-    expectTypeOf<UsersDomain['suspend']>().toEqualTypeOf<
-      (organizationId: string, userId: string, reason?: string) => Promise<void>
+    expectTypeOf<UsersDomain['deactivate']>().toEqualTypeOf<
+      (organizationId: string, userId: string) => Promise<void>
     >();
-    expectTypeOf<UsersDomain['lock']>().toEqualTypeOf<
-      (organizationId: string, userId: string, reason: string) => Promise<void>
+    expectTypeOf<UsersDomain['activate']>().toEqualTypeOf<
+      (organizationId: string, userId: string) => Promise<void>
     >();
     expectTypeOf<UsersDomain['getHistory']>().toEqualTypeOf<
       (organizationId: string, userId: string) => Promise<HistoryResult>
     >();
-    expectTypeOf<StandaloneUsersDomain['suspend']>().toEqualTypeOf<
-      (userId: string, reason?: string) => Promise<void>
+    expectTypeOf<StandaloneUsersDomain['deactivate']>().toEqualTypeOf<
+      (userId: string) => Promise<void>
     >();
-    expectTypeOf<StandaloneUsersDomain['lock']>().toEqualTypeOf<
-      (userId: string, reason: string) => Promise<void>
+    expectTypeOf<StandaloneUsersDomain['activate']>().toEqualTypeOf<
+      (userId: string) => Promise<void>
     >();
     expectTypeOf<StandaloneUsersDomain['getHistory']>().toEqualTypeOf<
       (userId: string) => Promise<HistoryResult>
