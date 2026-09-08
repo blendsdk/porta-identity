@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 10:29
-> **Progress**: 21/37 tasks (57%)
+> **Last Updated**: 2026-09-08 10:37
+> **Progress**: 22/37 tasks (59%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -160,7 +160,7 @@ ST-18–ST-22, ST-46
 ### Step 3.3: Implementation Tests and Hardening
 
 - [x] 3.3.1 Add section focus, compact geometry, natural button sizing, and render-cleanup coverage — `packages/cli/tests/admin/oidc-client-detail.impl.test.ts` ✅ (completed: 2026-09-08 10:29; 11 detail tests and 97 structure tests passed with scoped lint/format)
-- [ ] 3.3.2 Run focused workspace tests and CLI typecheck
+- [x] 3.3.2 Run focused workspace tests and CLI typecheck ✅ (completed: 2026-09-08 10:37; 93 focused workspace tests, CLI typecheck, scoped lint/format, and 97 structure tests passed)
 
 **Verify**: focused CLI workspace suites and `yarn workspace @portaidentity/cli typecheck`
 

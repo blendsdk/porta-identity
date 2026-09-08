@@ -272,48 +272,104 @@ describe('organization OIDC client workspace', () => {
     expect(mounted.intents).toContainEqual({ kind: 'retry' });
   });
 
-  it.each([
-    ['inactive', { ...client, status: 'inactive' as const }, true],
-  ])('renders complete %s detail with immutable context and correct editability', async (_status, value, editable) => {
-    const mounted = await mountWorkspace({ organization });
-    mounted.workspace.setState({ kind: 'detail', organizationId: organization.id, clients: [value], client: value, applicationName: application.name, secrets: [secret] });
-    await settle();
-    const text = frameText(mounted.host);
-    for (const expected of [organization.name, application.name, value.clientId, value.clientType, value.applicationType, 'Basic', 'Redirects', 'Protocol', 'Login', 'Secrets'])
-      expect(text).toContain(expected);
-    const mutationButtons = descendants(mounted.window).filter((view) => view instanceof Button).filter((button) => ['Basic', 'Redirects', 'Protocol', 'Login', 'Secrets'].includes(button.activation.label));
-    expect(mutationButtons.every((button) => !button.state.disabled)).toBe(editable);
-  });
+  it.each([['inactive', { ...client, status: 'inactive' as const }, true]])(
+    'renders complete %s detail with immutable context and correct editability',
+    async (_status, value, editable) => {
+      const mounted = await mountWorkspace({ organization });
+      mounted.workspace.setState({
+        kind: 'detail',
+        organizationId: organization.id,
+        clients: [value],
+        client: value,
+        applicationName: application.name,
+        secrets: [secret],
+      });
+      await settle();
+      const text = frameText(mounted.host);
+      for (const expected of [
+        organization.name,
+        application.name,
+        value.clientId,
+        value.clientType,
+        value.applicationType,
+        'Overview',
+        'Authentication',
+        'Protocol',
+        'Login experience',
+        'Credentials',
+        'Lifecycle',
+      ])
+        expect(text).toContain(expected);
+      const editName = descendants(mounted.window)
+        .filter((view) => view instanceof Button)
+        .find((button) => button.activation.label === 'Edit name');
+      expect(editName?.state.disabled).toBe(!editable);
+    },
+  );
 
   it('uses the immutable application ID in detail when application read is unavailable', async () => {
-    const mounted = await mountWorkspace({ organization, capabilities: { ...capabilities, canReadApplications: false } });
-    mounted.workspace.setState({ kind: 'detail', organizationId: organization.id, clients: [client], client, applicationName: 'Must not be disclosed', secrets: [] });
-    await settle();
-    expect(frameText(mounted.host)).toContain(application.id);
-    expect(frameText(mounted.host)).not.toContain('Must not be disclosed');
-  });
-
-  it('renders metadata-only secrets, fixed capability states, and legacy transition guidance', async () => {
-    const mounted = await mountWorkspace({ organization });
-    mounted.workspace.setState({ kind: 'secrets', organizationId: organization.id, clients: [client], client, applicationName: application.name, secrets: [secret], legacyOnly: true });
+    const mounted = await mountWorkspace({
+      organization,
+      capabilities: { ...capabilities, canReadApplications: false },
+    });
+    mounted.workspace.setState({
+      kind: 'detail',
+      organizationId: organization.id,
+      clients: [client],
+      client,
+      applicationName: 'Must not be disclosed',
+      secrets: [],
+    });
     await settle();
     const text = frameText(mounted.host);
-    expect(descendants(mounted.window).find((view) => view instanceof DataGrid)).toBeInstanceOf(DataGrid);
-    for (const expected of ['Label', 'Status', 'Last used', 'Expires', 'Created', secret.label!, 'Generate a modern secret'])
+    expect(text).toContain(application.id.slice(0, 24));
+    expect(text).toContain(application.id.slice(24));
+    expect(text).not.toContain('Must not be disclosed');
+  });
+
+  it('renders metadata-only secrets with fixed capability states', async () => {
+    const mounted = await mountWorkspace({ organization });
+    mounted.workspace.setState({
+      kind: 'secrets',
+      organizationId: organization.id,
+      clients: [client],
+      client,
+      applicationName: application.name,
+      secrets: [secret],
+      legacyOnly: true,
+    });
+    await settle();
+    const text = frameText(mounted.host);
+    expect(descendants(mounted.window).find((view) => view instanceof DataGrid)).toBeInstanceOf(
+      DataGrid,
+    );
+    for (const expected of ['Label', 'Status', 'Last used', 'Expires', secret.label!.slice(0, 14)])
       expect(text).toContain(expected);
     expect(text).not.toMatch(/plaintext|secret-value/i);
-    expect(descendants(mounted.window).filter((view) => view instanceof Button).map((button) => button.activation.label)).toEqual(expect.arrayContaining(['Generate', 'Revoke']));
+    expect(
+      descendants(mounted.window)
+        .filter((view) => view instanceof Button)
+        .map((button) => button.activation.label),
+    ).toEqual(expect.arrayContaining(['Generate', 'Revoke']));
   });
 
   it.each([
     ['public', { ...client, clientType: 'public' as const }],
-  ])('keeps secret mutation visible-disabled for a %s client', async (_case, value) => {
+  ])('hides secret mutation for a %s client', async (_case, value) => {
     const mounted = await mountWorkspace({ organization });
-    mounted.workspace.setState({ kind: 'secrets', organizationId: organization.id, clients: [value], client: value, applicationName: application.name, secrets: [] });
+    mounted.workspace.setState({
+      kind: 'secrets',
+      organizationId: organization.id,
+      clients: [value],
+      client: value,
+      applicationName: application.name,
+      secrets: [],
+    });
     await settle();
-    const actions = descendants(mounted.window).filter((view) => view instanceof Button).filter((button) => ['Generate', 'Revoke'].includes(button.activation.label));
-    expect(actions).toHaveLength(2);
-    expect(actions.every((button) => button.state.disabled)).toBe(true);
+    const actions = descendants(mounted.window)
+      .filter((view) => view instanceof Button)
+      .filter((button) => ['Generate', 'Revoke'].includes(button.activation.label));
+    expect(actions).toHaveLength(0);
   });
 
   it('keeps revocation visible-disabled for an already-revoked secret row', async () => {

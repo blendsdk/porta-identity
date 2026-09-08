@@ -506,12 +506,15 @@ export function createAdminClientWorkspace(
     status?: ProjectionStatus,
   ): void => {
     const selected = projection.client;
-    if (detailClientId !== selected.id) {
+    const clientChanged = detailClientId !== selected.id;
+    if (clientChanged) {
       detailClientId = selected.id;
-      selectedSection.set(0);
-      focusedSection.set(0);
       selectedSecretId.set(null);
     }
+    const sectionIndex =
+      projection.kind === 'secrets' ? 4 : clientChanged ? 0 : selectedSection.peek();
+    selectedSection.set(sectionIndex);
+    focusedSection.set(sectionIndex);
     const application = options.capabilities.canReadApplications
       ? (projection.applicationName ?? applicationLabel(selected, options))
       : selected.applicationId;
