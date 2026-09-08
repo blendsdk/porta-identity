@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 10:21
-> **Progress**: 19/37 tasks (51%)
+> **Last Updated**: 2026-09-08 10:24
+> **Progress**: 20/37 tasks (54%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -155,7 +155,7 @@ ST-18–ST-22, ST-46
 
 - [x] 3.2.1 Replace the long detail block with one responsive `ListBox`, local section state, GroupBox regions, authoritative Overview summaries, a small name editor, and separate Back navigation — `packages/cli/src/admin/client-workspace.ts`, `packages/cli/src/admin/client-dialogs.ts` ✅ (completed: 2026-09-08 10:14; eight detail specifications, CLI typecheck, and scoped lint/format passed)
 - [x] 3.2.2 Update feature intents and orchestration for focused section actions without adding a router — `packages/cli/src/admin/client-workspace.ts`, `packages/cli/src/admin/application-client-features.ts` ✅ (completed: 2026-09-08 10:21; 23 focused detail/runtime tests, CLI typecheck, and scoped lint/format passed)
-- [ ] 3.2.3 Run ST-18–ST-22 and make the immutable expectations green
+- [x] 3.2.3 Run ST-18–ST-22 and make the immutable expectations green ✅ (completed: 2026-09-08 10:24; all eight detail behavior specifications passed)
 
 ### Step 3.3: Implementation Tests and Hardening
 
