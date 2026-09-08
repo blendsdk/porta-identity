@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 09:52
-> **Progress**: 16/37 tasks (43%)
+> **Last Updated**: 2026-09-08 09:54
+> **Progress**: 17/37 tasks (46%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -147,7 +147,7 @@ Phase 2 is closed (reviewed: 2026-09-08 09:41).
 ST-18–ST-22, ST-46
 
 - [x] 3.1.1 [spec-author] Write detail workspace, responsive section navigation, Overview summaries, and name-edit specifications from ST-18–ST-22 and ST-46 — `packages/cli/tests/admin/oidc-client-detail.spec.test.ts` ✅ (completed: 2026-09-08 09:52; eight immutable behavior cases added, with scoped lint/format, CLI typecheck, and 97 structure tests passing)
-- [ ] 3.1.2 Run the new detail specification suite and record the expected red result
+- [x] 3.1.2 Run the new detail specification suite and record the expected red result ✅ (completed: 2026-09-08 09:54; one existing controller case passed and seven expected cases failed only on the missing section navigation, Overview action, and focused name-dialog behavior; log: `/tmp/porta-phase3-task-3.1.2-red.log`)
 
 ### Step 3.2: Implementation
 
