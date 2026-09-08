@@ -152,7 +152,9 @@ describe('focused OIDC editors at 48×12', () => {
       throw new Error('Login controls missing.');
     }
     inheritance.select(false);
-    await expectRevealed(host, dialog, methods, 'Magic link');
+    const scroller = await expectRevealed(host, dialog, methods, 'Magic link');
+    expect(scroller.delta.y).toBeGreaterThan(0);
+    expect(frameText(host)).toMatch(/\[ \] Magic link/);
     host.loop.endModal('cancel');
     await pending;
   });

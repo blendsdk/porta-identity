@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-06
+> **Last Updated**: 2026-09-08
 
 ## High-Level Architecture
 
@@ -86,11 +86,17 @@ mutation reloads authoritative application or same-parent module data. Dialog ca
 authentication replacement, and resize recovery release operation ownership so late results cannot
 repopulate a cleared view.
 The organization OIDC Clients workspace follows the same direct pattern with a full-height client
-`DataGrid`, complete detail, and metadata-only secret projection. One movable Layout DSL dialog owns
-the Basic, Redirects, Protocol, and Login tabs; its long pages use vertical scrolling and its URI and
-origin collections use local `DataGrid` row editors. Client and nested-secret mutations recheck the
-selected organization and retained parent immediately before dispatch. Generated plaintext is handed
-straight to one abortable, non-editable warning dialog and never enters retained application state.
+`DataGrid`, a sectioned detail surface, and metadata-only secret projection. Registration collects
+only the initial client settings and may generate one expiring or non-expiring confidential secret.
+Authentication, Protocol, and Login experience open as focused fixed dialogs. Their complete forms
+scroll while naturally sized action rows stay fixed, including on a 48×12 terminal. Authentication
+stages redirect URIs, post-logout redirect URIs, and allowed origins in one reused local `DataGrid`;
+Protocol retains the server compatibility rules; Login experience exposes organization inheritance
+or explicit Password and Magic link choices. Credentials always retains its metadata grid and uses
+the same preset, custom-date, or warned Never expiry selector for generation. Client and nested-secret
+mutations recheck the selected organization and retained parent immediately before dispatch.
+Generated plaintext is handed straight to one abortable, non-editable warning dialog and never
+enters retained application state.
 
 ### Domain Modules
 

@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 13:35
+> **Last Updated**: 2026-09-08 13:39
 > **Progress**: 37/37 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
@@ -233,6 +233,15 @@ naturally sized action rows, and use a compact client context at 48×12. A four-
 compact specification first reproduced the missing scroller, then passed together with the retained
 registration/editor suites (72 tests), CLI verification (76 files, 1,101 tests), typecheck, lint,
 build, and 97 structure tests. Phase 4 remains open for its one bounded re-review.
+
+The bounded re-review confirmed Authentication, Protocol, and secret generation, then found that
+the Login selector becomes focusable only after the scroller's initial target snapshot. The shared
+scroller now observes every leaf so dynamically enabled controls are also revealed. The Login
+specification requires a positive scroll offset and the rendered `[ ] Magic link` selector row,
+rather than matching its read-only summary. The focused suites (72 tests) and complete CLI verify
+(76 files, 1,101 tests) passed again. The security re-review found no issues. The quality profile
+permits no third review; RV-4001 is closed by the verified correction and Phase 4 is closed
+(reviewed: 2026-09-08 13:39).
 
 ---
 

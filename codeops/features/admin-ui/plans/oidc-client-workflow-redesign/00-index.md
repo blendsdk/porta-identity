@@ -1,7 +1,7 @@
 # OIDC Client Workflow Redesign Implementation Plan
 
 > **Feature**: Azure-inspired OIDC client registration and administration in the Porta Admin UI
-> **Status**: Executing
+> **Status**: Done
 > **Created**: 2026-09-07
 > **Implements**: admin-ui/RD-04
 > **CodeOps Artifact Schema**: 1

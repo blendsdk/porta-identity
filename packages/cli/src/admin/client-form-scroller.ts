@@ -3,12 +3,15 @@
 import { grow, Group, Scroller } from '@jsvision/ui';
 import type { Size2D, View } from '@jsvision/ui';
 
-/** Returns focusable leaf views whose movement may require viewport scrolling. */
-function focusableDescendants(root: View): View[] {
+/** Returns leaf views, including controls that may become focusable after mounting. */
+function leafDescendants(root: View): View[] {
   const result: View[] = [];
   const visit = (view: View): void => {
-    if (view.focusable && !(view instanceof Group)) result.push(view);
-    if (view instanceof Group) for (const child of view.children) visit(child);
+    if (view instanceof Group) {
+      for (const child of view.children) visit(child);
+    } else {
+      result.push(view);
+    }
   };
   visit(root);
   return result;
@@ -28,7 +31,9 @@ export class ClientFormScroller extends Scroller {
     // frame width before Scroller applies the complete content extent.
     super({ content: grow(content), extent, scrollbars: 'vertical' });
     this.onMount(() => {
-      const targets = focusableDescendants(content);
+      // Some controls, such as explicit login methods, become focusable only after another field
+      // changes. Observe every leaf so those later transitions retain focus-driven scrolling.
+      const targets = leafDescendants(content);
       this.bind(
         () => {
           let focused: View | null = null;
