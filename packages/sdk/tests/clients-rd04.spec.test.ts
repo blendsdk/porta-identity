@@ -267,6 +267,7 @@ describe('RD-04 OIDC client SDK contract', () => {
       allowedOrigins?: string[];
       requirePkce?: boolean;
       secretLabel?: string;
+      secretExpiresAt?: string;
       loginMethods?: Array<'password' | 'magic_link'> | null;
     }>();
     expectTypeOf<UpdateClientInput>().toEqualTypeOf<{

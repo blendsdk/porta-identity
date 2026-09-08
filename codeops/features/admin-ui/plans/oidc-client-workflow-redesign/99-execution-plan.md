@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-08 07:52
-> **Progress**: 3/37 tasks (8%)
+> **Last Updated**: 2026-09-08 07:55
+> **Progress**: 4/37 tasks (11%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -48,8 +48,8 @@ existing runtime, storage, controller, and JSVision boundaries (AR-1, AR-9, AR-1
 > **Scope mode**: strict
 > **Expected modification set**: Phase 1 server/SDK expiry specifications, route and SDK contract
 > files, the existing SDK type-contract include list, focused implementation tests, this execution
-> plan, and the feature roadmap. All other pre-existing worktree changes are excluded from the phase
-> review and any task commit.
+> plan, the existing exact SDK client contract oracle, and the feature roadmap. All other pre-existing
+> worktree changes are excluded from the phase review and any task commit.
 
 ### Step 1.1: Specification Tests
 
@@ -65,7 +65,7 @@ AR-11 · ST-1–ST-9
 AR-11
 
 - [x] 1.2.1 Add one route-local strict ISO/future expiry schema, one route-local control-free label schema, and initial-secret plumbing — `packages/server/src/routes/clients.ts` ✅ (completed: 2026-09-08 07:52)
-- [ ] 1.2.2 Add the optional create input field and request contract — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/domains/clients.ts`
+- [x] 1.2.2 Add the optional create input field and request contract; align the existing exact type oracle with the additive field — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/domains/clients.ts`, `packages/sdk/tests/clients-rd04.spec.test.ts` ✅ (completed: 2026-09-08 07:55; the existing domain already forwards create input unchanged)
 - [ ] 1.2.3 Run ST-1–ST-9 and make the immutable expectations green
 
 ### Step 1.3: Implementation Tests and Hardening

@@ -105,6 +105,8 @@ export interface CreateClientInput {
   requirePkce?: boolean;
   /** Optional label for the initial confidential-client secret. */
   secretLabel?: string;
+  /** Optional ISO expiry instant; omit it for a non-expiring initial secret. */
+  secretExpiresAt?: string;
   /** Per-client login-method override, or null to inherit. */
   loginMethods?: LoginMethod[] | null;
 }
