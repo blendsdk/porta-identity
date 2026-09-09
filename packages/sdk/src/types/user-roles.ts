@@ -4,15 +4,8 @@
  * @module types/user-roles
  */
 
-export interface UserRoleAssignment {
-  userId: string;
-  roleId: string;
-  roleName: string;
-  roleSlug: string;
-  applicationId: string;
-  assignedAt: string;
-}
-
-export interface AssignRoleInput {
-  roleId: string;
+/** Result returned after assigned roles are removed from a user. */
+export interface UserRoleRemovalResult {
+  /** Whether the current caller must authenticate again after the committed removal. */
+  reauthenticationRequired: boolean;
 }

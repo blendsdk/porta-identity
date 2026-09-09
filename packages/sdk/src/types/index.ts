@@ -144,7 +144,7 @@ export type {
 } from './imports.js';
 
 // User Roles
-export type { UserRoleAssignment, AssignRoleInput } from './user-roles.js';
+export type { UserRoleRemovalResult } from './user-roles.js';
 
 // User Claims
 export type { UserClaimEntry, SetUserClaimValueInput } from './user-claims.js';
