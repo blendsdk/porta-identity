@@ -604,6 +604,9 @@ export async function findForOidc(clientId: string): Promise<Record<string, unkn
     // the interaction handlers — where `resolveLoginMethodsFromOidcClient()`
     // combines it with the org default to compute the effective methods.
     'urn:porta:login_methods': client.loginMethods,
+    // Internal authority boundary consumed only while building this client's claims.
+    // Keeping the value in provider metadata avoids a database lookup on every claim request.
+    'urn:porta:internal_application_id': client.applicationId,
     // Organization ID — used by auto-consent logic in showConsent() to
     // identify first-party clients (same org → skip consent screen)
     organizationId: client.organizationId,

@@ -647,6 +647,7 @@ export function buildProviderConfiguration(
         'urn:porta:allowed_origins',
         'urn:porta:client_type',
         'urn:porta:require_pkce',
+        'urn:porta:internal_application_id',
         // Per-client login method override. Raw value from findForOidc():
         //   null       → inherit organization.defaultLoginMethods
         //   string[]   → explicit override (subset of ['password','magic_link'])

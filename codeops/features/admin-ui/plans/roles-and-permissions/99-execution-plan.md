@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 15:36
-> **Progress**: 4/62 tasks (6%)
+> **Last Updated**: 2026-09-09 15:40
+> **Progress**: 5/62 tasks (8%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -61,7 +61,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-19).
 **Reference**: [03-01](03-01-authority-boundaries.md) · AR-3, AR-8, AR-12, AR-15
 
 - [x] 1.2.1 Add application-qualified user role/permission repository queries and claim-builder signatures — `packages/server/src/rbac/mapping-repository.ts`, `packages/server/src/rbac/user-role-service.ts` ✅ (completed: 2026-09-09 15:36)
-- [ ] 1.2.2 Carry one namespaced internal application identifier through provider metadata, redact it, resolve it before RBAC claims, and expose it nowhere else — `packages/server/src/clients/service.ts`, `packages/server/src/oidc/configuration.ts`, `packages/server/src/oidc/account-finder.ts`, `packages/server/src/lib/logger.ts`
+- [x] 1.2.2 Carry one namespaced internal application identifier through provider metadata, redact it, resolve it before RBAC claims, and expose it nowhere else — `packages/server/src/clients/service.ts`, `packages/server/src/oidc/configuration.ts`, `packages/server/src/oidc/account-finder.ts`, `packages/server/src/lib/logger.ts` ✅ (completed: 2026-09-09 15:40)
 - [ ] 1.2.3 Add permission-update and User Admin application-read capabilities and keep reset/init definitions synchronized — `packages/server/src/lib/admin-permissions.ts`, `packages/server/src/cli/commands/init.ts`
 - [ ] 1.2.4 Require canonical application provenance and static assignment ceiling without adding an authorization layer — `packages/server/src/middleware/admin-auth.ts`, `packages/server/src/routes/user-roles.ts`
 - [ ] 1.2.5 Run ST-1–ST-9 and ST-45 and make the immutable expectations green

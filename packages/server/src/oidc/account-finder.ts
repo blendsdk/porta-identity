@@ -25,12 +25,18 @@
  * @see custom-claims/service.ts — Custom claims builder
  */
 
+import { z } from 'zod';
 import { findUserForOidc } from '../users/service.js';
 import { buildUserClaims } from '../users/claims.js';
 import { buildRoleClaims, buildPermissionClaims } from '../rbac/user-role-service.js';
 import { buildCustomClaims } from '../custom-claims/service.js';
 import { logger } from '../lib/logger.js';
 import type { TokenType } from '../custom-claims/types.js';
+/** Accepts only database-style UUIDs at the provider metadata trust boundary. */
+const applicationIdSchema = z.string().uuid();
+
+/** Private provider metadata key carrying the client application's database identity. */
+const INTERNAL_APPLICATION_ID = 'urn:porta:internal_application_id';
 
 /** OIDC Account object — returned by findAccount, used by the provider */
 export interface OidcAccount {
@@ -116,22 +122,22 @@ export async function findAccount(ctx: unknown, sub: string): Promise<OidcAccoun
 /**
  * Resolve the applicationId from the OIDC context.
  *
- * The OIDC provider passes the Koa context which includes the client
- * object at ctx.oidc.client. The client has an applicationId stored
- * in its metadata. Returns null if the context doesn't have the
- * expected structure (graceful fallback).
+ * The OIDC provider passes the Koa context which includes the client object at
+ * `ctx.oidc.client`. Only a valid UUID from Porta's internal metadata is accepted.
+ * Missing or malformed metadata returns null so authority fails closed.
  *
  * @param ctx - Koa context with OIDC extensions
  * @returns Application UUID or null if not resolvable
  */
 function resolveApplicationId(ctx: unknown): string | null {
-  try {
-    // Navigate the OIDC context structure: ctx.oidc.client.applicationId
-    const oidcCtx = ctx as { oidc?: { client?: { applicationId?: string } } };
-    return oidcCtx?.oidc?.client?.applicationId ?? null;
-  } catch {
-    return null;
-  }
+  if (typeof ctx !== 'object' || ctx === null) return null;
+  const oidc = Reflect.get(ctx, 'oidc');
+  if (typeof oidc !== 'object' || oidc === null) return null;
+  const client = Reflect.get(oidc, 'client');
+  if (typeof client !== 'object' || client === null) return null;
+
+  const parsed = applicationIdSchema.safeParse(Reflect.get(client, INTERNAL_APPLICATION_ID));
+  return parsed.success ? parsed.data : null;
 }
 
 /**
