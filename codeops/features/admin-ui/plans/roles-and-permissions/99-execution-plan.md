@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 00:09
-> **Progress**: 32/62 tasks (52%)
+> **Last Updated**: 2026-09-10 00:10
+> **Progress**: 33/62 tasks (53%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -131,7 +131,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 - [x] 3.2.3 Correct and narrowly validate user-role types/domain to `Role[]` and collection `PUT`/`DELETE` arrays — `packages/sdk/src/types/user-roles.ts`, `packages/sdk/src/domains/user-roles.ts`, `packages/sdk/src/types/index.ts` ✅ (completed: 2026-09-10 00:03)
 - [x] 3.2.4 Update existing SDK agent definitions and executor for complete arrays and permission update — `packages/sdk/src/agent.ts` ✅ (completed: 2026-09-10 00:05)
 - [x] 3.2.5 Adapt direct conventional role, permission, and user-role commands with no compatibility shims — `packages/cli/src/commands/app-role.ts`, `packages/cli/src/commands/app-permission.ts`, `packages/cli/src/commands/user-role.ts` ✅ (completed: 2026-09-10 00:09)
-- [ ] 3.2.6 Run ST-25–ST-32 and make the immutable expectations green
+- [x] 3.2.6 Run ST-25–ST-32 and make the immutable expectations green ✅ (completed: 2026-09-10 00:10)
 
 ### Step 3.3: Implementation Tests and Hardening
 
