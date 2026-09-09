@@ -3,7 +3,7 @@
 > **Feature-Set**: Porta Admin UI
 > **Status**: Active
 > **Created**: 2026-08-27
-> **Last Updated**: 2026-09-09 15:04
+> **Last Updated**: 2026-09-09 15:07
 > **Progress**: 5 / 10 (50%)
 > **CodeOps Artifact Schema**: 1
 
@@ -13,21 +13,21 @@
 
 ## Tracker
 
-| ID    | Title                                        | RD                                                                 | Plan                                                                                 | Stage            | Status | Last Updated     | Depends-on / Blocker |
-| ----- | -------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | ---------------- | ------ | ---------------- | -------------------- |
-| RD-01 | JSVision admin foundation                    | [RD-01](requirements/RD-01-jsvision-admin-foundation.md)           | [jsvision-foundation](plans/jsvision-foundation/00-index.md)                         | Done             | ✅     | 2026-08-27 20:11 | —                    |
-| RD-02 | Organization context and navigation          | [RD-02](requirements/RD-02-organization-context-and-navigation.md) | [organization-context-navigation](plans/organization-context-navigation/00-index.md) | Done             | ✅     | 2026-08-29 00:17 | RD-01                |
-| T-01  | Unauthenticated authentication gate          | —                                                                  | [plan](plans/authentication-gate/99-execution-plan.md)                               | Done             | ✅     | 2026-08-29 12:36 | RD-01                |
-| T-02  | Unified OIDC authentication URL grid         | —                                                                  | [plan](plans/authentication-url-grid/99-execution-plan.md)                           | Done             | ✅     | 2026-09-08 22:50 | RD-04                |
-| T-03  | Tab-based application details                | —                                                                  | [plan](plans/application-detail-tabs/99-execution-plan.md)                           | Done             | ✅     | 2026-09-09 00:55 | RD-04                |
-| RD-03 | User management                              | [RD-03](requirements/RD-03-user-management.md)                     | [user-management](plans/user-management/00-index.md)                                 | Done             | ✅     | 2026-08-30 06:23 | RD-02                |
-| RD-04 | Applications and OIDC clients                | [RD-04](requirements/RD-04-applications-and-oidc-clients.md)       | [oidc-client-workflow-redesign](plans/oidc-client-workflow-redesign/00-index.md)     | Done             | ✅     | 2026-09-08 13:39 | RD-02                |
-| RD-05 | Roles and permissions                        | [RD-05](requirements/RD-05-roles-and-permissions.md)               | [roles-and-permissions](plans/roles-and-permissions/00-index.md)                     | Plan Preflighted | 🔬     | 2026-09-09 15:04 | RD-03, RD-04, RD-10  |
-| RD-06 | Organization settings and branding           | —                                                                  | —                                                                                    | Backlog          | ⬜     | 2026-08-29 13:13 | RD-02                |
-| RD-07 | Sessions and authentication security         | —                                                                  | —                                                                                    | Backlog          | ⬜     | 2026-08-29 13:13 | RD-03                |
-| RD-08 | Audit and activity                           | —                                                                  | —                                                                                    | Backlog          | ⬜     | 2026-08-29 13:13 | RD-02                |
-| RD-09 | Advanced operational tools                   | —                                                                  | —                                                                                    | Backlog          | ⬜     | 2026-08-29 13:13 | RD-06, RD-08         |
-| RD-10 | Record deletion and lifecycle simplification | [RD-10](requirements/RD-10-application-module-client-deletion.md)  | [plan](plans/application-module-client-deletion/00-index.md)                         | Done             | ✅     | 2026-09-06 21:54 | RD-02, RD-03, RD-04  |
+| ID    | Title                                        | RD                                                                 | Plan                                                                                 | Stage     | Status | Last Updated     | Depends-on / Blocker |
+| ----- | -------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------ | --------- | ------ | ---------------- | -------------------- |
+| RD-01 | JSVision admin foundation                    | [RD-01](requirements/RD-01-jsvision-admin-foundation.md)           | [jsvision-foundation](plans/jsvision-foundation/00-index.md)                         | Done      | ✅     | 2026-08-27 20:11 | —                    |
+| RD-02 | Organization context and navigation          | [RD-02](requirements/RD-02-organization-context-and-navigation.md) | [organization-context-navigation](plans/organization-context-navigation/00-index.md) | Done      | ✅     | 2026-08-29 00:17 | RD-01                |
+| T-01  | Unauthenticated authentication gate          | —                                                                  | [plan](plans/authentication-gate/99-execution-plan.md)                               | Done      | ✅     | 2026-08-29 12:36 | RD-01                |
+| T-02  | Unified OIDC authentication URL grid         | —                                                                  | [plan](plans/authentication-url-grid/99-execution-plan.md)                           | Done      | ✅     | 2026-09-08 22:50 | RD-04                |
+| T-03  | Tab-based application details                | —                                                                  | [plan](plans/application-detail-tabs/99-execution-plan.md)                           | Done      | ✅     | 2026-09-09 00:55 | RD-04                |
+| RD-03 | User management                              | [RD-03](requirements/RD-03-user-management.md)                     | [user-management](plans/user-management/00-index.md)                                 | Done      | ✅     | 2026-08-30 06:23 | RD-02                |
+| RD-04 | Applications and OIDC clients                | [RD-04](requirements/RD-04-applications-and-oidc-clients.md)       | [oidc-client-workflow-redesign](plans/oidc-client-workflow-redesign/00-index.md)     | Done      | ✅     | 2026-09-08 13:39 | RD-02                |
+| RD-05 | Roles and permissions                        | [RD-05](requirements/RD-05-roles-and-permissions.md)               | [roles-and-permissions](plans/roles-and-permissions/00-index.md)                     | Executing | 🔄     | 2026-09-09 15:07 | RD-03, RD-04, RD-10  |
+| RD-06 | Organization settings and branding           | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-02                |
+| RD-07 | Sessions and authentication security         | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-03                |
+| RD-08 | Audit and activity                           | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-02                |
+| RD-09 | Advanced operational tools                   | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-06, RD-08         |
+| RD-10 | Record deletion and lifecycle simplification | [RD-10](requirements/RD-10-application-module-client-deletion.md)  | [plan](plans/application-module-client-deletion/00-index.md)                         | Done      | ✅     | 2026-09-06 21:54 | RD-02, RD-03, RD-04  |
 
 Backlog rows intentionally describe capabilities only. Each item is scoped immediately before
 implementation so the Admin UI grows one useful feature at a time without speculative framework

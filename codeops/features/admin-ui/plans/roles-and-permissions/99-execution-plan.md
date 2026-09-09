@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 12:07
-> **Progress**: 0/62 tasks (0%)
+> **Last Updated**: 2026-09-09 15:28
+> **Progress**: 1/62 tasks (2%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -44,11 +44,15 @@ phase uses immutable specification tests before implementation (AR-1–AR-19).
 
 ## Phase 1: Authority Provenance and OIDC Claims
 
+> **Phase baseline tree**: `6e3dcf8044a72bea5715913dacee70cccfcb8311`
+> **Scope mode**: strict
+> **Expected modification set**: `packages/server/tests/unit/security/rbac-authority-boundary.spec.test.ts`, `packages/server/tests/unit/oidc/application-rbac-claims.spec.test.ts`, `packages/server/src/rbac/mapping-repository.ts`, `packages/server/src/rbac/user-role-service.ts`, `packages/server/src/clients/service.ts`, `packages/server/src/oidc/configuration.ts`, `packages/server/src/oidc/account-finder.ts`, `packages/server/src/lib/logger.ts`, `packages/server/src/lib/admin-permissions.ts`, `packages/server/src/cli/commands/init.ts`, `packages/server/src/middleware/admin-auth.ts`, `packages/server/src/routes/user-roles.ts`, the named existing Phase 1 implementation tests, this execution plan, and the feature roadmap.
+
 ### Step 1.1: Specification Tests
 
 **Reference**: [03-01](03-01-authority-boundaries.md) · AR-3, AR-8, AR-12, AR-15 · ST-1–ST-9, ST-45
 
-- [ ] 1.1.1 [spec-author] Write canonical Admin provenance, static capability, delegation-ceiling, and canonical-mutation specifications from ST-1–ST-4 and ST-9 — `packages/server/tests/unit/security/rbac-authority-boundary.spec.test.ts`
+- [x] 1.1.1 [spec-author] Write canonical Admin provenance, static capability, delegation-ceiling, and canonical-mutation specifications from ST-1–ST-4 and ST-9 — `packages/server/tests/unit/security/rbac-authority-boundary.spec.test.ts` ✅ (completed: 2026-09-09 15:28)
 - [ ] 1.1.2 [spec-author] Write application-filtered, duplicate-slug, missing-context, query-failure, production-metadata, and non-disclosure claim specifications from ST-5–ST-8 and ST-45 — `packages/server/tests/unit/oidc/application-rbac-claims.spec.test.ts`
 - [ ] 1.1.3 Run the two Phase 1 specification files and record the expected red result before implementation
 
