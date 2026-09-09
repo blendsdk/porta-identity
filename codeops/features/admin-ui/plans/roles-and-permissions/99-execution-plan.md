@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 16:52
-> **Progress**: 10/62 tasks (16%)
+> **Last Updated**: 2026-09-09 19:15
+> **Progress**: 11/62 tasks (18%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -77,11 +77,15 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 ## Phase 2: Parent-Safe Transactional RBAC Mutations
 
+> **Phase baseline tree**: `f898459df2b0d91e76ec3ef02990045e7457b421`
+> **Scope mode**: strict
+> **Expected modification set**: the three named Phase 2 specification files; `packages/server/src/rbac/role-repository.ts`, `packages/server/src/rbac/permission-repository.ts`, `packages/server/src/rbac/mapping-repository.ts`, `packages/server/src/lib/authority-revocation.ts`, `packages/server/src/lib/deletion-cleanup.ts`, `packages/server/src/rbac/role-service.ts`, `packages/server/src/routes/roles.ts`, `packages/server/src/rbac/permission-service.ts`, `packages/server/src/routes/permissions.ts`, `packages/server/src/users/repository.ts`, `packages/server/src/rbac/user-role-service.ts`, `packages/server/src/routes/user-roles.ts`; the named existing Phase 2 implementation tests; repository test-inventory expectations; this execution plan, the phase review record, the feature roadmap, and incremental techdocs if required.
+
 ### Step 2.1: Specification Tests
 
 **Reference**: [03-02](03-02-rbac-mutations.md) · AR-4, AR-7, AR-9 · ST-10–ST-24
 
-- [ ] 2.1.1 [spec-author] Write route-level parent, capability, response, no-op, and actor specifications from ST-10–ST-13, ST-18, ST-20, and ST-24 — `packages/server/tests/unit/routes/rbac-parent-contracts.spec.test.ts`
+- [x] 2.1.1 [spec-author] Write route-level parent, capability, response, no-op, and actor specifications from ST-10–ST-13, ST-18, ST-20, and ST-24 — `packages/server/tests/unit/routes/rbac-parent-contracts.spec.test.ts` ✅ (completed: 2026-09-09 19:15)
 - [ ] 2.1.2 [spec-author] Write real PostgreSQL/Redis revocation, addition, concurrency, survivor, and cleanup specifications from ST-14–ST-23 — `packages/server/tests/integration/rbac/authority-mutations.spec.test.ts`
 - [ ] 2.1.3 [security] Write the required Admin/OIDC application-isolation penetration specifications from ST-1, ST-3, ST-5, and ST-10–ST-12 — `packages/server/tests/pentest/admin-security/rbac-application-isolation.spec.test.ts`
 - [ ] 2.1.4 Run the Phase 2 specification files and record the expected red result before implementation
