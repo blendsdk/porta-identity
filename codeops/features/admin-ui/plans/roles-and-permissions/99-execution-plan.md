@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 15:30
-> **Progress**: 2/62 tasks (3%)
+> **Last Updated**: 2026-09-09 15:32
+> **Progress**: 3/62 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -54,7 +54,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-19).
 
 - [x] 1.1.1 [spec-author] Write canonical Admin provenance, static capability, delegation-ceiling, and canonical-mutation specifications from ST-1–ST-4 and ST-9 — `packages/server/tests/unit/security/rbac-authority-boundary.spec.test.ts` ✅ (completed: 2026-09-09 15:28)
 - [x] 1.1.2 [spec-author] Write application-filtered, duplicate-slug, missing-context, query-failure, production-metadata, and non-disclosure claim specifications from ST-5–ST-8 and ST-45 — `packages/server/tests/unit/oidc/application-rbac-claims.spec.test.ts` ✅ (completed: 2026-09-09 15:30)
-- [ ] 1.1.3 Run the two Phase 1 specification files and record the expected red result before implementation
+- [x] 1.1.3 Run the two Phase 1 specification files and record the expected red result before implementation — red confirmed: 15 failed, 1 passed ✅ (completed: 2026-09-09 15:32)
 
 ### Step 1.2: Implementation
 
