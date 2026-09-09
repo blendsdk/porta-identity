@@ -1,10 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Middleware } from 'koa';
 import type { Permission, Role } from '../../../src/rbac/types.js';
-import {
-  ADMIN_PERMISSIONS,
-  ADMIN_ROLE_DEFINITIONS,
-} from '../../../src/lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, ADMIN_ROLE_DEFINITIONS } from '../../../src/lib/admin-permissions.js';
 
 const mocks = vi.hoisted(() => ({
   findUserForOidc: vi.fn(),
@@ -101,7 +98,11 @@ const SUPER_ROLE_ID = '10000000-0000-4000-8000-000000000006';
 const USER_ROLE_ID = '10000000-0000-4000-8000-000000000007';
 const PERMISSION_ID = '10000000-0000-4000-8000-000000000008';
 
-function role(id: string, applicationId: string, definition: keyof typeof ADMIN_ROLE_DEFINITIONS): Role {
+function role(
+  id: string,
+  applicationId: string,
+  definition: keyof typeof ADMIN_ROLE_DEFINITIONS,
+): Role {
   const source = ADMIN_ROLE_DEFINITIONS[definition];
   return {
     id,
@@ -126,11 +127,13 @@ function permission(): Permission {
   };
 }
 
-function context(overrides: {
-  params?: Record<string, string>;
-  body?: unknown;
-  authorization?: string;
-} = {}) {
+function context(
+  overrides: {
+    params?: Record<string, string>;
+    body?: unknown;
+    authorization?: string;
+  } = {},
+) {
   let status = 200;
   let responseBody: unknown;
   return {
@@ -246,6 +249,7 @@ describe('canonical Porta Admin authority boundary', () => {
   // An actor cannot delegate a canonical role containing capabilities they do not hold.
   it('returns a sanitized 403 and performs no write when User Admin assigns Super Admin', async () => {
     mocks.getUserRoles.mockResolvedValue([role(USER_ROLE_ID, ADMIN_APP_ID, 'USER_ADMIN')]);
+    mocks.roleFindById.mockResolvedValue(role(SUPER_ROLE_ID, ADMIN_APP_ID, 'SUPER_ADMIN'));
     const router = createUserRoleRouter();
     const handler = finalHandler(router as ReturnType<typeof createRoleRouter>, '/', 'PUT');
     const ctx = context({
@@ -264,6 +268,7 @@ describe('canonical Porta Admin authority boundary', () => {
   // A canonical role wholly within the actor's static capability set remains delegable.
   it('assigns a subset canonical role and records the acting administrator', async () => {
     mocks.getUserRoles.mockResolvedValue([role(SUPER_ROLE_ID, ADMIN_APP_ID, 'SUPER_ADMIN')]);
+    mocks.roleFindById.mockResolvedValue(role(USER_ROLE_ID, ADMIN_APP_ID, 'USER_ADMIN'));
     const router = createUserRoleRouter();
     const handler = finalHandler(router as ReturnType<typeof createRoleRouter>, '/', 'PUT');
     const ctx = context({
@@ -277,81 +282,101 @@ describe('canonical Porta Admin authority boundary', () => {
 
     expect(ctx.status).toBe(204);
     expect(mocks.assignRolesToUser).toHaveBeenCalledOnce();
-    expect(mocks.assignRolesToUser).toHaveBeenCalledWith(
-      TARGET_USER_ID,
-      [USER_ROLE_ID],
-      ACTOR_ID,
-    );
+    expect(mocks.assignRolesToUser).toHaveBeenCalledWith(TARGET_USER_ID, [USER_ROLE_ID], ACTOR_ID);
   });
 
   // Generic CRUD cannot alter built-in role, permission, or role-permission records.
   it.each([
-    ['role metadata update', () => {
-      const ctx = context({
-        params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID },
-        body: { name: 'Renamed', slug: 'renamed', description: 'Changed' },
-      });
-      return finalHandler(createRoleRouter(), '/:roleId', 'PUT')(ctx as never, vi.fn());
-    }],
-    ['role deletion', () => {
-      const ctx = context({ params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID } });
-      return finalHandler(createRoleRouter(), '/:roleId', 'DELETE')(ctx as never, vi.fn());
-    }],
-    ['role-permission assignment', () => {
-      const ctx = context({
-        params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID },
-        body: { permissionIds: [PERMISSION_ID] },
-      });
-      return finalHandler(createRoleRouter(), '/:roleId/permissions', 'PUT')(
-        ctx as never,
-        vi.fn(),
-      );
-    }],
-    ['role-permission removal', () => {
-      const ctx = context({
-        params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID },
-        body: { permissionIds: [PERMISSION_ID] },
-      });
-      return finalHandler(createRoleRouter(), '/:roleId/permissions', 'DELETE')(
-        ctx as never,
-        vi.fn(),
-      );
-    }],
-    ['permission metadata update', () => {
-      const ctx = context({
-        params: { appId: ADMIN_APP_ID, permId: PERMISSION_ID },
-        body: { name: 'Renamed', description: 'Changed' },
-      });
-      return finalHandler(createPermissionRouter() as ReturnType<typeof createRoleRouter>, '/:permId', 'PUT')(
-        ctx as never,
-        vi.fn(),
-      );
-    }],
-    ['permission deletion', () => {
-      const ctx = context({
-        params: { appId: ADMIN_APP_ID, permissionId: PERMISSION_ID },
-      });
-      return finalHandler(
-        createPermissionRouter() as ReturnType<typeof createRoleRouter>,
-        '/:permissionId',
-        'DELETE',
-      )(ctx as never, vi.fn());
-    }],
-  ])('rejects canonical %s with a fixed conflict-style response and no mutation', async (_name, run) => {
-    mocks.roleFindById.mockResolvedValue(role(USER_ROLE_ID, ADMIN_APP_ID, 'USER_ADMIN'));
-    mocks.permissionFindById.mockResolvedValue(permission());
+    [
+      'role metadata update',
+      () => {
+        const ctx = context({
+          params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID },
+          body: { name: 'Renamed', slug: 'renamed', description: 'Changed' },
+        });
+        return finalHandler(createRoleRouter(), '/:roleId', 'PUT')(ctx as never, vi.fn());
+      },
+    ],
+    [
+      'role deletion',
+      () => {
+        const ctx = context({ params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID } });
+        return finalHandler(createRoleRouter(), '/:roleId', 'DELETE')(ctx as never, vi.fn());
+      },
+    ],
+    [
+      'role-permission assignment',
+      () => {
+        const ctx = context({
+          params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID },
+          body: { permissionIds: [PERMISSION_ID] },
+        });
+        return finalHandler(
+          createRoleRouter(),
+          '/:roleId/permissions',
+          'PUT',
+        )(ctx as never, vi.fn());
+      },
+    ],
+    [
+      'role-permission removal',
+      () => {
+        const ctx = context({
+          params: { appId: ADMIN_APP_ID, roleId: USER_ROLE_ID },
+          body: { permissionIds: [PERMISSION_ID] },
+        });
+        return finalHandler(
+          createRoleRouter(),
+          '/:roleId/permissions',
+          'DELETE',
+        )(ctx as never, vi.fn());
+      },
+    ],
+    [
+      'permission metadata update',
+      () => {
+        const ctx = context({
+          params: { appId: ADMIN_APP_ID, permId: PERMISSION_ID },
+          body: { name: 'Renamed', description: 'Changed' },
+        });
+        return finalHandler(
+          createPermissionRouter() as ReturnType<typeof createRoleRouter>,
+          '/:permId',
+          'PUT',
+        )(ctx as never, vi.fn());
+      },
+    ],
+    [
+      'permission deletion',
+      () => {
+        const ctx = context({
+          params: { appId: ADMIN_APP_ID, permissionId: PERMISSION_ID },
+        });
+        return finalHandler(
+          createPermissionRouter() as ReturnType<typeof createRoleRouter>,
+          '/:permissionId',
+          'DELETE',
+        )(ctx as never, vi.fn());
+      },
+    ],
+  ])(
+    'rejects canonical %s with a fixed conflict-style response and no mutation',
+    async (_name, run) => {
+      mocks.roleFindById.mockResolvedValue(role(USER_ROLE_ID, ADMIN_APP_ID, 'USER_ADMIN'));
+      mocks.permissionFindById.mockResolvedValue(permission());
 
-    const error = await capturedError(run);
+      const error = await capturedError(run);
 
-    expect(error).toMatchObject({ status: 400 });
-    expect(String((error as Error | undefined)?.message)).not.toContain(USER_ROLE_ID);
-    expect(String((error as Error | undefined)?.message)).not.toContain(PERMISSION_ID);
-    expect(String((error as Error | undefined)?.message)).not.toContain('porta-user-admin');
-    expect(mocks.roleUpdate).not.toHaveBeenCalled();
-    expect(mocks.roleDelete).not.toHaveBeenCalled();
-    expect(mocks.roleAssignPermissions).not.toHaveBeenCalled();
-    expect(mocks.roleRemovePermissions).not.toHaveBeenCalled();
-    expect(mocks.permissionUpdate).not.toHaveBeenCalled();
-    expect(mocks.permissionDelete).not.toHaveBeenCalled();
-  });
+      expect(error).toMatchObject({ status: 400 });
+      expect(String((error as Error | undefined)?.message)).not.toContain(USER_ROLE_ID);
+      expect(String((error as Error | undefined)?.message)).not.toContain(PERMISSION_ID);
+      expect(String((error as Error | undefined)?.message)).not.toContain('porta-user-admin');
+      expect(mocks.roleUpdate).not.toHaveBeenCalled();
+      expect(mocks.roleDelete).not.toHaveBeenCalled();
+      expect(mocks.roleAssignPermissions).not.toHaveBeenCalled();
+      expect(mocks.roleRemovePermissions).not.toHaveBeenCalled();
+      expect(mocks.permissionUpdate).not.toHaveBeenCalled();
+      expect(mocks.permissionDelete).not.toHaveBeenCalled();
+    },
+  );
 });

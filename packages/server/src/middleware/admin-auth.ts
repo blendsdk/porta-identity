@@ -31,8 +31,12 @@ import type { Organization } from '../organizations/types.js';
 import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRoles } from '../rbac/user-role-service.js';
+import { getApplicationBySlug } from '../applications/service.js';
 import { logger } from '../lib/logger.js';
-import { resolvePermissionsFromRoles } from '../lib/admin-permissions.js';
+import {
+  getPermissionsForAdminRole,
+  resolvePermissionsFromRoles,
+} from '../lib/admin-permissions.js';
 import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
 
 // ---------------------------------------------------------------------------
@@ -135,11 +139,8 @@ declare module 'koa' {
 // Admin auth middleware factory
 // ---------------------------------------------------------------------------
 
-/**
- * Admin role slug prefix — all admin roles start with 'porta-'.
- * Legacy 'porta-admin' role is treated as super-admin for backward compatibility.
- */
-const ADMIN_ROLE_PREFIX = 'porta-';
+/** Immutable slug of the application that owns Porta's control-plane roles. */
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
 
 /**
  * Create middleware that requires admin authentication and authorization.
@@ -272,14 +273,29 @@ export function requireAdminAuth(): Middleware {
     if (!requireAdminOrganizationMembership(ctx, user.organizationId, superAdminOrg.id)) return;
 
     // -----------------------------------------------------------------
-    // Step 6: Verify user has an admin role (any porta-* role)
+    // Step 6: Verify the user has a recognized role from the canonical Admin application.
     // -----------------------------------------------------------------
-    // Supports both legacy porta-admin and new granular roles:
-    // porta-super-admin, porta-org-admin, porta-user-admin, etc.
+    const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+    if (!adminApplication) {
+      logger.error('Admin auth: canonical application not found — run porta init');
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'handler',
+        reasonCode: 'handler-failed',
+        outcome: 'error',
+      });
+      ctx.status = 500;
+      ctx.body = { error: 'Server configuration error' };
+      return;
+    }
+
     const userRoles = await getUserRoles(userId);
     const adminRoleSlugs = userRoles
-      .map((role) => role.slug)
-      .filter((slug) => slug.startsWith(ADMIN_ROLE_PREFIX));
+      .filter(
+        (role) =>
+          role.applicationId === adminApplication.id &&
+          getPermissionsForAdminRole(role.slug).length > 0,
+      )
+      .map((role) => role.slug);
 
     if (adminRoleSlugs.length === 0) {
       recordSecurityDecision(ctx, {

@@ -14,6 +14,8 @@
 Test names state behavior. Specification tests are written and observed red before implementation;
 implementation tests follow green behavior. Real PostgreSQL/Redis fixtures cover transaction and
 cleanup behavior. Existing test doubles remain limited to HTTP/UI boundaries (AR-4, AR-9–AR-11).
+The canonical-mutation oracle is written in Phase 1 with the authority boundary, but becomes green
+in Phase 2 when the role, permission, and mapping mutation guards are implemented (AR-20).
 
 ## 🚨 Specification Test Cases
 

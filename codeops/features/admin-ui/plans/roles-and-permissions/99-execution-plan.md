@@ -2,15 +2,15 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 15:43
-> **Progress**: 6/62 tasks (10%)
+> **Last Updated**: 2026-09-09 16:36
+> **Progress**: 7/62 tasks (11%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
 
 Implement application-qualified authority first, then transactional RBAC mutations, corrected SDK
 and conventional CLI contracts, Application RBAC tabs, and the focused User Roles workflow. Every
-phase uses immutable specification tests before implementation (AR-1–AR-19).
+phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 **🚨 Update this document after EACH completed task!**
 
@@ -63,8 +63,8 @@ phase uses immutable specification tests before implementation (AR-1–AR-19).
 - [x] 1.2.1 Add application-qualified user role/permission repository queries and claim-builder signatures — `packages/server/src/rbac/mapping-repository.ts`, `packages/server/src/rbac/user-role-service.ts` ✅ (completed: 2026-09-09 15:36)
 - [x] 1.2.2 Carry one namespaced internal application identifier through provider metadata, redact it, resolve it before RBAC claims, and expose it nowhere else — `packages/server/src/clients/service.ts`, `packages/server/src/oidc/configuration.ts`, `packages/server/src/oidc/account-finder.ts`, `packages/server/src/lib/logger.ts` ✅ (completed: 2026-09-09 15:40)
 - [x] 1.2.3 Add permission-update and User Admin application-read capabilities and keep reset/init definitions synchronized — `packages/server/src/lib/admin-permissions.ts`, `packages/server/src/cli/commands/init.ts` ✅ (completed: 2026-09-09 15:43)
-- [ ] 1.2.4 Require canonical application provenance and static assignment ceiling without adding an authorization layer — `packages/server/src/middleware/admin-auth.ts`, `packages/server/src/routes/user-roles.ts`
-- [ ] 1.2.5 Run ST-1–ST-9 and ST-45 and make the immutable expectations green
+- [x] 1.2.4 Require canonical application provenance and static assignment ceiling without adding an authorization layer — `packages/server/src/middleware/admin-auth.ts`, `packages/server/src/routes/user-roles.ts` ✅ (completed: 2026-09-09 16:36)
+- [ ] 1.2.5 Run ST-1–ST-8 and ST-45 and make the Phase 1 implementation expectations green
 
 ### Step 1.3: Implementation Tests and Hardening
 
@@ -95,7 +95,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-19).
 - [ ] 2.2.3 Implement role CRUD/mapping capture, canonical guards, targeted cleanup, actor audit, and reduction results — `packages/server/src/rbac/role-service.ts`, `packages/server/src/routes/roles.ts`
 - [ ] 2.2.4 Implement permission ownership, module validation, canonical guard, targeted deletion, update capability, actor audit, and reduction results — `packages/server/src/rbac/permission-service.ts`, `packages/server/src/routes/permissions.ts`
 - [ ] 2.2.5 Extract and reuse the repository-owned survivor lock/query, then implement user-role parent locks, assignment ceiling, actor provenance, targeted add/remove cleanup, and reduction result — `packages/server/src/users/repository.ts`, `packages/server/src/rbac/user-role-service.ts`, `packages/server/src/routes/user-roles.ts`
-- [ ] 2.2.6 Run ST-10–ST-24 and make the immutable expectations green
+- [ ] 2.2.6 Run ST-9–ST-24 and make the immutable expectations green
 
 ### Step 2.3: Implementation Tests and Hardening
 
