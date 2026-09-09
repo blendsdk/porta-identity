@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-06
+> **Last Updated**: 2026-09-09
 
 ## Overview
 
@@ -102,28 +102,35 @@ All `/api/admin/*` routes (except the metadata endpoint) are protected by the `a
 sequenceDiagram
     participant Client
     participant AdminAuth as admin-auth.ts
-    participant SigningKeys as Signing Keys
+    participant Provider as OIDC Provider
     participant UserService as User Service
+    participant Applications as Application Service
     participant RBAC as RBAC Service
 
     Client->>AdminAuth: Authorization: Bearer <token>
-    AdminAuth->>SigningKeys: Load active signing keys
-    AdminAuth->>AdminAuth: Verify ES256 JWT signature
-    AdminAuth->>AdminAuth: Verify issuer = super-admin org
-    AdminAuth->>AdminAuth: Verify token not expired
+    AdminAuth->>Provider: AccessToken.find(token)
+    Provider-->>AdminAuth: Active token accountId or no match
     AdminAuth->>UserService: Lookup user by sub claim
     AdminAuth->>AdminAuth: Verify user is active
     AdminAuth->>AdminAuth: Verify user belongs to super-admin org
-    AdminAuth->>RBAC: Check porta-admin role
+    AdminAuth->>Applications: Resolve canonical porta-admin application
+    AdminAuth->>RBAC: Load assigned roles
+    AdminAuth->>AdminAuth: Keep recognized canonical-app roles
+    AdminAuth->>AdminAuth: Resolve static capabilities
     AdminAuth->>AdminAuth: Set ctx.state.adminUser
     AdminAuth-->>Client: 200 (proceed) / 401 / 403
 ```
 
 **Key properties:**
 
-- **Self-authentication** — Porta validates tokens signed by its own keys
-- **ES256 only** — No algorithm negotiation; ECDSA P-256 is enforced
-- **Role-based** — Requires `porta-admin` role in the super-admin organization
+- **Self-authentication** — Porta resolves its own opaque access tokens through the OIDC provider
+- **Fail-closed token lookup** — Missing, expired, revoked, or rejected tokens receive the same
+  minimal authentication failure
+- **Canonical role provenance** — Only recognized built-in role slugs owned by the canonical
+  `porta-admin` application grant Admin API capabilities; matching slugs in external applications
+  grant nothing
+- **Static capabilities** — Built-in Admin capabilities come from code definitions, not editable
+  application role-permission rows
 - **Nested-resource isolation** — Organization-prefixed user and user-role routes run permission
   middleware first, then require the target user to belong to the path organization before the
   handler can read or mutate it

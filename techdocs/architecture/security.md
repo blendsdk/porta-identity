@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-06
+> **Last Updated**: 2026-09-09
 
 ## Overview
 
@@ -17,12 +17,12 @@ graph TB
 
     subgraph "Authentication Layer"
         OIDC[OIDC Protocol<br/>node-oidc-provider]
-        ADMIN_AUTH[Admin JWT Auth<br/>ES256 Bearer]
+        ADMIN_AUTH[Admin Opaque Token Auth<br/>Provider Lookup]
         PKCE[PKCE Enforcement<br/>Public Clients]
     end
 
     subgraph "Authorization Layer"
-        RBAC[RBAC Middleware<br/>porta-admin role]
+        RBAC[RBAC Middleware<br/>Canonical Admin Roles]
         TENANT[Tenant Isolation<br/>org-scoped queries]
     end
 
@@ -137,12 +137,16 @@ sequenceDiagram
 The admin API authenticates against Porta's own OIDC tokens:
 
 1. Admin user logs in via OIDC to the **super-admin organization**
-2. Token is signed with Porta's own ES256 keys
-3. Admin auth middleware validates the token against those same keys
-4. Middleware verifies issuer matches the super-admin org URL
-5. Middleware checks user has `porta-admin` RBAC role
+2. Admin auth middleware resolves the opaque Bearer token through the provider's authoritative
+   `AccessToken` model
+3. Middleware loads the active user and verifies membership in the super-admin organization
+4. Middleware resolves the canonical `porta-admin` application
+5. Only recognized built-in roles assigned from that application contribute code-defined Admin
+   capabilities; a matching role slug from another application grants nothing
 
 This self-authentication pattern means Porta has **no external auth dependency** for its admin API.
+Missing, expired, revoked, or rejected tokens receive a fixed authentication failure without
+revealing lookup details.
 
 ### Magic Link Authentication
 
@@ -217,6 +221,10 @@ SELECT * FROM users WHERE id = $1;
 - Organization-prefixed user and role routes validate that the target user belongs to the
   `:orgId` path organization after permission checks and before the handler runs. Foreign and
   missing targets both return `404`, avoiding cross-tenant existence disclosure.
+- OIDC role and permission claims are filtered by the requesting client's application UUID. The
+  provider carries this UUID in private client metadata, validates it before querying RBAC, and
+  returns empty RBAC arrays when it is missing or malformed. The private identifier is not emitted
+  in tokens, UserInfo, introspection, discovery, rendered authentication output, errors, or logs.
 
 ### Cache Isolation
 

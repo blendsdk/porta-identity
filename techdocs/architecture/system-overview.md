@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-08
+> **Last Updated**: 2026-09-09
 
 ## High-Level Architecture
 
@@ -189,7 +189,7 @@ graph TB
 | Root Page          | `root-page.ts`          | Neutral `/`, `/robots.txt`, `/favicon.ico` (no product leakage) |
 | Health Check       | `health.ts`             | DB + Redis connectivity check at `/health`                      |
 | Readiness          | `ready.ts`              | Readiness probe for container orchestration                     |
-| Admin Auth         | `admin-auth.ts`         | JWT Bearer validation for `/api/admin/*` routes                 |
+| Admin Auth         | `admin-auth.ts`         | Opaque Bearer lookup and canonical Admin authority validation   |
 | Admin CORS         | `admin-cors.ts`         | CORS handling for `/api/admin/*` (configurable origins)         |
 | Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints                           |
 | Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes                |

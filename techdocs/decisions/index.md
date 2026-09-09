@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-09-06
+> **Last Updated**: 2026-09-09
 
 ## Overview
 
@@ -18,11 +18,12 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                             | Accepted              | —          | Standalone functions over classes for services                  |
 | ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted              | —          | Zod schemas for fail-fast config and request validation         |
 | ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                         | Accepted              | —          | Direct-DB for init/migrate, HTTP for all other commands         |
-| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Accepted              | —          | Porta validates its own tokens for admin API access             |
+| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Superseded by ADR-015 | —          | Original self-authentication decision                           |
 | ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                         | Accepted              | —          | Consistent module layout: types, repository, cache, service     |
 | ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                       | Accepted              | —          | Per-client override with org-level default inheritance          |
 | ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
 | ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
+| ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)         | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
 
 ---
 
@@ -167,6 +168,8 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## ADR-009: Self-Authentication for Admin API
 
+**Status**: Superseded by [ADR-015](#adr-015-application-qualified-authority).
+
 **Context**: The admin API needs authentication. Options: separate admin auth system, API keys, or use Porta's own OIDC tokens.
 
 **Decision**: Porta authenticates its own admin API using tokens it issues to the super-admin organization. The admin-auth middleware validates ES256 JWTs against Porta's own signing keys.
@@ -303,6 +306,42 @@ certification or a workflow-promotion decision.
 - ⚠️ Assurance closes risk slices progressively and cannot prove the absolute absence of exploits.
 - ⚠️ Real command-stage signal qualification remains incomplete, so the assurance commands are not
   approved as new CI automation or blocking policy.
+
+---
+
+## ADR-015: Application-Qualified Authority
+
+**Status**: Accepted. Supersedes [ADR-009](#adr-009-self-authentication-for-admin-api) while
+retaining its self-authentication decision.
+
+**Context**: Porta issues opaque access tokens, so Admin middleware must ask the provider's token
+model whether a presented token is active. Role names are application-owned and may legitimately be
+reused by external products. Neither an unverified role slug nor a union of a user's roles across
+applications can safely determine control-plane or OIDC client authority.
+
+**Decision**: Porta continues to authenticate its Admin API with its own OIDC access tokens. The
+Admin middleware resolves opaque Bearer tokens through `oidc-provider`, requires active membership
+in the super-admin organization, and accepts only code-recognized roles owned by the canonical
+`porta-admin` application. Built-in Admin capabilities come from immutable code definitions rather
+than editable role-permission mappings.
+
+OIDC client metadata carries one private, namespaced application UUID from the client's persisted
+application foreign key. Account claim construction validates that UUID and uses it to qualify role,
+permission, and custom-claim queries. Missing or malformed metadata produces standard claims with
+empty RBAC arrays and no custom claims. The private identifier is not part of public authentication
+outputs and is redacted if it reaches structured logging.
+
+**Consequences**:
+
+- ✅ External applications may reuse role slugs without gaining Porta Admin authority.
+- ✅ Tokens expose only authority owned by the requesting client's application.
+- ✅ Missing application context fails closed without suppressing ordinary standard claims.
+- ✅ Admin capability resolution does not depend on mutable application RBAC mappings.
+- ✅ Opaque-token expiry and revocation remain owned by the authoritative provider model.
+- ⚠️ `porta init` or the reset workflow must keep the canonical Admin application and built-in
+  definitions present.
+- ⚠️ Provider client metadata must preserve the private application UUID until account claims are
+  constructed.
 
 ---
 
