@@ -39,6 +39,7 @@ vi.mock('../../../src/applications/service.js', () => ({
 
 vi.mock('../../../src/rbac/user-role-service.js', () => ({
   getUserRoles: mocks.getUserRoles,
+  getUserRolesForAuthority: mocks.getUserRoles,
   getUserPermissions: mocks.getUserPermissions,
   assignRolesToUser: mocks.assignRolesToUser,
   removeRolesFromUser: vi.fn(),
@@ -282,7 +283,12 @@ describe('canonical Porta Admin authority boundary', () => {
 
     expect(ctx.status).toBe(204);
     expect(mocks.assignRolesToUser).toHaveBeenCalledOnce();
-    expect(mocks.assignRolesToUser).toHaveBeenCalledWith(TARGET_USER_ID, [USER_ROLE_ID], ACTOR_ID);
+    expect(mocks.assignRolesToUser).toHaveBeenCalledWith(
+      ADMIN_ORG_ID,
+      TARGET_USER_ID,
+      [USER_ROLE_ID],
+      ACTOR_ID,
+    );
   });
 
   // Generic CRUD cannot alter built-in role, permission, or role-permission records.

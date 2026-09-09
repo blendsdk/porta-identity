@@ -23,10 +23,14 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
-import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, getPermissionsForAdminRole } from '../lib/admin-permissions.js';
+import { getApplicationBySlug } from '../applications/service.js';
+import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleDelegationError, RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
+
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -70,6 +74,34 @@ function handleError(
     return undefined as never;
   }
   throw err;
+}
+
+/**
+ * Reject an assignment that exceeds the authenticated actor's static Admin capabilities.
+ *
+ * This route check provides an early sanitized response. The service repeats the decision from
+ * locked database state so direct callers and concurrent changes cannot bypass it.
+ */
+async function requireDelegableRoles(
+  applicationRoleIds: readonly string[],
+  actorPermissions: readonly string[],
+): Promise<void> {
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (!adminApplication) return;
+  const actorCapabilities = new Set(actorPermissions);
+
+  for (const roleId of applicationRoleIds) {
+    const role = await roleService.findRoleById(adminApplication.id, roleId);
+    // A null result means this is not a canonical Admin role. The service still locks and validates
+    // every requested role globally before assignment, including ordinary application roles.
+    if (!role) continue;
+    if (role.applicationId !== adminApplication.id) continue;
+    if (
+      getPermissionsForAdminRole(role.slug).some((capability) => !actorCapabilities.has(capability))
+    ) {
+      throw new RoleDelegationError();
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -125,6 +157,7 @@ export function createUserRoleRouter(): Router {
           ctx.throw(401, 'Authentication required');
           return;
         }
+        await requireDelegableRoles(body.roleIds, actor.permissions);
         await userRoleService.assignRolesToUser(
           ctx.params.orgId,
           ctx.params.userId,

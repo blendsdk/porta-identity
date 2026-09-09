@@ -27,10 +27,14 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
-import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../lib/admin-permissions.js';
+import { getApplicationBySlug } from '../applications/service.js';
 import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
+
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+const ADMIN_ROLE_SLUGS = new Set(ALL_ADMIN_ROLES.map((role) => role.slug));
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -98,6 +102,19 @@ function handleError(
     return undefined as never;
   }
   throw err;
+}
+
+/** Reject generic route mutations of a canonical Porta Admin role. */
+async function requireMutableRole(applicationId: string, roleId: string): Promise<void> {
+  const role = await roleService.findRoleById(applicationId, roleId);
+  // The mutation service remains responsible for authoritative not-found handling and repeats the
+  // canonical check after locking. This route lookup exists only for an early sanitized rejection.
+  if (!role) return;
+  if (!ADMIN_ROLE_SLUGS.has(role.slug)) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === role.applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin roles cannot be modified');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -177,6 +194,7 @@ export function createRoleRouter(): Router {
     try {
       identifierSchema.parse(ctx.params);
       const body = updateRoleSchema.parse(ctx.request.body);
+      await requireMutableRole(ctx.params.appId, ctx.params.roleId);
       const result = await roleService.updateRole(
         ctx.params.appId,
         ctx.params.roleId,
@@ -195,6 +213,7 @@ export function createRoleRouter(): Router {
   router.delete('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_DELETE), async (ctx) => {
     try {
       identifierSchema.parse(ctx.params);
+      await requireMutableRole(ctx.params.appId, ctx.params.roleId);
       const result = await roleService.deleteRole(
         ctx.params.appId,
         ctx.params.roleId,
@@ -237,6 +256,7 @@ export function createRoleRouter(): Router {
       try {
         identifierSchema.parse(ctx.params);
         const body = permissionIdsSchema.parse(ctx.request.body);
+        await requireMutableRole(ctx.params.appId, ctx.params.roleId);
         await roleService.assignPermissionsToRole(
           ctx.params.appId,
           ctx.params.roleId,
@@ -260,6 +280,7 @@ export function createRoleRouter(): Router {
       try {
         identifierSchema.parse(ctx.params);
         const body = permissionIdsSchema.parse(ctx.request.body);
+        await requireMutableRole(ctx.params.appId, ctx.params.roleId);
         const result = await roleService.removePermissionsFromRole(
           ctx.params.appId,
           ctx.params.roleId,

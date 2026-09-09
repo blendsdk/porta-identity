@@ -99,7 +99,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 - [x] 2.2.3 Implement role CRUD/mapping capture, canonical guards, targeted cleanup, actor audit, and reduction results — `packages/server/src/rbac/role-service.ts`, `packages/server/src/routes/roles.ts` ✅ (completed: 2026-09-09 20:06)
 - [x] 2.2.4 Implement permission ownership, module validation, canonical guard, targeted deletion, update capability, actor audit, and reduction results — `packages/server/src/rbac/permission-service.ts`, `packages/server/src/routes/permissions.ts` ✅ (completed: 2026-09-09 20:12)
 - [x] 2.2.5 Extract and reuse the repository-owned survivor lock/query, then implement user-role parent locks, assignment ceiling, actor provenance, targeted add/remove cleanup, and reduction result — `packages/server/src/users/repository.ts`, `packages/server/src/rbac/user-role-service.ts`, `packages/server/src/routes/user-roles.ts` ✅ (completed: 2026-09-09 20:31)
-- [ ] 2.2.6 Run ST-9–ST-24 and make the immutable expectations green
+- [x] 2.2.6 Run ST-9–ST-24 and make the immutable expectations green ✅ (completed: 2026-09-09 20:38)
 
 ### Step 2.3: Implementation Tests and Hardening
 

@@ -23,9 +23,13 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
-import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, ALL_ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { getApplicationBySlug } from '../applications/service.js';
 import * as permissionService from '../rbac/permission-service.js';
 import { PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
+
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -89,6 +93,22 @@ function handleError(
     return undefined as never;
   }
   throw err;
+}
+
+/** Reject generic route mutations of a canonical Porta Admin permission. */
+async function requireMutablePermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<void> {
+  const permission = await permissionService.findPermissionById(applicationId, permissionId);
+  // The mutation service remains responsible for authoritative not-found handling and repeats the
+  // canonical check after locking. This route lookup exists only for an early sanitized rejection.
+  if (!permission) return;
+  if (!ADMIN_PERMISSION_SLUGS.has(permission.slug)) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === permission.applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin permissions cannot be modified');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -175,6 +195,7 @@ export function createPermissionRouter(): Router {
     try {
       permissionIdentifierSchema.parse(ctx.params);
       const body = updatePermissionSchema.parse(ctx.request.body);
+      await requireMutablePermission(ctx.params.appId, ctx.params.permId);
       const permission = await permissionService.updatePermission(
         ctx.params.appId,
         ctx.params.permId,
@@ -196,6 +217,7 @@ export function createPermissionRouter(): Router {
     async (ctx) => {
       try {
         deletionIdentifierSchema.parse(ctx.params);
+        await requireMutablePermission(ctx.params.appId, ctx.params.permissionId);
         const result = await permissionService.deletePermission(
           ctx.params.appId,
           ctx.params.permissionId,
