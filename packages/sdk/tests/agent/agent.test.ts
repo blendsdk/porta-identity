@@ -95,6 +95,10 @@ describe('agent', () => {
         },
         stats: { get: vi.fn().mockResolvedValue({ orgs: 5 }) },
         config: { list: vi.fn().mockResolvedValue([]) },
+        userRoles: {
+          assign: vi.fn().mockResolvedValue(undefined),
+          remove: vi.fn().mockResolvedValue({ reauthenticationRequired: false }),
+        },
       } as unknown as PortaClient;
     }
 
@@ -124,6 +128,25 @@ describe('agent', () => {
       expect(vi.mocked(client.users.deactivate)).toHaveBeenCalledWith('org-1', 'user-1');
       expect(vi.mocked(client.users.activate)).toHaveBeenCalledWith('org-1', 'user-1');
       expect(vi.mocked(client.users.getHistory)).toHaveBeenCalledWith('org-1', 'user-1');
+    });
+
+    it('passes role ID arrays to user-role collection methods', async () => {
+      const client = mockClient();
+      const roleIds = ['role-1', 'role-2'];
+
+      await executeTool(client, 'userRoles.assign', { orgId: 'org-1', userId: 'user-1', roleIds });
+      const result = await executeTool(client, 'userRoles.remove', {
+        orgId: 'org-1',
+        userId: 'user-1',
+        roleIds,
+      });
+
+      expect(vi.mocked(client.userRoles.assign)).toHaveBeenCalledWith('org-1', 'user-1', roleIds);
+      expect(vi.mocked(client.userRoles.remove)).toHaveBeenCalledWith('org-1', 'user-1', roleIds);
+      expect(result).toEqual({
+        success: true,
+        data: { reauthenticationRequired: false },
+      });
     });
 
     it('returns error for invalid tool name', async () => {

@@ -84,6 +84,16 @@ const sampleUser = {
   updatedAt: '2024-01-02T00:00:00Z',
 };
 
+const sampleRole = {
+  id: 'role-uuid',
+  applicationId: 'app-uuid',
+  name: 'admin',
+  slug: 'admin',
+  description: null,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-02T00:00:00Z',
+};
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -504,9 +514,7 @@ describe('user command', () => {
   describe('roles', () => {
     describe('list', () => {
       it('lists assigned roles', async () => {
-        mockUserRoles.list.mockResolvedValue([
-          { roleId: 'role-uuid', roleName: 'admin', assignedAt: '2024-01-01T00:00:00Z' },
-        ]);
+        mockUserRoles.list.mockResolvedValue([sampleRole]);
 
         await invokeSubcommand('roles list', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
@@ -515,9 +523,7 @@ describe('user command', () => {
       });
 
       it('lists roles in JSON', async () => {
-        const roles = [
-          { roleId: 'role-uuid', roleName: 'admin', assignedAt: '2024-01-01T00:00:00Z' },
-        ];
+        const roles = [sampleRole];
         mockUserRoles.list.mockResolvedValue(roles);
 
         await invokeSubcommand('roles list', {
@@ -546,11 +552,9 @@ describe('user command', () => {
           role: 'role-uuid',
         });
 
-        expect(mockUserRoles.assign).toHaveBeenCalledWith(
-          'org-uuid',
-          'user-uuid-1234',
+        expect(mockUserRoles.assign).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', [
           'role-uuid',
-        );
+        ]);
         expect(success).toHaveBeenCalledWith(expect.stringContaining('assigned'));
       });
 
@@ -569,17 +573,16 @@ describe('user command', () => {
 
     describe('remove', () => {
       it('removes a role', async () => {
+        mockUserRoles.remove.mockResolvedValue({ reauthenticationRequired: false });
         await invokeSubcommand('roles remove', {
           org: 'org-uuid',
           _pos_: 'user-uuid-1234',
           role: 'role-uuid',
         });
 
-        expect(mockUserRoles.remove).toHaveBeenCalledWith(
-          'org-uuid',
-          'user-uuid-1234',
+        expect(mockUserRoles.remove).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', [
           'role-uuid',
-        );
+        ]);
         expect(success).toHaveBeenCalledWith(expect.stringContaining('removed'));
       });
     });

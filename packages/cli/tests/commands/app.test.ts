@@ -31,14 +31,15 @@ const mockRoles = {
   get: vi.fn(),
   update: vi.fn(),
   delete: vi.fn(),
-  assignPermission: vi.fn(),
-  removePermission: vi.fn(),
+  assignPermissions: vi.fn(),
+  removePermissions: vi.fn(),
 };
 
 const mockPermissions = {
   create: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
+  update: vi.fn(),
   delete: vi.fn(),
 };
 
@@ -351,7 +352,7 @@ describe('app role command', () => {
   });
 
   it('lists roles', async () => {
-    mockRoles.list.mockResolvedValue({ data: [sampleRole], total: 1 });
+    mockRoles.list.mockResolvedValue([sampleRole]);
     await invokeSubcommand(['role', 'list', 'app-1'], {});
     expect(printTable).toHaveBeenCalled();
   });
@@ -364,6 +365,7 @@ describe('app role command', () => {
 
   it('deletes a role', async () => {
     mockRoles.get.mockResolvedValue(sampleRole);
+    mockRoles.delete.mockResolvedValue({ reauthenticationRequired: false });
     vi.mocked(confirm).mockResolvedValue(true);
     await invokeSubcommand(['role', 'delete', 'app-1', 'role-1'], {});
     expect(mockRoles.delete).toHaveBeenCalledWith('app-1', 'role-1');
@@ -371,12 +373,13 @@ describe('app role command', () => {
 
   it('assigns a permission', async () => {
     await invokeSubcommand(['role', 'assign-perm', 'app-1', 'role-1', 'perm-1'], {});
-    expect(mockRoles.assignPermission).toHaveBeenCalledWith('app-1', 'role-1', 'perm-1');
+    expect(mockRoles.assignPermissions).toHaveBeenCalledWith('app-1', 'role-1', ['perm-1']);
   });
 
   it('removes a permission', async () => {
+    mockRoles.removePermissions.mockResolvedValue({ reauthenticationRequired: false });
     await invokeSubcommand(['role', 'remove-perm', 'app-1', 'role-1', 'perm-1'], {});
-    expect(mockRoles.removePermission).toHaveBeenCalledWith('app-1', 'role-1', 'perm-1');
+    expect(mockRoles.removePermissions).toHaveBeenCalledWith('app-1', 'role-1', ['perm-1']);
   });
 });
 
@@ -385,7 +388,10 @@ describe('app permission command', () => {
 
   it('creates a permission', async () => {
     mockPermissions.create.mockResolvedValue(samplePerm);
-    await invokeSubcommand(['permission', 'create', 'app-1'], { name: 'Read Users' });
+    await invokeSubcommand(['permission', 'create', 'app-1'], {
+      name: 'Read Users',
+      slug: 'read-users',
+    });
     expect(mockPermissions.create).toHaveBeenCalledWith(
       'app-1',
       expect.objectContaining({ name: 'Read Users' }),
@@ -393,13 +399,14 @@ describe('app permission command', () => {
   });
 
   it('lists permissions', async () => {
-    mockPermissions.list.mockResolvedValue({ data: [samplePerm], total: 1 });
+    mockPermissions.list.mockResolvedValue([samplePerm]);
     await invokeSubcommand(['permission', 'list', 'app-1'], {});
     expect(printTable).toHaveBeenCalled();
   });
 
   it('deletes a permission', async () => {
     mockPermissions.get.mockResolvedValue(samplePerm);
+    mockPermissions.delete.mockResolvedValue({ reauthenticationRequired: false });
     vi.mocked(confirm).mockResolvedValue(true);
     await invokeSubcommand(['permission', 'delete', 'app-1', 'perm-1'], {});
     expect(mockPermissions.delete).toHaveBeenCalledWith('app-1', 'perm-1');
