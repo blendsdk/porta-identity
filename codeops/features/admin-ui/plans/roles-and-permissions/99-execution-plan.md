@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 23:42
-> **Progress**: 25/62 tasks (40%)
+> **Last Updated**: 2026-09-09 23:51
+> **Progress**: 26/62 tasks (42%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -119,7 +119,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 **Reference**: [03-03](03-03-sdk-cli-contracts.md) · AR-6–AR-7 · ST-25–ST-32
 
 - [x] 3.1.1 [spec-author] Write SDK runtime and type-contract specifications for complete arrays, permission update, user-role collection methods, and reduction results from ST-25–ST-29 — `packages/sdk/tests/domains/rbac-contracts.spec.test.ts`, `packages/sdk/tests/type-contracts/rbac-contracts.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json` ✅ (completed: 2026-09-09 23:42)
-- [ ] 3.1.2 [spec-author] Write SDK agent and conventional command specifications from ST-30–ST-32 — `packages/sdk/tests/agent/rbac-tools.spec.test.ts`, `packages/cli/tests/commands/rbac-contracts.spec.test.ts`
+- [x] 3.1.2 [spec-author] Write SDK agent and conventional command specifications from ST-30–ST-32 — `packages/sdk/tests/agent/rbac-tools.spec.test.ts`, `packages/cli/tests/commands/rbac-contracts.spec.test.ts` ✅ (completed: 2026-09-09 23:51; expected red: 4 agent and 4 CLI failures, all planned contract gaps)
 - [ ] 3.1.3 Run the Phase 3 specification files/type contract and record the expected red result before implementation
 
 ### Step 3.2: Implementation
