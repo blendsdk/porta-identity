@@ -730,6 +730,48 @@ export interface UserDeletionCapture {
 }
 
 /**
+ * Preserve another active exact Porta super administrator in the control plane.
+ *
+ * The organization row is the shared serialization point for user deletion and
+ * role removal. Non-control-plane organizations need no survivor check.
+ *
+ * @param organizationId - Organization whose control-plane row is locked
+ * @param excludedUserId - User being deleted or losing the exact role
+ * @throws UserValidationError when no other active exact holder remains
+ */
+export async function requireActiveSuperAdminSurvivor(
+  organizationId: string,
+  excludedUserId: string,
+): Promise<void> {
+  const pool = getPool();
+  const controlPlane = await pool.query<{ id: string }>(
+    `SELECT id FROM organizations
+     WHERE id = $1 AND is_super_admin = TRUE
+     FOR UPDATE`,
+    [organizationId],
+  );
+  if (!controlPlane.rows[0]) return;
+
+  const survivor = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM users candidate
+       JOIN user_roles assignment ON assignment.user_id = candidate.id
+       JOIN roles role ON role.id = assignment.role_id
+       JOIN applications application ON application.id = role.application_id
+       WHERE candidate.organization_id = $1
+         AND candidate.id <> $2
+         AND candidate.status = 'active'
+         AND role.slug = 'porta-super-admin'
+         AND application.slug = 'porta-admin'
+     ) AS exists`,
+    [organizationId, excludedUserId],
+  );
+  if (!survivor.rows[0]?.exists) {
+    throw new UserValidationError('Cannot remove the last active porta-super-admin user');
+  }
+}
+
+/**
  * Lock, protect, capture, and physically delete one organization-owned user.
  *
  * Control-plane deletions first serialize on the single control-plane
@@ -747,13 +789,6 @@ export async function deleteUserCapture(
   userId: string,
 ): Promise<UserDeletionCapture | null> {
   const pool = getPool();
-  const controlPlane = await pool.query<{ id: string }>(
-    `SELECT id FROM organizations
-     WHERE id = $1 AND is_super_admin = TRUE
-     FOR UPDATE`,
-    [organizationId],
-  );
-
   const target = await pool.query<UserRow>(
     `SELECT * FROM users
      WHERE organization_id = $1 AND id = $2
@@ -763,7 +798,7 @@ export async function deleteUserCapture(
   if (!target.rows[0]) return null;
   const user = mapRowToUser(target.rows[0]);
 
-  if (controlPlane.rows[0] && user.status === 'active') {
+  if (user.status === 'active') {
     const exactRole = await pool.query<{ assigned: boolean }>(
       `SELECT EXISTS(
          SELECT 1 FROM user_roles assignment
@@ -776,23 +811,7 @@ export async function deleteUserCapture(
       [userId],
     );
     if (exactRole.rows[0]?.assigned) {
-      const survivor = await pool.query<{ exists: boolean }>(
-        `SELECT EXISTS(
-           SELECT 1 FROM users candidate
-           JOIN user_roles assignment ON assignment.user_id = candidate.id
-           JOIN roles role ON role.id = assignment.role_id
-           JOIN applications application ON application.id = role.application_id
-           WHERE candidate.organization_id = $1
-             AND candidate.id <> $2
-             AND candidate.status = 'active'
-             AND role.slug = 'porta-super-admin'
-             AND application.slug = 'porta-admin'
-         ) AS exists`,
-        [organizationId, userId],
-      );
-      if (!survivor.rows[0]?.exists) {
-        throw new UserValidationError('Cannot delete the last active porta-super-admin user');
-      }
+      await requireActiveSuperAdminSurvivor(organizationId, userId);
     }
   }
 

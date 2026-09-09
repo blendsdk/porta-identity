@@ -25,18 +25,10 @@ export type {
 } from './types.js';
 
 // Row mappers
-export {
-  mapRowToRole,
-  mapRowToPermission,
-  mapRowToUserRole,
-} from './types.js';
+export { mapRowToRole, mapRowToPermission, mapRowToUserRole } from './types.js';
 
 // Error types
-export {
-  RoleNotFoundError,
-  PermissionNotFoundError,
-  RbacValidationError,
-} from './errors.js';
+export { RoleNotFoundError, PermissionNotFoundError, RbacValidationError } from './errors.js';
 
 // Slug utilities
 export {
@@ -78,6 +70,7 @@ export {
   assignRolesToUser,
   removeRolesFromUser,
   getUserRoles,
+  getUserRolesForAuthority,
   getUserPermissions,
   getUsersWithRole,
   buildRoleClaims,

@@ -4,20 +4,33 @@ import { pino, stdSerializers } from 'pino';
 export type OperationalLogObserver = (serializedArguments: string) => void;
 
 const operationalLogObservers = new Set<OperationalLogObserver>();
+let levelBeforeOperationalObservation: string | null = null;
 
 /**
  * Observe arguments delivered to the production logger boundary.
  *
  * This is intended for owner-controlled diagnostics and executable privacy validation. Observers
  * are process-local, receive no replay buffer, and must detach immediately after their bounded
- * operation. They cannot alter, suppress, or replace the actual log write.
+ * operation. While at least one observer is attached, the logger accepts every level so the
+ * observer can validate calls hidden by a quiet test configuration. The original level is restored
+ * after the final observer detaches. Observers cannot alter, suppress, or replace a log write.
  *
  * @param observer - Callback receiving one JSON representation per logger call.
  * @returns A function which removes exactly this observer.
  */
 export function observeOperationalLogOutput(observer: OperationalLogObserver): () => void {
+  if (operationalLogObservers.size === 0) {
+    levelBeforeOperationalObservation = logger.level;
+    logger.level = 'trace';
+  }
   operationalLogObservers.add(observer);
-  return () => operationalLogObservers.delete(observer);
+  return () => {
+    operationalLogObservers.delete(observer);
+    if (operationalLogObservers.size === 0 && levelBeforeOperationalObservation !== null) {
+      logger.level = levelBeforeOperationalObservation;
+      levelBeforeOperationalObservation = null;
+    }
+  };
 }
 
 const isProduction = process.env.NODE_ENV === 'production';

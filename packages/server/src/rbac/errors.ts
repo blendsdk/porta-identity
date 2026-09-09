@@ -43,3 +43,11 @@ export class RbacValidationError extends Error {
     this.name = 'RbacValidationError';
   }
 }
+
+/** Thrown when an administrator attempts to delegate authority they do not hold. */
+export class RoleDelegationError extends Error {
+  constructor() {
+    super('Role assignment exceeds the actor capability boundary');
+    this.name = 'RoleDelegationError';
+  }
+}

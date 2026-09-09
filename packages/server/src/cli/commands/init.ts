@@ -223,9 +223,10 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         const { createClient } = await import('../../clients/index.js');
         const { createUser, activateUser, markEmailVerified } =
           await import('../../users/index.js');
-        const { createRole, assignRolesToUser } = await import('../../rbac/index.js');
+        const { createRole } = await import('../../rbac/index.js');
         const { insertPermission } = await import('../../rbac/permission-repository.js');
-        const { assignPermissionsToRole } = await import('../../rbac/mapping-repository.js');
+        const { assignPermissionsToRole, assignRolesToUser } =
+          await import('../../rbac/mapping-repository.js');
         const { ensureSigningKeys } = await import('../../lib/signing-keys.js');
         const { getPool } = await import('../../lib/database.js');
 
@@ -389,7 +390,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         if (!superAdminRoleId) {
           throw new Error('Super-admin role was not created — init is broken');
         }
-        await assignRolesToUser(adminUser.id, [superAdminRoleId]);
+        await assignRolesToUser(superAdminOrg.id, adminUser.id, [superAdminRoleId], adminUser.id);
         console.log(`  ✅ Role "${ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug}" assigned to user`);
 
         // -----------------------------------------------------------------

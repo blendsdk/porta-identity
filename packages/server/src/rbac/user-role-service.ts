@@ -18,10 +18,27 @@ import {
   getRolesForUser as repoGetRolesForUser,
   getPermissionsForUser as repoGetPermissionsForUser,
   getUsersWithRole as repoGetUsersWithRole,
+  getRolesForOrganizationUser,
+  getPermissionsForOrganizationUser,
+  lockUserRoleTargets,
 } from './mapping-repository.js';
-import { invalidateUserRbacCache } from './cache.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Role, Permission, UserRole } from './types.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerAuthorityCleanup } from '../lib/deletion-cleanup.js';
+import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
+import { getApplicationBySlug } from '../applications/service.js';
+import {
+  ADMIN_ROLE_DEFINITIONS,
+  getPermissionsForAdminRole,
+  resolvePermissionsFromRoles,
+} from '../lib/admin-permissions.js';
+import { RoleDelegationError, RoleNotFoundError } from './errors.js';
+import { UserNotFoundError } from '../users/errors.js';
+import { requireActiveSuperAdminSurvivor } from '../users/repository.js';
+
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
 
 // ---------------------------------------------------------------------------
 // Assignment management
@@ -33,21 +50,32 @@ import type { Role, Permission, UserRole } from './types.js';
  * Uses ON CONFLICT DO NOTHING for idempotent assignment. Invalidates
  * the user's RBAC cache since their effective permissions may change.
  *
+ * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
  * @param roleIds - Array of role UUIDs to assign
- * @param assignedBy - Optional UUID of the admin performing the assignment
+ * @param assignedBy - UUID of the admin performing the assignment
  */
 export async function assignRolesToUser(
+  organizationId: string,
   userId: string,
   roleIds: string[],
-  assignedBy?: string,
+  assignedBy: string,
 ): Promise<void> {
   if (roleIds.length === 0) return;
+  if (!getDatabaseTransactionClient()) {
+    throw new Error('User role assignment requires an active database transaction');
+  }
+  const targets = await requireUserRoleTargets(organizationId, userId, roleIds);
+  await requireDelegableRoles(targets.roles, assignedBy, targets.adminApplicationId);
 
-  await repoAssignRoles(userId, roleIds, assignedBy);
-
-  // Invalidate user's cached roles and permissions
-  await invalidateUserRbacCache(userId);
+  const insertedRoleIds = await repoAssignRoles(organizationId, userId, roleIds, assignedBy);
+  if (insertedRoleIds.length === 0) return;
+  await registerAuthorityCleanup({
+    userIds: [userId],
+    grantIds: [],
+    roleIds: [],
+    revokeOidcState: false,
+  });
 
   // Audit log (fire-and-forget)
   void writeAuditLog({
@@ -55,7 +83,7 @@ export async function assignRolesToUser(
     eventCategory: 'admin',
     userId,
     actorId: assignedBy,
-    metadata: { roleIds },
+    metadata: { organizationId, roleIds: insertedRoleIds },
   });
 }
 
@@ -65,30 +93,54 @@ export async function assignRolesToUser(
  * Invalidates the user's RBAC cache since their effective permissions
  * may change.
  *
+ * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
  * @param roleIds - Array of role UUIDs to remove
- * @param actorId - Optional UUID of the admin performing the action
+ * @param actorId - UUID of the admin performing the action
+ * @returns Whether the actor must authenticate again
  */
 export async function removeRolesFromUser(
+  organizationId: string,
   userId: string,
   roleIds: string[],
-  actorId?: string,
-): Promise<void> {
-  if (roleIds.length === 0) return;
+  actorId: string,
+): Promise<{ reauthenticationRequired: boolean }> {
+  if (roleIds.length === 0) return { reauthenticationRequired: false };
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) {
+    throw new Error('User role removal requires an active database transaction');
+  }
+  const targets = await requireUserRoleTargets(organizationId, userId, roleIds);
+  if (targets.assignedRoleIds.length === 0) return { reauthenticationRequired: false };
 
-  await repoRemoveRoles(userId, roleIds);
+  const removesExactSuperAdmin = targets.roles.some(
+    (role) =>
+      targets.assignedRoleIds.includes(role.id) &&
+      role.applicationId === targets.adminApplicationId &&
+      role.slug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
+  );
+  if (targets.user.status === 'active' && removesExactSuperAdmin) {
+    await requireActiveSuperAdminSurvivor(organizationId, userId);
+  }
 
-  // Invalidate user's cached roles and permissions
-  await invalidateUserRbacCache(userId);
-
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
+  const revoked = await revokeAffectedAuthorityInTransaction([userId]);
+  const removedRoleIds = await repoRemoveRoles(organizationId, userId, [
+    ...targets.assignedRoleIds,
+  ]);
+  await writeAuditLogInTransaction(transaction, {
     eventType: 'user.roles.removed',
     eventCategory: 'admin',
     userId,
     actorId,
-    metadata: { roleIds },
+    metadata: { organizationId, roleIds: removedRoleIds },
   });
+  await registerAuthorityCleanup({
+    userIds: [userId],
+    grantIds: revoked.grantIds,
+    roleIds: [],
+    revokeOidcState: true,
+  });
+  return { reauthenticationRequired: actorId === userId };
 }
 
 // ---------------------------------------------------------------------------
@@ -98,21 +150,31 @@ export async function removeRolesFromUser(
 /**
  * Get all roles assigned to a user.
  *
+ * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
  * @returns Array of Role objects
  */
-export async function getUserRoles(userId: string): Promise<Role[]> {
+export async function getUserRoles(organizationId: string, userId: string): Promise<Role[]> {
+  return getRolesForOrganizationUser(organizationId, userId);
+}
+
+/** Read all roles for internal authority resolution without a route parent. */
+export async function getUserRolesForAuthority(userId: string): Promise<Role[]> {
   return repoGetRolesForUser(userId);
 }
 
 /**
  * Get all permissions for a user (resolved through roles).
  *
+ * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
  * @returns Deduplicated array of Permission objects
  */
-export async function getUserPermissions(userId: string): Promise<Permission[]> {
-  return repoGetPermissionsForUser(userId);
+export async function getUserPermissions(
+  organizationId: string,
+  userId: string,
+): Promise<Permission[]> {
+  return getPermissionsForOrganizationUser(organizationId, userId);
 }
 
 /**
@@ -120,12 +182,14 @@ export async function getUserPermissions(userId: string): Promise<Permission[]> 
  *
  * Supports pagination for admin UI views.
  *
+ * @param applicationId - Authoritative application UUID
  * @param roleId - Role UUID
  * @param orgId - Organization UUID
  * @param options - Pagination options
  * @returns Paginated user-role assignments and total count
  */
 export async function getUsersWithRole(
+  applicationId: string,
   roleId: string,
   orgId: string,
   options?: { page?: number; pageSize?: number },
@@ -133,7 +197,59 @@ export async function getUsersWithRole(
   const page = options?.page ?? 1;
   const pageSize = options?.pageSize ?? 20;
 
-  return repoGetUsersWithRole(roleId, orgId, page, pageSize);
+  return repoGetUsersWithRole(applicationId, roleId, orgId, page, pageSize);
+}
+
+/** Locked and validated targets used by one user-role mutation. */
+interface ValidatedUserRoleTargets {
+  readonly user: { readonly id: string; readonly status: string };
+  readonly roles: readonly Role[];
+  readonly assignedRoleIds: readonly string[];
+  readonly adminApplicationId: string | null;
+}
+
+/** Lock the target user and every requested role, then reject missing records. */
+async function requireUserRoleTargets(
+  organizationId: string,
+  userId: string,
+  roleIds: readonly string[],
+): Promise<ValidatedUserRoleTargets> {
+  const requestedRoleIds = [...new Set(roleIds)].sort();
+  const targets = await lockUserRoleTargets(organizationId, userId, requestedRoleIds);
+  if (!targets.user) throw new UserNotFoundError(userId);
+  if (targets.roles.length !== requestedRoleIds.length) {
+    const found = new Set(targets.roles.map((role) => role.id));
+    const missing = requestedRoleIds.find((roleId) => !found.has(roleId));
+    throw new RoleNotFoundError(missing ?? 'requested role');
+  }
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  return {
+    user: targets.user,
+    roles: targets.roles,
+    assignedRoleIds: targets.assignedRoleIds,
+    adminApplicationId: adminApplication?.id ?? null,
+  };
+}
+
+/** Enforce the static capability ceiling for canonical Admin role assignments. */
+async function requireDelegableRoles(
+  roles: readonly Role[],
+  actorId: string,
+  adminApplicationId: string | null,
+): Promise<void> {
+  if (adminApplicationId === null) return;
+  const requestedCapabilities = roles
+    .filter((role) => role.applicationId === adminApplicationId)
+    .flatMap((role) => getPermissionsForAdminRole(role.slug));
+  if (requestedCapabilities.length === 0) return;
+
+  const actorRoles = await repoGetRolesForUser(actorId, adminApplicationId);
+  const actorCapabilities = new Set(
+    resolvePermissionsFromRoles(actorRoles.map((role) => role.slug)),
+  );
+  if (requestedCapabilities.some((capability) => !actorCapabilities.has(capability))) {
+    throw new RoleDelegationError();
+  }
 }
 
 // ---------------------------------------------------------------------------

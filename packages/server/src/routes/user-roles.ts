@@ -23,15 +23,10 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
-import { ADMIN_PERMISSIONS, getPermissionsForAdminRole } from '../lib/admin-permissions.js';
-import { guardSuperAdmin } from '../lib/super-admin-protection.js';
+import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as userRoleService from '../rbac/user-role-service.js';
-import * as roleService from '../rbac/role-service.js';
-import { getApplicationBySlug } from '../applications/service.js';
-import { RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
-
-/** Immutable slug of the application that owns Porta's control-plane roles. */
-const ADMIN_APPLICATION_SLUG = 'porta-admin';
+import { RoleDelegationError, RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
+import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -57,6 +52,15 @@ function handleError(
   if (err instanceof RoleNotFoundError) {
     ctx.throw(404, 'Role not found');
   }
+  if (err instanceof UserNotFoundError) {
+    ctx.throw(404, 'User not found');
+  }
+  if (err instanceof RoleDelegationError) {
+    ctx.throw(403, 'Role assignment is not permitted');
+  }
+  if (err instanceof UserValidationError) {
+    ctx.throw(409, 'At least one active super administrator is required');
+  }
   if (err instanceof RbacValidationError) {
     ctx.throw(400, 'Role assignment request is invalid');
   }
@@ -66,41 +70,6 @@ function handleError(
     return undefined as never;
   }
   throw err;
-}
-
-/**
- * Reject assignment of a canonical Admin role that contains authority the actor does not hold.
- * Ordinary application roles are unaffected because they have no Porta Admin significance.
- *
- * @param roleIds - Requested role identifiers.
- * @param actorPermissions - Static capabilities held by the authenticated administrator.
- * @returns `true` when every canonical target capability is held by the actor.
- * @throws RoleNotFoundError when a requested role does not exist.
- * @throws RbacValidationError when the canonical Admin application is unavailable.
- */
-async function requireDelegableRoles(
-  roleIds: string[],
-  actorPermissions: readonly string[],
-): Promise<boolean> {
-  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
-  if (!adminApplication) {
-    throw new RbacValidationError('Role assignment request is invalid');
-  }
-
-  const actorCapabilitySet = new Set(actorPermissions);
-  const roles = await Promise.all(roleIds.map((roleId) => roleService.findRoleById(roleId)));
-
-  for (let index = 0; index < roles.length; index += 1) {
-    const role = roles[index];
-    if (!role) throw new RoleNotFoundError(roleIds[index]);
-    if (role.applicationId !== adminApplication.id) continue;
-
-    const targetCapabilities = getPermissionsForAdminRole(role.slug);
-    if (targetCapabilities.some((capability) => !actorCapabilitySet.has(capability))) {
-      return false;
-    }
-  }
-  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -133,7 +102,7 @@ export function createUserRoleRouter(): Router {
     requireUserOrganization(),
     async (ctx) => {
       try {
-        const roles = await userRoleService.getUserRoles(ctx.params.userId);
+        const roles = await userRoleService.getUserRoles(ctx.params.orgId, ctx.params.userId);
         ctx.body = { data: roles };
       } catch (err) {
         handleError(ctx, err);
@@ -156,10 +125,12 @@ export function createUserRoleRouter(): Router {
           ctx.throw(401, 'Authentication required');
           return;
         }
-        if (!(await requireDelegableRoles(body.roleIds, actor.permissions))) {
-          ctx.throw(403, 'Role assignment is not permitted');
-        }
-        await userRoleService.assignRolesToUser(ctx.params.userId, body.roleIds, actor.id);
+        await userRoleService.assignRolesToUser(
+          ctx.params.orgId,
+          ctx.params.userId,
+          body.roleIds,
+          actor.id,
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -177,9 +148,19 @@ export function createUserRoleRouter(): Router {
     async (ctx) => {
       try {
         const body = roleIdsSchema.parse(ctx.request.body);
-        await guardSuperAdmin(ctx.params.userId, 'remove-super-admin-role');
-        await userRoleService.removeRolesFromUser(ctx.params.userId, body.roleIds);
-        ctx.status = 204;
+        const actor = ctx.state.adminUser;
+        if (!actor) {
+          ctx.throw(401, 'Authentication required');
+          return;
+        }
+        const result = await userRoleService.removeRolesFromUser(
+          ctx.params.orgId,
+          ctx.params.userId,
+          body.roleIds,
+          actor.id,
+        );
+        ctx.status = 200;
+        ctx.body = { data: result };
       } catch (err) {
         handleError(ctx, err);
       }
@@ -196,7 +177,10 @@ export function createUserRoleRouter(): Router {
     requireUserOrganization(),
     async (ctx) => {
       try {
-        const permissions = await userRoleService.getUserPermissions(ctx.params.userId);
+        const permissions = await userRoleService.getUserPermissions(
+          ctx.params.orgId,
+          ctx.params.userId,
+        );
         ctx.body = { data: permissions };
       } catch (err) {
         handleError(ctx, err);

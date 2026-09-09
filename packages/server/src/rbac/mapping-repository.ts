@@ -260,35 +260,34 @@ export async function getRolesWithPermission(
  * already-assigned roles are silently skipped. Tracks who performed
  * the assignment via the optional assignedBy parameter.
  *
+ * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
  * @param roleIds - Array of role UUIDs to assign
  * @param assignedBy - Optional UUID of the admin who performed the assignment
+ * @returns Role IDs inserted by this call
  */
 export async function assignRolesToUser(
+  organizationId: string,
   userId: string,
   roleIds: string[],
   assignedBy?: string,
-): Promise<void> {
-  if (roleIds.length === 0) return;
+): Promise<string[]> {
+  if (roleIds.length === 0) return [];
 
   const pool = getPool();
-
-  // Build parameterized VALUES list
-  // $1 = userId, $2 = assignedBy (or null), subsequent params = roleIds
-  const valuesList: string[] = [];
-  const params: unknown[] = [userId, assignedBy ?? null];
-
-  for (let i = 0; i < roleIds.length; i++) {
-    params.push(roleIds[i]);
-    valuesList.push(`($1, $${i + 3}, $2)`);
-  }
-
-  await pool.query(
+  const result = await pool.query<{ role_id: string }>(
     `INSERT INTO user_roles (user_id, role_id, assigned_by)
-     VALUES ${valuesList.join(', ')}
-     ON CONFLICT DO NOTHING`,
-    params,
+     SELECT target.id, role.id, $4
+     FROM users target
+     CROSS JOIN roles role
+     WHERE target.organization_id = $1
+       AND target.id = $2
+       AND role.id = ANY($3::uuid[])
+     ON CONFLICT DO NOTHING
+     RETURNING role_id`,
+    [organizationId, userId, roleIds, assignedBy ?? null],
   );
+  return result.rows.map((row) => row.role_id);
 }
 
 /**
@@ -297,22 +296,132 @@ export async function assignRolesToUser(
  * Silently succeeds if any of the role IDs are not currently
  * assigned to the user.
  *
+ * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
  * @param roleIds - Array of role UUIDs to remove
+ * @returns Role IDs removed by this call
  */
-export async function removeRolesFromUser(userId: string, roleIds: string[]): Promise<void> {
-  if (roleIds.length === 0) return;
+export async function removeRolesFromUser(
+  organizationId: string,
+  userId: string,
+  roleIds: string[],
+): Promise<string[]> {
+  if (roleIds.length === 0) return [];
 
   const pool = getPool();
-
-  // Build parameterized IN list: $2, $3, $4, ...
-  const placeholders = roleIds.map((_, i) => `$${i + 2}`).join(', ');
-  const params: unknown[] = [userId, ...roleIds];
-
-  await pool.query(
-    `DELETE FROM user_roles WHERE user_id = $1 AND role_id IN (${placeholders})`,
-    params,
+  const result = await pool.query<{ role_id: string }>(
+    `DELETE FROM user_roles assignment
+     USING users target, roles role
+     WHERE assignment.user_id = target.id
+       AND assignment.role_id = role.id
+       AND target.organization_id = $1
+       AND target.id = $2
+       AND role.id = ANY($3::uuid[])
+     RETURNING assignment.role_id`,
+    [organizationId, userId, roleIds],
   );
+  return result.rows.map((row) => row.role_id);
+}
+
+/** Locked user and role records for one organization-scoped assignment request. */
+export interface LockedUserRoleTargets {
+  /** Target user when it belongs to the route organization. */
+  readonly user: { readonly id: string; readonly status: string } | null;
+  /** Requested roles found in PostgreSQL, ordered by UUID. */
+  readonly roles: readonly Role[];
+  /** Requested role IDs currently assigned to the user, ordered by UUID. */
+  readonly assignedRoleIds: readonly string[];
+}
+
+/**
+ * Lock one organization-owned user and requested roles before an assignment change.
+ *
+ * Role IDs are de-duplicated and sorted before locking. The returned collections
+ * let the service reject unknown targets atomically and distinguish removals from
+ * idempotent no-ops.
+ *
+ * @param organizationId - Authoritative organization UUID
+ * @param userId - User UUID beneath the organization
+ * @param roleIds - Role UUIDs in the assignment request
+ * @returns Locked target records and current direct assignments
+ */
+export async function lockUserRoleTargets(
+  organizationId: string,
+  userId: string,
+  roleIds: readonly string[],
+): Promise<LockedUserRoleTargets> {
+  const pool = getPool();
+  const userResult = await pool.query<{ id: string; status: string }>(
+    `SELECT id, status FROM users
+     WHERE organization_id = $1 AND id = $2
+     FOR UPDATE`,
+    [organizationId, userId],
+  );
+  if (!userResult.rows[0]) return { user: null, roles: [], assignedRoleIds: [] };
+
+  const orderedRoleIds = [...new Set(roleIds)].sort();
+  if (orderedRoleIds.length === 0) {
+    return { user: userResult.rows[0], roles: [], assignedRoleIds: [] };
+  }
+  const roleResult = await pool.query<RoleRow>(
+    `SELECT * FROM roles
+     WHERE id = ANY($1::uuid[])
+     ORDER BY id
+     FOR UPDATE`,
+    [orderedRoleIds],
+  );
+  const assignmentResult = await pool.query<{ role_id: string }>(
+    `SELECT assignment.role_id
+     FROM user_roles assignment
+     JOIN users target ON target.id = assignment.user_id
+     WHERE target.organization_id = $1
+       AND target.id = $2
+       AND assignment.role_id = ANY($3::uuid[])
+     ORDER BY assignment.role_id`,
+    [organizationId, userId, orderedRoleIds],
+  );
+  return {
+    user: userResult.rows[0],
+    roles: roleResult.rows.map(mapRowToRole),
+    assignedRoleIds: assignmentResult.rows.map((row) => row.role_id),
+  };
+}
+
+/** List roles for a user only when the user belongs to the route organization. */
+export async function getRolesForOrganizationUser(
+  organizationId: string,
+  userId: string,
+): Promise<Role[]> {
+  const result = await getPool().query<RoleRow>(
+    `SELECT role.*
+     FROM users target
+     JOIN user_roles assignment ON assignment.user_id = target.id
+     JOIN roles role ON role.id = assignment.role_id
+     WHERE target.organization_id = $1 AND target.id = $2
+     ORDER BY role.name ASC`,
+    [organizationId, userId],
+  );
+  return result.rows.map(mapRowToRole);
+}
+
+/** List same-application permissions for an organization-owned user. */
+export async function getPermissionsForOrganizationUser(
+  organizationId: string,
+  userId: string,
+): Promise<Permission[]> {
+  const result = await getPool().query<PermissionRow>(
+    `SELECT DISTINCT permission.*
+     FROM users target
+     JOIN user_roles assignment ON assignment.user_id = target.id
+     JOIN roles role ON role.id = assignment.role_id
+     JOIN role_permissions mapping ON mapping.role_id = role.id
+     JOIN permissions permission ON permission.id = mapping.permission_id
+       AND permission.application_id = role.application_id
+     WHERE target.organization_id = $1 AND target.id = $2
+     ORDER BY permission.slug ASC`,
+    [organizationId, userId],
+  );
+  return result.rows.map(mapRowToPermission);
 }
 
 /**
@@ -369,7 +478,7 @@ export async function getPermissionsForUser(
      FROM user_roles ur
      JOIN roles r ON r.id = ur.role_id
      JOIN role_permissions rp ON rp.role_id = ur.role_id
-     JOIN permissions p ON p.id = rp.permission_id
+     JOIN permissions p ON p.id = rp.permission_id AND p.application_id = r.application_id
      WHERE ur.user_id = $1${applicationFilter}
      ORDER BY p.slug ASC`,
     params,

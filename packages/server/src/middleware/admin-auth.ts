@@ -30,7 +30,7 @@ import type { Middleware } from 'koa';
 import type { Organization } from '../organizations/types.js';
 import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
-import { getUserRoles } from '../rbac/user-role-service.js';
+import { getUserRolesForAuthority } from '../rbac/user-role-service.js';
 import { getApplicationBySlug } from '../applications/service.js';
 import { logger } from '../lib/logger.js';
 import {
@@ -289,7 +289,7 @@ export function requireAdminAuth(): Middleware {
       return;
     }
 
-    const userRoles = await getUserRoles(userId);
+    const userRoles = await getUserRolesForAuthority(userId);
     const adminRoleSlugs = userRoles
       .filter(
         (role) =>
