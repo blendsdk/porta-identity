@@ -298,8 +298,8 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'roles.list',
     description: 'List roles for an application',
-    parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS],
-    returns: 'PaginatedResponse<Role>',
+    parameters: [ID('appId', 'Application ID')],
+    returns: 'Role[]',
   },
   {
     name: 'roles.get',
@@ -323,15 +323,15 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'roles.delete',
     description: 'Permanently delete a role',
     parameters: [ID('appId', 'Application ID'), ID('roleId', 'Role ID')],
-    returns: 'void',
+    returns: '{ reauthenticationRequired: boolean }',
   },
 
   // Permissions
   {
     name: 'permissions.list',
     description: 'List permissions for an application',
-    parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS],
-    returns: 'PaginatedResponse<Permission>',
+    parameters: [ID('appId', 'Application ID'), OPT_OBJ('params', '{ moduleId?: string }')],
+    returns: 'Permission[]',
   },
   {
     name: 'permissions.create',
@@ -340,30 +340,48 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     returns: 'Permission',
   },
   {
+    name: 'permissions.update',
+    description: 'Update permission metadata',
+    parameters: [
+      ID('appId', 'Application ID'),
+      ID('permissionId', 'Permission ID'),
+      OBJ('input', 'UpdatePermissionInput'),
+    ],
+    returns: 'Permission',
+  },
+  {
     name: 'permissions.delete',
     description: 'Permanently delete a permission',
     parameters: [ID('appId', 'Application ID'), ID('permissionId', 'Permission ID')],
-    returns: 'void',
+    returns: '{ reauthenticationRequired: boolean }',
   },
 
   // User Roles
   {
     name: 'userRoles.list',
-    description: 'List role assignments for a user',
+    description: 'List roles assigned to a user',
     parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
-    returns: 'UserRoleAssignment[]',
+    returns: 'Role[]',
   },
   {
     name: 'userRoles.assign',
-    description: 'Assign a role to a user',
-    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), ID('roleId', 'Role ID')],
+    description: 'Assign roles to a user',
+    parameters: [
+      ID('orgId', 'Organization ID'),
+      ID('userId', 'User ID'),
+      OBJ('roleIds', 'Role ID array'),
+    ],
     returns: 'void',
   },
   {
     name: 'userRoles.remove',
-    description: 'Remove a role from a user',
-    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID'), ID('roleId', 'Role ID')],
-    returns: 'void',
+    description: 'Remove roles from a user',
+    parameters: [
+      ID('orgId', 'Organization ID'),
+      ID('userId', 'User ID'),
+      OBJ('roleIds', 'Role ID array'),
+    ],
+    returns: '{ reauthenticationRequired: boolean }',
   },
 
   // Custom Claims
