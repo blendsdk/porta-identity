@@ -36,8 +36,8 @@ import { createRoleRouter } from '../../../src/routes/roles.js';
 /** Standard test role */
 function createTestRole(overrides: Partial<Role> = {}): Role {
   return {
-    id: 'role-uuid-1',
-    applicationId: 'app-uuid-1',
+    id: '20000000-0000-4000-8000-000000000001',
+    applicationId: '10000000-0000-4000-8000-000000000001',
     name: 'Editor',
     slug: 'editor',
     description: 'Can edit content',
@@ -50,8 +50,8 @@ function createTestRole(overrides: Partial<Role> = {}): Role {
 /** Standard test permission */
 function createTestPermission(overrides: Partial<Permission> = {}): Permission {
   return {
-    id: 'perm-uuid-1',
-    applicationId: 'app-uuid-1',
+    id: '30000000-0000-4000-8000-000000000001',
+    applicationId: '10000000-0000-4000-8000-000000000001',
     moduleId: null,
     name: 'Read Contacts',
     slug: 'crm:contacts:read',
@@ -91,7 +91,10 @@ function createMockCtx(
     set body(v: unknown) {
       responseBody = v;
     },
-    state: { organization: { isSuperAdmin: true } },
+    state: {
+      organization: { isSuperAdmin: true },
+      adminUser: { id: 'actor-uuid-1' },
+    },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
       err.status = status;
@@ -142,22 +145,28 @@ describe('role routes', () => {
       expect(layer).toBeDefined();
 
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1' },
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
         body: { name: 'Editor' },
       });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(201);
       expect(ctx.body).toEqual({ data: role });
-      expect(roleService.createRole).toHaveBeenCalledWith({
-        applicationId: 'app-uuid-1',
-        name: 'Editor',
-      });
+      expect(roleService.createRole).toHaveBeenCalledWith(
+        {
+          applicationId: '10000000-0000-4000-8000-000000000001',
+          name: 'Editor',
+        },
+        'actor-uuid-1',
+      );
     });
 
     it('should return 400 for invalid input (missing name)', async () => {
       const layer = findLayer(createRoleRouter(), 'POST', '');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1' }, body: {} });
+      const ctx = createMockCtx({
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
+        body: {},
+      });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
@@ -171,7 +180,7 @@ describe('role routes', () => {
 
       const layer = findLayer(createRoleRouter(), 'POST', '');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1' },
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
         body: { name: 'Editor' },
       });
 
@@ -189,18 +198,20 @@ describe('role routes', () => {
       vi.mocked(roleService.listRolesByApplication).mockResolvedValue(roles);
 
       const layer = findLayer(createRoleRouter(), 'GET', '');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1' } });
+      const ctx = createMockCtx({ params: { appId: '10000000-0000-4000-8000-000000000001' } });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: roles });
-      expect(roleService.listRolesByApplication).toHaveBeenCalledWith('app-uuid-1');
+      expect(roleService.listRolesByApplication).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+      );
     });
 
     it('should return empty array when no roles exist', async () => {
       vi.mocked(roleService.listRolesByApplication).mockResolvedValue([]);
 
       const layer = findLayer(createRoleRouter(), 'GET', '');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1' } });
+      const ctx = createMockCtx({ params: { appId: '10000000-0000-4000-8000-000000000001' } });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: [] });
@@ -217,7 +228,12 @@ describe('role routes', () => {
       vi.mocked(roleService.findRoleById).mockResolvedValue(role);
 
       const layer = findLayer(createRoleRouter(), 'GET', '/:roleId');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' } });
+      const ctx = createMockCtx({
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
+      });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: role });
@@ -227,7 +243,12 @@ describe('role routes', () => {
       vi.mocked(roleService.findRoleById).mockResolvedValue(null);
 
       const layer = findLayer(createRoleRouter(), 'GET', '/:roleId');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1', roleId: 'nonexistent' } });
+      const ctx = createMockCtx({
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '90000000-0000-4000-8000-000000000001',
+        },
+      });
 
       await expect(execHandler(layer!, ctx)).rejects.toThrow('Role not found');
     });
@@ -240,25 +261,39 @@ describe('role routes', () => {
   describe('PUT /:roleId — Update role', () => {
     it('should return updated role', async () => {
       const role = createTestRole({ name: 'Updated' });
-      vi.mocked(roleService.updateRole).mockResolvedValue(role);
+      const result = { role, reauthenticationRequired: false };
+      vi.mocked(roleService.updateRole).mockResolvedValue(result);
 
       const layer = findLayer(createRoleRouter(), 'PUT', '/:roleId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
         body: { name: 'Updated' },
       });
       await execHandler(layer!, ctx);
 
-      expect(ctx.body).toEqual({ data: role });
-      expect(roleService.updateRole).toHaveBeenCalledWith('role-uuid-1', { name: 'Updated' });
+      expect(ctx.body).toEqual({ data: result });
+      expect(roleService.updateRole).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+        '20000000-0000-4000-8000-000000000001',
+        { name: 'Updated' },
+        'actor-uuid-1',
+      );
     });
 
     it('should throw 404 when role not found', async () => {
-      vi.mocked(roleService.updateRole).mockRejectedValue(new RoleNotFoundError('nonexistent'));
+      vi.mocked(roleService.updateRole).mockRejectedValue(
+        new RoleNotFoundError('90000000-0000-4000-8000-000000000001'),
+      );
 
       const layer = findLayer(createRoleRouter(), 'PUT', '/:roleId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'nonexistent' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '90000000-0000-4000-8000-000000000001',
+        },
         body: { name: 'Test' },
       });
 
@@ -271,8 +306,9 @@ describe('role routes', () => {
   // -------------------------------------------------------------------------
 
   describe('DELETE /:roleId — Delete role', () => {
-    it('should return 204 on successful delete', async () => {
-      vi.mocked(roleService.deleteRole).mockResolvedValue(undefined);
+    it('should return the committed reduction result on successful delete', async () => {
+      const result = { reauthenticationRequired: false };
+      vi.mocked(roleService.deleteRole).mockResolvedValue(result);
 
       const layer = findLayer(createRoleRouter(), 'DELETE', '/:roleId');
       const ctx = createMockCtx({
@@ -283,11 +319,12 @@ describe('role routes', () => {
       });
       await execHandler(layer!, ctx);
 
-      expect(ctx.status).toBe(204);
+      expect(ctx.status).toBe(200);
+      expect(ctx.body).toEqual({ data: result });
       expect(roleService.deleteRole).toHaveBeenCalledWith(
         '10000000-0000-4000-8000-000000000001',
         '10000000-0000-4000-8000-000000000002',
-        undefined,
+        'actor-uuid-1',
       );
     });
   });
@@ -303,7 +340,10 @@ describe('role routes', () => {
 
       const layer = findLayer(createRoleRouter(), 'GET', '/:roleId/permissions');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
       });
       await execHandler(layer!, ctx);
 
@@ -321,8 +361,11 @@ describe('role routes', () => {
 
       const layer = findLayer(createRoleRouter(), 'PUT', '/:roleId/permissions');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
-        body: { permissionIds: ['perm-uuid-1'] },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
+        body: { permissionIds: ['30000000-0000-4000-8000-000000000001'] },
       });
 
       // permissionIds must be valid UUIDs for Zod validation (version 4, variant 1)
@@ -335,7 +378,10 @@ describe('role routes', () => {
     it('should return 400 for invalid permission IDs (not UUIDs)', async () => {
       const layer = findLayer(createRoleRouter(), 'PUT', '/:roleId/permissions');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
         body: { permissionIds: ['not-a-uuid'] },
       });
       await execHandler(layer!, ctx);
@@ -347,7 +393,10 @@ describe('role routes', () => {
     it('should return 400 for empty permissions array', async () => {
       const layer = findLayer(createRoleRouter(), 'PUT', '/:roleId/permissions');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
         body: { permissionIds: [] },
       });
       await execHandler(layer!, ctx);
@@ -361,17 +410,28 @@ describe('role routes', () => {
   // -------------------------------------------------------------------------
 
   describe('DELETE /:roleId/permissions — Remove permissions', () => {
-    it('should return 204 on successful removal', async () => {
-      vi.mocked(roleService.removePermissionsFromRole).mockResolvedValue(undefined);
+    it('should return the committed reduction result on successful removal', async () => {
+      const result = { reauthenticationRequired: false };
+      vi.mocked(roleService.removePermissionsFromRole).mockResolvedValue(result);
 
       const layer = findLayer(createRoleRouter(), 'DELETE', '/:roleId/permissions');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
         body: { permissionIds: ['a0000000-0000-4000-a000-000000000001'] },
       });
       await execHandler(layer!, ctx);
 
-      expect(ctx.status).toBe(204);
+      expect(ctx.status).toBe(200);
+      expect(ctx.body).toEqual({ data: result });
+      expect(roleService.removePermissionsFromRole).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+        '20000000-0000-4000-8000-000000000001',
+        ['a0000000-0000-4000-a000-000000000001'],
+        'actor-uuid-1',
+      );
     });
   });
 
@@ -383,7 +443,12 @@ describe('role routes', () => {
     it('should return paginated user list', async () => {
       const result = {
         rows: [
-          { userId: 'user-1', roleId: 'role-uuid-1', assignedBy: null, createdAt: new Date() },
+          {
+            userId: 'user-1',
+            roleId: '20000000-0000-4000-8000-000000000001',
+            assignedBy: null,
+            createdAt: new Date(),
+          },
         ] as UserRole[],
         total: 1,
       };
@@ -391,7 +456,10 @@ describe('role routes', () => {
 
       const layer = findLayer(createRoleRouter(), 'GET', '/:roleId/users');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
         query: { orgId: 'a0000000-0000-4000-a000-000000000001' },
       });
       await execHandler(layer!, ctx);
@@ -402,7 +470,10 @@ describe('role routes', () => {
     it('should return 400 when orgId is missing', async () => {
       const layer = findLayer(createRoleRouter(), 'GET', '/:roleId/users');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', roleId: 'role-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          roleId: '20000000-0000-4000-8000-000000000001',
+        },
         query: {},
       });
       await execHandler(layer!, ctx);
