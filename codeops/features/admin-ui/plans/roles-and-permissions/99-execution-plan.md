@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 01:01
-> **Progress**: 37/62 tasks (60%)
+> **Last Updated**: 2026-09-10 01:03
+> **Progress**: 38/62 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -154,7 +154,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 **Reference**: [03-04 §§Application Tabs–Layout and Validation](03-04-admin-ui.md#application-tabs) · AR-5, AR-10, AR-13–AR-16, AR-19 · ST-33–ST-38, ST-41–ST-44
 
 - [x] 4.1.1 [spec-author] Write Application tab order, empty grids, capability/selection, dialogs, direct mappings, reauthentication, stale/error state, and compact-layout specifications — `packages/cli/tests/admin/application-rbac.spec.test.ts` ✅ (completed: 2026-09-10 01:01)
-- [ ] 4.1.2 Run the Phase 4 specification file and record the expected red result before implementation
+- [x] 4.1.2 Run the Phase 4 specification file and record the expected red result before implementation — red confirmed on Node.js 24: 13 failed, comprising the missing Roles/Permissions tabs and the three planned RBAC modules ✅ (completed: 2026-09-10 01:03)
 
 ### Step 4.2: Implementation
 
