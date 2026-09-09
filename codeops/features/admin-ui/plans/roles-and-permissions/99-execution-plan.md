@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 00:20
-> **Progress**: 35/62 tasks (56%)
+> **Last Updated**: 2026-09-10 00:24
+> **Progress**: 36/62 tasks (58%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -137,7 +137,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 - [x] 3.3.1 Update existing SDK role, permission, and user-role domain tests for serialization and validation branches — `packages/sdk/tests/domains/roles.test.ts`, `packages/sdk/tests/domains/permissions.test.ts`, `packages/sdk/tests/domains/user-roles.test.ts` ✅ (completed: 2026-09-10 00:16)
 - [x] 3.3.2 Update existing SDK agent and conventional app/user command coverage, then add focused command implementation coverage — `packages/sdk/tests/agent/agent.test.ts`, `packages/cli/tests/commands/app.test.ts`, `packages/cli/tests/commands/user.test.ts`, `packages/cli/tests/commands/rbac-contracts.impl.test.ts` ✅ (completed: 2026-09-10 00:20)
-- [ ] 3.3.3 Run focused SDK/CLI tests, both workspace typechecks, scoped lint, and builds
+- [x] 3.3.3 Run focused SDK/CLI tests, both workspace typechecks, scoped lint, and builds ✅ (completed: 2026-09-10 00:24)
 
 **Verify**: focused SDK and CLI suites plus each affected workspace's lint, typecheck, and build
 
