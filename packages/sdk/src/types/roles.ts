@@ -17,7 +17,6 @@ export interface Role {
 }
 
 export interface CreateRoleInput {
-  applicationId: string;
   name: string;
   slug?: string;
   description?: string;

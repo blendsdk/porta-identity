@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 23:52
-> **Progress**: 27/62 tasks (44%)
+> **Last Updated**: 2026-09-09 23:56
+> **Progress**: 28/62 tasks (45%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -126,7 +126,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 **Reference**: [03-03 §SDK Contracts](03-03-sdk-cli-contracts.md#sdk-contracts) · AR-6–AR-7
 
-- [ ] 3.2.1 Correct and narrowly validate Role list, update, mapping, and reduction result types/domain; remove false pagination and singular wrappers — `packages/sdk/src/types/roles.ts`, `packages/sdk/src/domains/roles.ts`
+- [x] 3.2.1 Correct and narrowly validate Role list, update, mapping, and reduction result types/domain; remove false pagination and singular wrappers — `packages/sdk/src/types/roles.ts`, `packages/sdk/src/domains/roles.ts` ✅ (completed: 2026-09-09 23:56)
 - [ ] 3.2.2 Correct and narrowly validate Permission list, update, mapping, and reduction result types/domain; remove false pagination and singular wrappers — `packages/sdk/src/types/permissions.ts`, `packages/sdk/src/domains/permissions.ts`
 - [ ] 3.2.3 Correct and narrowly validate user-role types/domain to `Role[]` and collection `PUT`/`DELETE` arrays — `packages/sdk/src/types/user-roles.ts`, `packages/sdk/src/domains/user-roles.ts`, `packages/sdk/src/types/index.ts`
 - [ ] 3.2.4 Update existing SDK agent definitions and executor for complete arrays and permission update — `packages/sdk/src/agent.ts`
