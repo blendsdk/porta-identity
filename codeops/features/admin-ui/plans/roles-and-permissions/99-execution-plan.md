@@ -106,7 +106,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 - [x] 2.3.1 Add authority helper internals and repository coverage without duplicating specification assertions — `packages/server/tests/unit/rbac/authority-revocation.impl.test.ts`, `packages/server/tests/unit/rbac/mapping-repository.test.ts` ✅ (completed: 2026-09-09 20:41)
 - [x] 2.3.2 Extend focused role, permission, user-role, and user-repository tests for internal branches and exact survivor locking — `packages/server/tests/unit/rbac/role-service.test.ts`, `packages/server/tests/unit/rbac/permission-service.test.ts`, `packages/server/tests/unit/rbac/user-role-service.test.ts`, `packages/server/tests/unit/users/repository.test.ts` ✅ (completed: 2026-09-09 20:49)
 - [x] 2.3.3 Update existing route contract tests for exact parent IDs, actors, statuses, bodies, and no-op results without weakening assertions — `packages/server/tests/unit/routes/roles.test.ts`, `packages/server/tests/unit/routes/permissions.test.ts`, `packages/server/tests/unit/routes/user-roles.test.ts`, `packages/server/tests/unit/rbac/role-repository.test.ts`, `packages/server/tests/unit/rbac/permission-repository.test.ts` ✅ (completed: 2026-09-09 20:54)
-- [ ] 2.3.4 Run focused server unit/integration suites, scoped lint, server typecheck, and `yarn test:structure`
+- [x] 2.3.4 Run focused server unit/integration suites, scoped lint, server typecheck, and `yarn test:structure` ✅ (completed: 2026-09-09 20:56)
 
 **Verify**: focused server RBAC unit/integration suites, scoped lint, `yarn workspace @portaidentity/server typecheck`, and `yarn test:structure`
 
