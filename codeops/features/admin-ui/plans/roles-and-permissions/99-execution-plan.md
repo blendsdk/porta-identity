@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 19:25
-> **Progress**: 12/62 tasks (19%)
+> **Last Updated**: 2026-09-09 19:36
+> **Progress**: 13/62 tasks (21%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -87,7 +87,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 - [x] 2.1.1 [spec-author] Write route-level parent, capability, response, no-op, and actor specifications from ST-10–ST-13, ST-18, ST-20, and ST-24 — `packages/server/tests/unit/routes/rbac-parent-contracts.spec.test.ts` ✅ (completed: 2026-09-09 19:15)
 - [x] 2.1.2 [spec-author] Write real PostgreSQL/Redis revocation, addition, concurrency, survivor, and cleanup specifications from ST-14–ST-23 — `packages/server/tests/integration/rbac/authority-mutations.spec.test.ts` ✅ (completed: 2026-09-09 19:25)
-- [ ] 2.1.3 [security] Write the required Admin/OIDC application-isolation penetration specifications from ST-1, ST-3, ST-5, and ST-10–ST-12 — `packages/server/tests/pentest/admin-security/rbac-application-isolation.spec.test.ts`
+- [x] 2.1.3 [security] Write the required Admin/OIDC application-isolation penetration specifications from ST-1, ST-3, ST-5, and ST-10–ST-12 — `packages/server/tests/pentest/admin-security/rbac-application-isolation.spec.test.ts` ✅ (completed: 2026-09-09 19:36)
 - [ ] 2.1.4 Run the Phase 2 specification files and record the expected red result before implementation
 
 ### Step 2.2: Implementation
