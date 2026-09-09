@@ -14,8 +14,9 @@ lifecycle, and the local maintainer playground.
 
 The completed organization context supplies the tenant boundary for administration modules. User
 management is the first such module: a familiar Users list and detail flow covering the existing
-core profile, invitation, credential, lifecycle, history, and permanent Delete operations. Later modules add
-roles, sessions, two-factor controls, audit exploration, and operational data tools.
+core profile, invitation, credential, lifecycle, history, and permanent Delete operations. Roles
+and permissions extend the User and Application details with direct authorization management.
+Later modules add sessions, two-factor controls, audit exploration, and operational data tools.
 
 Applications are global product and authorization definitions shared by organizations. OIDC clients
 are organization-specific deployments connected to those applications. The Admin UI must always
@@ -24,9 +25,11 @@ changes confined to the active organization.
 
 ## Selected Domain Lenses
 
-| Lens            | Repository evidence                                                    | Requirement focus                                                             |
-| --------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Web application | Authenticated HTTP API, roles, permissions, and tenant-owned resources | Authorization, validation, network failures, UI states, and tenant boundaries |
+| Lens                   | Repository evidence                                                    | Requirement focus                                                             |
+| ---------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Web application        | Authenticated HTTP API, roles, permissions, and tenant-owned resources | Authorization, validation, network failures, UI states, and tenant boundaries |
+| Data and migration     | PostgreSQL RBAC entities and mapping tables                            | Ownership, cardinality, cascade, integrity, and reset/init behavior           |
+| Distributed/concurrent | PostgreSQL authority, Redis caches, sessions, grants, and token state  | Transaction boundaries, targeted invalidation, and stale authority            |
 
 Universal security, accessibility, failure-state, and verification lenses apply throughout.
 
@@ -44,6 +47,10 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | Application              | A global product, service, or authorization definition shared by organizations.     |
 | Application module       | A global feature grouping within an application and permission namespace.           |
 | OIDC client              | An organization-owned OIDC deployment connected to one global application.          |
+| Role                     | A named authorization bundle owned by exactly one application.                      |
+| Permission               | A namespaced operation owned by one application and optionally one of its modules.  |
+| Role permission          | A direct permission assignment to a role from the same application.                 |
+| User role                | A direct application-role assignment to one organization-owned user.                |
 
 ## Admin UI Presentation Directives
 
@@ -67,9 +74,10 @@ Apply this directive to every primary administration module:
 2. Give the primary DataGrid the growing list area and keep its columns visible when the collection
    is empty. Place search and filter controls above it. Place empty or no-match messages,
    interaction hints, record counts, paging, and short operation outcomes in a compact footer.
-3. Divide detail views into captioned GroupBox sections that reflect the record's logical parts.
-   Keep operational controls together in the section they affect, and keep navigation in a separate
-   bottom row.
+3. Use a TabView when a detail record has multiple coherent subviews. Inside each tab, use a
+   GroupBox only when its caption and border separate multiple logical regions; do not wrap a
+   single tab form or grid in a redundant GroupBox. Keep operational controls with the subview they
+   affect and navigation in a separate bottom row.
 4. Let Layout DSL rows determine every button's natural measured width. Keep selection-dependent
    operations visible but disabled until the selected record makes them applicable.
 5. Render empty, loading, failure, retry, and indeterminate states within the same module surface.
@@ -79,14 +87,15 @@ Apply this directive to every primary administration module:
 
 ## Document Index
 
-| #         | Document                                                                                    | Description                                                            | Depends On  |
-| --------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ----------- |
-| **AR**    | [Ambiguity Register](00-ambiguity-register.md)                                              | Approved feature decisions                                             | —           |
-| **RD-01** | [JSVision admin foundation](RD-01-jsvision-admin-foundation.md)                             | Secure embedded shell, authentication, and playground                  | —           |
-| **RD-02** | [Organization context and navigation](RD-02-organization-context-and-navigation.md)         | Global menu, identity dialog, and organization create/switch workflows | RD-01       |
-| **RD-03** | [User management](RD-03-user-management.md)                                                 | Complete organization-scoped user administration                       | RD-02       |
-| **RD-04** | [Applications and OIDC clients](RD-04-applications-and-oidc-clients.md)                     | Global applications and organization-owned OIDC clients                | RD-02       |
-| **RD-10** | [Record deletion and lifecycle simplification](RD-10-application-module-client-deletion.md) | Product-wide Delete, Archive removal, cascade, and targeted logout     | RD-02–RD-04 |
+| #         | Document                                                                                    | Description                                                            | Depends On          |
+| --------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------------------- |
+| **AR**    | [Ambiguity Register](00-ambiguity-register.md)                                              | Approved feature decisions                                             | —                   |
+| **RD-01** | [JSVision admin foundation](RD-01-jsvision-admin-foundation.md)                             | Secure embedded shell, authentication, and playground                  | —                   |
+| **RD-02** | [Organization context and navigation](RD-02-organization-context-and-navigation.md)         | Global menu, identity dialog, and organization create/switch workflows | RD-01               |
+| **RD-03** | [User management](RD-03-user-management.md)                                                 | Complete organization-scoped user administration                       | RD-02               |
+| **RD-04** | [Applications and OIDC clients](RD-04-applications-and-oidc-clients.md)                     | Global applications and organization-owned OIDC clients                | RD-02               |
+| **RD-05** | [Roles and permissions](RD-05-roles-and-permissions.md)                                     | Application RBAC definitions, mappings, and user role assignments      | RD-03, RD-04, RD-10 |
+| **RD-10** | [Record deletion and lifecycle simplification](RD-10-application-module-client-deletion.md) | Product-wide Delete, Archive removal, cascade, and targeted logout     | RD-02–RD-04         |
 
 ## Dependency Graph
 
@@ -95,8 +104,9 @@ RD-01 Secure admin foundation
   └── RD-02 Organization context and navigation
         ├── RD-03 User management
         └── RD-04 Applications and OIDC clients
-              ├── RD-05 Roles and permissions
               └── RD-10 Record deletion and lifecycle simplification
+
+RD-05 Roles and permissions depends on RD-03, RD-04, and RD-10
 ```
 
 ## Suggested Implementation Order
@@ -108,6 +118,7 @@ RD-01 Secure admin foundation
 | User administration  | RD-03     | Complete the core organization-scoped user workflows        |
 | Application clients  | RD-04     | Manage global products and tenant OIDC deployments          |
 | Record deletion      | RD-10     | Remove Archive and provide consistent permanent Delete      |
+| Authorization        | RD-05     | Manage application RBAC and organization user assignments   |
 
 ## Key Architecture Decisions
 
@@ -128,6 +139,9 @@ RD-01 Secure admin foundation
 | Tabular collections    | JSVision DataGrid where appropriate                        | Reuses the established accessible grid interaction     |
 | Setup-time deletion    | Direct synchronous cascade after confirmation              | Avoids preview, queue, and worker machinery            |
 | Record lifecycle       | Reversible disable states plus permanent Delete            | Removes redundant retained terminal record states      |
+| RBAC ownership         | Roles and permissions belong to one global application     | Prevents cross-application authorization mappings      |
+| Authority reduction    | Targeted session/token cleanup; additions invalidate cache | Removes stale authority without unnecessary logout     |
+| RBAC list contracts    | Complete arrays without pagination                         | Matches the server and expected-small collections      |
 
 ## How to Use These Documents
 
