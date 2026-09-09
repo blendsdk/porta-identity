@@ -3,9 +3,9 @@
  *
  * Validates Bearer access tokens against Porta's own OIDC provider
  * using opaque token lookup (provider.AccessToken.find()). Verifies
- * the user belongs to the super-admin organization and has the
- * porta-admin role. Sets ctx.state.adminUser for downstream handlers
- * and audit logging.
+ * the user belongs to the super-admin organization and has a recognized
+ * built-in role owned by the canonical Porta Admin application. Sets
+ * ctx.state.adminUser for downstream handlers and audit logging.
  *
  * This middleware replaces the old requireSuperAdmin() that checked
  * ctx.state.organization.isSuperAdmin (which required tenant-resolver
@@ -17,7 +17,7 @@
  *   3. Resolve super-admin organization
  *   4. Look up user — must be active
  *   5. Verify user belongs to the super-admin organization
- *   6. Verify user has the porta-admin role
+ *   6. Verify the user has a recognized role from the canonical Admin application
  *   7. Set ctx.state.adminUser and proceed
  *
  * Response codes:
@@ -147,7 +147,8 @@ const ADMIN_APPLICATION_SLUG = 'porta-admin';
  *
  * Validates the Bearer access token in the Authorization header by looking
  * it up via the OIDC provider's opaque token store, then verifies the user
- * is an active member of the super-admin organization with the porta-admin role.
+ * is an active member of the super-admin organization with a recognized role
+ * owned by the canonical Porta Admin application.
  *
  * On success, sets ctx.state.adminUser with the authenticated identity.
  * On failure, responds with 401 (unauthenticated) or 403 (unauthorized).

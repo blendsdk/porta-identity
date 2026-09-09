@@ -354,6 +354,16 @@ describe('getRolesForUser', () => {
     expect(sql).toContain('JOIN roles r ON r.id = ur.role_id');
     expect(sql).toContain('ORDER BY r.name ASC');
   });
+
+  it('should qualify assigned roles by application when an application ID is provided', async () => {
+    const mockQuery = mockPool([]);
+
+    await getRolesForUser('user-1', 'application-1');
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('r.application_id = $2');
+    expect(params).toEqual(['user-1', 'application-1']);
+  });
 });
 
 describe('getPermissionsForUser', () => {
@@ -390,6 +400,17 @@ describe('getPermissionsForUser', () => {
     expect(sql).toContain('WHERE ur.user_id = $1');
     expect(sql).toContain('ORDER BY p.slug ASC');
   });
+
+  it('should qualify roles and permissions by application when an application ID is provided', async () => {
+    const mockQuery = mockPool([]);
+
+    await getPermissionsForUser('user-1', 'application-1');
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('r.application_id = $2');
+    expect(sql).toContain('p.application_id = $2');
+    expect(params).toEqual(['user-1', 'application-1']);
+  });
 });
 
 describe('getUsersWithRole', () => {
@@ -401,7 +422,8 @@ describe('getUsersWithRole', () => {
     ];
 
     // Mock query: first call returns count, second returns data
-    const mockQuery = vi.fn()
+    const mockQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [countRow], rowCount: 1 })
       .mockResolvedValueOnce({ rows: dataRows, rowCount: 2 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -415,7 +437,8 @@ describe('getUsersWithRole', () => {
   });
 
   it('should calculate correct offset from page number', async () => {
-    const mockQuery = vi.fn()
+    const mockQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [{ count: '50' }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -428,7 +451,8 @@ describe('getUsersWithRole', () => {
   });
 
   it('should return total 0 and empty rows when no users', async () => {
-    const mockQuery = vi.fn()
+    const mockQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -440,7 +464,8 @@ describe('getUsersWithRole', () => {
   });
 
   it('should filter by organization via JOIN with users table', async () => {
-    const mockQuery = vi.fn()
+    const mockQuery = vi
+      .fn()
       .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });

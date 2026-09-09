@@ -15,9 +15,9 @@
  * 3. buildPermissionClaims(userId, appId) → application-owned permission slugs
  * 4. buildCustomClaims(userId, appId, tokenType) → custom per-app claims
  *
- * The applicationId for custom claims is resolved from the OIDC client
- * context. If unavailable (e.g., no client context), custom claims are
- * skipped gracefully.
+ * The applicationId for RBAC and custom claims is resolved from private OIDC
+ * client metadata. If it is unavailable or malformed, authority fails closed:
+ * RBAC arrays are empty and custom claims are skipped while standard claims remain.
  *
  * @see users/service.ts — User lookup for OIDC
  * @see users/claims.ts — Standard OIDC claims builder
