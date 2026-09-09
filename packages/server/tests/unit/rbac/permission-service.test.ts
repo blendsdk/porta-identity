@@ -12,8 +12,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../src/rbac/permission-repository.js', () => ({
   insertPermission: vi.fn(),
   findPermissionById: vi.fn(),
+  lockPermissionById: vi.fn(),
+  lockPermissionModule: vi.fn(),
   findPermissionBySlug: vi.fn(),
   updatePermission: vi.fn(),
+  capturePermissionForDeletion: vi.fn(),
+  deleteCapturedPermission: vi.fn(),
   listPermissionsByApplication: vi.fn(),
   permissionSlugExists: vi.fn(),
 }));
@@ -28,11 +32,29 @@ vi.mock('../../../src/rbac/cache.js', () => ({
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getDatabaseTransactionClient: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/deletion-cleanup.js', () => ({
+  registerDeletionCleanup: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/authority-revocation.js', () => ({
+  revokeAffectedAuthorityInTransaction: vi.fn(),
+}));
+
+vi.mock('../../../src/applications/service.js', () => ({
+  getApplicationBySlug: vi.fn(),
 }));
 
 import {
   insertPermission as mockInsert,
   findPermissionById as mockRepoFindById,
+  lockPermissionById as mockLockPermission,
   findPermissionBySlug as mockRepoFindBySlug,
   updatePermission as mockRepoUpdate,
   listPermissionsByApplication as mockRepoList,
@@ -40,6 +62,8 @@ import {
 } from '../../../src/rbac/permission-repository.js';
 import { getRolesWithPermission as mockRepoGetRoles } from '../../../src/rbac/mapping-repository.js';
 import { writeAuditLog as mockAuditLog } from '../../../src/lib/audit-log.js';
+import { getDatabaseTransactionClient } from '../../../src/lib/database.js';
+import { getApplicationBySlug as mockGetApplicationBySlug } from '../../../src/applications/service.js';
 
 import {
   createPermission,
@@ -74,6 +98,8 @@ beforeEach(() => {
   // Reset default mock return values
   vi.mocked(mockSlugExists).mockResolvedValue(false);
   vi.mocked(mockAuditLog).mockResolvedValue(undefined);
+  vi.mocked(getDatabaseTransactionClient).mockReturnValue({ query: vi.fn() } as never);
+  vi.mocked(mockGetApplicationBySlug).mockResolvedValue(null);
 });
 
 // ---------------------------------------------------------------------------
@@ -151,7 +177,7 @@ describe('findPermissionById', () => {
     const perm = createTestPermission();
     vi.mocked(mockRepoFindById).mockResolvedValue(perm);
 
-    const result = await findPermissionById('perm-uuid-1');
+    const result = await findPermissionById('app-uuid-1', 'perm-uuid-1');
 
     expect(result).toEqual(perm);
   });
@@ -172,32 +198,45 @@ describe('updatePermission', () => {
   it('should update name and description', async () => {
     const existing = createTestPermission();
     const updated = createTestPermission({ name: 'Updated Name' });
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
+    vi.mocked(mockLockPermission).mockResolvedValue(existing);
     vi.mocked(mockRepoUpdate).mockResolvedValue(updated);
 
-    const result = await updatePermission('perm-uuid-1', { name: 'Updated Name' });
+    const result = await updatePermission('app-uuid-1', 'perm-uuid-1', {
+      name: 'Updated Name',
+    });
 
     expect(result.name).toBe('Updated Name');
   });
 
   it('should throw PermissionNotFoundError when permission does not exist', async () => {
-    vi.mocked(mockRepoFindById).mockResolvedValue(null);
+    vi.mocked(mockLockPermission).mockResolvedValue(null);
 
-    await expect(updatePermission('non-existent', { name: 'X' })).rejects.toThrow(
+    await expect(updatePermission('app-uuid-1', 'non-existent', { name: 'X' })).rejects.toThrow(
       PermissionNotFoundError,
     );
   });
 
   it('should write audit log on update', async () => {
     const existing = createTestPermission();
-    vi.mocked(mockRepoFindById).mockResolvedValue(existing);
+    vi.mocked(mockLockPermission).mockResolvedValue(existing);
     vi.mocked(mockRepoUpdate).mockResolvedValue(existing);
 
-    await updatePermission('perm-uuid-1', { name: 'Updated' }, 'admin-1');
+    await updatePermission('app-uuid-1', 'perm-uuid-1', { name: 'Updated' }, 'admin-1');
 
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: 'permission.updated', actorId: 'admin-1' }),
     );
+  });
+
+  it('should return an unchanged permission without update or audit work', async () => {
+    const existing = createTestPermission();
+    vi.mocked(mockLockPermission).mockResolvedValue(existing);
+
+    await expect(
+      updatePermission('app-uuid-1', 'perm-uuid-1', { name: existing.name }),
+    ).resolves.toEqual(existing);
+    expect(mockRepoUpdate).not.toHaveBeenCalled();
+    expect(mockAuditLog).not.toHaveBeenCalled();
   });
 });
 
@@ -223,10 +262,11 @@ describe('listPermissionsByApplication', () => {
 describe('getRolesWithPermission', () => {
   it('should delegate to mapping repository', async () => {
     vi.mocked(mockRepoGetRoles).mockResolvedValue([]);
+    vi.mocked(mockRepoFindById).mockResolvedValue(createTestPermission());
 
-    const result = await getRolesWithPermission('perm-1');
+    const result = await getRolesWithPermission('app-uuid-1', 'perm-1');
 
     expect(result).toEqual([]);
-    expect(mockRepoGetRoles).toHaveBeenCalledWith('perm-1');
+    expect(mockRepoGetRoles).toHaveBeenCalledWith('app-uuid-1', 'perm-1');
   });
 });
