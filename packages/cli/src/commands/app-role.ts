@@ -115,19 +115,20 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             const client = createClient(argv);
             const roles = await client.roles.list(argv['app-id']);
 
+            if (argv.json) {
+              printJson(roles);
+              return;
+            }
+
             if (roles.length === 0) {
               warn('No roles found');
               return;
             }
 
-            if (argv.json) {
-              printJson(roles);
-            } else {
-              printTable(
-                ['ID', 'Name', 'Slug', 'Created'],
-                roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
-              );
-            }
+            printTable(
+              ['ID', 'Name', 'Slug', 'Created'],
+              roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
+            );
           } catch (err) {
             handleError(err, argv.verbose);
           }

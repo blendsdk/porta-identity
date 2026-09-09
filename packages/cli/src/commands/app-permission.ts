@@ -111,24 +111,25 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
             const client = createClient(argv);
             const permissions = await client.permissions.list(argv['app-id']);
 
+            if (argv.json) {
+              printJson(permissions);
+              return;
+            }
+
             if (permissions.length === 0) {
               warn('No permissions found');
               return;
             }
 
-            if (argv.json) {
-              printJson(permissions);
-            } else {
-              printTable(
-                ['ID', 'Name', 'Slug', 'Created'],
-                permissions.map((permission) => [
-                  permission.id,
-                  permission.name,
-                  permission.slug,
-                  formatDate(permission.createdAt),
-                ]),
-              );
-            }
+            printTable(
+              ['ID', 'Name', 'Slug', 'Created'],
+              permissions.map((permission) => [
+                permission.id,
+                permission.name,
+                permission.slug,
+                formatDate(permission.createdAt),
+              ]),
+            );
           } catch (err) {
             handleError(err, argv.verbose);
           }

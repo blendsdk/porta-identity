@@ -63,20 +63,21 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const sdkClient = createClient(argv);
               const roles = await sdkClient.userRoles.list(argv.org, argv['user-id']);
 
+              if (argv.json) {
+                printJson(roles);
+                return;
+              }
+
               if (roles.length === 0) {
                 warn('No roles assigned');
                 return;
               }
 
-              if (argv.json) {
-                printJson(roles);
-              } else {
-                printTable(
-                  ['Role ID', 'Role Name', 'Slug', 'Created'],
-                  roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
-                );
-                info(`Total: ${roles.length} roles`);
-              }
+              printTable(
+                ['Role ID', 'Role Name', 'Slug', 'Created'],
+                roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
+              );
+              info(`Total: ${roles.length} roles`);
             } catch (err) {
               handleError(err, argv.verbose);
             }

@@ -1,7 +1,7 @@
 # Roles and Permissions Phase Quality Reviews
 
-> **Status**: Phase 2 review passed with one accepted deferred residual
-> **Last Updated**: 2026-09-09 23:32
+> **Status**: Phase 3 remediation verified; bounded re-review pending
+> **Last Updated**: 2026-09-10 00:47
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Authority Provenance and OIDC Claims
@@ -63,3 +63,35 @@ The final bounded correctness and security re-reviews passed with no new finding
 the application-qualified capture, consistent permission-before-role ordering, concurrent
 user-role serialization, complete canonical mutation guards, and repository-owned initialization
 path. RV-006 remains deferred exactly as ruled.
+
+## Phase 3: SDK, CLI, and Agent Contracts
+
+**Review boundary:** c5db0fbd..52da56e9
+**Scope mode:** Strict
+**Verification before review:** 54 selected SDK assertions, 80 selected CLI assertions, scoped
+ESLint, SDK and CLI typechecks and builds, and 97 repository structure tests passed. Root
+`yarn verify` was not run under AR-11.
+
+| ID     | Severity | Lens        | Finding                                                                                  | Minimum correction                                                                          | Ruling   |
+| ------ | -------- | ----------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------- |
+| RV-301 | Major    | Correctness | Agent metadata described the `roleIds` arrays as objects                                 | Add the existing parameter category for arrays and use it for both user-role mutation tools | Accepted |
+| RV-302 | Major    | Correctness | Empty RBAC list commands returned before producing JSON output                           | Handle `--json` before the human-readable empty-list warning                                | Accepted |
+| SA-301 | Major    | Security    | Callers could mutate the exported agent tool-definition objects                          | Deep-freeze the exported registry                                                           | Rejected |
+| SA-302 | Major    | Security    | Agent execution failures copied arbitrary exception messages into model-visible output   | Return one fixed safe error for unexpected tool failures                                    | Accepted |
+| SA-303 | Major    | Security    | SDK structural guards retained additional response properties                            | Project every accepted response into an exact SDK-owned shape                               | Rejected |
+
+The user accepted RV-301, RV-302, and SA-302. The fixes add one array metadata category, move the
+existing JSON branches before the empty-list warnings, and replace arbitrary exception text with
+one fixed error. They add no framework, error taxonomy, shared output layer, or other generalized
+machinery.
+
+SA-301 was rejected because the code that owns the authenticated SDK client can call its methods
+directly; freezing descriptive metadata would not create a security boundary. SA-303 was rejected
+because the approved contract deliberately uses narrow structural guards in the public SDK and
+reserves stricter display projection for the terminal Admin UI. Exact SDK projection would change
+that approved boundary without a demonstrated security benefit.
+
+The accepted corrections pass 20 selected SDK agent assertions, 77 selected CLI assertions,
+scoped ESLint, SDK and CLI typechecks and builds, and all 97 repository structure tests. Root
+`yarn verify` was not run under AR-11. A single bounded correctness and security re-review is
+pending for the accepted fix diff.

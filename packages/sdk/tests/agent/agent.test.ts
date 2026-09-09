@@ -77,7 +77,7 @@ describe('agent', () => {
           expect(param).toHaveProperty('type');
           expect(param).toHaveProperty('description');
           expect(param).toHaveProperty('required');
-          expect(['string', 'number', 'boolean', 'object']).toContain(param.type);
+          expect(['string', 'number', 'boolean', 'object', 'array']).toContain(param.type);
         }
       }
     });
@@ -177,7 +177,7 @@ describe('agent', () => {
       );
       const result = await executeTool(client, 'organizations.list', {});
       expect(result.success).toBe(false);
-      expect(result.error).toBe('Network failure');
+      expect(result.error).toBe('Tool execution failed.');
     });
   });
 });

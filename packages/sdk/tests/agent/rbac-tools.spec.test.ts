@@ -65,6 +65,15 @@ describe('RBAC agent contracts', () => {
     });
   });
 
+  // Agent schemas must advertise role collections as arrays so generated calls are valid.
+  it('describes user-role mutation identifiers as arrays', () => {
+    for (const name of ['userRoles.assign', 'userRoles.remove']) {
+      expect(tool(name).parameters).toContainEqual(
+        expect.objectContaining({ name: 'roleIds', type: 'array', required: true }),
+      );
+    }
+  });
+
   // Permission updates must use the same parent-qualified SDK call as direct consumers.
   it('dispatches permission updates through the existing domain', async () => {
     const transport = transportWith({ data: permission });
@@ -82,5 +91,23 @@ describe('RBAC agent contracts', () => {
       path: `/applications/${APPLICATION_ID}/permissions/${PERMISSION_ID}`,
       body: { name: 'Updated', description: null },
     });
+  });
+
+  // Agent failures must not copy transport details into model-visible tool output.
+  it('returns one fixed safe error for an unexpected SDK failure', async () => {
+    const transport: HttpTransport = {
+      request: vi.fn().mockRejectedValue(new Error('redis://internal.example token=secret')),
+    };
+    const client = createPortaClient({ transport });
+
+    const result = await executeTool(client, 'permissions.update', {
+      appId: APPLICATION_ID,
+      permissionId: PERMISSION_ID,
+      input: { name: 'Updated' },
+    });
+
+    expect(result).toEqual({ success: false, error: 'Tool execution failed.' });
+    expect(JSON.stringify(result)).not.toContain('internal.example');
+    expect(JSON.stringify(result)).not.toContain('secret');
   });
 });

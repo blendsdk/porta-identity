@@ -59,7 +59,7 @@ vi.mock('../../src/prompt.js', () => ({
   confirm: vi.fn(),
 }));
 
-import { info, printJson, printTable, success } from '../../src/output.js';
+import { info, printJson, printTable, success, warn } from '../../src/output.js';
 
 /** Invoke one application child command through the production command tree. */
 async function invokeApp(arguments_: string[]): Promise<void> {
@@ -116,6 +116,34 @@ describe('conventional RBAC list commands', () => {
       [[permission.id, permission.name, permission.slug, permission.createdAt]],
     );
     expect(info).not.toHaveBeenCalled();
+  });
+
+  // Empty machine-readable collections remain valid JSON results rather than human warnings.
+  it('prints an empty role array in JSON', async () => {
+    roles.list.mockResolvedValue([]);
+
+    await invokeApp(['role', 'list', 'app-1', '--json']);
+
+    expect(printJson).toHaveBeenCalledWith([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('prints an empty permission array in JSON', async () => {
+    permissions.list.mockResolvedValue([]);
+
+    await invokeApp(['permission', 'list', 'app-1', '--json']);
+
+    expect(printJson).toHaveBeenCalledWith([]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it('prints an empty assigned-role array in JSON', async () => {
+    userRoles.list.mockResolvedValue([]);
+
+    await invokeUser(['roles', 'list', 'user-1', '--org', 'org-1', '--json']);
+
+    expect(printJson).toHaveBeenCalledWith([]);
+    expect(warn).not.toHaveBeenCalled();
   });
 });
 

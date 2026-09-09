@@ -17,7 +17,7 @@ export interface ToolParameter {
   /** Argument name passed to the executor. */
   name: string;
   /** JSON-compatible argument category exposed to agent clients. */
-  type: 'string' | 'number' | 'boolean' | 'object';
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
   /** Human-readable explanation of the argument. */
   description: string;
   /** Whether callers must provide the argument. */
@@ -67,6 +67,10 @@ const OPT_STR = (name: string, desc: string) => param(name, 'string', desc, fals
 const OPT_NUM = (name: string, desc: string) => param(name, 'number', desc, false);
 const OPT_OBJ = (name: string, desc: string) => param(name, 'object', desc, false);
 const OBJ = (name: string, desc: string) => param(name, 'object', desc, true);
+const ARRAY = (name: string, desc: string) => param(name, 'array', desc, true);
+
+/** Fixed failure text that cannot copy infrastructure or secret details into agent output. */
+const SAFE_TOOL_ERROR = 'Tool execution failed.';
 
 // Standard list params
 const LIST_PARAMS: ToolParameter[] = [
@@ -369,7 +373,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     parameters: [
       ID('orgId', 'Organization ID'),
       ID('userId', 'User ID'),
-      OBJ('roleIds', 'Role ID array'),
+      ARRAY('roleIds', 'Role ID array'),
     ],
     returns: 'void',
   },
@@ -379,7 +383,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     parameters: [
       ID('orgId', 'Organization ID'),
       ID('userId', 'User ID'),
-      OBJ('roleIds', 'Role ID array'),
+      ARRAY('roleIds', 'Role ID array'),
     ],
     returns: '{ reauthenticationRequired: boolean }',
   },
@@ -618,8 +622,7 @@ export async function executeTool(
 
     const result = await fn.call(domainObj, ...callArgs);
     return { success: true, data: result };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return { success: false, error: message };
+  } catch {
+    return { success: false, error: SAFE_TOOL_ERROR };
   }
 }
