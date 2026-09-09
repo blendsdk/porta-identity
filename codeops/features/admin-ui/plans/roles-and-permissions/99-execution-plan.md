@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-09 16:36
-> **Progress**: 7/62 tasks (11%)
+> **Last Updated**: 2026-09-09 16:38
+> **Progress**: 8/62 tasks (13%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -64,7 +64,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 - [x] 1.2.2 Carry one namespaced internal application identifier through provider metadata, redact it, resolve it before RBAC claims, and expose it nowhere else — `packages/server/src/clients/service.ts`, `packages/server/src/oidc/configuration.ts`, `packages/server/src/oidc/account-finder.ts`, `packages/server/src/lib/logger.ts` ✅ (completed: 2026-09-09 15:40)
 - [x] 1.2.3 Add permission-update and User Admin application-read capabilities and keep reset/init definitions synchronized — `packages/server/src/lib/admin-permissions.ts`, `packages/server/src/cli/commands/init.ts` ✅ (completed: 2026-09-09 15:43)
 - [x] 1.2.4 Require canonical application provenance and static assignment ceiling without adding an authorization layer — `packages/server/src/middleware/admin-auth.ts`, `packages/server/src/routes/user-roles.ts` ✅ (completed: 2026-09-09 16:36)
-- [ ] 1.2.5 Run ST-1–ST-8 and ST-45 and make the Phase 1 implementation expectations green
+- [x] 1.2.5 Run ST-1–ST-8 and ST-45 and make the Phase 1 implementation expectations green ✅ (completed: 2026-09-09 16:38)
 
 ### Step 1.3: Implementation Tests and Hardening
 
