@@ -42,6 +42,18 @@ export interface DeletionCleanupDescriptor {
   readonly applicationIds: readonly string[];
 }
 
+/** Immutable identifiers needed after a committed RBAC authority change. */
+export interface AuthorityCleanupDescriptor {
+  /** Users whose resolved roles or permissions must be refreshed. */
+  readonly userIds: readonly string[];
+  /** OIDC grants captured before their database records were removed. */
+  readonly grantIds: readonly string[];
+  /** Exact role cache records changed by the transaction. */
+  readonly roleIds: readonly string[];
+  /** Whether reduced authority requires removal of user-linked OIDC cache state. */
+  readonly revokeOidcState: boolean;
+}
+
 /** Return true when a decoded payload is safe to inspect by field name. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -77,7 +89,7 @@ function referencesDeletedAuthority(
 
 /** Build the exact cache and grant-index keys represented by a deletion descriptor. */
 function exactKeys(descriptor: DeletionCleanupDescriptor): string[] {
-  const keys = new Set<string>();
+  const keys = new Set<string>(exactAuthorityKeys(descriptor));
 
   if (descriptor.resource === 'organization') keys.add(`org:id:${descriptor.targetId}`);
   if (descriptor.resource === 'application') {
@@ -92,9 +104,20 @@ function exactKeys(descriptor: DeletionCleanupDescriptor): string[] {
 
   for (const id of descriptor.clientIds) keys.add(`client:id:${id}`);
   for (const id of descriptor.publicClientIds) keys.add(`client:cid:${id}`);
-  for (const id of descriptor.roleIds) keys.add(`rbac:role:${id}`);
   for (const id of descriptor.userIds) {
     keys.add(`user:id:${id}`);
+  }
+
+  return [...keys];
+}
+
+/** Build exact RBAC cache keys for an authority change. */
+function exactAuthorityKeys(
+  descriptor: Pick<AuthorityCleanupDescriptor, 'grantIds' | 'roleIds' | 'userIds'>,
+): string[] {
+  const keys = new Set<string>();
+  for (const id of descriptor.roleIds) keys.add(`rbac:role:${id}`);
+  for (const id of descriptor.userIds) {
     keys.add(`rbac:user-roles:${id}`);
     keys.add(`rbac:user-perms:${id}`);
   }
@@ -103,7 +126,6 @@ function exactKeys(descriptor: DeletionCleanupDescriptor): string[] {
       keys.add(`oidc:${model}:grant:${grantId}`);
     }
   }
-
   return [...keys];
 }
 
@@ -119,7 +141,9 @@ function parsePayload(value: string | null): Record<string, unknown> | null {
 }
 
 /** Remove matching OIDC main payloads and the indexes derivable from those payloads. */
-async function scanOidcPayloads(descriptor: DeletionCleanupDescriptor): Promise<void> {
+async function scanOidcPayloads(
+  descriptor: Pick<DeletionCleanupDescriptor, 'publicClientIds' | 'grantIds' | 'userIds'>,
+): Promise<void> {
   const redis = getRedis();
   const clientIds = new Set(descriptor.publicClientIds);
   const grantIds = new Set(descriptor.grantIds);
@@ -127,13 +151,7 @@ async function scanOidcPayloads(descriptor: DeletionCleanupDescriptor): Promise<
   let cursor = '0';
 
   do {
-    const [nextCursor, candidates] = await redis.scan(
-      cursor,
-      'MATCH',
-      'oidc:*',
-      'COUNT',
-      100,
-    );
+    const [nextCursor, candidates] = await redis.scan(cursor, 'MATCH', 'oidc:*', 'COUNT', 100);
     cursor = nextCursor;
 
     const mainKeys = candidates.filter((key) => {
@@ -158,6 +176,21 @@ async function scanOidcPayloads(descriptor: DeletionCleanupDescriptor): Promise<
     }
     if (keysToDelete.size > 0) await redis.del(...keysToDelete);
   } while (cursor !== '0');
+}
+
+/** Remove exact RBAC keys and user-linked OIDC state after an authority change. */
+async function cleanupAuthorityRedis(descriptor: AuthorityCleanupDescriptor): Promise<void> {
+  const redis = getRedis();
+  const keys = exactAuthorityKeys(descriptor);
+  if (keys.length > 0) await redis.del(...keys);
+
+  if (descriptor.revokeOidcState) {
+    await scanOidcPayloads({
+      userIds: descriptor.userIds,
+      publicClientIds: [],
+      grantIds: descriptor.grantIds,
+    });
+  }
 }
 
 /** Execute the single best-effort Redis cleanup pass for a committed deletion. */
@@ -210,6 +243,32 @@ export async function registerDeletionCleanup(
     setImmediate(() => {
       void cleanupDeletionRedis(immutable).catch(() => {
         logger.warn({ event: 'deletion-redis-cleanup-failed' }, 'Deletion Redis cleanup failed');
+      });
+    });
+  });
+}
+
+/**
+ * Register targeted RBAC cleanup after the current transaction commits.
+ *
+ * The hook schedules one best-effort Redis pass and does not hold the request
+ * open for cache I/O. Failures emit one fixed warning without identifiers.
+ *
+ * @param descriptor - Authority identifiers captured inside the transaction
+ */
+export async function registerAuthorityCleanup(
+  descriptor: AuthorityCleanupDescriptor,
+): Promise<void> {
+  const immutable = Object.freeze({
+    userIds: Object.freeze([...descriptor.userIds]),
+    grantIds: Object.freeze([...descriptor.grantIds]),
+    roleIds: Object.freeze([...descriptor.roleIds]),
+    revokeOidcState: descriptor.revokeOidcState,
+  });
+  await afterDatabaseCommit(async () => {
+    setImmediate(() => {
+      void cleanupAuthorityRedis(immutable).catch(() => {
+        logger.warn({ event: 'authority-redis-cleanup-failed' }, 'Authority Redis cleanup failed');
       });
     });
   });
