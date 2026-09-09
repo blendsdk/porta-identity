@@ -69,7 +69,7 @@ export type {
 export type { Role, CreateRoleInput, UpdateRoleInput, RoleWithPermissions } from './roles.js';
 
 // Permissions
-export type { Permission, CreatePermissionInput } from './permissions.js';
+export type { Permission, CreatePermissionInput, UpdatePermissionInput } from './permissions.js';
 
 // Custom Claims
 export type {
