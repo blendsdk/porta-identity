@@ -86,6 +86,26 @@ export async function findPermissionById(
 }
 
 /**
+ * Lock and return a permission through its authoritative application parent.
+ *
+ * @param applicationId - Parent application UUID
+ * @param id - Permission UUID
+ * @returns Locked permission or null when the parent-child pair does not exist
+ */
+export async function lockPermissionById(
+  applicationId: string,
+  id: string,
+): Promise<Permission | null> {
+  const result = await getPool().query<PermissionRow>(
+    `SELECT * FROM permissions
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, id],
+  );
+  return result.rows[0] ? mapRowToPermission(result.rows[0]) : null;
+}
+
+/**
  * Find a permission by application ID and slug.
  *
  * @param applicationId - Application UUID
@@ -171,18 +191,17 @@ export async function updatePermission(
  * @param moduleId - Module UUID supplied by the permission request
  * @returns True when the module exists beneath the application
  */
-export async function permissionModuleExists(
+export async function lockPermissionModule(
   applicationId: string,
   moduleId: string,
 ): Promise<boolean> {
-  const result = await getPool().query<{ exists: boolean }>(
-    `SELECT EXISTS(
-       SELECT 1 FROM application_modules
-       WHERE application_id = $1 AND id = $2
-     ) AS exists`,
+  const result = await getPool().query<{ id: string }>(
+    `SELECT id FROM application_modules
+     WHERE application_id = $1 AND id = $2
+     FOR KEY SHARE`,
     [applicationId, moduleId],
   );
-  return result.rows[0]?.exists ?? false;
+  return result.rows.length === 1;
 }
 
 // ---------------------------------------------------------------------------

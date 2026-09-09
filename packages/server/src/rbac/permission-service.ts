@@ -19,6 +19,8 @@
 import {
   insertPermission,
   findPermissionById as repoFindPermissionById,
+  lockPermissionById,
+  lockPermissionModule,
   findPermissionBySlug as repoFindPermissionBySlug,
   updatePermission as repoUpdatePermission,
   capturePermissionForDeletion,
@@ -34,8 +36,13 @@ import type { Permission, Role, CreatePermissionInput, UpdatePermissionInput } f
 import { getDatabaseTransactionClient } from '../lib/database.js';
 import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
+import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
+import { getApplicationBySlug } from '../applications/service.js';
+import { ALL_ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 
 const PERMISSION_DELETED_EVENT = 'permission.deleted';
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 
 // ---------------------------------------------------------------------------
 // Create
@@ -61,6 +68,15 @@ export async function createPermission(
     throw new RbacValidationError(
       `Invalid permission slug format: "${input.slug}". Must follow module:resource:action pattern with at least 3 colon-separated segments.`,
     );
+  }
+  await guardCanonicalAdminPermission(input.applicationId, input.slug);
+  if (input.moduleId) {
+    if (!getDatabaseTransactionClient()) {
+      throw new Error('Permission module validation requires an active database transaction');
+    }
+    if (!(await lockPermissionModule(input.applicationId, input.moduleId))) {
+      throw new RbacValidationError('Permission module must belong to the selected application');
+    }
   }
 
   // Check slug uniqueness within the application
@@ -96,11 +112,15 @@ export async function createPermission(
 /**
  * Find a permission by ID.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Permission UUID
  * @returns Permission or null if not found
  */
-export async function findPermissionById(id: string): Promise<Permission | null> {
-  return repoFindPermissionById(id);
+export async function findPermissionById(
+  applicationId: string,
+  id: string,
+): Promise<Permission | null> {
+  return repoFindPermissionById(applicationId, id);
 }
 
 /**
@@ -138,6 +158,7 @@ export async function listPermissionsByApplication(
 /**
  * Update a permission by ID (name and description only — slug is immutable).
  *
+ * @param applicationId - Parent application UUID
  * @param id - Permission UUID
  * @param input - Fields to update (name, description only)
  * @param actorId - Optional UUID of the admin performing the action
@@ -145,25 +166,34 @@ export async function listPermissionsByApplication(
  * @throws PermissionNotFoundError if permission doesn't exist
  */
 export async function updatePermission(
+  applicationId: string,
   id: string,
   input: UpdatePermissionInput,
   actorId?: string,
 ): Promise<Permission> {
-  // Verify permission exists
-  const existing = await repoFindPermissionById(id);
+  if (!getDatabaseTransactionClient()) {
+    throw new Error('Permission update requires an active database transaction');
+  }
+  const existing = await lockPermissionById(applicationId, id);
   if (!existing) {
     throw new PermissionNotFoundError(id);
   }
+  await guardCanonicalAdminPermission(applicationId, existing.slug);
+
+  const changed =
+    (input.name !== undefined && input.name !== existing.name) ||
+    (input.description !== undefined && input.description !== existing.description);
+  if (!changed) return existing;
 
   // Perform the update (slug is not updatable at the repository level)
-  const updated = await repoUpdatePermission(id, input);
+  const updated = await repoUpdatePermission(applicationId, id, input);
 
   // Audit log (fire-and-forget)
   void writeAuditLog({
     eventType: 'permission.updated',
     eventCategory: 'admin',
     actorId,
-    metadata: { permissionId: id, changes: input },
+    metadata: { applicationId, permissionId: id, changes: input },
   });
 
   return updated;
@@ -179,34 +209,20 @@ export async function updatePermission(
  * @param applicationId - Parent application UUID.
  * @param permissionId - Child permission UUID.
  * @param actorId - Actor identifier used for audit attribution when applicable.
- * @returns The captured authority identifiers.
+ * @returns Whether the actor must authenticate again
  * @throws PermissionNotFoundError when the permission is absent from the requested boundary.
  */
 export async function deletePermission(
   applicationId: string,
   permissionId: string,
   actorId?: string,
-): Promise<{
-  permission: Permission;
-  userIds: string[];
-  roleIds: string[];
-  grantIds: string[];
-}> {
+): Promise<{ reauthenticationRequired: boolean }> {
   const transaction = getDatabaseTransactionClient();
   if (!transaction) throw new Error('Permission deletion requires an active database transaction');
   const capture = await capturePermissionForDeletion(applicationId, permissionId);
   if (!capture) throw new PermissionNotFoundError(permissionId);
-  await transaction.query(
-    `UPDATE admin_sessions SET revoked_at = NOW()
-     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
-    [capture.userIds],
-  );
-  await transaction.query(
-    `DELETE FROM oidc_payloads
-     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
-       OR payload->>'accountId' = ANY($2::text[])`,
-    [capture.grantIds, capture.userIds],
-  );
+  await guardCanonicalAdminPermission(applicationId, capture.permission.slug);
+  const revoked = await revokeAffectedAuthorityInTransaction(capture.userIds);
   await writeAuditLogInTransaction(transaction, {
     actorId,
     eventType: PERMISSION_DELETED_EVENT,
@@ -225,13 +241,15 @@ export async function deletePermission(
     userIds: capture.userIds,
     clientIds: [],
     publicClientIds: [],
-    grantIds: capture.grantIds,
+    grantIds: revoked.grantIds,
     roleIds: capture.roleIds,
     permissionIds: [permissionId],
     claimIds: [],
     applicationIds: [applicationId],
   });
-  return capture;
+  return {
+    reauthenticationRequired: actorId !== undefined && capture.userIds.includes(actorId),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -241,9 +259,27 @@ export async function deletePermission(
 /**
  * Get all roles that have a specific permission assigned.
  *
+ * @param applicationId - Parent application UUID
  * @param permissionId - Permission UUID
  * @returns Array of roles with this permission
  */
-export async function getRolesWithPermission(permissionId: string): Promise<Role[]> {
-  return repoGetRolesWithPermission(permissionId);
+export async function getRolesWithPermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<Role[]> {
+  const permission = await repoFindPermissionById(applicationId, permissionId);
+  if (!permission) throw new PermissionNotFoundError(permissionId);
+  return repoGetRolesWithPermission(applicationId, permissionId);
+}
+
+/** Reject generic creation or mutation of canonical Porta Admin permissions. */
+async function guardCanonicalAdminPermission(
+  applicationId: string,
+  permissionSlug: string,
+): Promise<void> {
+  if (!ADMIN_PERMISSION_SLUGS.has(permissionSlug)) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin permissions cannot be modified');
+  }
 }

@@ -19,7 +19,7 @@ import {
   findPermissionById,
   findPermissionBySlug,
   updatePermission,
-  permissionModuleExists,
+  lockPermissionModule,
   listPermissionsByApplication,
   permissionSlugExists,
 } from '../../../src/rbac/permission-repository.js';
@@ -247,22 +247,23 @@ describe('updatePermission', () => {
   });
 });
 
-describe('permissionModuleExists', () => {
+describe('lockPermissionModule', () => {
   it('checks module ownership with both application and module IDs', async () => {
-    const mockQuery = mockPool([{ exists: true }]);
+    const mockQuery = mockPool([{ id: 'module-1' }]);
 
-    await expect(permissionModuleExists('app-1', 'module-1')).resolves.toBe(true);
+    await expect(lockPermissionModule('app-1', 'module-1')).resolves.toBe(true);
 
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('FROM application_modules');
     expect(sql).toContain('application_id = $1 AND id = $2');
+    expect(sql).toContain('FOR KEY SHARE');
     expect(params).toEqual(['app-1', 'module-1']);
   });
 
   it('returns false when the module is not owned by the application', async () => {
-    mockPool([{ exists: false }]);
+    mockPool([]);
 
-    await expect(permissionModuleExists('app-1', 'foreign-module')).resolves.toBe(false);
+    await expect(lockPermissionModule('app-1', 'foreign-module')).resolves.toBe(false);
   });
 });
 

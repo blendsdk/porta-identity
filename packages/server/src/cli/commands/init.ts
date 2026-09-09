@@ -223,8 +223,8 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         const { createClient } = await import('../../clients/index.js');
         const { createUser, activateUser, markEmailVerified } =
           await import('../../users/index.js');
-        const { createRole, createPermission, assignRolesToUser } =
-          await import('../../rbac/index.js');
+        const { createRole, assignRolesToUser } = await import('../../rbac/index.js');
+        const { insertPermission } = await import('../../rbac/permission-repository.js');
         const { assignPermissionsToRole } = await import('../../rbac/mapping-repository.js');
         const { ensureSigningKeys } = await import('../../lib/signing-keys.js');
         const { getPool } = await import('../../lib/database.js');
@@ -286,7 +286,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // Permission slugs come from the centralized admin-permissions module.
         const permissionIdMap = new Map<string, string>(); // slug → permission ID
         for (const permSlug of ALL_ADMIN_PERMISSIONS) {
-          const permission = await createPermission({
+          const permission = await insertPermission({
             applicationId: adminApp.id,
             slug: permSlug,
             name: buildPermissionName(permSlug),
