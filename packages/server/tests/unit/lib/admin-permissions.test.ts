@@ -95,6 +95,15 @@ describe('ADMIN_PERMISSIONS', () => {
     });
   });
 
+  describe('permission management permissions', () => {
+    it('should include create, read, update, and delete', () => {
+      expect(ADMIN_PERMISSIONS.PERMISSION_CREATE).toBe('admin:permission:create');
+      expect(ADMIN_PERMISSIONS.PERMISSION_READ).toBe('admin:permission:read');
+      expect(ADMIN_PERMISSIONS.PERMISSION_UPDATE).toBe('admin:permission:update');
+      expect(ADMIN_PERMISSIONS.PERMISSION_DELETE).toBe('admin:permission:delete');
+    });
+  });
+
   describe('system permissions', () => {
     it('should include config, key, audit, session, stats, and import/export', () => {
       expect(ADMIN_PERMISSIONS.CONFIG_READ).toBe('admin:config:read');
@@ -265,6 +274,10 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
       expect(perms).toContain('admin:role:read');
     });
 
+    it('should include app:read for application-scoped role selection', () => {
+      expect(ADMIN_ROLE_DEFINITIONS.USER_ADMIN.permissions).toContain('admin:app:read');
+    });
+
     it('should include session management permissions', () => {
       const perms = ADMIN_ROLE_DEFINITIONS.USER_ADMIN.permissions;
       expect(perms).toContain('admin:session:read');
@@ -290,6 +303,7 @@ describe('ADMIN_ROLE_DEFINITIONS', () => {
       expect(perms).toContain('admin:client:create');
       expect(perms).toContain('admin:role:create');
       expect(perms).toContain('admin:permission:create');
+      expect(perms).toContain('admin:permission:update');
       expect(perms).toContain('admin:claim:create');
     });
 

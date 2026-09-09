@@ -48,12 +48,14 @@ describe('logger PII redaction', () => {
             'cookie',
             'refresh_token',
             'client_secret',
+            'urn:porta:internal_application_id',
             'req.headers.authorization',
             'req.headers.cookie',
             '*.password',
             '*.token',
             '*.refresh_token',
             '*.client_secret',
+            '*.urn:porta:internal_application_id',
             '*.authorization',
           ],
           censor: '[Redacted]',
@@ -105,21 +107,21 @@ describe('logger PII redaction', () => {
     expect(log.client_secret).toBe('[Redacted]');
   });
 
+  it('should redact the top-level private application identifier', () => {
+    testLogger.info({ 'urn:porta:internal_application_id': 'app-secret-id' }, 'test');
+    const log = getLastLog();
+    expect(log['urn:porta:internal_application_id']).toBe('[Redacted]');
+  });
+
   it('should redact nested req.headers.authorization', () => {
-    testLogger.info(
-      { req: { headers: { authorization: 'Bearer secret-token' } } },
-      'test',
-    );
+    testLogger.info({ req: { headers: { authorization: 'Bearer secret-token' } } }, 'test');
     const log = getLastLog();
     const req = log.req as Record<string, Record<string, unknown>>;
     expect(req.headers.authorization).toBe('[Redacted]');
   });
 
   it('should redact nested req.headers.cookie', () => {
-    testLogger.info(
-      { req: { headers: { cookie: '_session=xyz' } } },
-      'test',
-    );
+    testLogger.info({ req: { headers: { cookie: '_session=xyz' } } }, 'test');
     const log = getLastLog();
     const req = log.req as Record<string, Record<string, unknown>>;
     expect(req.headers.cookie).toBe('[Redacted]');
@@ -146,11 +148,15 @@ describe('logger PII redaction', () => {
     expect(response.refresh_token).toBe('[Redacted]');
   });
 
+  it('should redact a nested private application identifier', () => {
+    testLogger.info({ client: { 'urn:porta:internal_application_id': 'app-secret-id' } }, 'test');
+    const log = getLastLog();
+    const client = log.client as Record<string, unknown>;
+    expect(client['urn:porta:internal_application_id']).toBe('[Redacted]');
+  });
+
   it('should NOT redact non-sensitive fields', () => {
-    testLogger.info(
-      { username: 'alice', email: 'alice@example.com', status: 'active' },
-      'test',
-    );
+    testLogger.info({ username: 'alice', email: 'alice@example.com', status: 'active' }, 'test');
     const log = getLastLog();
     expect(log.username).toBe('alice');
     expect(log.email).toBe('alice@example.com');

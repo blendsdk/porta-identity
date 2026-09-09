@@ -23,10 +23,7 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
-import {
-  ADMIN_PERMISSIONS,
-  getPermissionsForAdminRole,
-} from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, getPermissionsForAdminRole } from '../lib/admin-permissions.js';
 import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import * as roleService from '../rbac/role-service.js';
@@ -155,7 +152,10 @@ export function createUserRoleRouter(): Router {
       try {
         const body = roleIdsSchema.parse(ctx.request.body);
         const actor = ctx.state.adminUser;
-        if (!actor) ctx.throw(401, 'Authentication required');
+        if (!actor) {
+          ctx.throw(401, 'Authentication required');
+          return;
+        }
         if (!(await requireDelegableRoles(body.roleIds, actor.permissions))) {
           ctx.throw(403, 'Role assignment is not permitted');
         }

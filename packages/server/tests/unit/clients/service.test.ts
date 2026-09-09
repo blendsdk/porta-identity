@@ -494,6 +494,7 @@ describe('client service', () => {
       expect(result!.response_types).toEqual(['code']);
       expect(result!.scope).toBe('openid profile email');
       expect(result!.token_endpoint_auth_method).toBe('client_secret_basic');
+      expect(result!['urn:porta:internal_application_id']).toBe('app-uuid-1');
     });
 
     it('should return undefined for non-existent client', async () => {

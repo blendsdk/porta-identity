@@ -44,6 +44,10 @@ vi.mock('../../../src/rbac/user-role-service.js', () => ({
   getUserRoles: vi.fn(),
 }));
 
+vi.mock('../../../src/applications/service.js', () => ({
+  getApplicationBySlug: vi.fn(),
+}));
+
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: {
     error: vi.fn(),
@@ -57,6 +61,7 @@ import { requireAdminAuth, setAdminAuthProvider } from '../../../src/middleware/
 import { findUserForOidc } from '../../../src/users/service.js';
 import { findSuperAdminOrganization } from '../../../src/organizations/repository.js';
 import { getUserRoles } from '../../../src/rbac/user-role-service.js';
+import { getApplicationBySlug } from '../../../src/applications/service.js';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -86,10 +91,20 @@ const ADMIN_USER = {
   status: 'active',
 };
 
+const ADMIN_APPLICATION = {
+  id: 'app-admin-uuid',
+  name: 'Porta Admin',
+  slug: 'porta-admin',
+  description: null,
+  status: 'active' as const,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
 const ADMIN_ROLES = [
   {
     id: 'role-1',
-    applicationId: 'app-1',
+    applicationId: ADMIN_APPLICATION.id,
     name: 'Admin',
     slug: 'porta-admin',
     description: null,
@@ -140,6 +155,7 @@ function setupHappyPath(): void {
   mockAccessTokenFind.mockResolvedValue(VALID_ACCESS_TOKEN);
   vi.mocked(findSuperAdminOrganization).mockResolvedValue(SUPER_ADMIN_ORG);
   vi.mocked(findUserForOidc).mockResolvedValue(ADMIN_USER as never);
+  vi.mocked(getApplicationBySlug).mockResolvedValue(ADMIN_APPLICATION);
   vi.mocked(getUserRoles).mockResolvedValue(ADMIN_ROLES as never);
 }
 
@@ -337,6 +353,21 @@ describe('admin auth middleware', () => {
       expect((ctx.body as { error: string }).error).toBe('Server configuration error');
       expect(next).not.toHaveBeenCalled();
     });
+
+    it('when the canonical Admin application does not exist', async () => {
+      setupHappyPath();
+      vi.mocked(getApplicationBySlug).mockResolvedValue(null);
+
+      const middleware = requireAdminAuth();
+      const ctx = createMockCtx('Bearer valid-token');
+      const next = vi.fn();
+
+      await middleware(ctx as never, next);
+
+      expect(ctx.status).toBe(500);
+      expect((ctx.body as { error: string }).error).toBe('Server configuration error');
+      expect(next).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -370,12 +401,12 @@ describe('admin auth middleware', () => {
       expect(mockAccessTokenFind).toHaveBeenCalledWith('valid-opaque-token');
     });
 
-    it('includes only porta-* role slugs in adminUser.roles', async () => {
+    it('includes only recognized roles owned by the canonical Admin application', async () => {
       setupHappyPath();
       vi.mocked(getUserRoles).mockResolvedValue([
         {
           id: 'r1',
-          applicationId: 'app-1',
+          applicationId: ADMIN_APPLICATION.id,
           name: 'Admin',
           slug: 'porta-super-admin',
           description: null,
@@ -384,7 +415,7 @@ describe('admin auth middleware', () => {
         },
         {
           id: 'r2',
-          applicationId: 'app-1',
+          applicationId: ADMIN_APPLICATION.id,
           name: 'Auditor',
           slug: 'porta-auditor',
           description: null,
@@ -393,9 +424,18 @@ describe('admin auth middleware', () => {
         },
         {
           id: 'r3',
-          applicationId: 'app-1',
+          applicationId: ADMIN_APPLICATION.id,
           name: 'Custom',
           slug: 'custom-role',
+          description: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        {
+          id: 'r4',
+          applicationId: 'foreign-app-uuid',
+          name: 'Foreign Admin',
+          slug: 'porta-super-admin',
           description: null,
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -410,7 +450,7 @@ describe('admin auth middleware', () => {
 
       expect(next).toHaveBeenCalledOnce();
       expect(ctx.state.adminUser).toBeDefined();
-      // Only porta-* roles are included, not custom-role
+      // Unknown roles and recognized slugs from other applications are excluded.
       expect((ctx.state.adminUser as { roles: string[] }).roles).toEqual([
         'porta-super-admin',
         'porta-auditor',
