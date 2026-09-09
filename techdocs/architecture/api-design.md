@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-09
+> **Last Updated**: 2026-09-10
 
 ## Overview
 
@@ -66,6 +66,17 @@ authenticate again without an unsafe follow-up request. Role-slug updates, role-
 and user-role removal use the same result flag. A missing or parent-mismatched record returns a
 fixed resource-specific `404`; it does not expose dependency counts or partial cascade details.
 Repeating a completed deletion therefore returns `404` and creates no second deletion event.
+
+### RBAC SDK and CLI contracts
+
+The public SDK mirrors the application-qualified RBAC routes without inventing pagination or
+duplicating parent identifiers in request bodies. `roles.list(appId)` and
+`permissions.list(appId, { moduleId? })` validate and return complete arrays. User-role assignment
+uses collection `PUT` and `DELETE` requests with `{ roleIds }`, while the conventional CLI wraps a
+single selected role in a one-element array. Role, permission, role-permission, and user-role
+reduction methods validate the committed `reauthenticationRequired` result before the CLI reports
+success. The SDK agent reuses these same domain methods and exposes permission metadata updates
+through its existing definition-driven dispatcher.
 
 Archive, Restore, user Purge, and whole-client Revoke are not Admin API lifecycle operations.
 Applications, modules, and clients retain reversible Activate/Deactivate operations; organizations
