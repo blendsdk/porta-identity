@@ -8,7 +8,7 @@
  *
  * Created entities:
  *   1. "Porta Admin" application (slug: porta-admin)
- *   2. Granular admin permissions (42 resource:action permissions)
+ *   2. Granular admin permissions for every supported administrative action
  *   3. Five admin roles with permission sets (super-admin, org-admin, etc.)
  *   4. "Porta Admin CLI" public client (Auth Code + PKCE)
  *   5. First admin user (interactive prompts or flags)
