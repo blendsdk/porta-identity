@@ -187,10 +187,7 @@ export async function assignRolesToUser(
  * @param userId - User UUID
  * @param roleIds - Array of role UUIDs to remove
  */
-export async function removeRolesFromUser(
-  userId: string,
-  roleIds: string[],
-): Promise<void> {
+export async function removeRolesFromUser(userId: string, roleIds: string[]): Promise<void> {
   if (roleIds.length === 0) return;
 
   const pool = getPool();
@@ -212,18 +209,21 @@ export async function removeRolesFromUser(
  * ordered by name for consistent output.
  *
  * @param userId - User UUID
+ * @param applicationId - Optional application UUID used to scope token authority
  * @returns Array of roles assigned to the user
  */
-export async function getRolesForUser(userId: string): Promise<Role[]> {
+export async function getRolesForUser(userId: string, applicationId?: string): Promise<Role[]> {
   const pool = getPool();
+  const applicationFilter = applicationId ? ' AND r.application_id = $2' : '';
+  const params = applicationId ? [userId, applicationId] : [userId];
 
   const result = await pool.query<RoleRow>(
     `SELECT r.*
      FROM user_roles ur
      JOIN roles r ON r.id = ur.role_id
-     WHERE ur.user_id = $1
+     WHERE ur.user_id = $1${applicationFilter}
      ORDER BY r.name ASC`,
-    [userId],
+    params,
   );
 
   return result.rows.map(mapRowToRole);
@@ -238,19 +238,28 @@ export async function getRolesForUser(userId: string): Promise<Role[]> {
  * may have the same permission through multiple roles.
  *
  * @param userId - User UUID
+ * @param applicationId - Optional application UUID used to scope token authority
  * @returns Deduplicated array of permissions the user has through their roles
  */
-export async function getPermissionsForUser(userId: string): Promise<Permission[]> {
+export async function getPermissionsForUser(
+  userId: string,
+  applicationId?: string,
+): Promise<Permission[]> {
   const pool = getPool();
+  const applicationFilter = applicationId
+    ? ' AND r.application_id = $2 AND p.application_id = $2'
+    : '';
+  const params = applicationId ? [userId, applicationId] : [userId];
 
   const result = await pool.query<PermissionRow>(
     `SELECT DISTINCT p.*
      FROM user_roles ur
+     JOIN roles r ON r.id = ur.role_id
      JOIN role_permissions rp ON rp.role_id = ur.role_id
      JOIN permissions p ON p.id = rp.permission_id
-     WHERE ur.user_id = $1
+     WHERE ur.user_id = $1${applicationFilter}
      ORDER BY p.slug ASC`,
-    [userId],
+    params,
   );
 
   return result.rows.map(mapRowToPermission);

@@ -11,8 +11,8 @@
  *
  * Claims flow:
  * 1. buildUserClaims(user, scopes) → standard OIDC claims (sub, name, email...)
- * 2. buildRoleClaims(userId) → role slugs array (cache-first)
- * 3. buildPermissionClaims(userId) → permission slugs array (cache-first)
+ * 2. buildRoleClaims(userId, appId) → application-owned role slugs
+ * 3. buildPermissionClaims(userId, appId) → application-owned permission slugs
  * 4. buildCustomClaims(userId, appId, tokenType) → custom per-app claims
  *
  * The applicationId for custom claims is resolved from the OIDC client
@@ -57,10 +57,7 @@ export interface OidcAccount {
  * @param sub - The subject identifier (user UUID)
  * @returns Account object with claims() method, or undefined if not found
  */
-export async function findAccount(
-  ctx: unknown,
-  sub: string,
-): Promise<OidcAccount | undefined> {
+export async function findAccount(ctx: unknown, sub: string): Promise<OidcAccount | undefined> {
   try {
     const user = await findUserForOidc(sub);
     if (!user) return undefined;
@@ -82,15 +79,18 @@ export async function findAccount(
         // 1. Standard OIDC claims (scope-filtered)
         const standardClaims = buildUserClaims(user, scopes);
 
-        // 2. RBAC claims (always included — cache-first resolution)
-        const [roles, permissions] = await Promise.all([
-          buildRoleClaims(user.id),
-          buildPermissionClaims(user.id),
-        ]);
+        // Resolve the application once so every application-owned claim uses the same boundary.
+        const applicationId = resolveApplicationId(ctx);
+
+        // Missing client context must not fall back to a union of authority from every application.
+        const [roles, permissions] = applicationId
+          ? await Promise.all([
+              buildRoleClaims(user.id, applicationId),
+              buildPermissionClaims(user.id, applicationId),
+            ])
+          : [[], []];
 
         // 3. Custom claims (per-application, filtered by token type)
-        // Resolve applicationId from the OIDC client context if available
-        const applicationId = resolveApplicationId(ctx);
         let customClaims: Record<string, unknown> = {};
         if (applicationId) {
           // Map OIDC 'use' parameter to our TokenType

@@ -147,10 +147,11 @@ export async function getUsersWithRole(
  * for inclusion in the token's custom claims.
  *
  * @param userId - User UUID
+ * @param applicationId - Application UUID that owns the requested token authority
  * @returns Array of role slug strings
  */
-export async function buildRoleClaims(userId: string): Promise<string[]> {
-  const roles = await repoGetRolesForUser(userId);
+export async function buildRoleClaims(userId: string, applicationId: string): Promise<string[]> {
+  const roles = await repoGetRolesForUser(userId, applicationId);
   return roles.map((role) => role.slug);
 }
 
@@ -161,9 +162,13 @@ export async function buildRoleClaims(userId: string): Promise<string[]> {
  * "crm:deals:write"]) for inclusion in the token's custom claims.
  *
  * @param userId - User UUID
+ * @param applicationId - Application UUID that owns the requested token authority
  * @returns Array of permission slug strings
  */
-export async function buildPermissionClaims(userId: string): Promise<string[]> {
-  const permissions = await repoGetPermissionsForUser(userId);
+export async function buildPermissionClaims(
+  userId: string,
+  applicationId: string,
+): Promise<string[]> {
+  const permissions = await repoGetPermissionsForUser(userId, applicationId);
   return permissions.map((permission) => permission.slug);
 }
