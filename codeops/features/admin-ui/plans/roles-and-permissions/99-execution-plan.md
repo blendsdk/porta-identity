@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 00:24
-> **Progress**: 36/62 tasks (58%)
+> **Last Updated**: 2026-09-10 01:01
+> **Progress**: 37/62 tasks (60%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -145,11 +145,15 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 ## Phase 4: Application Roles and Permissions Tabs
 
+> **Phase baseline tree**: a013ffb7c4ce7fa9452f5b15fa205407d3eccc79
+> **Scope mode**: strict
+> **Expected modification set**: `packages/cli/tests/admin/application-rbac.spec.test.ts`, `packages/cli/tests/admin/application-rbac.impl.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`, `packages/cli/tests/admin/session-wiring.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts`, `packages/cli/src/admin/rbac-state.ts`, `packages/cli/src/admin/rbac-service.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/application-rbac-controller.ts`, `packages/cli/src/admin/application-rbac-workspace.ts`, `packages/cli/src/admin/rbac-dialogs.ts`, `packages/cli/src/admin/application-workspace.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts`, `packages/cli/src/commands/admin.ts`, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, repository test-inventory expectations, and incremental techdocs if required.
+
 ### Step 4.1: Specification Tests
 
 **Reference**: [03-04 §§Application Tabs–Layout and Validation](03-04-admin-ui.md#application-tabs) · AR-5, AR-10, AR-13–AR-16, AR-19 · ST-33–ST-38, ST-41–ST-44
 
-- [ ] 4.1.1 [spec-author] Write Application tab order, empty grids, capability/selection, dialogs, direct mappings, reauthentication, stale/error state, and compact-layout specifications — `packages/cli/tests/admin/application-rbac.spec.test.ts`
+- [x] 4.1.1 [spec-author] Write Application tab order, empty grids, capability/selection, dialogs, direct mappings, reauthentication, stale/error state, and compact-layout specifications — `packages/cli/tests/admin/application-rbac.spec.test.ts` ✅ (completed: 2026-09-10 01:01)
 - [ ] 4.1.2 Run the Phase 4 specification file and record the expected red result before implementation
 
 ### Step 4.2: Implementation
