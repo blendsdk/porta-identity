@@ -315,10 +315,12 @@ describe('live PostgreSQL authority for cached OIDC state', () => {
 
       await getPool().query('DELETE FROM user_roles WHERE user_id = $1', [deletedUser.id]);
 
-      await expect(buildRoleClaims(deletedUser.id)).resolves.toEqual([]);
-      await expect(buildPermissionClaims(deletedUser.id)).resolves.toEqual([]);
-      await expect(buildRoleClaims(liveUser.id)).resolves.toEqual([role.slug]);
-      await expect(buildPermissionClaims(liveUser.id)).resolves.toEqual([permission.slug]);
+      await expect(buildRoleClaims(deletedUser.id, application.id)).resolves.toEqual([]);
+      await expect(buildPermissionClaims(deletedUser.id, application.id)).resolves.toEqual([]);
+      await expect(buildRoleClaims(liveUser.id, application.id)).resolves.toEqual([role.slug]);
+      await expect(buildPermissionClaims(liveUser.id, application.id)).resolves.toEqual([
+        permission.slug,
+      ]);
     });
 
     // Claim issuance must use live definitions and values while retaining unrelated live claims.

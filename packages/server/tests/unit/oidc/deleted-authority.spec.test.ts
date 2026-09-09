@@ -429,13 +429,15 @@ describe('deleted PostgreSQL authority', () => {
   });
 
   describe('direct token claim authority', () => {
+    const applicationId = 'application-1';
+
     // Deleted role assignments must disappear from issued claims even while stale Redis data remains.
     it('should build role claims from PostgreSQL when Redis contains deleted roles', async () => {
       vi.mocked(getCachedUserRoles).mockResolvedValue(['deleted-role']);
       vi.mocked(getRolesForUser).mockResolvedValue([]);
 
-      await expect(buildRoleClaims('user-1')).resolves.toEqual([]);
-      expect(getRolesForUser).toHaveBeenCalledWith('user-1');
+      await expect(buildRoleClaims('user-1', applicationId)).resolves.toEqual([]);
+      expect(getRolesForUser).toHaveBeenCalledWith('user-1', applicationId);
       expect(getCachedUserRoles).not.toHaveBeenCalled();
     });
 
@@ -444,8 +446,8 @@ describe('deleted PostgreSQL authority', () => {
       vi.mocked(getCachedUserPermissions).mockResolvedValue(['deleted:permission']);
       vi.mocked(getPermissionsForUser).mockResolvedValue([]);
 
-      await expect(buildPermissionClaims('user-1')).resolves.toEqual([]);
-      expect(getPermissionsForUser).toHaveBeenCalledWith('user-1');
+      await expect(buildPermissionClaims('user-1', applicationId)).resolves.toEqual([]);
+      expect(getPermissionsForUser).toHaveBeenCalledWith('user-1', applicationId);
       expect(getCachedUserPermissions).not.toHaveBeenCalled();
     });
 

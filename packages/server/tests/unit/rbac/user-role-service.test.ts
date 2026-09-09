@@ -49,6 +49,8 @@ import {
 } from '../../../src/rbac/user-role-service.js';
 import type { Role, Permission } from '../../../src/rbac/types.js';
 
+const APPLICATION_ID = 'app-uuid-1';
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -202,19 +204,19 @@ describe('buildRoleClaims', () => {
       createTestRole({ slug: 'editor' }),
     ]);
 
-    const result = await buildRoleClaims('user-1');
+    const result = await buildRoleClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual(['admin', 'editor']);
-    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1');
+    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 
   it('should return empty array when user has no roles', async () => {
     vi.mocked(mockRepoGetRoles).mockResolvedValue([]);
 
-    const result = await buildRoleClaims('user-1');
+    const result = await buildRoleClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual([]);
-    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1');
+    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 });
 
@@ -225,18 +227,18 @@ describe('buildPermissionClaims', () => {
       createTestPermission({ slug: 'crm:deals:write' }),
     ]);
 
-    const result = await buildPermissionClaims('user-1');
+    const result = await buildPermissionClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual(['crm:contacts:read', 'crm:deals:write']);
-    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1');
+    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 
   it('should return empty array when user has no permissions', async () => {
     vi.mocked(mockRepoGetPerms).mockResolvedValue([]);
 
-    const result = await buildPermissionClaims('user-1');
+    const result = await buildPermissionClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual([]);
-    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1');
+    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 });
