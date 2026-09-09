@@ -17,6 +17,8 @@ import { createAdminOrganizationOperations } from './organization-service.js';
 import { createAdminUserOperations } from './user-service.js';
 import { createAdminApplicationOperations } from './application-service.js';
 import { createAdminClientOperations } from './client-service.js';
+import { createAdminRbacOperations } from './rbac-service.js';
+import type { AdminRbacDomains } from './rbac-service.js';
 import type { AdminCapabilities, AdminConnectionState } from './state.js';
 
 /** Lazy SDK organization-domain input retained until verified UI work requests it. */
@@ -30,6 +32,9 @@ type AdminApplicationDomainFactory = Parameters<typeof createAdminApplicationOpe
 
 /** Lazy SDK client-domain input retained until verified UI work requests it. */
 type AdminClientDomainFactory = Parameters<typeof createAdminClientOperations>[0];
+
+/** Lazy SDK RBAC domains retained until verified UI work requests them. */
+type AdminRbacDomainFactory = () => AdminRbacDomains;
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -139,6 +144,7 @@ export function prepareAdminSession(
   userDomain?: AdminUserDomainFactory,
   applicationDomain?: AdminApplicationDomainFactory,
   clientDomain?: AdminClientDomainFactory,
+  rbacDomain?: AdminRbacDomainFactory,
 ): PreparedAdminSession {
   const server = normalizeServerOrigin(serverInput);
 
@@ -227,6 +233,7 @@ export function prepareAdminSession(
         ? { applications: createAdminApplicationOperations(applicationDomain) }
         : {}),
       ...(clientDomain ? { clients: createAdminClientOperations(clientDomain) } : {}),
+      ...(rbacDomain ? { rbac: createAdminRbacOperations(rbacDomain) } : {}),
     },
   };
 }
@@ -282,6 +289,18 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
     canUpdateApplications: isLegacyAdministrator || validPermissions.includes('admin:app:update'),
     canDeleteApplications: isLegacyAdministrator || validPermissions.includes('admin:app:delete'),
     canDeleteModules: isLegacyAdministrator || validPermissions.includes('admin:module:delete'),
+    canReadRoles: isLegacyAdministrator || validPermissions.includes('admin:role:read'),
+    canCreateRoles: isLegacyAdministrator || validPermissions.includes('admin:role:create'),
+    canUpdateRoles: isLegacyAdministrator || validPermissions.includes('admin:role:update'),
+    canDeleteRoles: isLegacyAdministrator || validPermissions.includes('admin:role:delete'),
+    canReadPermissions: isLegacyAdministrator || validPermissions.includes('admin:permission:read'),
+    canCreatePermissions:
+      isLegacyAdministrator || validPermissions.includes('admin:permission:create'),
+    canUpdatePermissions:
+      isLegacyAdministrator || validPermissions.includes('admin:permission:update'),
+    canDeletePermissions:
+      isLegacyAdministrator || validPermissions.includes('admin:permission:delete'),
+    canAssignRoles: isLegacyAdministrator || validPermissions.includes('admin:role:assign'),
     canReadClients: isLegacyAdministrator || validPermissions.includes('admin:client:read'),
     canCreateClients:
       isLegacyAdministrator ||

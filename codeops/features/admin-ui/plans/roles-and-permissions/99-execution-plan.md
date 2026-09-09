@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 01:09
-> **Progress**: 39/62 tasks (63%)
+> **Last Updated**: 2026-09-10 01:14
+> **Progress**: 40/62 tasks (65%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -147,7 +147,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 > **Phase baseline tree**: a013ffb7c4ce7fa9452f5b15fa205407d3eccc79
 > **Scope mode**: strict
-> **Expected modification set**: `packages/cli/tests/admin/application-rbac.spec.test.ts`, `packages/cli/tests/admin/application-rbac.impl.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`, `packages/cli/tests/admin/session-wiring.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts`, `packages/cli/src/admin/rbac-state.ts`, `packages/cli/src/admin/rbac-service.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/application-rbac-controller.ts`, `packages/cli/src/admin/application-rbac-workspace.ts`, `packages/cli/src/admin/rbac-dialogs.ts`, `packages/cli/src/admin/application-workspace.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts`, `packages/cli/src/commands/admin.ts`, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, repository test-inventory expectations, and incremental techdocs if required.
+> **Expected modification set**: `packages/cli/tests/admin/application-rbac.spec.test.ts`, `packages/cli/tests/admin/application-rbac.impl.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`, `packages/cli/tests/admin/session-wiring.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts`, `packages/cli/src/admin/rbac-state.ts`, `packages/cli/src/admin/rbac-service.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application-rbac-controller.ts`, `packages/cli/src/admin/application-rbac-workspace.ts`, `packages/cli/src/admin/rbac-dialogs.ts`, `packages/cli/src/admin/application-workspace.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts`, `packages/cli/src/commands/admin.ts`, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, repository test-inventory expectations, and incremental techdocs if required.
 
 ### Step 4.1: Specification Tests
 
@@ -161,7 +161,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 **Reference**: [03-04](03-04-admin-ui.md) · AR-5, AR-10
 
 - [x] 4.2.1 Add allowlisted RBAC projections, remote validation, failure/result types, and SDK adapter operations — `packages/cli/src/admin/rbac-state.ts`, `packages/cli/src/admin/rbac-service.ts` ✅ (completed: 2026-09-10 01:10)
-- [ ] 4.2.2 Wire one lazy RBAC factory, capability mapping, and session operations through the production composition root — `packages/cli/src/commands/admin.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/state.ts`
+- [x] 4.2.2 Wire one lazy RBAC factory, capability mapping, and session operations through the production composition root — `packages/cli/src/commands/admin.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/state.ts` ✅ (completed: 2026-09-10 01:14; scoped lint and typecheck pass; 104 existing wiring assertions pass and 15 exact capability-shape expectations await their planned 4.3.1 update)
 - [ ] 4.2.3 Add Application-owned role/permission/mapping controller with session/application generation checks and result reconciliation — `packages/cli/src/admin/application-rbac-controller.ts`
 - [ ] 4.2.4 Build Roles/Permissions pages and focused CRUD/mapping dialogs with DataGrid and Layout DSL — `packages/cli/src/admin/application-rbac-workspace.ts`, `packages/cli/src/admin/rbac-dialogs.ts`
 - [ ] 4.2.5 Append the two pages and wire their lifecycle through thin existing Application seams — `packages/cli/src/admin/application-workspace.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts`

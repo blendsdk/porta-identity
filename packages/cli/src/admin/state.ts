@@ -32,6 +32,24 @@ export interface AdminCapabilities {
   readonly canDeleteApplications: boolean;
   /** Whether an application module may be permanently deleted. */
   readonly canDeleteModules: boolean;
+  /** Whether application roles may be listed and inspected. */
+  readonly canReadRoles: boolean;
+  /** Whether an application role may be created. */
+  readonly canCreateRoles: boolean;
+  /** Whether role metadata and direct permission mappings may be updated. */
+  readonly canUpdateRoles: boolean;
+  /** Whether an application role may be permanently deleted. */
+  readonly canDeleteRoles: boolean;
+  /** Whether application permissions may be listed and inspected. */
+  readonly canReadPermissions: boolean;
+  /** Whether an application permission may be created. */
+  readonly canCreatePermissions: boolean;
+  /** Whether mutable permission metadata may be updated. */
+  readonly canUpdatePermissions: boolean;
+  /** Whether an application permission may be permanently deleted. */
+  readonly canDeletePermissions: boolean;
+  /** Whether application roles may be assigned to or removed from users. */
+  readonly canAssignRoles: boolean;
   /** Whether organization clients and secret metadata may be inspected. */
   readonly canReadClients: boolean;
   /** Whether a client may be created when application read is also granted. */
