@@ -19,6 +19,7 @@ import {
   findPermissionById,
   findPermissionBySlug,
   updatePermission,
+  permissionModuleExists,
   listPermissionsByApplication,
   permissionSlugExists,
 } from '../../../src/rbac/permission-repository.js';
@@ -117,7 +118,7 @@ describe('findPermissionById', () => {
     const row = createTestPermissionRow();
     mockPool([row]);
 
-    const result = await findPermissionById('perm-uuid-1');
+    const result = await findPermissionById('app-uuid-1', 'perm-uuid-1');
 
     expect(result).not.toBeNull();
     expect(result!.id).toBe('perm-uuid-1');
@@ -128,7 +129,7 @@ describe('findPermissionById', () => {
   it('should return null when not found', async () => {
     mockPool([]);
 
-    const result = await findPermissionById('non-existent');
+    const result = await findPermissionById('app-uuid-1', 'non-existent');
 
     expect(result).toBeNull();
   });
@@ -136,9 +137,12 @@ describe('findPermissionById', () => {
   it('should query with the correct ID parameter', async () => {
     const mockQuery = mockPool([]);
 
-    await findPermissionById('test-id');
+    await findPermissionById('app-1', 'test-id');
 
-    expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM permissions WHERE id = $1', ['test-id']);
+    expect(mockQuery).toHaveBeenCalledWith(
+      'SELECT * FROM permissions WHERE application_id = $1 AND id = $2',
+      ['app-1', 'test-id'],
+    );
   });
 });
 
@@ -178,12 +182,14 @@ describe('updatePermission', () => {
     const row = createTestPermissionRow({ name: 'Updated Name' });
     const mockQuery = mockPool([row]);
 
-    const result = await updatePermission('perm-uuid-1', { name: 'Updated Name' });
+    const result = await updatePermission('app-uuid-1', 'perm-uuid-1', {
+      name: 'Updated Name',
+    });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('UPDATE permissions SET name = $2');
-    expect(sql).toContain('WHERE id = $1');
-    expect(params).toEqual(['perm-uuid-1', 'Updated Name']);
+    expect(sql).toContain('UPDATE permissions SET name = $3');
+    expect(sql).toContain('WHERE application_id = $1 AND id = $2');
+    expect(params).toEqual(['app-uuid-1', 'perm-uuid-1', 'Updated Name']);
     expect(result.name).toBe('Updated Name');
   });
 
@@ -191,48 +197,72 @@ describe('updatePermission', () => {
     const row = createTestPermissionRow({ description: 'New desc' });
     const mockQuery = mockPool([row]);
 
-    await updatePermission('perm-uuid-1', { description: 'New desc' });
+    await updatePermission('app-uuid-1', 'perm-uuid-1', { description: 'New desc' });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('description = $2');
-    expect(params).toEqual(['perm-uuid-1', 'New desc']);
+    expect(sql).toContain('description = $3');
+    expect(params).toEqual(['app-uuid-1', 'perm-uuid-1', 'New desc']);
   });
 
   it('should update both name and description', async () => {
     const row = createTestPermissionRow({ name: 'New', description: 'New desc' });
     const mockQuery = mockPool([row]);
 
-    await updatePermission('perm-uuid-1', { name: 'New', description: 'New desc' });
+    await updatePermission('app-uuid-1', 'perm-uuid-1', {
+      name: 'New',
+      description: 'New desc',
+    });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('name = $2');
-    expect(sql).toContain('description = $3');
-    expect(params).toEqual(['perm-uuid-1', 'New', 'New desc']);
+    expect(sql).toContain('name = $3');
+    expect(sql).toContain('description = $4');
+    expect(params).toEqual(['app-uuid-1', 'perm-uuid-1', 'New', 'New desc']);
   });
 
   it('should allow setting description to null (clear it)', async () => {
     const row = createTestPermissionRow({ description: null });
     const mockQuery = mockPool([row]);
 
-    await updatePermission('perm-uuid-1', { description: null });
+    await updatePermission('app-uuid-1', 'perm-uuid-1', { description: null });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('description = $2');
-    expect(params).toEqual(['perm-uuid-1', null]);
+    expect(sql).toContain('description = $3');
+    expect(params).toEqual(['app-uuid-1', 'perm-uuid-1', null]);
   });
 
   it('should throw when no fields are provided', async () => {
     mockPool([]);
 
-    await expect(updatePermission('perm-uuid-1', {})).rejects.toThrow('No fields to update');
+    await expect(updatePermission('app-uuid-1', 'perm-uuid-1', {})).rejects.toThrow(
+      'No fields to update',
+    );
   });
 
   it('should throw when permission is not found', async () => {
     mockPool([]);
 
-    await expect(updatePermission('non-existent', { name: 'X' })).rejects.toThrow(
+    await expect(updatePermission('app-uuid-1', 'non-existent', { name: 'X' })).rejects.toThrow(
       'Permission not found',
     );
+  });
+});
+
+describe('permissionModuleExists', () => {
+  it('checks module ownership with both application and module IDs', async () => {
+    const mockQuery = mockPool([{ exists: true }]);
+
+    await expect(permissionModuleExists('app-1', 'module-1')).resolves.toBe(true);
+
+    const [sql, params] = mockQuery.mock.calls[0];
+    expect(sql).toContain('FROM application_modules');
+    expect(sql).toContain('application_id = $1 AND id = $2');
+    expect(params).toEqual(['app-1', 'module-1']);
+  });
+
+  it('returns false when the module is not owned by the application', async () => {
+    mockPool([{ exists: false }]);
+
+    await expect(permissionModuleExists('app-1', 'foreign-module')).resolves.toBe(false);
   });
 });
 

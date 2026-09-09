@@ -94,7 +94,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 **Reference**: [03-02](03-02-rbac-mutations.md) · AR-4, AR-7, AR-9
 
-- [ ] 2.2.1 Parent-qualify role, permission, module, mapping, and reverse-mapping SQL; add stable-order target locks — `packages/server/src/rbac/role-repository.ts`, `packages/server/src/rbac/permission-repository.ts`, `packages/server/src/rbac/mapping-repository.ts`
+- [x] 2.2.1 Parent-qualify role, permission, module, mapping, and reverse-mapping SQL; add stable-order target locks — `packages/server/src/rbac/role-repository.ts`, `packages/server/src/rbac/permission-repository.ts`, `packages/server/src/rbac/mapping-repository.ts` ✅ (completed: 2026-09-09 19:50)
 - [ ] 2.2.2 Extract repeated database revocation and add narrow detached authority cleanup using existing internals — `packages/server/src/lib/authority-revocation.ts`, `packages/server/src/lib/deletion-cleanup.ts`
 - [ ] 2.2.3 Implement role CRUD/mapping capture, canonical guards, targeted cleanup, actor audit, and reduction results — `packages/server/src/rbac/role-service.ts`, `packages/server/src/routes/roles.ts`
 - [ ] 2.2.4 Implement permission ownership, module validation, canonical guard, targeted deletion, update capability, actor audit, and reduction results — `packages/server/src/rbac/permission-service.ts`, `packages/server/src/routes/permissions.ts`

@@ -110,7 +110,7 @@ describe('findRoleById', () => {
     const row = createTestRoleRow();
     mockPool([row]);
 
-    const result = await findRoleById('role-uuid-1');
+    const result = await findRoleById('app-uuid-1', 'role-uuid-1');
 
     expect(result).not.toBeNull();
     expect(result!.id).toBe('role-uuid-1');
@@ -120,7 +120,7 @@ describe('findRoleById', () => {
   it('should return null when not found', async () => {
     mockPool([]);
 
-    const result = await findRoleById('non-existent');
+    const result = await findRoleById('app-uuid-1', 'non-existent');
 
     expect(result).toBeNull();
   });
@@ -128,9 +128,12 @@ describe('findRoleById', () => {
   it('should query with the correct ID parameter', async () => {
     const mockQuery = mockPool([]);
 
-    await findRoleById('test-id');
+    await findRoleById('app-1', 'test-id');
 
-    expect(mockQuery).toHaveBeenCalledWith('SELECT * FROM roles WHERE id = $1', ['test-id']);
+    expect(mockQuery).toHaveBeenCalledWith(
+      'SELECT * FROM roles WHERE application_id = $1 AND id = $2',
+      ['app-1', 'test-id'],
+    );
   });
 });
 
@@ -170,13 +173,13 @@ describe('updateRole', () => {
     const row = createTestRoleRow({ name: 'Updated Name' });
     const mockQuery = mockPool([row]);
 
-    const result = await updateRole('role-uuid-1', { name: 'Updated Name' });
+    const result = await updateRole('app-uuid-1', 'role-uuid-1', { name: 'Updated Name' });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('UPDATE roles SET name = $2');
-    expect(sql).toContain('WHERE id = $1');
+    expect(sql).toContain('UPDATE roles SET name = $3');
+    expect(sql).toContain('WHERE application_id = $1 AND id = $2');
     expect(sql).toContain('RETURNING *');
-    expect(params).toEqual(['role-uuid-1', 'Updated Name']);
+    expect(params).toEqual(['app-uuid-1', 'role-uuid-1', 'Updated Name']);
     expect(result.name).toBe('Updated Name');
   });
 
@@ -184,40 +187,44 @@ describe('updateRole', () => {
     const row = createTestRoleRow({ name: 'New', slug: 'new-slug', description: 'New desc' });
     const mockQuery = mockPool([row]);
 
-    await updateRole('role-uuid-1', {
+    await updateRole('app-uuid-1', 'role-uuid-1', {
       name: 'New',
       slug: 'new-slug',
       description: 'New desc',
     });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('name = $2');
-    expect(sql).toContain('slug = $3');
-    expect(sql).toContain('description = $4');
-    expect(params).toEqual(['role-uuid-1', 'New', 'new-slug', 'New desc']);
+    expect(sql).toContain('name = $3');
+    expect(sql).toContain('slug = $4');
+    expect(sql).toContain('description = $5');
+    expect(params).toEqual(['app-uuid-1', 'role-uuid-1', 'New', 'new-slug', 'New desc']);
   });
 
   it('should allow setting description to null (clear it)', async () => {
     const row = createTestRoleRow({ description: null });
     const mockQuery = mockPool([row]);
 
-    await updateRole('role-uuid-1', { description: null });
+    await updateRole('app-uuid-1', 'role-uuid-1', { description: null });
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('description = $2');
-    expect(params).toEqual(['role-uuid-1', null]);
+    expect(sql).toContain('description = $3');
+    expect(params).toEqual(['app-uuid-1', 'role-uuid-1', null]);
   });
 
   it('should throw when no fields are provided', async () => {
     mockPool([]);
 
-    await expect(updateRole('role-uuid-1', {})).rejects.toThrow('No fields to update');
+    await expect(updateRole('app-uuid-1', 'role-uuid-1', {})).rejects.toThrow(
+      'No fields to update',
+    );
   });
 
   it('should throw when role is not found', async () => {
     mockPool([]); // Empty result = not found
 
-    await expect(updateRole('non-existent', { name: 'X' })).rejects.toThrow('Role not found');
+    await expect(updateRole('app-uuid-1', 'non-existent', { name: 'X' })).rejects.toThrow(
+      'Role not found',
+    );
   });
 });
 

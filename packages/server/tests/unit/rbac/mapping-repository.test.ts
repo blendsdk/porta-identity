@@ -17,6 +17,7 @@ import { getPool } from '../../../src/lib/database.js';
 import {
   assignPermissionsToRole,
   removePermissionsFromRole,
+  lockRolePermissionTargets,
   getPermissionsForRole,
   getRolesWithPermission,
   assignRolesToUser,
@@ -96,7 +97,7 @@ describe('assignPermissionsToRole', () => {
   it('should do nothing when permissionIds array is empty', async () => {
     const mockQuery = mockPool();
 
-    await assignPermissionsToRole('role-1', []);
+    await assignPermissionsToRole('app-1', 'role-1', []);
 
     // Should not call the pool at all
     expect(mockQuery).not.toHaveBeenCalled();
@@ -105,30 +106,31 @@ describe('assignPermissionsToRole', () => {
   it('should insert a single permission assignment', async () => {
     const mockQuery = mockPool();
 
-    await assignPermissionsToRole('role-1', ['perm-1']);
+    await assignPermissionsToRole('app-1', 'role-1', ['perm-1']);
 
     expect(mockQuery).toHaveBeenCalledOnce();
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('INSERT INTO role_permissions');
     expect(sql).toContain('ON CONFLICT DO NOTHING');
-    expect(sql).toContain('($1, $2)');
-    expect(params).toEqual(['role-1', 'perm-1']);
+    expect(sql).toContain('role.application_id = $1');
+    expect(sql).toContain('permission.id = ANY($3::uuid[])');
+    expect(params).toEqual(['app-1', 'role-1', ['perm-1']]);
   });
 
   it('should insert multiple permission assignments (bulk)', async () => {
     const mockQuery = mockPool();
 
-    await assignPermissionsToRole('role-1', ['perm-1', 'perm-2', 'perm-3']);
+    await assignPermissionsToRole('app-1', 'role-1', ['perm-1', 'perm-2', 'perm-3']);
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('($1, $2), ($1, $3), ($1, $4)');
-    expect(params).toEqual(['role-1', 'perm-1', 'perm-2', 'perm-3']);
+    expect(sql).toContain('permission.application_id = role.application_id');
+    expect(params).toEqual(['app-1', 'role-1', ['perm-1', 'perm-2', 'perm-3']]);
   });
 
   it('should use ON CONFLICT DO NOTHING for idempotent assignment', async () => {
     const mockQuery = mockPool();
 
-    await assignPermissionsToRole('role-1', ['perm-1']);
+    await assignPermissionsToRole('app-1', 'role-1', ['perm-1']);
 
     const [sql] = mockQuery.mock.calls[0];
     expect(sql).toContain('ON CONFLICT DO NOTHING');
@@ -139,7 +141,7 @@ describe('removePermissionsFromRole', () => {
   it('should do nothing when permissionIds array is empty', async () => {
     const mockQuery = mockPool();
 
-    await removePermissionsFromRole('role-1', []);
+    await removePermissionsFromRole('app-1', 'role-1', []);
 
     expect(mockQuery).not.toHaveBeenCalled();
   });
@@ -147,23 +149,24 @@ describe('removePermissionsFromRole', () => {
   it('should delete a single permission mapping', async () => {
     const mockQuery = mockPool();
 
-    await removePermissionsFromRole('role-1', ['perm-1']);
+    await removePermissionsFromRole('app-1', 'role-1', ['perm-1']);
 
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('DELETE FROM role_permissions');
-    expect(sql).toContain('role_id = $1');
-    expect(sql).toContain('permission_id IN ($2)');
-    expect(params).toEqual(['role-1', 'perm-1']);
+    expect(sql).toContain('role.application_id = $1');
+    expect(sql).toContain('permission.application_id = $1');
+    expect(sql).toContain('permission.id = ANY($3::uuid[])');
+    expect(params).toEqual(['app-1', 'role-1', ['perm-1']]);
   });
 
   it('should delete multiple permission mappings', async () => {
     const mockQuery = mockPool();
 
-    await removePermissionsFromRole('role-1', ['perm-1', 'perm-2']);
+    await removePermissionsFromRole('app-1', 'role-1', ['perm-1', 'perm-2']);
 
     const [sql, params] = mockQuery.mock.calls[0];
-    expect(sql).toContain('permission_id IN ($2, $3)');
-    expect(params).toEqual(['role-1', 'perm-1', 'perm-2']);
+    expect(sql).toContain('permission.id = ANY($3::uuid[])');
+    expect(params).toEqual(['app-1', 'role-1', ['perm-1', 'perm-2']]);
   });
 });
 
@@ -175,7 +178,7 @@ describe('getPermissionsForRole', () => {
     ];
     mockPool(rows);
 
-    const result = await getPermissionsForRole('role-1');
+    const result = await getPermissionsForRole('app-1', 'role-1');
 
     expect(result).toHaveLength(2);
     expect(result[0].slug).toBe('crm:contacts:read');
@@ -185,7 +188,7 @@ describe('getPermissionsForRole', () => {
   it('should return empty array when role has no permissions', async () => {
     mockPool([]);
 
-    const result = await getPermissionsForRole('role-1');
+    const result = await getPermissionsForRole('app-1', 'role-1');
 
     expect(result).toEqual([]);
   });
@@ -193,12 +196,14 @@ describe('getPermissionsForRole', () => {
   it('should use JOIN and ORDER BY slug', async () => {
     const mockQuery = mockPool([]);
 
-    await getPermissionsForRole('role-1');
+    await getPermissionsForRole('app-1', 'role-1');
 
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('JOIN permissions p ON p.id = rp.permission_id');
     expect(sql).toContain('ORDER BY p.slug ASC');
-    expect(params).toEqual(['role-1']);
+    expect(sql).toContain('r.application_id = $1');
+    expect(sql).toContain('p.application_id = $1');
+    expect(params).toEqual(['app-1', 'role-1']);
   });
 });
 
@@ -210,7 +215,7 @@ describe('getRolesWithPermission', () => {
     ];
     mockPool(rows);
 
-    const result = await getRolesWithPermission('perm-1');
+    const result = await getRolesWithPermission('app-1', 'perm-1');
 
     expect(result).toHaveLength(2);
     expect(result[0].name).toBe('Admin');
@@ -220,7 +225,7 @@ describe('getRolesWithPermission', () => {
   it('should return empty array when no roles have the permission', async () => {
     mockPool([]);
 
-    const result = await getRolesWithPermission('perm-1');
+    const result = await getRolesWithPermission('app-1', 'perm-1');
 
     expect(result).toEqual([]);
   });
@@ -228,11 +233,52 @@ describe('getRolesWithPermission', () => {
   it('should use JOIN and ORDER BY name', async () => {
     const mockQuery = mockPool([]);
 
-    await getRolesWithPermission('perm-1');
+    await getRolesWithPermission('app-1', 'perm-1');
 
     const [sql] = mockQuery.mock.calls[0];
     expect(sql).toContain('JOIN roles r ON r.id = rp.role_id');
+    expect(sql).toContain('p.application_id = $1');
+    expect(sql).toContain('r.application_id = $1');
     expect(sql).toContain('ORDER BY r.name ASC');
+  });
+});
+
+describe('lockRolePermissionTargets', () => {
+  it('locks the owned role before permissions in stable UUID order', async () => {
+    const role = createTestRoleRow();
+    const permissionA = createTestPermissionRow({ id: '00000000-0000-0000-0000-000000000001' });
+    const permissionB = createTestPermissionRow({ id: '00000000-0000-0000-0000-000000000002' });
+    const mockQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [role], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [permissionA, permissionB], rowCount: 2 });
+    (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
+
+    const result = await lockRolePermissionTargets('app-1', 'role-1', [
+      permissionB.id,
+      permissionA.id,
+      permissionB.id,
+    ]);
+
+    expect(mockQuery).toHaveBeenCalledTimes(2);
+    expect(mockQuery.mock.calls[0][0]).toContain('FOR UPDATE');
+    expect(mockQuery.mock.calls[0][1]).toEqual(['app-1', 'role-1']);
+    expect(mockQuery.mock.calls[1][0]).toContain('ORDER BY id');
+    expect(mockQuery.mock.calls[1][0]).toContain('FOR UPDATE');
+    expect(mockQuery.mock.calls[1][1]).toEqual(['app-1', [permissionA.id, permissionB.id]]);
+    expect(result.permissions.map((permission) => permission.id)).toEqual([
+      permissionA.id,
+      permissionB.id,
+    ]);
+  });
+
+  it('does not lock permissions when the role is outside the application', async () => {
+    const mockQuery = mockPool([]);
+
+    const result = await lockRolePermissionTargets('app-1', 'foreign-role', ['perm-1']);
+
+    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(result).toEqual({ role: null, permissions: [] });
   });
 });
 
@@ -428,7 +474,7 @@ describe('getUsersWithRole', () => {
       .mockResolvedValueOnce({ rows: dataRows, rowCount: 2 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
-    const result = await getUsersWithRole('role-1', 'org-1', 1, 10);
+    const result = await getUsersWithRole('app-1', 'role-1', 'org-1', 1, 10);
 
     expect(result.total).toBe(2);
     expect(result.rows).toHaveLength(2);
@@ -443,11 +489,11 @@ describe('getUsersWithRole', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
-    await getUsersWithRole('role-1', 'org-1', 3, 10);
+    await getUsersWithRole('app-1', 'role-1', 'org-1', 3, 10);
 
     // Data query should use OFFSET 20 (page 3, pageSize 10)
     const [, params] = mockQuery.mock.calls[1];
-    expect(params).toEqual(['role-1', 'org-1', 10, 20]);
+    expect(params).toEqual(['app-1', 'role-1', 'org-1', 10, 20]);
   });
 
   it('should return total 0 and empty rows when no users', async () => {
@@ -457,7 +503,7 @@ describe('getUsersWithRole', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
-    const result = await getUsersWithRole('role-1', 'org-1', 1, 10);
+    const result = await getUsersWithRole('app-1', 'role-1', 'org-1', 1, 10);
 
     expect(result.total).toBe(0);
     expect(result.rows).toEqual([]);
@@ -470,14 +516,16 @@ describe('getUsersWithRole', () => {
       .mockResolvedValueOnce({ rows: [], rowCount: 0 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
-    await getUsersWithRole('role-1', 'org-1', 1, 10);
+    await getUsersWithRole('app-1', 'role-1', 'org-1', 1, 10);
 
     // Both queries should join with users and filter by org
     const [countSql] = mockQuery.mock.calls[0];
     const [dataSql] = mockQuery.mock.calls[1];
     expect(countSql).toContain('JOIN users u ON u.id = ur.user_id');
-    expect(countSql).toContain('u.organization_id = $2');
+    expect(countSql).toContain('r.application_id = $1');
+    expect(countSql).toContain('u.organization_id = $3');
     expect(dataSql).toContain('JOIN users u ON u.id = ur.user_id');
-    expect(dataSql).toContain('u.organization_id = $2');
+    expect(dataSql).toContain('r.application_id = $1');
+    expect(dataSql).toContain('u.organization_id = $3');
   });
 });

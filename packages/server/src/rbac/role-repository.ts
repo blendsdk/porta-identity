@@ -42,12 +42,7 @@ export async function insertRole(input: CreateRoleInput): Promise<Role> {
     `INSERT INTO roles (application_id, name, slug, description)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [
-      input.applicationId,
-      input.name,
-      input.slug ?? null,
-      input.description ?? null,
-    ],
+    [input.applicationId, input.name, input.slug ?? null, input.description ?? null],
   );
 
   return mapRowToRole(result.rows[0]);
@@ -58,17 +53,18 @@ export async function insertRole(input: CreateRoleInput): Promise<Role> {
 // ---------------------------------------------------------------------------
 
 /**
- * Find a role by its UUID.
+ * Find a role through its authoritative application parent.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Role UUID
  * @returns Role or null if not found
  */
-export async function findRoleById(id: string): Promise<Role | null> {
+export async function findRoleById(applicationId: string, id: string): Promise<Role | null> {
   const pool = getPool();
 
   const result = await pool.query<RoleRow>(
-    'SELECT * FROM roles WHERE id = $1',
-    [id],
+    'SELECT * FROM roles WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
   );
 
   if (result.rows.length === 0) return null;
@@ -116,18 +112,23 @@ const FIELD_TO_COLUMN: Record<string, string> = {
  * fields that weren't specified. Null is a valid value for description
  * (clears it).
  *
+ * @param applicationId - Parent application UUID
  * @param id - Role UUID
  * @param input - Fields to update (only non-undefined fields are applied)
  * @returns Updated role
  * @throws Error if role not found or no fields provided
  */
-export async function updateRole(id: string, input: UpdateRoleInput): Promise<Role> {
+export async function updateRole(
+  applicationId: string,
+  id: string,
+  input: UpdateRoleInput,
+): Promise<Role> {
   const pool = getPool();
 
   // Build dynamic SET clause from provided fields
   const setClauses: string[] = [];
-  const values: unknown[] = [id]; // $1 is always the ID
-  let paramIndex = 2;
+  const values: unknown[] = [applicationId, id];
+  let paramIndex = 3;
 
   for (const [field, column] of Object.entries(FIELD_TO_COLUMN)) {
     const value = input[field as keyof UpdateRoleInput];
@@ -143,7 +144,8 @@ export async function updateRole(id: string, input: UpdateRoleInput): Promise<Ro
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE roles SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`;
+  const sql = `UPDATE roles SET ${setClauses.join(', ')}
+    WHERE application_id = $1 AND id = $2 RETURNING *`;
   const result = await pool.query<RoleRow>(sql, values);
 
   if (result.rows.length === 0) {

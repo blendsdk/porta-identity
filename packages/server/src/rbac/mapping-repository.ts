@@ -32,33 +32,32 @@ import { mapRowToRole, mapRowToPermission, mapRowToUserRole } from './types.js';
  * already-assigned permissions are silently skipped. This allows
  * callers to assign without checking for existing assignments first.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param roleId - Role UUID
  * @param permissionIds - Array of permission UUIDs to assign
+ * @returns Permission IDs inserted by this request
  */
 export async function assignPermissionsToRole(
+  applicationId: string,
   roleId: string,
   permissionIds: string[],
-): Promise<void> {
-  if (permissionIds.length === 0) return;
+): Promise<string[]> {
+  if (permissionIds.length === 0) return [];
 
   const pool = getPool();
-
-  // Build parameterized VALUES list: ($1, $2), ($1, $3), ($1, $4), ...
-  // $1 is always the roleId, subsequent params are permission IDs
-  const valuesList: string[] = [];
-  const params: unknown[] = [roleId];
-
-  for (let i = 0; i < permissionIds.length; i++) {
-    params.push(permissionIds[i]);
-    valuesList.push(`($1, $${i + 2})`);
-  }
-
-  await pool.query(
+  const result = await pool.query<{ permission_id: string }>(
     `INSERT INTO role_permissions (role_id, permission_id)
-     VALUES ${valuesList.join(', ')}
-     ON CONFLICT DO NOTHING`,
-    params,
+     SELECT role.id, permission.id
+     FROM roles role
+     JOIN permissions permission ON permission.application_id = role.application_id
+     WHERE role.application_id = $1
+       AND role.id = $2
+       AND permission.id = ANY($3::uuid[])
+     ON CONFLICT DO NOTHING
+     RETURNING permission_id`,
+    [applicationId, roleId, permissionIds],
   );
+  return result.rows.map((row) => row.permission_id);
 }
 
 /**
@@ -67,25 +66,87 @@ export async function assignPermissionsToRole(
  * Silently succeeds if any of the permission IDs are not currently
  * assigned to the role.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param roleId - Role UUID
  * @param permissionIds - Array of permission UUIDs to remove
+ * @returns Permission IDs removed by this request
  */
 export async function removePermissionsFromRole(
+  applicationId: string,
   roleId: string,
   permissionIds: string[],
-): Promise<void> {
-  if (permissionIds.length === 0) return;
+): Promise<string[]> {
+  if (permissionIds.length === 0) return [];
 
   const pool = getPool();
-
-  // Build parameterized IN list: $2, $3, $4, ...
-  const placeholders = permissionIds.map((_, i) => `$${i + 2}`).join(', ');
-  const params: unknown[] = [roleId, ...permissionIds];
-
-  await pool.query(
-    `DELETE FROM role_permissions WHERE role_id = $1 AND permission_id IN (${placeholders})`,
-    params,
+  const result = await pool.query<{ permission_id: string }>(
+    `DELETE FROM role_permissions mapping
+     USING roles role, permissions permission
+     WHERE mapping.role_id = role.id
+       AND mapping.permission_id = permission.id
+       AND role.application_id = $1
+       AND permission.application_id = $1
+       AND role.id = $2
+       AND permission.id = ANY($3::uuid[])
+     RETURNING mapping.permission_id`,
+    [applicationId, roleId, permissionIds],
   );
+  return result.rows.map((row) => row.permission_id);
+}
+
+/** Records locked for one application-scoped role-permission mutation. */
+export interface LockedRolePermissionTargets {
+  /** Role selected through the route application, or null when it is not a child. */
+  readonly role: Role | null;
+  /** Requested permissions that belong to the same application, ordered by UUID. */
+  readonly permissions: readonly Permission[];
+}
+
+/**
+ * Lock a role and requested permissions before validating and changing mappings.
+ *
+ * Permissions are de-duplicated and sorted before PostgreSQL acquires row locks.
+ * This gives concurrent mapping requests one deterministic lock order. Callers
+ * compare the returned permission IDs with their requested IDs before mutating.
+ *
+ * @param applicationId - Authoritative parent application UUID
+ * @param roleId - Role UUID selected beneath the application
+ * @param permissionIds - Permission UUIDs in the mapping request
+ * @returns The owned role and owned requested permissions
+ */
+export async function lockRolePermissionTargets(
+  applicationId: string,
+  roleId: string,
+  permissionIds: readonly string[],
+): Promise<LockedRolePermissionTargets> {
+  const pool = getPool();
+  const roleResult = await pool.query<RoleRow>(
+    `SELECT * FROM roles
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, roleId],
+  );
+  if (!roleResult.rows[0]) {
+    return { role: null, permissions: [] };
+  }
+  const orderedPermissionIds = [...new Set(permissionIds)].sort();
+  if (orderedPermissionIds.length === 0) {
+    return {
+      role: mapRowToRole(roleResult.rows[0]),
+      permissions: [],
+    };
+  }
+  const permissionResult = await pool.query<PermissionRow>(
+    `SELECT * FROM permissions
+     WHERE application_id = $1 AND id = ANY($2::uuid[])
+     ORDER BY id
+     FOR UPDATE`,
+    [applicationId, orderedPermissionIds],
+  );
+  return {
+    role: mapRowToRole(roleResult.rows[0]),
+    permissions: permissionResult.rows.map(mapRowToPermission),
+  };
 }
 
 /**
@@ -94,19 +155,26 @@ export async function removePermissionsFromRole(
  * JOINs role_permissions with permissions table to return full
  * Permission objects, ordered by slug for consistent output.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param roleId - Role UUID
  * @returns Array of permissions assigned to the role
  */
-export async function getPermissionsForRole(roleId: string): Promise<Permission[]> {
+export async function getPermissionsForRole(
+  applicationId: string,
+  roleId: string,
+): Promise<Permission[]> {
   const pool = getPool();
 
   const result = await pool.query<PermissionRow>(
     `SELECT p.*
      FROM role_permissions rp
+     JOIN roles r ON r.id = rp.role_id
      JOIN permissions p ON p.id = rp.permission_id
-     WHERE rp.role_id = $1
+     WHERE r.application_id = $1
+       AND p.application_id = $1
+       AND rp.role_id = $2
      ORDER BY p.slug ASC`,
-    [roleId],
+    [applicationId, roleId],
   );
 
   return result.rows.map(mapRowToPermission);
@@ -118,19 +186,26 @@ export async function getPermissionsForRole(roleId: string): Promise<Permission[
  * JOINs role_permissions with roles table to return full Role objects,
  * ordered by name for consistent output.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param permissionId - Permission UUID
  * @returns Array of roles that have this permission
  */
-export async function getRolesWithPermission(permissionId: string): Promise<Role[]> {
+export async function getRolesWithPermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<Role[]> {
   const pool = getPool();
 
   const result = await pool.query<RoleRow>(
     `SELECT r.*
      FROM role_permissions rp
+     JOIN permissions p ON p.id = rp.permission_id
      JOIN roles r ON r.id = rp.role_id
-     WHERE rp.permission_id = $1
+     WHERE p.application_id = $1
+       AND r.application_id = $1
+       AND rp.permission_id = $2
      ORDER BY r.name ASC`,
-    [permissionId],
+    [applicationId, permissionId],
   );
 
   return result.rows.map(mapRowToRole);
@@ -271,6 +346,7 @@ export async function getPermissionsForUser(
  * Supports pagination for admin UI views showing which users have a
  * particular role. JOINs with users table to filter by organization.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param roleId - Role UUID
  * @param orgId - Organization UUID (to scope users)
  * @param page - Page number (1-based)
@@ -278,6 +354,7 @@ export async function getPermissionsForUser(
  * @returns Paginated user-role assignments and total count
  */
 export async function getUsersWithRole(
+  applicationId: string,
   roleId: string,
   orgId: string,
   page: number,
@@ -291,8 +368,9 @@ export async function getUsersWithRole(
     `SELECT COUNT(*)::int as count
      FROM user_roles ur
      JOIN users u ON u.id = ur.user_id
-     WHERE ur.role_id = $1 AND u.organization_id = $2`,
-    [roleId, orgId],
+     JOIN roles r ON r.id = ur.role_id
+     WHERE r.application_id = $1 AND ur.role_id = $2 AND u.organization_id = $3`,
+    [applicationId, roleId, orgId],
   );
   const total = parseInt(countResult.rows[0].count, 10);
 
@@ -301,10 +379,11 @@ export async function getUsersWithRole(
     `SELECT ur.*
      FROM user_roles ur
      JOIN users u ON u.id = ur.user_id
-     WHERE ur.role_id = $1 AND u.organization_id = $2
+     JOIN roles r ON r.id = ur.role_id
+     WHERE r.application_id = $1 AND ur.role_id = $2 AND u.organization_id = $3
      ORDER BY ur.created_at DESC
-     LIMIT $3 OFFSET $4`,
-    [roleId, orgId, pageSize, offset],
+     LIMIT $4 OFFSET $5`,
+    [applicationId, roleId, orgId, pageSize, offset],
   );
 
   return {

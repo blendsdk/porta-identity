@@ -18,7 +18,12 @@
  */
 
 import { getPool } from '../lib/database.js';
-import type { Permission, PermissionRow, CreatePermissionInput, UpdatePermissionInput } from './types.js';
+import type {
+  Permission,
+  PermissionRow,
+  CreatePermissionInput,
+  UpdatePermissionInput,
+} from './types.js';
 import { mapRowToPermission } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -59,17 +64,21 @@ export async function insertPermission(input: CreatePermissionInput): Promise<Pe
 // ---------------------------------------------------------------------------
 
 /**
- * Find a permission by its UUID.
+ * Find a permission through its authoritative application parent.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Permission UUID
  * @returns Permission or null if not found
  */
-export async function findPermissionById(id: string): Promise<Permission | null> {
+export async function findPermissionById(
+  applicationId: string,
+  id: string,
+): Promise<Permission | null> {
   const pool = getPool();
 
   const result = await pool.query<PermissionRow>(
-    'SELECT * FROM permissions WHERE id = $1',
-    [id],
+    'SELECT * FROM permissions WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
   );
 
   if (result.rows.length === 0) return null;
@@ -108,12 +117,14 @@ export async function findPermissionBySlug(
  * Only explicitly provided fields (not undefined) are included in the
  * UPDATE statement. Null is a valid value for description (clears it).
  *
+ * @param applicationId - Parent application UUID
  * @param id - Permission UUID
  * @param input - Fields to update (name, description only)
  * @returns Updated permission
  * @throws Error if permission not found or no fields provided
  */
 export async function updatePermission(
+  applicationId: string,
   id: string,
   input: UpdatePermissionInput,
 ): Promise<Permission> {
@@ -121,8 +132,8 @@ export async function updatePermission(
 
   // Build dynamic SET clause — only name and description are updatable
   const setClauses: string[] = [];
-  const values: unknown[] = [id]; // $1 is always the ID
-  let paramIndex = 2;
+  const values: unknown[] = [applicationId, id];
+  let paramIndex = 3;
 
   if (input.name !== undefined) {
     setClauses.push(`name = $${paramIndex}`);
@@ -139,7 +150,8 @@ export async function updatePermission(
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE permissions SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`;
+  const sql = `UPDATE permissions SET ${setClauses.join(', ')}
+    WHERE application_id = $1 AND id = $2 RETURNING *`;
   const result = await pool.query<PermissionRow>(sql, values);
 
   if (result.rows.length === 0) {
@@ -147,6 +159,30 @@ export async function updatePermission(
   }
 
   return mapRowToPermission(result.rows[0]);
+}
+
+/**
+ * Check whether a module belongs to an application before permission creation.
+ *
+ * The parent predicate prevents a globally valid module UUID from being attached
+ * to a permission owned by another application.
+ *
+ * @param applicationId - Parent application UUID
+ * @param moduleId - Module UUID supplied by the permission request
+ * @returns True when the module exists beneath the application
+ */
+export async function permissionModuleExists(
+  applicationId: string,
+  moduleId: string,
+): Promise<boolean> {
+  const result = await getPool().query<{ exists: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM application_modules
+       WHERE application_id = $1 AND id = $2
+     ) AS exists`,
+    [applicationId, moduleId],
+  );
+  return result.rows[0]?.exists ?? false;
 }
 
 // ---------------------------------------------------------------------------
@@ -278,10 +314,7 @@ export async function listPermissionsByApplication(
  * @param slug - Slug to check
  * @returns true if the slug already exists
  */
-export async function permissionSlugExists(
-  applicationId: string,
-  slug: string,
-): Promise<boolean> {
+export async function permissionSlugExists(applicationId: string, slug: string): Promise<boolean> {
   const pool = getPool();
 
   const result = await pool.query<{ exists: boolean }>(
