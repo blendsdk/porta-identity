@@ -223,8 +223,9 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         const { createClient } = await import('../../clients/index.js');
         const { createUser, activateUser, markEmailVerified } =
           await import('../../users/index.js');
-        const { createRole, createPermission, assignPermissionsToRole, assignRolesToUser } =
+        const { createRole, createPermission, assignRolesToUser } =
           await import('../../rbac/index.js');
+        const { assignPermissionsToRole } = await import('../../rbac/mapping-repository.js');
         const { ensureSigningKeys } = await import('../../lib/signing-keys.js');
         const { getPool } = await import('../../lib/database.js');
 
@@ -316,7 +317,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
             .filter((id): id is string => id !== undefined);
 
           if (rolePermissionIds.length > 0) {
-            await assignPermissionsToRole(role.id, rolePermissionIds);
+            await assignPermissionsToRole(adminApp.id, role.id, rolePermissionIds);
           }
 
           console.log(

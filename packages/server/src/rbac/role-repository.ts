@@ -72,6 +72,23 @@ export async function findRoleById(applicationId: string, id: string): Promise<R
 }
 
 /**
+ * Lock and return a role through its authoritative application parent.
+ *
+ * @param applicationId - Parent application UUID
+ * @param id - Role UUID
+ * @returns Locked role or null when the parent-child pair does not exist
+ */
+export async function lockRoleById(applicationId: string, id: string): Promise<Role | null> {
+  const result = await getPool().query<RoleRow>(
+    `SELECT * FROM roles
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, id],
+  );
+  return result.rows[0] ? mapRowToRole(result.rows[0]) : null;
+}
+
+/**
  * Find a role by application ID and slug.
  *
  * @param applicationId - Application UUID

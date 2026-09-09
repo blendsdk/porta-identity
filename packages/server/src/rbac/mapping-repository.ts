@@ -100,6 +100,8 @@ export interface LockedRolePermissionTargets {
   readonly role: Role | null;
   /** Requested permissions that belong to the same application, ordered by UUID. */
   readonly permissions: readonly Permission[];
+  /** Requested permission IDs currently assigned to the role, ordered by UUID. */
+  readonly assignedPermissionIds: readonly string[];
 }
 
 /**
@@ -127,13 +129,14 @@ export async function lockRolePermissionTargets(
     [applicationId, roleId],
   );
   if (!roleResult.rows[0]) {
-    return { role: null, permissions: [] };
+    return { role: null, permissions: [], assignedPermissionIds: [] };
   }
   const orderedPermissionIds = [...new Set(permissionIds)].sort();
   if (orderedPermissionIds.length === 0) {
     return {
       role: mapRowToRole(roleResult.rows[0]),
       permissions: [],
+      assignedPermissionIds: [],
     };
   }
   const permissionResult = await pool.query<PermissionRow>(
@@ -143,10 +146,45 @@ export async function lockRolePermissionTargets(
      FOR UPDATE`,
     [applicationId, orderedPermissionIds],
   );
+  const mappingResult = await pool.query<{ permission_id: string }>(
+    `SELECT mapping.permission_id
+     FROM role_permissions mapping
+     JOIN roles role ON role.id = mapping.role_id
+     JOIN permissions permission ON permission.id = mapping.permission_id
+     WHERE role.application_id = $1
+       AND permission.application_id = $1
+       AND role.id = $2
+       AND mapping.permission_id = ANY($3::uuid[])
+     ORDER BY mapping.permission_id`,
+    [applicationId, roleId, orderedPermissionIds],
+  );
   return {
     role: mapRowToRole(roleResult.rows[0]),
     permissions: permissionResult.rows.map(mapRowToPermission),
+    assignedPermissionIds: mappingResult.rows.map((row) => row.permission_id),
   };
+}
+
+/**
+ * List users assigned to an application-owned role.
+ *
+ * Mapping mutations call this while holding the role row lock, so concurrent
+ * assignments cannot escape affected-user capture through the role foreign key.
+ *
+ * @param applicationId - Authoritative parent application UUID
+ * @param roleId - Role UUID selected beneath the application
+ * @returns Distinct user UUIDs in stable order
+ */
+export async function getUserIdsForRole(applicationId: string, roleId: string): Promise<string[]> {
+  const result = await getPool().query<{ user_id: string }>(
+    `SELECT DISTINCT assignment.user_id
+     FROM user_roles assignment
+     JOIN roles role ON role.id = assignment.role_id
+     WHERE role.application_id = $1 AND role.id = $2
+     ORDER BY assignment.user_id`,
+    [applicationId, roleId],
+  );
+  return result.rows.map((row) => row.user_id);
 }
 
 /**

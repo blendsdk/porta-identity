@@ -68,6 +68,9 @@ const identifierSchema = z.object({
   roleId: z.string().uuid(),
 });
 
+/** Application parent parameter accepted by collection routes. */
+const applicationIdentifierSchema = z.object({ appId: z.string().uuid() });
+
 // ---------------------------------------------------------------------------
 // Error handler helper
 // ---------------------------------------------------------------------------
@@ -122,11 +125,15 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.post('/', requirePermission(ADMIN_PERMISSIONS.ROLE_CREATE), async (ctx) => {
     try {
+      applicationIdentifierSchema.parse(ctx.params);
       const body = createRoleSchema.parse(ctx.request.body);
-      const role = await roleService.createRole({
-        applicationId: ctx.params.appId,
-        ...body,
-      });
+      const role = await roleService.createRole(
+        {
+          applicationId: ctx.params.appId,
+          ...body,
+        },
+        ctx.state.adminUser?.id,
+      );
       ctx.status = 201;
       ctx.body = { data: role };
     } catch (err) {
@@ -139,6 +146,7 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
+      applicationIdentifierSchema.parse(ctx.params);
       const roles = await roleService.listRolesByApplication(ctx.params.appId);
       ctx.body = { data: roles };
     } catch (err) {
@@ -150,11 +158,16 @@ export function createRoleRouter(): Router {
   // GET /:roleId — Get role by ID
   // -------------------------------------------------------------------------
   router.get('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
-    const role = await roleService.findRoleById(ctx.params.roleId);
-    if (!role) {
-      ctx.throw(404, 'Role not found');
+    try {
+      identifierSchema.parse(ctx.params);
+      const role = await roleService.findRoleById(ctx.params.appId, ctx.params.roleId);
+      if (!role) {
+        ctx.throw(404, 'Role not found');
+      }
+      ctx.body = { data: role };
+    } catch (err) {
+      handleError(ctx, err);
     }
-    ctx.body = { data: role };
   });
 
   // -------------------------------------------------------------------------
@@ -162,9 +175,15 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.put('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE), async (ctx) => {
     try {
+      identifierSchema.parse(ctx.params);
       const body = updateRoleSchema.parse(ctx.request.body);
-      const role = await roleService.updateRole(ctx.params.roleId, body);
-      ctx.body = { data: role };
+      const result = await roleService.updateRole(
+        ctx.params.appId,
+        ctx.params.roleId,
+        body,
+        ctx.state.adminUser?.id,
+      );
+      ctx.body = { data: result };
     } catch (err) {
       handleError(ctx, err);
     }
@@ -176,8 +195,13 @@ export function createRoleRouter(): Router {
   router.delete('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_DELETE), async (ctx) => {
     try {
       identifierSchema.parse(ctx.params);
-      await roleService.deleteRole(ctx.params.appId, ctx.params.roleId, ctx.state.adminUser?.id);
-      ctx.status = 204;
+      const result = await roleService.deleteRole(
+        ctx.params.appId,
+        ctx.params.roleId,
+        ctx.state.adminUser?.id,
+      );
+      ctx.status = 200;
+      ctx.body = { data: result };
     } catch (err) {
       handleError(ctx, err);
     }
@@ -191,7 +215,11 @@ export function createRoleRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.ROLE_READ),
     async (ctx) => {
       try {
-        const permissions = await roleService.getPermissionsForRole(ctx.params.roleId);
+        identifierSchema.parse(ctx.params);
+        const permissions = await roleService.getPermissionsForRole(
+          ctx.params.appId,
+          ctx.params.roleId,
+        );
         ctx.body = { data: permissions };
       } catch (err) {
         handleError(ctx, err);
@@ -207,8 +235,14 @@ export function createRoleRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE),
     async (ctx) => {
       try {
+        identifierSchema.parse(ctx.params);
         const body = permissionIdsSchema.parse(ctx.request.body);
-        await roleService.assignPermissionsToRole(ctx.params.roleId, body.permissionIds);
+        await roleService.assignPermissionsToRole(
+          ctx.params.appId,
+          ctx.params.roleId,
+          body.permissionIds,
+          ctx.state.adminUser?.id,
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -224,9 +258,16 @@ export function createRoleRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE),
     async (ctx) => {
       try {
+        identifierSchema.parse(ctx.params);
         const body = permissionIdsSchema.parse(ctx.request.body);
-        await roleService.removePermissionsFromRole(ctx.params.roleId, body.permissionIds);
-        ctx.status = 204;
+        const result = await roleService.removePermissionsFromRole(
+          ctx.params.appId,
+          ctx.params.roleId,
+          body.permissionIds,
+          ctx.state.adminUser?.id,
+        );
+        ctx.status = 200;
+        ctx.body = { data: result };
       } catch (err) {
         handleError(ctx, err);
       }
@@ -239,11 +280,17 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/:roleId/users', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
+      identifierSchema.parse(ctx.params);
       const query = listUsersWithRoleSchema.parse(ctx.query);
-      const result = await userRoleService.getUsersWithRole(ctx.params.roleId, query.orgId, {
-        page: query.page,
-        pageSize: query.pageSize,
-      });
+      const result = await userRoleService.getUsersWithRole(
+        ctx.params.appId,
+        ctx.params.roleId,
+        query.orgId,
+        {
+          page: query.page,
+          pageSize: query.pageSize,
+        },
+      );
       ctx.body = { data: result.rows, total: result.total };
     } catch (err) {
       handleError(ctx, err);
