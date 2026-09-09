@@ -94,6 +94,7 @@ import {
 } from '../../../src/rbac/role-service.js';
 import { RoleNotFoundError, RbacValidationError } from '../../../src/rbac/errors.js';
 import type { Permission, Role } from '../../../src/rbac/types.js';
+import type { Application } from '../../../src/applications/types.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -122,6 +123,18 @@ function createTestPermission(overrides: Partial<Permission> = {}): Permission {
     description: null,
     createdAt: new Date('2025-01-01T00:00:00Z'),
     ...overrides,
+  };
+}
+
+function createAdminApplication(): Application {
+  return {
+    id: 'app-uuid-1',
+    name: 'Porta Admin',
+    slug: 'porta-admin',
+    description: null,
+    status: 'active',
+    createdAt: new Date('2025-01-01T00:00:00Z'),
+    updatedAt: new Date('2025-01-01T00:00:00Z'),
   };
 }
 
@@ -205,6 +218,18 @@ describe('createRole', () => {
       }),
     );
   });
+
+  it.each(['porta-super-admin', 'porta-admin'])(
+    'rejects reserved canonical role creation for %s',
+    async (slug) => {
+      vi.mocked(mockGetApplicationBySlug).mockResolvedValue(createAdminApplication());
+
+      await expect(
+        createRole({ applicationId: 'app-uuid-1', name: 'Reserved', slug }),
+      ).rejects.toThrow(RbacValidationError);
+      expect(mockInsertRole).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe('findRoleById', () => {
@@ -238,6 +263,19 @@ describe('findRoleById', () => {
 
     expect(result).toBeNull();
     expect(mockSetCached).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateRole canonical identity', () => {
+  it('rejects renaming an ordinary Admin role to a reserved canonical slug', async () => {
+    vi.mocked(mockGetApplicationBySlug).mockResolvedValue(createAdminApplication());
+    vi.mocked(mockLockRole).mockResolvedValue(createTestRole());
+
+    await expect(
+      updateRole('app-uuid-1', 'role-uuid-1', { slug: 'porta-super-admin' }),
+    ).rejects.toThrow(RbacValidationError);
+    expect(mockRepoUpdate).not.toHaveBeenCalled();
+    expect(mockRevokeAuthority).not.toHaveBeenCalled();
   });
 });
 
@@ -405,6 +443,20 @@ describe('assignPermissionsToRole', () => {
     expect(mockAuthorityCleanup).not.toHaveBeenCalled();
     expect(mockAuditLog).not.toHaveBeenCalled();
   });
+
+  it('rejects assigning a canonical permission through an ordinary Admin role', async () => {
+    vi.mocked(mockGetApplicationBySlug).mockResolvedValue(createAdminApplication());
+    vi.mocked(mockLockTargets).mockResolvedValue({
+      role: createTestRole(),
+      permissions: [createTestPermission({ slug: 'admin:user:read' })],
+      assignedPermissionIds: [],
+    });
+
+    await expect(assignPermissionsToRole('app-uuid-1', 'role-uuid-1', ['perm-1'])).rejects.toThrow(
+      RbacValidationError,
+    );
+    expect(mockRepoAssignPerms).not.toHaveBeenCalled();
+  });
 });
 
 describe('removePermissionsFromRole', () => {
@@ -455,6 +507,21 @@ describe('removePermissionsFromRole', () => {
     await expect(
       removePermissionsFromRole('app-uuid-1', 'role-uuid-1', ['perm-1'], 'admin-1'),
     ).resolves.toEqual({ reauthenticationRequired: false });
+    expect(mockRevokeAuthority).not.toHaveBeenCalled();
+    expect(mockRepoRemovePerms).not.toHaveBeenCalled();
+  });
+
+  it('rejects removing a canonical permission through an ordinary Admin role', async () => {
+    vi.mocked(mockGetApplicationBySlug).mockResolvedValue(createAdminApplication());
+    vi.mocked(mockLockTargets).mockResolvedValue({
+      role: createTestRole(),
+      permissions: [createTestPermission({ slug: 'admin:user:read' })],
+      assignedPermissionIds: ['perm-1'],
+    });
+
+    await expect(
+      removePermissionsFromRole('app-uuid-1', 'role-uuid-1', ['perm-1']),
+    ).rejects.toThrow(RbacValidationError);
     expect(mockRevokeAuthority).not.toHaveBeenCalled();
     expect(mockRepoRemovePerms).not.toHaveBeenCalled();
   });

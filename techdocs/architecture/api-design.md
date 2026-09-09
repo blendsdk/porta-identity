@@ -60,10 +60,12 @@ from a missing child.
 | Claim definition   | `DELETE /api/admin/applications/:appId/claims/:claimId`           | `admin:claim:delete`      |
 | User               | `DELETE /api/admin/organizations/:orgId/users/:userId`            | `admin:user:delete`       |
 
-A successful deletion returns `204` with no response body. A missing or parent-mismatched record
-returns a fixed resource-specific `404`; it does not expose dependency counts or partial cascade
-details. Repeating a completed deletion therefore returns `404` and creates no second deletion
-event.
+Most successful deletions return `204` with no response body. Role and permission deletion return
+`200 { data: { reauthenticationRequired } }` so an administrator whose own authority changed can
+authenticate again without an unsafe follow-up request. Role-slug updates, role-permission removal,
+and user-role removal use the same result flag. A missing or parent-mismatched record returns a
+fixed resource-specific `404`; it does not expose dependency counts or partial cascade details.
+Repeating a completed deletion therefore returns `404` and creates no second deletion event.
 
 Archive, Restore, user Purge, and whole-client Revoke are not Admin API lifecycle operations.
 Applications, modules, and clients retain reversible Activate/Deactivate operations; organizations

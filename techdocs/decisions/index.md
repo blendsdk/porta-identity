@@ -323,7 +323,9 @@ applications can safely determine control-plane or OIDC client authority.
 Admin middleware resolves opaque Bearer tokens through `oidc-provider`, requires active membership
 in the super-admin organization, and accepts only code-recognized roles owned by the canonical
 `porta-admin` application. Built-in Admin capabilities come from immutable code definitions rather
-than editable role-permission mappings.
+than editable role-permission mappings. Generic role, permission, and mapping operations reject
+canonical records, including the legacy `porta-admin` role identity. The direct initialization
+workflow is the only writer for these built-ins.
 
 OIDC client metadata carries one private, namespaced application UUID from the client's persisted
 application foreign key. Account claim construction validates that UUID and uses it to qualify role,
@@ -337,11 +339,14 @@ outputs and is redacted if it reaches structured logging.
 - ✅ Tokens expose only authority owned by the requesting client's application.
 - ✅ Missing application context fails closed without suppressing ordinary standard claims.
 - ✅ Admin capability resolution does not depend on mutable application RBAC mappings.
+- ✅ Generic Admin API operations cannot recreate, rename, delete, or remap canonical definitions.
 - ✅ Opaque-token expiry and revocation remain owned by the authoritative provider model.
 - ⚠️ `porta init` or the reset workflow must keep the canonical Admin application and built-in
   definitions present.
 - ⚠️ Provider client metadata must preserve the private application UUID until account claims are
   constructed.
+- ⚠️ Authority reduction removes artifacts visible to its transaction, but does not serialize with
+  concurrent OIDC token issuance. A token published across that boundary can retain older claims.
 
 ---
 

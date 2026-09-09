@@ -20,6 +20,7 @@ import {
   findPermissionBySlug,
   updatePermission,
   lockPermissionModule,
+  capturePermissionForDeletion,
   listPermissionsByApplication,
   permissionSlugExists,
 } from '../../../src/rbac/permission-repository.js';
@@ -337,5 +338,37 @@ describe('permissionSlugExists', () => {
     const [sql, params] = mockQuery.mock.calls[0];
     expect(sql).toContain('application_id = $1 AND slug = $2');
     expect(params).toEqual(['app-1', 'crm:contacts:read']);
+  });
+});
+
+describe('capturePermissionForDeletion', () => {
+  it('locks same-application roles before capturing affected users', async () => {
+    const permission = createTestPermissionRow();
+    const query = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [permission], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [{ id: 'role-uuid-1' }], rowCount: 1 })
+      .mockResolvedValueOnce({
+        rows: [
+          {
+            user_ids: ['user-uuid-1'],
+            role_ids: ['role-uuid-1'],
+            grant_ids: [],
+          },
+        ],
+        rowCount: 1,
+      });
+    (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query });
+
+    await expect(capturePermissionForDeletion('app-uuid-1', 'perm-uuid-1')).resolves.toMatchObject({
+      userIds: ['user-uuid-1'],
+      roleIds: ['role-uuid-1'],
+    });
+
+    expect(query).toHaveBeenCalledTimes(3);
+    expect(query.mock.calls[1]?.[0]).toContain('FOR UPDATE OF role');
+    expect(query.mock.calls[1]?.[0]).toContain('role.application_id = $2');
+    expect(query.mock.calls[2]?.[0]).toContain('role.application_id = $2');
+    expect(query.mock.calls[2]?.[1]).toEqual(['perm-uuid-1', 'app-uuid-1']);
   });
 });

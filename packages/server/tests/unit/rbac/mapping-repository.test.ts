@@ -247,14 +247,14 @@ describe('getRolesWithPermission', () => {
 });
 
 describe('lockRolePermissionTargets', () => {
-  it('locks the owned role before permissions in stable UUID order', async () => {
+  it('locks permissions before the owned role in stable UUID order', async () => {
     const role = createTestRoleRow();
     const permissionA = createTestPermissionRow({ id: '00000000-0000-0000-0000-000000000001' });
     const permissionB = createTestPermissionRow({ id: '00000000-0000-0000-0000-000000000002' });
     const mockQuery = vi
       .fn()
-      .mockResolvedValueOnce({ rows: [role], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [permissionA, permissionB], rowCount: 2 })
+      .mockResolvedValueOnce({ rows: [role], rowCount: 1 })
       .mockResolvedValueOnce({ rows: [{ permission_id: permissionA.id }], rowCount: 1 });
     (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
@@ -265,11 +265,11 @@ describe('lockRolePermissionTargets', () => {
     ]);
 
     expect(mockQuery).toHaveBeenCalledTimes(3);
+    expect(mockQuery.mock.calls[0][0]).toContain('ORDER BY id');
     expect(mockQuery.mock.calls[0][0]).toContain('FOR UPDATE');
-    expect(mockQuery.mock.calls[0][1]).toEqual(['app-1', 'role-1']);
-    expect(mockQuery.mock.calls[1][0]).toContain('ORDER BY id');
+    expect(mockQuery.mock.calls[0][1]).toEqual(['app-1', [permissionA.id, permissionB.id]]);
     expect(mockQuery.mock.calls[1][0]).toContain('FOR UPDATE');
-    expect(mockQuery.mock.calls[1][1]).toEqual(['app-1', [permissionA.id, permissionB.id]]);
+    expect(mockQuery.mock.calls[1][1]).toEqual(['app-1', 'role-1']);
     expect(mockQuery.mock.calls[2][0]).toContain('FROM role_permissions mapping');
     expect(mockQuery.mock.calls[2][1]).toEqual([
       'app-1',
@@ -283,12 +283,16 @@ describe('lockRolePermissionTargets', () => {
     expect(result.assignedPermissionIds).toEqual([permissionA.id]);
   });
 
-  it('does not lock permissions when the role is outside the application', async () => {
-    const mockQuery = mockPool([]);
+  it('returns no targets when the role is outside the application', async () => {
+    const mockQuery = vi
+      .fn()
+      .mockResolvedValueOnce({ rows: [createTestPermissionRow()], rowCount: 1 })
+      .mockResolvedValueOnce({ rows: [], rowCount: 0 });
+    (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
     const result = await lockRolePermissionTargets('app-1', 'foreign-role', ['perm-1']);
 
-    expect(mockQuery).toHaveBeenCalledOnce();
+    expect(mockQuery).toHaveBeenCalledTimes(2);
     expect(result).toEqual({ role: null, permissions: [], assignedPermissionIds: [] });
   });
 });

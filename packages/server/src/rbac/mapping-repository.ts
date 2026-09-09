@@ -122,6 +122,17 @@ export async function lockRolePermissionTargets(
   permissionIds: readonly string[],
 ): Promise<LockedRolePermissionTargets> {
   const pool = getPool();
+  const orderedPermissionIds = [...new Set(permissionIds)].sort();
+  const permissionResult =
+    orderedPermissionIds.length === 0
+      ? { rows: [] }
+      : await pool.query<PermissionRow>(
+          `SELECT * FROM permissions
+           WHERE application_id = $1 AND id = ANY($2::uuid[])
+           ORDER BY id
+           FOR UPDATE`,
+          [applicationId, orderedPermissionIds],
+        );
   const roleResult = await pool.query<RoleRow>(
     `SELECT * FROM roles
      WHERE application_id = $1 AND id = $2
@@ -131,7 +142,6 @@ export async function lockRolePermissionTargets(
   if (!roleResult.rows[0]) {
     return { role: null, permissions: [], assignedPermissionIds: [] };
   }
-  const orderedPermissionIds = [...new Set(permissionIds)].sort();
   if (orderedPermissionIds.length === 0) {
     return {
       role: mapRowToRole(roleResult.rows[0]),
@@ -139,13 +149,6 @@ export async function lockRolePermissionTargets(
       assignedPermissionIds: [],
     };
   }
-  const permissionResult = await pool.query<PermissionRow>(
-    `SELECT * FROM permissions
-     WHERE application_id = $1 AND id = ANY($2::uuid[])
-     ORDER BY id
-     FOR UPDATE`,
-    [applicationId, orderedPermissionIds],
-  );
   const mappingResult = await pool.query<{ permission_id: string }>(
     `SELECT mapping.permission_id
      FROM role_permissions mapping

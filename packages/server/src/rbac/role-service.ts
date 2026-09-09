@@ -39,11 +39,16 @@ import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { registerAuthorityCleanup, registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
 import { getApplicationBySlug } from '../applications/service.js';
-import { ALL_ADMIN_ROLES } from '../lib/admin-permissions.js';
+import {
+  ALL_ADMIN_PERMISSIONS,
+  ALL_ADMIN_ROLES,
+  LEGACY_ADMIN_ROLE,
+} from '../lib/admin-permissions.js';
 
 const ROLE_DELETED_EVENT = 'role.deleted';
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
-const ADMIN_ROLE_SLUGS = new Set(ALL_ADMIN_ROLES.map((role) => role.slug));
+const ADMIN_ROLE_SLUGS = new Set([...ALL_ADMIN_ROLES.map((role) => role.slug), LEGACY_ADMIN_ROLE]);
+const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 
 // ---------------------------------------------------------------------------
 // Create
@@ -70,6 +75,7 @@ export async function createRole(input: CreateRoleInput, actorId?: string): Prom
       `Invalid role slug format: "${slug}". Must be 1-100 chars, lowercase alphanumeric and hyphens.`,
     );
   }
+  await guardCanonicalAdminRole(input.applicationId, slug);
 
   // Check slug uniqueness within the application
   const exists = await roleSlugExists(input.applicationId, slug);
@@ -172,7 +178,7 @@ export async function updateRole(
   if (!existing) {
     throw new RoleNotFoundError(id);
   }
-  await guardCanonicalAdminRole(existing);
+  await guardCanonicalAdminRole(existing.applicationId, existing.slug);
 
   const changed =
     (input.name !== undefined && input.name !== existing.name) ||
@@ -184,6 +190,7 @@ export async function updateRole(
   const requestedSlug = input.slug;
   const slugChanged = requestedSlug !== undefined && requestedSlug !== existing.slug;
   if (slugChanged) {
+    await guardCanonicalAdminRole(applicationId, requestedSlug);
     if (!validateRoleSlug(requestedSlug)) {
       throw new RbacValidationError(
         `Invalid role slug format: "${requestedSlug}". Must be 1-100 chars, lowercase alphanumeric and hyphens.`,
@@ -254,7 +261,7 @@ export async function deleteRole(
   if (!transaction) throw new Error('Role deletion requires an active database transaction');
   const capture = await captureRoleForDeletion(applicationId, roleId);
   if (!capture) throw new RoleNotFoundError(roleId);
-  await guardCanonicalAdminRole(capture.role);
+  await guardCanonicalAdminRole(capture.role.applicationId, capture.role.slug);
   const revoked = await revokeAffectedAuthorityInTransaction(capture.userIds);
   await writeAuditLogInTransaction(transaction, {
     actorId,
@@ -312,7 +319,8 @@ export async function assignPermissionsToRole(
   }
 
   const targets = await requireRolePermissionTargets(applicationId, roleId, permissionIds);
-  await guardCanonicalAdminRole(targets.role);
+  await guardCanonicalAdminRole(targets.role.applicationId, targets.role.slug);
+  await guardCanonicalAdminPermissions(applicationId, targets.permissions);
   const insertedPermissionIds = await repoAssignPermissions(applicationId, roleId, permissionIds);
   if (insertedPermissionIds.length === 0) return;
   const userIds = await getUserIdsForRole(applicationId, roleId);
@@ -355,7 +363,8 @@ export async function removePermissionsFromRole(
     throw new Error('Role permission removal requires an active database transaction');
   }
   const targets = await requireRolePermissionTargets(applicationId, roleId, permissionIds);
-  await guardCanonicalAdminRole(targets.role);
+  await guardCanonicalAdminRole(targets.role.applicationId, targets.role.slug);
+  await guardCanonicalAdminPermissions(applicationId, targets.permissions);
   if (targets.assignedPermissionIds.length === 0) {
     return { reauthenticationRequired: false };
   }
@@ -398,11 +407,23 @@ export async function getPermissionsForRole(
 }
 
 /** Reject generic mutations of canonical Porta Admin role definitions and mappings. */
-async function guardCanonicalAdminRole(role: Role): Promise<void> {
-  if (!ADMIN_ROLE_SLUGS.has(role.slug)) return;
+async function guardCanonicalAdminRole(applicationId: string, roleSlug: string): Promise<void> {
+  if (!ADMIN_ROLE_SLUGS.has(roleSlug)) return;
   const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
-  if (adminApplication?.id === role.applicationId) {
+  if (adminApplication?.id === applicationId) {
     throw new RbacValidationError('Canonical Porta Admin roles cannot be modified');
+  }
+}
+
+/** Reject mappings involving canonical Porta Admin permission definitions. */
+async function guardCanonicalAdminPermissions(
+  applicationId: string,
+  permissions: readonly Permission[],
+): Promise<void> {
+  if (!permissions.some((permission) => ADMIN_PERMISSION_SLUGS.has(permission.slug))) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin permissions cannot be modified');
   }
 }
 
@@ -411,7 +432,11 @@ async function requireRolePermissionTargets(
   applicationId: string,
   roleId: string,
   permissionIds: readonly string[],
-): Promise<{ role: Role; assignedPermissionIds: readonly string[] }> {
+): Promise<{
+  role: Role;
+  permissions: readonly Permission[];
+  assignedPermissionIds: readonly string[];
+}> {
   const requestedPermissionIds = [...new Set(permissionIds)].sort();
   const targets = await lockRolePermissionTargets(applicationId, roleId, requestedPermissionIds);
   if (!targets.role) throw new RoleNotFoundError(roleId);
@@ -420,6 +445,7 @@ async function requireRolePermissionTargets(
   }
   return {
     role: targets.role,
+    permissions: targets.permissions,
     assignedPermissionIds: targets.assignedPermissionIds,
   };
 }

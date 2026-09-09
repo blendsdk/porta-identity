@@ -223,7 +223,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         const { createClient } = await import('../../clients/index.js');
         const { createUser, activateUser, markEmailVerified } =
           await import('../../users/index.js');
-        const { createRole } = await import('../../rbac/index.js');
+        const { insertRole } = await import('../../rbac/role-repository.js');
         const { insertPermission } = await import('../../rbac/permission-repository.js');
         const { assignPermissionsToRole, assignRolesToUser } =
           await import('../../rbac/mapping-repository.js');
@@ -304,7 +304,7 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // ADMIN_ROLE_DEFINITIONS. The super-admin role gets all permissions.
         const createdRoles = new Map<string, string>(); // slug → role ID
         for (const roleDef of ALL_ADMIN_ROLES) {
-          const role = await createRole({
+          const role = await insertRole({
             applicationId: adminApp.id,
             name: roleDef.name,
             slug: roleDef.slug,

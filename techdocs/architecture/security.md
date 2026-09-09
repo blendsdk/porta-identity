@@ -390,6 +390,17 @@ ignored. Cleanup failure is absorbed with one fixed identifier-free warning; the
 worker, queue, or open PostgreSQL transaction. Live PostgreSQL validation remains authoritative if
 Redis cleanup is delayed or fails.
 
+Role and permission reductions reuse the same short transaction boundary. Permission and
+role-permission operations lock requested permission rows in stable UUID order before locking role
+rows. Permission deletion then rechecks only roles owned by the permission's application before it
+captures users and revokes their stored authority. User-role assignment locks the affected role,
+so it cannot cross that capture unnoticed. Authority additions do not log users out; they schedule
+only the affected users' RBAC cache keys for post-commit invalidation.
+
+Canonical `porta-admin` roles, permissions, and their mappings reject generic create, update,
+delete, and mapping operations. The direct initialization workflow writes those fixed definitions
+through repository functions before normal Admin authorization exists.
+
 Two control-plane guards prevent deletion from removing the ability to administer Porta:
 
 - The organization marked `is_super_admin` cannot be deleted through either the service or

@@ -64,9 +64,15 @@ vi.mock('../../../../src/users/index.js', () => ({
   markEmailVerified: vi.fn(),
 }));
 
-vi.mock('../../../../src/rbac/index.js', () => ({
-  createPermission: vi.fn(),
-  createRole: vi.fn(),
+vi.mock('../../../../src/rbac/permission-repository.js', () => ({
+  insertPermission: vi.fn(),
+}));
+
+vi.mock('../../../../src/rbac/role-repository.js', () => ({
+  insertRole: vi.fn(),
+}));
+
+vi.mock('../../../../src/rbac/mapping-repository.js', () => ({
   assignPermissionsToRole: vi.fn(),
   assignRolesToUser: vi.fn(),
 }));
@@ -93,12 +99,12 @@ import { findSuperAdminOrganization } from '../../../../src/organizations/reposi
 import { getApplicationBySlug, createApplication } from '../../../../src/applications/index.js';
 import { createClient, generateSecret } from '../../../../src/clients/index.js';
 import { createUser, activateUser, markEmailVerified } from '../../../../src/users/index.js';
+import { insertPermission } from '../../../../src/rbac/permission-repository.js';
+import { insertRole } from '../../../../src/rbac/role-repository.js';
 import {
-  createRole,
-  createPermission,
   assignPermissionsToRole,
   assignRolesToUser,
-} from '../../../../src/rbac/index.js';
+} from '../../../../src/rbac/mapping-repository.js';
 import { ensureSigningKeys } from '../../../../src/lib/signing-keys.js';
 import { ALL_ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../../../../src/lib/admin-permissions.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
@@ -208,8 +214,8 @@ describe('CLI Init Command', () => {
     vi.mocked(createUser).mockResolvedValue(fakeAdminUser as never);
     vi.mocked(activateUser).mockResolvedValue(undefined as never);
     vi.mocked(markEmailVerified).mockResolvedValue(undefined as never);
-    vi.mocked(createRole).mockResolvedValue(fakeAdminRole as never);
-    vi.mocked(createPermission).mockImplementation(
+    vi.mocked(insertRole).mockResolvedValue(fakeAdminRole as never);
+    vi.mocked(insertPermission).mockImplementation(
       async (input: {
         applicationId: string;
         slug: string;
@@ -249,20 +255,20 @@ describe('CLI Init Command', () => {
       );
 
       // Should create all 42 granular permissions
-      expect(createPermission).toHaveBeenCalledTimes(ALL_ADMIN_PERMISSIONS.length);
-      expect(createPermission).toHaveBeenCalledWith(
+      expect(insertPermission).toHaveBeenCalledTimes(ALL_ADMIN_PERMISSIONS.length);
+      expect(insertPermission).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
           slug: 'admin:org:create',
         }),
       );
-      expect(createPermission).toHaveBeenCalledWith(
+      expect(insertPermission).toHaveBeenCalledWith(
         expect.objectContaining({ slug: 'admin:audit:read' }),
       );
 
       // Should create all 5 admin roles
-      expect(createRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
-      expect(createRole).toHaveBeenCalledWith(
+      expect(insertRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
+      expect(insertRole).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
           slug: 'porta-super-admin',
@@ -297,7 +303,12 @@ describe('CLI Init Command', () => {
 
       expect(activateUser).toHaveBeenCalledWith('user-admin-id');
       expect(markEmailVerified).toHaveBeenCalledWith('user-admin-id');
-      expect(assignRolesToUser).toHaveBeenCalledWith('user-admin-id', ['role-admin-id']);
+      expect(assignRolesToUser).toHaveBeenCalledWith(
+        'org-super-admin-id',
+        'user-admin-id',
+        ['role-admin-id'],
+        'user-admin-id',
+      );
 
       expect(success).toHaveBeenCalledWith('Porta initialization complete!');
     });

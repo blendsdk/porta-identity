@@ -240,13 +240,27 @@ export async function capturePermissionForDeletion(
     [applicationId, permissionId],
   );
   if (!target.rows[0]) return null;
+  await pool.query(
+    `SELECT role.id
+     FROM roles role
+     JOIN role_permissions mapping ON mapping.role_id = role.id
+     WHERE mapping.permission_id = $1
+       AND role.application_id = $2
+     ORDER BY role.id
+     FOR UPDATE OF role`,
+    [permissionId, applicationId],
+  );
   const graph = await pool.query<{
     user_ids: string[];
     role_ids: string[];
     grant_ids: string[];
   }>(
     `WITH affected_roles AS (
-       SELECT role_id FROM role_permissions WHERE permission_id = $1
+       SELECT mapping.role_id
+       FROM role_permissions mapping
+       JOIN roles role ON role.id = mapping.role_id
+       WHERE mapping.permission_id = $1
+         AND role.application_id = $2
      ), affected_users AS (
        SELECT DISTINCT assignment.user_id FROM user_roles assignment
        WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
