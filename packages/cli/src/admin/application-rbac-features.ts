@@ -190,14 +190,18 @@ export function createAdminApplicationRbacFeatures(
     if (result?.kind === 'delete-permission') await controller.deletePermission(target.id);
   }
 
-  /** Loads and executes exactly one direct permission mapping change. */
+  /** Opens role permission management once and closes it after dispatching the saved changes. */
   async function manageRolePermissions(roleId: string): Promise<void> {
     const selection = options.readSelection();
     const target = role(roleId);
     if (!selection || !target) return;
     if (!(await controller.loadRolePermissions(target.id))) return;
-    const projection = retainedProjection(currentState);
-    if (!projection?.assignedPermissions || !projection.availablePermissions) return;
+
+    if (currentState.kind !== 'ready') return;
+    const projection = currentState;
+    const assignedPermissions = projection.assignedPermissions;
+    const availablePermissions = projection.availablePermissions;
+    if (!assignedPermissions || !availablePermissions) return;
     const capabilities = options.readCapabilities();
     const result = await options.runDialog((signal) =>
       showManageRolePermissionsDialog(
@@ -205,16 +209,15 @@ export function createAdminApplicationRbacFeatures(
         signal,
         selection.application,
         target,
-        projection.assignedPermissions ?? [],
-        projection.availablePermissions ?? [],
+        assignedPermissions,
+        availablePermissions,
         Boolean(capabilities?.canUpdateRoles && capabilities.canReadPermissions),
       ),
     );
-    if (result?.kind === 'assign-permission') {
-      await controller.assignPermission(result.roleId, result.permissionId);
-    } else if (result?.kind === 'remove-permission') {
-      await controller.removePermission(result.roleId, result.permissionId);
-    }
+    if (result?.kind !== 'update-role-permissions') return;
+    await controller.assignPermissions(result.roleId, result.assignPermissionIds);
+    if (currentState.kind !== 'ready') return;
+    await controller.removePermissions(result.roleId, result.removePermissionIds);
   }
 
   return {

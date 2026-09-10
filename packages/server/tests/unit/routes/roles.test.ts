@@ -146,7 +146,7 @@ describe('role routes', () => {
 
       const ctx = createMockCtx({
         params: { appId: '10000000-0000-4000-8000-000000000001' },
-        body: { name: 'Editor' },
+        body: { name: 'Editor', slug: '  GROUP_EDITOR  ' },
       });
       await execHandler(layer!, ctx);
 
@@ -156,6 +156,7 @@ describe('role routes', () => {
         {
           applicationId: '10000000-0000-4000-8000-000000000001',
           name: 'Editor',
+          slug: 'GROUP_EDITOR',
         },
         'actor-uuid-1',
       );

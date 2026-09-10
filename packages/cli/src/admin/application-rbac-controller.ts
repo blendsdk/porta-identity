@@ -58,10 +58,10 @@ export interface AdminApplicationRbacController {
   readonly deletePermission: (permissionId: string) => Promise<void>;
   /** Loads assigned and available permissions for one retained role. */
   readonly loadRolePermissions: (roleId: string) => Promise<boolean>;
-  /** Assigns one permission to one role and reloads both mapping collections. */
-  readonly assignPermission: (roleId: string, permissionId: string) => Promise<void>;
-  /** Removes one permission from one role and reloads both mapping collections. */
-  readonly removePermission: (roleId: string, permissionId: string) => Promise<void>;
+  /** Assigns permissions to one role and reloads both mapping collections. */
+  readonly assignPermissions: (roleId: string, permissionIds: readonly string[]) => Promise<void>;
+  /** Removes permissions from one role and reloads both mapping collections. */
+  readonly removePermissions: (roleId: string, permissionIds: readonly string[]) => Promise<void>;
   /** Cancels owned work and requires reconciliation if a mutation was already dispatched. */
   readonly cancelActiveOperation: () => void;
   /** Releases the controller and clears protected state. */
@@ -291,10 +291,10 @@ export function createAdminApplicationRbacController(
   /** Runs one direct permission mapping mutation and reloads both mapping collections. */
   const mutateMapping = async (
     roleId: string,
-    permissionId: string,
+    permissionIds: readonly string[],
     remove: boolean,
   ): Promise<void> => {
-    if (disposed || operation || recoveryRequired) return;
+    if (disposed || operation || recoveryRequired || permissionIds.length === 0) return;
     const context = options.readContext();
     const operations = options.readOperations();
     const invoke = remove ? operations?.removePermissions : operations?.assignPermissions;
@@ -304,7 +304,7 @@ export function createAdminApplicationRbacController(
     const capturedGeneration = ++generation;
     try {
       mutationDispatched = true;
-      const result = await invoke(context.applicationId, roleId, [permissionId], controller.signal);
+      const result = await invoke(context.applicationId, roleId, permissionIds, controller.signal);
       if (!owns(capturedGeneration, context, controller)) return;
       if (!acceptsReload(result)) return;
       await reloadMappings(context, roleId, controller, capturedGeneration);
@@ -373,8 +373,8 @@ export function createAdminApplicationRbacController(
           Promise.resolve({ kind: 'cancelled' }),
       ),
     loadRolePermissions,
-    assignPermission: (roleId, permissionId) => mutateMapping(roleId, permissionId, false),
-    removePermission: (roleId, permissionId) => mutateMapping(roleId, permissionId, true),
+    assignPermissions: (roleId, permissionIds) => mutateMapping(roleId, permissionIds, false),
+    removePermissions: (roleId, permissionIds) => mutateMapping(roleId, permissionIds, true),
     cancelActiveOperation: () => cancel(true),
     dispose() {
       if (disposed) return;

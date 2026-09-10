@@ -168,22 +168,23 @@ describe('createRole', () => {
     expect(mockInsertRole).toHaveBeenCalledWith(expect.objectContaining({ slug: 'crm-editor' }));
   });
 
-  it('should create a role with provided slug', async () => {
-    const role = createTestRole({ slug: 'custom-slug' });
+  it('should preserve a free-form role claim value after trimming it', async () => {
+    const role = createTestRole({ slug: 'GROUP_ADMIN' });
     vi.mocked(mockInsertRole).mockResolvedValue(role);
 
     const result = await createRole({
       applicationId: 'app-uuid-1',
       name: 'CRM Editor',
-      slug: 'custom-slug',
+      slug: '  GROUP_ADMIN  ',
     });
 
-    expect(result.slug).toBe('custom-slug');
+    expect(result.slug).toBe('GROUP_ADMIN');
+    expect(mockInsertRole).toHaveBeenCalledWith(expect.objectContaining({ slug: 'GROUP_ADMIN' }));
   });
 
-  it('should throw RbacValidationError for invalid slug format', async () => {
+  it('should throw RbacValidationError for a control character in a slug', async () => {
     await expect(
-      createRole({ applicationId: 'app-uuid-1', name: 'CRM Editor', slug: 'INVALID SLUG' }),
+      createRole({ applicationId: 'app-uuid-1', name: 'CRM Editor', slug: 'INVALID\nSLUG' }),
     ).rejects.toThrow(RbacValidationError);
   });
 
@@ -318,13 +319,13 @@ describe('updateRole', () => {
     );
   });
 
-  it('should validate new slug format when slug is changing', async () => {
+  it('should validate a changed slug for control characters', async () => {
     const existing = createTestRole();
     vi.mocked(mockLockRole).mockResolvedValue(existing);
 
-    await expect(updateRole('app-uuid-1', 'role-uuid-1', { slug: 'INVALID SLUG' })).rejects.toThrow(
-      RbacValidationError,
-    );
+    await expect(
+      updateRole('app-uuid-1', 'role-uuid-1', { slug: 'INVALID\nSLUG' }),
+    ).rejects.toThrow(RbacValidationError);
   });
 
   it('should check slug uniqueness when slug is changing', async () => {

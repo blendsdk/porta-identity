@@ -38,7 +38,7 @@ import {
 } from '../clients/validators.js';
 import { validateSlug as validateOrganizationSlug } from '../organizations/slugs.js';
 import { validateSlug as validateApplicationSlug } from '../applications/slugs.js';
-import { validatePermissionSlug, validateRoleSlug } from '../rbac/slugs.js';
+import { normalizeRbacSlug, validatePermissionSlug, validateRoleSlug } from '../rbac/slugs.js';
 import { validateClaimName, validateClaimValue } from '../custom-claims/validators.js';
 import { writeAuditLogInTransaction } from './audit-log.js';
 
@@ -238,10 +238,16 @@ const clientSchema = z
     }
   });
 
+/** Normalized role claim value accepted by import manifests. */
+const roleSlugSchema = z.string().transform(normalizeRbacSlug).refine(validateRoleSlug);
+
+/** Normalized permission claim value accepted by import manifests. */
+const permissionSlugSchema = z.string().transform(normalizeRbacSlug).refine(validatePermissionSlug);
+
 const roleSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().refine(validateRoleSlug),
+    slug: roleSlugSchema,
     application_slug: z.string().min(1),
     organization_slug: z.string().min(1),
     description: z.string().max(1000).optional().nullable(),
@@ -251,7 +257,7 @@ const roleSchema = z
 const permissionSchema = z
   .object({
     name: z.string().min(1).max(255),
-    slug: z.string().refine(validatePermissionSlug),
+    slug: permissionSlugSchema,
     application_slug: z.string().min(1),
     organization_slug: z.string().min(1),
     description: z.string().max(1000).optional().nullable(),
@@ -276,8 +282,8 @@ const claimDefinitionSchema = z
  */
 const rolePermissionMappingSchema = z
   .object({
-    role_slug: z.string().refine(validateRoleSlug),
-    permission_slugs: z.array(z.string().refine(validatePermissionSlug)).min(1),
+    role_slug: roleSlugSchema,
+    permission_slugs: z.array(permissionSlugSchema).min(1),
     application_slug: z.string().refine((slug) => validateApplicationSlug(slug).isValid),
     organization_slug: z.string().refine((slug) => validateOrganizationSlug(slug).isValid),
   })
@@ -316,7 +322,7 @@ const userRoleAssignmentSchema = z
     email: z.string().min(1).email(),
     organization_slug: z.string().min(1),
     application_slug: z.string().min(1),
-    role_slug: z.string().min(1),
+    role_slug: roleSlugSchema,
   })
   .strict();
 

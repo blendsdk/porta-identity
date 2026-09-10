@@ -8,11 +8,11 @@ import type {
 } from '@portaidentity/sdk';
 import {
   Button,
+  CheckGroup,
   col,
   ComboBox,
   Commands,
   cover,
-  DataGrid,
   Dialog,
   fixed,
   grow,
@@ -21,15 +21,15 @@ import {
   Memo,
   row,
   signal,
-  sortRows,
   spacer,
   Text,
 } from '@jsvision/ui';
-import type { Column, Signal, SortState, Validator, View } from '@jsvision/ui';
+import type { Signal, Validator, View } from '@jsvision/ui';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication, AdminApplicationModule } from './application-state.js';
 import type { AdminApplicationDialogHost } from './application-dialogs.js';
+import { isCanonicalPermission } from './application-rbac-workspace.js';
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import { isAdminPermissionSlug } from './rbac-state.js';
 import type { AdminPermission, AdminRole } from './rbac-state.js';
@@ -69,10 +69,14 @@ export type DeletePermissionDialogResult =
   | { readonly kind: 'delete-permission'; readonly permissionId: string }
   | { readonly kind: 'cancel' };
 
-/** One direct permission mapping choice. */
+/** Saved checkbox differences for one role, or cancellation. */
 export type ManageRolePermissionsDialogResult =
-  | { readonly kind: 'assign-permission'; readonly roleId: string; readonly permissionId: string }
-  | { readonly kind: 'remove-permission'; readonly roleId: string; readonly permissionId: string }
+  | {
+      readonly kind: 'update-role-permissions';
+      readonly roleId: string;
+      readonly assignPermissionIds: readonly string[];
+      readonly removePermissionIds: readonly string[];
+    }
   | { readonly kind: 'cancel' };
 
 /** Signals and controls shared by role and permission entity dialogs. */
@@ -81,6 +85,8 @@ interface RbacEntityForm {
   readonly name: Signal<string>;
   /** Stable create identity, or mutable role identity. */
   readonly slug?: Signal<string>;
+  /** Whether the slug must contain a valid value before submission. */
+  readonly slugRequired: boolean;
   /** Optional multiline explanation. */
   readonly description: Signal<string>;
   /** Name input used by the validity sweep. */
@@ -159,10 +165,12 @@ function validDescription(value: string): boolean {
 
 /** Creates the server-compatible role slug validator. */
 function roleSlugValidator(): Validator {
-  const syntax = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
   return {
     isValidInput: (value) => value.length <= 100,
-    isValid: (value) => value.length === 0 || (value.length <= 100 && syntax.test(value)),
+    isValid: (value) => {
+      const normalized = value.trim();
+      return normalized.length === 0 || isSafeClaimValue(normalized, 100);
+    },
   };
 }
 
@@ -170,8 +178,17 @@ function roleSlugValidator(): Validator {
 function permissionSlugValidator(): Validator {
   return {
     isValidInput: (value) => value.length <= 150,
-    isValid: isAdminPermissionSlug,
+    isValid: (value) => isAdminPermissionSlug(value.trim()),
   };
+}
+
+/** Checks a trimmed claim value using the terminal-safe response validator. */
+function isSafeClaimValue(value: string, maximum: number): boolean {
+  if (value.length === 0 || value.length > maximum) return false;
+  return ![...value].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+  });
 }
 
 /** Creates one fixed-height labeled input row. */
@@ -185,6 +202,7 @@ function entityForm(options: {
   readonly slug?: string;
   readonly description?: string | null;
   readonly slugKind?: 'role' | 'permission';
+  readonly slugRequired?: boolean;
 }): RbacEntityForm {
   const name = signal(options.name ?? '');
   const slug = options.slugKind ? signal(options.slug ?? '') : undefined;
@@ -195,12 +213,14 @@ function entityForm(options: {
     ? new Input({
         value: slug,
         maxLength: options.slugKind === 'permission' ? 150 : 100,
+        ...(options.slugKind === 'permission' ? { placeholder: 'Exact claim value' } : {}),
         validator: slugValidator,
       })
     : undefined;
   return {
     name,
     ...(slug ? { slug } : {}),
+    slugRequired: options.slugRequired ?? false,
     description,
     nameInput: new Input({ value: name, maxLength: 255, validator: textValidator(1, 255, false) }),
     ...(slugInput ? { slugInput } : {}),
@@ -219,8 +239,8 @@ function entityLayout(
 ): ReturnType<typeof col> {
   return col(
     { gap: compact ? 0 : 1, padding: 1 },
-    inputRow('Name', form.nameInput),
-    form.slugInput && inputRow('Slug', form.slugInput),
+    inputRow('Name *', form.nameInput),
+    form.slugInput && inputRow(form.slugRequired ? 'Slug *' : 'Slug', form.slugInput),
     ...additionalRows,
     ...readOnlyLines.map((line) => fixed(new Text(line), 1)),
     fixed(new Text('Description'), 1),
@@ -253,7 +273,7 @@ function entityIsValid(
     (slugKind === 'optional-role'
       ? roleSlugValidator().isValid(slug)
       : slugKind === 'required-role'
-        ? slug.length > 0 && roleSlugValidator().isValid(slug)
+        ? slug.trim().length > 0 && roleSlugValidator().isValid(slug)
         : permissionSlugValidator().isValid(slug));
   return nameValid && slugValid && validDescription(form.description());
 }
@@ -287,7 +307,7 @@ export async function showCreateRoleDialog(
   );
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const input: CreateRoleInput = { name: form.name.peek() };
-  if (form.slug?.peek()) input.slug = form.slug.peek();
+  if (form.slug?.peek().trim()) input.slug = form.slug.peek().trim();
   if (form.description.peek()) input.description = form.description.peek();
   return { kind: 'create-role', input };
 }
@@ -301,7 +321,7 @@ export async function showEditRoleDialog(
 ): Promise<EditRoleDialogResult> {
   if (role.applicationId !== application.id) return { kind: 'cancel' };
   const { width, height } = dialogSize(host, 68, ENTITY_DIALOG_HEIGHT);
-  const form = entityForm({ ...role, slugKind: 'role' });
+  const form = entityForm({ ...role, slugKind: 'role', slugRequired: true });
   const dialog = new RbacEntityDialog(
     'Edit role',
     width,
@@ -324,7 +344,7 @@ export async function showEditRoleDialog(
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
   const input: UpdateRoleInput = {};
   if (form.name.peek() !== role.name) input.name = form.name.peek();
-  if (form.slug?.peek() !== role.slug) input.slug = form.slug?.peek();
+  if (form.slug?.peek().trim() !== role.slug) input.slug = form.slug?.peek().trim();
   if (form.description.peek() !== (role.description ?? ''))
     input.description = form.description.peek() || null;
   return { kind: 'update-role', roleId: role.id, input };
@@ -357,7 +377,7 @@ export async function showDeleteRoleDialog(
     : { kind: 'cancel' };
 }
 
-/** Scope selector value that keeps the Application option distinct from module UUIDs. */
+/** Scope selector value that keeps application-level scope distinct from module UUIDs. */
 interface PermissionScopeChoice {
   /** Label shown in the selector. */
   readonly label: string;
@@ -371,7 +391,7 @@ function permissionScopeChoices(
   modules: readonly AdminApplicationModule[],
 ): PermissionScopeChoice[] {
   return [
-    { label: 'Application', moduleId: null },
+    { label: application.name, moduleId: null },
     ...modules
       .filter((module) => module.applicationId === application.id)
       .map((module) => ({ label: module.name, moduleId: module.id })),
@@ -386,7 +406,7 @@ export async function showCreatePermissionDialog(
   modules: readonly AdminApplicationModule[],
 ): Promise<CreatePermissionDialogResult> {
   const { width, height } = dialogSize(host, 68, ENTITY_DIALOG_HEIGHT);
-  const form = entityForm({ slugKind: 'permission' });
+  const form = entityForm({ slugKind: 'permission', slugRequired: true });
   const choices = permissionScopeChoices(application, modules);
   const scope = signal<PermissionScopeChoice | null>(choices[0] ?? null);
   const selector = new ComboBox<PermissionScopeChoice>({
@@ -412,7 +432,10 @@ export async function showCreatePermissionDialog(
   );
   dialog.add(cover(content));
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
-  const input: CreatePermissionInput = { name: form.name.peek(), slug: form.slug?.peek() ?? '' };
+  const input: CreatePermissionInput = {
+    name: form.name.peek(),
+    slug: form.slug?.peek().trim() ?? '',
+  };
   if (form.description.peek()) input.description = form.description.peek();
   const moduleId = scope.peek()?.moduleId;
   if (moduleId) input.moduleId = moduleId;
@@ -432,7 +455,7 @@ export async function showEditPermissionDialog(
   const form = entityForm(permission);
   const scope = permission.moduleId
     ? (modules.find((module) => module.id === permission.moduleId)?.name ?? permission.moduleId)
-    : 'Application';
+    : application.name;
   const dialog = new RbacEntityDialog(
     'Edit permission',
     width,
@@ -456,7 +479,9 @@ export async function showEditPermissionDialog(
       ),
     ),
   );
-  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(form.nameInput);
+  if ((await outcome) !== Commands.ok) return { kind: 'cancel' };
   const input: UpdatePermissionInput = {
     ...(form.name.peek() !== permission.name ? { name: form.name.peek() } : {}),
     description: form.description.peek() || null,
@@ -491,62 +516,7 @@ export async function showDeletePermissionDialog(
     : { kind: 'cancel' };
 }
 
-const MAPPING_COLUMNS: Column<AdminPermission>[] = [
-  { title: 'Name', accessor: (permission) => permission.name, width: '1fr', minWidth: 16 },
-  { title: 'Slug', accessor: (permission) => permission.slug, width: '1fr', minWidth: 20 },
-];
-
-/** Opens the available-permission chooser after the administrator selects Add. */
-async function showAvailablePermissionDialog(
-  host: AdminApplicationDialogHost,
-  operationSignal: AbortSignal,
-  role: AdminRole,
-  available: readonly AdminPermission[],
-): Promise<ManageRolePermissionsDialogResult> {
-  const { width, height } = dialogSize(host, 68, 11);
-  const selected = signal<AdminPermission | null>(null);
-  const selector = new ComboBox<AdminPermission>({
-    items: signal([...available]),
-    getText: (permission) => `${permission.name} — ${permission.slug}`,
-    value: selected,
-    editable: false,
-  });
-  const dialog = new Dialog({ title: 'Add role permission', width, height, centered: true });
-  dialog.add(
-    cover(
-      col(
-        { gap: 1, padding: 1 },
-        fixed(new Text(`Role: ${role.name}`), 1),
-        fixed(row({ gap: 1 }, fixed(new Label('Permission', selector), 14), grow(selector)), 1),
-        grow(
-          new Text(
-            available.length === 0 ? 'No permissions are available.' : 'Select one permission.',
-          ),
-        ),
-        fixed(
-          row(
-            { gap: 1 },
-            spacer(),
-            new Button('Add', {
-              command: Commands.ok,
-              default: true,
-              disabled: () => selected() === null,
-            }),
-            new Button('Cancel', { command: Commands.cancel }),
-          ),
-          2,
-        ),
-      ),
-    ),
-  );
-  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
-  const permission = selected.peek();
-  return permission
-    ? { kind: 'assign-permission', roleId: role.id, permissionId: permission.id }
-    : { kind: 'cancel' };
-}
-
-/** Opens assigned permissions and returns exactly one direct add or remove intent. */
+/** Opens assignable permissions in two checkbox columns and returns their saved differences. */
 export async function showManageRolePermissionsDialog(
   host: AdminApplicationDialogHost,
   operationSignal: AbortSignal,
@@ -554,7 +524,7 @@ export async function showManageRolePermissionsDialog(
   role: AdminRole,
   assigned: readonly AdminPermission[],
   available: readonly AdminPermission[],
-  canAdd: boolean,
+  canManage: boolean,
 ): Promise<ManageRolePermissionsDialogResult> {
   if (
     role.applicationId !== application.id ||
@@ -562,49 +532,95 @@ export async function showManageRolePermissionsDialog(
   ) {
     return { kind: 'cancel' };
   }
-  const { width, height } = dialogSize(host, 72, 18);
-  const rows = signal([...assigned]);
-  const selected = signal(-1);
-  const sort = signal<SortState>(null);
-  const selectedPermission = (): AdminPermission | undefined =>
-    sortRows(rows(), MAPPING_COLUMNS, sort())[selected()];
+  const assignedIds = new Set(assigned.map((permission) => permission.id));
+  const allPermissions = [...assigned, ...available];
+  const editablePermissions = allPermissions
+    .filter((permission) => !isCanonicalPermission(application, permission))
+    .sort((left, right) =>
+      left.name === right.name
+        ? left.slug.localeCompare(right.slug)
+        : left.name.localeCompare(right.name),
+    );
+  const protectedCount = allPermissions.length - editablePermissions.length;
+  const splitAt = Math.ceil(editablePermissions.length / 2);
+  const permissionColumns = [
+    editablePermissions.slice(0, splitAt),
+    editablePermissions.slice(splitAt),
+  ] as const;
+  const initialValues = permissionColumns.map((permissions) =>
+    permissions.map((permission) => assignedIds.has(permission.id)),
+  );
+  const checkedColumns = [signal([...initialValues[0]]), signal([...initialValues[1]])] as const;
+  const checkGroups = permissionColumns.map(
+    (permissions, index) =>
+      new CheckGroup({
+        labels: permissions.map((permission) => `${permission.name} — ${permission.slug}`),
+        value: checkedColumns[index]!,
+      }),
+  );
+  const isDirty = (): boolean =>
+    checkedColumns.some((values, columnIndex) =>
+      values().some((value, rowIndex) => value !== initialValues[columnIndex]?.[rowIndex]),
+    );
+  const checkboxRows = Math.max(1, permissionColumns[0].length, permissionColumns[1].length);
+  const { width, height } = dialogSize(host, 78, Math.max(14, checkboxRows + 10));
+  const save = new Button('Save', {
+    command: Commands.ok,
+    default: true,
+    disabled: () => !canManage || !isDirty(),
+  });
+  const cancel = new Button('Cancel', { command: Commands.cancel });
+  const permissionChoices: View =
+    editablePermissions.length === 0
+      ? new Text('No assignable permissions.')
+      : row({ gap: 2 }, grow(checkGroups[0]!), grow(checkGroups[1]!));
   const dialog = new Dialog({ title: 'Manage role permissions', width, height, centered: true });
+  dialog.resizable = true;
+  dialog.minWidth = Math.min(52, width);
+  dialog.minHeight = Math.min(12, height);
   dialog.add(
     cover(
       col(
         { gap: 1, padding: 1 },
-        fixed(new Text(`Application: ${application.name}\nRole: ${role.name}`), 2),
-        grow(
-          new DataGrid<AdminPermission>({
-            rows,
-            columns: MAPPING_COLUMNS,
-            selected,
-            sort,
-            zebra: true,
-          }),
-        ),
         fixed(
-          row(
-            { gap: 1 },
-            new Button('Add', { command: 'add-permission', disabled: !canAdd }),
-            new Button('Remove', {
-              command: 'remove-permission',
-              disabled: () => !selectedPermission(),
-            }),
-            spacer(),
-            new Button('Close', { command: Commands.cancel, default: true }),
+          new Text(
+            `Application: ${application.name}\nRole: ${role.name}\nChecked permissions are assigned to this role.`,
           ),
-          2,
+          3,
         ),
+        ...(protectedCount > 0
+          ? [
+              fixed(
+                new Text(
+                  `${protectedCount} protected built-in permission${protectedCount === 1 ? ' is' : 's are'} not editable here.`,
+                ),
+                1,
+              ),
+            ]
+          : []),
+        grow(permissionChoices),
+        fixed(row({ gap: 1 }, spacer(), save, cancel), 2),
       ),
     ),
   );
-  const outcome = await runDialog(host, dialog, operationSignal);
-  if (outcome === 'add-permission') {
-    return showAvailablePermissionDialog(host, operationSignal, role, available);
-  }
-  const permission = selectedPermission();
-  return outcome === 'remove-permission' && permission
-    ? { kind: 'remove-permission', roleId: role.id, permissionId: permission.id }
-    : { kind: 'cancel' };
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(editablePermissions.length > 0 ? checkGroups[0]! : cancel);
+  const command = await outcome;
+  if (command !== Commands.ok || !isDirty()) return { kind: 'cancel' };
+  const assignPermissionIds: string[] = [];
+  const removePermissionIds: string[] = [];
+  permissionColumns.forEach((permissions, columnIndex) => {
+    permissions.forEach((permission, rowIndex) => {
+      const wasAssigned = initialValues[columnIndex]?.[rowIndex] ?? false;
+      const isAssigned = checkedColumns[columnIndex]?.peek()[rowIndex] ?? false;
+      if (!wasAssigned && isAssigned) assignPermissionIds.push(permission.id);
+      if (wasAssigned && !isAssigned) removePermissionIds.push(permission.id);
+    });
+  });
+  return {
+    kind: 'update-role-permissions',
+    roleId: role.id,
+    assignPermissionIds,
+    removePermissionIds,
+  };
 }

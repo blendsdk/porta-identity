@@ -3,7 +3,10 @@
 import type { CreatePermissionInput, CreateRoleInput, Permission, Role } from '@portaidentity/sdk';
 import {
   Button,
+  CheckGroup,
   col,
+  ComboBox,
+  cover,
   createApplication,
   DataGrid,
   Dialog,
@@ -200,8 +203,8 @@ interface RbacControllerExports {
     readonly requestAuthentication: () => void;
   }) => {
     readonly load: () => Promise<void>;
-    readonly assignPermission: (roleId: string, permissionId: string) => Promise<void>;
-    readonly removePermission: (roleId: string, permissionId: string) => Promise<void>;
+    readonly assignPermissions: (roleId: string, permissionIds: readonly string[]) => Promise<void>;
+    readonly removePermissions: (roleId: string, permissionIds: readonly string[]) => Promise<void>;
     readonly reload: () => Promise<void>;
   };
 }
@@ -303,7 +306,7 @@ async function mountRbac(
     onIntent: vi.fn(),
     focusView: (view) => host.loop.focusView(view),
   });
-  content.add(col({ gap: 1 }, grow(workspace.roles), grow(workspace.permissions)));
+  content.add(cover(col({ gap: 1 }, grow(workspace.roles), grow(workspace.permissions))));
   workspace.setState(projection);
   await settle();
   return { host, workspace };
@@ -342,6 +345,53 @@ describe('Application RBAC tabs and controls', () => {
     ]);
     tabs.select(3);
     expect(frameText(host)).toContain('Customer Portal');
+  });
+
+  // Each RBAC page must consume the complete TabView body instead of measuring to toolbar width.
+  it('fills the Roles and Permissions tab body with the DataGrid layout', async () => {
+    const workspace = createAdminApplicationWorkspace({
+      capabilities,
+      onIntent: vi.fn(),
+      onRbacIntent: vi.fn(),
+      focusView: vi.fn(),
+    });
+    createApplication({ content: workspace.content, viewport: { width: 80, height: 24 } });
+    workspace.setState({
+      kind: 'detail',
+      scope: 'global',
+      applications: [application],
+      application,
+      etag: null,
+      modules: [moduleRow],
+    });
+    workspace.setRbacState({
+      kind: 'ready',
+      applicationId,
+      roles: [role],
+      permissions: [permission],
+    });
+    await settle();
+    const tabs = descendants(workspace.content).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Application tabs missing.');
+
+    for (const index of [2, 3]) {
+      tabs.select(index);
+      await settle();
+      const page = tabs.tabs.peek()[index]?.content;
+      if (!page) throw new Error('RBAC tab page missing.');
+      const body = page.children[0];
+      if (!(body instanceof Group)) throw new Error('RBAC tab body missing.');
+      const grid = descendants(page).find((view) => view instanceof DataGrid);
+      if (!(grid instanceof DataGrid)) throw new Error('RBAC DataGrid missing.');
+
+      expect(body.bounds).toEqual({
+        x: 0,
+        y: 0,
+        width: page.bounds.width,
+        height: page.bounds.height,
+      });
+      expect(grid.bounds.width).toBe(page.bounds.width - 2);
+    }
   });
 
   // Empty collections remain real grids so administrators can see the columns and reach Add.
@@ -450,10 +500,8 @@ describe('focused RBAC dialogs', () => {
     expect(descendants(dialog).some((view) => view.constructor.name === 'GroupBox')).toBe(false);
     expect(create.state.disabled).toBe(true);
     inputs[0]?.getValueSignal().set('Billing administrator');
-    inputs[1]?.getValueSignal().set('-invalid-');
+    inputs[1]?.getValueSignal().set('  GROUP_BILLING_ADMIN  ');
     memo.setText('First line\nSecond line');
-    expect(create.state.disabled).toBe(true);
-    inputs[1]?.getValueSignal().set('billing-admin');
     expect(memo.bounds.height).toBeGreaterThanOrEqual(4);
     expect(create.state.disabled).toBe(false);
     activate(host, create);
@@ -461,13 +509,13 @@ describe('focused RBAC dialogs', () => {
       kind: 'create-role',
       input: {
         name: 'Billing administrator',
-        slug: 'billing-admin',
+        slug: 'GROUP_BILLING_ADMIN',
         description: 'First line\nSecond line',
       },
     });
   });
 
-  // Permission creation validates its stable identity while edit submits only mutable metadata.
+  // Permission creation explains its required identity and names the application-level scope.
   it('separates permission creation fields from immutable edit identity and scope', async () => {
     const exports = await dialogExports();
     const createHost = createApplication({ viewport: { width: 80, height: 24 } });
@@ -481,13 +529,26 @@ describe('focused RBAC dialogs', () => {
     const createDialog = createHost.desktop.activeWindow();
     if (!(createDialog instanceof Dialog)) throw new Error('Permission create dialog missing.');
     const createInputs = descendants(createDialog).filter((view) => view instanceof Input);
+    const scope = descendants(createDialog).find((view) => view instanceof ComboBox);
+    if (!(scope instanceof ComboBox)) throw new Error('Permission scope selector missing.');
+    expect(frameText(createHost)).toContain('Name *');
+    expect(frameText(createHost)).toContain('Slug *');
+    expect(frameText(createHost)).toContain('Exact claim value');
+    expect(scope.items.peek().map((choice) => choice.label)).toEqual([
+      application.name,
+      moduleRow.name,
+    ]);
     createInputs[0]?.getValueSignal().set('Read invoices');
-    createInputs[1]?.getValueSignal().set('not-valid');
+    createInputs[1]?.getValueSignal().set('   ');
     expect(button(createDialog, 'Create').state.disabled).toBe(true);
-    createInputs[1]?.getValueSignal().set('billing:invoice:read');
-    expect(button(createDialog, 'Create').state.disabled).toBe(false);
-    createHost.loop.endModal('cancel');
-    await expect(createPending).resolves.toEqual({ kind: 'cancel' });
+    createInputs[1]?.getValueSignal().set('  CAN_READ_INVOICE  ');
+    const create = button(createDialog, 'Create');
+    expect(create.state.disabled).toBe(false);
+    activate(createHost, create);
+    await expect(createPending).resolves.toEqual({
+      kind: 'create-permission',
+      input: { name: 'Read invoices', slug: 'CAN_READ_INVOICE' },
+    });
 
     const editHost = createApplication({ viewport: { width: 80, height: 24 } });
     const editPending = exports.showEditPermissionDialog(
@@ -502,6 +563,7 @@ describe('focused RBAC dialogs', () => {
     if (!(editDialog instanceof Dialog)) throw new Error('Permission edit dialog missing.');
     const editable = descendants(editDialog).filter((view) => view instanceof Input);
     expect(editable).toHaveLength(1);
+    expect(editHost.loop.getFocused()).toBe(editable[0]);
     expect(frameText(editHost)).toContain(permission.slug);
     expect(frameText(editHost)).toContain('Billing');
     editable[0]?.getValueSignal().set('View invoices');
@@ -511,6 +573,101 @@ describe('focused RBAC dialogs', () => {
       permissionId,
       input: { name: 'View invoices', description: permission.description },
     });
+  });
+
+  // Role permission management uses two checkbox columns and saves the complete visible change set.
+  it('assigns and removes permissions from two DSL checkbox columns', async () => {
+    const exports = await dialogExports();
+    const availablePermission = {
+      ...permission,
+      id: '55555555-5555-4555-8555-555555555555',
+      name: 'Update invoices',
+      slug: 'billing:invoice:update',
+    };
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const pending = exports.showManageRolePermissionsDialog(
+      host,
+      new AbortController().signal,
+      application,
+      role,
+      [permission],
+      [availablePermission],
+      true,
+    );
+    await settle();
+    const dialog = host.desktop.activeWindow();
+    if (!(dialog instanceof Dialog)) throw new Error('Role permission dialog missing.');
+    const checks = descendants(dialog).filter((view) => view instanceof CheckGroup);
+    expect(checks).toHaveLength(2);
+    expect(descendants(dialog).filter((view) => view instanceof DataGrid)).toHaveLength(0);
+    expect(checks[0]?.bounds.y).toBe(checks[1]?.bounds.y);
+    expect(checks[0]?.bounds.x).toBeLessThan(checks[1]?.bounds.x ?? 0);
+    expect(dialog.resizable).toBe(true);
+    expect(frameText(host)).toContain('[X]');
+    expect(frameText(host)).toContain('[ ]');
+    expect(button(dialog, 'Save').state.disabled).toBe(true);
+
+    const availableCheck = checks[1];
+    if (!(availableCheck instanceof CheckGroup)) throw new Error('Available checkbox missing.');
+    host.loop.focusView(availableCheck);
+    host.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
+    expect(button(dialog, 'Save').state.disabled).toBe(false);
+    activate(host, button(dialog, 'Save'));
+    await expect(pending).resolves.toEqual({
+      kind: 'update-role-permissions',
+      roleId,
+      assignPermissionIds: [availablePermission.id],
+      removePermissionIds: [],
+    });
+
+    const removeHost = createApplication({ viewport: { width: 80, height: 24 } });
+    const removePending = exports.showManageRolePermissionsDialog(
+      removeHost,
+      new AbortController().signal,
+      application,
+      role,
+      [permission],
+      [availablePermission],
+      true,
+    );
+    await settle();
+    const removeDialog = removeHost.desktop.activeWindow();
+    if (!(removeDialog instanceof Dialog)) throw new Error('Role permission dialog missing.');
+    const assignedCheck = descendants(removeDialog).find((view) => view instanceof CheckGroup);
+    if (!(assignedCheck instanceof CheckGroup)) throw new Error('Assigned checkbox missing.');
+    removeHost.loop.focusView(assignedCheck);
+    removeHost.loop.dispatch({ type: 'key', key: 'space', ctrl: false, alt: false, shift: false });
+    activate(removeHost, button(removeDialog, 'Save'));
+    await expect(removePending).resolves.toEqual({
+      kind: 'update-role-permissions',
+      roleId,
+      assignPermissionIds: [],
+      removePermissionIds: [permissionId],
+    });
+  });
+
+  // Protected authorization definitions are visible but cannot be attached through generic role editing.
+  it('marks canonical Porta Admin permissions as protected in role management', async () => {
+    const exports = await dialogExports();
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const pending = exports.showManageRolePermissionsDialog(
+      host,
+      new AbortController().signal,
+      { ...application, slug: 'porta-admin' },
+      role,
+      [],
+      [{ ...permission, moduleId: null, slug: 'admin:role:read' }],
+      true,
+    );
+    await settle();
+    const dialog = host.desktop.activeWindow();
+    if (!(dialog instanceof Dialog)) throw new Error('Role permission dialog missing.');
+    expect(descendants(dialog).filter((view) => view instanceof CheckGroup)).toHaveLength(0);
+    expect(frameText(host)).toMatch(/protected built-in permission/i);
+    expect(frameText(host)).not.toContain('admin:role:read');
+    expect(button(dialog, 'Save').state.disabled).toBe(true);
+    host.loop.endModal('cancel');
+    await expect(pending).resolves.toEqual({ kind: 'cancel' });
   });
 });
 
@@ -566,7 +723,7 @@ describe('Application RBAC mutation reconciliation', () => {
   // Each mapping action is one direct request followed by authoritative assigned and available reads.
   it('adds and removes one permission at a time and reloads both collections', async () => {
     const mounted = await setupController();
-    await mounted.controller.assignPermission(roleId, permissionId);
+    await mounted.controller.assignPermissions(roleId, [permissionId]);
     expect(mounted.operations.assignPermissions).toHaveBeenCalledOnce();
     expect(mounted.operations.assignPermissions).toHaveBeenCalledWith(
       applicationId,
@@ -578,7 +735,7 @@ describe('Application RBAC mutation reconciliation', () => {
     expect(mounted.operations.listPermissions).toHaveBeenCalledOnce();
 
     vi.clearAllMocks();
-    await mounted.controller.removePermission(roleId, permissionId);
+    await mounted.controller.removePermissions(roleId, [permissionId]);
     expect(mounted.operations.removePermissions).toHaveBeenCalledOnce();
     expect(mounted.operations.removePermissions).toHaveBeenCalledWith(
       applicationId,
@@ -597,7 +754,7 @@ describe('Application RBAC mutation reconciliation', () => {
       kind: 'success',
       reauthenticationRequired: true,
     });
-    await mounted.controller.removePermission(roleId, permissionId);
+    await mounted.controller.removePermissions(roleId, [permissionId]);
 
     expect(mounted.states.at(-1)).toEqual({ kind: 'closed' });
     expect(mounted.requestAuthentication).toHaveBeenCalledOnce();
@@ -610,7 +767,7 @@ describe('Application RBAC mutation reconciliation', () => {
     const mounted = await setupController();
     await mounted.controller.load();
     mounted.operations.removePermissions.mockResolvedValueOnce({ kind: 'outcome-unknown' });
-    await mounted.controller.removePermission(roleId, permissionId);
+    await mounted.controller.removePermissions(roleId, [permissionId]);
     expect(mounted.states.at(-1)).toMatchObject({ kind: 'indeterminate' });
     expect(mounted.operations.removePermissions).toHaveBeenCalledOnce();
 
@@ -647,12 +804,25 @@ describe('Application RBAC remote validation', () => {
     expect(validators.validateAdminPermissionCollection([permission], applicationId)).toEqual([
       permission,
     ]);
+    expect(
+      validators.validateAdminRoleCollection(
+        [{ ...role, slug: 'GROUP_BILLING_ADMIN' }],
+        applicationId,
+      ),
+    ).toBeDefined();
+    expect(
+      validators.validateAdminPermissionCollection(
+        [{ ...permission, slug: 'CAN_READ_INVOICE' }],
+        applicationId,
+      ),
+    ).toBeDefined();
 
     for (const invalidRole of [
       { ...role, id: 'not-a-uuid' },
       { ...role, applicationId: '55555555-5555-4555-8555-555555555555' },
       { ...role, createdAt: 'yesterday' },
       { ...role, name: 'Unsafe\u0000name' },
+      { ...role, slug: ' GROUP_ADMIN ' },
     ]) {
       expect(
         validators.validateAdminRoleCollection([role, invalidRole], applicationId),

@@ -4,9 +4,8 @@
  * Orchestrates permission CRUD operations with slug format validation,
  * uniqueness checks, deletion guards, cache management, and audit logging.
  *
- * Permission slugs follow the module:resource:action format (e.g.,
- * "crm:contacts:read") and are immutable after creation — only name
- * and description can be updated.
+ * Permission slugs are application-defined claim values and are immutable after creation — only
+ * name and description can be updated.
  *
  * All write operations follow the pattern:
  *   validate → DB operation → cache invalidate → audit log
@@ -29,7 +28,7 @@ import {
   permissionSlugExists,
 } from './permission-repository.js';
 import { getRolesWithPermission as repoGetRolesWithPermission } from './mapping-repository.js';
-import { validatePermissionSlug } from './slugs.js';
+import { normalizeRbacSlug, validatePermissionSlug } from './slugs.js';
 import { PermissionNotFoundError, RbacValidationError } from './errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Permission, Role, CreatePermissionInput, UpdatePermissionInput } from './types.js';
@@ -51,8 +50,7 @@ const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 /**
  * Create a new permission for an application.
  *
- * Validates that the slug follows the module:resource:action format
- * and ensures uniqueness within the application.
+ * Validates the exact claim value and ensures uniqueness within the application.
  *
  * @param input - Permission creation data
  * @param actorId - Optional UUID of the admin performing the action
@@ -63,13 +61,13 @@ export async function createPermission(
   input: CreatePermissionInput,
   actorId?: string,
 ): Promise<Permission> {
-  // Validate permission slug format (module:resource:action)
-  if (!validatePermissionSlug(input.slug)) {
+  const slug = normalizeRbacSlug(input.slug);
+  if (!validatePermissionSlug(slug)) {
     throw new RbacValidationError(
-      `Invalid permission slug format: "${input.slug}". Must follow module:resource:action pattern with at least 3 colon-separated segments.`,
+      'Invalid permission slug. Must be 1-150 characters without control characters.',
     );
   }
-  await guardCanonicalAdminPermission(input.applicationId, input.slug);
+  await guardCanonicalAdminPermission(input.applicationId, slug);
   if (input.moduleId) {
     if (!getDatabaseTransactionClient()) {
       throw new Error('Permission module validation requires an active database transaction');
@@ -80,15 +78,13 @@ export async function createPermission(
   }
 
   // Check slug uniqueness within the application
-  const exists = await permissionSlugExists(input.applicationId, input.slug);
+  const exists = await permissionSlugExists(input.applicationId, slug);
   if (exists) {
-    throw new RbacValidationError(
-      `Permission slug "${input.slug}" already exists for this application.`,
-    );
+    throw new RbacValidationError(`Permission slug "${slug}" already exists for this application.`);
   }
 
   // Insert the permission
-  const permission = await insertPermission(input);
+  const permission = await insertPermission({ ...input, slug });
 
   // Audit log (fire-and-forget)
   void writeAuditLog({

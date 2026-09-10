@@ -107,36 +107,36 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('createPermission', () => {
-  it('should create a permission with valid slug format', async () => {
-    const permission = createTestPermission();
+  it('should preserve a free-form permission claim value after trimming it', async () => {
+    const permission = createTestPermission({ slug: 'CAN_ADD_ORDER' });
     vi.mocked(mockInsert).mockResolvedValue(permission);
 
     const result = await createPermission({
       applicationId: 'app-uuid-1',
       name: 'Read Contacts',
-      slug: 'crm:contacts:read',
+      slug: '  CAN_ADD_ORDER  ',
     });
 
     expect(result).toEqual(permission);
-    expect(mockInsert).toHaveBeenCalled();
+    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({ slug: 'CAN_ADD_ORDER' }));
   });
 
-  it('should throw RbacValidationError for invalid slug format', async () => {
+  it('should throw RbacValidationError for a whitespace-only slug', async () => {
     await expect(
       createPermission({
         applicationId: 'app-uuid-1',
         name: 'Read Contacts',
-        slug: 'invalid-slug-no-colons',
+        slug: '   ',
       }),
     ).rejects.toThrow(RbacValidationError);
   });
 
-  it('should throw RbacValidationError for slug with only 2 segments', async () => {
+  it('should throw RbacValidationError for a slug containing control characters', async () => {
     await expect(
       createPermission({
         applicationId: 'app-uuid-1',
         name: 'Read Contacts',
-        slug: 'crm:read',
+        slug: 'CAN\nREAD',
       }),
     ).rejects.toThrow(RbacValidationError);
   });

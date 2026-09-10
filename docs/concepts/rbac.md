@@ -31,8 +31,11 @@ remain independent.
 
 ## Roles, permissions, and assignments
 
-A role groups authority under a stable slug such as `billing-admin`. A permission describes one
-operation, normally with a three-or-more-part slug such as `billing:invoice:read`.
+A role groups authority under an application-defined claim value such as `GROUP_BILLING_ADMIN`. A
+permission describes one operation using the exact value the application expects, such as
+`CAN_READ_INVOICE`, `billing:invoice:read`, or `access-that-resource`. Porta trims surrounding
+whitespace but preserves case and internal characters. Values must be unique within their
+application; deciding their naming convention is the application developer's responsibility.
 
 The common setup flow is:
 
@@ -52,8 +55,8 @@ that trusted ownership to include only role and permission slugs from the client
 {
   "sub": "user-uuid",
   "email": "alice@example.com",
-  "roles": ["billing-admin"],
-  "permissions": ["billing:invoice:read", "billing:invoice:write"]
+  "roles": ["GROUP_BILLING_ADMIN"],
+  "permissions": ["CAN_READ_INVOICE", "CAN_WRITE_INVOICE"]
 }
 ```
 
@@ -62,7 +65,8 @@ application context is absent or malformed, `roles` and `permissions` are empty 
 internal application identifier itself is not exposed in tokens, UserInfo, introspection,
 discovery, rendered authentication output, errors, or logs.
 
-Your application should authorize against these application-scoped permission slugs. It does not
+Claim arrays contain unique values. Your application should authorize against these
+application-scoped permission slugs. It does not
 need to fetch a second global permission graph for every request.
 
 ## Porta Admin authority

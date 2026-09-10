@@ -330,6 +330,15 @@ describe('buildRoleClaims', () => {
     expect(result).toEqual([]);
     expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
+
+  it('should emit each role claim value once', async () => {
+    vi.mocked(mockRepoGetRoles).mockResolvedValue([
+      createTestRole({ slug: 'GROUP_ADMIN' }),
+      createTestRole({ slug: 'GROUP_ADMIN' }),
+    ]);
+
+    expect(await buildRoleClaims('user-1', APPLICATION_ID)).toEqual(['GROUP_ADMIN']);
+  });
 });
 
 describe('buildPermissionClaims', () => {
@@ -352,5 +361,14 @@ describe('buildPermissionClaims', () => {
 
     expect(result).toEqual([]);
     expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1', APPLICATION_ID);
+  });
+
+  it('should emit each permission claim value once', async () => {
+    vi.mocked(mockRepoGetPerms).mockResolvedValue([
+      createTestPermission({ slug: 'CAN_ADD_ORDER' }),
+      createTestPermission({ slug: 'CAN_ADD_ORDER' }),
+    ]);
+
+    expect(await buildPermissionClaims('user-1', APPLICATION_ID)).toEqual(['CAN_ADD_ORDER']);
   });
 });

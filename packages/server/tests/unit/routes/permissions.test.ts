@@ -139,7 +139,7 @@ describe('permission routes', () => {
 
       const ctx = createMockCtx({
         params: { appId: '10000000-0000-4000-8000-000000000001' },
-        body: { name: 'Read Contacts', slug: 'crm:contacts:read' },
+        body: { name: 'Read Contacts', slug: '  CAN_READ_CONTACTS  ' },
       });
       await execHandler(layer!, ctx);
 
@@ -149,7 +149,7 @@ describe('permission routes', () => {
         {
           applicationId: '10000000-0000-4000-8000-000000000001',
           name: 'Read Contacts',
-          slug: 'crm:contacts:read',
+          slug: 'CAN_READ_CONTACTS',
         },
         'actor-uuid-1',
       );
@@ -167,7 +167,7 @@ describe('permission routes', () => {
       expect((ctx.body as { error: string }).error).toBe('Permission request is invalid');
     });
 
-    it('should return 400 for invalid slug format', async () => {
+    it('should return 400 for a rejected permission claim value', async () => {
       vi.mocked(permissionService.createPermission).mockRejectedValue(
         new RbacValidationError('Invalid permission slug format'),
       );
@@ -175,7 +175,7 @@ describe('permission routes', () => {
       const layer = findLayer(createPermissionRouter(), 'POST', '');
       const ctx = createMockCtx({
         params: { appId: '10000000-0000-4000-8000-000000000001' },
-        body: { name: 'Bad Permission', slug: 'INVALID' },
+        body: { name: 'Bad Permission', slug: 'INVALID\nVALUE' },
       });
 
       await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission request is invalid');

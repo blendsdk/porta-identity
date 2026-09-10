@@ -272,7 +272,7 @@ async function requireDelegableRoles(
  */
 export async function buildRoleClaims(userId: string, applicationId: string): Promise<string[]> {
   const roles = await repoGetRolesForUser(userId, applicationId);
-  return roles.map((role) => role.slug);
+  return [...new Set(roles.map((role) => role.slug))];
 }
 
 /**
@@ -290,5 +290,5 @@ export async function buildPermissionClaims(
   applicationId: string,
 ): Promise<string[]> {
   const permissions = await repoGetPermissionsForUser(userId, applicationId);
-  return permissions.map((permission) => permission.slug);
+  return [...new Set(permissions.map((permission) => permission.slug))];
 }

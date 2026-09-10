@@ -38,7 +38,7 @@ const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 /** Schema for creating a new permission */
 const createPermissionSchema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(150),
+  slug: z.string().trim().min(1).max(150),
   moduleId: z.string().uuid().optional(),
   description: z.string().max(1000).optional(),
 });

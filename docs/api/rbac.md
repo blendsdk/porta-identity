@@ -21,6 +21,7 @@ Base path: `/api/admin/applications/:appId/roles`
 
 Create accepts `name`, optional `slug`, and optional `description`. When omitted, the slug is
 derived from the name. Update accepts any subset of those fields; `description` may be `null`.
+An explicit slug is the exact role claim value expected by the application.
 
 ```http
 POST /api/admin/applications/3d4c25e1-908a-4df5-b97a-f61742d36b51/roles
@@ -28,7 +29,7 @@ Content-Type: application/json
 
 {
   "name": "Sales manager",
-  "slug": "sales-manager",
+  "slug": "GROUP_SALES_MANAGER",
   "description": "Manages the sales pipeline"
 }
 ```
@@ -58,7 +59,8 @@ Base path: `/api/admin/applications/:appId/permissions`
 
 `GET /` accepts an optional `moduleId` UUID query parameter. Create requires `name` and `slug`, and
 accepts optional `moduleId` and `description`. Update changes only `name` and `description`; slug
-and scope are stable identity.
+and scope are stable identity. The slug is the exact permission claim value expected by the
+application; a colon-separated value is a convention, not a requirement.
 
 ```http
 POST /api/admin/applications/3d4c25e1-908a-4df5-b97a-f61742d36b51/permissions
@@ -66,7 +68,7 @@ Content-Type: application/json
 
 {
   "name": "Write deals",
-  "slug": "sales:deal:write",
+  "slug": "CAN_WRITE_DEAL",
   "moduleId": "5221bf2e-9083-43b7-961d-f3137ebdd68c",
   "description": "Creates and updates deals"
 }
@@ -74,6 +76,11 @@ Content-Type: application/json
 
 Deleting a permission permanently removes its role mappings and revokes authority for affected
 users.
+
+Role and permission slugs preserve case and internal characters. Porta trims surrounding
+whitespace, rejects empty or control-character values, and enforces the documented length limits.
+Each slug must be unique within its application. OIDC role and permission claim arrays contain
+unique values.
 
 ## User-role assignments
 

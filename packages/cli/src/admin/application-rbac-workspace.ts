@@ -3,6 +3,7 @@
 import {
   Button,
   col,
+  cover,
   createRoot,
   DataGrid,
   effect,
@@ -181,7 +182,7 @@ function isCanonicalRole(application: AdminApplication, role: AdminRole | undefi
 }
 
 /** Returns whether a permission is one of the immutable built-ins in the canonical Application. */
-function isCanonicalPermission(
+export function isCanonicalPermission(
   application: AdminApplication,
   permission: AdminPermission | undefined,
 ): boolean {
@@ -261,7 +262,7 @@ export function createAdminApplicationRbacWorkspace(
   /** Replaces one page's children so stale rows never remain visible. */
   const replace = (page: Group, content: View): void => {
     for (const child of [...page.children]) page.remove(child);
-    page.add(content);
+    page.add(cover(content));
   };
 
   /** Builds the Roles DataGrid and its exact action row. */
@@ -390,8 +391,11 @@ export function createAdminApplicationRbacWorkspace(
       !options.capabilities.canCreatePermissions
         ? 'Permission create permission required.'
         : undefined,
+      !options.capabilities.canUpdatePermissions
+        ? 'Permission update permission required.'
+        : undefined,
       options.application.slug === 'porta-admin'
-        ? 'This built-in Porta Admin record cannot be changed.'
+        ? 'Built-in Porta Admin records are read only; custom permissions remain editable.'
         : undefined,
     ].filter((value): value is string => value !== undefined);
     const actionRow = row({ gap: 1 }, add, edit, remove, spacer(), reload);

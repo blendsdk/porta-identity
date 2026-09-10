@@ -26,7 +26,7 @@ export interface Permission {
 export interface CreatePermissionInput {
   /** Human-readable permission name. */
   name: string;
-  /** Stable permission key, such as `billing:invoice:read`. */
+  /** Exact permission claim value expected by the application, such as `CAN_ADD_ORDER`. */
   slug: string;
   /** Optional explanation shown to administrators. */
   description?: string;

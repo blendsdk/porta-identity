@@ -43,14 +43,14 @@ const ADMIN_ROLE_SLUGS = new Set(ALL_ADMIN_ROLES.map((role) => role.slug));
 /** Schema for creating a new role */
 const createRoleSchema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(100).optional(),
+  slug: z.string().trim().min(1).max(100).optional(),
   description: z.string().max(1000).optional(),
 });
 
 /** Schema for updating a role (all fields optional) */
 const updateRoleSchema = z.object({
   name: z.string().min(1).max(255).optional(),
-  slug: z.string().min(1).max(100).optional(),
+  slug: z.string().trim().min(1).max(100).optional(),
   description: z.string().max(1000).nullable().optional(),
 });
 

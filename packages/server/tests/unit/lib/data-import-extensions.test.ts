@@ -18,6 +18,44 @@ import { generateClientId } from '../../../src/clients/crypto.js';
 // ============================================================================
 
 describe('importManifestSchema — role_permission_mappings', () => {
+  it('preserves free-form claim values and trims their references', () => {
+    const result = importManifestSchema.safeParse({
+      version: '1.0',
+      roles: [
+        {
+          name: 'Administrator',
+          slug: '  GROUP_ADMIN  ',
+          application_slug: 'app',
+          organization_slug: 'org',
+        },
+      ],
+      permissions: [
+        {
+          name: 'Add order',
+          slug: '  CAN_ADD_ORDER  ',
+          application_slug: 'app',
+          organization_slug: 'org',
+        },
+      ],
+      role_permission_mappings: [
+        {
+          role_slug: '  GROUP_ADMIN  ',
+          permission_slugs: ['  CAN_ADD_ORDER  '],
+          application_slug: 'app',
+          organization_slug: 'org',
+        },
+      ],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.roles[0]?.slug).toBe('GROUP_ADMIN');
+      expect(result.data.permissions[0]?.slug).toBe('CAN_ADD_ORDER');
+      expect(result.data.role_permission_mappings[0]?.role_slug).toBe('GROUP_ADMIN');
+      expect(result.data.role_permission_mappings[0]?.permission_slugs).toEqual(['CAN_ADD_ORDER']);
+    }
+  });
+
   it('accepts a manifest with role-permission mappings', () => {
     const input = {
       version: '1.0',

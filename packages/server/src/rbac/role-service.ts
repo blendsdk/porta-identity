@@ -30,7 +30,7 @@ import {
   lockRolePermissionTargets,
 } from './mapping-repository.js';
 import { getCachedRole, setCachedRole } from './cache.js';
-import { generateRoleSlug, validateRoleSlug } from './slugs.js';
+import { generateRoleSlug, normalizeRbacSlug, validateRoleSlug } from './slugs.js';
 import { RoleNotFoundError, RbacValidationError } from './errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Role, Permission, CreateRoleInput, UpdateRoleInput } from './types.js';
@@ -67,12 +67,12 @@ const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
  */
 export async function createRole(input: CreateRoleInput, actorId?: string): Promise<Role> {
   // Generate slug from name if not provided
-  const slug = input.slug ?? generateRoleSlug(input.name);
+  const slug = normalizeRbacSlug(input.slug ?? generateRoleSlug(input.name));
 
   // Validate slug format
   if (!validateRoleSlug(slug)) {
     throw new RbacValidationError(
-      `Invalid role slug format: "${slug}". Must be 1-100 chars, lowercase alphanumeric and hyphens.`,
+      'Invalid role slug. Must be 1-100 characters without control characters.',
     );
   }
   await guardCanonicalAdminRole(input.applicationId, slug);
@@ -180,20 +180,22 @@ export async function updateRole(
   }
   await guardCanonicalAdminRole(existing.applicationId, existing.slug);
 
+  const normalizedInput =
+    input.slug === undefined ? input : { ...input, slug: normalizeRbacSlug(input.slug) };
   const changed =
     (input.name !== undefined && input.name !== existing.name) ||
-    (input.slug !== undefined && input.slug !== existing.slug) ||
+    (normalizedInput.slug !== undefined && normalizedInput.slug !== existing.slug) ||
     (input.description !== undefined && input.description !== existing.description);
   if (!changed) return { role: existing, reauthenticationRequired: false };
 
   // If slug is changing, validate format and uniqueness
-  const requestedSlug = input.slug;
+  const requestedSlug = normalizedInput.slug;
   const slugChanged = requestedSlug !== undefined && requestedSlug !== existing.slug;
   if (slugChanged) {
     await guardCanonicalAdminRole(applicationId, requestedSlug);
     if (!validateRoleSlug(requestedSlug)) {
       throw new RbacValidationError(
-        `Invalid role slug format: "${requestedSlug}". Must be 1-100 chars, lowercase alphanumeric and hyphens.`,
+        'Invalid role slug. Must be 1-100 characters without control characters.',
       );
     }
 
@@ -209,21 +211,21 @@ export async function updateRole(
   const revoked = slugChanged
     ? await revokeAffectedAuthorityInTransaction(userIds)
     : { grantIds: [] };
-  const updated = await repoUpdateRole(applicationId, id, input);
+  const updated = await repoUpdateRole(applicationId, id, normalizedInput);
 
   if (slugChanged) {
     await writeAuditLogInTransaction(transaction, {
       eventType: 'role.updated',
       eventCategory: 'admin',
       actorId,
-      metadata: { applicationId, roleId: id, changes: input },
+      metadata: { applicationId, roleId: id, changes: normalizedInput },
     });
   } else {
     void writeAuditLog({
       eventType: 'role.updated',
       eventCategory: 'admin',
       actorId,
-      metadata: { applicationId, roleId: id, changes: input },
+      metadata: { applicationId, roleId: id, changes: normalizedInput },
     });
   }
   await registerAuthorityCleanup({

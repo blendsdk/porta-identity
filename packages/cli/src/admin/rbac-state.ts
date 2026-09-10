@@ -1,8 +1,6 @@
 /** Immutable role and permission values retained by the terminal administration application. */
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ROLE_SLUG = /^[a-z0-9](?:[a-z0-9-]{0,98}[a-z0-9])?$/;
-const PERMISSION_SEGMENT = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const ISO_TIMESTAMP = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?Z$/;
 
 /** Allowlisted application role safe for terminal presentation. */
@@ -33,7 +31,7 @@ export interface AdminPermission {
   readonly moduleId: string | null;
   /** Human-readable permission name. */
   readonly name: string;
-  /** Stable `module:resource:action` permission key. */
+  /** Exact permission claim value expected by the application. */
   readonly slug: string;
   /** Optional multiline explanation. */
   readonly description: string | null;
@@ -141,11 +139,9 @@ function objectValue(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
-/** Validates a permission slug without importing server-only validation code. */
+/** Validates a normalized permission claim value without importing server-only code. */
 export function isAdminPermissionSlug(value: unknown): value is string {
-  if (!isText(value, 150, 5)) return false;
-  const segments = value.split(':');
-  return segments.length >= 3 && segments.every((segment) => PERMISSION_SEGMENT.test(segment));
+  return isText(value, 150, 1) && value === value.trim();
 }
 
 /** Projects one role and verifies its application owner. */
@@ -159,7 +155,7 @@ export function validateAdminRole(value: unknown, applicationId: string): AdminR
     candidate.applicationId !== applicationId ||
     !isText(candidate.name, 255, 1) ||
     !isText(candidate.slug, 100, 1) ||
-    !ROLE_SLUG.test(candidate.slug) ||
+    candidate.slug !== candidate.slug.trim() ||
     !(candidate.description === null || isText(candidate.description, 1_000, 0, true)) ||
     !isTimestamp(candidate.createdAt) ||
     !isTimestamp(candidate.updatedAt)

@@ -3,19 +3,15 @@
  *
  * Two types of slugs are used in the RBAC module:
  *
- * 1. **Role slugs** — kebab-case identifiers (e.g., "crm-editor").
- *    Same format as organization/application slugs. Auto-generated
- *    from role names or provided manually.
- *
- * 2. **Permission slugs** — colon-separated namespaced identifiers
- *    following the `module:resource:action` format (e.g., "crm:contacts:read").
- *    Each segment must be lowercase alphanumeric with hyphens.
- *    Minimum 3 segments required.
+ * Role and permission slugs are exact external claim values. Explicit values keep their case and
+ * printable characters after surrounding whitespace is removed. Generated role slugs retain the
+ * familiar kebab-case default.
  *
  * This module provides:
  * - `generateRoleSlug(name)` — Derive a role slug from a role name
- * - `validateRoleSlug(slug)` — Check role slug format (kebab-case, 1-100 chars)
- * - `validatePermissionSlug(slug)` — Check permission slug follows module:resource:action
+ * - `normalizeRbacSlug(slug)` — Remove surrounding whitespace before storage and comparison
+ * - `validateRoleSlug(slug)` — Check the role claim value safety bounds
+ * - `validatePermissionSlug(slug)` — Check the permission claim value safety bounds
  * - `parsePermissionSlug(slug)` — Decompose a permission slug into its parts
  */
 
@@ -23,22 +19,28 @@
 // Role slug format
 // ---------------------------------------------------------------------------
 
-/**
- * Role slug format regex: 1–100 characters, lowercase alphanumeric + hyphens.
- * Must start and end with an alphanumeric character (no leading/trailing hyphens).
- * Single character slugs are allowed (unlike organization slugs which require 3+).
- */
-const ROLE_SLUG_REGEX = /^[a-z0-9]([a-z0-9-]{0,98}[a-z0-9])?$/;
+/** Removes surrounding whitespace while preserving the exact internal claim value. */
+export function normalizeRbacSlug(slug: string): string {
+  return slug.trim();
+}
 
-// ---------------------------------------------------------------------------
-// Permission slug format
-// ---------------------------------------------------------------------------
+/** Returns whether text contains an ASCII or C1 control character. */
+function containsControlCharacter(value: string): boolean {
+  return [...value].some((character) => {
+    const codePoint = character.codePointAt(0) ?? 0;
+    return codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+  });
+}
 
-/**
- * Each segment of a permission slug: lowercase alphanumeric + hyphens,
- * must start and end with an alphanumeric character.
- */
-const PERMISSION_SEGMENT_REGEX = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+/** Validates one normalized, bounded, control-free external claim value. */
+function validateRbacSlug(slug: string, maximumLength: number): boolean {
+  const normalized = normalizeRbacSlug(slug);
+  return (
+    normalized.length > 0 &&
+    normalized.length <= maximumLength &&
+    !containsControlCharacter(normalized)
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Role slug generation
@@ -90,11 +92,8 @@ export function generateRoleSlug(name: string): string {
 /**
  * Validate a role slug format.
  *
- * Rules:
- * - 1–100 characters long
- * - Lowercase alphanumeric characters and hyphens only
- * - Cannot start or end with a hyphen
- * - Empty strings are invalid
+ * The trimmed value must contain 1–100 printable characters. Case and internal characters are
+ * preserved because this value is emitted directly to external applications.
  *
  * Does NOT check uniqueness — that's the repository/service layer's job.
  *
@@ -104,16 +103,11 @@ export function generateRoleSlug(name: string): string {
  * @example
  * validateRoleSlug('crm-editor')  // true
  * validateRoleSlug('admin')       // true
- * validateRoleSlug('CRM Editor')  // false (spaces, uppercase)
+ * validateRoleSlug('CRM Editor')  // true
  * validateRoleSlug('')            // false (empty)
  */
 export function validateRoleSlug(slug: string): boolean {
-  // Must be 1–100 characters
-  if (!slug || slug.length > 100) {
-    return false;
-  }
-
-  return ROLE_SLUG_REGEX.test(slug);
+  return validateRbacSlug(slug, 100);
 }
 
 // ---------------------------------------------------------------------------
@@ -121,14 +115,8 @@ export function validateRoleSlug(slug: string): boolean {
 // ---------------------------------------------------------------------------
 
 /**
- * Validate a permission slug follows the module:resource:action format.
- *
- * Rules:
- * - Must have at least 3 segments separated by colons
- * - Each segment must be lowercase alphanumeric with hyphens
- * - Each segment must start and end with an alphanumeric character
- * - Empty segments are not allowed
- * - Total length must not exceed 150 characters (matches DB column)
+ * Validate a permission claim value. `module:resource:action` remains a useful convention, but is
+ * not mandatory for external applications that already use another identifier scheme.
  *
  * @param slug - Permission slug to validate
  * @returns true if the slug format is valid, false otherwise
@@ -137,26 +125,12 @@ export function validateRoleSlug(slug: string): boolean {
  * validatePermissionSlug('crm:contacts:read')     // true
  * validatePermissionSlug('admin:system:manage')    // true
  * validatePermissionSlug('crm:sub-module:items:write') // true (4+ segments OK)
- * validatePermissionSlug('contacts-read')          // false (no colons)
- * validatePermissionSlug('a:b')                    // false (only 2 segments)
+ * validatePermissionSlug('CAN_ADD_ORDER')          // true
+ * validatePermissionSlug('access-that-resource')   // true
  * validatePermissionSlug('')                       // false (empty)
  */
 export function validatePermissionSlug(slug: string): boolean {
-  // Must be non-empty and within DB column limit (VARCHAR(150))
-  if (!slug || slug.length > 150) {
-    return false;
-  }
-
-  // Split on colons — need at least 3 segments
-  const segments = slug.split(':');
-  if (segments.length < 3) {
-    return false;
-  }
-
-  // Each segment must match the segment format
-  return segments.every(
-    (segment) => segment.length > 0 && PERMISSION_SEGMENT_REGEX.test(segment),
-  );
+  return validateRbacSlug(slug, 150);
 }
 
 // ---------------------------------------------------------------------------
@@ -178,7 +152,7 @@ export interface ParsedPermissionSlug {
  * both 3-segment slugs (crm:contacts:read) and 4+ segment slugs
  * (crm:sub-module:items:write → module="crm", resource="sub-module:items", action="write").
  *
- * Returns null if the slug is invalid (fails validatePermissionSlug).
+ * Returns null when the claim value does not use the conventional three-or-more-part colon form.
  *
  * @param slug - Permission slug to parse
  * @returns Parsed components or null if invalid
@@ -194,11 +168,10 @@ export interface ParsedPermissionSlug {
  * // null
  */
 export function parsePermissionSlug(slug: string): ParsedPermissionSlug | null {
-  if (!validatePermissionSlug(slug)) {
+  const segments = normalizeRbacSlug(slug).split(':');
+  if (!validatePermissionSlug(slug) || segments.length < 3 || segments.some((part) => !part)) {
     return null;
   }
-
-  const segments = slug.split(':');
   // First segment = module, last = action, middle = resource
   const module = segments[0];
   const action = segments[segments.length - 1];

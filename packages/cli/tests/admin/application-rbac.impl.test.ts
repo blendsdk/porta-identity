@@ -3,6 +3,7 @@
 import {
   Button,
   col,
+  cover,
   createApplication,
   DataGrid,
   Dialog,
@@ -161,7 +162,7 @@ describe('Application RBAC workspace internals', () => {
       onIntent,
       focusView: (view) => host.loop.focusView(view),
     });
-    root.add(col({}, grow(workspace.roles)));
+    root.add(cover(col({}, grow(workspace.roles))));
     workspace.setState({
       kind: 'ready',
       applicationId,
@@ -196,7 +197,7 @@ describe('Application RBAC workspace internals', () => {
       onIntent: vi.fn(),
       focusView: (view) => focused.push(view),
     });
-    root.add(col({}, grow(workspace.roles), grow(workspace.permissions)));
+    root.add(cover(col({}, grow(workspace.roles), grow(workspace.permissions))));
     workspace.setState({
       kind: 'ready',
       applicationId,
@@ -237,7 +238,7 @@ describe('Application RBAC workspace internals', () => {
       onIntent: vi.fn(),
       focusView: (view) => host.loop.focusView(view),
     });
-    root.add(col({}, grow(workspace.roles), grow(workspace.permissions)));
+    root.add(cover(col({}, grow(workspace.roles), grow(workspace.permissions))));
     workspace.setState({
       kind: 'ready',
       applicationId,
@@ -276,7 +277,7 @@ describe('Application RBAC workspace internals', () => {
       capabilities,
       onIntent: vi.fn(),
     });
-    mounted.add(col({}, grow(workspace.roles), grow(workspace.permissions)));
+    mounted.add(cover(col({}, grow(workspace.roles), grow(workspace.permissions))));
     const previous = {
       kind: 'ready' as const,
       applicationId,
@@ -466,6 +467,69 @@ describe('Application RBAC production focus', () => {
 });
 
 describe('Application RBAC mapping ownership', () => {
+  it('closes role permission management after saving and reloading authoritative state', async () => {
+    const selectedRole = role(alphaRoleId, 'Alpha operator', 'alpha-operator');
+    const selectedPermission = permission(
+      alphaPermissionId,
+      'Read invoices',
+      'billing:invoice:read',
+    );
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    let assigned = false;
+    const listRolePermissions = vi.fn(async () => ({
+      kind: 'success' as const,
+      value: assigned ? [selectedPermission] : [],
+    }));
+    const assignPermissions = vi.fn(async () => {
+      assigned = true;
+      return { kind: 'success' as const };
+    });
+    const runDialog = vi.fn().mockResolvedValueOnce({
+      kind: 'update-role-permissions',
+      roleId: selectedRole.id,
+      assignPermissionIds: [selectedPermission.id],
+      removePermissionIds: [],
+    });
+    const features = createAdminApplicationRbacFeatures({
+      dialogs: {
+        host,
+        removeAll: vi.fn(),
+        setModalCommandHandler: vi.fn(),
+      },
+      readSelection: () => ({ application, modules: [] }),
+      readSession: () => ({
+        rbac: {
+          listRoles: vi.fn().mockResolvedValue({ kind: 'success', value: [selectedRole] }),
+          listPermissions: vi.fn().mockResolvedValue({
+            kind: 'success',
+            value: [selectedPermission],
+          }),
+          listRolePermissions,
+          assignPermissions,
+        },
+      }),
+      readSessionEpoch: () => 1,
+      readCapabilities: () => capabilities,
+      runDialog,
+      publishState: vi.fn(),
+      requestAuthentication: vi.fn(),
+    });
+    features.syncApplication();
+    await settle();
+
+    features.handleIntent({ kind: 'manage-role-permissions', roleId: selectedRole.id });
+    await vi.waitFor(() => expect(listRolePermissions).toHaveBeenCalledTimes(2));
+
+    expect(runDialog).toHaveBeenCalledOnce();
+    expect(assignPermissions).toHaveBeenCalledWith(
+      applicationId,
+      selectedRole.id,
+      [selectedPermission.id],
+      expect.any(AbortSignal),
+    );
+    expect(listRolePermissions).toHaveBeenCalledTimes(2);
+  });
+
   it('does not open a role dialog after a different role mapping load fails', async () => {
     const firstRole = role(alphaRoleId, 'Alpha operator', 'alpha-operator');
     const secondRole = role(zuluRoleId, 'Zulu operator', 'zulu-operator');
@@ -567,7 +631,7 @@ describe('Application RBAC compact dialogs', () => {
           ),
       },
       {
-        safeAction: 'Close',
+        safeAction: 'Cancel',
         entityForm: false,
         open: (host) =>
           showManageRolePermissionsDialog(
