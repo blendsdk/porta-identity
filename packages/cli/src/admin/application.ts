@@ -761,6 +761,8 @@ export async function runAdminApplication(
     host: dialogHost,
     readState: () => presentation.getState(),
     readOperations: () => session?.users,
+    readRbacOperations: () => session?.rbac,
+    readApplicationOperations: () => session?.applications,
     mountWorkspace: presentation.setUserWorkspace,
     isApplicationBusy: () =>
       Boolean(

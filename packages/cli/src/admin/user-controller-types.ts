@@ -2,6 +2,8 @@
 
 import type { View } from '@jsvision/ui';
 
+import type { AdminApplicationOperations } from './application-service.js';
+import type { AdminRbacOperations } from './rbac-service.js';
 import type { AdminConnectionState } from './state.js';
 import type {
   AdminUserDialogHost,
@@ -66,6 +68,11 @@ export interface AdminUserControllerOptions {
   readonly readState: () => AdminConnectionState;
   /** Reads validated user operations for the current verified session. */
   readonly readOperations: () => AdminUserOperations | undefined;
+  /** Reads validated role operations when the selected user opens Roles. */
+  readonly readRbacOperations?: () => AdminRbacOperations | undefined;
+  /** Reads the global application catalog used to label and choose roles. */
+  readonly readApplicationOperations?: () =>
+    Pick<AdminApplicationOperations, 'listAll'> | undefined;
   /** Mounts or removes only the user workspace inside the existing presentation. */
   readonly mountWorkspace: (content: View | null) => void;
   /** Reports whether authentication, identity, or organization work owns the modal surface. */

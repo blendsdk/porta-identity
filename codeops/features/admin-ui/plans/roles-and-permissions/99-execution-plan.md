@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 11:12
-> **Progress**: 50/62 tasks (81%)
+> **Last Updated**: 2026-09-10 11:24
+> **Progress**: 51/62 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -180,7 +180,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 > **Phase baseline tree**: `7ea3cd9fdfb17ae7ed2b6eb8de1a96d756f513b1`
 > **Scope mode**: strict
-> **Expected modification set**: `packages/cli/tests/admin/user-roles.spec.test.ts`, `packages/cli/tests/admin/user-roles.impl.test.ts`, `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts`, `packages/cli/src/admin/user-workspace.ts`, `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`, `docs/api/rbac.md`, `docs/concepts/rbac.md`, `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md`, repository test-inventory expectations if required, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, and incremental or comprehensive techdocs if required.
+> **Expected modification set**: `packages/cli/tests/admin/user-roles.spec.test.ts`, `packages/cli/tests/admin/user-roles.impl.test.ts`, `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts`, `packages/cli/src/admin/user-workspace.ts`, `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/user-controller-types.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`, `docs/api/rbac.md`, `docs/concepts/rbac.md`, `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md`, repository test-inventory expectations if required, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, and incremental or comprehensive techdocs if required.
 
 ### Step 5.1: Specification Tests
 
@@ -195,7 +195,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 - [x] 5.2.1 Add selected-organization/user-owned role controller and focused assigned-role dialog using the shared RBAC adapter — `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts` ✅ (completed: 2026-09-10 11:10)
 - [x] 5.2.2 Mount the Roles operation through thin User seams using the already-defined role-read, role-assign, and application-read capabilities — `packages/cli/src/admin/user-workspace.ts` ✅ (completed: 2026-09-10 11:12)
-- [ ] 5.2.3 Wire dialog ownership, late-result cancellation, and definite reauthentication through the existing application/session coordinator — `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`
+- [x] 5.2.3 Wire dialog ownership, late-result cancellation, and definite reauthentication through the existing application/session coordinator — `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-10 11:24)
 - [ ] 5.2.4 Run the Phase 5 specification file and make ST-39–ST-44 green
 
 ### Step 5.3: Implementation Tests, Documentation, and Final Gates

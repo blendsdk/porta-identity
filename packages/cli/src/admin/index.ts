@@ -82,6 +82,27 @@ export type {
   AdminUserWorkspace,
   AdminUserWorkspaceOptions,
 } from './user-workspace.js';
+export {
+  createAdminUserRoleController,
+  openAdminUserRoleWorkflow,
+} from './user-role-controller.js';
+export type {
+  AdminUserRoleContext,
+  AdminUserRoleController,
+  AdminUserRoleControllerOptions,
+  AdminUserRoleOperations,
+  AdminUserRoleWorkflow,
+  AdminUserRoleWorkflowOptions,
+} from './user-role-controller.js';
+export { createAdminUserRoleDialog } from './user-role-dialog.js';
+export type {
+  AdminAssignedUserRole,
+  AdminUserRoleDialog,
+  AdminUserRoleDialogOptions,
+  AdminUserRoleIntent,
+  AdminUserRoleReadyProjection,
+  AdminUserRoleViewState,
+} from './user-role-dialog.js';
 export { createAdminApplicationOperations } from './application-service.js';
 export type { AdminApplicationOperations } from './application-service.js';
 export { createAdminApplicationController } from './application-controller.js';

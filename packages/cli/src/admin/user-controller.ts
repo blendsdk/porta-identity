@@ -20,6 +20,8 @@ import type {
 } from './user-state.js';
 import { createAdminUserWorkspace } from './user-workspace.js';
 import type { AdminUserIntent, AdminUserWorkspace } from './user-workspace.js';
+import { openAdminUserRoleWorkflow } from './user-role-controller.js';
+import type { AdminUserRoleWorkflow } from './user-role-controller.js';
 import { ADMIN_COMMANDS } from './presentation.js';
 import type {
   AdminUserController,
@@ -86,8 +88,10 @@ export function createAdminUserController(
   const dialogs: AdminUserControllerDialogs = { ...DEFAULT_DIALOGS, ...options.dialogs };
   const makeWorkspace = options.workspaceFactory ?? createAdminUserWorkspace;
   let workspace: AdminUserWorkspace | undefined;
+  let userRoleWorkflow: AdminUserRoleWorkflow | undefined;
   let contextKey: string | undefined;
   let organizationId: string | undefined;
+  let currentSessionEpoch = 0;
   let capabilitiesKey = '';
   let state: AdminUserViewState = { kind: 'closed' };
   let query: { page: number; search?: string; status?: AdminUserStatus } = { page: 1 };
@@ -122,6 +126,14 @@ export function createAdminUserController(
     if (focus && visible && recoverable) workspace?.focusCurrent();
   };
 
+  /** Closes the focused User Roles modal before its owner context changes. */
+  const closeUserRoles = (): void => {
+    const workflow = userRoleWorkflow;
+    if (!workflow) return;
+    userRoleWorkflow = undefined;
+    workflow.close();
+  };
+
   /** Releases current asynchronous ownership without changing presentation state. */
   const releaseOperation = (controller: AbortController): void => {
     if (operation !== controller) return;
@@ -148,6 +160,7 @@ export function createAdminUserController(
 
   /** Enters the established application authentication flow. */
   const sessionInvalid = (): void => {
+    closeUserRoles();
     generation += 1;
     operationGeneration += 1;
     operation?.abort();
@@ -379,6 +392,35 @@ export function createAdminUserController(
     );
   };
 
+  /** Opens the selected user's direct role assignments through the feature-local owner. */
+  const openUserRoles = (): void => {
+    if (dialogBusy || operation || options.isApplicationBusy()) return;
+    dialogBusy = true;
+    options.setDialogBusy(true);
+    const workflow = openAdminUserRoleWorkflow({
+      host: options.host,
+      readState: options.readState,
+      readSelection: selection,
+      readSessionEpoch: () => currentSessionEpoch,
+      readOperations: () => options.readRbacOperations?.(),
+      readApplicationOperations: () => options.readApplicationOperations?.(),
+      setRecoveryRequired,
+      requestAuthentication: sessionInvalid,
+      onClosed: () => {
+        userRoleWorkflow = undefined;
+        if (!dialogBusy) return;
+        dialogBusy = false;
+        options.setDialogBusy(false);
+        workspace?.focusCurrent();
+      },
+    });
+    if (workflow) userRoleWorkflow = workflow;
+    else {
+      dialogBusy = false;
+      options.setDialogBusy(false);
+    }
+  };
+
   /** Handles one closed workspace intent. */
   const handleIntent = (intent: AdminUserIntent): void => {
     const current = options.readState();
@@ -393,14 +435,16 @@ export function createAdminUserController(
     const requiredCapability: keyof AdminCapabilities =
       intent.kind === 'delete'
         ? 'canDeleteUsers'
-        : intent.kind === 'edit' ||
-            intent.kind === 'set-password' ||
-            intent.kind === 'clear-password' ||
-            intent.kind === 'verify-email'
-          ? 'canUpdateUsers'
-          : intent.kind === 'deactivate' || intent.kind === 'activate'
-            ? 'canManageUserLifecycle'
-            : 'canReadUsers';
+        : intent.kind === 'roles'
+          ? 'canReadRoles'
+          : intent.kind === 'edit' ||
+              intent.kind === 'set-password' ||
+              intent.kind === 'clear-password' ||
+              intent.kind === 'verify-email'
+            ? 'canUpdateUsers'
+            : intent.kind === 'deactivate' || intent.kind === 'activate'
+              ? 'canManageUserLifecycle'
+              : 'canReadUsers';
     if (intent.kind !== 'back' && !current.capabilities[requiredCapability]) return;
     if (intent.kind === 'search') {
       query = {
@@ -463,6 +507,10 @@ export function createAdminUserController(
         (history) => ({ ...selected, kind: 'history', history }),
         false,
       );
+      return;
+    }
+    if (intent.kind === 'roles') {
+      openUserRoles();
       return;
     }
     if (intent.kind === 'edit') {
@@ -550,6 +598,10 @@ export function createAdminUserController(
 
   /** Cancels the owned operation and preserves only a truthful same-context projection. */
   const cancelActiveOperation = (): void => {
+    if (userRoleWorkflow) {
+      closeUserRoles();
+      return;
+    }
     if (!operation) return;
     const previous = operationPrevious;
     const indeterminate = mutationDispatched;
@@ -577,6 +629,8 @@ export function createAdminUserController(
     syncContext: (connection, sessionEpoch) => {
       const valid = connection.kind === 'authenticated' && connection.organization;
       if (!valid || !options.readOperations()) {
+        closeUserRoles();
+        currentSessionEpoch = sessionEpoch;
         generation += 1;
         operationGeneration += 1;
         operation?.abort();
@@ -601,6 +655,8 @@ export function createAdminUserController(
       const nextKey = `${sessionEpoch}:${connection.organization.id}`;
       const nextCapabilities = JSON.stringify(connection.capabilities);
       if (nextKey !== contextKey) {
+        closeUserRoles();
+        currentSessionEpoch = sessionEpoch;
         generation += 1;
         operationGeneration += 1;
         operation?.abort();
@@ -621,6 +677,8 @@ export function createAdminUserController(
         query = { page: 1 };
         replaceWorkspace(connection);
       } else if (nextCapabilities !== capabilitiesKey) {
+        closeUserRoles();
+        currentSessionEpoch = sessionEpoch;
         capabilitiesKey = nextCapabilities;
         cancelActiveOperation();
         replaceWorkspace(connection);
@@ -697,6 +755,7 @@ export function createAdminUserController(
     },
     dispose: () => {
       if (disposed) return;
+      closeUserRoles();
       disposed = true;
       generation += 1;
       operationGeneration += 1;

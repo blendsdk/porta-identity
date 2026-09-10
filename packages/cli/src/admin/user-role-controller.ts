@@ -1,5 +1,6 @@
 /** Exact-context orchestration for direct roles assigned to one selected user. */
 
+import type { AdminApplicationOperations } from './application-service.js';
 import type { AdminApplication, AdminApplicationReadResult } from './application-state.js';
 import type { AdminRbacOperations } from './rbac-service.js';
 import type {
@@ -10,9 +11,14 @@ import type {
 } from './rbac-state.js';
 import type {
   AdminAssignedUserRole,
+  AdminUserRoleDialog,
   AdminUserRoleReadyProjection,
   AdminUserRoleViewState,
 } from './user-role-dialog.js';
+import { createAdminUserRoleDialog } from './user-role-dialog.js';
+import type { AdminConnectionState } from './state.js';
+import type { AdminUserDialogHost } from './user-dialogs.js';
+import type { AdminUserSelection } from './user-state.js';
 
 /** Immutable owner used to reject work from an old organization, user, or session. */
 export interface AdminUserRoleContext {
@@ -64,6 +70,34 @@ export interface AdminUserRoleController {
   readonly cancelActiveOperation: () => void;
   /** Releases the controller and clears protected state. */
   readonly dispose: () => void;
+}
+
+/** Inputs for mounting one complete focused User Roles modal from the User workspace. */
+export interface AdminUserRoleWorkflowOptions {
+  /** Existing shell-owned modal host. */
+  readonly host: AdminUserDialogHost;
+  /** Reads the latest verified shell state and capabilities. */
+  readonly readState: () => AdminConnectionState;
+  /** Reads the selected user retained by the existing User controller. */
+  readonly readSelection: () => AdminUserSelection | undefined;
+  /** Reads the current verified-session epoch. */
+  readonly readSessionEpoch: () => number;
+  /** Reads validated RBAC operations from the current session. */
+  readonly readOperations: () => AdminUserRoleOperations | undefined;
+  /** Reads application operations used to label and choose roles. */
+  readonly readApplicationOperations: () => Pick<AdminApplicationOperations, 'listAll'> | undefined;
+  /** Gates sibling mutations while read-only reconciliation is required. */
+  readonly setRecoveryRequired?: (required: boolean) => void;
+  /** Enters the existing authentication flow after definite authority loss. */
+  readonly requestAuthentication: () => void;
+  /** Runs after the modal releases its controller, state, and window. */
+  readonly onClosed: () => void;
+}
+
+/** Handle used by the User controller to cancel the focused modal on context changes. */
+export interface AdminUserRoleWorkflow {
+  /** Closes the modal and releases all owned asynchronous work. */
+  readonly close: () => void;
 }
 
 /** Creates the focused selected-user role workflow controller. */
@@ -302,4 +336,87 @@ export function createAdminUserRoleController(
       options.publishState({ kind: 'closed' });
     },
   };
+}
+
+/** Opens one modal User Roles workflow using the existing shell event loop. */
+export function openAdminUserRoleWorkflow(
+  options: AdminUserRoleWorkflowOptions,
+): AdminUserRoleWorkflow | undefined {
+  const initialState = options.readState();
+  const initialSelection = options.readSelection();
+  const initialOperations = options.readOperations();
+  if (
+    initialState.kind !== 'authenticated' ||
+    !initialState.organization ||
+    !initialState.capabilities.canReadRoles ||
+    !initialSelection ||
+    !initialOperations
+  ) {
+    return undefined;
+  }
+  let controller: AdminUserRoleController | undefined;
+  let closed = false;
+  const dialog: AdminUserRoleDialog = createAdminUserRoleDialog({
+    organization: { id: initialState.organization.id, name: initialState.organization.name },
+    user: { id: initialSelection.selected.id, label: initialSelection.detail.email },
+    capabilities: initialState.capabilities,
+    focusView: (view) => options.host.loop.focusView(view),
+    onIntent: (intent) => {
+      if (!controller || closed) return;
+      if (intent.kind === 'load-available')
+        void controller.loadAvailableRoles(intent.applicationId);
+      else if (intent.kind === 'assign') void controller.assignRole(intent.roleId);
+      else if (intent.kind === 'remove') void controller.removeRole(intent.roleId);
+      else if (intent.kind === 'reload') void controller.reload();
+      else close();
+    },
+  });
+
+  /** Releases state before removing the window from the shell's desktop. */
+  const close = (endModal = true): void => {
+    if (closed) return;
+    closed = true;
+    const ownedController = controller;
+    controller = undefined;
+    ownedController?.dispose();
+    dialog.clear();
+    dialog.dispose();
+    if (endModal) options.host.loop.endModal(undefined);
+    options.host.desktop.removeWindow(dialog.content);
+    options.onClosed();
+  };
+
+  controller = createAdminUserRoleController({
+    readContext: () => {
+      const active = options.readState();
+      const activeSelection = options.readSelection();
+      return {
+        organizationId: active.kind === 'authenticated' ? (active.organization?.id ?? '') : '',
+        userId: activeSelection?.selected.id ?? '',
+        sessionEpoch: options.readSessionEpoch(),
+      };
+    },
+    readOperations: options.readOperations,
+    listApplications: () => {
+      const active = options.readState();
+      if (active.kind !== 'authenticated' || !active.capabilities.canReadApplications) {
+        return Promise.resolve({ kind: 'success', value: [] });
+      }
+      return (
+        options.readApplicationOperations()?.listAll() ??
+        Promise.resolve({ kind: 'failure', failure: 'unavailable' })
+      );
+    },
+    publishState: (state) => dialog.setState(state),
+    setRecoveryRequired: options.setRecoveryRequired,
+    requestAuthentication: () => {
+      close();
+      options.requestAuthentication();
+    },
+  });
+  options.host.desktop.addWindow(dialog.content);
+  void options.host.loop.execView(dialog.content).finally(() => close(false));
+  dialog.focusCurrent();
+  void controller.load();
+  return { close };
 }
