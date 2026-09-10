@@ -92,6 +92,10 @@ application and verified-session generation; definite self-revocation returns to
 while an unknown transport outcome blocks further mutations until an explicit read-only Reload.
 The workspace retains only previously validated rows during recovery, labels them as stale, clears
 positional selection when sorting changes, and restores focus when an active RBAC grid is rebuilt.
+User details open one focused User Roles dialog over the same validated RBAC adapter. Available
+role choices remain bound to the application that produced them. An uncertain role mutation owns
+its recovery gate independently from ordinary User reads, so only a successful same-user,
+same-organization, same-session role reload permits further protected mutations.
 The organization OIDC Clients workspace follows the same direct pattern with a full-height client
 `DataGrid`, a sectioned detail surface, and metadata-only secret projection. Registration uses one
 ordinary centered Client details dialog; it does not collect initial-secret or advanced settings.

@@ -3,8 +3,8 @@
 > **Feature-Set**: Porta Admin UI
 > **Status**: Active
 > **Created**: 2026-08-27
-> **Last Updated**: 2026-09-09 15:07
-> **Progress**: 5 / 10 (50%)
+> **Last Updated**: 2026-09-10 14:40
+> **Progress**: 6 / 10 (60%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -22,7 +22,7 @@
 | T-03  | Tab-based application details                | —                                                                  | [plan](plans/application-detail-tabs/99-execution-plan.md)                           | Done      | ✅     | 2026-09-09 00:55 | RD-04                |
 | RD-03 | User management                              | [RD-03](requirements/RD-03-user-management.md)                     | [user-management](plans/user-management/00-index.md)                                 | Done      | ✅     | 2026-08-30 06:23 | RD-02                |
 | RD-04 | Applications and OIDC clients                | [RD-04](requirements/RD-04-applications-and-oidc-clients.md)       | [oidc-client-workflow-redesign](plans/oidc-client-workflow-redesign/00-index.md)     | Done      | ✅     | 2026-09-08 13:39 | RD-02                |
-| RD-05 | Roles and permissions                        | [RD-05](requirements/RD-05-roles-and-permissions.md)               | [roles-and-permissions](plans/roles-and-permissions/00-index.md)                     | Executing | 🔄     | 2026-09-09 15:07 | RD-03, RD-04, RD-10  |
+| RD-05 | Roles and permissions                        | [RD-05](requirements/RD-05-roles-and-permissions.md)               | [roles-and-permissions](plans/roles-and-permissions/00-index.md)                     | Done      | ✅     | 2026-09-10 14:40 | RD-03, RD-04, RD-10  |
 | RD-06 | Organization settings and branding           | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-02                |
 | RD-07 | Sessions and authentication security         | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-03                |
 | RD-08 | Audit and activity                           | —                                                                  | —                                                                                    | Backlog   | ⬜     | 2026-08-29 13:13 | RD-02                |

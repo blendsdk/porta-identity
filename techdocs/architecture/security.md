@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-09
+> **Last Updated**: 2026-09-10
 
 ## Overview
 
@@ -396,6 +396,10 @@ rows. Permission deletion then rechecks only roles owned by the permission's app
 captures users and revokes their stored authority. User-role assignment locks the affected role,
 so it cannot cross that capture unnoticed. Authority additions do not log users out; they schedule
 only the affected users' RBAC cache keys for post-commit invalidation.
+
+When a role is removed from a user in the control-plane organization, the service locks that
+organization before locking the user and role targets. User deletion uses the same organization-
+first order, preventing the two rare administrative operations from deadlocking each other.
 
 Canonical `porta-admin` roles, permissions, and their mappings reject generic create, update,
 delete, and mapping operations. The direct initialization workflow writes those fixed definitions
