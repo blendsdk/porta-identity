@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-09
+> **Last Updated**: 2026-09-10
 
 ## High-Level Architecture
 
@@ -85,6 +85,13 @@ deployment-global label, module mutations carry the selected application UUID, a
 mutation reloads authoritative application or same-parent module data. Dialog cancellation,
 authentication replacement, and resize recovery release operation ownership so late results cannot
 repopulate a cleared view.
+Application details append direct Roles and Permissions tabs through one Application-specific RBAC
+coordinator. A lazy session adapter validates complete application-owned SDK responses before the
+controller publishes them. Role, permission, and direct mapping mutations use the current
+application and verified-session generation; definite self-revocation returns to authentication,
+while an unknown transport outcome blocks further mutations until an explicit read-only Reload.
+The workspace retains only previously validated rows during recovery, labels them as stale, clears
+positional selection when sorting changes, and restores focus when an active RBAC grid is rebuilt.
 The organization OIDC Clients workspace follows the same direct pattern with a full-height client
 `DataGrid`, a sectioned detail surface, and metadata-only secret projection. Registration uses one
 ordinary centered Client details dialog; it does not collect initial-secret or advanced settings.
