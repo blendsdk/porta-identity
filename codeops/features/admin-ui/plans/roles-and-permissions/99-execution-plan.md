@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 11:32
-> **Progress**: 53/62 tasks (85%)
+> **Last Updated**: 2026-09-10 11:39
+> **Progress**: 54/62 tasks (87%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -201,7 +201,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 ### Step 5.3: Implementation Tests, Documentation, and Final Gates
 
 - [x] 5.3.1 Add User Roles context, selection, focus, disposal, and reauthentication implementation coverage — `packages/cli/tests/admin/user-roles.impl.test.ts` ✅ (completed: 2026-09-10 11:32)
-- [ ] 5.3.2 Update public RBAC API and concept documentation — `docs/api/rbac.md`, `docs/concepts/rbac.md`
+- [x] 5.3.2 Update public RBAC API and concept documentation — `docs/api/rbac.md`, `docs/concepts/rbac.md` ✅ (completed: 2026-09-10 11:39)
 - [ ] 5.3.3 Update SDK agent and conventional CLI documentation, then run `yarn docs:build` — `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md`
 - [ ] 5.3.4 Run `yarn test:structure`
 - [ ] 5.3.5 Run `yarn workspace @portaidentity/server verify`
