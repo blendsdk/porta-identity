@@ -1,7 +1,7 @@
 # Roles and Permissions Phase Quality Reviews
 
-> **Status**: Phase 4 review passed after the accepted corrections
-> **Last Updated**: 2026-09-10 10:38
+> **Status**: Phase 5 corrections verified; bounded re-review pending
+> **Last Updated**: 2026-09-10 13:53
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Authority Provenance and OIDC Claims
@@ -130,3 +130,30 @@ The single bounded correctness and security re-reviews passed with no findings. 
 SA-401–SA-403 and RV-401–RV-404 are fully closed, exact application/session ownership remains
 fail-closed, and the correction diff introduced no framework, new surface, scroller for entity
 forms, or other escaped complexity.
+
+## Phase 5: User Roles, Documentation, and Final Verification
+
+**Review boundary:** 7ea3cd9fdfb17ae7ed2b6eb8de1a96d756f513b1..2823614b
+**Scope mode:** Strict
+**Verification before review:** User Roles specifications and implementation tests, documentation
+build, server/SDK/CLI workspace verification, retained OIDC harness, operational protocol
+assurance, clean-revision compatibility assurance, and all 97 repository structure tests passed.
+The operational security assurance collector reported two passes and four explicitly incomplete
+observations with no product or execution failure. Root `yarn verify` was not run under AR-11.
+
+| ID                 | Severity | Lens                    | Finding                                                                           | Minimum correction                                                                                   | Ruling      |
+| ------------------ | -------- | ----------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ----------- |
+| RV-501 / SA-503    | Major    | Correctness / Security  | User deletion and role removal acquire the control-plane organization and user in opposite orders | Acquire the organization serialization lock first in both paths and add one concurrent regression    | Accepted    |
+| RV-502 / SA-501    | Major    | Correctness / Security  | Available role choices are not bound to the application that produced them        | Clear and application-qualify choices; assign only when the current application owns the loaded set  | Accepted    |
+| RV-503 / SA-502    | Major    | Correctness / Security  | Closing after mutation dispatch clears the required reconciliation gate           | Preserve indeterminate recovery until a successful read-only reload                                  | Accepted    |
+| RV-504             | Major    | Correctness             | The fixed 72×20 User Roles dialog can render outside a 48×12 viewport              | Cap the dialog to the viewport and verify visible in-bounds actions                                   | Accepted    |
+| RV-505             | Minor    | Standards               | Two public examples use the invalid two-part permission slug `deals:write`         | Use the valid three-part example `sales:deal:write`                                                   | Report-only |
+
+The user accepted all four minimum major corrections. They reuse the existing lock, controller
+ownership, reconciliation, and Layout DSL patterns. No framework, worker, queue, migration,
+dependency, generalized CRUD layer, or other support surface is authorized.
+
+The corrections pass all 20 focused User Roles assertions, full CLI verification with 1,164
+assertions, and full server verification with 3,024 unit, 432 integration, 127 end-to-end, and 234
+penetration assertions. The documentation build and all 97 repository structure tests also pass.
+Root `yarn verify` was not run under AR-11.

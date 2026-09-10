@@ -228,7 +228,7 @@ application boundary. User-role tools additionally take the organization and sel
 ```typescript
 await executeTool(porta, 'permissions.create', {
   appId: 'application-id',
-  input: { name: 'Edit deals', slug: 'deals:write' },
+  input: { name: 'Edit deals', slug: 'sales:deal:write' },
 });
 
 await executeTool(porta, 'userRoles.assign', {

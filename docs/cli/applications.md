@@ -140,7 +140,7 @@ receive in tokens for the corresponding OIDC client application.
 ### `porta app permission create`
 
 ```bash
-porta app permission create <app-id> --name "Edit deals" --slug deals:write \
+porta app permission create <app-id> --name "Edit deals" --slug sales:deal:write \
   [--description "Create and edit deals"]
 ```
 

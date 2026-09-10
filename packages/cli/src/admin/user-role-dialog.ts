@@ -44,6 +44,8 @@ export interface AdminUserRoleReadyProjection {
   readonly applications: readonly AdminApplication[];
   /** Unassigned roles for the application currently chosen by Add. */
   readonly availableRoles: readonly AdminRole[];
+  /** Application that owns `availableRoles`; absent while no successful role read is current. */
+  readonly availableRolesApplicationId?: string;
 }
 
 /** Complete state accepted by the focused User Roles dialog. */
@@ -73,6 +75,8 @@ export interface AdminUserRoleDialogOptions {
   readonly user: { readonly id: string; readonly label: string };
   /** Exact capabilities from the current verified session. */
   readonly capabilities: AdminCapabilities;
+  /** Current terminal surface used to keep the modal fully visible. */
+  readonly viewport: { readonly width: number; readonly height: number };
   /** Receives one explicit dialog action. */
   readonly onIntent: (intent: AdminUserRoleIntent) => void;
   /** Focuses a mounted control through the owning application loop. */
@@ -134,7 +138,12 @@ function clearSelectionOnSort(sort: Signal<SortState>, selected: Signal<number>)
 export function createAdminUserRoleDialog(
   options: AdminUserRoleDialogOptions,
 ): AdminUserRoleDialog {
-  const content = new Dialog({ title: `Roles for ${options.user.label}`, width: 72, height: 20 });
+  const content = new Dialog({
+    title: `Roles for ${options.user.label}`,
+    width: Math.max(1, Math.min(72, options.viewport.width)),
+    height: Math.max(1, Math.min(20, options.viewport.height)),
+    centered: true,
+  });
   content.closable = false;
   content.resizable = false;
   content.zoomable = false;
@@ -251,6 +260,11 @@ export function createAdminUserRoleDialog(
 
   /** Builds the two-step application and unassigned-role choice. */
   const renderAdd = (projection: AdminUserRoleReadyProjection): void => {
+    const availableRoles =
+      selectedApplicationId !== undefined &&
+      projection.availableRolesApplicationId === selectedApplicationId
+        ? projection.availableRoles
+        : [];
     const application = signal<AdminApplication | null>(
       projection.applications.find((item) => item.id === selectedApplicationId) ?? null,
     );
@@ -262,7 +276,7 @@ export function createAdminUserRoleDialog(
       editable: false,
     });
     const roleChoice = new ComboBox<AdminRole>({
-      items: signal([...projection.availableRoles]),
+      items: signal([...availableRoles]),
       getText: (item) => `${item.name} — ${item.slug}`,
       value: role,
       editable: false,
@@ -280,10 +294,16 @@ export function createAdminUserRoleDialog(
       return dispose;
     });
     const assign = new Button('Assign', {
-      disabled: () => role() === null,
+      disabled: () =>
+        role() === null || projection.availableRolesApplicationId !== selectedApplicationId,
       onClick: () => {
         const target = role.peek();
-        if (target) {
+        if (
+          target &&
+          selectedApplicationId !== undefined &&
+          projection.availableRolesApplicationId === selectedApplicationId &&
+          target.applicationId === selectedApplicationId
+        ) {
           adding = false;
           selectedApplicationId = undefined;
           options.onIntent({ kind: 'assign', roleId: target.id });

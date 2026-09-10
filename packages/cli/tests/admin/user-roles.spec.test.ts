@@ -14,6 +14,7 @@ const organizationId = '11111111-1111-4111-8111-111111111111';
 const userId = '22222222-2222-4222-8222-222222222222';
 const applicationId = '33333333-3333-4333-8333-333333333333';
 const roleId = '44444444-4444-4444-8444-444444444444';
+const otherApplicationId = '55555555-5555-4555-8555-555555555555';
 
 const application: AdminApplication = {
   id: applicationId,
@@ -33,6 +34,13 @@ const role: AdminRole = {
   description: 'Manages billing.',
   createdAt: '2026-01-02T00:00:00Z',
   updatedAt: '2026-08-02T00:00:00Z',
+};
+
+const otherApplication: AdminApplication = {
+  ...application,
+  id: otherApplicationId,
+  name: 'Operations Portal',
+  slug: 'operations-portal',
 };
 
 const user: AdminUserDetail = {
@@ -121,6 +129,7 @@ type UserRoleProjection =
       readonly assignedRoles: readonly AssignedUserRole[];
       readonly applications: readonly AdminApplication[];
       readonly availableRoles: readonly AdminRole[];
+      readonly availableRolesApplicationId?: string;
     }
   | {
       readonly kind: 'indeterminate';
@@ -146,6 +155,7 @@ interface UserRoleDialogExports {
     readonly organization: { readonly id: string; readonly name: string };
     readonly user: { readonly id: string; readonly label: string };
     readonly capabilities: AdminCapabilities;
+    readonly viewport: { readonly width: number; readonly height: number };
     readonly onIntent: (intent: UserRoleIntent) => void;
   }) => {
     readonly content: Dialog;
@@ -177,6 +187,7 @@ interface UserRoleControllerExports {
     >;
     readonly publishState: (state: UserRoleProjection | { readonly kind: 'closed' }) => void;
     readonly requestAuthentication: () => void;
+    readonly setRecoveryRequired?: (required: boolean) => void;
   }) => {
     readonly load: () => Promise<void>;
     readonly loadAvailableRoles: (applicationId: string) => Promise<void>;
@@ -257,13 +268,14 @@ async function openDialog(
   height = 24,
 ) {
   const intents: UserRoleIntent[] = [];
+  const host = createApplication({ viewport: { width, height } });
   const owner = (await dialogExports()).createAdminUserRoleDialog({
     organization: { id: organizationId, name: 'Example Organization' },
     user: { id: userId, label: 'Alice Admin' },
     capabilities: granted,
+    viewport: { width, height },
     onIntent: (intent) => intents.push(intent),
   });
-  const host = createApplication({ viewport: { width, height } });
   host.desktop.addWindow(owner.content);
   owner.setState(projection);
   owner.focusCurrent();
@@ -309,6 +321,7 @@ describe('focused User Roles dialog', () => {
     assignedRoles: [],
     applications: [application],
     availableRoles: [role],
+    availableRolesApplicationId: applicationId,
   };
 
   // No assignments still render the complete grid and Add chooses one application and one unassigned role.
@@ -325,10 +338,30 @@ describe('focused User Roles dialog', () => {
     const choices = descendants(mounted.dialog).filter((view) => view instanceof ComboBox);
     expect(choices).toHaveLength(2);
     choices[0]?.value.set(choices[0].items.peek()[0]);
-    choices[1]?.value.set(choices[1].items.peek()[0]);
+    mounted.owner.setState(empty);
+    await settle();
+    const loadedChoices = descendants(mounted.dialog).filter((view) => view instanceof ComboBox);
+    loadedChoices[1]?.value.set(loadedChoices[1].items.peek()[0]);
     activate(mounted.host, button(mounted.dialog, 'Assign'));
     expect(mounted.intents).toContainEqual({ kind: 'load-available', applicationId });
     expect(mounted.intents).toContainEqual({ kind: 'assign', roleId });
+  });
+
+  // Role choices remain unusable unless they belong to the application currently shown.
+  it('does not expose roles retained from a different application selection', async () => {
+    const mounted = await openDialog({
+      ...empty,
+      applications: [application, otherApplication],
+    });
+    activate(mounted.host, button(mounted.dialog, 'Add'));
+    await settle();
+    const choices = descendants(mounted.dialog).filter((view) => view instanceof ComboBox);
+    choices[0]?.value.set(otherApplication);
+    await settle();
+
+    const roleChoice = descendants(mounted.dialog).filter((view) => view instanceof ComboBox)[1];
+    expect(roleChoice?.items.peek()).toEqual([]);
+    expect(button(mounted.dialog, 'Assign').state.disabled).toBe(true);
   });
 
   // Missing exact capabilities leave actions visible-disabled and application UUID is the safe name fallback.
@@ -420,6 +453,7 @@ describe('User Roles controller reconciliation', () => {
   // Assignment and removal each send one role ID and then reload the authoritative assignments.
   it('uses one-item direct mutations followed by authoritative reload', async () => {
     const mounted = await setupController();
+    await mounted.controller.load();
     await mounted.controller.loadAvailableRoles(applicationId);
     expect(mounted.operations.listRoles).toHaveBeenCalledWith(
       applicationId,
@@ -512,6 +546,57 @@ describe('User Roles controller reconciliation', () => {
     expect(mounted.operations.removeUserRoles).toHaveBeenCalledOnce();
     expect(mounted.operations.listUserRoles).toHaveBeenCalledTimes(2);
   });
+
+  // A failed replacement load cannot retain choices from the previously selected application.
+  it('clears application-owned role choices before a replacement load can fail', async () => {
+    const mounted = await setupController();
+    await mounted.controller.load();
+    await mounted.controller.loadAvailableRoles(applicationId);
+    expect(mounted.states.at(-1)).toMatchObject({
+      kind: 'ready',
+      availableRolesApplicationId: applicationId,
+    });
+
+    mounted.operations.listRoles.mockResolvedValueOnce({
+      kind: 'failure',
+      failure: 'unavailable',
+    });
+    await mounted.controller.loadAvailableRoles(otherApplicationId);
+    expect(mounted.states.at(-1)).toMatchObject({
+      kind: 'failure',
+      previous: { availableRoles: [] },
+    });
+    expect(
+      (mounted.states.at(-1) as Extract<UserRoleProjection, { readonly kind: 'failure' }>).previous,
+    ).not.toHaveProperty('availableRolesApplicationId');
+  });
+
+  // Closing an owner cannot erase uncertainty after the remote mutation was dispatched.
+  it('preserves reconciliation ownership when disposed during a mutation', async () => {
+    let resolveMutation: ((result: { readonly kind: 'success' }) => void) | undefined;
+    const recovery = vi.fn();
+    const mounted = await setupController();
+    mounted.operations.assignUserRoles.mockImplementationOnce(
+      () => new Promise((resolve) => (resolveMutation = resolve)),
+    );
+    const controller = (await controllerExports()).createAdminUserRoleController({
+      readContext: () => ({ organizationId, userId, sessionEpoch: 1 }),
+      readOperations: () => mounted.operations,
+      listApplications: mounted.listApplications,
+      publishState: vi.fn(),
+      requestAuthentication: vi.fn(),
+      setRecoveryRequired: recovery,
+    });
+
+    const mutation = controller.assignRole(roleId);
+    await settle();
+    controller.dispose();
+    resolveMutation?.({ kind: 'success' });
+    await mutation;
+
+    expect(recovery).toHaveBeenLastCalledWith(true);
+    expect(recovery).not.toHaveBeenLastCalledWith(false);
+  });
 });
 
 describe.each([
@@ -536,9 +621,23 @@ describe.each([
     const views = descendants(mounted.dialog);
     const grid = views.find((view) => view instanceof DataGrid);
     if (!(grid instanceof DataGrid)) throw new Error('Assigned-role grid missing.');
+    expect(mounted.dialog.bounds.x).toBeGreaterThanOrEqual(0);
+    expect(mounted.dialog.bounds.y).toBeGreaterThanOrEqual(0);
+    expect(mounted.dialog.bounds.x + mounted.dialog.bounds.width).toBeLessThanOrEqual(width);
+    expect(mounted.dialog.bounds.y + mounted.dialog.bounds.height).toBeLessThanOrEqual(height);
     for (const action of views.filter((view) => view instanceof Button)) {
       expect(action.layout.size).toBeUndefined();
       expect(action.focusable).toBe(true);
+      expect(action.bounds.width).toBeGreaterThan(0);
+      expect(action.bounds.height).toBeGreaterThan(0);
+      expect(action.bounds.x).toBeGreaterThanOrEqual(0);
+      expect(action.bounds.y).toBeGreaterThanOrEqual(0);
+      expect(action.bounds.x + action.bounds.width).toBeLessThanOrEqual(
+        mounted.dialog.bounds.width,
+      );
+      expect(action.bounds.y + action.bounds.height).toBeLessThanOrEqual(
+        mounted.dialog.bounds.height,
+      );
     }
     const operationRow = views.find(
       (view) =>

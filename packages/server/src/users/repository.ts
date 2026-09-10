@@ -736,7 +736,7 @@ export interface UserDeletionCapture {
  * @param organizationId - Organization that may own administrative authority
  * @returns Whether the organization is the control plane
  */
-async function lockControlPlaneOrganization(organizationId: string): Promise<boolean> {
+export async function lockControlPlaneOrganization(organizationId: string): Promise<boolean> {
   const pool = getPool();
   const controlPlane = await pool.query<{ id: string }>(
     `SELECT id FROM organizations

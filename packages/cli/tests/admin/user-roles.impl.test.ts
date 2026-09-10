@@ -171,6 +171,7 @@ describe('User Roles dialog internals', () => {
       organization: { id: organizationId, name: 'Example Organization' },
       user: { id: userId, label: 'Alice' },
       capabilities,
+      viewport: { width: 80, height: 24 },
       focusView,
       onIntent: vi.fn(),
     });
@@ -197,6 +198,7 @@ describe('User Roles dialog internals', () => {
       organization: { id: organizationId, name: 'Example Organization' },
       user: { id: userId, label: 'Alice' },
       capabilities,
+      viewport: { width: 80, height: 24 },
       onIntent: vi.fn(),
     });
     owner.dispose();

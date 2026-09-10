@@ -66,6 +66,10 @@ async function deleteUser(): Promise<DeleteOperation> {
   return requiredExport(import('../../../src/users/service.js'), 'deleteUser');
 }
 
+async function removeUserRoles(): Promise<DeleteOperation> {
+  return requiredExport(import('../../../src/rbac/user-role-service.js'), 'removeRolesFromUser');
+}
+
 async function inMutation(operation: DeleteOperation, ...identifiers: string[]): Promise<unknown> {
   return runDatabaseTransaction(() => operation(...identifiers));
 }
@@ -494,6 +498,39 @@ describe('immutable record deletion integration contract', () => {
         [controlPlaneId, application.id],
       ),
     ).toBe(1);
+  });
+
+  it('completes concurrent deletion and canonical role removal without a deadlock', async () => {
+    const removeUser = await deleteUser();
+    const removeRole = await removeUserRoles();
+    const control = await getPool().query<{ id: string }>(
+      "SELECT id FROM organizations WHERE slug = 'porta-admin'",
+    );
+    const controlPlaneId = control.rows[0]!.id;
+    const application = await createTestApplication({ slug: 'porta-admin', name: 'Porta Admin' });
+    const role = await createTestRole(application.id, {
+      slug: 'porta-super-admin',
+      name: 'Porta Super Admin',
+    });
+    const target = await createTestUser(controlPlaneId, { status: 'active' });
+    const survivor = await createTestUser(controlPlaneId, { status: 'active' });
+    await assignRole(target.id, role.id);
+    await assignRole(survivor.id, role.id);
+
+    const outcomes = await Promise.allSettled([
+      inMutation(removeUser, controlPlaneId, target.id, target.id),
+      inMutation(removeRole, controlPlaneId, target.id, [role.id], survivor.id),
+    ]);
+
+    const deadlocks = outcomes.filter(
+      (outcome) =>
+        outcome.status === 'rejected' &&
+        typeof outcome.reason === 'object' &&
+        outcome.reason !== null &&
+        Reflect.get(outcome.reason, 'code') === '40P01',
+    );
+    expect(deadlocks).toHaveLength(0);
+    expect(outcomes.some((outcome) => outcome.status === 'fulfilled')).toBe(true);
   });
 
   it('rolls back dependencies, tracking, and audit and schedules no Redis work after a pre-commit failure', async () => {

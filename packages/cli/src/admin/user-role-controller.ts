@@ -106,6 +106,7 @@ export function createAdminUserRoleController(
 ): AdminUserRoleController {
   let generation = 0;
   let operation: AbortController | undefined;
+  let operationKind: 'load' | 'available' | 'mutation' | undefined;
   let mutationDispatched = false;
   let projection: AdminUserRoleReadyProjection | undefined;
   let recoveryRequired = false;
@@ -144,6 +145,7 @@ export function createAdminUserRoleController(
     generation += 1;
     operation?.abort();
     operation = undefined;
+    operationKind = undefined;
     mutationDispatched = false;
     projection = undefined;
     recoveryRequired = false;
@@ -165,6 +167,7 @@ export function createAdminUserRoleController(
     generation += 1;
     operation?.abort();
     operation = undefined;
+    operationKind = undefined;
     mutationDispatched = false;
     if (uncertain) requireReconciliation();
   };
@@ -191,6 +194,7 @@ export function createAdminUserRoleController(
     if (!operations) return;
     const controller = new AbortController();
     operation = controller;
+    operationKind = 'load';
     const capturedGeneration = ++generation;
     try {
       const roleResult = await operations.listUserRoles(
@@ -227,18 +231,32 @@ export function createAdminUserRoleController(
         publish(projection);
       }
     } finally {
-      if (operation === controller) operation = undefined;
+      if (operation === controller) {
+        operation = undefined;
+        operationKind = undefined;
+      }
     }
   };
 
   /** Loads one application's roles and removes assignments already held by the user. */
   const loadAvailableRoles = async (applicationId: string): Promise<void> => {
-    if (disposed || operation || recoveryRequired) return;
+    if (disposed || recoveryRequired || (operation && operationKind !== 'available')) return;
+    if (operationKind === 'available') cancel();
     const context = options.readContext();
     const operations = options.readOperations();
-    if (!operations) return;
+    if (!operations || !projection) return;
+    projection = {
+      kind: 'ready',
+      organizationId: projection.organizationId,
+      userId: projection.userId,
+      assignedRoles: projection.assignedRoles,
+      applications: projection.applications,
+      availableRoles: [],
+    };
+    publish(projection);
     const controller = new AbortController();
     operation = controller;
+    operationKind = 'available';
     const capturedGeneration = ++generation;
     try {
       const result = await operations.listRoles(applicationId, controller.signal);
@@ -252,11 +270,15 @@ export function createAdminUserRoleController(
         projection = {
           ...projection,
           availableRoles: Object.freeze(result.value.filter((role) => !assignedIds.has(role.id))),
+          availableRolesApplicationId: applicationId,
         };
         publish(projection);
       }
     } finally {
-      if (operation === controller) operation = undefined;
+      if (operation === controller) {
+        operation = undefined;
+        operationKind = undefined;
+      }
     }
   };
 
@@ -291,6 +313,7 @@ export function createAdminUserRoleController(
     if (!operations) return;
     const controller = new AbortController();
     operation = controller;
+    operationKind = 'mutation';
     const capturedGeneration = ++generation;
     try {
       mutationDispatched = true;
@@ -310,10 +333,12 @@ export function createAdminUserRoleController(
       if (!owns(capturedGeneration, context, controller)) return;
       if (!acceptsReload(result)) return;
       operation = undefined;
+      operationKind = undefined;
       await load();
     } finally {
       if (operation === controller) {
         operation = undefined;
+        operationKind = undefined;
         mutationDispatched = false;
       }
     }
@@ -328,11 +353,10 @@ export function createAdminUserRoleController(
     cancelActiveOperation: () => cancel(true),
     dispose() {
       if (disposed) return;
-      cancel();
+      cancel(true);
       disposed = true;
       projection = undefined;
-      recoveryRequired = false;
-      options.setRecoveryRequired?.(false);
+      if (!recoveryRequired) options.setRecoveryRequired?.(false);
       options.publishState({ kind: 'closed' });
     },
   };
@@ -360,6 +384,10 @@ export function openAdminUserRoleWorkflow(
     organization: { id: initialState.organization.id, name: initialState.organization.name },
     user: { id: initialSelection.selected.id, label: initialSelection.detail.email },
     capabilities: initialState.capabilities,
+    viewport: {
+      width: options.host.desktop.bounds.width,
+      height: options.host.desktop.bounds.height,
+    },
     focusView: (view) => options.host.loop.focusView(view),
     onIntent: (intent) => {
       if (!controller || closed) return;

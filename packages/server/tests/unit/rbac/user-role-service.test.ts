@@ -41,6 +41,7 @@ vi.mock('../../../src/applications/service.js', () => ({
 }));
 
 vi.mock('../../../src/users/repository.js', () => ({
+  lockControlPlaneOrganization: vi.fn(),
   requireActiveSuperAdminSurvivor: vi.fn(),
 }));
 
@@ -60,7 +61,10 @@ import { getDatabaseTransactionClient } from '../../../src/lib/database.js';
 import { registerAuthorityCleanup as mockAuthorityCleanup } from '../../../src/lib/deletion-cleanup.js';
 import { revokeAffectedAuthorityInTransaction as mockRevokeAuthority } from '../../../src/lib/authority-revocation.js';
 import { getApplicationBySlug as mockGetApplicationBySlug } from '../../../src/applications/service.js';
-import { requireActiveSuperAdminSurvivor as mockRequireSurvivor } from '../../../src/users/repository.js';
+import {
+  lockControlPlaneOrganization as mockLockControlPlaneOrganization,
+  requireActiveSuperAdminSurvivor as mockRequireSurvivor,
+} from '../../../src/users/repository.js';
 import { ADMIN_ROLE_DEFINITIONS } from '../../../src/lib/admin-permissions.js';
 
 import {
@@ -117,6 +121,7 @@ beforeEach(() => {
   vi.mocked(mockAuthorityCleanup).mockResolvedValue(undefined);
   vi.mocked(mockRevokeAuthority).mockResolvedValue({ grantIds: [] });
   vi.mocked(mockGetApplicationBySlug).mockResolvedValue(null);
+  vi.mocked(mockLockControlPlaneOrganization).mockResolvedValue(false);
   vi.mocked(mockRequireSurvivor).mockResolvedValue(undefined);
   vi.mocked(mockLockTargets).mockResolvedValue({
     user: { id: 'user-1', status: 'active' },
@@ -180,6 +185,15 @@ describe('assignRolesToUser', () => {
 });
 
 describe('removeRolesFromUser', () => {
+  it('locks the control-plane organization before the target user and roles', async () => {
+    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+
+    expect(mockLockControlPlaneOrganization).toHaveBeenCalledWith('org-1');
+    expect(mockLockControlPlaneOrganization.mock.invocationCallOrder[0]).toBeLessThan(
+      mockLockTargets.mock.invocationCallOrder[0]!,
+    );
+  });
+
   it('should remove roles and revoke only the affected user', async () => {
     await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
 

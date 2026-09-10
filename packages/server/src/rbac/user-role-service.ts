@@ -36,7 +36,10 @@ import {
 } from '../lib/admin-permissions.js';
 import { RoleDelegationError, RoleNotFoundError } from './errors.js';
 import { UserNotFoundError } from '../users/errors.js';
-import { requireActiveSuperAdminSurvivor } from '../users/repository.js';
+import {
+  lockControlPlaneOrganization,
+  requireActiveSuperAdminSurvivor,
+} from '../users/repository.js';
 
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
 
@@ -110,6 +113,7 @@ export async function removeRolesFromUser(
   if (!transaction) {
     throw new Error('User role removal requires an active database transaction');
   }
+  await lockControlPlaneOrganization(organizationId);
   const targets = await requireUserRoleTargets(organizationId, userId, roleIds);
   if (targets.assignedRoleIds.length === 0) return { reauthenticationRequired: false };
 
