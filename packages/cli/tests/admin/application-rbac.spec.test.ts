@@ -21,6 +21,8 @@ import type {
   AdminApplicationViewState,
 } from '../../src/admin/application-state.js';
 import { createAdminApplicationWorkspace } from '../../src/admin/application-workspace.js';
+import type { AdminRbacOperations } from '../../src/admin/rbac-service.js';
+import type { AdminRbacReadResult, AdminRole } from '../../src/admin/rbac-state.js';
 import type { AdminCapabilities } from '../../src/admin/state.js';
 
 const applicationId = '11111111-1111-4111-8111-111111111111';
@@ -184,33 +186,14 @@ interface RbacControllerExports {
       readonly applicationId: string;
       readonly sessionEpoch: number;
     };
-    readonly operations: {
-      readonly listRoles: (applicationId: string, signal: AbortSignal) => Promise<readonly Role[]>;
-      readonly listPermissions: (
-        applicationId: string,
-        signal: AbortSignal,
-      ) => Promise<readonly Permission[]>;
-      readonly listRolePermissions: (
-        applicationId: string,
-        roleId: string,
-        signal: AbortSignal,
-      ) => Promise<readonly Permission[]>;
-      readonly assignPermissions: (
-        applicationId: string,
-        roleId: string,
-        permissionIds: readonly string[],
-        signal: AbortSignal,
-      ) => Promise<{ readonly kind: 'success' }>;
-      readonly removePermissions: (
-        applicationId: string,
-        roleId: string,
-        permissionIds: readonly string[],
-        signal: AbortSignal,
-      ) => Promise<
-        | { readonly kind: 'success'; readonly reauthenticationRequired: boolean }
-        | { readonly kind: 'outcome-unknown' }
-      >;
-    };
+    readonly readOperations: () => Pick<
+      AdminRbacOperations,
+      | 'listRoles'
+      | 'listPermissions'
+      | 'listRolePermissions'
+      | 'assignPermissions'
+      | 'removePermissions'
+    >;
     readonly publishState: (state: ApplicationRbacProjection | { readonly kind: 'closed' }) => void;
     readonly requestAuthentication: () => void;
   }) => {
@@ -535,19 +518,35 @@ describe('Application RBAC mutation reconciliation', () => {
     let context = { applicationId, sessionEpoch: 1 };
     const states: Array<ApplicationRbacProjection | { readonly kind: 'closed' }> = [];
     const requestAuthentication = vi.fn();
+    const listRoles = vi.fn<AdminRbacOperations['listRoles']>(async () => ({
+      kind: 'success',
+      value: [role],
+    }));
+    const listPermissions = vi.fn<AdminRbacOperations['listPermissions']>(async () => ({
+      kind: 'success',
+      value: [permission],
+    }));
+    const listRolePermissions = vi.fn<AdminRbacOperations['listRolePermissions']>(async () => ({
+      kind: 'success',
+      value: [],
+    }));
+    const assignPermissions = vi.fn<AdminRbacOperations['assignPermissions']>(async () => ({
+      kind: 'success',
+    }));
+    const removePermissions = vi.fn<AdminRbacOperations['removePermissions']>(async () => ({
+      kind: 'success',
+      reauthenticationRequired: false,
+    }));
     const operations = {
-      listRoles: vi.fn(async () => [role] as readonly Role[]),
-      listPermissions: vi.fn(async () => [permission] as readonly Permission[]),
-      listRolePermissions: vi.fn(async () => [] as readonly Permission[]),
-      assignPermissions: vi.fn(async () => ({ kind: 'success' as const })),
-      removePermissions: vi.fn(async () => ({
-        kind: 'success' as const,
-        reauthenticationRequired: false,
-      })),
+      listRoles,
+      listPermissions,
+      listRolePermissions,
+      assignPermissions,
+      removePermissions,
     };
     const controller = (await controllerExports()).createAdminApplicationRbacController({
       readContext: () => context,
-      operations,
+      readOperations: () => operations,
       publishState: (state) => states.push(state),
       requestAuthentication,
     });
@@ -622,7 +621,7 @@ describe('Application RBAC mutation reconciliation', () => {
   // Results from an old application or session epoch cannot replace the current protected context.
   it('rejects stale reads after application or session context changes', async () => {
     const mounted = await setupController();
-    let resolveRoles: ((roles: readonly Role[]) => void) | undefined;
+    let resolveRoles: ((result: AdminRbacReadResult<readonly AdminRole[]>) => void) | undefined;
     mounted.operations.listRoles.mockImplementationOnce(
       () => new Promise((resolve) => (resolveRoles = resolve)),
     );
@@ -631,7 +630,7 @@ describe('Application RBAC mutation reconciliation', () => {
       applicationId: '55555555-5555-4555-8555-555555555555',
       sessionEpoch: 2,
     });
-    resolveRoles?.([role]);
+    resolveRoles?.({ kind: 'success', value: [role] });
     await load;
 
     expect(mounted.states.some((state) => state.kind === 'ready')).toBe(false);
