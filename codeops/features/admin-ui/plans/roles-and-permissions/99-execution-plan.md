@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 09:38
-> **Progress**: 43/62 tasks (69%)
+> **Last Updated**: 2026-09-10 09:40
+> **Progress**: 44/62 tasks (71%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -165,7 +165,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 - [x] 4.2.3 Add Application-owned role/permission/mapping controller with session/application generation checks and result reconciliation — `packages/cli/src/admin/application-rbac-controller.ts` ✅ (completed: 2026-09-10 08:09)
 - [x] 4.2.4 Build Roles/Permissions pages and focused CRUD/mapping dialogs with DataGrid and Layout DSL — `packages/cli/src/admin/application-rbac-workspace.ts`, `packages/cli/src/admin/rbac-dialogs.ts` ✅ (completed: 2026-09-10 09:06; 7 focused workspace/dialog/layout specifications, scoped lint, CLI typecheck, and structure tests pass; full Phase 4 specification is 12/13 green with only task 4.2.5 tab integration pending)
 - [x] 4.2.5 Append the two pages and wire their lifecycle through thin existing Application seams — `packages/cli/src/admin/application-rbac-features.ts`, `packages/cli/src/admin/application-workspace.ts`, `packages/cli/src/admin/application-client-features.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-10 09:38; Phase 4 spec 13/13, focused Application suites 103/103, scoped lint, CLI typecheck, and structure tests pass)
-- [ ] 4.2.6 Run the Phase 4 specification file and make ST-33–ST-38 and ST-41–ST-44 green
+- [x] 4.2.6 Run the Phase 4 specification file and make ST-33–ST-38 and ST-41–ST-44 green ✅ (completed: 2026-09-10 09:40; specification 13/13, scoped lint, CLI typecheck, and structure tests pass)
 
 ### Step 4.3: Implementation Tests and Hardening
 
