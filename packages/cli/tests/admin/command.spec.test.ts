@@ -280,16 +280,28 @@ describe('admin command surface', () => {
     );
   });
 
-  it('should lazily share one normalized SDK client across organization and user providers', async () => {
+  it('should lazily share one normalized SDK client across organization, user, and RBAC providers', async () => {
     // Command startup and verification do not create an SDK client; the first verified request binds the selected origin.
     const { runAdminCommand } = await import('../../src/commands/admin.js');
     const listAll = vi.fn().mockResolvedValue([]);
     const listUsers = vi
       .fn()
       .mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
+    const listRoles = vi.fn().mockResolvedValue([]);
     clientFactory.createClient.mockReturnValue({
       organizations: { listAll, create: vi.fn() },
       users: { list: listUsers },
+      roles: {
+        list: listRoles,
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        listPermissions: vi.fn(),
+        assignPermissions: vi.fn(),
+        removePermissions: vi.fn(),
+      },
+      permissions: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+      userRoles: { list: vi.fn(), assign: vi.fn(), remove: vi.fn() },
     });
     const runApplication = vi.fn(async (options) => {
       expect(clientFactory.createClient).not.toHaveBeenCalled();
@@ -310,6 +322,9 @@ describe('admin command surface', () => {
       await prepared.session.users.list('11111111-1111-4111-8111-111111111111', { page: 1 });
       expect(clientFactory.createClient).toHaveBeenCalledOnce();
       expect(listUsers).toHaveBeenCalledOnce();
+      await prepared.session.rbac?.listRoles('22222222-2222-4222-8222-222222222222');
+      expect(clientFactory.createClient).toHaveBeenCalledOnce();
+      expect(listRoles).toHaveBeenCalledOnce();
       return 0;
     });
     const dependencies = commandDependencies({ runApplication });

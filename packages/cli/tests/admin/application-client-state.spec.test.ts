@@ -393,6 +393,46 @@ describe('global application administration workflow', () => {
     expect(listAll).toHaveBeenCalledOnce();
   });
 
+  it('injects the production RBAC SDK domains lazily into validated session operations', async () => {
+    const roleList = vi.fn().mockResolvedValue([]);
+    const provider = vi.fn(() => ({
+      roles: {
+        list: roleList,
+        create: vi.fn(),
+        update: vi.fn(),
+        delete: vi.fn(),
+        listPermissions: vi.fn(),
+        assignPermissions: vi.fn(),
+        removePermissions: vi.fn(),
+      },
+      permissions: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+      userRoles: { list: vi.fn(), assign: vi.fn(), remove: vi.fn() },
+    }));
+    const interaction = {
+      presentAuthorizationUrl: vi.fn(),
+      requestManualCallback: vi.fn(),
+      confirmCredentialReplacement: vi.fn(),
+    };
+
+    const prepared = prepareAdminSession(
+      server,
+      interaction,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      provider,
+    );
+
+    expect(provider).not.toHaveBeenCalled();
+    await expect(prepared.session.rbac?.listRoles(applicationId)).resolves.toEqual({
+      kind: 'success',
+      value: [],
+    });
+    expect(provider).toHaveBeenCalledOnce();
+    expect(roleList).toHaveBeenCalledWith(applicationId);
+  });
+
   it('ST-26 retains ready global state when only the selected organization changes', async () => {
     const { createAdminApplicationController } =
       await import('../../src/admin/application-controller.js');

@@ -50,6 +50,30 @@ const allApplicationClientCapabilities = {
   canRevokeClientSecrets: true,
 };
 
+const noRbacCapabilities = {
+  canReadRoles: false,
+  canCreateRoles: false,
+  canUpdateRoles: false,
+  canDeleteRoles: false,
+  canReadPermissions: false,
+  canCreatePermissions: false,
+  canUpdatePermissions: false,
+  canDeletePermissions: false,
+  canAssignRoles: false,
+};
+
+const allRbacCapabilities = {
+  canReadRoles: true,
+  canCreateRoles: true,
+  canUpdateRoles: true,
+  canDeleteRoles: true,
+  canReadPermissions: true,
+  canCreatePermissions: true,
+  canUpdatePermissions: true,
+  canDeletePermissions: true,
+  canAssignRoles: true,
+};
+
 const credentials = {
   server: 'https://porta-a.example.test/',
   orgSlug: 'porta-admin',
@@ -175,6 +199,7 @@ describe('stored CLI session verification', () => {
         canCreateOrganizations: false,
         ...noUserCapabilities,
         ...noApplicationClientCapabilities,
+        ...noRbacCapabilities,
       },
     });
   });
@@ -273,6 +298,28 @@ describe('stored CLI session verification', () => {
 });
 
 describe('live administration capabilities', () => {
+  it.each([
+    ['admin:role:read', 'canReadRoles'],
+    ['admin:role:create', 'canCreateRoles'],
+    ['admin:role:update', 'canUpdateRoles'],
+    ['admin:role:delete', 'canDeleteRoles'],
+    ['admin:permission:read', 'canReadPermissions'],
+    ['admin:permission:create', 'canCreatePermissions'],
+    ['admin:permission:update', 'canUpdatePermissions'],
+    ['admin:permission:delete', 'canDeletePermissions'],
+    ['admin:role:assign', 'canAssignRoles'],
+  ] as const)(
+    'should map exact %s permission to only %s',
+    async (permission, enabledCapability) => {
+      const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+      expect(validateAdminCapabilities([], [permission])).toMatchObject({
+        ...noRbacCapabilities,
+        [enabledCapability]: true,
+      });
+    },
+  );
+
   it('should enable only organization reading for the exact read permission', async () => {
     // An exact organization-read permission enables listing and switching without granting creation.
     const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
@@ -282,6 +329,7 @@ describe('live administration capabilities', () => {
       canCreateOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
+      ...noRbacCapabilities,
     });
   });
 
@@ -294,6 +342,7 @@ describe('live administration capabilities', () => {
       canCreateOrganizations: true,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
+      ...noRbacCapabilities,
     });
   });
 
@@ -308,6 +357,7 @@ describe('live administration capabilities', () => {
         canCreateOrganizations: true,
         ...allUserCapabilities,
         ...allApplicationClientCapabilities,
+        ...allRbacCapabilities,
       });
     },
   );
@@ -321,6 +371,7 @@ describe('live administration capabilities', () => {
       canCreateOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
+      ...noRbacCapabilities,
     });
   });
 
@@ -344,6 +395,7 @@ describe('live administration capabilities', () => {
       canCreateOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
+      ...noRbacCapabilities,
     });
     expect(JSON.stringify(capabilities)).not.toContain('admin:org');
     expect(JSON.stringify(capabilities)).not.toContain('porta-admin');
@@ -382,6 +434,7 @@ describe('live administration capabilities', () => {
         canCreateOrganizations: false,
         ...noUserCapabilities,
         ...noApplicationClientCapabilities,
+        ...noRbacCapabilities,
       },
     });
     expect(credentials).toEqual(storedBeforeVerification);
