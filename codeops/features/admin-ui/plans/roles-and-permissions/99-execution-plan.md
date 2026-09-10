@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 11:47
-> **Progress**: 56/62 tasks (90%)
+> **Last Updated**: 2026-09-10 12:23
+> **Progress**: 57/62 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -180,7 +180,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 > **Phase baseline tree**: `7ea3cd9fdfb17ae7ed2b6eb8de1a96d756f513b1`
 > **Scope mode**: strict
-> **Expected modification set**: `packages/cli/tests/admin/user-roles.spec.test.ts`, `packages/cli/tests/admin/user-roles.impl.test.ts`, `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts`, `packages/cli/src/admin/user-workspace.ts`, `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/user-controller-types.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`, `docs/api/rbac.md`, `docs/concepts/rbac.md`, `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md`, repository test-inventory expectations if required, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, and incremental or comprehensive techdocs if required.
+> **Expected modification set**: `packages/cli/tests/admin/user-roles.spec.test.ts`, `packages/cli/tests/admin/user-roles.impl.test.ts`, `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts`, `packages/cli/src/admin/user-workspace.ts`, `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/user-controller-types.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`, `packages/server/src/users/repository.ts`, the existing server contract and fixture tests required by the final server gate, `docs/api/rbac.md`, `docs/concepts/rbac.md`, `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md`, repository test-inventory expectations if required, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, and incremental or comprehensive techdocs if required.
 
 ### Step 5.1: Specification Tests
 
@@ -204,7 +204,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 - [x] 5.3.2 Update public RBAC API and concept documentation — `docs/api/rbac.md`, `docs/concepts/rbac.md` ✅ (completed: 2026-09-10 11:39)
 - [x] 5.3.3 Update SDK agent and conventional CLI documentation, then run `yarn docs:build` — `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md` ✅ (completed: 2026-09-10 11:45)
 - [x] 5.3.4 Run `yarn test:structure` ✅ (completed: 2026-09-10 11:47)
-- [ ] 5.3.5 Run `yarn workspace @portaidentity/server verify`
+- [x] 5.3.5 Run `yarn workspace @portaidentity/server verify` ✅ (completed: 2026-09-10 12:23)
 - [ ] 5.3.6 Run `yarn workspace @portaidentity/sdk verify`
 - [ ] 5.3.7 Run `yarn workspace @portaidentity/cli verify`
 - [ ] 5.3.8 Run `yarn harness:test`

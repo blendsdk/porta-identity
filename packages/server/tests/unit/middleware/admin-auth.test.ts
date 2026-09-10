@@ -41,7 +41,7 @@ vi.mock('../../../src/organizations/repository.js', () => ({
 }));
 
 vi.mock('../../../src/rbac/user-role-service.js', () => ({
-  getUserRoles: vi.fn(),
+  getUserRolesForAuthority: vi.fn(),
 }));
 
 vi.mock('../../../src/applications/service.js', () => ({
@@ -60,7 +60,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 import { requireAdminAuth, setAdminAuthProvider } from '../../../src/middleware/admin-auth.js';
 import { findUserForOidc } from '../../../src/users/service.js';
 import { findSuperAdminOrganization } from '../../../src/organizations/repository.js';
-import { getUserRoles } from '../../../src/rbac/user-role-service.js';
+import { getUserRolesForAuthority } from '../../../src/rbac/user-role-service.js';
 import { getApplicationBySlug } from '../../../src/applications/service.js';
 
 // ---------------------------------------------------------------------------
@@ -156,7 +156,7 @@ function setupHappyPath(): void {
   vi.mocked(findSuperAdminOrganization).mockResolvedValue(SUPER_ADMIN_ORG);
   vi.mocked(findUserForOidc).mockResolvedValue(ADMIN_USER as never);
   vi.mocked(getApplicationBySlug).mockResolvedValue(ADMIN_APPLICATION);
-  vi.mocked(getUserRoles).mockResolvedValue(ADMIN_ROLES as never);
+  vi.mocked(getUserRolesForAuthority).mockResolvedValue(ADMIN_ROLES as never);
 }
 
 // ---------------------------------------------------------------------------
@@ -295,7 +295,7 @@ describe('admin auth middleware', () => {
     it('when user lacks porta-admin role', async () => {
       setupHappyPath();
       // User has roles but not porta-admin
-      vi.mocked(getUserRoles).mockResolvedValue([
+      vi.mocked(getUserRolesForAuthority).mockResolvedValue([
         {
           id: 'role-2',
           applicationId: 'app-1',
@@ -403,7 +403,7 @@ describe('admin auth middleware', () => {
 
     it('includes only recognized roles owned by the canonical Admin application', async () => {
       setupHappyPath();
-      vi.mocked(getUserRoles).mockResolvedValue([
+      vi.mocked(getUserRolesForAuthority).mockResolvedValue([
         {
           id: 'r1',
           applicationId: ADMIN_APPLICATION.id,

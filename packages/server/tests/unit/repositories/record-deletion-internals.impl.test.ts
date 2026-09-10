@@ -59,18 +59,20 @@ describe('record deletion repository implementation', () => {
 
   it('locks the control-plane organization before target and exact-role survivor checks', async () => {
     const users = deletionSection(await source('users/repository.ts'), 'deleteUserCapture');
-    const organizationLock = users.indexOf('is_super_admin = TRUE');
+    const organizationLock = users.indexOf('lockControlPlaneOrganization');
     const targetLock = users.indexOf('SELECT * FROM users');
     const exactRole = users.indexOf("role.slug = 'porta-super-admin'");
     const exactApplication = users.indexOf("application.slug = 'porta-admin'");
-    const survivor = users.indexOf('candidate.id <> $2');
+    const survivor = users.indexOf('requireActiveSuperAdminSurvivorAfterLock');
 
     expect(organizationLock).toBeGreaterThan(-1);
     expect(organizationLock).toBeLessThan(targetLock);
     expect(targetLock).toBeLessThan(exactRole);
     expect(exactApplication).toBeGreaterThan(exactRole);
     expect(survivor).toBeGreaterThan(exactApplication);
-    expect(users).toContain("candidate.status = 'active'");
+    const repository = await source('users/repository.ts');
+    expect(repository).toContain('candidate.id <> $2');
+    expect(repository).toContain("candidate.status = 'active'");
   });
 });
 
@@ -89,16 +91,23 @@ describe('record deletion transaction implementation', () => {
 
     for (const [file, functionName, deleteCall] of definitions) {
       const section = deletionSection(await source(file), functionName);
-      const revoke = section.indexOf('revoked_at');
+      const delegatedRevoke = section.indexOf('revokeAffectedAuthorityInTransaction');
+      const directRevoke = section.indexOf('revoked_at');
       const protocol = section.indexOf('DELETE FROM oidc_payloads');
       const audit = section.indexOf('writeAuditLogInTransaction');
       const deletion = section.indexOf(deleteCall);
       const cleanup = section.indexOf('registerDeletionCleanup');
 
-      if (revoke >= 0) expect(protocol, file).toBeGreaterThan(revoke);
-      else expect(file).toBe('clients/service.ts');
-      expect(protocol, file).toBeGreaterThan(-1);
-      expect(audit, file).toBeGreaterThan(protocol);
+      if (delegatedRevoke >= 0) {
+        expect(audit, file).toBeGreaterThan(delegatedRevoke);
+      } else if (directRevoke >= 0) {
+        expect(protocol, file).toBeGreaterThan(directRevoke);
+        expect(audit, file).toBeGreaterThan(protocol);
+      } else {
+        expect(file).toBe('clients/service.ts');
+        expect(protocol, file).toBeGreaterThan(-1);
+        expect(audit, file).toBeGreaterThan(protocol);
+      }
       expect(deletion, file).toBeGreaterThan(audit);
       expect(cleanup, file).toBeGreaterThan(deletion);
     }

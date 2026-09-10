@@ -11,6 +11,7 @@ interface DeleteRouteContract {
   readonly parentParam?: string;
   readonly childParam: string;
   readonly notFoundMessage: string;
+  readonly returnsAuthorityResult?: boolean;
 }
 
 /** The eight direct deletion endpoints exposed by the Admin API. */
@@ -56,6 +57,7 @@ const DELETE_ROUTES: readonly DeleteRouteContract[] = [
     parentParam: 'appId',
     childParam: 'roleId',
     notFoundMessage: 'Role not found',
+    returnsAuthorityResult: true,
   },
   {
     file: 'routes/permissions.ts',
@@ -65,6 +67,7 @@ const DELETE_ROUTES: readonly DeleteRouteContract[] = [
     parentParam: 'appId',
     childParam: 'permissionId',
     notFoundMessage: 'Permission not found',
+    returnsAuthorityResult: true,
   },
   {
     file: 'routes/custom-claims.ts',
@@ -224,16 +227,22 @@ describe('record deletion Admin API specification', () => {
     }
   });
 
-  // Successful deletion has no response body; missing or mismatched records use one fixed 404.
-  it('ST-06 returns bodyless 204 success and fixed resource-specific 404 errors', async () => {
+  // Authority-reducing deletes report whether the actor must authenticate again. Other record
+  // deletes remain bodyless. Missing or mismatched records always use one fixed 404.
+  it('ST-06 returns the resource success contract and fixed resource-specific 404 errors', async () => {
     for (const contract of DELETE_ROUTES) {
       const completeSource = await source(contract.file);
       const routeSource = compact(completeSource);
       const handler = compact(deleteRouteSection(completeSource, contract.path));
       expect(handler.length).toBeGreaterThan(0);
-      expect(handler).toContain('ctx.status = 204');
       expect(routeSource).toContain(`ctx.throw(404, '${contract.notFoundMessage}')`);
-      expect(handler).not.toMatch(/ctx\.body\s*=/);
+      if (contract.returnsAuthorityResult) {
+        expect(handler).toContain('ctx.status = 200');
+        expect(handler).toMatch(/ctx\.body\s*=\s*\{\s*data:\s*result\s*\}/);
+      } else {
+        expect(handler).toContain('ctx.status = 204');
+        expect(handler).not.toMatch(/ctx\.body\s*=/);
+      }
     }
   });
 

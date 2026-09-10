@@ -730,19 +730,13 @@ export interface UserDeletionCapture {
 }
 
 /**
- * Preserve another active exact Porta super administrator in the control plane.
+ * Lock the control-plane organization so every final-admin check uses the same
+ * transaction serialization point.
  *
- * The organization row is the shared serialization point for user deletion and
- * role removal. Non-control-plane organizations need no survivor check.
- *
- * @param organizationId - Organization whose control-plane row is locked
- * @param excludedUserId - User being deleted or losing the exact role
- * @throws UserValidationError when no other active exact holder remains
+ * @param organizationId - Organization that may own administrative authority
+ * @returns Whether the organization is the control plane
  */
-export async function requireActiveSuperAdminSurvivor(
-  organizationId: string,
-  excludedUserId: string,
-): Promise<void> {
+async function lockControlPlaneOrganization(organizationId: string): Promise<boolean> {
   const pool = getPool();
   const controlPlane = await pool.query<{ id: string }>(
     `SELECT id FROM organizations
@@ -750,8 +744,22 @@ export async function requireActiveSuperAdminSurvivor(
      FOR UPDATE`,
     [organizationId],
   );
-  if (!controlPlane.rows[0]) return;
+  return controlPlane.rows[0] !== undefined;
+}
 
+/**
+ * Check for another active exact super administrator after the caller has
+ * locked the control-plane organization.
+ *
+ * @param organizationId - Locked control-plane organization
+ * @param excludedUserId - User being deleted or losing the exact role
+ * @throws UserValidationError when no other active exact holder remains
+ */
+async function requireActiveSuperAdminSurvivorAfterLock(
+  organizationId: string,
+  excludedUserId: string,
+): Promise<void> {
+  const pool = getPool();
   const survivor = await pool.query<{ exists: boolean }>(
     `SELECT EXISTS(
        SELECT 1 FROM users candidate
@@ -772,6 +780,24 @@ export async function requireActiveSuperAdminSurvivor(
 }
 
 /**
+ * Preserve another active exact Porta super administrator in the control plane.
+ *
+ * The organization row is the shared serialization point for user deletion and
+ * role removal. Non-control-plane organizations need no survivor check.
+ *
+ * @param organizationId - Organization whose control-plane row is locked
+ * @param excludedUserId - User being deleted or losing the exact role
+ * @throws UserValidationError when no other active exact holder remains
+ */
+export async function requireActiveSuperAdminSurvivor(
+  organizationId: string,
+  excludedUserId: string,
+): Promise<void> {
+  if (!(await lockControlPlaneOrganization(organizationId))) return;
+  await requireActiveSuperAdminSurvivorAfterLock(organizationId, excludedUserId);
+}
+
+/**
  * Lock, protect, capture, and physically delete one organization-owned user.
  *
  * Control-plane deletions first serialize on the single control-plane
@@ -789,6 +815,7 @@ export async function deleteUserCapture(
   userId: string,
 ): Promise<UserDeletionCapture | null> {
   const pool = getPool();
+  const isControlPlane = await lockControlPlaneOrganization(organizationId);
   const target = await pool.query<UserRow>(
     `SELECT * FROM users
      WHERE organization_id = $1 AND id = $2
@@ -810,8 +837,8 @@ export async function deleteUserCapture(
        ) AS assigned`,
       [userId],
     );
-    if (exactRole.rows[0]?.assigned) {
-      await requireActiveSuperAdminSurvivor(organizationId, userId);
+    if (isControlPlane && exactRole.rows[0]?.assigned) {
+      await requireActiveSuperAdminSurvivorAfterLock(organizationId, userId);
     }
   }
 

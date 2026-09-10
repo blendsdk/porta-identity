@@ -20,6 +20,7 @@ import { requestLogger } from '../../../src/middleware/request-logger.js';
 import { getPool } from '../../../src/lib/database.js';
 import { logger, observeOperationalLogOutput } from '../../../src/lib/logger.js';
 import { createApplicationRouter } from '../../../src/routes/applications.js';
+import { invalidateApplicationCache } from '../../../src/applications/cache.js';
 import { invalidateUserRbacCache } from '../../../src/rbac/cache.js';
 import { invalidateUserCache } from '../../../src/users/cache.js';
 import {
@@ -184,7 +185,6 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
     const pool = getPool();
     const runId = randomUUID();
     const userId = randomUUID();
-    const applicationId = randomUUID();
     const roleId = randomUUID();
     const organization = await pool.query<{ id: string }>(
       'SELECT id FROM organizations WHERE is_super_admin = TRUE LIMIT 1',
@@ -205,11 +205,20 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
        VALUES ($1, $2, $3, 'active')`,
       [userId, organizationId, `decision-${runId}@example.test`],
     );
-    await pool.query('INSERT INTO applications (id, name, slug) VALUES ($1, $2, $3)', [
-      applicationId,
-      'Decision driver',
-      `decision-${runId}`,
-    ]);
+    const application = await pool.query<{ id: string }>(
+      "SELECT id FROM applications WHERE slug = 'porta-admin' LIMIT 1",
+    );
+    const existingApplicationId = application.rows[0]?.id;
+    const applicationId = existingApplicationId ?? randomUUID();
+    const createdApplication = existingApplicationId === undefined;
+    if (createdApplication) {
+      await pool.query('INSERT INTO applications (id, name, slug) VALUES ($1, $2, $3)', [
+        applicationId,
+        'Porta Admin',
+        'porta-admin',
+      ]);
+    }
+    await invalidateApplicationCache('porta-admin', applicationId);
     await pool.query('INSERT INTO roles (id, application_id, name, slug) VALUES ($1, $2, $3, $4)', [
       roleId,
       applicationId,
@@ -230,8 +239,12 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       token,
       cleanup: async () => {
         clearAdminAuthProvider();
+        await pool.query('DELETE FROM roles WHERE id = $1', [roleId]);
         await pool.query('DELETE FROM users WHERE id = $1', [userId]);
-        await pool.query('DELETE FROM applications WHERE id = $1', [applicationId]);
+        if (createdApplication) {
+          await pool.query('DELETE FROM applications WHERE id = $1', [applicationId]);
+        }
+        await invalidateApplicationCache('porta-admin', applicationId);
         if (createdOrganization) {
           await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
         }

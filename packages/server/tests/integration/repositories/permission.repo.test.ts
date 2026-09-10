@@ -38,7 +38,7 @@ describe('Permission Repository (Integration)', () => {
   it('should insert and retrieve a permission by ID', async () => {
     const perm = await createTestPermission(appId);
 
-    const found = await findPermissionById(perm.id);
+    const found = await findPermissionById(appId, perm.id);
     expect(found).not.toBeNull();
     expect(found!.id).toBe(perm.id);
     expect(found!.name).toBe(perm.name);
@@ -86,11 +86,11 @@ describe('Permission Repository (Integration)', () => {
     const perm = await createTestPermission(appId);
     const pool = getPool();
 
-    expect(await findPermissionById(perm.id)).not.toBeNull();
+    expect(await findPermissionById(appId, perm.id)).not.toBeNull();
 
     // Delete app — should cascade to permissions
     await pool.query('DELETE FROM applications WHERE id = $1', [appId]);
 
-    expect(await findPermissionById(perm.id)).toBeNull();
+    expect(await findPermissionById(appId, perm.id)).toBeNull();
   });
 });

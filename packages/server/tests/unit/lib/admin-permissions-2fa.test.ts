@@ -45,7 +45,7 @@ describe('ALL_ADMIN_PERMISSIONS with USER_2FA', () => {
   });
 
   it('should include the complete current permission catalog', () => {
-    expect(ALL_ADMIN_PERMISSIONS.length).toBe(45);
+    expect(ALL_ADMIN_PERMISSIONS.length).toBe(46);
   });
 });
 
