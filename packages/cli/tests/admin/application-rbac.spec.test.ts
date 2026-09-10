@@ -3,10 +3,12 @@
 import type { CreatePermissionInput, CreateRoleInput, Permission, Role } from '@portaidentity/sdk';
 import {
   Button,
+  col,
   createApplication,
   DataGrid,
   Dialog,
   Group,
+  grow,
   Input,
   Memo,
   TabView,
@@ -301,7 +303,7 @@ async function mountRbac(
     onIntent: vi.fn(),
     focusView: (view) => host.loop.focusView(view),
   });
-  content.add(workspace.roles, workspace.permissions);
+  content.add(col({ gap: 1 }, grow(workspace.roles), grow(workspace.permissions)));
   workspace.setState(projection);
   await settle();
   return { host, workspace };
@@ -484,7 +486,7 @@ describe('focused RBAC dialogs', () => {
     expect(button(createDialog, 'Create').state.disabled).toBe(true);
     createInputs[1]?.getValueSignal().set('billing:invoice:read');
     expect(button(createDialog, 'Create').state.disabled).toBe(false);
-    createHost.desktop.removeAll();
+    createHost.loop.endModal('cancel');
     await expect(createPending).resolves.toEqual({ kind: 'cancel' });
 
     const editHost = createApplication({ viewport: { width: 80, height: 24 } });
@@ -683,11 +685,10 @@ describe.each([
       if (!(grid instanceof DataGrid)) throw new Error('RBAC grid missing.');
       for (const action of views.filter((view) => view instanceof Button)) {
         expect(action.layout.size).toBeUndefined();
-        expect(action.tabStop).toBe(true);
+        expect(action.focusable).toBe(true);
       }
       const actionRow = views.find(
-        (view) =>
-          view instanceof Group && descendants(view).some((child) => child instanceof Button),
+        (view) => view instanceof Group && view.children.some((child) => child instanceof Button),
       );
       if (!actionRow) throw new Error('RBAC action row missing.');
       expect(actionRow.bounds.y).toBeGreaterThan(grid.bounds.y + grid.bounds.height);
