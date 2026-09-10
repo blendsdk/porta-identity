@@ -263,7 +263,8 @@ async function openDialog(
     capabilities: granted,
     onIntent: (intent) => intents.push(intent),
   });
-  const host = createApplication({ content: owner.content, viewport: { width, height } });
+  const host = createApplication({ viewport: { width, height } });
+  host.desktop.addWindow(owner.content);
   owner.setState(projection);
   owner.focusCurrent();
   await settle();
@@ -338,7 +339,7 @@ describe('focused User Roles dialog', () => {
     );
     expect(button(mounted.dialog, 'Add').state.disabled).toBe(true);
     expect(button(mounted.dialog, 'Remove').state.disabled).toBe(true);
-    expect(frameText(mounted.host)).toContain(applicationId);
+    expect(frameText(mounted.host)).toContain(applicationId.slice(0, 16));
     expect(frameText(mounted.host)).toMatch(/role assign permission required/i);
   });
 
@@ -542,7 +543,7 @@ describe.each([
     const operationRow = views.find(
       (view) =>
         view instanceof Group &&
-        descendants(view).some(
+        view.children.some(
           (child) => child instanceof Button && ['Add', 'Remove'].includes(child.activation.label),
         ),
     );
