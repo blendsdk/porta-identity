@@ -2,31 +2,18 @@ import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { executeTool, getToolDefinitions } from '../src/agent.js';
 import { createPortaClient } from '../src/client.js';
-import {
-  createApplicationsDomain,
-  type ApplicationsDomain,
-} from '../src/domains/applications.js';
+import { createApplicationsDomain, type ApplicationsDomain } from '../src/domains/applications.js';
 import { createClientsDomain, type ClientsDomain } from '../src/domains/clients.js';
-import {
-  createCustomClaimsDomain,
-  type CustomClaimsDomain,
-} from '../src/domains/custom-claims.js';
+import { createCustomClaimsDomain, type CustomClaimsDomain } from '../src/domains/custom-claims.js';
 import {
   createOrganizationsDomain,
   type OrganizationsDomain,
 } from '../src/domains/organizations.js';
-import {
-  createPermissionsDomain,
-  type PermissionsDomain,
-} from '../src/domains/permissions.js';
+import { createPermissionsDomain, type PermissionsDomain } from '../src/domains/permissions.js';
 import { createRolesDomain, type RolesDomain } from '../src/domains/roles.js';
 import { createUsersDomain, type UsersDomain } from '../src/domains/users.js';
 import type { HttpTransport } from '../src/transport/types.js';
-import type {
-  ApplicationStatus,
-  ClientStatus,
-  OrganizationStatus,
-} from '../src/types/index.js';
+import type { ApplicationStatus, ClientStatus, OrganizationStatus } from '../src/types/index.js';
 
 const ORGANIZATION_ID = '11111111-1111-4111-8111-111111111111';
 const APPLICATION_ID = '22222222-2222-4222-8222-222222222222';
@@ -37,10 +24,17 @@ const PERMISSION_ID = '66666666-6666-4666-8666-666666666666';
 const CLAIM_ID = '77777777-7777-4777-8777-777777777777';
 const USER_ID = '88888888-8888-4888-8888-888888888888';
 
+/** Committed result returned when deleting authority-bearing RBAC definitions. */
+const authorityResult = { reauthenticationRequired: false } as const;
+
 /** Build one transport that makes the complete request descriptor observable. */
-function observableTransport(): HttpTransport {
+function observableTransport(body?: unknown): HttpTransport {
   return {
-    request: vi.fn().mockResolvedValue({ status: 204, headers: {}, body: undefined }),
+    request: vi.fn().mockResolvedValue({
+      status: body === undefined ? 204 : 200,
+      headers: {},
+      body,
+    }),
   };
 }
 
@@ -52,7 +46,18 @@ function operation(domain: object, method: string): (...args: string[]) => Promi
   return (...args) => Promise.resolve(Reflect.apply(candidate, domain, args));
 }
 
-const deletionCases = [
+/** One public SDK record-deletion contract. */
+interface DeletionCase {
+  readonly domain: (transport: HttpTransport) => object;
+  readonly method: string;
+  readonly args: readonly string[];
+  readonly path: string;
+  readonly tool: string;
+  readonly parameters: readonly string[];
+  readonly result?: typeof authorityResult;
+}
+
+const deletionCases: readonly DeletionCase[] = [
   {
     domain: createOrganizationsDomain,
     method: 'delete',
@@ -92,6 +97,7 @@ const deletionCases = [
     path: `/applications/${APPLICATION_ID}/roles/${ROLE_ID}`,
     tool: 'roles.delete',
     parameters: ['appId', 'roleId'],
+    result: authorityResult,
   },
   {
     domain: createPermissionsDomain,
@@ -100,6 +106,7 @@ const deletionCases = [
     path: `/applications/${APPLICATION_ID}/permissions/${PERMISSION_ID}`,
     tool: 'permissions.delete',
     parameters: ['appId', 'permissionId'],
+    result: authorityResult,
   },
   {
     domain: createCustomClaimsDomain,
@@ -121,12 +128,12 @@ const deletionCases = [
 
 describe('record deletion SDK contract', () => {
   it.each(deletionCases)(
-    'ST-28 sends $tool to the exact bodyless DELETE path and resolves void',
-    async ({ domain: createDomain, method, args, path }) => {
-      const transport = observableTransport();
+    'ST-28 sends $tool to the exact DELETE path and resolves its success contract',
+    async ({ domain: createDomain, method, args, path, result }) => {
+      const transport = observableTransport(result === undefined ? undefined : { data: result });
       const domain = createDomain(transport);
 
-      await expect(operation(domain, method)(...args)).resolves.toBeUndefined();
+      await expect(operation(domain, method)(...args)).resolves.toEqual(result);
       expect(transport.request).toHaveBeenCalledOnce();
       expect(transport.request).toHaveBeenCalledWith({ method: 'DELETE', path });
     },
@@ -161,7 +168,7 @@ describe('record deletion SDK contract', () => {
     expectTypeOf<Extract<keyof UsersDomain, 'purge'>>().toEqualTypeOf<never>();
   });
 
-  it('ST-29 publishes all eight bodyless deletion agent tools and no removed aliases', () => {
+  it('ST-29 publishes all eight deletion agent tools with their current result contracts', () => {
     const tools = getToolDefinitions();
     const names = tools.map(({ name }) => name);
 
@@ -169,7 +176,7 @@ describe('record deletion SDK contract', () => {
       expect(tools.find(({ name }) => name === deletion.tool)).toEqual(
         expect.objectContaining({
           parameters: deletion.parameters.map((name) => expect.objectContaining({ name })),
-          returns: 'void',
+          returns: deletion.result === undefined ? 'void' : '{ reauthenticationRequired: boolean }',
         }),
       );
     }
@@ -193,22 +200,25 @@ describe('record deletion SDK contract', () => {
     );
   });
 
-  it.each(deletionCases)('ST-29 dispatches $tool with its exact positional arguments', async (testCase) => {
-    const sdkMethod = vi.fn().mockResolvedValue(undefined);
-    const [domainName] = testCase.tool.split('.');
-    const client = createPortaClient({ transport: observableTransport() });
-    const domain = Reflect.get(client, domainName!);
-    expect(typeof domain).toBe('object');
-    Reflect.set(domain, testCase.method, sdkMethod);
-    const args = Object.fromEntries(
-      testCase.parameters.map((parameter, index) => [parameter, testCase.args[index]]),
-    );
+  it.each(deletionCases)(
+    'ST-29 dispatches $tool with its exact positional arguments',
+    async (testCase) => {
+      const sdkMethod = vi.fn().mockResolvedValue(testCase.result);
+      const [domainName] = testCase.tool.split('.');
+      const client = createPortaClient({ transport: observableTransport() });
+      const domain = Reflect.get(client, domainName!);
+      expect(typeof domain).toBe('object');
+      Reflect.set(domain, testCase.method, sdkMethod);
+      const args = Object.fromEntries(
+        testCase.parameters.map((parameter, index) => [parameter, testCase.args[index]]),
+      );
 
-    await expect(executeTool(client, testCase.tool, args)).resolves.toEqual({
-      success: true,
-      data: undefined,
-    });
-    expect(sdkMethod).toHaveBeenCalledOnce();
-    expect(sdkMethod).toHaveBeenCalledWith(...testCase.args);
-  });
+      await expect(executeTool(client, testCase.tool, args)).resolves.toEqual({
+        success: true,
+        data: testCase.result,
+      });
+      expect(sdkMethod).toHaveBeenCalledOnce();
+      expect(sdkMethod).toHaveBeenCalledWith(...testCase.args);
+    },
+  );
 });
