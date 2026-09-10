@@ -88,33 +88,38 @@ Returns the current first-page history envelope.
 After `porta admin` authenticates and an organization is selected, open the Users menu to browse,
 search, filter, create, or invite users. Enter on a user row opens its detail view. Available profile,
 credential, history, lifecycle, and Delete actions are shown only when the verified identity has the
-corresponding permission. Import and export are not part of this screen.
+corresponding permission. The detail view also offers **Roles** when the administrator can read
+roles. That modal lists direct assignments across applications and allows assignments and removals
+only when the corresponding capability is available. Import and export are not part of this screen.
 
 ---
 
 ## User Roles
 
-Assign and manage RBAC roles for a user.
+Assign and manage a user's direct RBAC role assignments within one organization. The role itself
+belongs to an application, so use `porta app role list <app-id>` to find its ID.
 
 ### `porta user roles assign`
 
 ```bash
-porta user roles assign --org-id <id> --user-id <id> --role-id <id>
+porta user roles assign --org <org-id> <user-id> --role <role-id>
 ```
 
 ### `porta user roles remove`
 
 ```bash
-porta user roles remove --org-id <id> --user-id <id> --role-id <id>
+porta user roles remove --org <org-id> <user-id> --role <role-id>
 ```
 
 ### `porta user roles list`
 
 ```bash
-porta user roles list --org-id <id> --user-id <id>
+porta user roles list --org <org-id> <user-id>
 ```
 
-Shows all roles assigned to the user, grouped by application.
+The list shows the role ID, name, slug, and creation date. Removing a role can invalidate the
+current admin session; authenticate again when the command reports that reauthentication is
+required.
 
 ---
 

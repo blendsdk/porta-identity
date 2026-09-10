@@ -79,30 +79,33 @@ porta app module remove --app-id <id> --module-id <id>
 
 ## Roles
 
-RBAC roles scoped to an application.
+RBAC roles are scoped to one application. A role can only contain permissions from that same
+application. Role and permission identifiers are positional arguments; role metadata remains in
+named options.
 
 ### `porta app role create`
 
 ```bash
-porta app role create --app-id <id> --name "Sales Manager" [--description "Full sales access"]
+porta app role create <app-id> --name "Sales Manager" [--slug sales-manager] \
+  [--description "Full sales access"]
 ```
 
 ### `porta app role list`
 
 ```bash
-porta app role list --app-id <id>
+porta app role list <app-id>
 ```
 
 ### `porta app role show`
 
 ```bash
-porta app role show --app-id <id> --role-id <id>
+porta app role show <app-id> <role-id>
 ```
 
 ### `porta app role update`
 
 ```bash
-porta app role update --app-id <id> --role-id <id> [--name "New Name"]
+porta app role update <app-id> <role-id> [--name "New Name"] [--description "New description"]
 ```
 
 ### `porta app role delete`
@@ -114,37 +117,50 @@ porta app role delete <app-id> <role-id>
 ### `porta app role assign-perm`
 
 ```bash
-porta app role assign-perm --app-id <id> --role-id <id> --permission-id <id>
+porta app role assign-perm <app-id> <role-id> <permission-id>
 ```
 
 ### `porta app role remove-perm`
 
 ```bash
-porta app role remove-perm --app-id <id> --role-id <id> --permission-id <id>
+porta app role remove-perm <app-id> <role-id> <permission-id>
 ```
+
+Deleting a role asks for confirmation, then permanently deletes its user assignments and
+permission links. Removing a permission from a role or deleting a role can invalidate the current
+admin session; authenticate again when the command reports that reauthentication is required.
 
 ---
 
 ## Permissions
 
-Permissions scoped to an application.
+Permissions are scoped to one application. Their slugs are the values external applications
+receive in tokens for the corresponding OIDC client application.
 
 ### `porta app permission create`
 
 ```bash
-porta app permission create --app-id <id> --name "deals:write" [--description "Create and edit deals"]
+porta app permission create <app-id> --name "Edit deals" --slug deals:write \
+  [--description "Create and edit deals"]
 ```
 
 ### `porta app permission list`
 
 ```bash
-porta app permission list --app-id <id>
+porta app permission list <app-id>
 ```
 
 ### `porta app permission show`
 
 ```bash
-porta app permission show --app-id <id> --permission-id <id>
+porta app permission show <app-id> <permission-id>
+```
+
+### `porta app permission update`
+
+```bash
+porta app permission update <app-id> <permission-id> [--name "New name"] \
+  [--description "New description"]
 ```
 
 ### `porta app permission delete`
@@ -152,6 +168,9 @@ porta app permission show --app-id <id> --permission-id <id>
 ```bash
 porta app permission delete <app-id> <permission-id>
 ```
+
+Deleting a permission asks for confirmation, then permanently deletes its role links. The command
+reports when the current admin must authenticate again.
 
 ---
 
@@ -166,12 +185,12 @@ porta app claim create --app-id <id> --name "department" --type string \
   [--description "Employee department"]
 ```
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--app-id` | ✅ | Application ID |
-| `--name` | ✅ | Claim name |
-| `--type` | ✅ | `string`, `number`, `boolean`, or `json` |
-| `--description` | | Description |
+| Flag            | Required | Description                              |
+| --------------- | -------- | ---------------------------------------- |
+| `--app-id`      | ✅       | Application ID                           |
+| `--name`        | ✅       | Claim name                               |
+| `--type`        | ✅       | `string`, `number`, `boolean`, or `json` |
+| `--description` |          | Description                              |
 
 ### `porta app claim list`
 
