@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 09:50
-> **Progress**: 46/62 tasks (74%)
+> **Last Updated**: 2026-09-10 10:51
+> **Progress**: 47/62 tasks (76%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -178,11 +178,15 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 
 ## Phase 5: User Roles, Documentation, and Final Verification
 
+> **Phase baseline tree**: `7ea3cd9fdfb17ae7ed2b6eb8de1a96d756f513b1`
+> **Scope mode**: strict
+> **Expected modification set**: `packages/cli/tests/admin/user-roles.spec.test.ts`, `packages/cli/tests/admin/user-roles.impl.test.ts`, `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts`, `packages/cli/src/admin/user-workspace.ts`, `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`, `docs/api/rbac.md`, `docs/concepts/rbac.md`, `docs/guide/sdk-agent.md`, `docs/cli/applications.md`, `docs/cli/users.md`, repository test-inventory expectations if required, this execution plan, the phase quality-review record, the feature and portfolio roadmaps, and incremental or comprehensive techdocs if required.
+
 ### Step 5.1: Specification Tests
 
 **Reference**: [03-04 §§User Roles Dialog–Mutation State](03-04-admin-ui.md#user-roles-dialog) · AR-4–AR-5, AR-7, AR-10 · ST-39–ST-44
 
-- [ ] 5.1.1 [spec-author] Write User Roles empty-grid, capability, application/role choice, direct removal, stale-context, reauthentication, unknown-outcome, validation, and compact-layout specifications — `packages/cli/tests/admin/user-roles.spec.test.ts`
+- [x] 5.1.1 [spec-author] Write User Roles empty-grid, capability, application/role choice, direct removal, stale-context, reauthentication, unknown-outcome, validation, and compact-layout specifications — `packages/cli/tests/admin/user-roles.spec.test.ts` ✅ (completed: 2026-09-10 10:51)
 - [ ] 5.1.2 Run the Phase 5 specification file and record the expected red result before implementation
 
 ### Step 5.2: Implementation
