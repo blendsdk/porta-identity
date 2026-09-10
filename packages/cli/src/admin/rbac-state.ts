@@ -93,7 +93,7 @@ export type AdminApplicationRbacViewState =
   | { readonly kind: 'closed' }
   | { readonly kind: 'loading'; readonly previous?: AdminApplicationRbacProjection }
   | AdminApplicationRbacProjection
-  | { readonly kind: 'indeterminate'; readonly previous: AdminApplicationRbacProjection }
+  | { readonly kind: 'indeterminate'; readonly previous?: AdminApplicationRbacProjection }
   | {
       readonly kind: 'failure';
       readonly failure: AdminRbacFailureKind;

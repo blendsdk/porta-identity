@@ -493,6 +493,8 @@ export function createAdminApplicationWorkspace(
       if (disposed) return;
       rbacState = next;
       rbacWorkspace?.setState(next);
+      if (selectedDetailSection.peek() === 2) rbacWorkspace?.focusCurrent('roles');
+      if (selectedDetailSection.peek() === 3) rbacWorkspace?.focusCurrent('permissions');
     },
     focusCurrent() {
       if (currentFocus) options.focusView?.(currentFocus);

@@ -1,18 +1,50 @@
 /** Implementation coverage for Application-owned RBAC rendering and operation ownership. */
 
-import { Button, col, createApplication, DataGrid, Group, grow, View } from '@jsvision/ui';
+import {
+  Button,
+  col,
+  createApplication,
+  DataGrid,
+  Dialog,
+  Group,
+  grow,
+  Input,
+  Memo,
+  TabView,
+  View,
+} from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createAdminApplicationRbacController } from '../../src/admin/application-rbac-controller.js';
+import { createAdminApplicationRbacFeatures } from '../../src/admin/application-rbac-features.js';
 import { createAdminApplicationRbacWorkspace } from '../../src/admin/application-rbac-workspace.js';
-import type { AdminApplication } from '../../src/admin/application-state.js';
+import { createAdminApplicationWorkspace } from '../../src/admin/application-workspace.js';
+import type {
+  AdminApplication,
+  AdminApplicationViewState,
+} from '../../src/admin/application-state.js';
+import {
+  showCreatePermissionDialog,
+  showCreateRoleDialog,
+  showDeletePermissionDialog,
+  showDeleteRoleDialog,
+  showEditPermissionDialog,
+  showEditRoleDialog,
+  showManageRolePermissionsDialog,
+} from '../../src/admin/rbac-dialogs.js';
 import { createAdminRbacOperations } from '../../src/admin/rbac-service.js';
-import type { AdminApplicationRbacViewState, AdminRole } from '../../src/admin/rbac-state.js';
+import type {
+  AdminApplicationRbacViewState,
+  AdminPermission,
+  AdminRole,
+} from '../../src/admin/rbac-state.js';
 import type { AdminCapabilities } from '../../src/admin/state.js';
 
 const applicationId = '11111111-1111-4111-8111-111111111111';
 const alphaRoleId = '22222222-2222-4222-8222-222222222222';
 const zuluRoleId = '33333333-3333-4333-8333-333333333333';
+const alphaPermissionId = '44444444-4444-4444-8444-444444444444';
+const zuluPermissionId = '55555555-5555-4555-8555-555555555555';
 
 const application: AdminApplication = {
   id: applicationId,
@@ -65,6 +97,19 @@ function role(id: string, name: string, slug: string): AdminRole {
     description: null,
     createdAt: '2026-01-03T00:00:00Z',
     updatedAt: '2026-08-03T00:00:00Z',
+  };
+}
+
+/** Creates a valid permission owned by the selected Application. */
+function permission(id: string, name: string, slug: string): AdminPermission {
+  return {
+    id,
+    applicationId,
+    moduleId: null,
+    name,
+    slug,
+    description: null,
+    createdAt: '2026-01-04T00:00:00Z',
   };
 }
 
@@ -181,6 +226,71 @@ describe('Application RBAC workspace internals', () => {
     await settle();
     expect(frameText(host)).not.toContain('Late role');
   });
+
+  it('clears role and permission selection when sorting changes', async () => {
+    const root = new Group();
+    const host = createApplication({ content: root, viewport: { width: 100, height: 24 } });
+    const workspace = createAdminApplicationRbacWorkspace({
+      application,
+      modules: [],
+      capabilities,
+      onIntent: vi.fn(),
+      focusView: (view) => host.loop.focusView(view),
+    });
+    root.add(col({}, grow(workspace.roles), grow(workspace.permissions)));
+    workspace.setState({
+      kind: 'ready',
+      applicationId,
+      roles: [
+        role(alphaRoleId, 'Alpha operator', 'alpha-operator'),
+        role(zuluRoleId, 'Zulu operator', 'zulu-operator'),
+      ],
+      permissions: [
+        permission(alphaPermissionId, 'Alpha permission', 'alpha:item:read'),
+        permission(zuluPermissionId, 'Zulu permission', 'zulu:item:read'),
+      ],
+    });
+    await settle();
+
+    for (const page of [workspace.roles, workspace.permissions]) {
+      const grid = descendants(page).find((view) => view instanceof DataGrid);
+      if (!(grid instanceof DataGrid)) throw new Error('RBAC grid missing.');
+      host.loop.focusView(grid.rows);
+      host.loop.dispatch({ type: 'key', key: 'enter', ctrl: false, alt: false, shift: false });
+      await settle();
+      expect(grid.selected.peek()).toBe(0);
+      grid.sortBy(0, 'desc');
+      await settle();
+      expect(grid.selected.peek()).toBe(-1);
+      expect(button(page, 'Edit').state.disabled).toBe(true);
+      expect(button(page, 'Delete').state.disabled).toBe(true);
+    }
+  });
+
+  it('renders fixed safe failure and unknown-outcome notices', async () => {
+    const mounted = new Group();
+    const host = createApplication({ content: mounted, viewport: { width: 100, height: 24 } });
+    const workspace = createAdminApplicationRbacWorkspace({
+      application,
+      modules: [],
+      capabilities,
+      onIntent: vi.fn(),
+    });
+    mounted.add(col({}, grow(workspace.roles), grow(workspace.permissions)));
+    const previous = {
+      kind: 'ready' as const,
+      applicationId,
+      roles: [role(alphaRoleId, 'Alpha operator', 'alpha-operator')],
+      permissions: [],
+    };
+
+    workspace.setState({ kind: 'failure', failure: 'invalid-response', previous });
+    await settle();
+    expect(frameText(host)).toContain('Invalid server response');
+    workspace.setState({ kind: 'indeterminate', previous });
+    await settle();
+    expect(frameText(host)).toContain('The operation outcome is unknown; reload is required');
+  });
 });
 
 describe('Application RBAC controller ownership', () => {
@@ -218,6 +328,56 @@ describe('Application RBAC controller ownership', () => {
     expect(capturedSignal?.aborted).toBe(true);
     expect(states).toEqual([{ kind: 'loading' }]);
   });
+
+  it('blocks another mutation until reload after an unknown first mutation', async () => {
+    const states: AdminApplicationRbacViewState[] = [];
+    const createRole = vi.fn().mockResolvedValue({ kind: 'outcome-unknown' });
+    const listRoles = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
+    const listPermissions = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
+    const controller = createAdminApplicationRbacController({
+      readContext: () => ({ applicationId, sessionEpoch: 1 }),
+      readOperations: () => ({ createRole, listRoles, listPermissions }),
+      publishState: (state) => states.push(state),
+      requestAuthentication: vi.fn(),
+    });
+
+    await controller.createRole({ name: 'First attempt' });
+    await controller.createRole({ name: 'Blocked duplicate' });
+
+    expect(createRole).toHaveBeenCalledOnce();
+    expect(states.at(-1)).toEqual({ kind: 'indeterminate' });
+
+    await controller.reload();
+    expect(states.at(-1)).toMatchObject({ kind: 'ready', applicationId });
+    await controller.createRole({ name: 'New deliberate attempt' });
+    expect(createRole).toHaveBeenCalledTimes(2);
+  });
+
+  it('reports whether role mappings were freshly loaded for the requested role', async () => {
+    const firstRole = role(alphaRoleId, 'Alpha operator', 'alpha-operator');
+    const secondRole = role(zuluRoleId, 'Zulu operator', 'zulu-operator');
+    const listRolePermissions = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: 'success', value: [] })
+      .mockResolvedValueOnce({ kind: 'failure', failure: 'unavailable' });
+    const controller = createAdminApplicationRbacController({
+      readContext: () => ({ applicationId, sessionEpoch: 1 }),
+      readOperations: () => ({
+        listRoles: vi.fn().mockResolvedValue({
+          kind: 'success',
+          value: [firstRole, secondRole],
+        }),
+        listPermissions: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
+        listRolePermissions,
+      }),
+      publishState: vi.fn(),
+      requestAuthentication: vi.fn(),
+    });
+
+    await controller.load();
+    await expect(controller.loadRolePermissions(firstRole.id)).resolves.toBe(true);
+    await expect(controller.loadRolePermissions(secondRole.id)).resolves.toBe(false);
+  });
 });
 
 describe('RBAC response validation', () => {
@@ -241,5 +401,213 @@ describe('RBAC response validation', () => {
       kind: 'failure',
       failure: 'invalid-response',
     });
+  });
+
+  it('treats an AbortError raised after mutation dispatch as an unknown outcome', async () => {
+    const operations = createAdminRbacOperations(() => ({
+      roles: {
+        list: vi.fn(),
+        create: vi.fn().mockRejectedValue(new DOMException('aborted', 'AbortError')),
+        update: vi.fn(),
+        delete: vi.fn(),
+        listPermissions: vi.fn(),
+        assignPermissions: vi.fn(),
+        removePermissions: vi.fn(),
+      },
+      permissions: { list: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn() },
+      userRoles: { list: vi.fn(), assign: vi.fn(), remove: vi.fn() },
+    }));
+
+    await expect(operations.createRole(applicationId, { name: 'Operator' })).resolves.toEqual({
+      kind: 'outcome-unknown',
+    });
+  });
+});
+
+describe('Application RBAC production focus', () => {
+  it('focuses the replacement grid when the active RBAC tab receives state', async () => {
+    const detail: AdminApplicationViewState = {
+      kind: 'detail',
+      scope: 'global',
+      applications: [application],
+      application,
+      etag: null,
+      modules: [],
+    };
+    const workspace = createAdminApplicationWorkspace({
+      capabilities,
+      onIntent: vi.fn(),
+      onRbacIntent: vi.fn(),
+      focusView: (view) => host.loop.focusView(view),
+    });
+    const host = createApplication({
+      content: workspace.content,
+      viewport: { width: 100, height: 24 },
+    });
+    workspace.setState(detail);
+    const tabs = descendants(workspace.content).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Application tabs missing.');
+    tabs.select(2);
+
+    workspace.setRbacState({
+      kind: 'ready',
+      applicationId,
+      roles: [role(alphaRoleId, 'Alpha operator', 'alpha-operator')],
+      permissions: [],
+    });
+    await settle();
+
+    const grid = descendants(tabs.tabs.peek()[2]?.content ?? workspace.content).find(
+      (view) => view instanceof DataGrid,
+    );
+    if (!(grid instanceof DataGrid)) throw new Error('Role grid missing.');
+    expect(host.loop.getFocused()).toBe(grid.rows);
+  });
+});
+
+describe('Application RBAC mapping ownership', () => {
+  it('does not open a role dialog after a different role mapping load fails', async () => {
+    const firstRole = role(alphaRoleId, 'Alpha operator', 'alpha-operator');
+    const secondRole = role(zuluRoleId, 'Zulu operator', 'zulu-operator');
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const runDialog = vi.fn(async () => undefined);
+    const listRolePermissions = vi
+      .fn()
+      .mockResolvedValueOnce({ kind: 'success', value: [] })
+      .mockResolvedValueOnce({ kind: 'failure', failure: 'unavailable' });
+    const features = createAdminApplicationRbacFeatures({
+      dialogs: {
+        host,
+        removeAll: vi.fn(),
+        setModalCommandHandler: vi.fn(),
+      },
+      readSelection: () => ({ application, modules: [] }),
+      readSession: () => ({
+        rbac: {
+          listRoles: vi.fn().mockResolvedValue({
+            kind: 'success',
+            value: [firstRole, secondRole],
+          }),
+          listPermissions: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
+          listRolePermissions,
+        },
+      }),
+      readSessionEpoch: () => 1,
+      readCapabilities: () => capabilities,
+      runDialog,
+      publishState: vi.fn(),
+      requestAuthentication: vi.fn(),
+    });
+    features.syncApplication();
+    await settle();
+
+    features.handleIntent({ kind: 'manage-role-permissions', roleId: firstRole.id });
+    await settle();
+    expect(runDialog).toHaveBeenCalledOnce();
+
+    features.handleIntent({ kind: 'manage-role-permissions', roleId: secondRole.id });
+    await settle();
+    expect(runDialog).toHaveBeenCalledOnce();
+  });
+});
+
+describe('Application RBAC compact dialogs', () => {
+  it('keeps every public dialog action reachable at 48x12', async () => {
+    const selectedRole = role(alphaRoleId, 'Alpha operator', 'alpha-operator');
+    const selectedPermission = permission(alphaPermissionId, 'Alpha permission', 'alpha:item:read');
+    const cases: Array<{
+      readonly safeAction: string;
+      readonly entityForm: boolean;
+      readonly open: (host: ReturnType<typeof createApplication>) => Promise<unknown>;
+    }> = [
+      {
+        safeAction: 'Cancel',
+        entityForm: true,
+        open: (host) => showCreateRoleDialog(host, new AbortController().signal, application),
+      },
+      {
+        safeAction: 'Cancel',
+        entityForm: true,
+        open: (host) =>
+          showEditRoleDialog(host, new AbortController().signal, application, selectedRole),
+      },
+      {
+        safeAction: 'Keep',
+        entityForm: false,
+        open: (host) =>
+          showDeleteRoleDialog(host, new AbortController().signal, application, selectedRole),
+      },
+      {
+        safeAction: 'Cancel',
+        entityForm: true,
+        open: (host) =>
+          showCreatePermissionDialog(host, new AbortController().signal, application, []),
+      },
+      {
+        safeAction: 'Cancel',
+        entityForm: true,
+        open: (host) =>
+          showEditPermissionDialog(
+            host,
+            new AbortController().signal,
+            application,
+            selectedPermission,
+            [],
+          ),
+      },
+      {
+        safeAction: 'Keep',
+        entityForm: false,
+        open: (host) =>
+          showDeletePermissionDialog(
+            host,
+            new AbortController().signal,
+            application,
+            selectedPermission,
+          ),
+      },
+      {
+        safeAction: 'Close',
+        entityForm: false,
+        open: (host) =>
+          showManageRolePermissionsDialog(
+            host,
+            new AbortController().signal,
+            application,
+            selectedRole,
+            [selectedPermission],
+            [],
+            true,
+          ),
+      },
+    ];
+
+    for (const example of cases) {
+      const host = createApplication({ viewport: { width: 48, height: 12 } });
+      const pending = example.open(host);
+      await settle();
+      const dialog = host.desktop.activeWindow();
+      if (!(dialog instanceof Dialog)) throw new Error('RBAC dialog missing.');
+      expect(frameText(host)).toContain(example.safeAction);
+      expect(
+        descendants(dialog)
+          .filter((view) => view instanceof Button)
+          .every((action) => action.bounds.height > 0),
+      ).toBe(true);
+      if (example.entityForm) {
+        expect(
+          descendants(dialog)
+            .filter((view) => view instanceof Input)
+            .every((input) => input.bounds.height > 0),
+        ).toBe(true);
+        expect(
+          descendants(dialog)
+            .filter((view) => view instanceof Memo)
+            .every((memo) => memo.bounds.height > 0),
+        ).toBe(true);
+      }
+      host.loop.endModal('cancel');
+      await pending;
+    }
   });
 });

@@ -1,7 +1,7 @@
 # Roles and Permissions Phase Quality Reviews
 
-> **Status**: Phase 3 review passed with the recorded rejected findings
-> **Last Updated**: 2026-09-10 00:53
+> **Status**: Phase 4 accepted corrections are verified; bounded re-review pending
+> **Last Updated**: 2026-09-10 10:32
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Authority Provenance and OIDC Claims
@@ -98,3 +98,30 @@ scoped ESLint, SDK and CLI typechecks and builds, and all 97 repository structur
 The single bounded correctness and security re-review passed with no findings. It confirmed that
 RV-301, RV-302, and SA-302 are closed, the corrections remain minimum-sufficient, and the rejected
 SA-301 deep-freeze and SA-303 exact SDK projection were not introduced.
+
+## Phase 4: Application Roles and Permissions Tabs
+
+**Review boundary:** a013ffb7c4ce7fa9452f5b15fa205407d3eccc79..3529042c
+**Scope mode:** Strict
+**Verification before review:** 208 focused Application/RBAC Admin UI assertions, scoped ESLint,
+CLI typecheck, and 97 repository structure tests passed. Root `yarn verify` was not run under AR-11.
+
+| ID     | Severity | Lens        | Finding                                                                              | Minimum correction                                                                               | Ruling   |
+| ------ | -------- | ----------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ | -------- |
+| SA-401 | Major    | Security    | A post-dispatch `AbortError` is treated as safe cancellation                         | Reserve cancellation for the pre-dispatch check and map caught aborts to unknown outcome         | Accepted |
+| SA-402 | Major    | Security    | An unknown mutation without a prior projection does not establish recovery ownership | Always require reconciliation after an unknown dispatched mutation and allow no prior projection | Accepted |
+| SA-403 | Major    | Security    | Failure and indeterminate RBAC states render no fixed warning                        | Show safe fixed failure/unknown notices while retaining validated rows and read-only Reload      | Accepted |
+| RV-401 | Major    | Correctness | A failed mapping load for role B can reuse role A's retained mapping arrays          | Open the mapping dialog only after a newly successful load for the requested role                | Accepted |
+| RV-402 | Major    | Correctness | Sorting after selection can silently retarget role or permission operations          | Clear selection when sort order changes and require deliberate reselection                       | Accepted |
+| RV-403 | Major    | Correctness | Focused RBAC entity dialogs do not keep all controls reachable at 48×12              | Add a direct height-aware compact arrangement and compact-dialog coverage                        | Accepted |
+| RV-404 | Major    | Correctness | RBAC state publication replaces the focused grid without restoring production focus  | Restore focus to the replacement grid when Roles or Permissions is the active tab                | Accepted |
+
+Both independent reviewers confirmed that the focused Application RBAC coordinator is
+responsibility-bearing and remains within AR-23. None of the minimum corrections requires a new
+framework, dependency, generalized CRUD layer, router, worker, or persistence mechanism.
+
+The accepted corrections reserve safe cancellation for pre-dispatch checks, establish recovery
+without requiring prior rows, render fixed safe state notices, require a fresh successful mapping
+load, clear positional selection on sort, compact entity-dialog spacing only below the preferred
+height, and restore focus only for the active RBAC tab. They pass 216 focused Application/RBAC
+Admin UI assertions, scoped ESLint, CLI typecheck, and all 97 repository structure tests.

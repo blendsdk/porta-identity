@@ -3,7 +3,9 @@
 import {
   Button,
   col,
+  createRoot,
   DataGrid,
+  effect,
   fixed,
   Group,
   grow,
@@ -162,6 +164,15 @@ const CANONICAL_PERMISSION_SLUGS = new Set([
   'admin:import:write',
 ]);
 
+/** Fixed safe labels for RBAC operation failures. */
+const FAILURE_LABELS = {
+  validation: 'Validation failed',
+  unauthorized: 'Not authorized',
+  conflict: 'Conflict',
+  unavailable: 'Service unavailable',
+  'invalid-response': 'Invalid server response',
+} as const;
+
 /** Returns whether a role is one of the immutable built-ins in the canonical Application. */
 function isCanonicalRole(application: AdminApplication, role: AdminRole | undefined): boolean {
   return (
@@ -192,6 +203,28 @@ function retainedProjection(
   return undefined;
 }
 
+/** Returns the fixed status text that explains non-authoritative RBAC rows. */
+function stateNotice(state: AdminApplicationRbacViewState): string | undefined {
+  if (state.kind === 'loading') return 'Loading roles and permissions…';
+  if (state.kind === 'indeterminate') {
+    return 'The operation outcome is unknown; reload is required';
+  }
+  return state.kind === 'failure' ? FAILURE_LABELS[state.failure] : undefined;
+}
+
+/** Clears positional selection whenever a DataGrid changes its display order. */
+function clearSelectionOnSort(sort: Signal<SortState>, selected: Signal<number>): () => void {
+  return createRoot((dispose) => {
+    let initialized = false;
+    effect(() => {
+      sort();
+      if (initialized) selected.set(-1);
+      initialized = true;
+    });
+    return dispose;
+  });
+}
+
 /** Creates both direct RBAC pages without introducing a reusable CRUD framework. */
 export function createAdminApplicationRbacWorkspace(
   options: AdminApplicationRbacWorkspaceOptions,
@@ -207,7 +240,13 @@ export function createAdminApplicationRbacWorkspace(
   let permissionSort = signal<SortState>(null);
   let roleFocus: View | undefined;
   let permissionFocus: View | undefined;
+  let disposeRoleSort = (): void => undefined;
+  let disposePermissionSort = (): void => undefined;
   let disposed = false;
+
+  /** Prevents mutations while an authoritative read or reconciliation owns the view. */
+  const mutationsBlocked = (): boolean =>
+    state.kind === 'loading' || state.kind === 'indeterminate';
 
   /** Resolves the explicit selected role after the current sort is applied. */
   const selectedRole = (): AdminRole | undefined =>
@@ -227,10 +266,12 @@ export function createAdminApplicationRbacWorkspace(
 
   /** Builds the Roles DataGrid and its exact action row. */
   const renderRoles = (): void => {
+    disposeRoleSort();
     const projection = retainedProjection(state);
     roleRows = signal([...(projection?.roles ?? [])]);
     selectedRoleIndex = signal(-1);
     roleSort = signal<SortState>(null);
+    disposeRoleSort = clearSelectionOnSort(roleSort, selectedRoleIndex);
     const grid = new DataGrid<AdminRole>({
       rows: roleRows,
       columns: ROLE_COLUMNS,
@@ -239,11 +280,12 @@ export function createAdminApplicationRbacWorkspace(
       zebra: true,
     });
     const add = new Button('Add', {
-      disabled: !options.capabilities.canCreateRoles,
+      disabled: () => mutationsBlocked() || !options.capabilities.canCreateRoles,
       onClick: () => options.onIntent({ kind: 'add-role' }),
     });
     const edit = new Button('Edit', {
       disabled: () =>
+        mutationsBlocked() ||
         !options.capabilities.canUpdateRoles ||
         !selectedRole() ||
         isCanonicalRole(options.application, selectedRole()),
@@ -254,6 +296,7 @@ export function createAdminApplicationRbacWorkspace(
     });
     const remove = new Button('Delete', {
       disabled: () =>
+        mutationsBlocked() ||
         !options.capabilities.canDeleteRoles ||
         !selectedRole() ||
         isCanonicalRole(options.application, selectedRole()),
@@ -264,6 +307,7 @@ export function createAdminApplicationRbacWorkspace(
     });
     const manage = new Button('Manage permissions', {
       disabled: () =>
+        mutationsBlocked() ||
         !options.capabilities.canUpdateRoles ||
         !options.capabilities.canReadPermissions ||
         !selectedRole() ||
@@ -277,6 +321,7 @@ export function createAdminApplicationRbacWorkspace(
       onClick: () => options.onIntent({ kind: 'reload' }),
     });
     const notices = [
+      stateNotice(state),
       !options.capabilities.canCreateRoles ? 'Role create permission required.' : undefined,
       options.application.slug === 'porta-admin'
         ? 'This built-in Porta Admin record cannot be changed.'
@@ -298,10 +343,12 @@ export function createAdminApplicationRbacWorkspace(
 
   /** Builds the Permissions DataGrid and its exact action row. */
   const renderPermissions = (): void => {
+    disposePermissionSort();
     const projection = retainedProjection(state);
     permissionRows = signal([...(projection?.permissions ?? [])]);
     selectedPermissionIndex = signal(-1);
     permissionSort = signal<SortState>(null);
+    disposePermissionSort = clearSelectionOnSort(permissionSort, selectedPermissionIndex);
     const grid = new DataGrid<AdminPermission>({
       rows: permissionRows,
       columns,
@@ -310,11 +357,12 @@ export function createAdminApplicationRbacWorkspace(
       zebra: true,
     });
     const add = new Button('Add', {
-      disabled: !options.capabilities.canCreatePermissions,
+      disabled: () => mutationsBlocked() || !options.capabilities.canCreatePermissions,
       onClick: () => options.onIntent({ kind: 'add-permission' }),
     });
     const edit = new Button('Edit', {
       disabled: () =>
+        mutationsBlocked() ||
         !options.capabilities.canUpdatePermissions ||
         !selectedPermission() ||
         isCanonicalPermission(options.application, selectedPermission()),
@@ -325,6 +373,7 @@ export function createAdminApplicationRbacWorkspace(
     });
     const remove = new Button('Delete', {
       disabled: () =>
+        mutationsBlocked() ||
         !options.capabilities.canDeletePermissions ||
         !selectedPermission() ||
         isCanonicalPermission(options.application, selectedPermission()),
@@ -337,6 +386,7 @@ export function createAdminApplicationRbacWorkspace(
       onClick: () => options.onIntent({ kind: 'reload' }),
     });
     const notices = [
+      stateNotice(state),
       !options.capabilities.canCreatePermissions
         ? 'Permission create permission required.'
         : undefined,
@@ -387,6 +437,8 @@ export function createAdminApplicationRbacWorkspace(
       if (disposed) return;
       state = { kind: 'closed' };
       render();
+      disposeRoleSort();
+      disposePermissionSort();
       disposed = true;
     },
   };

@@ -195,7 +195,7 @@ export function createAdminApplicationRbacFeatures(
     const selection = options.readSelection();
     const target = role(roleId);
     if (!selection || !target) return;
-    await controller.loadRolePermissions(target.id);
+    if (!(await controller.loadRolePermissions(target.id))) return;
     const projection = retainedProjection(currentState);
     if (!projection?.assignedPermissions || !projection.availablePermissions) return;
     const capabilities = options.readCapabilities();

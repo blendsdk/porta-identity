@@ -57,7 +57,7 @@ export interface AdminApplicationRbacController {
   /** Permanently deletes one permission and reloads authoritative state. */
   readonly deletePermission: (permissionId: string) => Promise<void>;
   /** Loads assigned and available permissions for one retained role. */
-  readonly loadRolePermissions: (roleId: string) => Promise<void>;
+  readonly loadRolePermissions: (roleId: string) => Promise<boolean>;
   /** Assigns one permission to one role and reloads both mapping collections. */
   readonly assignPermission: (roleId: string, permissionId: string) => Promise<void>;
   /** Removes one permission from one role and reloads both mapping collections. */
@@ -121,10 +121,9 @@ export function createAdminApplicationRbacController(
 
   /** Retains validated state and requires an explicit read-only reconciliation. */
   const requireReconciliation = (): void => {
-    if (!projection) return;
     recoveryRequired = true;
     options.setRecoveryRequired?.(true);
-    publish({ kind: 'indeterminate', previous: projection });
+    publish({ kind: 'indeterminate', ...(projection ? { previous: projection } : {}) });
   };
 
   /** Cancels the current continuation and records uncertainty only after mutation dispatch. */
@@ -189,32 +188,34 @@ export function createAdminApplicationRbacController(
     roleId: string,
     controller: AbortController,
     capturedGeneration: number,
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const operations = options.readOperations();
-    if (!operations?.listRolePermissions || !operations.listPermissions) return;
+    if (!operations?.listRolePermissions || !operations.listPermissions) return false;
     const assignedResult = await operations.listRolePermissions(
       context.applicationId,
       roleId,
       controller.signal,
     );
-    if (!owns(capturedGeneration, context, controller)) return;
+    if (!owns(capturedGeneration, context, controller)) return false;
     if (assignedResult.kind === 'session-invalid') {
       requireAuthentication();
-      return;
+      return false;
     }
     if (assignedResult.kind === 'failure') {
       publishFailure(assignedResult.failure);
-      return;
+      return false;
     }
     const permissionResult = await operations.listPermissions(
       context.applicationId,
       controller.signal,
     );
-    if (!owns(capturedGeneration, context, controller)) return;
+    if (!owns(capturedGeneration, context, controller)) return false;
     if (permissionResult.kind === 'session-invalid') {
       requireAuthentication();
+      return false;
     } else if (permissionResult.kind === 'failure') {
       publishFailure(permissionResult.failure);
+      return false;
     } else {
       const assignedIds = new Set(assignedResult.value.map((permission) => permission.id));
       projection = {
@@ -230,6 +231,7 @@ export function createAdminApplicationRbacController(
       recoveryRequired = false;
       options.setRecoveryRequired?.(false);
       publish(projection);
+      return true;
     }
   };
 
@@ -315,17 +317,17 @@ export function createAdminApplicationRbacController(
   };
 
   /** Loads both mapping collections before opening the focused management dialog. */
-  const loadRolePermissions = async (roleId: string): Promise<void> => {
-    if (disposed || operation || recoveryRequired || !projection) return;
+  const loadRolePermissions = async (roleId: string): Promise<boolean> => {
+    if (disposed || operation || recoveryRequired || !projection) return false;
     const context = options.readContext();
     const operations = options.readOperations();
-    if (!operations?.listRolePermissions || !operations.listPermissions) return;
+    if (!operations?.listRolePermissions || !operations.listPermissions) return false;
     const controller = new AbortController();
     operation = controller;
     const capturedGeneration = ++generation;
     publish({ kind: 'loading', previous: projection });
     try {
-      await reloadMappings(context, roleId, controller, capturedGeneration);
+      return await reloadMappings(context, roleId, controller, capturedGeneration);
     } finally {
       if (operation === controller) operation = undefined;
     }

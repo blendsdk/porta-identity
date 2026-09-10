@@ -215,15 +215,16 @@ function entityLayout(
   submitLabel: string,
   canSubmit: () => boolean,
   additionalRows: readonly View[] = [],
+  compact = false,
 ): ReturnType<typeof col> {
   return col(
-    { gap: 1, padding: 1 },
+    { gap: compact ? 0 : 1, padding: 1 },
     inputRow('Name', form.nameInput),
     form.slugInput && inputRow('Slug', form.slugInput),
     ...additionalRows,
     ...readOnlyLines.map((line) => fixed(new Text(line), 1)),
     fixed(new Text('Description'), 1),
-    grow(form.descriptionMemo, 1, { min: 4 }),
+    grow(form.descriptionMemo, 1, { min: compact ? 1 : 4 }),
     fixed(
       row(
         { gap: 1 },
@@ -274,8 +275,13 @@ export async function showCreateRoleDialog(
   );
   dialog.add(
     cover(
-      entityLayout(form, [`Application: ${application.name}`], '~C~reate', () =>
-        entityIsValid(form, 'optional-role'),
+      entityLayout(
+        form,
+        [`Application: ${application.name}`],
+        '~C~reate',
+        () => entityIsValid(form, 'optional-role'),
+        [],
+        height < ENTITY_DIALOG_HEIGHT,
       ),
     ),
   );
@@ -305,8 +311,13 @@ export async function showEditRoleDialog(
   );
   dialog.add(
     cover(
-      entityLayout(form, [`Application: ${application.name}`], '~S~ave', () =>
-        entityIsValid(form, 'required-role'),
+      entityLayout(
+        form,
+        [`Application: ${application.name}`],
+        '~S~ave',
+        () => entityIsValid(form, 'required-role'),
+        [],
+        height < ENTITY_DIALOG_HEIGHT,
       ),
     ),
   );
@@ -397,6 +408,7 @@ export async function showCreatePermissionDialog(
     '~C~reate',
     () => entityIsValid(form, 'permission'),
     [fixed(row({ gap: 1 }, fixed(new Label('Scope', selector), 14), grow(selector)), 1)],
+    height < ENTITY_DIALOG_HEIGHT,
   );
   dialog.add(cover(content));
   if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
@@ -439,6 +451,8 @@ export async function showEditPermissionDialog(
         ],
         '~S~ave',
         () => entityIsValid(form, 'none'),
+        [],
+        height < ENTITY_DIALOG_HEIGHT,
       ),
     ),
   );

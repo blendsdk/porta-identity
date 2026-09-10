@@ -160,7 +160,6 @@ function readError(error: unknown): AdminRbacReadResult<never> {
 function mutationError(
   error: unknown,
 ): Exclude<AdminRbacMutationResult, { readonly kind: 'success' }> {
-  if (error instanceof DOMException && error.name === 'AbortError') return { kind: 'cancelled' };
   if (error instanceof PortaAuthenticationError) return { kind: 'session-invalid' };
   if (error instanceof PortaValidationError) return { kind: 'failure', failure: 'validation' };
   if (error instanceof PortaForbiddenError) return { kind: 'failure', failure: 'unauthorized' };
