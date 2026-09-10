@@ -4,11 +4,15 @@ import { Button, ComboBox, createApplication, DataGrid, Dialog, Group, View } fr
 import { describe, expect, it, vi } from 'vitest';
 
 import type { AdminApplication } from '../../src/admin/application-state.js';
+import { ADMIN_COMMANDS } from '../../src/admin/presentation.js';
 import type { AdminRbacOperations } from '../../src/admin/rbac-service.js';
 import type { AdminRbacReadResult, AdminRole } from '../../src/admin/rbac-state.js';
-import type { AdminCapabilities } from '../../src/admin/state.js';
+import type { AdminCapabilities, AdminConnectionState } from '../../src/admin/state.js';
+import { createAdminUserController } from '../../src/admin/user-controller.js';
+import type { AdminUserOperations } from '../../src/admin/user-service.js';
 import type { AdminUserDetail, AdminUserPage } from '../../src/admin/user-state.js';
 import { createAdminUserWorkspace } from '../../src/admin/user-workspace.js';
+import type { AdminUserIntent, AdminUserWorkspaceOptions } from '../../src/admin/user-workspace.js';
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
 const userId = '22222222-2222-4222-8222-222222222222';
@@ -596,6 +600,118 @@ describe('User Roles controller reconciliation', () => {
 
     expect(recovery).toHaveBeenLastCalledWith(true);
     expect(recovery).not.toHaveBeenLastCalledWith(false);
+  });
+
+  // Ordinary user reads cannot reconcile an uncertain role assignment because they do not read roles.
+  it('keeps role recovery gated until the same user roles are reloaded', async () => {
+    let userIntent: ((intent: AdminUserIntent) => void) | undefined;
+    let resolveRemoval: ((result: { readonly kind: 'success' }) => void) | undefined;
+    const recovery: boolean[] = [];
+    const host = createApplication({ viewport: { width: 80, height: 24 } });
+    const connection: AdminConnectionState = {
+      kind: 'authenticated',
+      server: new URL('https://porta.example.test'),
+      identity: { sub: 'admin-subject', email: 'admin@example.test' },
+      capabilities,
+      organization: {
+        id: organizationId,
+        name: 'Example Organization',
+        slug: 'example-organization',
+        status: 'active',
+      },
+    };
+    const userOperations: AdminUserOperations = {
+      list: vi.fn(async () => ({ kind: 'success', value: page })),
+      get: vi.fn(async () => ({ kind: 'success', value: { detail: user, etag: null } })),
+      getHistory: vi.fn(),
+      previewInvitation: vi.fn(),
+      create: vi.fn(),
+      invite: vi.fn(),
+      update: vi.fn(),
+      setPassword: vi.fn(),
+      clearPassword: vi.fn(),
+      verifyEmail: vi.fn(),
+      deactivate: vi.fn(),
+      activate: vi.fn(),
+      delete: vi.fn(),
+    };
+    const rbacOperations: AdminRbacOperations = {
+      listRoles: vi.fn(async () => ({ kind: 'success', value: [role] })),
+      getRole: vi.fn(),
+      createRole: vi.fn(),
+      updateRole: vi.fn(),
+      deleteRole: vi.fn(),
+      listPermissions: vi.fn(),
+      getPermission: vi.fn(),
+      createPermission: vi.fn(),
+      updatePermission: vi.fn(),
+      deletePermission: vi.fn(),
+      listRolePermissions: vi.fn(),
+      assignRolePermissions: vi.fn(),
+      removeRolePermissions: vi.fn(),
+      listUserRoles: vi.fn(async () => ({ kind: 'success', value: [role] })),
+      assignUserRoles: vi.fn(),
+      removeUserRoles: vi.fn(
+        () => new Promise((resolve) => (resolveRemoval = resolve)),
+      ),
+    };
+    const controller = createAdminUserController({
+      host,
+      readState: () => connection,
+      readOperations: () => userOperations,
+      readRbacOperations: () => rbacOperations,
+      readApplicationOperations: () => ({
+        listAll: vi.fn(async () => ({ kind: 'success', value: [application] })),
+      }),
+      mountWorkspace: vi.fn(),
+      isApplicationBusy: () => false,
+      setDialogBusy: vi.fn(),
+      setRecoveryRequired: (required) => recovery.push(required),
+      requestAuthentication: vi.fn(),
+      workspaceFactory: (options: AdminUserWorkspaceOptions) => {
+        userIntent = options.onIntent;
+        return {
+          content: new Group(),
+          setState: vi.fn(),
+          focusCurrent: vi.fn(),
+          clear: vi.fn(),
+          dispose: vi.fn(),
+        };
+      },
+    });
+    controller.syncContext(connection, 1);
+    controller.handleCommand(ADMIN_COMMANDS.browseUsers);
+    await settle();
+    userIntent?.({ kind: 'select', userId });
+    await settle();
+    userIntent?.({ kind: 'roles' });
+    await settle();
+
+    const roleDialog = host.desktop.activeWindow();
+    if (!(roleDialog instanceof Dialog)) throw new Error('User Roles dialog missing.');
+    const grid = descendants(roleDialog).find((view) => view instanceof DataGrid);
+    if (!(grid instanceof DataGrid)) throw new Error('Assigned-role grid missing.');
+    await selectFocusedRow(host, grid);
+    activate(host, button(roleDialog, 'Remove'));
+    await settle();
+    const confirmation = host.desktop.activeWindow();
+    if (!(confirmation instanceof Dialog)) throw new Error('Role removal confirmation missing.');
+    activate(host, button(confirmation, `Remove ${role.name}`));
+    await settle();
+    controller.cancelActiveOperation();
+    resolveRemoval?.({ kind: 'success' });
+    await settle();
+    expect(recovery).toEqual([true]);
+
+    controller.handleCommand(ADMIN_COMMANDS.browseUsers);
+    await settle();
+    expect(recovery).toEqual([true]);
+
+    userIntent?.({ kind: 'select', userId });
+    await settle();
+    userIntent?.({ kind: 'roles' });
+    await settle();
+    expect(recovery).toEqual([true, false]);
   });
 });
 

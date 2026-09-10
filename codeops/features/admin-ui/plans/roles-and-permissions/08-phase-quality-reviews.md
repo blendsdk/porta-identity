@@ -1,7 +1,7 @@
 # Roles and Permissions Phase Quality Reviews
 
-> **Status**: Phase 5 corrections verified; bounded re-review pending
-> **Last Updated**: 2026-09-10 13:53
+> **Status**: Phase 5 review closed after accepted residual correction
+> **Last Updated**: 2026-09-10 14:38
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Authority Provenance and OIDC Claims
@@ -157,3 +157,15 @@ The corrections pass all 20 focused User Roles assertions, full CLI verification
 assertions, and full server verification with 3,024 unit, 432 integration, 127 end-to-end, and 234
 penetration assertions. The documentation build and all 97 repository structure tests also pass.
 Root `yarn verify` was not run under AR-11.
+
+The single bounded correctness re-review reported no findings and closed RV-501–RV-505. The
+security re-review closed SA-501 and SA-503, but found that SA-502 remained open because an ordinary
+User list or detail read could clear the shared recovery gate without reloading the uncertain role
+assignments. The user accepted the minimum correction: ordinary User and focused User Roles
+recovery now have separate owners feeding the existing combined application gate. Only a successful
+same-context `listUserRoles` load clears role recovery; ordinary User reads cannot clear it.
+
+The residual correction was specified red before implementation. It passes with all 43 focused
+User and User Roles assertions, full CLI verification with 1,165 assertions, and all 97 repository
+structure tests. No second re-review was run because the quality loop permits one bounded
+re-review. Root `yarn verify` was not run under AR-11.

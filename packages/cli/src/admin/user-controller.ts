@@ -103,14 +103,36 @@ export function createAdminUserController(
   let dialogBusy = false;
   let visible = false;
   let recoverable = true;
-  let recoveryRequired = false;
+  let userRecoveryRequired = false;
+  let roleRecoveryRequired = false;
+  let recoveryGateRequired = false;
   let disposed = false;
 
-  /** Updates deliberate-reconciliation ownership and the application command gate together. */
-  const setRecoveryRequired = (required: boolean): void => {
-    if (recoveryRequired === required) return;
-    recoveryRequired = required;
+  /** Publishes the combined recovery gate without losing either independent mutation owner. */
+  const publishRecoveryGate = (): void => {
+    const required = userRecoveryRequired || roleRecoveryRequired;
+    if (recoveryGateRequired === required) return;
+    recoveryGateRequired = required;
     options.setRecoveryRequired?.(required);
+  };
+
+  /** Updates recovery owned by ordinary user mutations and reads. */
+  const setUserRecoveryRequired = (required: boolean): void => {
+    userRecoveryRequired = required;
+    publishRecoveryGate();
+  };
+
+  /** Updates recovery owned only by the focused User Roles workflow. */
+  const setRoleRecoveryRequired = (required: boolean): void => {
+    roleRecoveryRequired = required;
+    publishRecoveryGate();
+  };
+
+  /** Clears both recovery owners when their authenticated organization/session context ends. */
+  const clearRecoveryRequired = (): void => {
+    userRecoveryRequired = false;
+    roleRecoveryRequired = false;
+    publishRecoveryGate();
   };
 
   /** Publishes one state only to the current same-context workspace. */
@@ -214,7 +236,7 @@ export function createAdminUserController(
       if (result.kind === 'session-invalid') {
         sessionInvalid();
       } else if (result.kind === 'success') {
-        if (reconcilesMutation) setRecoveryRequired(false);
+        if (reconcilesMutation) setUserRecoveryRequired(false);
         publish(accept(result.value));
         if (visible && recoverable) workspace?.focusCurrent();
       } else {
@@ -280,7 +302,7 @@ export function createAdminUserController(
       return;
     }
     if (result.kind === 'success') {
-      setRecoveryRequired(false);
+      setUserRecoveryRequired(false);
       const current = options.readState();
       if (current.kind === 'authenticated' && current.capabilities.canReadUsers) {
         await reconcile(previous, deleted);
@@ -293,7 +315,9 @@ export function createAdminUserController(
     }
     if (result.kind === 'outcome-unknown') {
       const current = options.readState();
-      setRecoveryRequired(current.kind === 'authenticated' && current.capabilities.canReadUsers);
+      setUserRecoveryRequired(
+        current.kind === 'authenticated' && current.capabilities.canReadUsers,
+      );
       visible = true;
       publish(withOutcome(previous, 'outcome-unknown'));
       syncMount();
@@ -323,7 +347,7 @@ export function createAdminUserController(
     const current = options.readState();
     if (current.kind !== 'authenticated' || !current.organization) return;
     if (!current.capabilities[requiredCapability]) return;
-    if (recoveryRequired && current.capabilities.canReadUsers) return;
+    if ((userRecoveryRequired || roleRecoveryRequired) && current.capabilities.canReadUsers) return;
     const controller = new AbortController();
     operation = controller;
     operationPrevious = projection(state);
@@ -404,7 +428,7 @@ export function createAdminUserController(
       readSessionEpoch: () => currentSessionEpoch,
       readOperations: () => options.readRbacOperations?.(),
       readApplicationOperations: () => options.readApplicationOperations?.(),
-      setRecoveryRequired,
+      setRecoveryRequired: setRoleRecoveryRequired,
       requestAuthentication: sessionInvalid,
       onClosed: () => {
         userRoleWorkflow = undefined;
@@ -617,7 +641,9 @@ export function createAdminUserController(
     }
     if (indeterminate) {
       const current = options.readState();
-      setRecoveryRequired(current.kind === 'authenticated' && current.capabilities.canReadUsers);
+      setUserRecoveryRequired(
+        current.kind === 'authenticated' && current.capabilities.canReadUsers,
+      );
       visible = true;
       publish(withOutcome(previous, 'outcome-unknown'));
       syncMount();
@@ -643,7 +669,7 @@ export function createAdminUserController(
           dialogBusy = false;
           options.setDialogBusy(false);
         }
-        setRecoveryRequired(false);
+        clearRecoveryRequired();
         visible = false;
         workspace?.clear();
         workspace?.dispose();
@@ -670,7 +696,7 @@ export function createAdminUserController(
           dialogBusy = false;
           options.setDialogBusy(false);
         }
-        setRecoveryRequired(false);
+        clearRecoveryRequired();
         visible = false;
         workspace?.clear();
         state = { kind: 'closed' };
