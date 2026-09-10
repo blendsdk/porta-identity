@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 10:51
-> **Progress**: 47/62 tasks (76%)
+> **Last Updated**: 2026-09-10 10:56
+> **Progress**: 48/62 tasks (77%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -187,7 +187,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 **Reference**: [03-04 §§User Roles Dialog–Mutation State](03-04-admin-ui.md#user-roles-dialog) · AR-4–AR-5, AR-7, AR-10 · ST-39–ST-44
 
 - [x] 5.1.1 [spec-author] Write User Roles empty-grid, capability, application/role choice, direct removal, stale-context, reauthentication, unknown-outcome, validation, and compact-layout specifications — `packages/cli/tests/admin/user-roles.spec.test.ts` ✅ (completed: 2026-09-10 10:51)
-- [ ] 5.1.2 Run the Phase 5 specification file and record the expected red result before implementation
+- [x] 5.1.2 Run the Phase 5 specification file and record the expected red result before implementation — expected RED confirmed: 12/12 specifications fail because the User Roles operation and its focused dialog/controller modules do not exist ✅ (completed: 2026-09-10 10:56)
 
 ### Step 5.2: Implementation
 
