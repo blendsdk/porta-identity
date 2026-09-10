@@ -407,7 +407,10 @@ export function openAdminUserRoleWorkflow(
         Promise.resolve({ kind: 'failure', failure: 'unavailable' })
       );
     },
-    publishState: (state) => dialog.setState(state),
+    publishState: (state) => {
+      dialog.setState(state);
+      dialog.focusCurrent();
+    },
     setRecoveryRequired: options.setRecoveryRequired,
     requestAuthentication: () => {
       close();
