@@ -271,7 +271,12 @@ describe('global applications workspace', () => {
     const overviewViews = descendants(overviewTab.content);
     const moduleViews = descendants(modulesTab.content);
 
-    expect(tabs.tabs.peek().map((tab) => tab.title)).toEqual(['Overview', 'Modules']);
+    expect(tabs.tabs.peek().map((tab) => tab.title)).toEqual([
+      'Overview',
+      'Modules',
+      'Roles',
+      'Permissions',
+    ]);
     expect(views.filter((view) => view instanceof TabView)).toEqual([tabs]);
     expect(views.some((view) => view.constructor.name === 'GroupBox')).toBe(false);
     expect(text).not.toContain('Deployment-global');

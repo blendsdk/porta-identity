@@ -108,6 +108,42 @@ export type {
   AdminApplicationWorkspace,
   AdminApplicationWorkspaceOptions,
 } from './application-workspace.js';
+export { createAdminApplicationRbacController } from './application-rbac-controller.js';
+export type {
+  AdminApplicationRbacContext,
+  AdminApplicationRbacController,
+  AdminApplicationRbacControllerOptions,
+} from './application-rbac-controller.js';
+export { createAdminApplicationRbacFeatures } from './application-rbac-features.js';
+export type {
+  AdminApplicationRbacFeatures,
+  AdminApplicationRbacFeaturesOptions,
+  AdminApplicationRbacSelection,
+} from './application-rbac-features.js';
+export { createAdminApplicationRbacWorkspace } from './application-rbac-workspace.js';
+export type {
+  AdminApplicationRbacIntent,
+  AdminApplicationRbacWorkspace,
+  AdminApplicationRbacWorkspaceOptions,
+} from './application-rbac-workspace.js';
+export {
+  showCreatePermissionDialog,
+  showCreateRoleDialog,
+  showDeletePermissionDialog,
+  showDeleteRoleDialog,
+  showEditPermissionDialog,
+  showEditRoleDialog,
+  showManageRolePermissionsDialog,
+} from './rbac-dialogs.js';
+export type {
+  CreatePermissionDialogResult,
+  CreateRoleDialogResult,
+  DeletePermissionDialogResult,
+  DeleteRoleDialogResult,
+  EditPermissionDialogResult,
+  EditRoleDialogResult,
+  ManageRolePermissionsDialogResult,
+} from './rbac-dialogs.js';
 export {
   showApplicationLifecycleDialog,
   showCreateApplicationDialog,

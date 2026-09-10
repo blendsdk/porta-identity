@@ -56,6 +56,8 @@ export interface AdminApplicationRbacController {
   readonly updatePermission: (permissionId: string, input: UpdatePermissionInput) => Promise<void>;
   /** Permanently deletes one permission and reloads authoritative state. */
   readonly deletePermission: (permissionId: string) => Promise<void>;
+  /** Loads assigned and available permissions for one retained role. */
+  readonly loadRolePermissions: (roleId: string) => Promise<void>;
   /** Assigns one permission to one role and reloads both mapping collections. */
   readonly assignPermission: (roleId: string, permissionId: string) => Promise<void>;
   /** Removes one permission from one role and reloads both mapping collections. */
@@ -312,6 +314,23 @@ export function createAdminApplicationRbacController(
     }
   };
 
+  /** Loads both mapping collections before opening the focused management dialog. */
+  const loadRolePermissions = async (roleId: string): Promise<void> => {
+    if (disposed || operation || recoveryRequired || !projection) return;
+    const context = options.readContext();
+    const operations = options.readOperations();
+    if (!operations?.listRolePermissions || !operations.listPermissions) return;
+    const controller = new AbortController();
+    operation = controller;
+    const capturedGeneration = ++generation;
+    publish({ kind: 'loading', previous: projection });
+    try {
+      await reloadMappings(context, roleId, controller, capturedGeneration);
+    } finally {
+      if (operation === controller) operation = undefined;
+    }
+  };
+
   return {
     load,
     reload: load,
@@ -351,6 +370,7 @@ export function createAdminApplicationRbacController(
           operations.deletePermission?.(context.applicationId, permissionId, signal) ??
           Promise.resolve({ kind: 'cancelled' }),
       ),
+    loadRolePermissions,
     assignPermission: (roleId, permissionId) => mutateMapping(roleId, permissionId, false),
     removePermission: (roleId, permissionId) => mutateMapping(roleId, permissionId, true),
     cancelActiveOperation: () => cancel(true),

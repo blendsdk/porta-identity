@@ -23,6 +23,12 @@ import {
 import type { Column, Signal, SortState, Tab } from '@jsvision/ui';
 
 import { formatAdminDateTime } from './admin-date-time.js';
+import { createAdminApplicationRbacWorkspace } from './application-rbac-workspace.js';
+import type {
+  AdminApplicationRbacIntent,
+  AdminApplicationRbacWorkspace,
+} from './application-rbac-workspace.js';
+import type { AdminApplicationRbacViewState } from './rbac-state.js';
 import type { AdminCapabilities } from './state.js';
 import type {
   AdminApplication,
@@ -69,6 +75,8 @@ export interface AdminApplicationWorkspaceOptions {
   readonly capabilities: AdminCapabilities;
   /** Receives closed intents while controllers retain network ownership. */
   readonly onIntent: (intent: AdminApplicationIntent) => void;
+  /** Receives one explicit role or permission action from the selected Application. */
+  readonly onRbacIntent?: (intent: AdminApplicationRbacIntent) => void;
   /** Focuses one mounted JSVision control through the application loop. */
   readonly focusView?: (view: View) => void;
 }
@@ -79,6 +87,8 @@ export interface AdminApplicationWorkspace {
   readonly content: View;
   /** Replaces the complete validated view state. */
   readonly setState: (state: AdminApplicationViewState) => void;
+  /** Replaces the selected Application's validated RBAC state. */
+  readonly setRbacState: (state: AdminApplicationRbacViewState) => void;
   /** Restores focus to the current primary control. */
   readonly focusCurrent: () => void;
   /** Removes retained application state and controls. */
@@ -110,9 +120,6 @@ const MODULE_COLUMNS: Column<AdminApplicationModule>[] = [
   { title: 'Status', accessor: (module) => module.status, width: 10 },
 ];
 
-/** Labels for the logical subviews of one selected Application. */
-const APPLICATION_DETAIL_SECTIONS = ['Overview', 'Modules'] as const;
-
 /** Optional operation status retained alongside a safe workspace projection. */
 interface ProjectionStatus {
   /** Fixed status text safe for terminal rendering. */
@@ -130,11 +137,42 @@ export function createAdminApplicationWorkspace(
   content.resizable = false;
   content.zoomable = false;
   let state: AdminApplicationViewState = { kind: 'closed' };
+  let rbacState: AdminApplicationRbacViewState = { kind: 'closed' };
+  let rbacWorkspace: AdminApplicationRbacWorkspace | undefined;
+  let rbacOwnerKey: string | undefined;
   let currentFocus: View | null = null;
   let disposed = false;
   let focusedApplicationId: string | null = null;
   let detailApplicationId: string | null = null;
   const selectedDetailSection = signal(0);
+
+  /** Releases role and permission pages when their Application owner is no longer current. */
+  const closeRbacWorkspace = (): void => {
+    rbacWorkspace?.dispose();
+    rbacWorkspace = undefined;
+    rbacOwnerKey = undefined;
+  };
+
+  /** Returns pages bound to the exact selected Application and current module catalog. */
+  const applicationRbacWorkspace = (
+    application: AdminApplication,
+    modules: readonly AdminApplicationModule[],
+  ): AdminApplicationRbacWorkspace => {
+    const ownerKey = `${application.id}:${modules.map((module) => `${module.id}:${module.name}`).join('|')}`;
+    if (!rbacWorkspace || rbacOwnerKey !== ownerKey) {
+      closeRbacWorkspace();
+      rbacOwnerKey = ownerKey;
+      rbacWorkspace = createAdminApplicationRbacWorkspace({
+        application,
+        modules,
+        capabilities: options.capabilities,
+        onIntent: (intent) => options.onRbacIntent?.(intent),
+        focusView: options.focusView,
+      });
+      rbacWorkspace.setState(rbacState);
+    }
+    return rbacWorkspace;
+  };
 
   /** Builds an action button whose natural size is resolved by its Layout DSL row. */
   const action = (
@@ -152,6 +190,7 @@ export function createAdminApplicationWorkspace(
     projection: Extract<AdminApplicationProjection, { kind: 'list' }>,
     status?: ProjectionStatus,
   ): void => {
+    closeRbacWorkspace();
     detailApplicationId = null;
     const createAllowed = options.capabilities.canCreateApplications;
     let body: View;
@@ -305,9 +344,7 @@ export function createAdminApplicationWorkspace(
       deactivateModule.measure().width,
     );
     const moduleCount = projection.modules.length;
-    const moduleCountLabel = new Text(
-      `${moduleCount} ${moduleCount === 1 ? 'module' : 'modules'}`,
-    );
+    const moduleCountLabel = new Text(`${moduleCount} ${moduleCount === 1 ? 'module' : 'modules'}`);
     const moduleActionsWidth =
       moduleCountLabel.measure().width +
       addModule.measure().width +
@@ -376,19 +413,19 @@ export function createAdminApplicationWorkspace(
       grow(modules),
       fixed(moduleActionScroller, 3),
     );
+    const rbac = applicationRbacWorkspace(selected, projection.modules);
     /** Wraps a detail subview in the Group required by TabView. */
     const tabPage = (child: View): Group => {
       const page = new Group();
       page.add(cover(child));
       return page;
     };
-    const pages = [overviewPage, modulesPage];
-    const tabs = signal<Tab[]>(
-      APPLICATION_DETAIL_SECTIONS.map((title, index) => ({
-        title,
-        content: tabPage(pages[index]!),
-      })),
-    );
+    const tabs = signal<Tab[]>([
+      { title: 'Overview', content: tabPage(overviewPage) },
+      { title: 'Modules', content: tabPage(modulesPage) },
+      { title: 'Roles', content: rbac.roles },
+      { title: 'Permissions', content: rbac.permissions },
+    ]);
     const tabView = new TabView({ tabs, active: selectedDetailSection });
     content.add(
       cover(
@@ -452,12 +489,19 @@ export function createAdminApplicationWorkspace(
       state = next;
       render();
     },
+    setRbacState(next) {
+      if (disposed) return;
+      rbacState = next;
+      rbacWorkspace?.setState(next);
+    },
     focusCurrent() {
       if (currentFocus) options.focusView?.(currentFocus);
     },
     clear() {
       if (disposed) return;
       state = { kind: 'closed' };
+      rbacState = { kind: 'closed' };
+      closeRbacWorkspace();
       focusedApplicationId = null;
       detailApplicationId = null;
       selectedDetailSection.set(0);
@@ -466,6 +510,8 @@ export function createAdminApplicationWorkspace(
     dispose() {
       if (disposed) return;
       state = { kind: 'closed' };
+      rbacState = { kind: 'closed' };
+      closeRbacWorkspace();
       focusedApplicationId = null;
       detailApplicationId = null;
       selectedDetailSection.set(0);

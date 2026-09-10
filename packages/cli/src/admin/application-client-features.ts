@@ -19,6 +19,8 @@ import type {
   AdminApplicationModule,
   AdminApplicationViewState,
 } from './application-state.js';
+import { createAdminApplicationRbacFeatures } from './application-rbac-features.js';
+import type { AdminApplicationRbacFeatures } from './application-rbac-features.js';
 import { createAdminApplicationWorkspace } from './application-workspace.js';
 import type { AdminApplicationIntent, AdminApplicationWorkspace } from './application-workspace.js';
 import {
@@ -117,6 +119,7 @@ export function createAdminApplicationClientFeatures(
   const publishApplicationState = (state: AdminApplicationViewState): void => {
     applicationState = state;
     applicationWorkspace?.setState(state);
+    applicationRbacFeatures?.syncApplication();
     if (activeWorkspace === 'applications') applicationWorkspace?.focusCurrent();
   };
 
@@ -167,6 +170,7 @@ export function createAdminApplicationClientFeatures(
     options.dialogs.removeAll();
     if (ownedDialog) options.setDialogBusy(false);
     applicationController.cancelActiveOperation();
+    applicationRbacFeatures?.cancelActiveOperation();
     clientController.cancelActiveOperation();
   };
 
@@ -179,9 +183,11 @@ export function createAdminApplicationClientFeatures(
     applicationWorkspace = createAdminApplicationWorkspace({
       capabilities: state.capabilities,
       onIntent: handleApplicationIntent,
+      onRbacIntent: (intent) => applicationRbacFeatures?.handleIntent(intent),
       focusView: options.focusView,
     });
     applicationWorkspace.setState(applicationState);
+    if (applicationRbacFeatures) applicationWorkspace.setRbacState(applicationRbacFeatures.state());
     activeWorkspace = 'applications';
     options.mountWorkspace(applicationWorkspace.content);
   };
@@ -229,6 +235,23 @@ export function createAdminApplicationClientFeatures(
     }
   };
 
+  const applicationRbacFeatures: AdminApplicationRbacFeatures = createAdminApplicationRbacFeatures({
+    dialogs: options.dialogs,
+    readSelection: () =>
+      applicationState.kind === 'detail'
+        ? { application: applicationState.application, modules: applicationState.modules }
+        : undefined,
+    readSession: options.readSession,
+    readSessionEpoch: () => synchronizedSessionEpoch,
+    readCapabilities: () => {
+      const state = options.readState();
+      return state.kind === 'authenticated' ? state.capabilities : undefined;
+    },
+    runDialog,
+    publishState: (state) => applicationWorkspace?.setRbacState(state),
+    requestAuthentication: options.requestAuthentication,
+  });
+
   /** Wraps a controller-owned confirmation with shell dialog-busy reporting. */
   const confirm = async (work: (signal: AbortSignal) => Promise<boolean>): Promise<boolean> => {
     options.setDialogBusy(true);
@@ -268,7 +291,8 @@ export function createAdminApplicationClientFeatures(
     else if (intent.kind === 'back') void clientController.load();
     else if (intent.kind === 'create') void createClient();
     else if (intent.kind === 'edit-name') void editClientName(intent.clientId);
-    else if (intent.kind === 'add-authentication-url') void addClientAuthenticationUrl(intent.clientId);
+    else if (intent.kind === 'add-authentication-url')
+      void addClientAuthenticationUrl(intent.clientId);
     else if (intent.kind === 'edit-authentication-url')
       void editClientAuthenticationUrl(intent.clientId, intent.row);
     else if (intent.kind === 'delete-authentication-url')
@@ -598,6 +622,7 @@ export function createAdminApplicationClientFeatures(
       synchronizedSessionEpoch = state.kind === 'authenticated' ? sessionEpoch : -1;
       synchronizedOrganizationId = nextOrganization;
       hasSynchronizedContext = true;
+      applicationRbacFeatures?.syncApplication();
       if (organizationChanged) {
         workflowGeneration += 1;
         clientWorkspace?.clear();
@@ -632,6 +657,7 @@ export function createAdminApplicationClientFeatures(
     },
     handleRecoverableGeometry(recoverable) {
       applicationController.handleRecoverableGeometry(recoverable);
+      applicationRbacFeatures?.handleRecoverableGeometry(recoverable);
       clientController.handleRecoverableGeometry(recoverable);
       if (!recoverable) this.cancelActiveOperation();
     },
@@ -643,6 +669,7 @@ export function createAdminApplicationClientFeatures(
       dialogController = undefined;
       options.setDialogBusy(false);
       applicationController.dispose();
+      applicationRbacFeatures?.dispose();
       clientController.dispose();
       applicationWorkspace?.dispose();
       clientWorkspace?.dispose();
