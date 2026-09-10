@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 09:47
-> **Progress**: 45/62 tasks (73%)
+> **Last Updated**: 2026-09-10 09:50
+> **Progress**: 46/62 tasks (74%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -170,7 +170,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 ### Step 4.3: Implementation Tests and Hardening
 
 - [x] 4.3.1 Add sorting, selection, focus, cancellation, render-cleanup, remote-validation, capability, lazy-factory, and production-wiring coverage — `packages/cli/tests/admin/application-rbac.impl.test.ts`, `packages/cli/tests/admin/session.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`, `packages/cli/tests/admin/session-wiring.spec.test.ts`, `packages/cli/tests/admin/command.spec.test.ts` ✅ (completed: 2026-09-10 09:47)
-- [ ] 4.3.2 Run focused Application/RBAC Admin UI suites, CLI typecheck, scoped lint, and `yarn test:structure`
+- [x] 4.3.2 Run focused Application/RBAC Admin UI suites, CLI typecheck, scoped lint, and `yarn test:structure` ✅ (completed: 2026-09-10 09:50; 208 focused tests and 97 structure tests pass)
 
 **Verify**: focused CLI Application/RBAC suites, `yarn workspace @portaidentity/cli typecheck`, scoped lint, and `yarn test:structure`
 
