@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-10 11:10
-> **Progress**: 49/62 tasks (79%)
+> **Last Updated**: 2026-09-10 11:12
+> **Progress**: 50/62 tasks (81%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -194,7 +194,7 @@ phase uses immutable specification tests before implementation (AR-1–AR-20).
 **Reference**: [03-04](03-04-admin-ui.md) · AR-5, AR-7, AR-10
 
 - [x] 5.2.1 Add selected-organization/user-owned role controller and focused assigned-role dialog using the shared RBAC adapter — `packages/cli/src/admin/user-role-controller.ts`, `packages/cli/src/admin/user-role-dialog.ts` ✅ (completed: 2026-09-10 11:10)
-- [ ] 5.2.2 Mount the Roles operation through thin User seams using the already-defined role-read, role-assign, and application-read capabilities — `packages/cli/src/admin/user-workspace.ts`
+- [x] 5.2.2 Mount the Roles operation through thin User seams using the already-defined role-read, role-assign, and application-read capabilities — `packages/cli/src/admin/user-workspace.ts` ✅ (completed: 2026-09-10 11:12)
 - [ ] 5.2.3 Wire dialog ownership, late-result cancellation, and definite reauthentication through the existing application/session coordinator — `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts`
 - [ ] 5.2.4 Run the Phase 5 specification file and make ST-39–ST-44 green
 

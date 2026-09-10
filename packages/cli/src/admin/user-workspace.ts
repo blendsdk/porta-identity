@@ -41,6 +41,7 @@ export type AdminUserIntent =
   | { readonly kind: 'history' }
   | { readonly kind: 'retry' }
   | { readonly kind: 'back' }
+  | { readonly kind: 'roles' }
   | { readonly kind: 'edit' }
   | { readonly kind: 'set-password' }
   | { readonly kind: 'clear-password' }
@@ -292,6 +293,9 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       readonly label: string;
       readonly intent: AdminUserIntent;
     }> = [];
+    if (options.capabilities.canReadRoles) {
+      actions.push({ label: 'Roles', intent: { kind: 'roles' } });
+    }
     if (options.capabilities.canUpdateUsers) {
       actions.push({ label: '~E~dit', intent: { kind: 'edit' } });
       actions.push({ label: 'Set password', intent: { kind: 'set-password' } });
@@ -400,6 +404,7 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
       accountSection.add(cover(account));
 
       const primaryKinds = new Set<AdminUserIntent['kind']>([
+        'roles',
         'edit',
         'set-password',
         'clear-password',
