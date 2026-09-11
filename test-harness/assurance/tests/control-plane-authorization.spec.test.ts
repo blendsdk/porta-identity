@@ -47,7 +47,10 @@ test('should enforce the exact actor permission matrix across tenant and global 
   const contract = createTenantAdminBoundariesContract();
 
   for (const expected of controlPlaneAuthorityProfile.cases) {
-    const observed = await contract.observeControlPlaneCase(expected.id);
+    const observed = await contract.observeControlPlaneCase(expected.id).catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : 'unknown failure';
+      throw new Error(`${expected.id}: ${message}`, { cause: error });
+    });
 
     assert.equal(observed.result, expected.result, expected.id);
     if (expected.result !== 'allowed') {
@@ -70,7 +73,10 @@ test('should preserve documented bootstrap super-admin protections', async () =>
   assert.deepEqual(observations.map((entry) => entry.operation).sort(), [
     ...protectedSuperAdminOperations,
   ]);
-  assert.ok(observations.every((entry) => entry.result === 'forbidden'));
+  assert.ok(
+    observations.every((entry) => entry.result === 'forbidden'),
+    JSON.stringify(observations),
+  );
   assert.ok(observations.every((entry) => entry.targetUnchanged));
   assert.deepEqual(nonApplicableSuperAdminOperations, [
     {
