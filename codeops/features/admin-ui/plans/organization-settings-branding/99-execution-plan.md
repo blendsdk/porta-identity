@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 17:55
-> **Progress**: 53/55 tasks (96%)
+> **Last Updated**: 2026-09-11 18:01
+> **Progress**: 54/55 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -235,8 +235,8 @@ covered by focused tests. See `08-phase-quality-review.md`.
 - [x] 4.2.3 Run `yarn workspace @portaidentity/sdk verify` ✅ (completed: 2026-09-11 17:50; 508 tests)
 - [x] 4.2.4 Run `yarn workspace @portaidentity/cli verify` ✅ (completed: 2026-09-11 17:52; 1,227 tests)
 - [x] 4.2.5 Run `yarn test:ui` ✅ (completed: 2026-09-11 17:55; 133 tests)
-- [ ] 4.2.6 Run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy
-- [ ] 4.2.7 After a clean committed implementation revision exists, run `yarn assurance:compat --select tenant-admin` and evaluate its registered outcome taxonomy
+- [!] 4.2.6 Blocked: `yarn assurance:harness --project security --profile production-security` produced clean revision-bound run `37d364b9-94a7-434b-b076-47bfa24ba364` with 6 passed, one product failure, four incomplete, and zero execution failures. Exit 40 is truthful, but the fourth incomplete case (`st56-production-security-mail-error-exposure`) is outside the registry's exact three forwarding-context gaps, so the result is not eligible. The same extra gap exists at the prior fixture-oracle checkpoint and is not caused by this feature. (evaluated: 2026-09-11 18:00)
+- [x] 4.2.7 After a clean committed implementation revision exists, run `yarn assurance:compat --select tenant-admin` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 18:01; run `5ccbc085-8898-425d-8464-a89d29a28d88` passed)
 
 **Verify**: all AR-3 commands above; root `yarn verify` remains prohibited
 
