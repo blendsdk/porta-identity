@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 09:42
-> **Progress**: 4/55 tasks (7%)
+> **Last Updated**: 2026-09-11 09:48
+> **Progress**: 5/55 tasks (9%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -64,7 +64,7 @@ failure remains.
 
 **Reference**: [03-01 §§Persistence and Validation–SDK Contracts](03-01-admin-assets-and-sdk.md#persistence-and-validation) · AR-2
 
-- [ ] 1.2.1 Add the forward-only type-sensitive asset-size constraint with a no-op down; add no legacy-data handling — `packages/server/migrations/027_branding_asset_size_limits.sql`, affected migration tests
+- [x] 1.2.1 Add the forward-only type-sensitive asset-size constraint with a no-op down; add no legacy-data handling — `packages/server/migrations/027_branding_asset_size_limits.sql`, affected migration tests ✅ (completed: 2026-09-11 09:48)
 - [ ] 1.2.2 Route stored bytes through the existing image validator and strengthen exact binary signatures — `packages/server/src/lib/branding-assets.ts`, `packages/server/src/lib/image-validator.ts`
 - [ ] 1.2.3 Add the strict Zod JSON/base64 upload envelope and exact large-body parser branch — `packages/server/src/routes/branding.ts`, `packages/server/src/server.ts`
 - [ ] 1.2.4 Apply the exact production/loopback branding URL rules in existing schemas — `packages/server/src/routes/organizations.ts`, `packages/server/src/organizations/service.ts`
