@@ -62,7 +62,6 @@ import { confirm } from '../../src/prompt.js';
 // Test data
 // ---------------------------------------------------------------------------
 
-
 const sampleOrg = {
   id: 'org-uuid-1234-5678-abcd',
   name: 'Acme Corp',
@@ -263,7 +262,10 @@ describe('org command', () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       mockOrganizations.update.mockResolvedValue(sampleOrg);
 
-      await invokeSubcommand('update', { _pos_: 'acme-corp', 'login-methods': 'password,magic_link' });
+      await invokeSubcommand('update', {
+        _pos_: 'acme-corp',
+        'login-methods': 'password,magic_link',
+      });
 
       expect(mockOrganizations.update).toHaveBeenCalledWith(
         sampleOrg.id,
@@ -359,15 +361,16 @@ describe('org command', () => {
     });
 
     it('shows history in JSON format', async () => {
-      const history = [{
-        id: 'h1',
-        eventType: 'org.updated',
-        actorId: null,
-        metadata: { name: 'New' },
-        createdAt: '2024-01-02T00:00:00Z',
-      }];
+      const history = [
+        {
+          id: 'h1',
+          eventType: 'org.updated',
+          actorId: null,
+          metadata: { name: 'New' },
+          createdAt: '2024-01-02T00:00:00Z',
+        },
+      ];
       mockOrganizations.getHistory.mockResolvedValue(history);
-
 
       await invokeSubcommand('history', { _pos_: 'acme-corp', json: true });
 
@@ -387,8 +390,9 @@ describe('org command', () => {
     it('updates branding settings', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       mockBranding.updateSettings.mockResolvedValue({
-        primaryColor: '#ff0000',
-        companyName: 'Acme Updated',
+        ...sampleOrg,
+        brandingPrimaryColor: '#ff0000',
+        brandingCompanyName: 'Acme Updated',
       });
 
       await invokeSubcommand('branding', {
@@ -408,6 +412,24 @@ describe('org command', () => {
 
       expect(success).toHaveBeenCalledWith(expect.stringContaining('Branding updated'));
     });
-  });
 
+    it('prints the updated organization response as JSON', async () => {
+      const updatedOrganization = {
+        ...sampleOrg,
+        brandingPrimaryColor: '#ff0000',
+        brandingCompanyName: 'Acme Updated',
+      };
+      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
+      mockBranding.updateSettings.mockResolvedValue(updatedOrganization);
+
+      await invokeSubcommand('branding', {
+        _pos_: 'acme-corp',
+        'primary-color': '#ff0000',
+        'company-name': 'Acme Updated',
+        json: true,
+      });
+
+      expect(printJson).toHaveBeenCalledWith(updatedOrganization);
+    });
+  });
 });

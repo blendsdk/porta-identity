@@ -393,7 +393,6 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     h.metadata ? JSON.stringify(h.metadata) : '—',
                   ]),
                 );
-
               }
             } catch (err) {
               handleError(err, argv.verbose);
@@ -429,15 +428,14 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const client = createClient(argv);
               const { data: org } = await client.organizations.get(argv['id-or-slug']);
 
-              const result = await client.branding.updateSettings(org.id, {
+              const updatedOrganization = await client.branding.updateSettings(org.id, {
                 primaryColor: argv['primary-color'],
                 companyName: argv['company-name'],
                 customCss: argv['custom-css'],
               });
 
-
               if (argv.json) {
-                printJson(result);
+                printJson(updatedOrganization);
               } else {
                 success(`Branding updated for: ${org.name} (${org.slug})`);
               }
