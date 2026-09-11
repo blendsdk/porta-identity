@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 09:30
-> **Progress**: 2/55 tasks (4%)
+> **Last Updated**: 2026-09-11 09:37
+> **Progress**: 3/55 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -52,7 +52,7 @@ adds no optimistic concurrency, generalized infrastructure, or optional feature.
 
 - [x] 1.1.1 [spec-author] Write Admin route/base64/URL/RBAC specifications from ST-1 and ST-3–ST-8, ST-10–ST-11 — `packages/server/tests/unit/routes/branding-rd06.spec.test.ts` ✅ (completed: 2026-09-11 09:23)
 - [x] 1.1.2 [spec-author] Write real PostgreSQL size, replacement, isolation, and validation specifications from ST-2–ST-4 and ST-7–ST-9 — `packages/server/tests/integration/services/branding-assets-rd06.spec.test.ts` ✅ (completed: 2026-09-11 09:30)
-- [ ] 1.1.3 [spec-author] Write SDK runtime and compile-time branding specifications from ST-12 — `packages/sdk/tests/domains/branding-rd06.spec.test.ts`, `packages/sdk/tests/type-contracts/branding-rd06.spec.test.ts`
+- [x] 1.1.3 [spec-author] Write SDK runtime and compile-time branding specifications from ST-12 — `packages/sdk/tests/domains/branding-rd06.spec.test.ts`, `packages/sdk/tests/type-contracts/branding-rd06.spec.test.ts` ✅ (completed: 2026-09-11 09:37)
 - [ ] 1.1.4 Run the Phase 1 specification files/type-contract project and record the expected red result before implementation
 
 ### Step 1.2: Implementation
