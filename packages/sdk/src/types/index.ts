@@ -21,7 +21,6 @@ export type {
   LoginMethod,
   CreateOrganizationInput,
   UpdateOrganizationInput,
-  BrandingInput,
 } from './organizations.js';
 
 // Applications
@@ -116,7 +115,12 @@ export type {
 } from './bulk.js';
 
 // Branding
-export type { BrandingAssets } from './branding.js';
+export type {
+  BrandingAsset,
+  BrandingAssetContentType,
+  BrandingAssetUploadInput,
+  UpdateBrandingSettingsInput,
+} from './branding.js';
 
 // Exports
 export type { ExportEntityType, ExportFormat, ExportParams } from './exports.js';

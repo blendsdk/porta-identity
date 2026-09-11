@@ -74,12 +74,3 @@ export interface UpdateOrganizationInput {
   defaultLoginMethods?: LoginMethod[];
   branding?: OrganizationBrandingInput;
 }
-
-// ---------------------------------------------------------------------------
-// Branding
-// ---------------------------------------------------------------------------
-
-export interface BrandingInput {
-  logo?: Blob | Buffer;
-  favicon?: Blob | Buffer;
-}
