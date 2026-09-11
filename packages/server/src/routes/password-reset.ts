@@ -646,10 +646,7 @@ async function renderErrorPageForAuth(
       errorMessage,
     };
 
-    const html = await renderPage('error', context);
-    ctx.status = 400;
-    ctx.type = 'text/html';
-    ctx.body = html;
+    await renderAndRespond(ctx, 'error', context, 400);
   } catch {
     logger.error({ event: 'auth-error-render-failed' }, 'Authentication error page failed');
     ctx.status = 500;
