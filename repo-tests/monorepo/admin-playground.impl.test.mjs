@@ -38,15 +38,16 @@ test('should preserve the developer-selected HTTPS port through nginx', () => {
 });
 
 test('should pin Compose identity against environment overrides', () => {
+  const composeName = parse(read('docker/admin-playground/compose.yml')).name;
   const rendered = JSON.parse(
     execFileSync(
       'docker',
       [
         'compose',
         '--project-name',
-        'porta-admin-playground',
+        composeName,
         '-f',
-        'docker/admin-playground/compose.yml',
+        '-',
         'config',
         '--format',
         'json',
@@ -55,10 +56,11 @@ test('should pin Compose identity against environment overrides', () => {
         cwd: repositoryRoot,
         encoding: 'utf8',
         env: { ...process.env, COMPOSE_PROJECT_NAME: 'unsafe-override' },
+        input: `name: ${composeName}\nservices:\n  placeholder:\n    image: scratch\n`,
       },
     ),
   );
-  assert.equal(rendered.name, 'porta-admin-playground');
+  assert.equal(rendered.name, composeName);
 });
 
 test('should keep the packed journey on trusted TLS', () => {
