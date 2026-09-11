@@ -4,49 +4,44 @@
  * Manages organization logo and favicon image uploads stored as PostgreSQL
  * bytea. Images are validated for type, size, and content before storage.
  *
- * Supported formats: PNG, SVG, ICO, JPEG, WebP
- * Max file size: 512 KB
+ * Supported formats: PNG, SVG, ICO, JPEG, and WebP.
  *
  * @module branding-assets
- * @see 06-bulk-operations-branding.md
  */
 
 import { getPool } from './database.js';
+import { validateImage } from './image-validator.js';
 
 // ============================================================================
 // Types
 // ============================================================================
 
+/** Branding image slot owned by an organization. */
 export type AssetType = 'logo' | 'favicon';
 
+/** Metadata returned for a stored organization branding asset. */
 export interface BrandingAsset {
+  /** Stable asset identifier. */
   id: string;
+  /** Organization that owns the asset. */
   organizationId: string;
+  /** Branding slot occupied by the asset. */
   assetType: AssetType;
+  /** Media type confirmed from the stored content. */
   contentType: string;
+  /** Number of decoded bytes stored in PostgreSQL. */
   fileSize: number;
+  /** Time at which the asset row was created. */
   createdAt: Date;
+  /** Time at which the asset content was last replaced. */
   updatedAt: Date;
 }
 
+/** Stored branding metadata together with its validated binary content. */
 export interface BrandingAssetWithData extends BrandingAsset {
+  /** Validated image bytes. SVG bytes contain the sanitized representation. */
   data: Buffer;
 }
-
-// ============================================================================
-// Constants
-// ============================================================================
-
-const MAX_FILE_SIZE = 524288; // 512 KB
-
-const ALLOWED_CONTENT_TYPES = new Set([
-  'image/png',
-  'image/svg+xml',
-  'image/x-icon',
-  'image/vnd.microsoft.icon',
-  'image/jpeg',
-  'image/webp',
-]);
 
 // ============================================================================
 // Service functions
@@ -56,7 +51,12 @@ const ALLOWED_CONTENT_TYPES = new Set([
  * Upload (upsert) a branding asset for an organization.
  * If an asset of the same type already exists, it is replaced.
  *
- * @throws Error if content type is not allowed or file too large
+ * @param organizationId - Organization that owns the asset.
+ * @param assetType - Branding slot to create or replace.
+ * @param contentType - Declared image media type.
+ * @param data - Decoded image bytes supplied by the caller.
+ * @returns Metadata for the stored asset.
+ * @throws Error when the image type, size, signature, or SVG content is invalid.
  */
 export async function uploadAsset(
   organizationId: string,
@@ -64,17 +64,12 @@ export async function uploadAsset(
   contentType: string,
   data: Buffer,
 ): Promise<BrandingAsset> {
-  if (!ALLOWED_CONTENT_TYPES.has(contentType)) {
-    throw new Error(`Unsupported content type: ${contentType}. Allowed: ${[...ALLOWED_CONTENT_TYPES].join(', ')}`);
+  const validation = validateImage(data, contentType, assetType);
+  if (!validation.valid || validation.data === undefined) {
+    throw new Error(validation.error ?? 'Branding asset is invalid');
   }
 
-  if (data.length === 0) {
-    throw new Error('Asset data cannot be empty');
-  }
-
-  if (data.length > MAX_FILE_SIZE) {
-    throw new Error(`File too large: ${data.length} bytes (max ${MAX_FILE_SIZE})`);
-  }
+  const validatedData = validation.data;
 
   const pool = getPool();
   const { rows } = await pool.query<BrandingAsset>(
@@ -88,7 +83,7 @@ export async function uploadAsset(
      RETURNING id, organization_id AS "organizationId", asset_type AS "assetType",
                content_type AS "contentType", file_size AS "fileSize",
                created_at AS "createdAt", updated_at AS "updatedAt"`,
-    [organizationId, assetType, contentType, data, data.length],
+    [organizationId, assetType, contentType, validatedData, validatedData.length],
   );
 
   return rows[0];
@@ -97,6 +92,10 @@ export async function uploadAsset(
 /**
  * Get a branding asset with its binary data.
  * Returns null if no asset exists.
+ *
+ * @param organizationId - Organization that owns the asset.
+ * @param assetType - Branding slot to read.
+ * @returns Stored metadata and bytes, or `null` when the slot is empty.
  */
 export async function getAsset(
   organizationId: string,
@@ -115,7 +114,10 @@ export async function getAsset(
 }
 
 /**
- * List branding assets for an organization (metadata only, no binary data).
+ * List branding assets for an organization without loading binary data.
+ *
+ * @param organizationId - Organization whose asset metadata is requested.
+ * @returns Metadata ordered by branding slot.
  */
 export async function listAssets(organizationId: string): Promise<BrandingAsset[]> {
   const pool = getPool();
@@ -134,11 +136,12 @@ export async function listAssets(organizationId: string): Promise<BrandingAsset[
 /**
  * Delete a branding asset.
  * Returns true if the asset existed and was deleted.
+ *
+ * @param organizationId - Organization that owns the asset.
+ * @param assetType - Branding slot to remove.
+ * @returns Whether an asset row was removed.
  */
-export async function deleteAsset(
-  organizationId: string,
-  assetType: AssetType,
-): Promise<boolean> {
+export async function deleteAsset(organizationId: string, assetType: AssetType): Promise<boolean> {
   const pool = getPool();
   const { rowCount } = await pool.query(
     `DELETE FROM branding_assets WHERE organization_id = $1 AND asset_type = $2`,

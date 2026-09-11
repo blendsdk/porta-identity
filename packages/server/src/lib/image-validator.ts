@@ -8,18 +8,20 @@
  * - SVG-based XSS via embedded scripts or event handlers
  *
  * @module image-validator
- * @see 06-bulk-operations-branding.md
  */
 
 // ============================================================================
 // Types
 // ============================================================================
 
+/** Branding image slot whose size limit should be enforced. */
 export type AssetType = 'logo' | 'favicon';
 
 /** Result of image validation — either valid or contains an error message */
 export interface ImageValidationResult {
+  /** Whether the supplied bytes satisfy every validation rule. */
   valid: boolean;
+  /** Human-readable validation failure for trusted internal callers. */
   error?: string;
   /** The detected content type from magic bytes (may differ from declared) */
   detectedType?: string;
@@ -34,22 +36,48 @@ export interface ImageValidationResult {
 // ============================================================================
 
 /** Size limits per asset type (in bytes) */
-const SIZE_LIMITS: Record<AssetType, number> = {
-  logo: 2 * 1024 * 1024,    // 2 MB — logos can be larger for hi-DPI
-  favicon: 512 * 1024,       // 512 KB — favicons should be small
+const SIZE_LIMITS: Readonly<Record<AssetType, number>> = {
+  logo: 2 * 1024 * 1024,
+  favicon: 512 * 1024,
 };
+
+interface SignatureSegment {
+  /** Byte offset at which this signature segment begins. */
+  readonly offset: number;
+  /** Exact bytes required at the offset. */
+  readonly bytes: readonly number[];
+}
+
+interface ImageSignature {
+  /** Media type recognized by this signature. */
+  readonly type: string;
+  /** Segments that together identify the image container. */
+  readonly segments: readonly SignatureSegment[];
+}
 
 /**
  * Magic byte signatures for supported image formats.
  * Each entry maps a content type to its expected leading bytes.
  * SVG is XML-based and has no magic bytes — validated separately.
  */
-const MAGIC_SIGNATURES: Array<{ type: string; bytes: number[] }> = [
-  { type: 'image/png', bytes: [0x89, 0x50, 0x4E, 0x47] },
-  { type: 'image/jpeg', bytes: [0xFF, 0xD8, 0xFF] },
-  { type: 'image/webp', bytes: [0x52, 0x49, 0x46, 0x46] },
-  { type: 'image/x-icon', bytes: [0x00, 0x00, 0x01, 0x00] },
-  { type: 'image/vnd.microsoft.icon', bytes: [0x00, 0x00, 0x01, 0x00] },
+const MAGIC_SIGNATURES: readonly ImageSignature[] = [
+  {
+    type: 'image/png',
+    segments: [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
+  },
+  { type: 'image/jpeg', segments: [{ offset: 0, bytes: [0xff, 0xd8] }] },
+  {
+    type: 'image/webp',
+    segments: [
+      { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] },
+      { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
+    ],
+  },
+  { type: 'image/x-icon', segments: [{ offset: 0, bytes: [0x00, 0x00, 0x01, 0x00] }] },
+  {
+    type: 'image/vnd.microsoft.icon',
+    segments: [{ offset: 0, bytes: [0x00, 0x00, 0x01, 0x00] }],
+  },
 ];
 
 /** Content types that are allowed for upload */
@@ -148,17 +176,17 @@ function validateMagicBytes(buffer: Buffer, contentType: string): ImageValidatio
     return { valid: true, detectedType: contentType, data: buffer };
   }
 
-  // Check that buffer is at least long enough for the signature
-  if (buffer.length < signature.bytes.length) {
+  const requiredLength = Math.max(
+    ...signature.segments.map((segment) => segment.offset + segment.bytes.length),
+  );
+  if (buffer.length < requiredLength) {
     return {
       valid: false,
       error: `File too small to be a valid ${contentType} image`,
     };
   }
 
-  // Compare magic bytes
-  const matches = signature.bytes.every((byte, i) => buffer[i] === byte);
-  if (!matches) {
+  if (!matchesSignature(buffer, signature)) {
     // Try to detect what the file actually is
     const detected = detectContentType(buffer);
     return {
@@ -186,7 +214,10 @@ function validateAndSanitizeSvg(buffer: Buffer): ImageValidationResult {
 
   // Basic SVG structure check — must contain an <svg element
   if (!/<svg[\s>]/i.test(content)) {
-    return { valid: false, error: 'File does not appear to be a valid SVG (no <svg> element found)' };
+    return {
+      valid: false,
+      error: 'File does not appear to be a valid SVG (no <svg> element found)',
+    };
   }
 
   // Sanitize: strip dangerous elements and attributes
@@ -231,12 +262,16 @@ function validateAndSanitizeSvg(buffer: Buffer): ImageValidationResult {
  */
 function detectContentType(buffer: Buffer): string | null {
   for (const sig of MAGIC_SIGNATURES) {
-    if (buffer.length >= sig.bytes.length) {
-      const matches = sig.bytes.every((byte, i) => buffer[i] === byte);
-      if (matches) return sig.type;
-    }
+    if (matchesSignature(buffer, sig)) return sig.type;
   }
   return null;
+}
+
+/** Return whether every required segment is present at its exact byte offset. */
+function matchesSignature(buffer: Buffer, signature: ImageSignature): boolean {
+  return signature.segments.every((segment) =>
+    segment.bytes.every((byte, index) => buffer[segment.offset + index] === byte),
+  );
 }
 
 /**
