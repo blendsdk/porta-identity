@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-10
+> **Last Updated**: 2026-09-11
 
 ## Overview
 
@@ -147,6 +147,18 @@ The admin API authenticates against Porta's own OIDC tokens:
 This self-authentication pattern means Porta has **no external auth dependency** for its admin API.
 Missing, expired, revoked, or rejected tokens receive a fixed authentication failure without
 revealing lookup details.
+
+### Admin mutation request admission
+
+Admin CORS and the existing per-IP mutation rate limiter run before request-body parsing and Admin
+authentication. This order lets browser preflight requests complete without credentials and rejects
+rate-limited uploads before allocating their JSON bodies. Ordinary parsed routes retain the 100 KiB
+limit. Only exact logo/favicon `PUT` routes receive the 3 MiB encoded-body allowance needed for a
+2 MiB logo represented as base64.
+
+Authentication and operation-specific permission checks still run before resource lookup. Branding
+asset routes then validate and resolve the organization, so callers without the required capability
+cannot use response differences to discover organization existence.
 
 ### Magic Link Authentication
 

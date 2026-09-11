@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-10
+> **Last Updated**: 2026-09-11
 
 ## Overview
 
@@ -102,8 +102,31 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `stats.ts`         | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
 | `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
 | `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
-| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | —         | Logo/favicon upload (bytea)                    |
+| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
 | `exports.ts`       | `/api/admin/export/:entityType`                       | —         | CSV/JSON data export                           |
+
+### Organization branding assets
+
+Branding assets are direct organization subresources:
+
+| Method   | Route                                            | Result                              | Permission         |
+| -------- | ------------------------------------------------ | ----------------------------------- | ------------------ |
+| `GET`    | `/api/admin/organizations/:orgId/branding`       | Stored asset metadata               | `admin:org:read`   |
+| `GET`    | `/api/admin/organizations/:orgId/branding/:type` | Protected image bytes               | `admin:org:read`   |
+| `PUT`    | `/api/admin/organizations/:orgId/branding/:type` | Stored metadata after create/update | `admin:org:update` |
+| `DELETE` | `/api/admin/organizations/:orgId/branding/:type` | `204`                               | `admin:org:update` |
+
+`type` is exactly `logo` or `favicon`. Uploads use a strict JSON object containing standard
+base64 `data` and one allowed `contentType`. The server decodes once, verifies the actual PNG,
+JPEG, WebP, ICO, or sanitized SVG content, and stores the verified bytes. Logo data is limited to
+2 MiB and favicon data to 512 KiB. Invalid content receives one fixed `400`; database and other
+operational failures continue through the global sanitized server-error boundary.
+
+After permission checks, every operation validates the organization UUID and resolves the existing
+organization before touching asset storage. Invalid and missing organization identifiers therefore
+share the same `404` boundary. The SDK mirrors these four routes with `listAssets`, `getAsset`,
+`uploadAsset`, and `deleteAsset`; `updateSettings` uses the existing organization branding-settings
+route and returns the complete updated organization.
 
 ## Authentication
 

@@ -1,10 +1,10 @@
 # Data Model
 
-> **Last Updated**: 2026-09-06
+> **Last Updated**: 2026-09-11
 
 ## Overview
 
-Porta's data model is defined across 25 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
+Porta's data model is defined across 27 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
 
 ## Entity Relationship Diagram
 
@@ -336,20 +336,25 @@ when the acting user deletes their own account. Metadata excludes secrets, proto
 affected-user lists, cache keys, and raw errors. The existing automated retention policy from
 migration 017 remains authoritative.
 
-### Branding Assets (Migration 018)
+### Branding Assets (Migrations 018 and 027)
 
 Binary storage for organization logos and favicons.
 
-| Column                      | Type         | Description                    |
-| --------------------------- | ------------ | ------------------------------ |
-| `id`                        | UUID         | Primary key                    |
-| `organization_id`           | UUID         | FK → organizations             |
-| `asset_type`                | VARCHAR(20)  | `logo` or `favicon`            |
-| `data`                      | BYTEA        | Binary image data (max 512 KB) |
-| `mime_type`                 | VARCHAR(100) | Image MIME type                |
-| `created_at` / `updated_at` | TIMESTAMPTZ  | Auto-managed timestamps        |
+| Column                      | Type        | Description                             |
+| --------------------------- | ----------- | --------------------------------------- |
+| `id`                        | UUID        | Primary key                             |
+| `organization_id`           | UUID        | FK → organizations with cascade delete  |
+| `asset_type`                | VARCHAR(20) | `logo` or `favicon`                     |
+| `content_type`              | VARCHAR(50) | Verified image media type               |
+| `data`                      | BYTEA       | Validated binary or sanitized SVG bytes |
+| `file_size`                 | INTEGER     | Stored byte length                      |
+| `created_at` / `updated_at` | TIMESTAMPTZ | Auto-managed timestamps                 |
 
-**Key constraint**: Unique index on `(organization_id, asset_type)` — one logo and one favicon per organization.
+The unique `(organization_id, asset_type)` constraint permits one logo and one favicon per
+organization. Migration 027 replaces the original shared 512 KiB ceiling with type-sensitive
+limits: logos are at most 2 MiB, favicons are at most 512 KiB, and every stored asset must contain
+at least one byte. The migration is forward-only because reducing the limit could invalidate logos
+accepted after deployment.
 
 ### Admin Sessions (Migration 018)
 
