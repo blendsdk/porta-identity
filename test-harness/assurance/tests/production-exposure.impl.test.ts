@@ -12,6 +12,7 @@ import {
   exposesInternalDetail,
   headerContractObserved,
   htmlInteractionBoundToPath,
+  htmlPolicyRetainedAcrossResponses,
   normalizePublicHeaders,
 } from '../production-exposure/response-classifier.js';
 import {
@@ -257,6 +258,32 @@ test('should retain interaction identity while per-response CSRF tokens rotate',
   assert.equal(htmlInteractionBoundToPath(first, '/interaction/expected'), true);
   assert.equal(htmlInteractionBoundToPath(second, '/interaction/expected'), true);
   assert.equal(htmlInteractionBoundToPath(foreign, '/interaction/expected'), false);
+});
+
+test('should require the HTML security policy on both interaction reads', () => {
+  const missingFirstPolicy = boundedPublicResponse(200, { 'x-frame-options': 'DENY' }, '<html/>');
+  const completePolicy = boundedPublicResponse(
+    200,
+    {
+      'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+      'x-frame-options': 'DENY',
+    },
+    '<html/>',
+  );
+  const contracts = [
+    "content-security-policy-includes:default-src 'none'",
+    "content-security-policy-includes:frame-ancestors 'none'",
+    'x-frame-options:DENY',
+  ];
+
+  assert.equal(
+    htmlPolicyRetainedAcrossResponses([missingFirstPolicy, completePolicy], contracts),
+    false,
+  );
+  assert.equal(
+    htmlPolicyRetainedAcrossResponses([completePolicy, completePolicy], contracts),
+    true,
+  );
 });
 
 test('should restore the exact owned dependency when the probe fails', async () => {

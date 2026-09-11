@@ -63,6 +63,20 @@ export function htmlInteractionBoundToPath(
   );
 }
 
+/** Verifies that both reads of one HTML interaction retain every required response policy. */
+export function htmlPolicyRetainedAcrossResponses(
+  responses: readonly BoundedPublicResponse[],
+  contracts: readonly string[],
+  configuredOrigin = 'https://app-harness.ci.portaidentity.com',
+): boolean {
+  return (
+    responses.length === 2 &&
+    responses.every((response) =>
+      contracts.every((contract) => headerContractObserved(contract, response, configuredOrigin)),
+    )
+  );
+}
+
 /** Returns whether the public response contains internal or protected implementation detail. */
 export function exposesInternalDetail(response: BoundedPublicResponse): boolean {
   const material = `${response.body}\n${Object.entries(response.headers)

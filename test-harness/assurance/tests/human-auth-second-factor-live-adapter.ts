@@ -2,6 +2,7 @@ import { chromium, type Browser, type BrowserContext, type Page } from '@playwri
 import { z } from 'zod';
 
 import {
+  emailOtpMailInventory,
   independentTotpValue,
   mailhogInventoryPath,
   pollForExactHumanAuthMailValue,
@@ -19,7 +20,12 @@ const mailSchema = z.object({
   total: z.number().int().nonnegative(),
   items: z.array(
     z.object({
-      Content: z.object({ Body: z.string().optional() }).optional(),
+      Content: z
+        .object({
+          Body: z.string().optional(),
+          Headers: z.object({ Subject: z.array(z.string()).optional() }).optional(),
+        })
+        .optional(),
       Raw: z.object({ Data: z.string().optional() }).optional(),
     }),
   ),
@@ -68,10 +74,12 @@ async function waitForOtp(context: LiveTenantAdminContext, recipient: string): P
     intervalMilliseconds: 200,
     read: async () => {
       const inventory = await readMail(context, recipient);
-      return {
-        count: inventory.total,
-        bodies: inventory.items.map((entry) => entry.Content?.Body ?? entry.Raw?.Data ?? ''),
-      };
+      return emailOtpMailInventory(
+        inventory.items.map((entry) => ({
+          subjects: entry.Content?.Headers?.Subject ?? [],
+          body: entry.Content?.Body ?? entry.Raw?.Data ?? '',
+        })),
+      );
     },
     extract: (body) => [...body.matchAll(/\b(\d{6})\b/gu)].flatMap((match) => match[1] ?? []),
   });

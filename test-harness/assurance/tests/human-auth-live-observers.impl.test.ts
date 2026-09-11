@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   configuredLifetimeObserved,
+  emailOtpMailInventory,
   humanAuthDiagnostic,
   independentTotpValue,
   mailhogInventoryPath,
@@ -47,6 +48,16 @@ test('should scope synthetic mailbox reads to the exact recipient', () => {
   assert.equal(
     mailhogInventoryPath('otp+test@test-harness.local'),
     '/api/v2/search?kind=to&query=otp%2Btest%40test-harness.local',
+  );
+});
+
+test('should count only OTP messages within a recipient mailbox', () => {
+  assert.deepEqual(
+    emailOtpMailInventory([
+      { subjects: ['Reset your password'], body: 'Recovery message' },
+      { subjects: ['Your verification code: 123456'], body: 'Code 123456' },
+    ]),
+    { count: 1, bodies: ['Code 123456'] },
   );
 });
 

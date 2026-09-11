@@ -25,6 +25,7 @@ import {
   exposesBodyInternalDetail,
   headerContractObserved,
   htmlInteractionBoundToPath,
+  htmlPolicyRetainedAcrossResponses,
   type BoundedPublicResponse,
 } from './response-classifier.js';
 import { OwnedDependencyController, type InterruptibleService } from './service-controller.js';
@@ -259,9 +260,12 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     );
     const configuredOrigin = new URL(this.admin.endpoints.app).origin;
     const recoveryPassed =
+      controlResponse.status === requirement.control.expectedStatus &&
       probeResponse.status === requirement.expected.status &&
-      requirement.expected.headerContract.every((contract) =>
-        headerContractObserved(contract, probeResponse, configuredOrigin),
+      htmlPolicyRetainedAcrossResponses(
+        [controlResponse, probeResponse],
+        requirement.expected.headerContract,
+        configuredOrigin,
       );
     return this.buildObservation(
       requirement,

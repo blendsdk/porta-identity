@@ -1,7 +1,7 @@
 # Organization Settings and Branding Phase Quality Review
 
 > **Status**: Final review corrections in verification
-> **Last Updated**: 2026-09-11 21:18
+> **Last Updated**: 2026-09-11 21:42
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Admin Asset and SDK Contracts
@@ -113,3 +113,15 @@ password-reset recovery email from the earlier production-exposure slice could a
 email-OTP slice, whose observer counted the whole shared MailHog mailbox. The bounded correction
 queries the existing MailHog recipient search for the exact OTP fixture address. It still rejects
 duplicate OTP deliveries to that recipient and adds no production behavior or infrastructure.
+
+### Final Bounded Re-review
+
+The bounded re-review found two Major assurance gaps and no Critical findings:
+
+| ID        | Finding                                                                                    | Correction                                                                                                                        | Ruling      |
+| --------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| P4-RR-001 | Recipient filtering alone still admitted delayed password-reset mail sent to the same user | Within the recipient result, count only messages whose stable subject identifies an OTP; continue rejecting multiple OTP messages | ✅ Accepted |
+| P4-RR-002 | Repeated CSP recovery checked required headers only on the second interaction response     | Require every expected security-header contract on both interaction responses                                                     | ✅ Accepted |
+
+Both corrections remain in the existing observers. They add no production behavior, service,
+retry, or generalized mail framework.
