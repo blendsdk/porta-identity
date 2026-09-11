@@ -139,6 +139,8 @@ export function createAdminOrganizationWorkspace(
   content.background = 'dialog';
   let state: AdminOrganizationWorkspaceState = { kind: 'closed' };
   let currentFocus: View | null = null;
+  let currentTabs: TabView | undefined;
+  let tabFocus: readonly (View | null)[] = [];
   const selectedTab = signal(0);
 
   /** Builds a labelled one-row field with a stable label column. */
@@ -222,7 +224,12 @@ export function createAdminOrganizationWorkspace(
         fixed(row({ gap: 1 }, save, spacer(), lifecycle), 2),
       ),
     );
-    currentFocus = canUpdate ? nameInput : lifecycle;
+    currentFocus =
+      canUpdate || (canLifecycle && !(organization.status === 'active' && organization.isSuperAdmin))
+        ? canUpdate
+          ? nameInput
+          : lifecycle
+        : null;
     return page;
   };
 
@@ -287,6 +294,7 @@ export function createAdminOrganizationWorkspace(
         });
       },
     });
+    tabFocus = [tabFocus[0] ?? null, enabled ? methodChoices : null, tabFocus[2] ?? null];
     return tabPage(
       col(
         { gap: 0, padding: 1 },
@@ -372,6 +380,7 @@ export function createAdminOrganizationWorkspace(
       disabled: () => !enabled || !valid() || Object.keys(changes()).length === 0,
       onClick: () => options.onIntent({ kind: 'save-branding', input: changes() }),
     });
+    tabFocus = [tabFocus[0] ?? null, tabFocus[1] ?? null, enabled ? inputs.companyName : null];
     const assetRow = (label: string, type: 'logo' | 'favicon'): Group => {
       const asset: AdminOrganizationAsset | undefined = projection.assets.find(
         (candidate) => candidate.assetType === type,
@@ -412,9 +421,12 @@ export function createAdminOrganizationWorkspace(
 
   /** Renders all tabs from one retained authoritative projection. */
   const renderProjection = (projection: AdminOrganizationWorkspaceProjection): void => {
+    tabFocus = [];
     const pending = state.kind === 'ready' && state.pendingTabs?.includes('overview') === true;
+    const overview = overviewPage(projection.organization, pending);
+    tabFocus = [currentFocus, null, null];
     const tabs: Signal<Tab[]> = signal([
-      { title: 'Overview', content: overviewPage(projection.organization, pending) },
+      { title: 'Overview', content: overview },
       {
         title: 'Authentication',
         content: authenticationPage(
@@ -431,6 +443,7 @@ export function createAdminOrganizationWorkspace(
       },
     ]);
     const tabView = new TabView({ tabs, active: selectedTab });
+    currentTabs = tabView;
     const status =
       state.kind === 'ready' && state.failure
         ? FAILURE_LABELS[state.failure]
@@ -452,6 +465,8 @@ export function createAdminOrganizationWorkspace(
   const render = (): void => {
     for (const child of [...content.children]) content.remove(child);
     currentFocus = null;
+    currentTabs = undefined;
+    tabFocus = [];
     if (state.kind === 'closed') return;
     if (state.kind === 'ready') {
       content.title.set(`${state.organization.name} — Organization`);
@@ -475,7 +490,8 @@ export function createAdminOrganizationWorkspace(
       render();
     },
     focusCurrent() {
-      if (currentFocus) options.focusView?.(currentFocus);
+      const focus = currentTabs ? tabFocus[selectedTab.peek()] ?? currentTabs.strip : currentFocus;
+      if (focus) options.focusView?.(focus);
     },
     clear() {
       state = { kind: 'closed' };
