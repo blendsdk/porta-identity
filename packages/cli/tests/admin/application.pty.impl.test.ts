@@ -54,14 +54,14 @@ async function waitForTerminal(output: () => string): Promise<void> {
 function startPty(
   home: string,
   pidPath?: string,
-  startUndersized = false,
+  geometry: { readonly width: number; readonly height: number } = { width: 80, height: 24 },
 ): {
   readonly child: ChildProcessWithoutNullStreams;
   readonly output: () => string;
   readonly result: Promise<PtyResult>;
 } {
   const pidPrefix = pidPath ? `printf '%s' "$$" > ${shellPath(pidPath)}; ` : '';
-  const sizePrefix = startUndersized ? 'stty rows 6 cols 24; ' : '';
+  const sizePrefix = `stty rows ${geometry.height} cols ${geometry.width}; `;
   const command = `${pidPrefix}${sizePrefix}exec ${shellPath(process.execPath)} ${shellPath(cliEntry)} admin --server https://porta.example.test`;
   const child = spawn(scriptExecutable, ['-qfec', command, '/dev/null'], {
     cwd: repositoryRoot,
@@ -110,7 +110,7 @@ describe.skipIf(process.platform === 'win32')('compiled admin PTY lifecycle', ()
 
   it('should restore the terminal from the resize-only presentation', async () => {
     const home = await mkdtemp(resolve(tmpdir(), 'porta-admin-small-pty-'));
-    const process_ = startPty(home, undefined, true);
+    const process_ = startPty(home, undefined, { width: 24, height: 6 });
     try {
       await waitForTerminal(process_.output);
       process_.child.stdin.write('\u001bx');
@@ -119,6 +119,24 @@ describe.skipIf(process.platform === 'win32')('compiled admin PTY lifecycle', ()
 
       expect(result.code).toBe(0);
       expect(result.output).toContain('Terminal too small');
+      expect(result.output.split(leaveAlternateScreen)).toHaveLength(2);
+    } finally {
+      stopProcess(process_.child);
+      await rm(home, { recursive: true, force: true });
+    }
+  });
+
+  it('should start and restore at the organization workspace minimum geometry', async () => {
+    const home = await mkdtemp(resolve(tmpdir(), 'porta-admin-minimum-pty-'));
+    const process_ = startPty(home, undefined, { width: 49, height: 19 });
+    try {
+      await waitForTerminal(process_.output);
+      process_.child.stdin.write('\u001bx');
+      process_.child.stdin.end();
+      const result = await process_.result;
+
+      expect(result.code).toBe(0);
+      expect(result.output).not.toContain('Terminal too small');
       expect(result.output.split(leaveAlternateScreen)).toHaveLength(2);
     } finally {
       stopProcess(process_.child);

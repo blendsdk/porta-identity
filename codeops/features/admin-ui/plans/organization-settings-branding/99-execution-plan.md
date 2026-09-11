@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 15:22
-> **Progress**: 43/55 tasks (78%)
+> **Last Updated**: 2026-09-11 15:25
+> **Progress**: 44/55 tasks (80%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -191,7 +191,7 @@ expectations are unchanged. User approved 2026-09-11.
 - [x] 3.3.1 Add controller/workspace binding, disposal, file-read, double-submit, selection, and focus implementation coverage — `packages/cli/tests/admin/organization-workspace.impl.test.ts` ✅ (completed: 2026-09-11 15:17)
 - [x] 3.3.2 Update organization-service and session capability/wiring expectations — existing organization-service and session Admin test files ✅ (completed: 2026-09-11 15:20)
 - [x] 3.3.3 Update application command/menu/workspace lifecycle expectations — existing application and command Admin test files ✅ (completed: 2026-09-11 15:22)
-- [ ] 3.3.4 Exercise 80×24 and the 49×19 minimum through existing PTY/native-host tests; add no compact fallback or new harness — affected existing Admin PTY test files
+- [x] 3.3.4 Exercise 80×24 and the 49×19 minimum through existing PTY/native-host tests; add no compact fallback or new harness — affected existing Admin PTY test files ✅ (completed: 2026-09-11 15:25)
 - [ ] 3.3.5 Run focused CLI Admin suites, CLI lint/typecheck/build, and `yarn test:structure`
 
 **Verify**: focused ST-27–ST-45 and implementation suites; CLI lint/typecheck/build;
