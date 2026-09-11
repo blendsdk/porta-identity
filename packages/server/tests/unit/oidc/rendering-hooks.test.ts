@@ -26,6 +26,8 @@ const mockResolveLocale = vi.hoisted(() => vi.fn());
 const mockGetTranslationFunction = vi.hoisted(() => vi.fn());
 const mockGetUserById = vi.hoisted(() => vi.fn());
 const mockGetOrganizationById = vi.hoisted(() => vi.fn());
+const mockResolveEffectiveBranding = vi.hoisted(() => vi.fn());
+const mockBuildHtmlCsp = vi.hoisted(() => vi.fn());
 const mockLogger = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
@@ -67,6 +69,11 @@ vi.mock('../../../src/organizations/service.js', () => ({
   getOrganizationById: mockGetOrganizationById,
 }));
 
+vi.mock('../../../src/auth/effective-branding.js', () => ({
+  DEFAULT_BRANDING_PRIMARY_COLOR: '#3B82F6',
+  resolveEffectiveBranding: mockResolveEffectiveBranding,
+}));
+
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: mockLogger,
 }));
@@ -75,8 +82,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 vi.mock('../../../src/middleware/security-headers.js', () => ({
   HTML_CSP:
     "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'",
-  buildHtmlCsp: () =>
-    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'; img-src 'self' data:",
+  buildHtmlCsp: mockBuildHtmlCsp,
 }));
 
 // Import after mocks are set up
@@ -127,6 +133,7 @@ const SAMPLE_USER = {
 const EXPECTED_HTML_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
 const EXPECTED_BRANDED_HTML_CSP = `${EXPECTED_HTML_CSP}; img-src 'self' data:`;
+const EXPECTED_EXTERNAL_BRANDING_HTML_CSP = `${EXPECTED_BRANDED_HTML_CSP} https://acme.com`;
 
 /** Creates a mock ctx that mimics oidc-provider's KoaContextWithOIDC */
 function createMockCtx(overrides?: { sessionAccountId?: string; clientOrgId?: string }) {
@@ -160,6 +167,18 @@ describe('OIDC Rendering Hooks', () => {
     mockRenderPage.mockResolvedValue('<html><body>Styled Page</body></html>');
     mockGetUserById.mockResolvedValue(null);
     mockGetOrganizationById.mockResolvedValue(null);
+    mockResolveEffectiveBranding.mockResolvedValue({
+      companyName: 'Acme Corporation',
+      primaryColor: '#FF5733',
+      logoUrl: 'https://acme.com/logo.png',
+      faviconUrl: 'https://acme.com/favicon.ico',
+      customCss: '.custom { color: red; }',
+      imageSources: ['https://acme.com'],
+    });
+    mockBuildHtmlCsp.mockImplementation((imageSources: readonly string[] = []) => {
+      const suffix = imageSources.length > 0 ? ` ${imageSources.join(' ')}` : '';
+      return `${EXPECTED_BRANDED_HTML_CSP}${suffix}`;
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -352,6 +371,12 @@ describe('OIDC Rendering Hooks', () => {
       expect(templateContext.branding.companyName).toBe('Acme Corporation');
       expect(templateContext.branding.logoUrl).toBe('https://acme.com/logo.png');
       expect(templateContext.orgSlug).toBe('acme');
+      expect(mockResolveEffectiveBranding).toHaveBeenCalledWith(SAMPLE_ORG);
+      expect(ctx.set).toHaveBeenCalledWith(
+        'Content-Security-Policy',
+        EXPECTED_EXTERNAL_BRANDING_HTML_CSP,
+      );
+      expect(mockBuildHtmlCsp).toHaveBeenCalledWith(['https://acme.com']);
     });
 
     it('should use default branding when org resolution fails', async () => {

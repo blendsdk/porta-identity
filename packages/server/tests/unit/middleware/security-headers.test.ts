@@ -44,6 +44,7 @@ interface MockContext {
   status: number;
   body: unknown;
   type: string;
+  state: { brandingImageSources?: readonly string[] };
   response: { get(name: string): string };
   _headers: Record<string, string>;
   set(name: string, value: string): void;
@@ -59,6 +60,7 @@ function createMockContext(_contentType = ''): MockContext {
     status: 200,
     body: null,
     type: '',
+    state: {},
     response: {
       get(name: string): string {
         return headers[name] || '';
@@ -233,6 +235,38 @@ describe('security-headers middleware', () => {
         c._headers['Content-Type'] = 'text/html';
       });
       expect(ctx._headers['Content-Security-Policy']).toContain("default-src 'none'");
+    });
+
+    it('should sort and deduplicate validated external image origins', () => {
+      expect(
+        buildHtmlCsp([
+          'https://z.example.test',
+          'https://a.example.test',
+          'https://z.example.test',
+        ]),
+      ).toBe(`${HTML_CSP}; img-src 'self' data: https://a.example.test https://z.example.test`);
+    });
+
+    it('should reject malformed, credentialed, and path-bearing image sources', () => {
+      expect(
+        buildHtmlCsp([
+          'not-a-url',
+          'javascript:alert(1)',
+          'https://user:secret@example.test',
+          'https://cdn.example.test/logo.png',
+        ]),
+      ).toBe(`${HTML_CSP}; img-src 'self' data:`);
+    });
+
+    it('should apply validated branding image sources from Koa state to HTML responses', async () => {
+      const ctx = await invokeMiddleware((c) => {
+        c.state.brandingImageSources = ['https://cdn.example.test'];
+        c._headers['Content-Type'] = 'text/html';
+      });
+
+      expect(ctx._headers['Content-Security-Policy']).toBe(
+        `${HTML_CSP}; img-src 'self' data: https://cdn.example.test`,
+      );
     });
   });
 

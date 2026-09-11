@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 12:02
-> **Progress**: 28/55 tasks (51%)
+> **Last Updated**: 2026-09-11 12:08
+> **Progress**: 29/55 tasks (53%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -123,7 +123,7 @@ expectations pass without changing their behavioral assertions.
 
 ### Step 2.3: Implementation Tests and Hardening
 
-- [ ] 2.3.1 Extend focused public route, security-header, template-engine, email, and provider implementation tests — existing server unit/integration files
+- [x] 2.3.1 Extend focused public route, security-header, template-engine, email, and provider implementation tests — existing server unit/integration files ✅ (completed: 2026-09-11 12:08)
 - [ ] 2.3.2 Extend existing Playwright flows for uploaded/fallback assets, favicon, TOTP QR, CSP, and unchanged magic-link/password behavior — `packages/server/tests/ui/flows/branding.spec.ts`, affected fixtures
 - [ ] 2.3.3 Run focused server unit/integration/E2E/pentest/UI suites, server lint/typecheck/build, and `yarn test:structure`
 
