@@ -6,7 +6,7 @@ Porta gives you full control over every user-facing page — login, consent, pas
 
 | Layer | What It Covers | Effort |
 |-------|---------------|--------|
-| **API-driven branding** | Logo, favicon, colors, company name, custom CSS per org | Zero code — API/CLI only |
+| **API-driven branding** | Uploaded or external logo/favicon, colors, company name, custom CSS per org | Zero code — API/CLI only |
 | **Custom CSS injection** | Full style override via `customCss` field (up to 10KB) | CSS only |
 | **Template override** | Replace any or all Handlebars templates via Docker volume mount | HTML/Handlebars |
 | **Email templates** | Customize HTML and plain-text transactional emails | HTML/Handlebars |
@@ -21,8 +21,10 @@ The fastest way to customize Porta's UI is through per-organization branding. No
 
 | Setting | API Field | Default | Description |
 |---------|-----------|---------|-------------|
-| Logo URL | `logoUrl` | _(none)_ | Image displayed in page headers and email headers |
-| Favicon URL | `faviconUrl` | _(none)_ | Browser tab icon |
+| Uploaded logo | Branding asset `logo` | _(none)_ | Preferred image for page and HTML email headers |
+| Uploaded favicon | Branding asset `favicon` | _(none)_ | Preferred browser tab icon |
+| Logo URL | `logoUrl` | _(none)_ | External fallback when no logo asset is stored |
+| Favicon URL | `faviconUrl` | _(none)_ | External fallback when no favicon asset is stored |
 | Primary Color | `primaryColor` | `#3B82F6` | Buttons, links, accents (sets CSS `--primary` variable) |
 | Company Name | `companyName` | Organization name | Page titles, headers, footers, email signatures |
 | Custom CSS | `customCss` | _(none)_ | Raw CSS injected into `<head>` (max 10KB) |
@@ -52,6 +54,41 @@ curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id>/branding \
     "customCss": "body { font-family: \"Inter\", sans-serif; }"
   }'
 ```
+
+### Uploading Logo and Favicon Assets
+
+The embedded Admin UI can add, replace, and remove PNG, JPEG, WebP, ICO, and SVG assets. You can
+also use the Admin API or TypeScript SDK. The API body contains image bytes encoded as standard
+base64:
+
+```bash
+curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id>/branding/logo \\
+  -H "Authorization: Bearer $TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "data": "<base64-encoded-image-bytes>",
+    "contentType": "image/png"
+  }'
+```
+
+Logo assets may contain up to 2 MiB of decoded data. Favicon assets may contain up to 512 KiB.
+Porta verifies the declared type against the image content and sanitizes SVG through its existing
+SVG validation path. See the [Branding Assets API](../api/branding.md) for the complete contract.
+
+An uploaded asset has priority over its corresponding external URL. Removing the asset restores
+the configured URL fallback. If neither exists, templates receive `null`. Company name falls back
+to the organization name, and primary color falls back to `#3B82F6`.
+
+External image fallbacks must use HTTPS. Non-production deployments may also use HTTP on exact
+loopback hosts. Authentication-page Content Security Policy (CSP) permits only same-origin uploads,
+`data:` images, and validated external fallback origins. SVG asset responses use an additional
+restrictive sandbox policy.
+
+::: info
+The embedded Admin UI intentionally manages image URLs, uploaded images, company name, and primary
+color only. Existing `customCss` API and conventional CLI support remains available for template
+operators.
+:::
 
 ### Custom CSS Examples
 
@@ -130,7 +167,7 @@ templates/default/
 1. The **layout** (`layouts/main.hbs`) provides the HTML shell — `<head>`, `<body>`, styles, branding CSS variable, and the <code v-pre>{{{body}}}</code> placeholder
 2. The **page** (e.g., `pages/login.hbs`) provides the content rendered inside the layout
 3. **Partials** (<code v-pre>{{> header}}</code>, <code v-pre>{{> footer}}</code>, <code v-pre>{{> flash-messages}}</code>) are reusable snippets included by pages
-4. **Branding** values from the organization are automatically injected as template variables
+4. **Branding** values are resolved from uploaded assets, configured fallbacks, and defaults, then injected as template variables
 5. **Custom CSS** from the branding is injected into the layout's `<head>` section
 
 ---
@@ -143,8 +180,8 @@ All templates have access to these variables:
 
 | Variable | Type | Description |
 |----------|------|-------------|
-| `branding.logoUrl` | `string \| null` | Organization logo URL |
-| `branding.faviconUrl` | `string \| null` | Favicon URL |
+| `branding.logoUrl` | `string \| null` | Public uploaded-logo URL, configured fallback, or `null` |
+| `branding.faviconUrl` | `string \| null` | Public uploaded-favicon URL, configured fallback, or `null` |
 | `branding.primaryColor` | `string` | Hex color (default `#3B82F6`) |
 | `branding.companyName` | `string` | Organization display name |
 | `branding.customCss` | `string \| null` | Raw CSS for injection |

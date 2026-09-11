@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 17:23
-> **Progress**: 45/55 tasks (82%)
+> **Last Updated**: 2026-09-11 17:32
+> **Progress**: 46/55 tasks (84%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -171,6 +171,7 @@ operation now has an independent spy, while all observable expectations remain u
 **3.2.3 authorized specification-fixture correction:** the standalone name-input assertion now
 excludes the native input owned by the required locale ComboBox. Observable expectations are
 unchanged. User approved 2026-09-11.
+
 - [x] 3.2.4 Add the login-method and password-login 2FA controls to the Authentication tab — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts` ✅ (completed: 2026-09-11 14:48)
 - [x] 3.2.5 Add the Branding form and immediate file-backed asset actions; pin JSVision files — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts`, `packages/cli/package.json`, `yarn.lock` ✅ (completed: 2026-09-11 15:03)
 
@@ -180,6 +181,7 @@ expectations are unchanged. User approved 2026-09-11.
 
 **3.2.5 mechanical correction:** the repository dependency contract now requires the approved
 `@jsvision/files` package alongside lockstep core and UI versions.
+
 - [x] 3.2.6 Wire the Manage command, production SDK domains, capabilities, lifecycle, and stale-session closure through existing application seams — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts` ✅ (completed: 2026-09-11 15:10)
 - [x] 3.2.7 Run ST-27–ST-45 and make the immutable Phase 3 expectations green ✅ (completed: 2026-09-11 15:11)
 
@@ -213,14 +215,14 @@ covered by focused tests. See `08-phase-quality-review.md`.
 
 ## Phase 4: Documentation and Final Gates
 
-> **Phase baseline tree**: _(recorded by exec-plan from the complete phase-start worktree state)_
+> **Phase baseline tree**: `c8a3c692d349dc81dedcd73cbeb78920a416f12a`
 > **Scope mode**: strict
 
 ### Step 4.1: Documentation
 
 **Reference**: RD-06 AC-14–AC-18 · AR-1–AR-3
 
-- [ ] 4.1.1 Update organization/branding API and custom-login-UI documentation for the corrected SDK, upload, public URL, SVG, fallback, and CSP contracts — `docs/api/organizations.md`, `docs/api/branding.md`, `docs/guide/custom-ui.md`
+- [x] 4.1.1 Update organization/branding API and custom-login-UI documentation for the corrected SDK, upload, public URL, SVG, fallback, and CSP contracts — `docs/api/organizations.md`, `docs/api/branding.md`, `docs/guide/custom-ui.md` ✅ (completed: 2026-09-11 17:32)
 - [ ] 4.1.2 Update organization CLI/Admin documentation for the new workspace and password-login 2FA boundary — `docs/cli/organizations.md`, `docs/concepts/authentication-modes.md`
 - [ ] 4.1.3 Run `yarn docs:build`
 
