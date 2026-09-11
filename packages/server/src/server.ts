@@ -139,10 +139,15 @@ export function createApp(oidcProvider?: Provider): Koa {
   //
   // Routes that must NOT be body-parsed:
   //   /:orgSlug/*      — OIDC provider endpoints (token, revocation, introspection, etc.)
-  const bp = bodyParser({
+  const standardBodyParser = bodyParser({
     jsonLimit: '100kb', // Defence-in-depth: limit JSON body size (default was 1mb)
     formLimit: '100kb', // Limit form body size
     textLimit: '100kb', // Limit text body size
+  });
+  const brandingUploadBodyParser = bodyParser({
+    jsonLimit: '3mb',
+    formLimit: '100kb',
+    textLimit: '100kb',
   });
   app.use(async (ctx, next) => {
     if (
@@ -151,7 +156,10 @@ export function createApp(oidcProvider?: Provider): Koa {
       ctx.path.startsWith('/health') ||
       ctx.path.includes('/auth/')
     ) {
-      return bp(ctx, next);
+      const isBrandingUpload =
+        ctx.method === 'PUT' &&
+        /^\/api\/admin\/organizations\/[^/]+\/branding\/(?:logo|favicon)$/.test(ctx.path);
+      return isBrandingUpload ? brandingUploadBodyParser(ctx, next) : standardBodyParser(ctx, next);
     }
     return next();
   });

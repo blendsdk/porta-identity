@@ -1,8 +1,8 @@
 /**
  * Branding assets API routes.
  *
- * Manages organization logo and favicon image uploads. Images are stored
- * as PostgreSQL bytea for simplicity (images are small, <512KB).
+ * Manages organization logo and favicon image uploads. Images are transported
+ * as bounded base64 JSON and stored as validated PostgreSQL binary data.
  *
  * Route structure:
  *   GET    /api/admin/organizations/:orgId/branding         — List assets
@@ -10,20 +10,35 @@
  *   PUT    /api/admin/organizations/:orgId/branding/:type   — Upload asset
  *   DELETE /api/admin/organizations/:orgId/branding/:type   — Delete asset
  *
- * @see 06-bulk-operations-branding.md
  */
 
 import Router from '@koa/router';
+import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as brandingAssets from '../lib/branding-assets.js';
 import type { AssetType } from '../lib/branding-assets.js';
 
+const brandingUploadSchema = z
+  .object({
+    data: z.base64().min(1),
+    contentType: z.enum([
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/x-icon',
+      'image/vnd.microsoft.icon',
+      'image/svg+xml',
+    ]),
+  })
+  .strict();
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Return whether a route value names one supported branding slot. */
 function validateAssetType(type: string): type is AssetType {
   return type === 'logo' || type === 'favicon';
 }
@@ -32,6 +47,7 @@ function validateAssetType(type: string): type is AssetType {
 // Router factory
 // ---------------------------------------------------------------------------
 
+/** Create the authenticated Admin API router for organization branding assets. */
 export function createBrandingRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations/:orgId/branding' });
 
@@ -69,8 +85,7 @@ export function createBrandingRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:type — Upload/replace branding asset
   //
-  // Expects raw binary body with appropriate Content-Type header.
-  // For JSON-based uploads, accepts base64-encoded body:
+  // Accepts one JSON/base64 envelope:
   //   { "data": "<base64>", "contentType": "image/png" }
   // -------------------------------------------------------------------------
   router.put('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
@@ -80,26 +95,24 @@ export function createBrandingRouter(): Router {
       return;
     }
 
-    // Support JSON-encoded base64 uploads for admin UI convenience
-    const body = ctx.request.body as Record<string, unknown> | undefined;
-    if (body && typeof body.data === 'string' && typeof body.contentType === 'string') {
-      try {
-        const buffer = Buffer.from(body.data, 'base64');
-        const asset = await brandingAssets.uploadAsset(
-          ctx.params.orgId,
-          type,
-          body.contentType,
-          buffer,
-        );
-        ctx.body = { data: asset };
-        return;
-      } catch {
-        ctx.throw(400, 'Branding upload is invalid');
-        return;
-      }
+    const parsed = brandingUploadSchema.safeParse(ctx.request.body);
+    if (!parsed.success) {
+      ctx.throw(400, 'Branding upload is invalid');
+      return;
     }
 
-    ctx.throw(400, 'Request body must include "data" (base64) and "contentType" fields');
+    try {
+      const decoded = Buffer.from(parsed.data.data, 'base64');
+      const asset = await brandingAssets.uploadAsset(
+        ctx.params.orgId,
+        type,
+        parsed.data.contentType,
+        decoded,
+      );
+      ctx.body = { data: asset };
+    } catch {
+      ctx.throw(400, 'Branding upload is invalid');
+    }
   });
 
   // -------------------------------------------------------------------------
