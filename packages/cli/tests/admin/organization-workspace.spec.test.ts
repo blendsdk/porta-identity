@@ -273,6 +273,50 @@ describe('organization workspace access and composition', () => {
     expect(frameText(mounted.host)).toMatch(/Logo.*Add|Add.*Logo/s);
     expect(frameText(mounted.host)).toMatch(/Favicon.*Add|Add.*Favicon/s);
   });
+
+  it('shows concise tab-owned operation feedback for unchanged, saving, saved, and failed states', async () => {
+    const mounted = await mount();
+    expect(frameText(mounted.host)).toContain('No changes');
+
+    mounted.workspace.setState({
+      kind: 'ready',
+      organization,
+      assets: [],
+      pendingTabs: ['overview'],
+    });
+    await settle();
+    expect(frameText(mounted.host)).toContain('Saving…');
+
+    mounted.workspace.setState({
+      kind: 'ready',
+      organization,
+      assets: [],
+      savedTab: 'overview',
+    });
+    await settle();
+    expect(frameText(mounted.host)).toContain('Saved');
+
+    mounted.workspace.setState({
+      kind: 'ready',
+      organization,
+      assets: [],
+      feedbackTab: 'overview',
+      failure: 'unavailable',
+    });
+    await settle();
+    expect(frameText(mounted.host)).toContain('Failed: Service unavailable');
+
+    mounted.workspace.setState({
+      kind: 'ready',
+      organization,
+      assets: [],
+      feedbackTab: 'overview',
+      failure: 'conflict',
+      reloadedAfterFailure: true,
+    });
+    await settle();
+    expect(frameText(mounted.host)).toContain('Reloaded after failure: Conflict');
+  });
 });
 
 describe('organization overview', () => {
@@ -330,6 +374,7 @@ describe('organization overview', () => {
     name.getValueSignal().set('');
     await settle();
     expect(save.state.disabled).toBe(true);
+    expect(frameText(mounted.host)).toContain('Name is required.');
     name.getValueSignal().set('Renamed Organization');
     await settle();
     expect(save.state.disabled).toBe(false);
@@ -431,6 +476,7 @@ describe('organization branding', () => {
     inputs[1]?.getValueSignal().set('blue');
     await settle();
     expect(save.state.disabled).toBe(true);
+    expect(frameText(mounted.host)).toContain('Primary color must use #RRGGBB.');
     inputs[1]?.getValueSignal().set('#112233');
     await settle();
     expect(save.state.disabled).toBe(false);
@@ -491,15 +537,6 @@ describe('organization controller request semantics', () => {
       updateLoginMethods: vi.fn().mockResolvedValue({ kind: 'success' }),
       getTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success', value: 'optional' }),
       updateTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success' }),
-      getBranding: vi.fn().mockResolvedValue({
-        kind: 'success',
-        value: {
-          companyName: organization.brandingCompanyName,
-          primaryColor: organization.brandingPrimaryColor,
-          logoUrl: organization.brandingLogoUrl,
-          faviconUrl: organization.brandingFaviconUrl,
-        },
-      }),
       updateBranding: vi.fn().mockResolvedValue({ kind: 'success' }),
       listAssets: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
       uploadAsset: vi.fn().mockResolvedValue({ kind: 'success' }),
@@ -586,10 +623,10 @@ describe('organization controller request semantics', () => {
       1,
       0,
     ],
-    ['only two-factor policy', { loginMethods: ['password'], twoFactorPolicy: 'required' }, 0, 1],
+    ['only two-factor policy', { loginMethods: ['password'], twoFactorPolicy: 'required_email' }, 0, 1],
     [
       'both resources',
-      { loginMethods: ['magic_link'], twoFactorPolicy: 'required' },
+      { loginMethods: ['magic_link'], twoFactorPolicy: 'required_email' },
       1,
       1,
     ],
@@ -623,7 +660,7 @@ describe('organization controller request semantics', () => {
     mounted.getIntent()?.({
       kind: 'save-authentication',
       loginMethods: ['magic_link'],
-      twoFactorPolicy: 'required',
+      twoFactorPolicy: 'required_email',
     });
     await settle(16);
 

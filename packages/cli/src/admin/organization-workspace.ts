@@ -70,6 +70,20 @@ const FAILURE_LABELS = {
   'file-read': 'The selected image could not be read',
 } as const;
 
+/** Logical action that should regain focus after a dialog or native picker closes. */
+type DialogLauncherKind =
+  | 'lifecycle'
+  | 'logo-upload'
+  | 'logo-remove'
+  | 'favicon-upload'
+  | 'favicon-remove';
+
+/** Retains launcher meaning so rerendered controls can replace detached instances. */
+interface DialogLauncher {
+  readonly kind: DialogLauncherKind;
+  readonly view: View;
+}
+
 /** Modeless organization dialog that reports direct frame-close actions to its owner. */
 class OrganizationDialog extends Dialog {
   /** Creates the fixed workspace surface and retains its optional close callback. */
@@ -100,6 +114,15 @@ function validName(value: string): boolean {
     if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return false;
   }
   return true;
+}
+
+/** Returns a field-specific organization name error, or no error when valid. */
+function nameError(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) return 'Name is required.';
+  return validName(value)
+    ? undefined
+    : 'Name must be at most 255 characters and contain no control characters.';
 }
 
 /** Returns whether an optional fallback image URL is safe to send. */
@@ -141,7 +164,29 @@ export function createAdminOrganizationWorkspace(
   let currentFocus: View | null = null;
   let currentTabs: TabView | undefined;
   let tabFocus: readonly (View | null)[] = [];
+  let dialogLauncher: DialogLauncher | null = null;
   const selectedTab = signal(0);
+
+  /** Replaces a retained launcher with its equivalent control after a state rerender. */
+  const reconcileLauncher = (kind: DialogLauncherKind, view: View): void => {
+    if (dialogLauncher?.kind === kind) dialogLauncher = { kind, view };
+  };
+
+  /** Returns the one-line operation feedback owned by a tab. */
+  const operationFeedback = (
+    tab: 'overview' | 'authentication' | 'branding',
+  ): string => {
+    if (state.kind !== 'ready') return 'No changes';
+    if (state.pendingTabs?.includes(tab)) return 'Saving…';
+    if (state.feedbackTab === tab && state.failure) {
+      const failure = FAILURE_LABELS[state.failure];
+      return state.reloadedAfterFailure
+        ? `Reloaded after failure: ${failure}`
+        : `Failed: ${failure}`;
+    }
+    if (state.savedTab === tab) return 'Saved';
+    return 'No changes';
+  };
 
   /** Builds a labelled one-row field with a stable label column. */
   const field = (label: string, control: View): Group =>
@@ -188,16 +233,20 @@ export function createAdminOrganizationWorkspace(
         !canUpdate || pending || !validName(name()) || Object.keys(changes()).length === 0,
       onClick: () => options.onIntent({ kind: 'save-overview', input: changes() }),
     });
-    const lifecycle =
-      organization.status === 'suspended'
-        ? new Button('~A~ctivate', {
+    const lifecycleKind: DialogLauncherKind = 'lifecycle';
+    const lifecycle = organization.status === 'suspended'
+      ? new Button('~A~ctivate', {
             disabled: !canLifecycle || pending,
             onClick: () => options.onIntent({ kind: 'activate' }),
           })
-        : new Button('~S~uspend', {
+      : new Button('~S~uspend', {
             disabled: !canLifecycle || organization.isSuperAdmin || pending,
-            onClick: () => options.onIntent({ kind: 'suspend' }),
+            onClick: () => {
+              dialogLauncher = { kind: lifecycleKind, view: lifecycle };
+              options.onIntent({ kind: 'suspend' });
+            },
           });
+    reconcileLauncher(lifecycleKind, lifecycle);
     const notices = [
       organization.defaultLocale !== 'en'
         ? `${organization.defaultLocale} is unsupported here; it is preserved until English is selected.`
@@ -220,6 +269,7 @@ export function createAdminOrganizationWorkspace(
         fixed(new Text(`Created: ${formatAdminDateTime(organization.createdAt)}`), 1),
         fixed(new Text(`Updated: ${formatAdminDateTime(organization.updatedAt)}`), 1),
         ...notices.map((notice) => fixed(new Text(notice), 1)),
+        fixed(new Text(() => nameError(name()) ?? operationFeedback('overview')), 1),
         spacer(),
         fixed(row({ gap: 1 }, save, spacer(), lifecycle), 2),
       ),
@@ -313,7 +363,11 @@ export function createAdminOrganizationWorkspace(
           4,
         ),
         fixed(
-          new Text(() => (hasMethod() ? '' : 'Select at least one login method before saving.')),
+          new Text(() =>
+            hasMethod()
+              ? operationFeedback('authentication')
+              : 'Select at least one login method before saving.',
+          ),
           1,
         ),
         spacer(),
@@ -352,6 +406,23 @@ export function createAdminOrganizationWorkspace(
         /^#[0-9A-Fa-f]{6}$/.test(values.primaryColor().trim())) &&
       validBrandingUrl(values.logoUrl()) &&
       validBrandingUrl(values.faviconUrl());
+    /** Returns the first field-specific branding validation error. */
+    const validationError = (): string | undefined => {
+      if (values.companyName().trim().length > 255) {
+        return 'Company name must be at most 255 characters.';
+      }
+      const color = values.primaryColor().trim();
+      if (color.length > 0 && !/^#[0-9A-Fa-f]{6}$/.test(color)) {
+        return 'Primary color must use #RRGGBB.';
+      }
+      if (!validBrandingUrl(values.logoUrl())) {
+        return 'Fallback logo URL must use HTTPS or loopback HTTP.';
+      }
+      if (!validBrandingUrl(values.faviconUrl())) {
+        return 'Fallback favicon URL must use HTTPS or loopback HTTP.';
+      }
+      return undefined;
+    };
     const changes = (): Extract<
       AdminOrganizationIntent,
       { readonly kind: 'save-branding' }
@@ -388,19 +459,36 @@ export function createAdminOrganizationWorkspace(
       const metadata = asset
         ? `${asset.contentType} · ${formatBytes(asset.size)} · ${formatAdminDateTime(asset.updatedAt)}`
         : `No uploaded ${label.toLowerCase()}`;
+      const uploadKind: DialogLauncherKind = `${type}-upload`;
+      const removeKind: DialogLauncherKind = `${type}-remove`;
+      const upload = new Button(asset ? 'Replace' : 'Add', {
+        disabled: !enabled,
+        onClick: () => {
+          dialogLauncher = { kind: uploadKind, view: upload };
+          options.onIntent({ kind: 'upload-asset', assetType: type });
+        },
+      });
+      reconcileLauncher(uploadKind, upload);
+      let remove: Button | undefined;
+      if (asset) {
+        const action = new Button('Remove', {
+          disabled: !enabled,
+          onClick: () => {
+            dialogLauncher = { kind: removeKind, view: action };
+            options.onIntent({ kind: 'remove-asset', assetType: type });
+          },
+        });
+        remove = action;
+        reconcileLauncher(removeKind, action);
+      } else if (dialogLauncher?.kind === removeKind) {
+        dialogLauncher = { kind: uploadKind, view: upload };
+      }
       return row(
         { gap: 1 },
         fixed(new Text(label), 8),
         grow(new Text(metadata)),
-        new Button(asset ? 'Replace' : 'Add', {
-          disabled: !enabled,
-          onClick: () => options.onIntent({ kind: 'upload-asset', assetType: type }),
-        }),
-        asset &&
-          new Button('Remove', {
-            disabled: !enabled,
-            onClick: () => options.onIntent({ kind: 'remove-asset', assetType: type }),
-          }),
+        upload,
+        remove ?? false,
       );
     };
     return tabPage(
@@ -410,7 +498,7 @@ export function createAdminOrganizationWorkspace(
         fixed(field('Primary color', inputs.primaryColor), 1),
         fixed(field('Fallback logo URL', inputs.logoUrl), 1),
         fixed(field('Fallback favicon', inputs.faviconUrl), 1),
-        fixed(new Text(() => (valid() ? '' : 'Enter a #RRGGBB color and approved image URLs.')), 1),
+        fixed(new Text(() => validationError() ?? operationFeedback('branding')), 1),
         fixed(row(save, spacer()), 2),
         spacer(),
         fixed(assetRow('Logo', 'logo'), 2),
@@ -444,12 +532,7 @@ export function createAdminOrganizationWorkspace(
     ]);
     const tabView = new TabView({ tabs, active: selectedTab });
     currentTabs = tabView;
-    const status =
-      state.kind === 'ready' && state.failure
-        ? FAILURE_LABELS[state.failure]
-        : state.kind === 'loading'
-          ? 'Loading organization…'
-          : undefined;
+    const status = state.kind === 'loading' ? 'Loading organization…' : undefined;
     content.add(
       cover(
         col(
@@ -490,12 +573,16 @@ export function createAdminOrganizationWorkspace(
       render();
     },
     focusCurrent() {
-      const focus = currentTabs ? tabFocus[selectedTab.peek()] ?? currentTabs.strip : currentFocus;
+      const focus =
+        dialogLauncher?.view ??
+        (currentTabs ? tabFocus[selectedTab.peek()] ?? currentTabs.strip : currentFocus);
       if (focus) options.focusView?.(focus);
+      if (state.kind === 'ready' && !state.pendingTabs?.length) dialogLauncher = null;
     },
     clear() {
       state = { kind: 'closed' };
       selectedTab.set(0);
+      dialogLauncher = null;
       render();
     },
   };

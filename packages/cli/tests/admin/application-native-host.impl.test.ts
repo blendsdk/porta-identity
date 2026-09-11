@@ -58,10 +58,6 @@ function organizationWorkspaceOperations(): AdminOrganizationWorkspaceOperations
     updateLoginMethods: vi.fn().mockResolvedValue({ kind: 'success' }),
     getTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success', value: 'optional' }),
     updateTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success' }),
-    getBranding: vi.fn().mockResolvedValue({
-      kind: 'success',
-      value: { companyName: null, primaryColor: null, logoUrl: null, faviconUrl: null },
-    }),
     updateBranding: vi.fn().mockResolvedValue({ kind: 'success' }),
     listAssets: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
     uploadAsset: vi.fn().mockResolvedValue({ kind: 'success' }),

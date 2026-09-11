@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 15:25
-> **Progress**: 44/55 tasks (80%)
+> **Last Updated**: 2026-09-11 17:23
+> **Progress**: 45/55 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -192,7 +192,21 @@ expectations are unchanged. User approved 2026-09-11.
 - [x] 3.3.2 Update organization-service and session capability/wiring expectations — existing organization-service and session Admin test files ✅ (completed: 2026-09-11 15:20)
 - [x] 3.3.3 Update application command/menu/workspace lifecycle expectations — existing application and command Admin test files ✅ (completed: 2026-09-11 15:22)
 - [x] 3.3.4 Exercise 80×24 and the 49×19 minimum through existing PTY/native-host tests; add no compact fallback or new harness — affected existing Admin PTY test files ✅ (completed: 2026-09-11 15:25)
-- [ ] 3.3.5 Run focused CLI Admin suites, CLI lint/typecheck/build, and `yarn test:structure`
+- [x] 3.3.5 Run focused CLI Admin suites, CLI lint/typecheck/build, and `yarn test:structure` ✅ (completed: 2026-09-11 16:49)
+
+**3.3.5 authorized specification-fixture correction:** existing exact capability expectations now
+include the approved organization update and suspend booleans. Observable expectations are
+unchanged. User approved 2026-09-11.
+
+**Phase 3 focused verification:** 755 Admin tests and 100 structure tests passed. CLI lint,
+typecheck, and build also passed. The full Admin test gate was rerun without competing compilation
+after its first parallel run exhausted only the PTY build hook's 10-second allowance.
+
+**Phase 3 quality review:** the user accepted the minimum corrections for stale asynchronous and
+workspace-callback ownership, authoritative reload failure handling, live launcher focus, per-tab
+feedback, capability enforcement, dead branding-read removal, and the invalid 2FA fixture. The
+bounded re-review's lifecycle-capability, stale-callback, and detached-focus gaps were corrected and
+covered by focused tests. See `08-phase-quality-review.md`.
 
 **Verify**: focused ST-27–ST-45 and implementation suites; CLI lint/typecheck/build;
 `yarn test:structure`; never root `yarn verify` (AR-3)

@@ -108,6 +108,29 @@ export interface AdminOrganizationController {
 /** Result categories shared by direct workspace mutations. */
 type MutationResult = Awaited<ReturnType<AdminOrganizationWorkspaceOperations['update']>>;
 
+/** Stable owner captured before an asynchronous selected-organization operation starts. */
+interface OrganizationOperationOwner {
+  readonly generation: number;
+  readonly organizationId: string;
+}
+
+/** Capability required by one organization mutation family. */
+type OrganizationMutationCapability = 'update' | 'suspend';
+
+/** Outcome of reconciling one mutation with its authoritative read resource. */
+type ReloadResult =
+  | { readonly kind: 'success' }
+  | { readonly kind: 'stale' }
+  | { readonly kind: 'failure'; readonly failure: AdminOrganizationWorkspaceFailureKind };
+
+/** Optional feedback published with an otherwise ready workspace projection. */
+interface ReadyFeedback {
+  readonly failure?: AdminOrganizationWorkspaceFailureKind;
+  readonly feedbackTab?: AdminOrganizationWorkspaceTab;
+  readonly reloadedAfterFailure?: boolean;
+  readonly savedTab?: AdminOrganizationWorkspaceTab;
+}
+
 /** Returns a stable identity for one authenticated organization context. */
 function contextKey(state: AdminConnectionState, sessionEpoch: number): string | undefined {
   return state.kind === 'authenticated' && state.organization
@@ -200,17 +223,13 @@ export function createAdminOrganizationController(
   };
 
   /** Publishes authoritative data with current per-tab pending ownership. */
-  const publishReady = (
-    failure?: AdminOrganizationWorkspaceFailureKind,
-    reloadedAfterFailure = false,
-  ): void => {
+  const publishReady = (feedback: ReadyFeedback = {}): void => {
     if (!projection) return;
     publish({
       kind: 'ready',
       ...projection,
       ...(pendingTabs.size > 0 ? { pendingTabs: [...pendingTabs] } : {}),
-      ...(failure ? { failure } : {}),
-      ...(reloadedAfterFailure ? { reloadedAfterFailure: true } : {}),
+      ...feedback,
     });
   };
 
@@ -229,6 +248,22 @@ export function createAdminOrganizationController(
   const owns = (capturedGeneration: number, capturedId: string): boolean =>
     !disposed && generation === capturedGeneration && organizationId === capturedId;
 
+  /** Returns true when the latest verified session may update the captured organization. */
+  const hasCapability = (
+    owner: OrganizationOperationOwner,
+    capability: OrganizationMutationCapability,
+  ): boolean => {
+    const state = options.readState();
+    return (
+      owns(owner.generation, owner.organizationId) &&
+      state.kind === 'authenticated' &&
+      state.organization?.id === owner.organizationId &&
+      (capability === 'update'
+        ? state.capabilities.canUpdateOrganizations
+        : state.capabilities.canSuspendOrganizations)
+    );
+  };
+
   /** Ends the stale workspace and delegates authentication to the existing coordinator. */
   const sessionInvalid = (): void => {
     close();
@@ -236,53 +271,74 @@ export function createAdminOrganizationController(
   };
 
   /** Loads the complete organization and asset metadata into one authoritative projection. */
-  const load = async (): Promise<void> => {
+  const load = async (owner?: OrganizationOperationOwner): Promise<ReloadResult> => {
     const operations = options.readOperations();
-    const selectedId = organizationId;
-    if (!operations || !selectedId) return;
-    const capturedGeneration = generation;
+    const selectedId = owner?.organizationId ?? organizationId;
+    const capturedGeneration = owner?.generation ?? generation;
+    if (!selectedId || !owns(capturedGeneration, selectedId)) {
+      return { kind: 'stale' };
+    }
+    if (!operations) return { kind: 'failure', failure: 'unavailable' };
     if (projection) publish({ kind: 'loading', previous: projection });
     const organizationResult = await operations.get(selectedId, new AbortController().signal);
-    if (!owns(capturedGeneration, selectedId)) return;
-    if (organizationResult.kind === 'session-invalid') return sessionInvalid();
+    if (!owns(capturedGeneration, selectedId)) return { kind: 'stale' };
+    if (organizationResult.kind === 'session-invalid') {
+      sessionInvalid();
+      return { kind: 'stale' };
+    }
     if (organizationResult.kind === 'failure') {
-      mount();
-      publish({ kind: 'failure', failure: organizationResult.failure });
-      return;
+      if (!projection) {
+        mount();
+        publish({ kind: 'failure', failure: organizationResult.failure });
+      }
+      return organizationResult;
     }
     const assetResult = await operations.listAssets(selectedId, new AbortController().signal);
-    if (!owns(capturedGeneration, selectedId)) return;
-    if (assetResult.kind === 'session-invalid') return sessionInvalid();
+    if (!owns(capturedGeneration, selectedId)) return { kind: 'stale' };
+    if (assetResult.kind === 'session-invalid') {
+      sessionInvalid();
+      return { kind: 'stale' };
+    }
     if (assetResult.kind === 'failure') {
-      mount();
-      publish({
-        kind: 'failure',
-        failure: assetResult.failure,
-        organization: organizationResult.value,
-      });
-      return;
+      if (!projection) {
+        mount();
+        publish({
+          kind: 'failure',
+          failure: assetResult.failure,
+          organization: organizationResult.value,
+        });
+      }
+      return assetResult;
     }
     projection = { organization: organizationResult.value, assets: assetResult.value };
     options.onOrganizationChange?.(organizationResult.value);
     mount();
     publishReady();
-    workspace?.focusCurrent();
+    if (!owner) workspace?.focusCurrent();
+    return { kind: 'success' };
   };
 
   /** Runs one tab-owned mutation and reconciles its authoritative resources. */
   const mutate = async (
     tab: AdminOrganizationWorkspaceTab,
     invoke: (operations: AdminOrganizationWorkspaceOperations, id: string) => Promise<MutationResult>,
-    reload: () => Promise<void> = load,
+    reload: (owner: OrganizationOperationOwner) => Promise<ReloadResult> = load,
+    capturedOwner?: OrganizationOperationOwner,
+    requiredCapability: OrganizationMutationCapability = 'update',
   ): Promise<void> => {
     const operations = options.readOperations();
-    const selectedId = organizationId;
-    if (!operations || !selectedId || pendingTabs.has(tab)) return;
-    const capturedGeneration = generation;
+    const selectedId = capturedOwner?.organizationId ?? organizationId;
+    const capturedGeneration = capturedOwner?.generation ?? generation;
+    const owner = selectedId
+      ? { generation: capturedGeneration, organizationId: selectedId }
+      : undefined;
+    if (!operations || !owner || !hasCapability(owner, requiredCapability) || pendingTabs.has(tab)) {
+      return;
+    }
     pendingTabs.add(tab);
     publishReady();
-    const result = await invoke(operations, selectedId);
-    if (!owns(capturedGeneration, selectedId)) return;
+    const result = await invoke(operations, owner.organizationId);
+    if (!owns(capturedGeneration, owner.organizationId)) return;
     if (result.kind === 'session-invalid') return sessionInvalid();
     if (result.kind === 'cancelled') {
       pendingTabs.delete(tab);
@@ -290,30 +346,48 @@ export function createAdminOrganizationController(
       return;
     }
     if (result.kind === 'success') {
+      const reloadResult = await reload(owner);
+      if (!owns(capturedGeneration, owner.organizationId) || reloadResult.kind === 'stale') return;
       pendingTabs.delete(tab);
-      await reload();
-      if (owns(capturedGeneration, selectedId)) publishReady();
+      if (reloadResult.kind === 'success') publishReady({ savedTab: tab });
+      else publishReady({ failure: reloadResult.failure, feedbackTab: tab });
+      workspace?.focusCurrent();
       return;
     }
-    await reload();
-    if (!owns(capturedGeneration, selectedId)) return;
+    const reloadResult = await reload(owner);
+    if (!owns(capturedGeneration, owner.organizationId) || reloadResult.kind === 'stale') return;
     pendingTabs.delete(tab);
-    publishReady(mutationFailure(result), true);
+    if (reloadResult.kind === 'success') {
+      publishReady({
+        failure: mutationFailure(result),
+        feedbackTab: tab,
+        reloadedAfterFailure: true,
+      });
+    } else {
+      publishReady({ failure: reloadResult.failure, feedbackTab: tab });
+    }
+    workspace?.focusCurrent();
   };
 
   /** Reloads both authentication resources once after a save outcome. */
-  const reloadAuthentication = async (): Promise<void> => {
+  const reloadAuthentication = async (owner: OrganizationOperationOwner): Promise<ReloadResult> => {
     const operations = options.readOperations();
-    const selectedId = organizationId;
+    const selectedId = owner.organizationId;
     const current = projection;
-    if (!operations || !selectedId || !current) return;
-    const capturedGeneration = generation;
+    if (!owns(owner.generation, selectedId)) return { kind: 'stale' };
+    if (!operations || !current) return { kind: 'failure', failure: 'unavailable' };
     const methods = await operations.getLoginMethods(selectedId, new AbortController().signal);
-    if (!owns(capturedGeneration, selectedId)) return;
-    if (methods.kind === 'session-invalid') return sessionInvalid();
+    if (!owns(owner.generation, selectedId)) return { kind: 'stale' };
+    if (methods.kind === 'session-invalid') {
+      sessionInvalid();
+      return { kind: 'stale' };
+    }
     const policy = await operations.getTwoFactorPolicy(selectedId, new AbortController().signal);
-    if (!owns(capturedGeneration, selectedId)) return;
-    if (policy.kind === 'session-invalid') return sessionInvalid();
+    if (!owns(owner.generation, selectedId)) return { kind: 'stale' };
+    if (policy.kind === 'session-invalid') {
+      sessionInvalid();
+      return { kind: 'stale' };
+    }
     if (methods.kind === 'success' && policy.kind === 'success') {
       projection = {
         ...current,
@@ -323,25 +397,37 @@ export function createAdminOrganizationController(
           twoFactorPolicy: policy.value,
         },
       };
+      return { kind: 'success' };
     }
+    if (methods.kind === 'failure') return methods;
+    if (policy.kind === 'failure') return policy;
+    return { kind: 'stale' };
   };
 
   /** Reloads only uploaded image metadata after one immediate asset action. */
-  const reloadAssets = async (): Promise<void> => {
+  const reloadAssets = async (owner: OrganizationOperationOwner): Promise<ReloadResult> => {
     const operations = options.readOperations();
-    const selectedId = organizationId;
+    const selectedId = owner.organizationId;
     const current = projection;
-    if (!operations || !selectedId || !current) return;
-    const capturedGeneration = generation;
+    if (!owns(owner.generation, selectedId)) return { kind: 'stale' };
+    if (!operations || !current) return { kind: 'failure', failure: 'unavailable' };
     const result = await operations.listAssets(selectedId, new AbortController().signal);
-    if (!owns(capturedGeneration, selectedId)) return;
-    if (result.kind === 'session-invalid') return sessionInvalid();
-    if (result.kind === 'success') projection = { ...current, assets: result.value };
+    if (!owns(owner.generation, selectedId)) return { kind: 'stale' };
+    if (result.kind === 'session-invalid') {
+      sessionInvalid();
+      return { kind: 'stale' };
+    }
+    if (result.kind === 'failure') return result;
+    projection = { ...current, assets: result.value };
+    return { kind: 'success' };
   };
 
   /** Selects, validates, and immediately uploads one local branding image. */
-  const uploadAsset = async (assetType: AdminOrganizationAssetType): Promise<void> => {
-    if (!projection || pendingTabs.has('branding')) return;
+  const uploadAsset = async (
+    assetType: AdminOrganizationAssetType,
+    owner: OrganizationOperationOwner,
+  ): Promise<void> => {
+    if (!projection || !hasCapability(owner, 'update') || pendingTabs.has('branding')) return;
     const pick = options.openFile ?? ((pickerOptions) => openNativeFile(options.host, pickerOptions));
     let path: string | null | undefined;
     try {
@@ -351,26 +437,37 @@ export function createAdminOrganizationController(
         filter: (entry) => entry.kind === 'file' && imageContentType(entry.name) !== undefined,
       });
     } catch {
-      publishReady('file-read');
+      if (owns(owner.generation, owner.organizationId)) {
+        publishReady({ failure: 'file-read', feedbackTab: 'branding' });
+        workspace?.focusCurrent();
+      }
+      return;
+    }
+    if (!owns(owner.generation, owner.organizationId)) return;
+    if (!path) {
       workspace?.focusCurrent();
       return;
     }
-    workspace?.focusCurrent();
-    if (!path) return;
     const contentType = imageContentType(path);
     if (!contentType) {
-      publishReady('file-type');
+      publishReady({ failure: 'file-type', feedbackTab: 'branding' });
+      workspace?.focusCurrent();
       return;
     }
     let bytes: Uint8Array;
     try {
       bytes = await (options.readFile ?? readBinaryFile)(path);
     } catch {
-      publishReady('file-read');
+      if (owns(owner.generation, owner.organizationId)) {
+        publishReady({ failure: 'file-read', feedbackTab: 'branding' });
+        workspace?.focusCurrent();
+      }
       return;
     }
+    if (!owns(owner.generation, owner.organizationId)) return;
     if (bytes.length === 0 || bytes.length > ASSET_LIMITS[assetType]) {
-      publishReady('file-size');
+      publishReady({ failure: 'file-size', feedbackTab: 'branding' });
+      workspace?.focusCurrent();
       return;
     }
     await mutate(
@@ -383,12 +480,16 @@ export function createAdminOrganizationController(
           new AbortController().signal,
         ),
       reloadAssets,
+      owner,
     );
   };
 
   /** Confirms and immediately removes one stored branding image. */
-  const removeAsset = async (assetType: AdminOrganizationAssetType): Promise<void> => {
-    if (!projection || pendingTabs.has('branding')) return;
+  const removeAsset = async (
+    assetType: AdminOrganizationAssetType,
+    owner: OrganizationOperationOwner,
+  ): Promise<void> => {
+    if (!projection || !hasCapability(owner, 'update') || pendingTabs.has('branding')) return;
     const label = assetType === 'logo' ? 'logo' : 'favicon';
     const confirmed = await confirmAction(
       options.host,
@@ -396,22 +497,27 @@ export function createAdminOrganizationController(
       `Remove the uploaded ${label}?`,
       'Remove',
     );
-    workspace?.focusCurrent();
-    if (!confirmed) return;
+    if (!owns(owner.generation, owner.organizationId)) return;
+    if (!confirmed) {
+      workspace?.focusCurrent();
+      return;
+    }
     await mutate(
       'branding',
       (operations, id) =>
         operations.deleteAsset(id, assetType, new AbortController().signal),
       reloadAssets,
+      owner,
     );
   };
 
   /** Applies only changed authentication resources in a fixed sequential order. */
   const saveAuthentication = async (
     intent: Extract<AdminOrganizationIntent, { readonly kind: 'save-authentication' }>,
+    owner: OrganizationOperationOwner,
   ): Promise<void> => {
     const current = projection?.organization;
-    if (!current) return;
+    if (!current || !hasCapability(owner, 'update')) return;
     const methodsChanged =
       intent.loginMethods.length !== current.defaultLoginMethods.length ||
       intent.loginMethods.some((method) => !current.defaultLoginMethods.includes(method));
@@ -421,19 +527,21 @@ export function createAdminOrganizationController(
       if (methodsChanged) {
         const result = await operations.updateLoginMethods(id, intent.loginMethods);
         if (result.kind !== 'success') return result;
+        if (!owns(owner.generation, owner.organizationId)) return { kind: 'cancelled' };
       }
       return policyChanged
         ? operations.updateTwoFactorPolicy(id, intent.twoFactorPolicy)
         : { kind: 'success' };
-    }, reloadAuthentication);
+    }, reloadAuthentication, owner);
   };
 
   /** Handles one focused lifecycle action. */
-  const lifecycle = async (action: 'activate' | 'suspend'): Promise<void> => {
+  const lifecycle = async (
+    action: 'activate' | 'suspend',
+    owner: OrganizationOperationOwner,
+  ): Promise<void> => {
     const current = projection?.organization;
-    if (!current || pendingTabs.has('overview')) return;
-    const state = options.readState();
-    if (state.kind !== 'authenticated' || !state.capabilities.canSuspendOrganizations) return;
+    if (!current || !hasCapability(owner, 'suspend') || pendingTabs.has('overview')) return;
     if (action === 'suspend') {
       if (current.isSuperAdmin) return;
       const confirmed = await confirmAction(
@@ -442,35 +550,59 @@ export function createAdminOrganizationController(
         `Suspend ${current.name}?`,
         'Suspend',
       );
-      workspace?.focusCurrent();
-      if (!confirmed) return;
+      if (!owns(owner.generation, owner.organizationId)) return;
+      if (!confirmed) {
+        workspace?.focusCurrent();
+        return;
+      }
     }
-    await mutate('overview', (operations, id) => operations[action](id));
+    await mutate('overview', (operations, id) => operations[action](id), load, owner, 'suspend');
   };
 
-  /** Dispatches one workspace intent to its direct operation. */
-  const handleIntent = (intent: AdminOrganizationIntent): void => {
+  /** Dispatches one workspace intent only while its opening context still owns the controller. */
+  const dispatchIntent = (
+    intent: AdminOrganizationIntent,
+    owner: OrganizationOperationOwner,
+  ): void => {
+    if (!owns(owner.generation, owner.organizationId)) return;
     switch (intent.kind) {
       case 'save-overview':
-        void mutate('overview', (operations, id) => operations.update(id, intent.input));
+        if (!hasCapability(owner, 'update')) return;
+        void mutate('overview', (operations, id) => operations.update(id, intent.input), load, owner);
         return;
       case 'activate':
       case 'suspend':
-        void lifecycle(intent.kind);
+        void lifecycle(intent.kind, owner);
         return;
       case 'save-authentication':
-        void saveAuthentication(intent);
+        if (!hasCapability(owner, 'update')) return;
+        void saveAuthentication(intent, owner);
         return;
       case 'save-branding':
-        void mutate('branding', (operations, id) => operations.updateBranding(id, intent.input));
+        if (!hasCapability(owner, 'update')) return;
+        void mutate(
+          'branding',
+          (operations, id) => operations.updateBranding(id, intent.input),
+          load,
+          owner,
+        );
         return;
       case 'upload-asset':
-        void uploadAsset(intent.assetType);
+        if (!hasCapability(owner, 'update')) return;
+        void uploadAsset(intent.assetType, owner);
         return;
       case 'remove-asset':
-        void removeAsset(intent.assetType);
+        if (!hasCapability(owner, 'update')) return;
+        void removeAsset(intent.assetType, owner);
         return;
     }
+  };
+
+  /** Handles a direct controller intent in the current selected-organization context. */
+  const handleIntent = (intent: AdminOrganizationIntent): void => {
+    const selectedId = organizationId;
+    if (!selectedId) return;
+    dispatchIntent(intent, { generation, organizationId: selectedId });
   };
 
   return {
@@ -494,9 +626,10 @@ export function createAdminOrganizationController(
         return true;
       }
       organizationId = state.organization.id;
+      const workspaceOwner = { generation, organizationId: state.organization.id };
       workspace = options.workspaceFactory({
         capabilities: state.capabilities,
-        onIntent: handleIntent,
+        onIntent: (intent) => dispatchIntent(intent, workspaceOwner),
         focusView: (view) => options.host.loop.focusView(view),
         onClose: () => {
           close();

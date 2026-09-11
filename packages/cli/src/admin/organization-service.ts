@@ -19,7 +19,6 @@ import type {
   AdminOrganizationAsset,
   AdminOrganizationAssetContentType,
   AdminOrganizationAssetType,
-  AdminOrganizationBranding,
   AdminOrganizationContext,
   AdminOrganizationLoginMethod,
   AdminOrganizationOverviewInput,
@@ -467,8 +466,6 @@ export interface AdminOrganizationWorkspaceOperations {
   readonly getTwoFactorPolicy: OrganizationWorkspaceRead<AdminOrganizationTwoFactorPolicy>;
   /** Updates the organization-wide password-login two-factor policy. */
   readonly updateTwoFactorPolicy: OrganizationWorkspaceUpdate<AdminOrganizationTwoFactorPolicy>;
-  /** Loads the four text branding values from the organization resource. */
-  readonly getBranding: OrganizationWorkspaceRead<AdminOrganizationBranding>;
   /** Updates changed branding text fields independently from image assets. */
   readonly updateBranding: OrganizationWorkspaceUpdate<UpdateBrandingSettingsInput>;
   /** Lists complete validated logo and favicon metadata. */
@@ -675,20 +672,6 @@ export function createAdminOrganizationWorkspaceOperations(
       } catch (error) {
         return workspaceMutationError(error);
       }
-    },
-    async getBranding(organizationId) {
-      const result = await loadWorkspaceOrganization(domains, organizationId);
-      return result.kind === 'success'
-        ? {
-            kind: 'success',
-            value: {
-              companyName: result.value.brandingCompanyName,
-              primaryColor: result.value.brandingPrimaryColor,
-              logoUrl: result.value.brandingLogoUrl,
-              faviconUrl: result.value.brandingFaviconUrl,
-            },
-          }
-        : result;
     },
     async updateBranding(organizationId, input) {
       if (!UUID.test(organizationId) || !isBrandingInput(input)) {

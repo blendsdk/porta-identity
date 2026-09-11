@@ -197,6 +197,8 @@ describe('stored CLI session verification', () => {
       capabilities: {
         canReadOrganizations: false,
         canCreateOrganizations: false,
+        canUpdateOrganizations: false,
+        canSuspendOrganizations: false,
         ...noUserCapabilities,
         ...noApplicationClientCapabilities,
         ...noRbacCapabilities,
@@ -327,6 +329,8 @@ describe('live administration capabilities', () => {
     expect(validateAdminCapabilities([], ['admin:org:read'])).toEqual({
       canReadOrganizations: true,
       canCreateOrganizations: false,
+      canUpdateOrganizations: false,
+      canSuspendOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
@@ -340,6 +344,8 @@ describe('live administration capabilities', () => {
     expect(validateAdminCapabilities([], ['admin:org:create'])).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: true,
+      canUpdateOrganizations: false,
+      canSuspendOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
@@ -355,6 +361,8 @@ describe('live administration capabilities', () => {
       expect(validateAdminCapabilities(['porta-admin'], permissions)).toEqual({
         canReadOrganizations: true,
         canCreateOrganizations: true,
+        canUpdateOrganizations: true,
+        canSuspendOrganizations: true,
         ...allUserCapabilities,
         ...allApplicationClientCapabilities,
         ...allRbacCapabilities,
@@ -369,6 +377,8 @@ describe('live administration capabilities', () => {
     expect(validateAdminCapabilities({ unexpected: 'shape' }, ['admin:org:read'])).toEqual({
       canReadOrganizations: true,
       canCreateOrganizations: false,
+      canUpdateOrganizations: false,
+      canSuspendOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
@@ -393,6 +403,8 @@ describe('live administration capabilities', () => {
     expect(capabilities).toEqual({
       canReadOrganizations: false,
       canCreateOrganizations: false,
+      canUpdateOrganizations: false,
+      canSuspendOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
@@ -432,6 +444,8 @@ describe('live administration capabilities', () => {
       capabilities: {
         canReadOrganizations: true,
         canCreateOrganizations: false,
+        canUpdateOrganizations: false,
+        canSuspendOrganizations: false,
         ...noUserCapabilities,
         ...noApplicationClientCapabilities,
         ...noRbacCapabilities,

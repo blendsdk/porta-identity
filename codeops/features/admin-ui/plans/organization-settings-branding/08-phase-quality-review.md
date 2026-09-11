@@ -1,7 +1,7 @@
 # Organization Settings and Branding Phase Quality Review
 
-> **Status**: Phase 2 review complete; accepted correction verified
-> **Last Updated**: 2026-09-11 12:30
+> **Status**: Phase 3 review complete; accepted corrections verified
+> **Last Updated**: 2026-09-11 17:23
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Admin Asset and SDK Contracts
@@ -57,3 +57,33 @@ The single permitted re-review confirmed RV-001/API-001 is closed. The shared re
 copies effective branding image sources into Koa state before rendering, and the focused
 expired-token regression test verifies the external origin handoff. The fix introduced no new
 Critical or Major finding. No further re-review is permitted or required.
+
+## Phase 3: Organization Admin Workspace
+
+**Review boundary:** `cb1ff30a2a3cc116e1b3648885a5e0bb9293a175..working tree`
+**Scope mode:** Strict
+**Verification before review:** 743 Admin tests, CLI lint/typecheck/build, and 100 repository
+structure tests passed. Root `yarn verify` was not run under the approved execution boundary.
+
+| ID         | Severity    | Lens                  | Finding                                                                 | Minimum correction                                                                 | Ruling      |
+| ---------- | ----------- | --------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------- |
+| P3-RV-001  | 🔴 Critical | Context ownership     | Picker and confirmation continuations could target a replacement org    | Capture and recheck generation plus organization ID around every await             | ✅ Accepted |
+| P3-RV-002  | 🟠 Major    | Reconciliation        | A failed authoritative reload could replace ready data with stale state | Return explicit reload outcomes and retain the last authoritative projection       | ✅ Accepted |
+| P3-RV-003  | 🟠 Major    | Focus                 | Dialog and picker closure did not reliably return focus to its launcher | Retain launcher meaning and reconcile it to the currently rendered control         | ✅ Accepted |
+| P3-RV-004  | 🟠 Major    | Feedback              | Tab feedback omitted required operation states and field-specific errors | Render one existing tab-owned status line for validation and operation outcomes    | ✅ Accepted |
+| P3-RV-005  | 🟡 Minor    | Authorization         | Update intents relied only on disabled controls and server authorization | Recheck the current verified capability in the existing controller                 | ✅ Accepted |
+| P3-RV-006  | 🟡 Minor    | API surface           | An unused duplicate branding read operation and mocks remained          | Remove the dead operation, type, implementation, and test mocks                     | ✅ Accepted |
+| P3-RV-007  | 🟡 Minor    | Specification fixture | Two test inputs used the unsupported `required` 2FA value                | Use the approved `required_email` value without changing observable expectations   | ✅ Accepted |
+
+The user accepted all seven minimum corrections. They add no service, retry mechanism, cache,
+framework, or concurrency support.
+
+### Phase 3 Bounded Re-review
+
+The single permitted re-review found three remaining Major gaps: lifecycle mutations inherited
+the update capability guard; a callback queued by a removed workspace could capture the replacement
+organization; and rerendering could detach a retained launcher before final focus restoration.
+The corrections now use the lifecycle-specific suspend capability, bind each workspace callback
+to its opening owner, and reconcile launcher meaning to the live rerendered control. Focused tests
+cover all three paths. Final verification passed 755 Admin tests, CLI lint/typecheck/build, and 100
+repository structure tests. No further re-review is permitted or required.

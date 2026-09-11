@@ -124,18 +124,6 @@ export interface AdminOrganizationAsset {
   readonly updatedAt: string;
 }
 
-/** Four text branding values edited independently from stored image assets. */
-export interface AdminOrganizationBranding {
-  /** Optional company name, or `null` to use the organization name. */
-  readonly companyName: string | null;
-  /** Optional brand color, or `null` to use Porta's default. */
-  readonly primaryColor: string | null;
-  /** Optional external logo fallback URL. */
-  readonly logoUrl: string | null;
-  /** Optional external favicon fallback URL. */
-  readonly faviconUrl: string | null;
-}
-
 /** Editable Overview fields sent without an ETag precondition. */
 export interface AdminOrganizationOverviewInput {
   /** Changed organization name. */
@@ -206,6 +194,10 @@ export type AdminOrganizationWorkspaceState =
   | ({
       readonly kind: 'ready';
       readonly pendingTabs?: readonly AdminOrganizationWorkspaceTab[];
+      /** Tab whose last completed mutation succeeded after authoritative reload. */
+      readonly savedTab?: AdminOrganizationWorkspaceTab;
+      /** Tab that owns the current fixed failure feedback. */
+      readonly feedbackTab?: AdminOrganizationWorkspaceTab;
       readonly failure?: AdminOrganizationWorkspaceFailureKind;
       readonly reloadedAfterFailure?: boolean;
     } & AdminOrganizationWorkspaceProjection)
