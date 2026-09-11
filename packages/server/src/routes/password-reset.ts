@@ -40,6 +40,7 @@ import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
+import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { getUserById, setUserPassword } from '../users/service.js';
 import { validatePassword } from '../users/password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -106,22 +107,6 @@ const defaultRecoveryRequestDependencies: RecoveryRequestRouteDependencies = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Build branding context from organization data.
- *
- * @param org - Organization with branding fields
- * @returns Branding context for templates
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
-  };
-}
 
 /**
  * Render an HTML page and send it as the response.
@@ -265,7 +250,7 @@ async function showForgotPassword(
   dependencies.setCsrfCookie(ctx, csrfToken);
 
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -317,7 +302,7 @@ async function processForgotPassword(
     const csrfToken = dependencies.generateCsrfToken();
     dependencies.setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -347,7 +332,7 @@ async function processForgotPassword(
     const csrfToken = dependencies.generateCsrfToken();
     dependencies.setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -374,7 +359,7 @@ async function processForgotPassword(
       ctx,
       'forgot-password',
       {
-        branding: buildBrandingFromOrg(org),
+        branding: await resolveEffectiveBranding(org),
         locale,
         t,
         csrfToken,
@@ -391,7 +376,7 @@ async function processForgotPassword(
   const csrfToken = dependencies.generateCsrfToken();
   dependencies.setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -449,7 +434,7 @@ async function showResetPassword(ctx: AuthContext): Promise<void> {
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -585,7 +570,7 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -627,7 +612,7 @@ async function renderResetFormWithError(
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -658,7 +643,7 @@ async function renderErrorPageForAuth(
   try {
     const csrfToken = generateCsrfToken();
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,

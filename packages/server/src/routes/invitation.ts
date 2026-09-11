@@ -36,6 +36,7 @@ import { getPool } from '../lib/database.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
+import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { setUserPassword, markEmailVerified } from '../users/service.js';
 import { validatePassword } from '../users/password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -57,22 +58,6 @@ interface AuthContext extends Context {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Build branding context from organization data.
- *
- * @param org - Organization with branding fields
- * @returns Branding context for templates
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
-  };
-}
 
 /**
  * Render an HTML page and send it as the response.
@@ -158,7 +143,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -173,7 +158,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -238,7 +223,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -300,7 +285,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -345,7 +330,7 @@ async function renderInviteFormWithError(
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
