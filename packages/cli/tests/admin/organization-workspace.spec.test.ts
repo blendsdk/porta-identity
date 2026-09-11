@@ -285,7 +285,13 @@ describe('organization overview', () => {
     expect(text).toContain('ACTIVE');
     expect(text).toContain('02 Jan 2026, 03:04 UTC');
     expect(text).toContain('09 Aug 2026, 10:11 UTC');
-    expect(descendants(mounted.window).filter((view) => view instanceof Input)).toHaveLength(1);
+    const views = descendants(mounted.window);
+    const comboInputs = new Set(
+      views.filter((view) => view instanceof ComboBox).map((combo) => combo.input),
+    );
+    expect(
+      views.filter((view) => view instanceof Input && !comboInputs.has(view)),
+    ).toHaveLength(1);
     expect(button(mounted.window, 'Save').state.disabled).toBe(true);
   });
 
