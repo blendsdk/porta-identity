@@ -16,7 +16,9 @@ The completed organization context supplies the tenant boundary for administrati
 management is the first such module: a familiar Users list and detail flow covering the existing
 core profile, invitation, credential, lifecycle, history, and permanent Delete operations. Roles
 and permissions extend the User and Application details with direct authorization management.
-Later modules add sessions, two-factor controls, audit exploration, and operational data tools.
+Organization settings then provide focused administration of the active tenant's identity,
+authentication defaults, lifecycle, branding settings, and image assets. Later modules add
+sessions, user-level two-factor controls, audit exploration, and operational data tools.
 
 Applications are global product and authorization definitions shared by organizations. OIDC clients
 are organization-specific deployments connected to those applications. The Admin UI must always
@@ -25,11 +27,11 @@ changes confined to the active organization.
 
 ## Selected Domain Lenses
 
-| Lens                   | Repository evidence                                                    | Requirement focus                                                             |
-| ---------------------- | ---------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| Web application        | Authenticated HTTP API, roles, permissions, and tenant-owned resources | Authorization, validation, network failures, UI states, and tenant boundaries |
-| Data and migration     | PostgreSQL RBAC entities and mapping tables                            | Ownership, cardinality, cascade, integrity, and reset/init behavior           |
-| Distributed/concurrent | PostgreSQL authority, Redis caches, sessions, grants, and token state  | Transaction boundaries, targeted invalidation, and stale authority            |
+| Lens                   | Repository evidence                                                       | Requirement focus                                                            |
+| ---------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Web application        | Authenticated API, public identity pages, CSP, RBAC, and tenant resources | Authorization, validation, public errors, UI states, and tenant boundaries   |
+| Data and migration     | PostgreSQL RBAC entities, mappings, settings, and binary branding assets  | Ownership, cardinality, size constraints, integrity, and forward migrations  |
+| Distributed/concurrent | PostgreSQL authority, Redis state, ETags, and separate settings requests  | Transaction boundaries, conflicts, partial failure, and authoritative reload |
 
 Universal security, accessibility, failure-state, and verification lenses apply throughout.
 
@@ -51,6 +53,9 @@ Universal security, accessibility, failure-state, and verification lenses apply 
 | Permission               | A namespaced operation owned by one application and optionally one of its modules.  |
 | Role permission          | A direct permission assignment to a role from the same application.                 |
 | User role                | A direct application-role assignment to one organization-owned user.                |
+| Authentication default   | An organization setting used by OIDC clients configured to inherit it.              |
+| Branding asset           | An organization-owned validated logo or favicon stored as binary data.              |
+| Effective branding       | Uploaded assets resolved ahead of configured URL fallbacks for pages and emails.    |
 
 ## Admin UI Presentation Directives
 
@@ -95,6 +100,7 @@ Apply this directive to every primary administration module:
 | **RD-03** | [User management](RD-03-user-management.md)                                                 | Complete organization-scoped user administration                       | RD-02               |
 | **RD-04** | [Applications and OIDC clients](RD-04-applications-and-oidc-clients.md)                     | Global applications and organization-owned OIDC clients                | RD-02               |
 | **RD-05** | [Roles and permissions](RD-05-roles-and-permissions.md)                                     | Application RBAC definitions, mappings, and user role assignments      | RD-03, RD-04, RD-10 |
+| **RD-06** | [Organization settings and branding](RD-06-organization-settings-and-branding.md)           | Active-organization settings, authentication defaults, and branding    | RD-02               |
 | **RD-10** | [Record deletion and lifecycle simplification](RD-10-application-module-client-deletion.md) | Product-wide Delete, Archive removal, cascade, and targeted logout     | RD-02–RD-04         |
 
 ## Dependency Graph
@@ -103,22 +109,24 @@ Apply this directive to every primary administration module:
 RD-01 Secure admin foundation
   └── RD-02 Organization context and navigation
         ├── RD-03 User management
-        └── RD-04 Applications and OIDC clients
-              └── RD-10 Record deletion and lifecycle simplification
+        ├── RD-04 Applications and OIDC clients
+        │     └── RD-10 Record deletion and lifecycle simplification
+        └── RD-06 Organization settings and branding
 
 RD-05 Roles and permissions depends on RD-03, RD-04, and RD-10
 ```
 
 ## Suggested Implementation Order
 
-| Phase                | Documents | Description                                                 |
-| -------------------- | --------- | ----------------------------------------------------------- |
-| Foundation           | RD-01     | Completed secure shell and live playground                  |
-| Organization context | RD-02     | Establish the selected tenant context used by later screens |
-| User administration  | RD-03     | Complete the core organization-scoped user workflows        |
-| Application clients  | RD-04     | Manage global products and tenant OIDC deployments          |
-| Record deletion      | RD-10     | Remove Archive and provide consistent permanent Delete      |
-| Authorization        | RD-05     | Manage application RBAC and organization user assignments   |
+| Phase                 | Documents | Description                                                 |
+| --------------------- | --------- | ----------------------------------------------------------- |
+| Foundation            | RD-01     | Completed secure shell and live playground                  |
+| Organization context  | RD-02     | Establish the selected tenant context used by later screens |
+| User administration   | RD-03     | Complete the core organization-scoped user workflows        |
+| Application clients   | RD-04     | Manage global products and tenant OIDC deployments          |
+| Record deletion       | RD-10     | Remove Archive and provide consistent permanent Delete      |
+| Authorization         | RD-05     | Manage application RBAC and organization user assignments   |
+| Organization settings | RD-06     | Manage active-organization defaults and effective branding  |
 
 ## Key Architecture Decisions
 
@@ -142,6 +150,9 @@ RD-05 Roles and permissions depends on RD-03, RD-04, and RD-10
 | RBAC ownership         | Roles and permissions belong to one global application     | Prevents cross-application authorization mappings      |
 | Authority reduction    | Targeted session/token cleanup; additions invalidate cache | Removes stale authority without unnecessary logout     |
 | RBAC list contracts    | Complete arrays without pagination                         | Matches the server and expected-small collections      |
+| Organization workspace | Overview, Authentication, and Branding tabs                | Separates coherent current-tenant settings             |
+| Branding precedence    | Uploaded asset, then configured URL fallback               | Makes one effective result explicit across consumers   |
+| Branding upload path   | JSON/base64 transport into PostgreSQL binary storage       | Repairs the existing design without parallel protocols |
 
 ## How to Use These Documents
 

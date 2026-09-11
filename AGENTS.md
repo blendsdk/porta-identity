@@ -53,6 +53,17 @@ Run commands from the repository root.
   unqualified outcomes, so review its artifact and exit taxonomy instead of treating every nonzero
   result as an ordinary test failure.
 
+## Admin UI operating model
+
+- The embedded `porta admin` terminal application is a single-operator application. Assume only one
+  administrator uses this UI at a time.
+- Do not add concurrent-editor scenarios, optimistic concurrency, ETag workflows, merge handling,
+  UI locks, polling, or multi-administrator coordination to the Admin UI.
+- Keep Admin UI mutations direct and concise. After a partial or unknown failure, reload the
+  displayed state when needed; never add automatic mutation retries.
+- Existing server API concurrency safeguards may remain for other API or SDK consumers, but the
+  Admin UI does not need to use or extend them.
+
 ## Repository structure
 
 - `packages/server/`: public identity-server package, including source, behavioral tests, migrations, templates, locales, and package-local tool configuration.
