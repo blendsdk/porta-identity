@@ -526,13 +526,7 @@ export function createUserRouter(): Router {
             givenName: user.givenName,
             familyName: user.familyName,
           },
-          {
-            id: org.id,
-            slug: org.slug,
-            brandingLogoUrl: org.brandingLogoUrl,
-            brandingPrimaryColor: org.brandingPrimaryColor,
-            brandingCompanyName: org.brandingCompanyName,
-          },
+          org,
           inviteUrl,
           body.locale ?? org.defaultLocale ?? 'en',
           emailOptions,
@@ -615,13 +609,7 @@ export function createUserRouter(): Router {
 
       const result = await renderInvitationEmail(
         previewUser,
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
+        org,
         // Absolute preview URL — same trusted issuerBaseUrl prefix as the real invite.
         `${config.issuerBaseUrl}/${org.slug}/auth/accept-invite/PREVIEW_TOKEN`,
 

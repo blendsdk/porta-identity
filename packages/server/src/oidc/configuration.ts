@@ -21,6 +21,11 @@ import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { config } from '../config/index.js';
 import { HTML_CSP } from '../middleware/security-headers.js';
 import { renderPage } from '../auth/template-engine.js';
+import {
+  DEFAULT_BRANDING_PRIMARY_COLOR,
+  resolveEffectiveBranding,
+  type EffectiveBranding,
+} from '../auth/effective-branding.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { logger } from '../lib/logger.js';
 import { getUserById } from '../users/service.js';
@@ -65,30 +70,14 @@ export interface BuildProviderConfigParams {
  *
  * @returns Default branding with Porta's standard blue primary color
  */
-export function buildDefaultBranding() {
+export function buildDefaultBranding(): EffectiveBranding {
   return {
-    logoUrl: null as string | null,
-    faviconUrl: null as string | null,
-    primaryColor: '#3B82F6',
+    logoUrl: null,
+    faviconUrl: null,
+    primaryColor: DEFAULT_BRANDING_PRIMARY_COLOR,
     companyName: '',
-    customCss: null as string | null,
-  };
-}
-
-/**
- * Build branding context from a resolved organization.
- * Maps Organization entity fields to the TemplateContext branding shape.
- *
- * @param org - The resolved organization
- * @returns Branding object for TemplateContext
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
+    customCss: null,
+    imageSources: [],
   };
 }
 
@@ -160,7 +149,7 @@ export async function logoutSourceHook(ctx: any, form: string): Promise<void> {
   try {
     // Resolve org for branding (best-effort, defaults on failure)
     const org = await resolveOrgForProviderHook(ctx);
-    const branding = org ? buildBrandingFromOrg(org) : buildDefaultBranding();
+    const branding = org ? await resolveEffectiveBranding(org) : buildDefaultBranding();
 
     // Resolve locale and translation function
     const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');
@@ -326,7 +315,7 @@ export async function renderErrorHook(
   try {
     // Resolve org from client context for branding (best-effort)
     const org = await resolveOrgForProviderHook(ctx);
-    const branding = org ? buildBrandingFromOrg(org) : buildDefaultBranding();
+    const branding = org ? await resolveEffectiveBranding(org) : buildDefaultBranding();
 
     // Resolve locale and translation function
     const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');

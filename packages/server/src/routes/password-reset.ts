@@ -545,13 +545,7 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     if (user) {
       sendPasswordChangedEmail(
         { id: user.id, email: user.email, givenName: user.givenName, familyName: user.familyName },
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
+        org,
         locale,
       );
     }

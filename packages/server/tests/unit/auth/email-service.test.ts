@@ -69,10 +69,20 @@ const TEST_USER: EmailUser = {
 /** Standard test organization with branding */
 const TEST_ORG: EmailOrganization = {
   id: 'org-456',
+  name: 'Acme Organization',
   slug: 'acme-corp',
+  status: 'active',
+  isSuperAdmin: false,
   brandingLogoUrl: 'https://acme.com/logo.png',
+  brandingFaviconUrl: null,
   brandingPrimaryColor: '#FF5733',
   brandingCompanyName: 'Acme Corp',
+  brandingCustomCss: null,
+  defaultLocale: 'en',
+  twoFactorPolicy: 'optional',
+  defaultLoginMethods: ['password'],
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
 /** Set up renderEmail to return predictable HTML/text */
@@ -221,7 +231,7 @@ describe('email-service', () => {
       );
     });
 
-    it('should fall back to org slug when brandingCompanyName is null', async () => {
+    it('should fall back to organization name when brandingCompanyName is null', async () => {
       const orgNoBranding: EmailOrganization = {
         ...TEST_ORG,
         brandingCompanyName: null,
@@ -231,7 +241,7 @@ describe('email-service', () => {
 
       expect(mockTransport.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          subject: "You've been invited to acme-corp",
+          subject: "You've been invited to Acme Organization",
         }),
       );
     });
@@ -410,8 +420,8 @@ describe('email-service', () => {
         expect.objectContaining({
           branding: expect.objectContaining({
             primaryColor: '#3B82F6', // Default blue
-            logoUrl: '',
-            companyName: 'acme-corp', // Falls back to slug
+            logoUrl: null,
+            companyName: 'Acme Organization',
           }),
         }),
       );
