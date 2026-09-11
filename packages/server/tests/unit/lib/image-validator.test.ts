@@ -13,19 +13,23 @@ import { validateImage, getSizeLimit } from '../../../src/lib/image-validator.js
 // ============================================================================
 
 /** Valid PNG: magic bytes 0x89 0x50 0x4E 0x47 (‰PNG) */
-const VALID_PNG = Buffer.from([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00]);
+const VALID_PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00]);
 
 /** Valid JPEG: magic bytes 0xFF 0xD8 0xFF */
-const VALID_JPEG = Buffer.from([0xFF, 0xD8, 0xFF, 0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46]);
+const VALID_JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46]);
 
-/** Valid WebP: magic bytes 0x52 0x49 0x46 0x46 (RIFF) */
-const VALID_WEBP = Buffer.from([0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45]);
+/** Valid WebP: a RIFF container whose format marker is WEBP. */
+const VALID_WEBP = Buffer.from([
+  0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50,
+]);
 
 /** Valid ICO: magic bytes 0x00 0x00 0x01 0x00 */
 const VALID_ICO = Buffer.from([0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x10, 0x10, 0x00, 0x00]);
 
 /** Valid SVG content */
-const VALID_SVG = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>');
+const VALID_SVG = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="40"/></svg>',
+);
 
 /** SVG with script tag (XSS attempt) */
 const SVG_WITH_SCRIPT = Buffer.from(
@@ -56,7 +60,7 @@ const SVG_WITH_ONLOAD = Buffer.from(
 const NOT_SVG = Buffer.from('This is not an SVG file at all');
 
 /** Random bytes (not matching any known format) */
-const RANDOM_BYTES = Buffer.from([0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0]);
+const RANDOM_BYTES = Buffer.from([0x12, 0x34, 0x56, 0x78, 0x9a, 0xbc, 0xde, 0xf0]);
 
 // ============================================================================
 // Tests
@@ -113,11 +117,7 @@ describe('image-validator', () => {
   describe('size limits', () => {
     it('rejects logo larger than 2 MB', () => {
       const oversized = Buffer.alloc(2 * 1024 * 1024 + 1);
-      // Set PNG magic bytes so it passes type check
-      oversized[0] = 0x89;
-      oversized[1] = 0x50;
-      oversized[2] = 0x4E;
-      oversized[3] = 0x47;
+      VALID_PNG.subarray(0, 8).copy(oversized);
       const result = validateImage(oversized, 'image/png', 'logo');
       expect(result.valid).toBe(false);
       expect(result.error).toContain('File too large');
@@ -126,20 +126,14 @@ describe('image-validator', () => {
 
     it('accepts logo at exactly 2 MB', () => {
       const exact = Buffer.alloc(2 * 1024 * 1024);
-      exact[0] = 0x89;
-      exact[1] = 0x50;
-      exact[2] = 0x4E;
-      exact[3] = 0x47;
+      VALID_PNG.subarray(0, 8).copy(exact);
       const result = validateImage(exact, 'image/png', 'logo');
       expect(result.valid).toBe(true);
     });
 
     it('rejects favicon larger than 512 KB', () => {
       const oversized = Buffer.alloc(512 * 1024 + 1);
-      oversized[0] = 0x89;
-      oversized[1] = 0x50;
-      oversized[2] = 0x4E;
-      oversized[3] = 0x47;
+      VALID_PNG.subarray(0, 8).copy(oversized);
       const result = validateImage(oversized, 'image/png', 'favicon');
       expect(result.valid).toBe(false);
       expect(result.error).toContain('File too large');
@@ -148,10 +142,7 @@ describe('image-validator', () => {
 
     it('accepts favicon at exactly 512 KB', () => {
       const exact = Buffer.alloc(512 * 1024);
-      exact[0] = 0x89;
-      exact[1] = 0x50;
-      exact[2] = 0x4E;
-      exact[3] = 0x47;
+      VALID_PNG.subarray(0, 8).copy(exact);
       const result = validateImage(exact, 'image/png', 'favicon');
       expect(result.valid).toBe(true);
     });
@@ -223,6 +214,17 @@ describe('image-validator', () => {
     it('rejects file declared as WebP with wrong bytes', () => {
       const result = validateImage(VALID_PNG, 'image/webp', 'logo');
       expect(result.valid).toBe(false);
+    });
+
+    it('rejects a RIFF file without the WEBP format marker', () => {
+      const riff = Buffer.from([
+        0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00, 0x57, 0x41, 0x56, 0x45,
+      ]);
+
+      const result = validateImage(riff, 'image/webp', 'logo');
+
+      expect(result.valid).toBe(false);
+      expect(result.detectedType).toBeUndefined();
     });
   });
 
@@ -350,7 +352,7 @@ describe('image-validator', () => {
     });
 
     it('returns no detected type for unknown bytes', () => {
-      const unknown = Buffer.from([0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x00, 0x00, 0x00]);
+      const unknown = Buffer.from([0xde, 0xad, 0xbe, 0xef, 0x00, 0x00, 0x00, 0x00]);
       const result = validateImage(unknown, 'image/png', 'logo');
       expect(result.valid).toBe(false);
       expect(result.detectedType).toBeUndefined();
