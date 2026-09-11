@@ -4,10 +4,11 @@
 
 ## Overview
 
-Porta exposes two distinct API surfaces:
+Porta exposes three distinct HTTP surfaces:
 
 1. **Admin API** (`/api/admin/*`) — RESTful management API for organizations, applications, clients, users, RBAC, and system configuration
-2. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
+2. **Public branding** (`/:orgSlug/branding/*`) — Anonymous delivery of uploaded organization logos and favicons
+3. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
    This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
 
 ## REST Conventions
@@ -127,6 +128,18 @@ organization before touching asset storage. Invalid and missing organization ide
 share the same `404` boundary. The SDK mirrors these four routes with `listAssets`, `getAsset`,
 `uploadAsset`, and `deleteAsset`; `updateSettings` uses the existing organization branding-settings
 route and returns the complete updated organization.
+
+### Public organization branding
+
+Authentication pages load uploaded assets from `GET /:orgSlug/branding/:type`, where `type` is
+exactly `logo` or `favicon`. This route is anonymous because login pages must render before a user
+authenticates. Missing organizations, unsupported types, and empty asset slots all return the same
+minimal `404`, which avoids exposing whether a tenant or asset exists.
+
+Successful responses contain only the validated stored bytes and media type. They use
+`Cache-Control: public, no-cache` plus an ETag for revalidation. SVG responses also receive a
+restrictive document CSP. Suspended organizations retain asset delivery so their authentication
+pages remain consistently branded while an administrator repairs or reactivates them.
 
 ## Authentication
 

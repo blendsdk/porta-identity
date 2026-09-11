@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-10
+> **Last Updated**: 2026-09-11
 
 ## High-Level Architecture
 
@@ -183,7 +183,8 @@ graph TB
     ADMIN --> ML[Magic Link Routes]
     ML --> PR[Password Reset Routes]
     PR --> INV[Invitation Routes]
-    INV --> TR[Tenant Resolver<br/>/:orgSlug/*]
+    INV --> BRAND[Public Branding<br/>/:orgSlug/branding/*]
+    BRAND --> TR[Tenant Resolver<br/>/:orgSlug/*]
     TR --> CSH[Client Secret Hash<br/>SHA-256 pre-hash]
     CSH --> CORS[OIDC CORS Handler]
     CORS --> OIDC[OIDC Provider Mount<br/>/:orgSlug/*]
@@ -204,6 +205,7 @@ graph TB
 | Admin CORS         | `admin-cors.ts`         | CORS handling for `/api/admin/*` (configurable origins)         |
 | Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints                           |
 | Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes                |
+| Public Branding    | `public-branding.ts`    | Anonymous validated logo and favicon delivery                   |
 | Token Rate Limiter | `token-rate-limiter.ts` | Rate limiting for token endpoints                               |
 | Tenant Resolver    | `tenant-resolver.ts`    | Cache-first org lookup from URL slug                            |
 | Client Secret Hash | `client-secret-hash.ts` | SHA-256 pre-hash for `client_secret_post`                       |

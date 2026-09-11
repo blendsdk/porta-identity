@@ -160,6 +160,20 @@ Authentication and operation-specific permission checks still run before resourc
 asset routes then validate and resolve the organization, so callers without the required capability
 cannot use response differences to discover organization existence.
 
+### Public branding isolation
+
+The anonymous `GET /:orgSlug/branding/:type` route exposes only validated image bytes. It performs
+one exact organization lookup and one exact asset lookup; missing organizations, invalid asset
+types, and empty slots share the same `404` response. It returns no organization identifiers,
+filenames, storage metadata, or cookies. SVG responses receive a sandboxed CSP with no script or
+external network access.
+
+Authentication pages and emails use one effective-branding resolver. Uploaded assets take
+precedence over validated configured URLs, followed by the existing text and color defaults.
+HTML routes copy the resolver's unique image origins into request state, and the security-header
+middleware adds only those validated origins to `img-src`. The base policy continues to allow
+same-origin and `data:` images for uploaded assets and TOTP QR codes.
+
 ### Magic Link Authentication
 
 Passwordless authentication via email:
