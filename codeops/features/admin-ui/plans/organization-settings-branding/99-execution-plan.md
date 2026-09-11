@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 12:20
-> **Progress**: 31/55 tasks (56%)
+> **Last Updated**: 2026-09-11 13:49
+> **Progress**: 32/55 tasks (58%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -135,7 +135,7 @@ Playwright, and 100 structure tests passed. Server lint, typecheck, and build al
 
 ## Phase 3: Organization Admin Workspace
 
-> **Phase baseline tree**: _(recorded by exec-plan from the complete phase-start worktree state)_
+> **Phase baseline tree**: cb1ff30a2a3cc116e1b3648885a5e0bb9293a175
 > **Scope mode**: strict
 > **Lenses**: security
 
@@ -143,7 +143,7 @@ Playwright, and 100 structure tests passed. Server lint, typecheck, and build al
 
 **Reference**: [03-03](03-03-organization-admin-workspace.md) · AR-1–AR-3 · ST-27–ST-45
 
-- [ ] 3.1.1 [spec-author] Write menu, state, service, tabs, lifecycle, authentication, branding, focus, stale-context, and minimum-size specifications from ST-27–ST-45 — `packages/cli/tests/admin/organization-workspace.spec.test.ts`
+- [x] 3.1.1 [spec-author] Write menu, state, service, tabs, lifecycle, authentication, branding, focus, stale-context, and minimum-size specifications from ST-27–ST-45 — `packages/cli/tests/admin/organization-workspace.spec.test.ts` ✅ (completed: 2026-09-11 13:49)
 - [ ] 3.1.2 Run the Phase 3 specification file and record the expected red result before implementation
 
 ### Step 3.2: Implementation
