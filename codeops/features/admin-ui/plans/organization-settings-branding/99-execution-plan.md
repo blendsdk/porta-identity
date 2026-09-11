@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 14:48
-> **Progress**: 37/55 tasks (67%)
+> **Last Updated**: 2026-09-11 15:03
+> **Progress**: 38/55 tasks (69%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -172,7 +172,14 @@ operation now has an independent spy, while all observable expectations remain u
 excludes the native input owned by the required locale ComboBox. Observable expectations are
 unchanged. User approved 2026-09-11.
 - [x] 3.2.4 Add the login-method and password-login 2FA controls to the Authentication tab — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts` ✅ (completed: 2026-09-11 14:48)
-- [ ] 3.2.5 Add the Branding form and immediate file-backed asset actions; pin JSVision files — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/package.json`, `yarn.lock`
+- [x] 3.2.5 Add the Branding form and immediate file-backed asset actions; pin JSVision files — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts`, `packages/cli/package.json`, `yarn.lock` ✅ (completed: 2026-09-11 15:03)
+
+**3.2.5 authorized specification-fixture correction:** the standalone name-input assertion is now
+scoped to the Overview tab instead of counting controls retained by inactive tabs. Observable
+expectations are unchanged. User approved 2026-09-11.
+
+**3.2.5 mechanical correction:** the repository dependency contract now requires the approved
+`@jsvision/files` package alongside lockstep core and UI versions.
 - [ ] 3.2.6 Wire the Manage command, production SDK domains, capabilities, lifecycle, and stale-session closure through existing application seams — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts`
 - [ ] 3.2.7 Run ST-27–ST-45 and make the immutable Phase 3 expectations green
 

@@ -1,5 +1,9 @@
 /** Operation ownership for the selected-organization management workspace. */
 
+import { readFile as readBinaryFile } from 'node:fs/promises';
+
+import { openFile as openNativeFile } from '@jsvision/files';
+import type { OpenFileOptions } from '@jsvision/files';
 import {
   Button,
   col,
@@ -16,6 +20,8 @@ import type { EventLoop, ModalDialogHost, View } from '@jsvision/ui';
 import type { AdminOrganizationWorkspaceOperations } from './organization-service.js';
 import type {
   AdminConnectionState,
+  AdminOrganizationAssetContentType,
+  AdminOrganizationAssetType,
   AdminOrganizationIntent,
   AdminOrganizationWorkspaceFailureKind,
   AdminOrganizationWorkspaceProjection,
@@ -70,6 +76,10 @@ export interface AdminOrganizationControllerOptions {
   readonly workspaceFactory: (
     options: AdminOrganizationWorkspaceOptions,
   ) => AdminOrganizationWorkspace;
+  /** Opens the native file picker; injectable only for deterministic tests. */
+  readonly openFile?: (options: OpenFileOptions) => Promise<string | null | undefined>;
+  /** Reads the selected file bytes; injectable only for deterministic tests. */
+  readonly readFile?: (path: string) => Promise<Uint8Array>;
 }
 
 /** Application-owned organization workspace boundary. */
@@ -97,6 +107,30 @@ function contextKey(state: AdminConnectionState, sessionEpoch: number): string |
 /** Returns a fixed failure for a completed non-success mutation. */
 function mutationFailure(result: MutationResult): AdminOrganizationWorkspaceFailureKind {
   return result.kind === 'failure' ? result.failure : 'unavailable';
+}
+
+/** Supported image suffixes and the media type declared to the server. */
+const IMAGE_CONTENT_TYPES: ReadonlyArray<
+  readonly [suffix: string, contentType: AdminOrganizationAssetContentType]
+> = [
+  ['.png', 'image/png'],
+  ['.jpg', 'image/jpeg'],
+  ['.jpeg', 'image/jpeg'],
+  ['.webp', 'image/webp'],
+  ['.ico', 'image/x-icon'],
+  ['.svg', 'image/svg+xml'],
+];
+
+/** Maximum decoded byte size for each stored branding image slot. */
+const ASSET_LIMITS: Readonly<Record<AdminOrganizationAssetType, number>> = {
+  logo: 2 * 1024 * 1024,
+  favicon: 512 * 1024,
+};
+
+/** Resolves an approved media type from a user-selected filename. */
+function imageContentType(path: string): AdminOrganizationAssetContentType | undefined {
+  const normalized = path.toLowerCase();
+  return IMAGE_CONTENT_TYPES.find(([suffix]) => normalized.endsWith(suffix))?.[1];
 }
 
 /** Opens one focused Keep/confirm dialog and always removes it. */
@@ -246,6 +280,7 @@ export function createAdminOrganizationController(
     if (result.kind === 'success') {
       pendingTabs.delete(tab);
       await reload();
+      if (owns(capturedGeneration, selectedId)) publishReady();
       return;
     }
     await reload();
@@ -277,6 +312,86 @@ export function createAdminOrganizationController(
         },
       };
     }
+  };
+
+  /** Reloads only uploaded image metadata after one immediate asset action. */
+  const reloadAssets = async (): Promise<void> => {
+    const operations = options.readOperations();
+    const selectedId = organizationId;
+    const current = projection;
+    if (!operations || !selectedId || !current) return;
+    const capturedGeneration = generation;
+    const result = await operations.listAssets(selectedId, new AbortController().signal);
+    if (!owns(capturedGeneration, selectedId)) return;
+    if (result.kind === 'session-invalid') return sessionInvalid();
+    if (result.kind === 'success') projection = { ...current, assets: result.value };
+  };
+
+  /** Selects, validates, and immediately uploads one local branding image. */
+  const uploadAsset = async (assetType: AdminOrganizationAssetType): Promise<void> => {
+    if (!projection || pendingTabs.has('branding')) return;
+    const pick = options.openFile ?? ((pickerOptions) => openNativeFile(options.host, pickerOptions));
+    let path: string | null | undefined;
+    try {
+      path = await pick({
+        title: 'Select image (PNG, JPEG, WebP, ICO, SVG)',
+        wildcard: '*.*',
+        filter: (entry) => entry.kind === 'file' && imageContentType(entry.name) !== undefined,
+      });
+    } catch {
+      publishReady('file-read');
+      workspace?.focusCurrent();
+      return;
+    }
+    workspace?.focusCurrent();
+    if (!path) return;
+    const contentType = imageContentType(path);
+    if (!contentType) {
+      publishReady('file-type');
+      return;
+    }
+    let bytes: Uint8Array;
+    try {
+      bytes = await (options.readFile ?? readBinaryFile)(path);
+    } catch {
+      publishReady('file-read');
+      return;
+    }
+    if (bytes.length === 0 || bytes.length > ASSET_LIMITS[assetType]) {
+      publishReady('file-size');
+      return;
+    }
+    await mutate(
+      'branding',
+      (operations, id) =>
+        operations.uploadAsset(
+          id,
+          assetType,
+          { contentType, data: Buffer.from(bytes).toString('base64') },
+          new AbortController().signal,
+        ),
+      reloadAssets,
+    );
+  };
+
+  /** Confirms and immediately removes one stored branding image. */
+  const removeAsset = async (assetType: AdminOrganizationAssetType): Promise<void> => {
+    if (!projection || pendingTabs.has('branding')) return;
+    const label = assetType === 'logo' ? 'logo' : 'favicon';
+    const confirmed = await confirmAction(
+      options.host,
+      `Remove ${label}`,
+      `Remove the uploaded ${label}?`,
+      'Remove',
+    );
+    workspace?.focusCurrent();
+    if (!confirmed) return;
+    await mutate(
+      'branding',
+      (operations, id) =>
+        operations.deleteAsset(id, assetType, new AbortController().signal),
+      reloadAssets,
+    );
   };
 
   /** Applies only changed authentication resources in a fixed sequential order. */
@@ -338,7 +453,10 @@ export function createAdminOrganizationController(
         void mutate('branding', (operations, id) => operations.updateBranding(id, intent.input));
         return;
       case 'upload-asset':
+        void uploadAsset(intent.assetType);
+        return;
       case 'remove-asset':
+        void removeAsset(intent.assetType);
         return;
     }
   };

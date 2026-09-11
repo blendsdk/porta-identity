@@ -1066,6 +1066,15 @@
   resolved "https://registry.yarnpkg.com/@jsvision/core/-/core-1.7.1.tgz#48e3e44d0a97cd1e6dcda5274725ece212c7479f"
   integrity sha512-aYk5ezrSk8W9YODaY10eKJWdqglO1jlROlsgqLF5qsJugB9m+LsAEdK9/QkV0Nro3+vMus5lFcctLeQ9pemtaA==
 
+"@jsvision/files@1.7.1":
+  version "1.7.1"
+  resolved "https://registry.yarnpkg.com/@jsvision/files/-/files-1.7.1.tgz#4cc19b09de433cec5744c8e606eeb98523f1436a"
+  integrity sha512-eNmscjJhURQFXJRqWqdkTQnI7sfUhJPQDsXlqh/ZM2hnuCpDXKvraWU14eCyphvqboBAsYBwL9dlwbsMQoTp8A==
+  dependencies:
+    "@jsvision/core" "1.7.1"
+    "@jsvision/i18n" "1.7.1"
+    "@jsvision/ui" "1.7.1"
+
 "@jsvision/i18n@1.7.1":
   version "1.7.1"
   resolved "https://registry.yarnpkg.com/@jsvision/i18n/-/i18n-1.7.1.tgz#778e11ef8094ae440194874bcfa2e499d03109fb"

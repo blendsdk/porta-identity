@@ -110,13 +110,18 @@ test('should declare the lockstep JSVision dependencies when the admin shell bel
 
   assert.deepEqual(
     jsVisionDeclarations.map(([name]) => name).sort(),
-    ['@jsvision/core', '@jsvision/ui'],
-    'the CLI must directly own exactly the JSVision core and UI packages',
+    ['@jsvision/core', '@jsvision/files', '@jsvision/ui'],
+    'the CLI must directly own exactly the JSVision core, files, and UI packages',
   );
   assert.equal(
     cliManifest.dependencies?.['@jsvision/core'],
+    cliManifest.dependencies?.['@jsvision/files'],
+    'the JSVision core and files packages must select the same release',
+  );
+  assert.equal(
+    cliManifest.dependencies?.['@jsvision/files'],
     cliManifest.dependencies?.['@jsvision/ui'],
-    'the JSVision core and UI packages must select the same release',
+    'the JSVision files and UI packages must select the same release',
   );
   assert.match(
     cliManifest.dependencies?.['@jsvision/core'] ?? '',

@@ -285,7 +285,9 @@ describe('organization overview', () => {
     expect(text).toContain('ACTIVE');
     expect(text).toContain('02 Jan 2026, 03:04 UTC');
     expect(text).toContain('09 Aug 2026, 10:11 UTC');
-    const views = descendants(mounted.window);
+    const overview = organizationTabs(mounted.window).tabs.peek()[0]?.content;
+    if (!overview) throw new Error('Overview page missing.');
+    const views = descendants(overview);
     const comboInputs = new Set(
       views.filter((view) => view instanceof ComboBox).map((combo) => combo.input),
     );

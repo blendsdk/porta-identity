@@ -171,7 +171,11 @@ export type AdminOrganizationIntent =
     };
 
 /** Fixed workspace failure categories that are safe to render. */
-export type AdminOrganizationWorkspaceFailureKind = AdminOrganizationFailureKind;
+export type AdminOrganizationWorkspaceFailureKind =
+  | AdminOrganizationFailureKind
+  | 'file-type'
+  | 'file-size'
+  | 'file-read';
 
 /** Sanitized read result returned by organization workspace operations. */
 export type AdminOrganizationWorkspaceReadResult<T> =
