@@ -379,17 +379,18 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     try {
       const context = await browser.newContext({ ignoreHTTPSErrors: true });
       const healthy = await this.submitForgotPassword(context);
-      const probe = await this.dependencies.whileUnavailable('mailhog', () =>
+      const probe = await this.dependencies.observePasswordResetMailFailure(() =>
         this.submitForgotPassword(context),
       );
       const recovery = await this.submitForgotPassword(context);
       return this.buildObservation(
         requirement,
         healthy,
-        probe,
+        probe.response,
         this.namedStateObservations(requirement, {
-          'protected-state-fingerprint-after-equals-before': unobserved,
-          'no-partial-durable-effect': unobserved,
+          'exactly-one-probe-recovery-job-has-valid-failure-state':
+            probe.integrity.validFailureState,
+          'probe-recovery-token-is-job-bound-without-orphans': probe.integrity.validTokenOwnership,
         }),
         recovery.status === requirement.control.expectedStatus,
         undefined,
