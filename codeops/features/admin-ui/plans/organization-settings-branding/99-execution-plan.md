@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 12:00
-> **Progress**: 27/55 tasks (49%)
+> **Last Updated**: 2026-09-11 12:02
+> **Progress**: 28/55 tasks (51%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -115,7 +115,11 @@ no harness, fixture, infrastructure, or test-authoring failure remains.
 - [x] 2.2.5 Adopt the same effective context in email, invitation send/preview, and OIDC-provider HTML rendering paths — `packages/server/src/auth/email-service.ts`, `packages/server/src/routes/users.ts`, `packages/server/src/oidc/configuration.ts` ✅ (completed: 2026-09-11 11:46)
 - [x] 2.2.6 Add one CSP builder and validated image-origin handoff while preserving all non-image directives — `packages/server/src/middleware/security-headers.ts`, `packages/server/src/auth/template-engine.ts` ✅ (completed: 2026-09-11 11:52)
 - [x] 2.2.7 Apply the exact upload-only request allowance in both bundled proxies — `docker/nginx-dev.conf`, `docker/admin-playground/nginx.conf` ✅ (completed: 2026-09-11 12:00)
-- [ ] 2.2.8 Run ST-13–ST-26 and make the immutable Phase 2 expectations green
+- [x] 2.2.8 Run ST-13–ST-26 and make the immutable Phase 2 expectations green ✅ (completed: 2026-09-11 12:02)
+
+**Phase 2 GREEN evidence:** unit specifications: 17 passed / 0 failed; security specifications:
+7 passed / 0 failed; bundled-proxy specifications: 2 passed / 0 failed. All immutable ST-13–ST-26
+expectations pass without changing their behavioral assertions.
 
 ### Step 2.3: Implementation Tests and Hardening
 
