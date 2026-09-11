@@ -471,19 +471,18 @@ describe('organization controller request semantics', () => {
       setState: vi.fn((value: unknown) => states.push(value)),
       focusCurrent: vi.fn(),
     };
-    const success = vi.fn().mockResolvedValue({ kind: 'success' });
     const operations = {
       get: vi.fn().mockResolvedValue({ kind: 'success', value: organization }),
-      update: success,
-      activate: success,
-      suspend: success,
+      update: vi.fn().mockResolvedValue({ kind: 'success' }),
+      activate: vi.fn().mockResolvedValue({ kind: 'success' }),
+      suspend: vi.fn().mockResolvedValue({ kind: 'success' }),
       getLoginMethods: vi.fn().mockResolvedValue({
         kind: 'success',
         value: ['password'],
       }),
-      updateLoginMethods: success,
+      updateLoginMethods: vi.fn().mockResolvedValue({ kind: 'success' }),
       getTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success', value: 'optional' }),
-      updateTwoFactorPolicy: success,
+      updateTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success' }),
       getBranding: vi.fn().mockResolvedValue({
         kind: 'success',
         value: {
@@ -493,10 +492,10 @@ describe('organization controller request semantics', () => {
           faviconUrl: organization.brandingFaviconUrl,
         },
       }),
-      updateBranding: success,
+      updateBranding: vi.fn().mockResolvedValue({ kind: 'success' }),
       listAssets: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
-      uploadAsset: success,
-      deleteAsset: success,
+      uploadAsset: vi.fn().mockResolvedValue({ kind: 'success' }),
+      deleteAsset: vi.fn().mockResolvedValue({ kind: 'success' }),
       ...operationOverrides,
     };
     const requestAuthentication = vi.fn();

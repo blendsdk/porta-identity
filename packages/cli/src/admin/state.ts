@@ -144,6 +144,32 @@ export interface AdminOrganizationOverviewInput {
   readonly defaultLocale?: string;
 }
 
+/** Tabs whose operation controls have independent pending ownership. */
+export type AdminOrganizationWorkspaceTab = 'overview' | 'authentication' | 'branding';
+
+/** Closed set of user actions emitted by the organization workspace. */
+export type AdminOrganizationIntent =
+  | { readonly kind: 'save-overview'; readonly input: AdminOrganizationOverviewInput }
+  | { readonly kind: 'activate' | 'suspend' }
+  | {
+      readonly kind: 'save-authentication';
+      readonly loginMethods: readonly AdminOrganizationLoginMethod[];
+      readonly twoFactorPolicy: AdminOrganizationTwoFactorPolicy;
+    }
+  | {
+      readonly kind: 'save-branding';
+      readonly input: {
+        readonly companyName?: string | null;
+        readonly primaryColor?: string | null;
+        readonly logoUrl?: string | null;
+        readonly faviconUrl?: string | null;
+      };
+    }
+  | {
+      readonly kind: 'upload-asset' | 'remove-asset';
+      readonly assetType: AdminOrganizationAssetType;
+    };
+
 /** Fixed workspace failure categories that are safe to render. */
 export type AdminOrganizationWorkspaceFailureKind = AdminOrganizationFailureKind;
 
@@ -173,13 +199,14 @@ export interface AdminOrganizationWorkspaceProjection {
 export type AdminOrganizationWorkspaceState =
   | { readonly kind: 'closed' }
   | { readonly kind: 'loading'; readonly previous?: AdminOrganizationWorkspaceProjection }
-  | ({ readonly kind: 'ready' } & AdminOrganizationWorkspaceProjection)
-  | ({ readonly kind: 'saving'; readonly tab: 'overview' | 'authentication' | 'branding' } &
-      AdminOrganizationWorkspaceProjection)
+  | ({
+      readonly kind: 'ready';
+      readonly pendingTabs?: readonly AdminOrganizationWorkspaceTab[];
+      readonly failure?: AdminOrganizationWorkspaceFailureKind;
+      readonly reloadedAfterFailure?: boolean;
+    } & AdminOrganizationWorkspaceProjection)
   | ({ readonly kind: 'failure'; readonly failure: AdminOrganizationWorkspaceFailureKind } &
-      Partial<AdminOrganizationWorkspaceProjection>)
-  | ({ readonly kind: 'outcome-unknown'; readonly tab: 'overview' | 'authentication' | 'branding' } &
-      AdminOrganizationWorkspaceProjection);
+      Partial<AdminOrganizationWorkspaceProjection>);
 
 /** The bounded organization projection retained by the terminal application. */
 export interface AdminOrganizationContext {

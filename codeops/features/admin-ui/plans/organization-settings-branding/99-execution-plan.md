@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 14:03
-> **Progress**: 34/55 tasks (62%)
+> **Last Updated**: 2026-09-11 14:20
+> **Progress**: 35/55 tasks (64%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -159,7 +159,13 @@ fixture, infrastructure, or test-authoring failure remains.
 **3.2.1 mechanical correction:** `packages/cli/src/admin/session-service.ts` now projects the two
 new capability booleans so the extended required state contract remains type-safe.
 
-- [ ] 3.2.2 Add workspace generation, context checks, direct mutation sequencing, and reload behavior — `packages/cli/src/admin/organization-controller.ts`
+- [x] 3.2.2 Add workspace generation, context checks, direct mutation sequencing, and reload behavior — `packages/cli/src/admin/organization-controller.ts` ✅ (completed: 2026-09-11 14:20)
+
+**3.2.2 mechanical correction:** `packages/cli/src/admin/presentation.ts` publishes the shared
+Manage command identifier so the controller contract can be verified before menu wiring.
+The user authorized correcting the immutable specification fixture on 2026-09-11: each mutation
+operation now has an independent spy, while all observable expectations remain unchanged.
+
 - [ ] 3.2.3 Build the maximized Layout DSL window, TabView, and Overview tab — `packages/cli/src/admin/organization-workspace.ts`
 - [ ] 3.2.4 Add the login-method and password-login 2FA controls to the Authentication tab — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts`
 - [ ] 3.2.5 Add the Branding form and immediate file-backed asset actions; pin JSVision files — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/package.json`, `yarn.lock`

@@ -24,6 +24,7 @@ export const ADMIN_COMMANDS = {
   whoAmI: 'who-am-i',
   createOrganization: 'create-organization',
   switchOrganization: 'switch-organization',
+  manageOrganization: 'manage-organization',
   browseUsers: 'browse-users',
   createUser: 'create-user',
   inviteUser: 'invite-user',
