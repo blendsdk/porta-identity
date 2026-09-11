@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 10:06
-> **Progress**: 15/55 tasks (27%)
+> **Last Updated**: 2026-09-11 10:48
+> **Progress**: 16/55 tasks (29%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -84,7 +84,7 @@ failure remains.
 
 ## Phase 2: Public Branding Rendering
 
-> **Phase baseline tree**: _(recorded by exec-plan from the complete phase-start worktree state)_
+> **Phase baseline tree**: 882a3f0b5e14bb9f838d1b2b485e826ba88f451d
 > **Scope mode**: strict
 > **Lenses**: security; api-surface
 
@@ -92,7 +92,7 @@ failure remains.
 
 **Reference**: [03-02](03-02-public-branding-rendering.md) · AR-1–AR-3 · ST-13–ST-26
 
-- [ ] 2.1.1 [spec-author] Write public asset success, 404-equivalence, isolation, cache, and SVG-header specifications from ST-13–ST-16 — `packages/server/tests/unit/routes/public-branding.spec.test.ts`
+- [x] 2.1.1 [spec-author] Write public asset success, 404-equivalence, isolation, cache, and SVG-header specifications from ST-13–ST-16 — `packages/server/tests/unit/routes/public-branding.spec.test.ts` ✅ (completed: 2026-09-11 10:48)
 - [ ] 2.1.2 [spec-author] Write effective precedence, fallback, failure, and page/email context specifications from ST-17–ST-20 and ST-23 — `packages/server/tests/unit/auth/effective-branding.spec.test.ts`
 - [ ] 2.1.3 [security] Write public enumeration/CSP specifications and exact bundled-proxy structure specifications from ST-14–ST-16, ST-21–ST-22, and ST-26 — `packages/server/tests/pentest/infrastructure/branding-boundary.spec.test.ts`, `repo-tests/monorepo/branding-upload-proxy.spec.test.mjs`
 - [ ] 2.1.4 [spec-author] Write passwordless/password 2FA boundary specifications from ST-24–ST-25 — `packages/server/tests/unit/auth/two-factor-login-boundary.spec.test.ts`
