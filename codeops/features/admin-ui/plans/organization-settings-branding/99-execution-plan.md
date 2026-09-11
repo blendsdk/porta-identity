@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 19:41
-> **Progress**: 57/58 tasks (98%)
+> **Last Updated**: 2026-09-11 19:56
+> **Progress**: 58/58 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -240,7 +240,7 @@ covered by focused tests. See `08-phase-quality-review.md`.
 - [x] 4.2.6a Correct the user-authorized pre-existing mail observer gap and verify its focused specification and implementation coverage ✅ (completed: 2026-09-11 18:33; focused exposure 26/26, P1 exposure 20/20, structure 100/100; live SMTP deadline correction included)
 - [x] 4.2.6b Align the retained tenant/admin live assurance with current deletion and canonical Admin-role behavior, and restore explicit bootstrap-role protection ✅ (completed: 2026-09-11 19:14; regression RED confirmed; focused server 46/46; focused assurance 24/24; server workspace verification passed)
 - [x] 4.2.6c Restore explicit bootstrap-user protection on the current organization-scoped deletion route ✅ (completed: 2026-09-11 19:41; live failure reproduced; regression RED confirmed; focused server 38/38; server workspace verification and structure 100/100 passed)
-- [ ] 4.2.6d From the clean committed correction revision, run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy
+- [x] 4.2.6d From the clean committed correction revision, run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 19:56; run `80b7ecaf-97f4-458a-91dc-e3b52ee50d0a`; production exposure 7 passed / 1 registered product failure / 3 registered incomplete / 0 execution failures; human auth 7/7; second factor 4/4; tenant/admin 17/17; lifecycle cleanup complete)
 - [x] 4.2.7 After a clean committed implementation revision exists, run `yarn assurance:compat --select tenant-admin` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 18:01; run `5ccbc085-8898-425d-8464-a89d29a28d88` passed)
 
 **Verify**: all AR-3 commands above; root `yarn verify` remains prohibited
