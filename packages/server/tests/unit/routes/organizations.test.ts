@@ -411,6 +411,43 @@ describe('organization routes', () => {
 
       expect(ctx.body).toEqual({ data: org });
     });
+
+    it('should trim HTTPS fallback URLs before updating branding', async () => {
+      const org = createTestOrg({ brandingLogoUrl: 'https://assets.example.test/logo.png' });
+      (
+        organizationService.updateOrganizationBranding as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(org);
+      const router = createOrganizationRouter();
+      const layer = router.stack.find(
+        (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id/branding',
+      );
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { logoUrl: '  https://assets.example.test/logo.png  ' },
+      });
+
+      await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+      expect(organizationService.updateOrganizationBranding).toHaveBeenCalledWith('org-uuid-1', {
+        logoUrl: 'https://assets.example.test/logo.png',
+      });
+    });
+
+    it('should reject non-loopback HTTP fallback URLs', async () => {
+      const router = createOrganizationRouter();
+      const layer = router.stack.find(
+        (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id/branding',
+      );
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { logoUrl: 'http://assets.example.test/logo.png' },
+      });
+
+      await expect(
+        layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn()),
+      ).rejects.toMatchObject({ status: 400, message: 'Organization request is invalid' });
+      expect(organizationService.updateOrganizationBranding).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
