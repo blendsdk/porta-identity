@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 19:14
-> **Progress**: 56/57 tasks (98%)
+> **Last Updated**: 2026-09-11 19:41
+> **Progress**: 57/58 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -22,9 +22,9 @@ adds no optimistic concurrency, generalized infrastructure, or optional feature.
 | 1     | Admin asset and SDK contracts |    15 |
 | 2     | Public branding rendering     |    16 |
 | 3     | Organization Admin workspace  |    14 |
-| 4     | Documentation and final gates |    12 |
+| 4     | Documentation and final gates |    13 |
 
-**Total: 57 tasks across 4 phases**
+**Total: 58 tasks across 4 phases**
 
 > **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
 >
@@ -239,7 +239,8 @@ covered by focused tests. See `08-phase-quality-review.md`.
 - [x] 4.2.5 Run `yarn test:ui` ✅ (completed: 2026-09-11 17:55; 133 tests)
 - [x] 4.2.6a Correct the user-authorized pre-existing mail observer gap and verify its focused specification and implementation coverage ✅ (completed: 2026-09-11 18:33; focused exposure 26/26, P1 exposure 20/20, structure 100/100; live SMTP deadline correction included)
 - [x] 4.2.6b Align the retained tenant/admin live assurance with current deletion and canonical Admin-role behavior, and restore explicit bootstrap-role protection ✅ (completed: 2026-09-11 19:14; regression RED confirmed; focused server 46/46; focused assurance 24/24; server workspace verification passed)
-- [ ] 4.2.6c From the clean committed correction revision, run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy
+- [x] 4.2.6c Restore explicit bootstrap-user protection on the current organization-scoped deletion route ✅ (completed: 2026-09-11 19:41; live failure reproduced; regression RED confirmed; focused server 38/38; server workspace verification and structure 100/100 passed)
+- [ ] 4.2.6d From the clean committed correction revision, run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy
 - [x] 4.2.7 After a clean committed implementation revision exists, run `yarn assurance:compat --select tenant-admin` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 18:01; run `5ccbc085-8898-425d-8464-a89d29a28d88` passed)
 
 **Verify**: all AR-3 commands above; root `yarn verify` remains prohibited
@@ -258,7 +259,7 @@ Phase 4: documentation and complete gates verify the integrated feature
 
 ## Success Criteria
 
-1. All 57 tasks are complete and every immutable ST-1–ST-45 expectation passes.
+1. All 58 tasks are complete and every immutable ST-1–ST-45 expectation passes.
 2. The selected organization can be managed through the approved maximized three-tab workspace.
 3. PNG, JPEG, WebP, ICO, and SVG assets follow one validated JSON/base64 path and render through
    the exact public branding route.

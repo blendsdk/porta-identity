@@ -250,11 +250,13 @@ describe('record deletion Admin API specification', () => {
   it('ST-14 exposes control-plane deletion guards at service and repository boundaries', async () => {
     const organizationService = compact(await source('organizations/service.ts'));
     const organizationRepository = compact(await source('organizations/repository.ts'));
+    const userRoutes = compact(await source('routes/users.ts'));
     const userService = compact(await source('users/service.ts'));
     const userRepository = compact(await source('users/repository.ts'));
 
     expect(organizationService).toMatch(/deleteOrganization[^]*isSuperAdmin/);
     expect(organizationRepository).toMatch(/deleteOrganization[^]*is_super_admin\s*=\s*FALSE/i);
+    expect(userRoutes).toMatch(/router\.delete\([^]*guardSuperAdmin\([^]*['"]delete['"]/);
     expect(userService).toMatch(/deleteUser[^]*porta-super-admin/);
     expect(userRepository).toMatch(/deleteUser[^]*FOR UPDATE[^]*porta-super-admin/);
   });

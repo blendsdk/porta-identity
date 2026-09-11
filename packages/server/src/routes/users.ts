@@ -405,6 +405,7 @@ export function createUserRouter(): Router {
     async (ctx) => {
       try {
         identifierSchema.parse(ctx.params);
+        await guardSuperAdmin(ctx.params.userId, 'delete');
         await userService.deleteUser(ctx.params.orgId, ctx.params.userId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
