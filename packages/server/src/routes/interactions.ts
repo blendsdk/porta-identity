@@ -38,6 +38,7 @@ import {
   loadMagicLinkRateLimitConfig,
 } from '../auth/rate-limiter.js';
 import { sendOtpCodeEmail } from '../auth/email-service.js';
+import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
@@ -146,13 +147,6 @@ const defaultEnumerationDependencies: EnumerationSensitiveInteractionDependencie
 // ---------------------------------------------------------------------------
 
 /**
- * Build a branding context object from organization data.
- * Used to populate template context with org-specific branding.
- *
- * @param org - Organization with branding fields
- * @returns Branding context for templates
- */
-/**
  * Resolve the effective login methods for an OIDC provider Client.
  *
  * Reads the raw `urn:porta:login_methods` metadata (set by {@link findForOidc}
@@ -185,16 +179,6 @@ function resolveLoginMethodsFromOidcClient(
   return resolveLoginMethods(org, { loginMethods: normalized });
 }
 
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
-  };
-}
-
 /**
  * Build a base template context from an interaction context.
  * Shared across all interaction route handlers to provide consistent
@@ -204,16 +188,16 @@ function buildBrandingFromOrg(org: Organization) {
  * @param locale - Resolved locale string
  * @param csrfToken - CSRF token for form protection
  * @param orgSlug - Organization slug for template resolution
- * @returns Base template context (without the `t` translation function)
+ * @returns Base template context (without the `t` translation function).
  */
-function buildBaseContext(
+async function buildBaseContext(
   ctx: InteractionContext,
   locale: string,
   csrfToken: string,
   orgSlug: string,
 ) {
   return {
-    branding: buildBrandingFromOrg(ctx.state.organization),
+    branding: await resolveEffectiveBranding(ctx.state.organization),
     locale,
     csrfToken,
     orgSlug,
@@ -570,7 +554,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     const showMagicLink = effectiveMethods.includes('magic_link');
 
     const context: TemplateContext = {
-      ...buildBaseContext(ctx, locale, csrfToken, org.slug),
+      ...(await buildBaseContext(ctx, locale, csrfToken, org.slug)),
       t,
       interaction: {
         uid: interaction.uid,
@@ -622,7 +606,7 @@ async function renderMagicLinkSuccessPage(
   const csrfToken = generateCsrfToken();
 
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -1092,7 +1076,7 @@ async function handleSendMagicLink(
     // Always render the "check your email" page — prevents user enumeration
     const csrfToken = dependencies.generateCsrfToken();
     const context: TemplateContext = {
-      ...buildBaseContext(ctx, locale, csrfToken, org.slug),
+      ...(await buildBaseContext(ctx, locale, csrfToken, org.slug)),
       t,
       email,
       loginUrl: `/interaction/${interaction.uid}`,
@@ -1196,7 +1180,7 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     const requestedScopes = ((params.scope as string) ?? '').split(' ').filter(Boolean);
 
     const context: TemplateContext = {
-      ...buildBaseContext(ctx, locale, csrfToken, org.slug),
+      ...(await buildBaseContext(ctx, locale, csrfToken, org.slug)),
       t,
       interaction: {
         uid: interaction.uid,
@@ -1423,7 +1407,7 @@ async function renderLoginWithError(
   const showMagicLink = effectiveMethods.includes('magic_link');
 
   const context: TemplateContext = {
-    ...buildBaseContext(ctx, locale, csrfToken, org.slug),
+    ...(await buildBaseContext(ctx, locale, csrfToken, org.slug)),
     t,
     interaction: {
       uid: interaction.uid,
@@ -1467,7 +1451,7 @@ async function renderErrorPage(ctx: Context, errorKey: string): Promise<void> {
 
     const context: TemplateContext = {
       branding: org
-        ? buildBrandingFromOrg(org)
+        ? await resolveEffectiveBranding(org)
         : {
             logoUrl: null,
             faviconUrl: null,
