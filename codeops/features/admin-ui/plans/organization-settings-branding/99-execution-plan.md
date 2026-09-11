@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 17:32
-> **Progress**: 46/55 tasks (84%)
+> **Last Updated**: 2026-09-11 17:37
+> **Progress**: 47/55 tasks (85%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -223,7 +223,7 @@ covered by focused tests. See `08-phase-quality-review.md`.
 **Reference**: RD-06 AC-14–AC-18 · AR-1–AR-3
 
 - [x] 4.1.1 Update organization/branding API and custom-login-UI documentation for the corrected SDK, upload, public URL, SVG, fallback, and CSP contracts — `docs/api/organizations.md`, `docs/api/branding.md`, `docs/guide/custom-ui.md` ✅ (completed: 2026-09-11 17:32)
-- [ ] 4.1.2 Update organization CLI/Admin documentation for the new workspace and password-login 2FA boundary — `docs/cli/organizations.md`, `docs/concepts/authentication-modes.md`
+- [x] 4.1.2 Update organization CLI/Admin documentation for the new workspace and password-login 2FA boundary — `docs/cli/organizations.md`, `docs/concepts/authentication-modes.md` ✅ (completed: 2026-09-11 17:37)
 - [ ] 4.1.3 Run `yarn docs:build`
 
 ### Step 4.2: Final Verification

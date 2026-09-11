@@ -32,19 +32,19 @@ porta org list [--status active] [--search "acme"] [--page 1] [--page-size 20]
 ## `porta org show`
 
 ```bash
-porta org show --id <org-id>
+porta org show <id-or-slug>
 ```
 
 ## `porta org update`
 
 ```bash
-porta org update --id <org-id> [--name "New Name"] [--locale en] [--default-login-methods password,magic_link]
+porta org update <id-or-slug> [--name "New Name"] [--default-locale en] [--login-methods password,magic_link]
 ```
 
 ## `porta org suspend`
 
 ```bash
-porta org suspend --id <org-id>
+porta org suspend <id-or-slug>
 ```
 
 Suspends the organization. All authentication requests will be rejected until reactivated.
@@ -52,7 +52,7 @@ Suspends the organization. All authentication requests will be rejected until re
 ## `porta org activate`
 
 ```bash
-porta org activate --id <org-id>
+porta org activate <id-or-slug>
 ```
 
 Reactivates a suspended organization.
@@ -74,20 +74,38 @@ Deletion cannot be undone. The super-admin organization cannot be deleted.
 ## `porta org branding`
 
 ```bash
-# View branding
-porta org branding --id <org-id>
-
 # Update branding
-porta org branding --id <org-id> \
-  --logo-url "https://example.com/logo.png" \
+porta org branding <id-or-slug> \
   --primary-color "#0078d4" \
-  --company-name "Acme Corp"
+  --company-name "Acme Corp" \
+  --custom-css "body { font-family: sans-serif; }"
 ```
 
 | Flag | Description |
 |------|-------------|
-| `--logo-url` | Logo URL |
-| `--favicon-url` | Favicon URL |
 | `--primary-color` | Primary accent color (hex) |
 | `--company-name` | Display name on login pages |
 | `--custom-css` | Custom CSS for login pages |
+
+The conventional `porta org branding` command updates text branding. Use the embedded Admin UI,
+Admin API, or TypeScript SDK to manage fallback image URLs and uploaded logo/favicon assets.
+
+## Embedded Admin UI
+
+Start the terminal Admin UI with `yarn admin` in the repository playground, or with
+`porta admin --server <issuer-url>` from an installed CLI. Select an organization, then choose
+**Organizations → Manage current organization…**.
+
+The maximized workspace has three tabs:
+
+- **Overview** edits the organization name and default locale. It also activates or suspends the
+  selected organization. The super-admin organization cannot be suspended.
+- **Authentication** selects one or both organization-default login methods and the password-login
+  2FA policy. Clients configured to inherit login methods use this selection.
+- **Branding** edits company name, primary color, and external fallback URLs. It also adds, replaces,
+  or removes stored logo and favicon assets. Custom CSS remains available through the conventional
+  CLI and API, but is not exposed here.
+
+Changes save directly from their owning tab. A tab reports unchanged, saving, saved, failed, or
+reloaded-after-failure state. Asset changes are immediate after file selection or confirmation.
+The workspace discards late results if the selected organization or authenticated session changes.
