@@ -28,6 +28,13 @@ export interface HumanAuthMailPollingResult {
   readonly deliveryCount: 1;
 }
 
+/** Builds the MailHog inventory path for all mail or one exact synthetic recipient. */
+export function mailhogInventoryPath(recipient?: string): string {
+  return recipient === undefined
+    ? '/api/v2/messages'
+    : `/api/v2/search?kind=to&query=${encodeURIComponent(recipient)}`;
+}
+
 /**
  * Polls until exactly one message contains exactly one distinct value.
  *

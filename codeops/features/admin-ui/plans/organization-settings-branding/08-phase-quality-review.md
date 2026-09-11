@@ -1,7 +1,7 @@
 # Organization Settings and Branding Phase Quality Review
 
 > **Status**: Final review corrections in verification
-> **Last Updated**: 2026-09-11 21:08
+> **Last Updated**: 2026-09-11 21:18
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Admin Asset and SDK Contracts
@@ -107,3 +107,9 @@ infrastructure. Diagnosis of `st55-production-html-csp-policy` showed an assuran
 not a production CSP defect: two successful renders differed because each intentionally generated
 a fresh CSRF token. The correction verifies stable interaction form targets and the repeated CSP
 header contract. Historical evidence is retained without relabeling.
+
+The first clean rerun after that correction exposed a separate harness isolation defect. A durable
+password-reset recovery email from the earlier production-exposure slice could arrive during the
+email-OTP slice, whose observer counted the whole shared MailHog mailbox. The bounded correction
+queries the existing MailHog recipient search for the exact OTP fixture address. It still rejects
+duplicate OTP deliveries to that recipient and adds no production behavior or infrastructure.

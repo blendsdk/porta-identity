@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import {
   independentTotpValue,
+  mailhogInventoryPath,
   pollForExactHumanAuthMailValue,
 } from './human-auth-live-observers.js';
 import { LiveTenantAdminContext } from './tenant-admin-live-context.js';
@@ -51,19 +52,22 @@ async function clearMail(context: LiveTenantAdminContext): Promise<void> {
 }
 
 /** Reads the bounded synthetic mailbox. */
-async function readMail(context: LiveTenantAdminContext): Promise<z.infer<typeof mailSchema>> {
-  const response = await fetch(`${context.endpoints.mailhog}/api/v2/messages`);
+async function readMail(
+  context: LiveTenantAdminContext,
+  recipient?: string,
+): Promise<z.infer<typeof mailSchema>> {
+  const response = await fetch(`${context.endpoints.mailhog}${mailhogInventoryPath(recipient)}`);
   if (!response.ok) throw new Error('second-factor mailbox is unavailable');
   return mailSchema.parse(await response.json());
 }
 
 /** Extracts exactly one delivered six-digit code only into transient memory. */
-async function waitForOtp(context: LiveTenantAdminContext): Promise<string> {
+async function waitForOtp(context: LiveTenantAdminContext, recipient: string): Promise<string> {
   const result = await pollForExactHumanAuthMailValue({
     timeoutMilliseconds: 10_000,
     intervalMilliseconds: 200,
     read: async () => {
-      const inventory = await readMail(context);
+      const inventory = await readMail(context, recipient);
       return {
         count: inventory.total,
         bodies: inventory.items.map((entry) => entry.Content?.Body ?? entry.Raw?.Data ?? ''),
@@ -135,6 +139,7 @@ async function recoveryCount(context: LiveTenantAdminContext): Promise<number> {
 async function observeEmailOtp(
   context: LiveTenantAdminContext,
 ): Promise<readonly SecondFactorAttemptObservation[]> {
+  const email = 'alpha-user-active@test-harness.local';
   await context.lifecycle('reset');
   await clearMail(context);
   const policy = await context.rawRequest(
@@ -145,21 +150,21 @@ async function observeEmailOtp(
   );
   if (policy.status !== 200) throw new Error('email second-factor policy control failed');
   const password = context.credential('credential:alpha:password:active');
-  const first = await pendingLogin(context, 'alpha-user-active@test-harness.local', password);
+  const first = await pendingLogin(context, email, password);
   try {
     if (!first.page.url().endsWith('/two-factor/setup')) {
       throw new Error('email second-factor setup boundary was not reached');
     }
     await first.page.locator('input[name="setupMethod"][value="email"] + button').click();
     await first.page.waitForURL(/\/two-factor$/u);
-    let firstCode = await waitForOtp(context);
+    let firstCode = await waitForOtp(context, email);
     const firstAccepted = await submitCode(first, firstCode, false);
     if (!firstAccepted) throw new Error('email OTP positive control failed');
 
     await clearMail(context);
-    const replay = await pendingLogin(context, 'alpha-user-active@test-harness.local', password);
+    const replay = await pendingLogin(context, email, password);
     try {
-      const freshCode = await waitForOtp(context);
+      const freshCode = await waitForOtp(context, email);
       const replayAccepted = await submitCode(replay, firstCode, false);
       if (replayAccepted) throw new Error('consumed email OTP was accepted again');
       const freshAccepted = await submitCode(replay, freshCode, false);
