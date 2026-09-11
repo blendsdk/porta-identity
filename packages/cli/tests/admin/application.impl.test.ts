@@ -3,6 +3,9 @@
 import { createApplication } from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 import { runAdminApplication, type AdminSignalSource } from '../../src/admin/application.js';
+import type { AdminOrganizationWorkspaceOperations } from '../../src/admin/organization-service.js';
+import { ADMIN_COMMANDS } from '../../src/admin/presentation.js';
+import { validateAdminCapabilities } from '../../src/admin/session-service.js';
 import { adminStateServer, type AdminConnectionState } from '../../src/admin/state.js';
 
 const server = new URL('https://porta.example.test');
@@ -18,6 +21,44 @@ function authenticatedState(): AdminConnectionState {
     server,
     identity: { sub: 'subject-1', email: 'admin@example.test' },
     capabilities: noOrganizationCapabilities,
+  };
+}
+
+/** Creates successful selected-organization operations for application ownership tests. */
+function organizationWorkspaceOperations(): AdminOrganizationWorkspaceOperations {
+  const organization = {
+    id: '11111111-1111-4111-8111-111111111111',
+    name: 'Selected Organization',
+    slug: 'selected-organization',
+    status: 'active' as const,
+    isSuperAdmin: false,
+    defaultLocale: 'en',
+    defaultLoginMethods: ['password'] as const,
+    twoFactorPolicy: 'optional' as const,
+    brandingCompanyName: null,
+    brandingPrimaryColor: null,
+    brandingLogoUrl: null,
+    brandingFaviconUrl: null,
+    createdAt: '2026-01-02T03:04:00.000Z',
+    updatedAt: '2026-08-09T10:11:00.000Z',
+  };
+  return {
+    get: vi.fn().mockResolvedValue({ kind: 'success', value: organization }),
+    update: vi.fn().mockResolvedValue({ kind: 'success' }),
+    activate: vi.fn().mockResolvedValue({ kind: 'success' }),
+    suspend: vi.fn().mockResolvedValue({ kind: 'success' }),
+    getLoginMethods: vi.fn().mockResolvedValue({ kind: 'success', value: ['password'] }),
+    updateLoginMethods: vi.fn().mockResolvedValue({ kind: 'success' }),
+    getTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success', value: 'optional' }),
+    updateTwoFactorPolicy: vi.fn().mockResolvedValue({ kind: 'success' }),
+    getBranding: vi.fn().mockResolvedValue({
+      kind: 'success',
+      value: { companyName: null, primaryColor: null, logoUrl: null, faviconUrl: null },
+    }),
+    updateBranding: vi.fn().mockResolvedValue({ kind: 'success' }),
+    listAssets: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
+    uploadAsset: vi.fn().mockResolvedValue({ kind: 'success' }),
+    deleteAsset: vi.fn().mockResolvedValue({ kind: 'success' }),
   };
 }
 
@@ -210,6 +251,48 @@ describe('admin application implementation', () => {
         expect(application.loop.isCommandEnabled('who-am-i')).toBe(true);
         expect(application.loop.isCommandEnabled('create-organization')).toBe(true);
         expect(application.loop.isCommandEnabled('switch-organization')).toBe(true);
+        return 0;
+      },
+    });
+  });
+
+  it('should own organization workspace command availability through open and close', async () => {
+    const organization = {
+      id: '11111111-1111-4111-8111-111111111111',
+      name: 'Selected Organization',
+      slug: 'selected-organization',
+      status: 'active' as const,
+    };
+    const workspace = organizationWorkspaceOperations();
+
+    await runAdminApplication({
+      server,
+      insecure: false,
+      viewport: { width: 80, height: 24 },
+      initialState: {
+        kind: 'authenticated',
+        server,
+        identity: { sub: 'subject-1' },
+        organization,
+        capabilities: validateAdminCapabilities(['porta-admin'], []),
+      },
+      session: { organizationWorkspace: workspace },
+      applicationFactory: createApplication,
+      applicationRunner: async (application) => {
+        expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.manageOrganization)).toBe(true);
+
+        application.loop.emitCommand(ADMIN_COMMANDS.manageOrganization);
+        await settleWorkflow();
+        expect(workspace.get).toHaveBeenCalledOnce();
+        expect(workspace.listAssets).toHaveBeenCalledOnce();
+        expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.manageOrganization)).toBe(false);
+        expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.switchOrganization)).toBe(false);
+        expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.cancel)).toBe(true);
+
+        application.loop.emitCommand(ADMIN_COMMANDS.cancel);
+        await settle();
+        expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.manageOrganization)).toBe(true);
+        expect(application.loop.isCommandEnabled(ADMIN_COMMANDS.cancel)).toBe(false);
         return 0;
       },
     });
