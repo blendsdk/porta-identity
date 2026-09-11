@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 11:15
-> **Progress**: 19/55 tasks (35%)
+> **Last Updated**: 2026-09-11 11:17
+> **Progress**: 20/55 tasks (36%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -96,7 +96,13 @@ failure remains.
 - [x] 2.1.2 [spec-author] Write effective precedence, fallback, failure, and page/email context specifications from ST-17–ST-20 and ST-23 — `packages/server/tests/unit/auth/effective-branding.spec.test.ts` ✅ (completed: 2026-09-11 10:59)
 - [x] 2.1.3 [security] Write public enumeration/CSP specifications and exact bundled-proxy structure specifications from ST-14–ST-16, ST-21–ST-22, and ST-26 — `packages/server/tests/pentest/infrastructure/branding-boundary.spec.test.ts`, `repo-tests/monorepo/branding-upload-proxy.spec.test.mjs` ✅ (completed: 2026-09-11 11:11)
 - [x] 2.1.4 [spec-author] Write passwordless/password 2FA boundary specifications from ST-24–ST-25 — `packages/server/tests/unit/auth/two-factor-login-boundary.spec.test.ts` ✅ (completed: 2026-09-11 11:15)
-- [ ] 2.1.5 Run the Phase 2 specification files and record the expected red result before implementation
+- [x] 2.1.5 Run the Phase 2 specification files and record the expected red result before implementation ✅ (completed: 2026-09-11 11:17)
+
+**Phase 2 RED evidence:** unit specifications: 10 failed / 7 passed; security specifications:
+6 failed / 1 passed; bundled-proxy specifications: 2 failed / 0 passed. Failures map only to the
+absent public asset route, effective-branding resolver and context/CSP adoption, or exact proxy
+locations. Existing passwordless/password 2FA and generic OIDC callback boundaries already pass;
+no harness, fixture, infrastructure, or test-authoring failure remains.
 
 ### Step 2.2: Implementation
 
