@@ -32,6 +32,7 @@ import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
 import { LOGIN_METHODS } from '../clients/types.js';
+import { validateBrandingImageUrl } from '../organizations/branding-url.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -51,48 +52,11 @@ const loginMethodSchema = z.enum(LOGIN_METHODS);
  */
 const defaultLoginMethodsSchema = z.array(loginMethodSchema).min(1);
 
-const createOrganizationSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(3).max(100).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z
-    .object({
-      logoUrl: z.string().url().nullable().optional(),
-      faviconUrl: z.string().url().nullable().optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .nullable()
-        .optional(),
-      companyName: z.string().max(255).nullable().optional(),
-      customCss: z.string().max(10000).nullable().optional(),
-    })
-    .optional(),
-});
+const brandingImageUrlSchema = z.string().transform(validateBrandingImageUrl);
 
-const updateOrganizationSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z
-    .object({
-      logoUrl: z.string().url().nullable().optional(),
-      faviconUrl: z.string().url().nullable().optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .nullable()
-        .optional(),
-      companyName: z.string().max(255).nullable().optional(),
-      customCss: z.string().max(10000).nullable().optional(),
-    })
-    .optional(),
-});
-
-const updateBrandingSchema = z.object({
-  logoUrl: z.string().url().nullable().optional(),
-  faviconUrl: z.string().url().nullable().optional(),
+const brandingSchema = z.object({
+  logoUrl: brandingImageUrlSchema.nullable().optional(),
+  faviconUrl: brandingImageUrlSchema.nullable().optional(),
   primaryColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -101,6 +65,23 @@ const updateBrandingSchema = z.object({
   companyName: z.string().max(255).nullable().optional(),
   customCss: z.string().max(10000).nullable().optional(),
 });
+
+const createOrganizationSchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z.string().min(3).max(100).optional(),
+  defaultLocale: z.string().min(2).max(10).optional(),
+  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
+  branding: brandingSchema.optional(),
+});
+
+const updateOrganizationSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  defaultLocale: z.string().min(2).max(10).optional(),
+  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
+  branding: brandingSchema.optional(),
+});
+
+const updateBrandingSchema = brandingSchema;
 
 const listOrganizationsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -129,7 +110,11 @@ const validateSlugSchema = z.object({
 const idOrSlugSchema = z.object({
   idOrSlug: z.union([
     z.string().uuid(),
-    z.string().min(3).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+    z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
   ]),
 });
 

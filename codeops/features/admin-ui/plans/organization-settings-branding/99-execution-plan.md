@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 10:10
-> **Progress**: 7/55 tasks (13%)
+> **Last Updated**: 2026-09-11 10:21
+> **Progress**: 8/55 tasks (15%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -67,7 +67,7 @@ failure remains.
 - [x] 1.2.1 Add the forward-only type-sensitive asset-size constraint with a no-op down; add no legacy-data handling — `packages/server/migrations/027_branding_asset_size_limits.sql`, affected migration tests ✅ (completed: 2026-09-11 09:48)
 - [x] 1.2.2 Route stored bytes through the existing image validator and strengthen exact binary signatures — `packages/server/src/lib/branding-assets.ts`, `packages/server/src/lib/image-validator.ts` ✅ (completed: 2026-09-11 10:01)
 - [x] 1.2.3 Add the strict Zod JSON/base64 upload envelope and exact large-body parser branch — `packages/server/src/routes/branding.ts`, `packages/server/src/server.ts` ✅ (completed: 2026-09-11 10:10)
-- [ ] 1.2.4 Apply the exact production/loopback branding URL rules in existing schemas — `packages/server/src/routes/organizations.ts`, `packages/server/src/organizations/service.ts`
+- [x] 1.2.4 Apply the exact production/loopback branding URL rules through one shared validator used by existing schemas and service boundaries — `packages/server/src/organizations/branding-url.ts`, `packages/server/src/routes/organizations.ts`, `packages/server/src/organizations/service.ts` ✅ (completed: 2026-09-11 10:21)
 - [ ] 1.2.5 Correct branding asset/settings public types and domain methods without compatibility shims — `packages/sdk/src/types/branding.ts`, `packages/sdk/src/domains/branding.ts`, `packages/sdk/src/types/index.ts`
 - [ ] 1.2.6 Adapt the existing conventional organization command to the corrected settings response — `packages/cli/src/commands/org.ts`, `packages/cli/tests/commands/org.test.ts`
 - [ ] 1.2.7 Run ST-1–ST-12 and make the immutable Phase 1 expectations green

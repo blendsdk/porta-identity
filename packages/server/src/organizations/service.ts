@@ -55,6 +55,7 @@ import { OrganizationNotFoundError, OrganizationValidationError } from './errors
 // clients service surface into the organizations module.
 import { LOGIN_METHODS, type LoginMethod } from '../clients/types.js';
 import { normalizeLoginMethods } from '../clients/resolve-login-methods.js';
+import { validateBrandingImageUrl } from './branding-url.js';
 
 // ---------------------------------------------------------------------------
 // Validation helpers (private)
@@ -75,18 +76,19 @@ function validateDefaultLoginMethods(
 ): LoginMethod[] | undefined {
   if (methods === undefined) return undefined;
   if (!Array.isArray(methods) || methods.length === 0) {
-    throw new OrganizationValidationError(
-      'defaultLoginMethods: must be a non-empty array',
-    );
+    throw new OrganizationValidationError('defaultLoginMethods: must be a non-empty array');
   }
   for (const m of methods) {
     if (!LOGIN_METHODS.includes(m)) {
-      throw new OrganizationValidationError(
-        `defaultLoginMethods: invalid method "${String(m)}"`,
-      );
+      throw new OrganizationValidationError(`defaultLoginMethods: invalid method "${String(m)}"`);
     }
   }
   return normalizeLoginMethods(methods);
+}
+
+/** Preserve absent or cleared URL fields while validating supplied strings. */
+function normalizeBrandingImageUrl(value: string | null | undefined): string | null | undefined {
+  return typeof value === 'string' ? validateBrandingImageUrl(value) : value;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,17 +131,15 @@ export async function createOrganization(
 
   // Validate + normalize defaultLoginMethods (throws on invalid input).
   // Undefined → fall back to DB DEFAULT in the repository INSERT.
-  const defaultLoginMethods = validateDefaultLoginMethods(
-    input.defaultLoginMethods,
-  );
+  const defaultLoginMethods = validateDefaultLoginMethods(input.defaultLoginMethods);
 
   // Insert into database
   const org = await insertOrganization({
     name: input.name,
     slug,
     defaultLocale: input.defaultLocale ?? 'en',
-    brandingLogoUrl: input.branding?.logoUrl,
-    brandingFaviconUrl: input.branding?.faviconUrl,
+    brandingLogoUrl: normalizeBrandingImageUrl(input.branding?.logoUrl),
+    brandingFaviconUrl: normalizeBrandingImageUrl(input.branding?.faviconUrl),
     brandingPrimaryColor: input.branding?.primaryColor,
     brandingCompanyName: input.branding?.companyName,
     brandingCustomCss: input.branding?.customCss,
@@ -254,11 +254,16 @@ export async function updateOrganization(
 
   // Include branding fields if provided
   if (input.branding) {
-    if (input.branding.logoUrl !== undefined) updateData.brandingLogoUrl = input.branding.logoUrl;
-    if (input.branding.faviconUrl !== undefined) updateData.brandingFaviconUrl = input.branding.faviconUrl;
-    if (input.branding.primaryColor !== undefined) updateData.brandingPrimaryColor = input.branding.primaryColor;
-    if (input.branding.companyName !== undefined) updateData.brandingCompanyName = input.branding.companyName;
-    if (input.branding.customCss !== undefined) updateData.brandingCustomCss = input.branding.customCss;
+    if (input.branding.logoUrl !== undefined)
+      updateData.brandingLogoUrl = normalizeBrandingImageUrl(input.branding.logoUrl);
+    if (input.branding.faviconUrl !== undefined)
+      updateData.brandingFaviconUrl = normalizeBrandingImageUrl(input.branding.faviconUrl);
+    if (input.branding.primaryColor !== undefined)
+      updateData.brandingPrimaryColor = input.branding.primaryColor;
+    if (input.branding.companyName !== undefined)
+      updateData.brandingCompanyName = input.branding.companyName;
+    if (input.branding.customCss !== undefined)
+      updateData.brandingCustomCss = input.branding.customCss;
   }
 
   let org: Organization;
@@ -310,8 +315,10 @@ export async function updateOrganizationBranding(
   actorId?: string,
 ): Promise<Organization> {
   const updateData: Record<string, unknown> = {};
-  if (branding.logoUrl !== undefined) updateData.brandingLogoUrl = branding.logoUrl;
-  if (branding.faviconUrl !== undefined) updateData.brandingFaviconUrl = branding.faviconUrl;
+  if (branding.logoUrl !== undefined)
+    updateData.brandingLogoUrl = normalizeBrandingImageUrl(branding.logoUrl);
+  if (branding.faviconUrl !== undefined)
+    updateData.brandingFaviconUrl = normalizeBrandingImageUrl(branding.faviconUrl);
   if (branding.primaryColor !== undefined) updateData.brandingPrimaryColor = branding.primaryColor;
   if (branding.companyName !== undefined) updateData.brandingCompanyName = branding.companyName;
   if (branding.customCss !== undefined) updateData.brandingCustomCss = branding.customCss;
@@ -402,14 +409,13 @@ export async function suspendOrganization(
  * @throws OrganizationNotFoundError if not found
  * @throws OrganizationValidationError if not currently suspended
  */
-export async function activateOrganization(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function activateOrganization(id: string, actorId?: string): Promise<void> {
   const org = await loadOrgForStatusChange(id);
 
   if (org.status !== 'suspended') {
-    throw new OrganizationValidationError(`Cannot activate organization from status: ${org.status}`);
+    throw new OrganizationValidationError(
+      `Cannot activate organization from status: ${org.status}`,
+    );
   }
 
   await repoUpdate(id, { status: 'active' });
