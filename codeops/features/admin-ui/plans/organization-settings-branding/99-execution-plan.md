@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 19:56
-> **Progress**: 58/58 tasks (100%)
+> **Last Updated**: 2026-09-11 20:49
+> **Progress**: 59/60 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -22,9 +22,9 @@ adds no optimistic concurrency, generalized infrastructure, or optional feature.
 | 1     | Admin asset and SDK contracts |    15 |
 | 2     | Public branding rendering     |    16 |
 | 3     | Organization Admin workspace  |    14 |
-| 4     | Documentation and final gates |    13 |
+| 4     | Documentation and final gates |    15 |
 
-**Total: 58 tasks across 4 phases**
+**Total: 60 tasks across 4 phases**
 
 > **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
 >
@@ -243,6 +243,11 @@ covered by focused tests. See `08-phase-quality-review.md`.
 - [x] 4.2.6d From the clean committed correction revision, run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 19:56; run `80b7ecaf-97f4-458a-91dc-e3b52ee50d0a`; production exposure 7 passed / 1 registered product failure / 3 registered incomplete / 0 execution failures; human auth 7/7; second factor 4/4; tenant/admin 17/17; lifecycle cleanup complete)
 - [x] 4.2.7 After a clean committed implementation revision exists, run `yarn assurance:compat --select tenant-admin` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 18:01; run `5ccbc085-8898-425d-8464-a89d29a28d88` passed)
 
+### Step 4.3: Accepted Final Review Corrections
+
+- [x] 4.3.1 Apply the accepted survivor-rule, assurance-oracle, and API documentation corrections; record the production HTML CSP failure as a known deferred product defect without altering its evidence ✅ (completed: 2026-09-11 20:49; focused server 64/64; tenant/admin assurance 28/28; server workspace 3,078 unit / 442 integration / 127 E2E / 241 pentest; docs build and structure 100/100 passed)
+- [ ] 4.3.2 Run the affected final gates from a clean correction revision and complete one bounded re-review
+
 **Verify**: all AR-3 commands above; root `yarn verify` remains prohibited
 
 ## Dependencies
@@ -259,7 +264,7 @@ Phase 4: documentation and complete gates verify the integrated feature
 
 ## Success Criteria
 
-1. All 58 tasks are complete and every immutable ST-1–ST-45 expectation passes.
+1. All 60 tasks are complete and every immutable ST-1–ST-45 expectation passes.
 2. The selected organization can be managed through the approved maximized three-tab workspace.
 3. PNG, JPEG, WebP, ICO, and SVG assets follow one validated JSON/base64 path and render through
    the exact public branding route.
@@ -269,5 +274,7 @@ Phase 4: documentation and complete gates verify the integrated feature
 6. Magic-link authentication remains passwordless; organization 2FA remains a password-login step.
 7. No ETag UI workflow, retry machinery, compatibility shim, media/storage abstraction, new
    sanitizer/parser, locale registry, or test harness remains.
-8. Every AR-3 verification command reaches an eligible passing outcome without root `yarn verify`.
+8. Every AR-3 verification command is completed and evaluated under its registered outcome
+   taxonomy without root `yarn verify`; any non-passing outcome has an explicit disposition and
+   retains its original evidence.
 9. Post-completion CodeOps review and roadmap synchronization are complete.

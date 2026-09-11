@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   controlPlaneVariations,
   nonApplicableSuperAdminOperations,
-  protectedSuperAdminOperations,
+  bootstrapAdministratorOperations,
 } from './tenant-admin-boundary-requirements.js';
 import { createTenantAdminBoundariesContract } from './tenant-admin-boundaries-adapter.js';
 import { controlPlaneAuthorityProfile } from './tenant-admin-profile-requirements.js';
@@ -68,21 +68,21 @@ test('should enforce the exact actor permission matrix across tenant and global 
   }
 });
 
-// Full administrative authority does not override the documented protections for the bootstrap
-// super-admin user. Every destructive exception is forbidden and independently non-mutating.
-test('should preserve documented bootstrap super-admin protections', async () => {
+// Full administrative authority follows the documented bootstrap-administrator continuity rule.
+// Deletion and exact role removal are permitted while another active super-admin survives.
+test('should preserve documented bootstrap administrator continuity', async () => {
   const contract = createTenantAdminBoundariesContract();
 
-  const observations = await contract.observeSuperAdminExceptions();
+  const observations = await contract.observeBootstrapAdministratorOperations();
 
-  assert.deepEqual(observations.map((entry) => entry.operation).sort(), [
-    ...protectedSuperAdminOperations,
-  ]);
-  assert.ok(
-    observations.every((entry) => entry.result === 'forbidden'),
-    JSON.stringify(observations),
+  assert.deepEqual(
+    observations,
+    bootstrapAdministratorOperations.map((expectation) => ({
+      operation: expectation.operation,
+      result: expectation.expectedResult,
+      targetUnchanged: expectation.targetUnchanged,
+    })),
   );
-  assert.ok(observations.every((entry) => entry.targetUnchanged));
   assert.deepEqual(nonApplicableSuperAdminOperations, [
     {
       operation: 'archive',

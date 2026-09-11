@@ -256,7 +256,7 @@ describe('record deletion Admin API specification', () => {
 
     expect(organizationService).toMatch(/deleteOrganization[^]*isSuperAdmin/);
     expect(organizationRepository).toMatch(/deleteOrganization[^]*is_super_admin\s*=\s*FALSE/i);
-    expect(userRoutes).toMatch(/router\.delete\([^]*guardSuperAdmin\([^]*['"]delete['"]/);
+    expect(userRoutes).not.toMatch(/router\.delete\([^]*guardSuperAdmin\([^]*['"]delete['"]/);
     expect(userService).toMatch(/deleteUser[^]*porta-super-admin/);
     expect(userRepository).toMatch(/deleteUser[^]*FOR UPDATE[^]*porta-super-admin/);
   });

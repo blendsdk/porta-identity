@@ -1,7 +1,7 @@
 # Organization Settings and Branding Phase Quality Review
 
-> **Status**: Phase 3 review complete; accepted corrections verified
-> **Last Updated**: 2026-09-11 17:23
+> **Status**: Final review corrections in verification
+> **Last Updated**: 2026-09-11 20:38
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Admin Asset and SDK Contracts
@@ -40,11 +40,11 @@ correction.
 lint/typecheck/build gates, and 100 repository structure tests passed. Root `yarn verify` was not
 run under the approved execution boundary.
 
-| ID                | Severity | Lens                    | Finding                                                                                           | Minimum correction                                                                                  | Ruling         |
-| ----------------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- | -------------- |
-| RV-001 / API-001  | 🟠 Major | Correctness/API surface | Password-reset error pages omitted external branding image origins from the response CSP handoff | Route errors through the existing response helper and add one focused expired-token regression test | ✅ Accepted    |
-| RV-002            | 🟡 Minor | Written standards       | Two plan documents retain the superseded effective-branding module path and stale decision count | Align the plan references with the recorded runtime decision                                        | Report only    |
-| SA-001            | 🟡 Minor | Security                | The exact upload URI receives the 3 MiB Nginx allowance for methods other than `PUT`              | Method-route the allowance and extend the proxy specification                                       | Report only    |
+| ID               | Severity | Lens                    | Finding                                                                                          | Minimum correction                                                                                  | Ruling      |
+| ---------------- | -------- | ----------------------- | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ----------- |
+| RV-001 / API-001 | 🟠 Major | Correctness/API surface | Password-reset error pages omitted external branding image origins from the response CSP handoff | Route errors through the existing response helper and add one focused expired-token regression test | ✅ Accepted |
+| RV-002           | 🟡 Minor | Written standards       | Two plan documents retain the superseded effective-branding module path and stale decision count | Align the plan references with the recorded runtime decision                                        | Report only |
+| SA-001           | 🟡 Minor | Security                | The exact upload URI receives the 3 MiB Nginx allowance for methods other than `PUT`             | Method-route the allowance and extend the proxy specification                                       | Report only |
 
 The user accepted the minimum correction for RV-001/API-001. Commit `8a8868a0` reuses the existing
 `renderAndRespond()` helper so password-reset error pages propagate the same validated branding
@@ -65,15 +65,15 @@ Critical or Major finding. No further re-review is permitted or required.
 **Verification before review:** 743 Admin tests, CLI lint/typecheck/build, and 100 repository
 structure tests passed. Root `yarn verify` was not run under the approved execution boundary.
 
-| ID         | Severity    | Lens                  | Finding                                                                 | Minimum correction                                                                 | Ruling      |
-| ---------- | ----------- | --------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------- |
-| P3-RV-001  | 🔴 Critical | Context ownership     | Picker and confirmation continuations could target a replacement org    | Capture and recheck generation plus organization ID around every await             | ✅ Accepted |
-| P3-RV-002  | 🟠 Major    | Reconciliation        | A failed authoritative reload could replace ready data with stale state | Return explicit reload outcomes and retain the last authoritative projection       | ✅ Accepted |
-| P3-RV-003  | 🟠 Major    | Focus                 | Dialog and picker closure did not reliably return focus to its launcher | Retain launcher meaning and reconcile it to the currently rendered control         | ✅ Accepted |
-| P3-RV-004  | 🟠 Major    | Feedback              | Tab feedback omitted required operation states and field-specific errors | Render one existing tab-owned status line for validation and operation outcomes    | ✅ Accepted |
-| P3-RV-005  | 🟡 Minor    | Authorization         | Update intents relied only on disabled controls and server authorization | Recheck the current verified capability in the existing controller                 | ✅ Accepted |
-| P3-RV-006  | 🟡 Minor    | API surface           | An unused duplicate branding read operation and mocks remained          | Remove the dead operation, type, implementation, and test mocks                     | ✅ Accepted |
-| P3-RV-007  | 🟡 Minor    | Specification fixture | Two test inputs used the unsupported `required` 2FA value                | Use the approved `required_email` value without changing observable expectations   | ✅ Accepted |
+| ID        | Severity    | Lens                  | Finding                                                                  | Minimum correction                                                               | Ruling      |
+| --------- | ----------- | --------------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- | ----------- |
+| P3-RV-001 | 🔴 Critical | Context ownership     | Picker and confirmation continuations could target a replacement org     | Capture and recheck generation plus organization ID around every await           | ✅ Accepted |
+| P3-RV-002 | 🟠 Major    | Reconciliation        | A failed authoritative reload could replace ready data with stale state  | Return explicit reload outcomes and retain the last authoritative projection     | ✅ Accepted |
+| P3-RV-003 | 🟠 Major    | Focus                 | Dialog and picker closure did not reliably return focus to its launcher  | Retain launcher meaning and reconcile it to the currently rendered control       | ✅ Accepted |
+| P3-RV-004 | 🟠 Major    | Feedback              | Tab feedback omitted required operation states and field-specific errors | Render one existing tab-owned status line for validation and operation outcomes  | ✅ Accepted |
+| P3-RV-005 | 🟡 Minor    | Authorization         | Update intents relied only on disabled controls and server authorization | Recheck the current verified capability in the existing controller               | ✅ Accepted |
+| P3-RV-006 | 🟡 Minor    | API surface           | An unused duplicate branding read operation and mocks remained           | Remove the dead operation, type, implementation, and test mocks                  | ✅ Accepted |
+| P3-RV-007 | 🟡 Minor    | Specification fixture | Two test inputs used the unsupported `required` 2FA value                | Use the approved `required_email` value without changing observable expectations | ✅ Accepted |
 
 The user accepted all seven minimum corrections. They add no service, retry mechanism, cache,
 framework, or concurrency support.
@@ -87,3 +87,21 @@ The corrections now use the lifecycle-specific suspend capability, bind each wor
 to its opening owner, and reconcile launcher meaning to the live rerendered control. Focused tests
 cover all three paths. Final verification passed 755 Admin tests, CLI lint/typecheck/build, and 100
 repository structure tests. No further re-review is permitted or required.
+
+## Phase 4: Final Integrated Review
+
+**Review boundary:** `9347797b..working tree`
+**Scope mode:** Strict
+
+| ID        | Severity | Lens          | Finding                                                                                                                | Minimum correction                                                                                                            | Ruling      |
+| --------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| P4-RV-001 | 🟠 Major | Correctness   | Route guards rejected bootstrap-user deletion and role removal even when another active canonical super-admin survived | Remove the unconditional route guards and retain the existing transactional survivor checks                                   | ✅ Accepted |
+| P4-RV-002 | 🟡 Minor | Documentation | Branding docs said sanitized SVG content was rejected                                                                  | Distinguish malformed SVG rejection from sanitization of otherwise valid SVG                                                  | ✅ Accepted |
+| P4-RV-003 | 🟡 Minor | Documentation | Organization list query names did not match the route schema                                                           | Document `sortBy`, `sortOrder`, and `created_at`                                                                              | ✅ Accepted |
+| P4-SA-001 | 🟠 Major | Assurance     | The assurance oracle required unconditional bootstrap-user protection and therefore reinforced the route defect        | Exercise the approved survivor rule: allow deletion and exact role removal when another active canonical super-admin survives | ✅ Accepted |
+| P4-SA-002 | 🟠 Major | Evidence      | The final gate had no explicit disposition for one registered production HTML CSP product failure                      | Preserve the evidence and record the user-authorized deferred-defect disposition                                              | ✅ Accepted |
+
+The accepted corrections reuse the existing transactional survivor enforcement and existing
+harness lifecycle reset. They add no protection layer, retry path, concurrency handling, or new
+infrastructure. The registered `st55-production-html-csp-policy` failure remains a known product
+defect outside this feature; run `80b7ecaf-97f4-458a-91dc-e3b52ee50d0a` is not relabeled as passing.

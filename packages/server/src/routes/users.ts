@@ -190,8 +190,8 @@ function handleError(
  *
  * All routes require admin authorization with granular permissions.
  * Users are always scoped to an organization via the :orgId URL parameter.
- * Destructive operations on the super-admin user are blocked by
- * guardSuperAdmin() checks.
+ * Operations that cannot preserve bootstrap-administrator availability are rejected at their
+ * owning service or repository boundary.
  *
  * Prefix: /api/admin/organizations/:orgId/users
  *
@@ -405,7 +405,6 @@ export function createUserRouter(): Router {
     async (ctx) => {
       try {
         identifierSchema.parse(ctx.params);
-        await guardSuperAdmin(ctx.params.userId, 'delete');
         await userService.deleteUser(ctx.params.orgId, ctx.params.userId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {

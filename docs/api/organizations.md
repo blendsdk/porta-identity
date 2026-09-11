@@ -52,14 +52,14 @@ GET /api/admin/organizations
 
 **Query parameters:**
 
-| Parameter  | Type    | Description                      |
-| ---------- | ------- | -------------------------------- |
-| `page`     | integer | Page number (default: 1)         |
-| `pageSize` | integer | Items per page (default: 20)     |
-| `search`   | string  | Search by name or slug           |
-| `status`   | string  | Filter by status                 |
-| `sort`     | string  | Sort field (`name`, `createdAt`) |
-| `order`    | string  | Sort direction (`asc`, `desc`)   |
+| Parameter   | Type    | Description                       |
+| ----------- | ------- | --------------------------------- |
+| `page`      | integer | Page number (default: 1)          |
+| `pageSize`  | integer | Items per page (default: 20)      |
+| `search`    | string  | Search by name or slug            |
+| `status`    | string  | Filter by status                  |
+| `sortBy`    | string  | Sort field (`name`, `created_at`) |
+| `sortOrder` | string  | Sort direction (`asc`, `desc`)    |
 
 **Response:** `200 OK`
 

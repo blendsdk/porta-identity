@@ -370,24 +370,20 @@ describe('parent-qualified RBAC route contracts', () => {
 });
 
 describe('committed RBAC mutation results', () => {
-  // The bootstrap administrator remains protected even when another super administrator exists.
-  it('blocks role removal from the protected bootstrap administrator', async () => {
-    const protectedError = Object.assign(new Error('Cannot remove the bootstrap role'), {
-      status: 403,
-    });
-    mocks.guardSuperAdmin.mockRejectedValue(protectedError);
+  // Ordinary application roles remain removable from the bootstrap user. The service applies the
+  // survivor rule only when the exact canonical super-admin assignment is part of the request.
+  it('delegates ordinary role removal for the bootstrap administrator to the service', async () => {
+    mocks.guardSuperAdmin.mockRejectedValue(new Error('route guard must not run'));
+    mocks.userRoleRemove.mockResolvedValue({ reauthenticationRequired: false });
     const ctx = context({
       params: { orgId: ORG_ID, userId: USER_ID },
       body: { roleIds: [ROLE_ID] },
     });
 
-    const error = await captureError(() =>
-      executeLayer(layerFor(createUserRoleRouter, 'DELETE', '/roles'), ctx),
-    );
+    await executeLayer(layerFor(createUserRoleRouter, 'DELETE', '/roles'), ctx);
 
-    expect(error).toBe(protectedError);
-    expect(mocks.guardSuperAdmin).toHaveBeenCalledWith(USER_ID, 'remove-super-admin-role');
-    expect(mocks.userRoleRemove).not.toHaveBeenCalled();
+    expect(mocks.guardSuperAdmin).not.toHaveBeenCalled();
+    expect(mocks.userRoleRemove).toHaveBeenCalledWith(ORG_ID, USER_ID, [ROLE_ID], ACTOR_ID);
   });
 
   // Removing an absent mapping commits successfully without requesting reauthentication.

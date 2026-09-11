@@ -29,8 +29,9 @@ organization's branding settings.
 
 The limits apply to decoded image bytes. The server checks the declared content type against the
 actual PNG, JPEG, WebP, ICO, or SVG content. SVG is accepted through Porta's existing validation and
-sanitization path. Invalid base64, empty content, type mismatches, unsafe SVG, and oversized images
-return the same sanitized `400` response and do not replace the current asset.
+sanitization path. Malformed SVG returns the same sanitized `400` response as invalid base64,
+empty content, type mismatches, and oversized images. Scripts, event handlers, and dangerous links
+are removed from otherwise valid SVG before storage.
 
 The upload request is base64 inside JSON, so the exact upload route accepts a 3 MiB JSON body in the
 server and bundled development proxies. Other Admin API routes keep their smaller default limit.

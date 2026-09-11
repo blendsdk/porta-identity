@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import {
   controlPlaneVariations,
-  protectedSuperAdminOperations,
+  bootstrapAdministratorOperations,
 } from './tenant-admin-boundary-requirements.js';
 import {
   controlPlaneAuthorityProfile,
@@ -13,7 +13,7 @@ import type {
   AdminMembershipNegativeControlRequest,
   ControlPlaneBoundaryObservation,
   ControlPlaneVariationRequest,
-  SuperAdminExceptionObservation,
+  BootstrapAdministratorOperationObservation,
 } from './tenant-admin-boundaries-contract.js';
 import {
   authorizationResult,
@@ -385,11 +385,62 @@ export async function observeLiveAdminMembershipNegativeControl(
   });
 }
 
-/** Observes every documented destructive bootstrap-user protection through raw HTTP. */
-export async function observeLiveSuperAdminExceptions(
+/** Observes every documented destructive bootstrap-administrator operation through raw HTTP. */
+export async function observeLiveBootstrapAdministratorOperations(
   context: LiveTenantAdminContext,
-): Promise<readonly SuperAdminExceptionObservation[]> {
-  const organizationId = context.entity('super-admin');
+): Promise<readonly BootstrapAdministratorOperationObservation[]> {
+  let organizationId = context.entity('super-admin');
+  let userId = await findBootstrapAdministrator(context, organizationId);
+
+  const observations: BootstrapAdministratorOperationObservation[] = [];
+  for (const expectation of bootstrapAdministratorOperations) {
+    if (expectation.operation === 'delete') {
+      await context.lifecycle('reset');
+      organizationId = context.entity('super-admin');
+      userId = await findBootstrapAdministrator(context, organizationId);
+    }
+    const readPath = `/api/admin/users/${userId}`;
+    const organizationPath = `/api/admin/organizations/${organizationId}/users/${userId}`;
+    const rolesPath = `${organizationPath}/roles`;
+    const routes: Readonly<
+      Record<
+        (typeof bootstrapAdministratorOperations)[number]['operation'],
+        readonly ['POST' | 'DELETE', string, Readonly<Record<string, unknown>> | undefined]
+      >
+    > = {
+      deactivate: ['POST', `${readPath}/deactivate`, undefined],
+      delete: ['DELETE', organizationPath, undefined],
+      'manage-2fa': ['POST', `${organizationPath}/two-factor/disable`, undefined],
+      'remove-super-admin-role': [
+        'DELETE',
+        `/api/admin/organizations/${organizationId}/users/${userId}/roles`,
+        { roleIds: [context.entity('porta-super-admin')] },
+      ],
+    };
+    const [method, path, body] = routes[expectation.operation];
+    const statePath = expectation.operation === 'remove-super-admin-role' ? rolesPath : readPath;
+    const before = await context.rawRequest('GET', statePath, 'admin-full');
+    if (before.status !== 200) throw new Error('bootstrap-user state control failed');
+    const response = await context.rawRequest(method, path, 'admin-full', body);
+    const after = await context.rawRequest('GET', statePath, 'admin-full');
+    observations.push(
+      Object.freeze({
+        operation: expectation.operation,
+        result: authorizationResult(response.status),
+        targetUnchanged:
+          before.status === after.status &&
+          liveComparable(before.body) === liveComparable(after.body),
+      }),
+    );
+  }
+  return Object.freeze(observations);
+}
+
+/** Finds the bootstrap administrator without relying on generated assurance actor identifiers. */
+async function findBootstrapAdministrator(
+  context: LiveTenantAdminContext,
+  organizationId: string,
+): Promise<string> {
   const users = await context.rawRequest(
     'GET',
     `/api/admin/organizations/${organizationId}/users?pageSize=100`,
@@ -406,44 +457,7 @@ export async function observeLiveSuperAdminExceptions(
   if (bootstrap === undefined || typeof bootstrap.id !== 'string') {
     throw new Error('bootstrap super-admin user was not independently identified');
   }
-  const userId = bootstrap.id;
-  const readPath = `/api/admin/users/${userId}`;
-  const organizationPath = `/api/admin/organizations/${organizationId}/users/${userId}`;
-  const rolesPath = `${organizationPath}/roles`;
-
-  const routes: Readonly<
-    Record<
-      (typeof protectedSuperAdminOperations)[number],
-      readonly ['POST' | 'DELETE', string, Readonly<Record<string, unknown>> | undefined]
-    >
-  > = {
-    deactivate: ['POST', `${readPath}/deactivate`, undefined],
-    delete: ['DELETE', organizationPath, undefined],
-    'manage-2fa': ['POST', `${organizationPath}/two-factor/disable`, undefined],
-    'remove-super-admin-role': [
-      'DELETE',
-      `/api/admin/organizations/${organizationId}/users/${userId}/roles`,
-      { roleIds: [context.entity('porta-super-admin')] },
-    ],
-  };
-
-  const observations: SuperAdminExceptionObservation[] = [];
-  for (const operation of protectedSuperAdminOperations) {
-    const [method, path, body] = routes[operation];
-    const statePath = operation === 'remove-super-admin-role' ? rolesPath : readPath;
-    const before = await context.rawRequest('GET', statePath, 'admin-full');
-    if (before.status !== 200) throw new Error('bootstrap-user state control failed');
-    const response = await context.rawRequest(method, path, 'admin-full', body);
-    const after = await context.rawRequest('GET', statePath, 'admin-full');
-    observations.push(
-      Object.freeze({
-        operation,
-        result: authorizationResult(response.status),
-        targetUnchanged: liveComparable(before.body) === liveComparable(after.body),
-      }),
-    );
-  }
-  return Object.freeze(observations);
+  return bootstrap.id;
 }
 
 /** Removes volatile response fields before comparing bootstrap-user state. */

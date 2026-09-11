@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 
 import {
   controlPlaneVariations,
-  protectedSuperAdminOperations,
+  bootstrapAdministratorOperations,
   staleAuthorityScenarios,
   tenantProbeShapeBySurface,
 } from './tenant-admin-boundary-requirements.js';
@@ -24,7 +24,7 @@ import type {
   StaleAuthorityScenarioObservation,
   StaleAuthorityScenarioRequest,
   StaleAuthorityRetryContext,
-  SuperAdminExceptionObservation,
+  BootstrapAdministratorOperationObservation,
   TargetStateFingerprint,
   TenantAdminBoundariesContract,
   TenantBoundaryObservation,
@@ -48,7 +48,7 @@ export function createTenantAdminBoundariesSpecRig(): TenantAdminBoundariesContr
       adminMembershipNegativeControl(request),
     observeConcurrentTenantIsolation: async () => concurrentTenantIsolation(),
     observeOrganizationCacheIsolation: async () => organizationCacheIsolation(),
-    observeSuperAdminExceptions: async () => protectedSuperAdminObservations(),
+    observeBootstrapAdministratorOperations: async () => bootstrapAdministratorObservations(),
     observeStaleAuthorityScenario: async (request: StaleAuthorityScenarioRequest) =>
       observeStaleAuthorityScenario(request),
   });
@@ -237,11 +237,15 @@ function organizationCacheIsolation(): OrganizationCacheIsolationObservation {
   });
 }
 
-/** Produces the exact documented bootstrap-user protections from requirement fixtures. */
-function protectedSuperAdminObservations(): readonly SuperAdminExceptionObservation[] {
+/** Produces the documented bootstrap-administrator outcomes from requirement fixtures. */
+function bootstrapAdministratorObservations(): readonly BootstrapAdministratorOperationObservation[] {
   return Object.freeze(
-    protectedSuperAdminOperations.map((operation) =>
-      Object.freeze({ operation, result: 'forbidden' as const, targetUnchanged: true as const }),
+    bootstrapAdministratorOperations.map((expectation) =>
+      Object.freeze({
+        operation: expectation.operation,
+        result: expectation.expectedResult,
+        targetUnchanged: expectation.targetUnchanged,
+      }),
     ),
   );
 }

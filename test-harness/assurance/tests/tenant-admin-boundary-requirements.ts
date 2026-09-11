@@ -95,12 +95,12 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
   },
 ];
 
-/** Exact destructive operations forbidden for the protected bootstrap super-admin user. */
-export const protectedSuperAdminOperations = [
-  'deactivate',
-  'delete',
-  'manage-2fa',
-  'remove-super-admin-role',
+/** Expected outcomes for destructive operations on the bootstrap administrator. */
+export const bootstrapAdministratorOperations = [
+  { operation: 'deactivate', expectedResult: 'forbidden', targetUnchanged: true },
+  { operation: 'manage-2fa', expectedResult: 'forbidden', targetUnchanged: true },
+  { operation: 'remove-super-admin-role', expectedResult: 'allowed', targetUnchanged: false },
+  { operation: 'delete', expectedResult: 'allowed', targetUnchanged: false },
 ] as const;
 
 /** Bootstrap-user operations that have no current public product lifecycle. */

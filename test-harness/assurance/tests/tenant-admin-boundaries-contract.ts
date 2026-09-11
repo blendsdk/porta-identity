@@ -151,9 +151,9 @@ export interface OrganizationCacheIsolationObservation {
   readonly result: 'allowed' | 'not-found';
 }
 
-/** One documented protection for the bootstrap super-admin user. */
-export interface SuperAdminExceptionObservation {
-  /** Protected destructive operation. */
+/** One observed destructive operation on the bootstrap administrator. */
+export interface BootstrapAdministratorOperationObservation {
+  /** Destructive operation under observation. */
   readonly operation: 'delete' | 'deactivate' | 'remove-super-admin-role' | 'manage-2fa';
   /** Public result observed after the protected operation. */
   readonly result: AuthorizationResult;
@@ -245,8 +245,10 @@ export interface TenantAdminBoundariesContract {
   observeConcurrentTenantIsolation(): Promise<ConcurrentTenantIsolationResult>;
   /** Forces one known cache write and probes the other tenant through public UserInfo. */
   observeOrganizationCacheIsolation(): Promise<OrganizationCacheIsolationObservation>;
-  /** Exercises documented protections for the bootstrap super-admin user. */
-  observeSuperAdminExceptions(): Promise<readonly SuperAdminExceptionObservation[]>;
+  /** Exercises documented destructive operations on the bootstrap administrator. */
+  observeBootstrapAdministratorOperations(): Promise<
+    readonly BootstrapAdministratorOperationObservation[]
+  >;
   /** Warms authority state, performs one supported transition, and retries in all contexts. */
   observeStaleAuthorityScenario(
     request: StaleAuthorityScenarioRequest,
