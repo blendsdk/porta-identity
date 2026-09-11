@@ -23,6 +23,7 @@ import type {
   AdminOrganizationAssetContentType,
   AdminOrganizationAssetType,
   AdminOrganizationIntent,
+  AdminOrganizationSettings,
   AdminOrganizationWorkspaceFailureKind,
   AdminOrganizationWorkspaceProjection,
   AdminOrganizationWorkspaceState,
@@ -52,6 +53,8 @@ export interface AdminOrganizationWorkspaceOptions {
   readonly onIntent: (intent: AdminOrganizationIntent) => void;
   /** Focuses a mounted view through the owning application loop. */
   readonly focusView?: (view: View) => void;
+  /** Reports a direct modeless-window close to the controller. */
+  readonly onClose?: () => void;
 }
 
 /** Modal host needed for focused lifecycle and asset confirmations. */
@@ -72,7 +75,7 @@ export interface AdminOrganizationControllerOptions {
   readonly mountWorkspace: (content: View | null) => void;
   /** Enters the existing reauthentication flow after a final session failure. */
   readonly requestAuthentication: () => void;
-  /** Constructs the direct workspace; production supplies the default in the wiring task. */
+  /** Constructs the direct workspace; tests may inject a deterministic implementation. */
   readonly workspaceFactory: (
     options: AdminOrganizationWorkspaceOptions,
   ) => AdminOrganizationWorkspace;
@@ -80,6 +83,10 @@ export interface AdminOrganizationControllerOptions {
   readonly openFile?: (options: OpenFileOptions) => Promise<string | null | undefined>;
   /** Reads the selected file bytes; injectable only for deterministic tests. */
   readonly readFile?: (path: string) => Promise<Uint8Array>;
+  /** Reconciles selected-organization fields after an authoritative reload. */
+  readonly onOrganizationChange?: (organization: AdminOrganizationSettings) => void;
+  /** Refreshes application command availability after a direct window close. */
+  readonly onWorkspaceClosed?: () => void;
 }
 
 /** Application-owned organization workspace boundary. */
@@ -90,6 +97,10 @@ export interface AdminOrganizationController {
   readonly handleCommand: (command: string) => boolean;
   /** Handles a workspace intent without exposing asynchronous ownership to the view. */
   readonly handleIntent: (intent: AdminOrganizationIntent) => void;
+  /** Returns whether this controller currently owns a workspace. */
+  readonly isOpen: () => boolean;
+  /** Closes the current workspace while retaining the reusable controller. */
+  readonly close: () => void;
   /** Cancels current ownership and removes the workspace. */
   readonly dispose: () => void;
 }
@@ -252,6 +263,7 @@ export function createAdminOrganizationController(
       return;
     }
     projection = { organization: organizationResult.value, assets: assetResult.value };
+    options.onOrganizationChange?.(organizationResult.value);
     mount();
     publishReady();
     workspace?.focusCurrent();
@@ -486,11 +498,17 @@ export function createAdminOrganizationController(
         capabilities: state.capabilities,
         onIntent: handleIntent,
         focusView: (view) => options.host.loop.focusView(view),
+        onClose: () => {
+          close();
+          options.onWorkspaceClosed?.();
+        },
       });
       void load();
       return true;
     },
     handleIntent,
+    isOpen: () => workspace !== undefined,
+    close,
     dispose() {
       if (disposed) return;
       close();

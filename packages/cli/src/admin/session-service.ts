@@ -13,7 +13,11 @@ import { authenticateCliSession } from '../auth/login-coordinator.js';
 import type { LoginInteraction } from '../auth/login-coordinator.js';
 import { normalizeServerOrigin } from '../global-options.js';
 import type { AdminApplicationSession } from './application.js';
-import { createAdminOrganizationOperations } from './organization-service.js';
+import {
+  createAdminOrganizationOperations,
+  createAdminOrganizationWorkspaceOperations,
+} from './organization-service.js';
+import type { AdminOrganizationWorkspaceDomains } from './organization-service.js';
 import { createAdminUserOperations } from './user-service.js';
 import { createAdminApplicationOperations } from './application-service.js';
 import { createAdminClientOperations } from './client-service.js';
@@ -136,7 +140,19 @@ function toApplicationState(server: URL, result: SessionVerificationResult): Adm
   };
 }
 
-/** Creates the live verification and browser-login capabilities used by `porta admin`. */
+/**
+ * Creates live verification, authentication, and authorized Admin API operations.
+ *
+ * @param serverInput - Normalized or normalizable Porta server origin.
+ * @param interaction - Browser-login interaction boundary.
+ * @param organizationDomain - Optional organization switcher operations.
+ * @param userDomain - Optional selected-organization user operations.
+ * @param applicationDomain - Optional deployment-global application operations.
+ * @param clientDomain - Optional selected-organization OIDC client operations.
+ * @param rbacDomain - Optional application and user role/permission operations.
+ * @param organizationWorkspaceDomains - Optional organization settings, branding, and 2FA domains.
+ * @returns Initial verification state and lazy server-bound operations.
+ */
 export function prepareAdminSession(
   serverInput: URL,
   interaction: LoginInteraction,
@@ -145,6 +161,7 @@ export function prepareAdminSession(
   applicationDomain?: AdminApplicationDomainFactory,
   clientDomain?: AdminClientDomainFactory,
   rbacDomain?: AdminRbacDomainFactory,
+  organizationWorkspaceDomains?: AdminOrganizationWorkspaceDomains,
 ): PreparedAdminSession {
   const server = normalizeServerOrigin(serverInput);
 
@@ -234,6 +251,13 @@ export function prepareAdminSession(
         : {}),
       ...(clientDomain ? { clients: createAdminClientOperations(clientDomain) } : {}),
       ...(rbacDomain ? { rbac: createAdminRbacOperations(rbacDomain) } : {}),
+      ...(organizationWorkspaceDomains
+        ? {
+            organizationWorkspace: createAdminOrganizationWorkspaceOperations(
+              organizationWorkspaceDomains,
+            ),
+          }
+        : {}),
     },
   };
 }

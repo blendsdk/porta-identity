@@ -19,7 +19,13 @@ import {
   showOrganizationChooser,
   showWhoAmIDialog,
 } from './organization-dialogs.js';
-import type { AdminOrganizationOperations } from './organization-service.js';
+import type {
+  AdminOrganizationOperations,
+  AdminOrganizationWorkspaceOperations,
+} from './organization-service.js';
+import { createAdminOrganizationController } from './organization-controller.js';
+import type { AdminOrganizationController } from './organization-controller.js';
+import { createAdminOrganizationWorkspace } from './organization-workspace.js';
 import type { AdminUserOperations } from './user-service.js';
 import type { AdminApplicationOperations } from './application-service.js';
 import type { AdminClientOperations } from './client-service.js';
@@ -51,6 +57,8 @@ export interface AdminApplicationSession {
   readonly reauthenticate?: (signal: AbortSignal) => Promise<AdminConnectionState | undefined>;
   /** Organization operations bound lazily to the verified server session. */
   readonly organizations?: AdminOrganizationOperations;
+  /** Selected-organization settings and branding operations for the verified session. */
+  readonly organizationWorkspace?: AdminOrganizationWorkspaceOperations;
   /** User operations bound lazily to the verified server session. */
   readonly users?: AdminUserOperations;
   /** Global application operations bound lazily to the verified server session. */
@@ -151,6 +159,7 @@ export async function runAdminApplication(
   let emitDeferredQuit = (): void => undefined;
   let deferredQuit = false;
   let userController: AdminUserController | undefined;
+  let organizationController: AdminOrganizationController | undefined;
   let applicationClientFeatures: AdminApplicationClientFeatures | undefined;
   let userRecoveryRequired = false;
   let featureDialogOpen = false;
@@ -170,12 +179,14 @@ export async function runAdminApplication(
         organizationDialogOpen ||
         identityDialogOpen ||
         userDialogOpen ||
-        featureDialogOpen;
+        featureDialogOpen ||
+        organizationController?.isOpen();
       const cancellableWorkOpen =
         currentController !== undefined ||
         organizationDialogOpen ||
         userDialogOpen ||
-        featureDialogOpen;
+        featureDialogOpen ||
+        organizationController?.isOpen();
       if (command === Commands.quit && modalWorkOpen) {
         if (!deferredQuit) {
           deferredQuit = true;
@@ -222,8 +233,10 @@ export async function runAdminApplication(
   const setState = (state: AdminConnectionState): void => {
     if (disposed) return;
     presentation.setState(state);
+    organizationController?.syncContext(state, sessionEpoch);
     userController?.syncContext(state, sessionEpoch);
     applicationClientFeatures?.syncContext(state, sessionEpoch);
+    const organizationWorkspaceOpen = organizationController?.isOpen() ?? false;
     application.loop.enableCommand(ADMIN_COMMANDS.authenticate, state.kind === 'unauthenticated');
     application.loop.enableCommand(ADMIN_COMMANDS.retry, canRetryAdminState(state));
     application.loop.enableCommand(
@@ -238,7 +251,8 @@ export async function runAdminApplication(
         !createRecoveryRequired &&
         !organizationDialogOpen &&
         !currentController &&
-        !userDialogOpen,
+        !userDialogOpen &&
+        !organizationWorkspaceOpen,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.switchOrganization,
@@ -246,7 +260,21 @@ export async function runAdminApplication(
         state.capabilities.canReadOrganizations &&
         !organizationDialogOpen &&
         !currentController &&
-        !userDialogOpen,
+        !userDialogOpen &&
+        !organizationWorkspaceOpen,
+    );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.manageOrganization,
+      state.kind === 'authenticated' &&
+        Boolean(state.organization) &&
+        state.capabilities.canReadOrganizations &&
+        Boolean(session?.organizationWorkspace) &&
+        !currentController &&
+        !organizationDialogOpen &&
+        !identityDialogOpen &&
+        !userDialogOpen &&
+        !featureDialogOpen &&
+        !organizationWorkspaceOpen,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.browseUsers,
@@ -255,7 +283,8 @@ export async function runAdminApplication(
         state.capabilities.canReadUsers &&
         !userDialogOpen &&
         !organizationDialogOpen &&
-        !currentController,
+        !currentController &&
+        !organizationWorkspaceOpen,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.createUser,
@@ -265,7 +294,8 @@ export async function runAdminApplication(
         !userDialogOpen &&
         !organizationDialogOpen &&
         !currentController &&
-        !userRecoveryRequired,
+        !userRecoveryRequired &&
+        !organizationWorkspaceOpen,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.inviteUser,
@@ -275,21 +305,24 @@ export async function runAdminApplication(
         !userDialogOpen &&
         !organizationDialogOpen &&
         !currentController &&
-        !userRecoveryRequired,
+        !userRecoveryRequired &&
+        !organizationWorkspaceOpen,
     );
     application.loop.enableCommand(
       ADMIN_COMMANDS.cancel,
       currentController !== undefined ||
         organizationDialogOpen ||
         userDialogOpen ||
-        featureDialogOpen,
+        featureDialogOpen ||
+        organizationWorkspaceOpen,
     );
     const featureIdle =
       !currentController &&
       !organizationDialogOpen &&
       !identityDialogOpen &&
       !userDialogOpen &&
-      !featureDialogOpen;
+      !featureDialogOpen &&
+      !organizationWorkspaceOpen;
     application.loop.enableCommand(
       ADMIN_COMMANDS.browseApplications,
       state.kind === 'authenticated' && state.capabilities.canReadApplications && featureIdle,
@@ -381,6 +414,7 @@ export async function runAdminApplication(
     cancelIdentityDialog();
     cancelOrganizationWork();
     cancelSessionOperation();
+    organizationController?.close();
     userController?.cancelActiveOperation();
     applicationClientFeatures?.cancelActiveOperation();
     dialogSurface.removeAll();
@@ -621,6 +655,7 @@ export async function runAdminApplication(
       disposed
     )
       return;
+    organizationController?.close();
     const operationServer = server;
     if (!operationServer) return;
     const controller = new AbortController();
@@ -675,6 +710,7 @@ export async function runAdminApplication(
       disposed
     )
       return;
+    organizationController?.close();
     const operationServer = server;
     if (!operationServer) return;
     const previous = presentation.getState();
@@ -757,6 +793,35 @@ export async function runAdminApplication(
       .finally(release);
   }
 
+  organizationController = createAdminOrganizationController({
+    host: dialogHost,
+    readState: () => presentation.getState(),
+    readOperations: () => session?.organizationWorkspace,
+    mountWorkspace: presentation.setWorkspace,
+    requestAuthentication: invalidateSession,
+    workspaceFactory: createAdminOrganizationWorkspace,
+    onOrganizationChange: (organization) => {
+      const state = presentation.getState();
+      if (
+        state.kind !== 'authenticated' ||
+        !state.organization ||
+        state.organization.id !== organization.id
+      ) {
+        return;
+      }
+      setState(
+        authenticatedState(state, {
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          status: organization.status,
+          isSuperAdmin: organization.isSuperAdmin,
+        }),
+      );
+    },
+    onWorkspaceClosed: () => setState(presentation.getState()),
+  });
+
   userController = createAdminUserController({
     host: dialogHost,
     readState: () => presentation.getState(),
@@ -766,7 +831,11 @@ export async function runAdminApplication(
     mountWorkspace: presentation.setUserWorkspace,
     isApplicationBusy: () =>
       Boolean(
-        currentController || authenticationGateOpen || organizationDialogOpen || identityDialogOpen,
+        currentController ||
+          authenticationGateOpen ||
+          organizationDialogOpen ||
+          identityDialogOpen ||
+          organizationController?.isOpen(),
       ),
     setDialogBusy: (busy) => {
       userDialogOpen = busy;
@@ -824,6 +893,10 @@ export async function runAdminApplication(
     }),
     application.onCommand(ADMIN_COMMANDS.createOrganization, startCreateOrganization),
     application.onCommand(ADMIN_COMMANDS.switchOrganization, startOrganizationChooser),
+    application.onCommand(ADMIN_COMMANDS.manageOrganization, () => {
+      organizationController?.handleCommand(ADMIN_COMMANDS.manageOrganization);
+      setState(presentation.getState());
+    }),
     application.onCommand(ADMIN_COMMANDS.browseUsers, () =>
       userController?.handleCommand(ADMIN_COMMANDS.browseUsers),
     ),
@@ -860,6 +933,11 @@ export async function runAdminApplication(
       }
       if (organizationDialogOpen) {
         cancelOrganizationWork();
+        return;
+      }
+      if (organizationController?.isOpen()) {
+        organizationController.close();
+        setState(presentation.getState());
         return;
       }
       cancelSessionOperation();
@@ -949,6 +1027,8 @@ export async function runAdminApplication(
     finalized = true;
     cancelModalWork();
     disposed = true;
+    organizationController?.dispose();
+    organizationController = undefined;
     userController?.dispose();
     userController = undefined;
     applicationClientFeatures?.dispose();

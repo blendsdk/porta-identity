@@ -119,6 +119,11 @@ export async function runAdminCommand(
               permissions: selectedClient(selectedServer).permissions,
               userRoles: selectedClient(selectedServer).userRoles,
             }),
+            {
+              organizations: () => selectedClient(selectedServer).organizations,
+              branding: () => selectedClient(selectedServer).branding,
+              twoFactor: () => selectedClient(selectedServer).twoFactor,
+            },
           ),
       });
     };

@@ -42,6 +42,8 @@ export interface AdminOrganizationWorkspaceOptions {
   readonly onIntent: (intent: AdminOrganizationIntent) => void;
   /** Focuses one mounted control through the application event loop. */
   readonly focusView?: (view: View) => void;
+  /** Releases controller ownership when the modeless window is closed directly. */
+  readonly onClose?: () => void;
 }
 
 /** Mounted organization workspace controlled by validated immutable state. */
@@ -67,6 +69,20 @@ const FAILURE_LABELS = {
   'file-size': 'The selected image exceeds the allowed size',
   'file-read': 'The selected image could not be read',
 } as const;
+
+/** Modeless organization dialog that reports direct frame-close actions to its owner. */
+class OrganizationDialog extends Dialog {
+  /** Creates the fixed workspace surface and retains its optional close callback. */
+  constructor(private readonly onClose?: () => void) {
+    super({ title: 'Organization', width: 72, height: 20 });
+  }
+
+  /** Lets the controller remove an owned workspace without leaving stale state behind. */
+  override close(): void {
+    if (this.onClose) this.onClose();
+    else super.close();
+  }
+}
 
 /** Wraps one Layout DSL tree in the Group required by TabView. */
 function tabPage(child: View): Group {
@@ -115,7 +131,7 @@ function formatBytes(size: number): string {
 export function createAdminOrganizationWorkspace(
   options: AdminOrganizationWorkspaceOptions,
 ): AdminOrganizationWorkspace {
-  const content = new Dialog({ title: 'Organization', width: 72, height: 20 });
+  const content = new OrganizationDialog(options.onClose);
   content.resizable = false;
   content.zoomable = false;
   content.minWidth = 49;

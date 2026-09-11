@@ -97,6 +97,8 @@ export function createAdminPresentation(
         ? (currentState.capabilities ?? {
             canReadOrganizations: false,
             canCreateOrganizations: false,
+            canUpdateOrganizations: false,
+            canSuspendOrganizations: false,
             canReadUsers: false,
             canCreateUsers: false,
             canInviteUsers: false,
@@ -127,6 +129,8 @@ export function createAdminPresentation(
         : {
             canReadOrganizations: false,
             canCreateOrganizations: false,
+            canUpdateOrganizations: false,
+            canSuspendOrganizations: false,
             canReadUsers: false,
             canCreateUsers: false,
             canInviteUsers: false,
@@ -231,6 +235,14 @@ export function createAdminPresentation(
             ? '~S~witch organization…'
             : 'Switch organization… (requires organization read)',
           ADMIN_COMMANDS.switchOrganization,
+        ),
+        item(
+          hasOrganization && capabilities.canReadOrganizations
+            ? '~M~anage current organization…'
+            : hasOrganization
+              ? 'Manage current organization… (requires organization read)'
+              : 'Manage current organization… (select an organization)',
+          ADMIN_COMMANDS.manageOrganization,
         ),
       ]),
       usersMenu,
