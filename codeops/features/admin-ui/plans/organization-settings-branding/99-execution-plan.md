@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 13:51
-> **Progress**: 33/55 tasks (60%)
+> **Last Updated**: 2026-09-11 14:03
+> **Progress**: 34/55 tasks (62%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -154,7 +154,11 @@ fixture, infrastructure, or test-authoring failure remains.
 
 **Reference**: [03-03 §§State and Validation–Controller Rules](03-03-organization-admin-workspace.md#state-and-validation) · AR-2
 
-- [ ] 3.2.1 Add full validated settings/asset projections, result types, capabilities, and one narrow organization-workspace dependency object for the existing SDK domains — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/organization-service.ts`
+- [x] 3.2.1 Add full validated settings/asset projections, result types, capabilities, and one narrow organization-workspace dependency object for the existing SDK domains — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/organization-service.ts` ✅ (completed: 2026-09-11 14:03)
+
+**3.2.1 mechanical correction:** `packages/cli/src/admin/session-service.ts` now projects the two
+new capability booleans so the extended required state contract remains type-safe.
+
 - [ ] 3.2.2 Add workspace generation, context checks, direct mutation sequencing, and reload behavior — `packages/cli/src/admin/organization-controller.ts`
 - [ ] 3.2.3 Build the maximized Layout DSL window, TabView, and Overview tab — `packages/cli/src/admin/organization-workspace.ts`
 - [ ] 3.2.4 Add the login-method and password-login 2FA controls to the Authentication tab — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts`

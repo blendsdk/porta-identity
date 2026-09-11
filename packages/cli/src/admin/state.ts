@@ -8,6 +8,10 @@ export interface AdminCapabilities {
   readonly canReadOrganizations: boolean;
   /** Whether organization creation may be offered. */
   readonly canCreateOrganizations: boolean;
+  /** Whether organization settings and branding may be updated. */
+  readonly canUpdateOrganizations: boolean;
+  /** Whether organization lifecycle transitions may be performed. */
+  readonly canSuspendOrganizations: boolean;
   /** Whether users in the selected organization may be listed and inspected. */
   readonly canReadUsers: boolean;
   /** Whether a user may be created in the selected organization. */
@@ -61,6 +65,121 @@ export interface AdminCapabilities {
   /** Whether nested client secrets may be permanently deleted. */
   readonly canRevokeClientSecrets: boolean;
 }
+
+/** Login methods that an organization may offer as client-inheritable defaults. */
+export type AdminOrganizationLoginMethod = 'password' | 'magic_link';
+
+/** Organization-wide second-factor policies supported after password authentication. */
+export type AdminOrganizationTwoFactorPolicy =
+  | 'optional'
+  | 'required_email'
+  | 'required_totp'
+  | 'required_any';
+
+/** Branding image slots managed by the organization workspace. */
+export type AdminOrganizationAssetType = 'logo' | 'favicon';
+
+/** Validated media types accepted for stored organization branding images. */
+export type AdminOrganizationAssetContentType =
+  | 'image/png'
+  | 'image/jpeg'
+  | 'image/webp'
+  | 'image/x-icon'
+  | 'image/vnd.microsoft.icon'
+  | 'image/svg+xml';
+
+/** Complete organization settings retained by the focused management workspace. */
+export interface AdminOrganizationSettings extends AdminOrganizationContext {
+  /** Whether this is the protected control-plane organization. */
+  readonly isSuperAdmin: boolean;
+  /** Existing locale value, including a valid value not offered by this Admin UI. */
+  readonly defaultLocale: string;
+  /** Non-empty login methods inherited by eligible OIDC clients. */
+  readonly defaultLoginMethods: readonly AdminOrganizationLoginMethod[];
+  /** Second-factor policy applied only after password authentication. */
+  readonly twoFactorPolicy: AdminOrganizationTwoFactorPolicy;
+  /** Optional company name shown by authentication templates. */
+  readonly brandingCompanyName: string | null;
+  /** Optional six-digit hexadecimal brand color. */
+  readonly brandingPrimaryColor: string | null;
+  /** Optional external logo used when no uploaded logo exists. */
+  readonly brandingLogoUrl: string | null;
+  /** Optional external favicon used when no uploaded favicon exists. */
+  readonly brandingFaviconUrl: string | null;
+  /** Creation timestamp displayed through the shared UTC formatter. */
+  readonly createdAt: string;
+  /** Most recent update timestamp displayed through the shared UTC formatter. */
+  readonly updatedAt: string;
+}
+
+/** Validated metadata for one stored organization branding image. */
+export interface AdminOrganizationAsset {
+  /** Branding slot occupied by this image. */
+  readonly assetType: AdminOrganizationAssetType;
+  /** Media type confirmed by server validation. */
+  readonly contentType: AdminOrganizationAssetContentType;
+  /** Number of decoded bytes stored by the server. */
+  readonly size: number;
+  /** Most recent replacement timestamp. */
+  readonly updatedAt: string;
+}
+
+/** Four text branding values edited independently from stored image assets. */
+export interface AdminOrganizationBranding {
+  /** Optional company name, or `null` to use the organization name. */
+  readonly companyName: string | null;
+  /** Optional brand color, or `null` to use Porta's default. */
+  readonly primaryColor: string | null;
+  /** Optional external logo fallback URL. */
+  readonly logoUrl: string | null;
+  /** Optional external favicon fallback URL. */
+  readonly faviconUrl: string | null;
+}
+
+/** Editable Overview fields sent without an ETag precondition. */
+export interface AdminOrganizationOverviewInput {
+  /** Changed organization name. */
+  readonly name?: string;
+  /** Changed default locale. */
+  readonly defaultLocale?: string;
+}
+
+/** Fixed workspace failure categories that are safe to render. */
+export type AdminOrganizationWorkspaceFailureKind = AdminOrganizationFailureKind;
+
+/** Sanitized read result returned by organization workspace operations. */
+export type AdminOrganizationWorkspaceReadResult<T> =
+  | { readonly kind: 'success'; readonly value: T }
+  | { readonly kind: 'session-invalid' }
+  | { readonly kind: 'failure'; readonly failure: AdminOrganizationWorkspaceFailureKind };
+
+/** Sanitized mutation result that distinguishes an unknown network outcome. */
+export type AdminOrganizationWorkspaceMutationResult =
+  | { readonly kind: 'success' }
+  | { readonly kind: 'session-invalid' }
+  | { readonly kind: 'cancelled' }
+  | { readonly kind: 'outcome-unknown' }
+  | { readonly kind: 'failure'; readonly failure: AdminOrganizationWorkspaceFailureKind };
+
+/** Authoritative organization data retained beneath transient workspace states. */
+export interface AdminOrganizationWorkspaceProjection {
+  /** Complete validated organization settings. */
+  readonly organization: AdminOrganizationSettings;
+  /** Complete validated logo and favicon metadata collection. */
+  readonly assets: readonly AdminOrganizationAsset[];
+}
+
+/** Complete state rendered by the selected-organization management workspace. */
+export type AdminOrganizationWorkspaceState =
+  | { readonly kind: 'closed' }
+  | { readonly kind: 'loading'; readonly previous?: AdminOrganizationWorkspaceProjection }
+  | ({ readonly kind: 'ready' } & AdminOrganizationWorkspaceProjection)
+  | ({ readonly kind: 'saving'; readonly tab: 'overview' | 'authentication' | 'branding' } &
+      AdminOrganizationWorkspaceProjection)
+  | ({ readonly kind: 'failure'; readonly failure: AdminOrganizationWorkspaceFailureKind } &
+      Partial<AdminOrganizationWorkspaceProjection>)
+  | ({ readonly kind: 'outcome-unknown'; readonly tab: 'overview' | 'authentication' | 'branding' } &
+      AdminOrganizationWorkspaceProjection);
 
 /** The bounded organization projection retained by the terminal application. */
 export interface AdminOrganizationContext {

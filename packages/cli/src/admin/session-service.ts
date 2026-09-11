@@ -276,6 +276,9 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
   return {
     canReadOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:read'),
     canCreateOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:create'),
+    canUpdateOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:update'),
+    canSuspendOrganizations:
+      isLegacyAdministrator || validPermissions.includes('admin:org:suspend'),
     canReadUsers: isLegacyAdministrator || validPermissions.includes('admin:user:read'),
     canCreateUsers: isLegacyAdministrator || validPermissions.includes('admin:user:create'),
     canInviteUsers: isLegacyAdministrator || validPermissions.includes('admin:user:invite'),
