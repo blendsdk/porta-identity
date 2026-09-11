@@ -2,6 +2,7 @@
 
 import {
   Button,
+  CheckGroup,
   col,
   ComboBox,
   cover,
@@ -11,6 +12,7 @@ import {
   grow,
   Input,
   Label,
+  RadioGroup,
   row,
   signal,
   spacer,
@@ -23,7 +25,9 @@ import { formatAdminDateTime } from './admin-date-time.js';
 import type {
   AdminCapabilities,
   AdminOrganizationIntent,
+  AdminOrganizationLoginMethod,
   AdminOrganizationSettings,
+  AdminOrganizationTwoFactorPolicy,
   AdminOrganizationWorkspaceProjection,
   AdminOrganizationWorkspaceState,
 } from './state.js';
@@ -177,16 +181,93 @@ export function createAdminOrganizationWorkspace(
     return page;
   };
 
-  /** Builds the Authentication tab's stable action placement. */
-  const authenticationPlaceholder = (): Group =>
-    tabPage(
+  /** Builds organization login-method defaults and password-login 2FA policy controls. */
+  const authenticationPage = (
+    organization: AdminOrganizationSettings,
+    pending: boolean,
+  ): Group => {
+    const methodNames = ['password', 'magic_link'] as const;
+    const policyNames = [
+      'optional',
+      'required_email',
+      'required_totp',
+      'required_any',
+    ] as const;
+    const initialMethods = methodNames.map((method) =>
+      organization.defaultLoginMethods.includes(method),
+    );
+    const methods = signal([...initialMethods]);
+    const initialPolicy = Math.max(0, policyNames.indexOf(organization.twoFactorPolicy));
+    const policy = signal(initialPolicy);
+    const methodChoices = new CheckGroup({
+      labels: ['~P~assword', '~M~agic link'],
+      value: methods,
+    });
+    const policyChoices = new RadioGroup({
+      labels: [
+        'Optional',
+        'Required email OTP',
+        'Required authenticator / TOTP',
+        'Require either',
+      ],
+      value: policy,
+    });
+    const canUpdate = options.capabilities.canUpdateOrganizations;
+    const enabled = canUpdate && !pending;
+    methodChoices.focusable = enabled;
+    policyChoices.focusable = enabled;
+    for (let index = 0; index < methodNames.length; index += 1) {
+      methodChoices.setItemEnabled(index, enabled);
+    }
+    for (let index = 0; index < policyNames.length; index += 1) {
+      policyChoices.setItemEnabled(index, enabled);
+    }
+    const hasMethod = (): boolean => methods().some(Boolean);
+    const dirty = (): boolean =>
+      methods().some((value, index) => value !== initialMethods[index]) ||
+      policy() !== initialPolicy;
+    const save = new Button('~S~ave', {
+      disabled: () => !enabled || !hasMethod() || !dirty(),
+      onClick: () => {
+        const selectedMethods: AdminOrganizationLoginMethod[] = methods
+          .peek()
+          .flatMap((selected, index) =>
+          selected ? [methodNames[index]!] : [],
+          );
+        const twoFactorPolicy: AdminOrganizationTwoFactorPolicy = policyNames[policy.peek()]!;
+        options.onIntent({
+          kind: 'save-authentication',
+          loginMethods: selectedMethods,
+          twoFactorPolicy,
+        });
+      },
+    });
+    return tabPage(
       col(
-        { gap: 1, padding: 1 },
-        fixed(new Text('Authentication settings'), 1),
+        { gap: 0, padding: 1 },
+        fixed(
+          row(
+            { gap: 2 },
+            grow(col(fixed(new Text('Login methods'), 1), fixed(methodChoices, 2))),
+            grow(col(fixed(new Text('Password-login 2FA'), 1), fixed(policyChoices, 4))),
+          ),
+          5,
+        ),
+        fixed(
+          new Text(
+            "OIDC clients configured to inherit use these login methods. Password-login 2FA is organization-wide and takes effect at each user's next password authentication. Magic link is passwordless: no OTP or TOTP follows.",
+          ),
+          4,
+        ),
+        fixed(
+          new Text(() => (hasMethod() ? '' : 'Select at least one login method before saving.')),
+          1,
+        ),
         spacer(),
-        fixed(row(new Button('~S~ave', { disabled: true }), spacer()), 2),
+        fixed(row(save, spacer()), 2),
       ),
     );
+  };
 
   /** Builds the Branding tab's stable asset-row placement. */
   const brandingPlaceholder = (): Group =>
@@ -207,7 +288,13 @@ export function createAdminOrganizationWorkspace(
     const pending = state.kind === 'ready' && state.pendingTabs?.includes('overview') === true;
     const tabs: Signal<Tab[]> = signal([
       { title: 'Overview', content: overviewPage(projection.organization, pending) },
-      { title: 'Authentication', content: authenticationPlaceholder() },
+      {
+        title: 'Authentication',
+        content: authenticationPage(
+          projection.organization,
+          state.kind === 'ready' && state.pendingTabs?.includes('authentication') === true,
+        ),
+      },
       { title: 'Branding', content: brandingPlaceholder() },
     ]);
     const tabView = new TabView({ tabs, active: selectedTab });

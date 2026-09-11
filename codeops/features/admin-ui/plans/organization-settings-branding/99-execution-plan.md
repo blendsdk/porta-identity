@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 14:44
-> **Progress**: 36/55 tasks (65%)
+> **Last Updated**: 2026-09-11 14:48
+> **Progress**: 37/55 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -171,7 +171,7 @@ operation now has an independent spy, while all observable expectations remain u
 **3.2.3 authorized specification-fixture correction:** the standalone name-input assertion now
 excludes the native input owned by the required locale ComboBox. Observable expectations are
 unchanged. User approved 2026-09-11.
-- [ ] 3.2.4 Add the login-method and password-login 2FA controls to the Authentication tab — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts`
+- [x] 3.2.4 Add the login-method and password-login 2FA controls to the Authentication tab — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/src/admin/organization-controller.ts` ✅ (completed: 2026-09-11 14:48)
 - [ ] 3.2.5 Add the Branding form and immediate file-backed asset actions; pin JSVision files — `packages/cli/src/admin/organization-workspace.ts`, `packages/cli/package.json`, `yarn.lock`
 - [ ] 3.2.6 Wire the Manage command, production SDK domains, capabilities, lifecycle, and stale-session closure through existing application seams — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts`
 - [ ] 3.2.7 Run ST-27–ST-45 and make the immutable Phase 3 expectations green
