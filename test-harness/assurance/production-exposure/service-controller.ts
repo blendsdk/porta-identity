@@ -267,7 +267,10 @@ export class OwnedDependencyController {
       const after = await this.waitForPasswordResetState(
         postgres,
         (state) => this.hasObservedFailedProbe(before, state),
-        15_000,
+        // A stopped container can consume Nodemailer's two-minute connection deadline before the
+        // worker records its retry. The margin observes that real boundary without changing Porta.
+        135_000,
+        1_000,
       );
       return Object.freeze({
         response,
@@ -395,12 +398,13 @@ export class OwnedDependencyController {
     postgresContainerId: string,
     accepts: (state: PasswordResetRecoveryStateObservation) => boolean,
     timeoutMilliseconds: number,
+    pollMilliseconds = 250,
   ): Promise<PasswordResetRecoveryStateObservation> {
     const deadline = Date.now() + timeoutMilliseconds;
     while (Date.now() < deadline) {
       const state = await this.passwordResetRecoveryState(postgresContainerId);
       if (accepts(state)) return state;
-      await delay(250);
+      await delay(pollMilliseconds);
     }
     throw new Error('password-reset recovery state was not observable before the deadline');
   }

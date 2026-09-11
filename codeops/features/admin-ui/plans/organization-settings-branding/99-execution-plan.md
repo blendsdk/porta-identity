@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 18:25
+> **Last Updated**: 2026-09-11 18:33
 > **Progress**: 55/56 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
@@ -237,7 +237,7 @@ covered by focused tests. See `08-phase-quality-review.md`.
 - [x] 4.2.3 Run `yarn workspace @portaidentity/sdk verify` ✅ (completed: 2026-09-11 17:50; 508 tests)
 - [x] 4.2.4 Run `yarn workspace @portaidentity/cli verify` ✅ (completed: 2026-09-11 17:52; 1,227 tests)
 - [x] 4.2.5 Run `yarn test:ui` ✅ (completed: 2026-09-11 17:55; 133 tests)
-- [x] 4.2.6a Correct the user-authorized pre-existing mail observer gap and verify its focused specification and implementation coverage ✅ (completed: 2026-09-11 18:25; focused exposure 26/26, P1 exposure 20/20, structure 100/100)
+- [x] 4.2.6a Correct the user-authorized pre-existing mail observer gap and verify its focused specification and implementation coverage ✅ (completed: 2026-09-11 18:33; focused exposure 26/26, P1 exposure 20/20, structure 100/100; live SMTP deadline correction included)
 - [ ] 4.2.6b From the clean committed observer revision, run `yarn assurance:harness --project security --profile production-security` and evaluate its registered outcome taxonomy
 - [x] 4.2.7 After a clean committed implementation revision exists, run `yarn assurance:compat --select tenant-admin` and evaluate its registered outcome taxonomy ✅ (completed: 2026-09-11 18:01; run `5ccbc085-8898-425d-8464-a89d29a28d88` passed)
 
