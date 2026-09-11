@@ -162,7 +162,10 @@ test('should define a separate control-plane administrative authority ontology',
   );
   assert.ok(
     profile.cases.some(
-      (entry) => entry.actor === 'admin-unprivileged' && entry.result === 'forbidden',
+      (entry) =>
+        entry.actor === 'admin-unprivileged' &&
+        entry.result === 'forbidden' &&
+        entry.variedDimension === 'admin-role',
     ),
   );
 });

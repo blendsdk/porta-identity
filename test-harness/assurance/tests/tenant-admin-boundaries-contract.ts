@@ -65,7 +65,7 @@ export interface ControlPlaneBoundaryObservation {
   /** Intended handler was reached before the request was rejected. */
   readonly handlerReached: boolean;
   /** Boundary that made the final authorization decision. */
-  readonly decisionBoundary: 'handler' | 'permission' | 'resource';
+  readonly decisionBoundary: 'handler' | 'membership' | 'permission' | 'resource';
   /** Every cataloged prohibited side effect and whether it was observed. */
   readonly prohibitedSideEffects: Readonly<Record<string, boolean>>;
   /** Target state before the request, observed independently. */

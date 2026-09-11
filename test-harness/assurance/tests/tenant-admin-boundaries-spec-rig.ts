@@ -135,14 +135,19 @@ function observeControlPlaneCase(caseId: string): ControlPlaneBoundaryObservatio
   const entry = controlPlaneCase(caseId);
   const resource = controlPlaneResource(entry.resource);
   const fingerprint = targetFingerprint(resource.id);
-  const authenticated = entry.actor !== 'unauthenticated';
+  const authenticated = entry.actor !== 'unauthenticated' && entry.actor !== 'admin-unprivileged';
   return Object.freeze({
     caseId: entry.id,
     result: entry.result,
     transport: 'raw-http',
     adminAuthenticationAccepted: authenticated,
     handlerReached: authenticated,
-    decisionBoundary: entry.result === 'forbidden' ? 'permission' : 'handler',
+    decisionBoundary:
+      entry.actor === 'admin-unprivileged'
+        ? 'membership'
+        : entry.result === 'forbidden'
+          ? 'permission'
+          : 'handler',
     prohibitedSideEffects: absentSideEffects(
       controlPlaneAuthorityProfile.threatProfile.prohibitedSideEffects,
     ),

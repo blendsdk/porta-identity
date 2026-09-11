@@ -53,6 +53,11 @@ test('should enforce the exact actor permission matrix across tenant and global 
     });
 
     assert.equal(observed.result, expected.result, expected.id);
+    if (expected.actor === 'admin-unprivileged') {
+      assert.equal(observed.adminAuthenticationAccepted, false, expected.id);
+      assert.equal(observed.handlerReached, false, expected.id);
+      assert.equal(observed.decisionBoundary, 'membership', expected.id);
+    }
     if (expected.result !== 'allowed') {
       assert.ok(expected.authorizedControl, expected.id);
       assert.deepEqual(observed.targetAfter, observed.targetBefore, expected.id);

@@ -157,6 +157,13 @@ export function controlPlaneReachability(
     });
   }
   if (proof === undefined) throw new Error('denied route is missing its authorized control proof');
+  if (actor === 'admin-unprivileged' && membershipDenialSchema.safeParse(response.body).success) {
+    return Object.freeze({
+      adminAuthenticationAccepted: false,
+      handlerReached: false,
+      decisionBoundary: 'membership',
+    });
+  }
   const decisionBoundary =
     result === 'forbidden'
       ? z
@@ -411,7 +418,7 @@ export async function observeLiveSuperAdminExceptions(
     >
   > = {
     deactivate: ['POST', `${readPath}/deactivate`, undefined],
-    delete: ['POST', `${organizationPath}/purge`, { confirmPurge: true }],
+    delete: ['DELETE', organizationPath, undefined],
     'manage-2fa': ['POST', `${organizationPath}/two-factor/disable`, undefined],
     'remove-super-admin-role': [
       'DELETE',

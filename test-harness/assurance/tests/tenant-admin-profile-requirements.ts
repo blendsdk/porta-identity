@@ -118,7 +118,7 @@ export interface TenantOidcAuthorityProfile {
   readonly threatProfile: AuthorityThreatProfile;
 }
 
-/** Administrative actor that always belongs to the single super-admin organization. */
+/** Candidate administrative actor that always belongs to the single super-admin organization. */
 export interface ControlPlaneActor {
   /** Stable actor identity. */
   readonly id: string;
@@ -126,7 +126,7 @@ export interface ControlPlaneActor {
   readonly organization: 'super-admin';
   /** Porta administrative role used to resolve permissions. */
   readonly role: `porta-${string}`;
-  /** Independent permission tier exercised by the matrix. */
+  /** Independent authority tier exercised by the matrix. */
   readonly permissionProfile: 'full' | 'limited' | 'unprivileged';
 }
 
@@ -167,7 +167,8 @@ export interface ControlPlaneAuthorityCase {
   /** Allowed case proving the same handler and target are reachable before authority varies. */
   readonly authorizedControl?: string;
   /** Single changed authority dimension for a negative case. */
-  readonly variedDimension?: 'authentication' | 'permission' | 'identifier' | 'target';
+  readonly variedDimension?:
+    'authentication' | 'admin-role' | 'permission' | 'identifier' | 'target';
 }
 
 /** Supported or explicitly unavailable stale-authority transition. */
@@ -191,7 +192,7 @@ export interface StaleAuthorityTransition {
 export interface ControlPlaneAuthorityProfile {
   /** Stable profile identity. */
   readonly id: 'control-plane-admin-authority';
-  /** Full, limited, and unprivileged actors from the super-admin organization. */
+  /** Full, limited, and unrecognized-role actors from the super-admin organization. */
   readonly actors: readonly ControlPlaneActor[];
   /** Permission-protected administrative operations. */
   readonly actions: readonly ControlPlaneAction[];
@@ -472,7 +473,7 @@ function controlPlaneCases(): readonly ControlPlaneAuthorityCase[] {
           resource: resource.id,
           result: 'forbidden',
           authorizedControl: controlId,
-          variedDimension: 'permission',
+          variedDimension: 'admin-role',
         },
         {
           id: `unauthenticated-${action.id}-${resource.id}`,

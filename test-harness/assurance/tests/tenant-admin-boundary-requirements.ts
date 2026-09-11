@@ -77,7 +77,7 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
     authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
     mutationMethod: 'DELETE',
     mutationRoute: '/api/admin/organizations/:orgId/users/:userId/roles',
-    expectedResult: 'forbidden',
+    expectedResult: 'unauthenticated',
   },
   {
     transition: 'actor-deactivation',
