@@ -30,7 +30,7 @@ function brandingUploadLocation(repositoryPath, source) {
   );
   const location = locations[0];
   assert.match(
-    location.groups?.selector ?? '',
+    (location.groups?.selector ?? '').trim(),
     /^~\s+\^\/api\/admin\/organizations\/\[\^\/\]\+\/branding\/\(\?:logo\|favicon\)\$$/,
     `${repositoryPath} must anchor the allowance to exact logo and favicon asset paths`,
   );
