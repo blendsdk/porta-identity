@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 13:49
-> **Progress**: 32/55 tasks (58%)
+> **Last Updated**: 2026-09-11 13:51
+> **Progress**: 33/55 tasks (60%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -144,7 +144,11 @@ Playwright, and 100 structure tests passed. Server lint, typecheck, and build al
 **Reference**: [03-03](03-03-organization-admin-workspace.md) · AR-1–AR-3 · ST-27–ST-45
 
 - [x] 3.1.1 [spec-author] Write menu, state, service, tabs, lifecycle, authentication, branding, focus, stale-context, and minimum-size specifications from ST-27–ST-45 — `packages/cli/tests/admin/organization-workspace.spec.test.ts` ✅ (completed: 2026-09-11 13:49)
-- [ ] 3.1.2 Run the Phase 3 specification file and record the expected red result before implementation
+- [x] 3.1.2 Run the Phase 3 specification file and record the expected red result before implementation ✅ (completed: 2026-09-11 13:51)
+
+**Phase 3 RED evidence:** 29 failed / 0 passed. The failures map only to the absent Manage current
+organization command/menu action, organization workspace, and organization controller; no harness,
+fixture, infrastructure, or test-authoring failure remains.
 
 ### Step 3.2: Implementation
 
