@@ -49,6 +49,7 @@ branding service. Both replace missing direct feature seams rather than create g
 | 03-02 | [Public Branding Rendering](03-02-public-branding-rendering.md)       | Public route, effective context, templates, CSP, and proxy  |
 | 03-03 | [Organization Admin Workspace](03-03-organization-admin-workspace.md) | State, services, tabs, dialogs, and application integration |
 | 07    | [Testing Strategy](07-testing-strategy.md)                            | Immutable specification cases and verification              |
+| 08    | [Phase Quality Review](08-phase-quality-review.md)                    | Independent findings, rulings, and re-review evidence       |
 | 99    | [Execution Plan](99-execution-plan.md)                                | Ordered implementation tasks                                |
 
 ## Quick Reference

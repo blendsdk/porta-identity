@@ -27,7 +27,7 @@ export interface BrandingAsset {
 
 /** JSON/base64 upload envelope for one branding image. */
 export interface BrandingAssetUploadInput {
-  /** Decoded image bytes represented as standard base64. */
+  /** Image bytes encoded as standard base64. */
   data: string;
   /** Declared media type that the server verifies against the bytes. */
   contentType: BrandingAssetContentType;

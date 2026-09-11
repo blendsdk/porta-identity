@@ -113,7 +113,8 @@ export function createApp(oidcProvider?: Provider): Koa {
   // 1. Request correlation and terminal finalization wrap every Koa request
   // 2. Error handler converts downstream failures into minimal public responses
   // 3. Security headers (CSP, HSTS, X-Frame-Options, etc.)
-  // 4. Selective body parser — only routes that need it (NOT OIDC routes)
+  // 4. Admin CORS and mutation rate limiting run before request-body allocation
+  // 5. Selective body parser — only routes that need it (NOT OIDC routes)
   app.use(requestLogger());
   app.use(errorHandler());
   app.use(securityHeaders());
@@ -123,6 +124,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   if (config.metricsEnabled) {
     app.use(metricsCounter());
   }
+
+  // Admin CORS must precede authentication because preflight requests carry no
+  // credentials. The existing mutation limiter runs here so rejected large
+  // uploads never reach JSON parsing and allocation.
+  app.use(adminCors(config));
+  app.use(adminRateLimiter());
 
   // Selective body parser: apply only to admin API, interaction, and auth routes.
   // OIDC provider routes (/:orgSlug/*) must NOT have pre-parsed bodies because
@@ -232,17 +239,6 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(metadataRouter.routes());
   app.use(metadataRouter.allowedMethods());
 
-  // Admin CORS allow-list — emits CORS headers for /api/admin/* only when
-  // ADMIN_CORS_ORIGINS is configured.  Mounted before admin-auth because
-  // preflight OPTIONS requests don't carry Authorization headers.
-  // Default (empty config) = deny all cross-origin requests.
-  app.use(adminCors(config));
-
-  // Admin API rate limiter — protects state-changing admin endpoints
-  // (POST/PUT/PATCH/DELETE /api/admin/*) against brute-force and abuse.
-  // Per-IP key, 60 req / 60s.  GET requests pass through unmetered.
-  // Mounted before admin routes so it fires before route handlers.
-  app.use(adminRateLimiter());
   app.use(adminMutationAudit());
 
   // Set the OIDC provider for admin auth middleware — enables opaque access

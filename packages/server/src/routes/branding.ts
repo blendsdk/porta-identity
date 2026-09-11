@@ -19,6 +19,7 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as brandingAssets from '../lib/branding-assets.js';
 import type { AssetType } from '../lib/branding-assets.js';
+import { getOrganizationById } from '../organizations/service.js';
 
 const brandingUploadSchema = z
   .object({
@@ -43,6 +44,16 @@ function validateAssetType(type: string): type is AssetType {
   return type === 'logo' || type === 'favicon';
 }
 
+/** Reject invalid or missing organization IDs through one non-enumerating not-found response. */
+async function requireExistingOrganization(
+  organizationId: string,
+  throwHttp: (status: number, message: string) => never,
+): Promise<void> {
+  const parsedId = z.string().uuid().safeParse(organizationId);
+  const organization = parsedId.success ? await getOrganizationById(parsedId.data) : null;
+  if (organization === null) throwHttp(404, 'Organization not found');
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -57,6 +68,7 @@ export function createBrandingRouter(): Router {
   // GET / — List branding assets (metadata only)
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const assets = await brandingAssets.listAssets(ctx.params.orgId);
     ctx.body = { data: assets };
   });
@@ -65,6 +77,7 @@ export function createBrandingRouter(): Router {
   // GET /:type — Get branding asset (serves binary image)
   // -------------------------------------------------------------------------
   router.get('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const { type } = ctx.params;
     if (!validateAssetType(type)) {
       ctx.throw(400, 'Invalid asset type. Must be "logo" or "favicon"');
@@ -89,6 +102,7 @@ export function createBrandingRouter(): Router {
   //   { "data": "<base64>", "contentType": "image/png" }
   // -------------------------------------------------------------------------
   router.put('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const { type } = ctx.params;
     if (!validateAssetType(type)) {
       ctx.throw(400, 'Invalid asset type. Must be "logo" or "favicon"');
@@ -110,8 +124,12 @@ export function createBrandingRouter(): Router {
         decoded,
       );
       ctx.body = { data: asset };
-    } catch {
-      ctx.throw(400, 'Branding upload is invalid');
+    } catch (error) {
+      if (error instanceof brandingAssets.BrandingAssetValidationError) {
+        ctx.throw(400, 'Branding upload is invalid');
+        return;
+      }
+      throw error;
     }
   });
 
@@ -119,6 +137,7 @@ export function createBrandingRouter(): Router {
   // DELETE /:type — Delete branding asset
   // -------------------------------------------------------------------------
   router.delete('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const { type } = ctx.params;
     if (!validateAssetType(type)) {
       ctx.throw(400, 'Invalid asset type. Must be "logo" or "favicon"');

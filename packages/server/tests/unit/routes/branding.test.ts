@@ -1,4 +1,5 @@
 import type Router from '@koa/router';
+import Koa from 'koa';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/middleware/admin-auth.js', () => ({
@@ -10,14 +11,22 @@ vi.mock('../../../src/middleware/require-permission.js', () => ({
 }));
 
 vi.mock('../../../src/lib/branding-assets.js', () => ({
+  BrandingAssetValidationError: class BrandingAssetValidationError extends Error {},
   listAssets: vi.fn(),
   getAsset: vi.fn(),
   uploadAsset: vi.fn(),
   deleteAsset: vi.fn(),
 }));
 
+vi.mock('../../../src/organizations/service.js', () => ({
+  getOrganizationById: vi.fn(),
+}));
+
 import * as brandingAssets from '../../../src/lib/branding-assets.js';
+import { getOrganizationById } from '../../../src/organizations/service.js';
 import { createBrandingRouter } from '../../../src/routes/branding.js';
+
+const ORGANIZATION_ID = '10000000-0000-4000-a000-000000000001';
 
 type RouteLayer = ReturnType<typeof createBrandingRouter>['stack'][number];
 
@@ -37,7 +46,7 @@ function createContext(body: unknown = {}): TestContext {
   let responseBody: unknown;
 
   return {
-    params: { orgId: 'org-1', type: 'logo' },
+    params: { orgId: ORGANIZATION_ID, type: 'logo' },
     request: { body },
     get status() {
       return status;
@@ -69,8 +78,45 @@ function handler(router: Router, method: string, path: string) {
   return layer!.stack[layer!.stack.length - 1]!;
 }
 
+/** Send one request through every middleware registered by the branding router. */
+async function requestRouter(path: string): Promise<Response> {
+  const app = new Koa();
+  app.use(createBrandingRouter().routes());
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    const address = server.address();
+    if (address === null || typeof address === 'string')
+      throw new Error('Missing test server port');
+    return await fetch(`http://127.0.0.1:${address.port}${path}`);
+  } finally {
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    );
+  }
+}
+
 describe('branding routes', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getOrganizationById).mockResolvedValue({ id: ORGANIZATION_ID } as never);
+  });
+
+  it.each([
+    ['invalid ID', 'not-an-organization-id', false],
+    ['missing organization', '10000000-0000-4000-a000-000000000001', true],
+  ])(
+    'should return the same not-found boundary for an %s',
+    async (_case, organizationId, lookedUp) => {
+      vi.mocked(getOrganizationById).mockResolvedValue(null);
+
+      const response = await requestRouter(`/api/admin/organizations/${organizationId}/branding`);
+
+      expect(response.status).toBe(404);
+      expect(getOrganizationById).toHaveBeenCalledTimes(lookedUp ? 1 : 0);
+      expect(brandingAssets.listAssets).not.toHaveBeenCalled();
+    },
+  );
 
   it('should return asset metadata from the organization collection', async () => {
     const assets = [{ id: 'asset-1', assetType: 'logo' }];
@@ -83,7 +129,7 @@ describe('branding routes', () => {
       '/api/admin/organizations/:orgId/branding',
     )(context as never, vi.fn());
 
-    expect(brandingAssets.listAssets).toHaveBeenCalledWith('org-1');
+    expect(brandingAssets.listAssets).toHaveBeenCalledWith(ORGANIZATION_ID);
     expect(context.body).toEqual({ data: assets });
   });
 
@@ -101,7 +147,7 @@ describe('branding routes', () => {
       '/api/admin/organizations/:orgId/branding/:type',
     )(context as never, vi.fn());
 
-    expect(brandingAssets.getAsset).toHaveBeenCalledWith('org-1', 'logo');
+    expect(brandingAssets.getAsset).toHaveBeenCalledWith(ORGANIZATION_ID, 'logo');
     expect(context.type).toBe('image/png');
     expect(context.set).toHaveBeenCalledWith('Cache-Control', 'public, max-age=3600');
     expect(context.body).toBe(data);
@@ -132,13 +178,18 @@ describe('branding routes', () => {
       '/api/admin/organizations/:orgId/branding/:type',
     )(context as never, vi.fn());
 
-    expect(brandingAssets.uploadAsset).toHaveBeenCalledWith('org-1', 'logo', 'image/png', data);
+    expect(brandingAssets.uploadAsset).toHaveBeenCalledWith(
+      ORGANIZATION_ID,
+      'logo',
+      'image/png',
+      data,
+    );
     expect(context.body).toEqual({ data: asset });
   });
 
   it('should hide service validation details behind one upload error', async () => {
     vi.mocked(brandingAssets.uploadAsset).mockRejectedValue(
-      new Error('internal validation detail'),
+      new brandingAssets.BrandingAssetValidationError('internal validation detail'),
     );
     const context = createContext({ data: 'aGVsbG8=', contentType: 'image/png' });
 
@@ -151,6 +202,20 @@ describe('branding routes', () => {
     ).rejects.toMatchObject({ status: 400, message: 'Branding upload is invalid' });
   });
 
+  it('should propagate operational upload failures to the global error boundary', async () => {
+    const operationalFailure = new Error('database unavailable');
+    vi.mocked(brandingAssets.uploadAsset).mockRejectedValue(operationalFailure);
+    const context = createContext({ data: 'aGVsbG8=', contentType: 'image/png' });
+
+    await expect(
+      handler(
+        createBrandingRouter(),
+        'PUT',
+        '/api/admin/organizations/:orgId/branding/:type',
+      )(context as never, vi.fn()),
+    ).rejects.toBe(operationalFailure);
+  });
+
   it('should return no content after deleting an existing asset', async () => {
     vi.mocked(brandingAssets.deleteAsset).mockResolvedValue(true);
     const context = createContext();
@@ -161,7 +226,7 @@ describe('branding routes', () => {
       '/api/admin/organizations/:orgId/branding/:type',
     )(context as never, vi.fn());
 
-    expect(brandingAssets.deleteAsset).toHaveBeenCalledWith('org-1', 'logo');
+    expect(brandingAssets.deleteAsset).toHaveBeenCalledWith(ORGANIZATION_ID, 'logo');
     expect(context.status).toBe(204);
   });
 

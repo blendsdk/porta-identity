@@ -43,6 +43,15 @@ export interface BrandingAssetWithData extends BrandingAsset {
   data: Buffer;
 }
 
+/** Expected client-data failure raised when branding image validation rejects an upload. */
+export class BrandingAssetValidationError extends Error {
+  /** Create a branding validation failure without exposing image content. */
+  constructor(message: string) {
+    super(message);
+    this.name = 'BrandingAssetValidationError';
+  }
+}
+
 // ============================================================================
 // Service functions
 // ============================================================================
@@ -66,7 +75,7 @@ export async function uploadAsset(
 ): Promise<BrandingAsset> {
   const validation = validateImage(data, contentType, assetType);
   if (!validation.valid || validation.data === undefined) {
-    throw new Error(validation.error ?? 'Branding asset is invalid');
+    throw new BrandingAssetValidationError(validation.error ?? 'Branding asset is invalid');
   }
 
   const validatedData = validation.data;
