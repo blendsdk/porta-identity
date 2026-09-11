@@ -290,6 +290,7 @@ async function renderSuccessPageForAuth(
       orgSlug: org.slug,
     };
 
+    ctx.state.brandingImageSources = context.branding.imageSources;
     const html = await renderPage('magic-link-success', context);
     ctx.status = 200;
     ctx.type = 'text/html';
@@ -332,6 +333,7 @@ async function renderErrorPageForAuth(
       errorMessage,
     };
 
+    ctx.state.brandingImageSources = context.branding.imageSources;
     const html = await renderPage('error', context);
     ctx.status = 400;
     ctx.type = 'text/html';

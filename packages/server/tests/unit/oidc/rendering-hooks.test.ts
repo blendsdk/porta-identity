@@ -73,7 +73,10 @@ vi.mock('../../../src/lib/logger.js', () => ({
 
 // Re-export HTML_CSP so tests can assert the exact value
 vi.mock('../../../src/middleware/security-headers.js', () => ({
-  HTML_CSP: "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+  HTML_CSP:
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+  buildHtmlCsp: () =>
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'; img-src 'self' data:",
 }));
 
 // Import after mocks are set up
@@ -90,7 +93,8 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Sample provider form HTML (mimics what node-oidc-provider passes to logoutSource) */
-const SAMPLE_FORM = '<form id="op.logoutForm" method="post" action="/session/end/confirm"><input type="hidden" name="xsrf" value="test-xsrf-token"/></form>';
+const SAMPLE_FORM =
+  '<form id="op.logoutForm" method="post" action="/session/end/confirm"><input type="hidden" name="xsrf" value="test-xsrf-token"/></form>';
 
 /** Sample organization for branding tests */
 const SAMPLE_ORG = {
@@ -120,24 +124,19 @@ const SAMPLE_USER = {
 };
 
 /** The expected HTML CSP value set by rendering hooks */
-const EXPECTED_HTML_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
+const EXPECTED_HTML_CSP =
+  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
+const EXPECTED_BRANDED_HTML_CSP = `${EXPECTED_HTML_CSP}; img-src 'self' data:`;
 
 /** Creates a mock ctx that mimics oidc-provider's KoaContextWithOIDC */
-function createMockCtx(overrides?: {
-  sessionAccountId?: string;
-  clientOrgId?: string;
-}) {
+function createMockCtx(overrides?: { sessionAccountId?: string; clientOrgId?: string }) {
   return {
     type: '',
     body: '' as unknown,
     set: vi.fn(),
     oidc: {
-      session: overrides?.sessionAccountId
-        ? { accountId: overrides.sessionAccountId }
-        : undefined,
-      client: overrides?.clientOrgId
-        ? { organizationId: overrides.clientOrgId }
-        : undefined,
+      session: overrides?.sessionAccountId ? { accountId: overrides.sessionAccountId } : undefined,
+      client: overrides?.clientOrgId ? { organizationId: overrides.clientOrgId } : undefined,
     },
   };
 }
@@ -377,7 +376,7 @@ describe('OIDC Rendering Hooks', () => {
       const ctx = createMockCtx();
       await logoutSourceHook(ctx, SAMPLE_FORM);
 
-      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_HTML_CSP);
+      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_BRANDED_HTML_CSP);
     });
 
     it('should set HTML_CSP header even in fallback path', async () => {
@@ -473,7 +472,7 @@ describe('OIDC Rendering Hooks', () => {
       const ctx = createMockCtx();
       await postLogoutSuccessSourceHook(ctx);
 
-      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_HTML_CSP);
+      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_BRANDED_HTML_CSP);
     });
 
     it('should fall back to minimal HTML when template engine throws', async () => {
@@ -582,7 +581,7 @@ describe('OIDC Rendering Hooks', () => {
       const ctx = createMockCtx();
       await renderErrorHook(ctx, { error: 'invalid_client' }, new Error('test'));
 
-      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_HTML_CSP);
+      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_BRANDED_HTML_CSP);
     });
 
     it('should fall back to minimal HTML when template engine throws', async () => {

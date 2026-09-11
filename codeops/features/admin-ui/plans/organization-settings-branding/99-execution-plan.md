@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 11:46
-> **Progress**: 25/55 tasks (45%)
+> **Last Updated**: 2026-09-11 11:52
+> **Progress**: 26/55 tasks (47%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -113,7 +113,7 @@ no harness, fixture, infrastructure, or test-authoring failure remains.
 - [x] 2.2.3 Adopt effective branding in interaction and magic-link page contexts — `packages/server/src/routes/interactions.ts`, `packages/server/src/routes/magic-link.ts` ✅ (completed: 2026-09-11 11:36)
 - [x] 2.2.4 Adopt effective branding in password-reset, invitation, and two-factor page contexts — `packages/server/src/routes/password-reset.ts`, `packages/server/src/routes/invitation.ts`, `packages/server/src/routes/two-factor.ts` ✅ (completed: 2026-09-11 11:40)
 - [x] 2.2.5 Adopt the same effective context in email, invitation send/preview, and OIDC-provider HTML rendering paths — `packages/server/src/auth/email-service.ts`, `packages/server/src/routes/users.ts`, `packages/server/src/oidc/configuration.ts` ✅ (completed: 2026-09-11 11:46)
-- [ ] 2.2.6 Add one CSP builder and validated image-origin handoff while preserving all non-image directives — `packages/server/src/middleware/security-headers.ts`, `packages/server/src/auth/template-engine.ts`
+- [x] 2.2.6 Add one CSP builder and validated image-origin handoff while preserving all non-image directives — `packages/server/src/middleware/security-headers.ts`, `packages/server/src/auth/template-engine.ts` ✅ (completed: 2026-09-11 11:52)
 - [ ] 2.2.7 Apply the exact upload-only request allowance in both bundled proxies — `docker/nginx-dev.conf`, `docker/admin-playground/nginx.conf`
 - [ ] 2.2.8 Run ST-13–ST-26 and make the immutable Phase 2 expectations green
 

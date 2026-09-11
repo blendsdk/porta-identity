@@ -19,7 +19,7 @@
 import type { OidcTtlConfig } from '../lib/system-config.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { config } from '../config/index.js';
-import { HTML_CSP } from '../middleware/security-headers.js';
+import { buildHtmlCsp, HTML_CSP } from '../middleware/security-headers.js';
 import { renderPage } from '../auth/template-engine.js';
 import {
   DEFAULT_BRANDING_PRIMARY_COLOR,
@@ -187,7 +187,7 @@ export async function logoutSourceHook(ctx: any, form: string): Promise<void> {
     });
 
     ctx.type = 'text/html';
-    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.set('Content-Security-Policy', buildHtmlCsp(branding.imageSources));
     ctx.body = html;
   } catch (err) {
     // Fallback: render minimal HTML if template engine fails.
@@ -229,7 +229,7 @@ export async function postLogoutSuccessSourceHook(ctx: any): Promise<void> {
     });
 
     ctx.type = 'text/html';
-    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.set('Content-Security-Policy', buildHtmlCsp(branding.imageSources));
     ctx.body = html;
   } catch (err) {
     logger.error({ err }, 'Failed to render custom post-logout page');
@@ -359,7 +359,7 @@ export async function renderErrorHook(
     });
 
     ctx.type = 'text/html';
-    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.set('Content-Security-Policy', buildHtmlCsp(branding.imageSources));
     ctx.body = html;
   } catch (err) {
     logger.error({ err }, 'Failed to render custom error page');

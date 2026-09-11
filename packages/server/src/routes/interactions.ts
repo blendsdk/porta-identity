@@ -220,6 +220,7 @@ async function renderAndRespond(
   statusCode = 200,
   renderer: typeof renderPage = renderPage,
 ): Promise<void> {
+  ctx.state.brandingImageSources = context.branding.imageSources;
   const html = await renderer(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
@@ -1452,6 +1453,7 @@ async function renderErrorPage(ctx: Context, errorKey: string): Promise<void> {
             primaryColor: '#3B82F6',
             companyName: 'Porta',
             customCss: null,
+            imageSources: [],
           },
       locale,
       t,

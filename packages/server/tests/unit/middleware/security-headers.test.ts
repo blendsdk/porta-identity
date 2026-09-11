@@ -32,6 +32,7 @@ import {
   DEFAULT_CSP,
   HTML_CSP,
   HSTS_VALUE,
+  buildHtmlCsp,
 } from '../../../src/middleware/security-headers.js';
 
 // ---------------------------------------------------------------------------
@@ -84,14 +85,11 @@ async function invokeMiddleware(
   const middleware = securityHeaders();
   const ctx = createMockContext();
 
-  await middleware(
-    ctx as unknown as Parameters<typeof middleware>[0],
-    async () => {
-      if (downstream) {
-        await downstream(ctx);
-      }
-    },
-  );
+  await middleware(ctx as unknown as Parameters<typeof middleware>[0], async () => {
+    if (downstream) {
+      await downstream(ctx);
+    }
+  });
 
   return ctx;
 }
@@ -182,7 +180,7 @@ describe('security-headers middleware', () => {
         c._headers['Content-Type'] = 'text/html; charset=utf-8';
         c.body = '<html><body>Login</body></html>';
       });
-      expect(ctx._headers['Content-Security-Policy']).toBe(HTML_CSP);
+      expect(ctx._headers['Content-Security-Policy']).toBe(buildHtmlCsp());
     });
 
     it('relaxes CSP for text/html without charset suffix', async () => {
@@ -190,7 +188,7 @@ describe('security-headers middleware', () => {
         c._headers['Content-Type'] = 'text/html';
         c.body = '<html></html>';
       });
-      expect(ctx._headers['Content-Security-Policy']).toBe(HTML_CSP);
+      expect(ctx._headers['Content-Security-Policy']).toBe(buildHtmlCsp());
     });
 
     it('keeps strict CSP for text/plain responses', async () => {
@@ -286,12 +284,9 @@ describe('security-headers middleware', () => {
       const ctx = createMockContext();
 
       try {
-        await middleware(
-          ctx as unknown as Parameters<typeof middleware>[0],
-          async () => {
-            throw new Error('Downstream failure');
-          },
-        );
+        await middleware(ctx as unknown as Parameters<typeof middleware>[0], async () => {
+          throw new Error('Downstream failure');
+        });
       } catch {
         // Expected — error propagates up to the error handler middleware.
       }

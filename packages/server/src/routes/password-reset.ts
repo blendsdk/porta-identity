@@ -123,6 +123,7 @@ async function renderAndRespond(
   statusCode = 200,
   renderer: typeof renderPage = renderPage,
 ): Promise<void> {
+  ctx.state.brandingImageSources = context.branding.imageSources;
   const html = await renderer(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
