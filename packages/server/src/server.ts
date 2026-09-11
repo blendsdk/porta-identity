@@ -60,6 +60,7 @@ import { createBulkRouter } from './routes/bulk.js';
 import { createExportRouter } from './routes/exports.js';
 import { createImportRouter } from './routes/imports.js';
 import { createBrandingRouter } from './routes/branding.js';
+import { createPublicBrandingRouter } from './routes/public-branding.js';
 import {
   createTwoFactorUserAdminRouter,
   createTwoFactorOrgAdminRouter,
@@ -417,6 +418,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const invitationRouter = createInvitationRouter();
   app.use(invitationRouter.routes());
   app.use(invitationRouter.allowedMethods());
+
+  // Uploaded branding images remain available to authentication pages for both active and
+  // suspended organizations. This exact route must precede the tenant-wide OIDC catch-all.
+  const publicBrandingRouter = createPublicBrandingRouter();
+  app.use(publicBrandingRouter.routes());
+  app.use(publicBrandingRouter.allowedMethods());
 
   // Token endpoint rate limiter — protects POST /:orgSlug/oidc/token against
   // flooding and brute-force.  Uses per-IP + per-client_id composite key,

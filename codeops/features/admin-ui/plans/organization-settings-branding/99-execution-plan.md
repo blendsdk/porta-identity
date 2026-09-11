@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 11:17
-> **Progress**: 20/55 tasks (36%)
+> **Last Updated**: 2026-09-11 11:21
+> **Progress**: 21/55 tasks (38%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -108,7 +108,7 @@ no harness, fixture, infrastructure, or test-authoring failure remains.
 
 **Reference**: [03-02 §§Public Asset Route–Bundled Proxy Limits](03-02-public-branding-rendering.md#public-asset-route) · AR-2
 
-- [ ] 2.2.1 Add and mount the exact public image router before the OIDC catch-all — `packages/server/src/routes/public-branding.ts`, `packages/server/src/server.ts`
+- [x] 2.2.1 Add and mount the exact public image router before the OIDC catch-all — `packages/server/src/routes/public-branding.ts`, `packages/server/src/server.ts` ✅ (completed: 2026-09-11 11:21)
 - [ ] 2.2.2 Implement metadata-first effective branding with fail-soft configured/default fallback — `packages/server/src/lib/effective-branding.ts`, `packages/server/src/lib/branding-assets.ts`
 - [ ] 2.2.3 Adopt effective branding in interaction and magic-link page contexts — `packages/server/src/routes/interactions.ts`, `packages/server/src/routes/magic-link.ts`
 - [ ] 2.2.4 Adopt effective branding in password-reset, invitation, and two-factor page contexts — `packages/server/src/routes/password-reset.ts`, `packages/server/src/routes/invitation.ts`, `packages/server/src/routes/two-factor.ts`
