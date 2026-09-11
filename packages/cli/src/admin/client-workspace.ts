@@ -35,6 +35,7 @@ import type {
   AdminClientSecret,
   AdminClientViewState,
 } from './client-state.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
 import type { AdminCapabilities, AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -287,27 +288,27 @@ export function createAdminClientWorkspace(
     application: string,
   ): View => {
     const selected = projection.client;
+    const clientId = new SelectableReadOnlyInput(selected.clientId);
     const identity = region(
       'Identity',
-      new Text(
-        [
-          selected.clientName,
-          selected.clientId,
-          `${selected.clientType} · ${selected.applicationType}`,
-          `Status: ${selected.status}`,
-          `Created: ${formatAdminDateTime(selected.createdAt)}`,
-          `Updated: ${formatAdminDateTime(selected.updatedAt)}`,
-        ].join('\n'),
+      col(
+        fixed(new Text(`Client name: ${selected.clientName}`), 1),
+        fixed(row({ gap: 1 }, fixed(new Label('Client ID', clientId), 9), grow(clientId)), 1),
+        fixed(new Text(`Client type: ${selected.clientType}`), 1),
+        fixed(new Text(`Status: ${selected.status}`), 1),
+        fixed(new Text(`Created: ${formatAdminDateTime(selected.createdAt)}`), 1),
+        fixed(new Text(`Updated: ${formatAdminDateTime(selected.updatedAt)}`), 1),
       ),
     );
     const context = region(
       'Context',
       new Text(
         [
-          options.organization?.name ?? projection.organizationId,
-          application,
-          `Auth: ${selected.tokenEndpointAuthMethod}`,
-          `Login override: ${selected.loginMethods?.join(', ') ?? 'inherit'}`,
+          `Organization: ${options.organization?.name ?? projection.organizationId}`,
+          `Application: ${application}`,
+          `Application type: ${selected.applicationType}`,
+          `Authentication: ${selected.tokenEndpointAuthMethod}`,
+          `Login methods: ${selected.loginMethods?.join(', ') ?? 'inherit'}`,
         ].join('\n'),
       ),
     );

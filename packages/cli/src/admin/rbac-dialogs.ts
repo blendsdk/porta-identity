@@ -33,6 +33,7 @@ import { isCanonicalPermission } from './application-rbac-workspace.js';
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import { isAdminPermissionSlug } from './rbac-state.js';
 import type { AdminPermission, AdminRole } from './rbac-state.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
 import { textValidator } from './user-dialog-fields.js';
 
 const ENTITY_DIALOG_HEIGHT = 20;
@@ -469,12 +470,11 @@ export async function showEditPermissionDialog(
         form,
         [
           `Application: ${application.name}`,
-          `Slug: ${permission.slug} (read only)`,
           `Scope: ${scope} (read only)`,
         ],
         '~S~ave',
         () => entityIsValid(form, 'none'),
-        [],
+        [inputRow('Slug', new SelectableReadOnlyInput(permission.slug))],
         height < ENTITY_DIALOG_HEIGHT,
       ),
     ),

@@ -22,6 +22,7 @@ import {
 import type { Signal, Tab, View } from '@jsvision/ui';
 
 import { formatAdminDateTime } from './admin-date-time.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
 import type {
   AdminCapabilities,
   AdminOrganizationAsset,
@@ -188,9 +189,14 @@ export function createAdminOrganizationWorkspace(
     return 'No changes';
   };
 
-  /** Builds a labelled one-row field with a stable label column. */
-  const field = (label: string, control: View): Group =>
-    row({ gap: 1 }, fixed(new Label(label, control), 15), grow(control));
+  /** Builds a labelled one-row field without stretching its editor across the whole tab. */
+  const field = (label: string, control: View, controlWidth: number): Group =>
+    row(
+      { gap: 1 },
+      fixed(new Label(label, control), 18),
+      fixed(control, controlWidth),
+      spacer(),
+    );
 
   /** Builds the editable Overview page from one authoritative projection. */
   const overviewPage = (
@@ -261,10 +267,10 @@ export function createAdminOrganizationWorkspace(
     const page = tabPage(
       col(
         { gap: 1, padding: 1 },
-        fixed(field('Name', nameInput), 1),
-        fixed(field('Default locale', localeInput), 1),
-        fixed(new Text(`ID: ${organization.id}`), 1),
-        fixed(new Text(`Slug: ${organization.slug}`), 1),
+        fixed(field('Name', nameInput, 24), 1),
+        fixed(field('Default locale', localeInput, 16), 1),
+        fixed(field('ID', new SelectableReadOnlyInput(organization.id), 36), 1),
+        fixed(field('Slug', new SelectableReadOnlyInput(organization.slug), 24), 1),
         fixed(new Text(`Status: ${organization.status.toUpperCase()}`), 1),
         fixed(new Text(`Created: ${formatAdminDateTime(organization.createdAt)}`), 1),
         fixed(new Text(`Updated: ${formatAdminDateTime(organization.updatedAt)}`), 1),
@@ -394,7 +400,11 @@ export function createAdminOrganizationWorkspace(
         maxLength: 255,
         validator: textValidator(0, 255),
       }),
-      primaryColor: new Input({ value: values.primaryColor, maxLength: 7 }),
+      primaryColor: new Input({
+        value: values.primaryColor,
+        maxLength: 7,
+        placeholder: '#RRGGBB',
+      }),
       logoUrl: new Input({ value: values.logoUrl, maxLength: 2_048 }),
       faviconUrl: new Input({ value: values.faviconUrl, maxLength: 2_048 }),
     };
@@ -483,26 +493,33 @@ export function createAdminOrganizationWorkspace(
       } else if (dialogLauncher?.kind === removeKind) {
         dialogLauncher = { kind: uploadKind, view: upload };
       }
-      return row(
-        { gap: 1 },
-        fixed(new Text(label), 8),
-        grow(new Text(metadata)),
-        upload,
-        remove ?? false,
+      return col(
+        fixed(row({ gap: 1 }, fixed(new Text(label), 18), grow(new Text(metadata))), 1),
+        row(
+          { gap: 1 },
+          spacer({ fixed: 18 }),
+          upload,
+          remove ?? false,
+          spacer(),
+        ),
       );
     };
+    const fields = col(
+      { gap: 1 },
+      fixed(field('Company name', inputs.companyName, 24), 1),
+      fixed(field('Primary color', inputs.primaryColor, 10), 1),
+      fixed(field('Fallback logo URL', inputs.logoUrl, 24), 1),
+      fixed(field('Fallback favicon', inputs.faviconUrl, 24), 1),
+    );
     return tabPage(
       col(
-        { gap: 0, padding: 1 },
-        fixed(field('Company name', inputs.companyName), 1),
-        fixed(field('Primary color', inputs.primaryColor), 1),
-        fixed(field('Fallback logo URL', inputs.logoUrl), 1),
-        fixed(field('Fallback favicon', inputs.faviconUrl), 1),
+        { padding: 1 },
+        fixed(fields, 7),
+        spacer({ fixed: 1 }),
+        fixed(assetRow('Logo', 'logo'), 3),
+        fixed(assetRow('Favicon', 'favicon'), 3),
         fixed(new Text(() => validationError() ?? operationFeedback('branding')), 1),
         fixed(row(save, spacer()), 2),
-        spacer(),
-        fixed(assetRow('Logo', 'logo'), 2),
-        fixed(assetRow('Favicon', 'favicon'), 2),
       ),
     );
   };

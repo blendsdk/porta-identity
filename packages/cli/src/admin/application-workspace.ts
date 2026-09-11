@@ -10,6 +10,7 @@ import {
   fixed,
   Group,
   grow,
+  Label,
   row,
   Scroller,
   Show,
@@ -36,6 +37,7 @@ import type {
   AdminApplicationProjection,
   AdminApplicationViewState,
 } from './application-state.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
 
 /** Closed set of application actions emitted by the global workspace. */
 export type AdminApplicationIntent =
@@ -268,6 +270,7 @@ export function createAdminApplicationWorkspace(
       lifecycle,
       action('Delete', { kind: 'delete', applicationId: selected.id }, !canDelete),
     );
+    const slug = new SelectableReadOnlyInput(selected.slug);
     const detail = col(
       fixed(
         row(
@@ -277,7 +280,7 @@ export function createAdminApplicationWorkspace(
         ),
         1,
       ),
-      fixed(new Text(`Slug: ${selected.slug}`), 1),
+      fixed(row({ gap: 1 }, fixed(new Label('Slug', slug), 8), fixed(slug, 32), spacer()), 1),
       fixed(new Text(selected.description ?? 'No description'), 1),
       fixed(
         row(

@@ -562,8 +562,9 @@ describe('focused RBAC dialogs', () => {
     const editDialog = editHost.desktop.activeWindow();
     if (!(editDialog instanceof Dialog)) throw new Error('Permission edit dialog missing.');
     const editable = descendants(editDialog).filter((view) => view instanceof Input);
-    expect(editable).toHaveLength(1);
+    expect(editable).toHaveLength(2);
     expect(editHost.loop.getFocused()).toBe(editable[0]);
+    expect(editable.some((input) => input.getValueSignal().peek() === permission.slug)).toBe(true);
     expect(frameText(editHost)).toContain(permission.slug);
     expect(frameText(editHost)).toContain('Billing');
     editable[0]?.getValueSignal().set('View invoices');

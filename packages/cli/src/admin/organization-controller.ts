@@ -434,7 +434,9 @@ export function createAdminOrganizationController(
       path = await pick({
         title: 'Select image (PNG, JPEG, WebP, ICO, SVG)',
         wildcard: '*.*',
-        filter: (entry) => entry.kind === 'file' && imageContentType(entry.name) !== undefined,
+        filter: (entry) =>
+          entry.kind === 'dir' ||
+          (entry.kind === 'file' && imageContentType(entry.name) !== undefined),
       });
     } catch {
       if (owns(owner.generation, owner.organizationId)) {

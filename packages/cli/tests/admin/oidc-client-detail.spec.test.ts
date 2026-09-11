@@ -265,8 +265,15 @@ describe('OIDC client detail surface', () => {
     expect(titles.join(' ')).toMatch(/Protocol/i);
     expect(titles.join(' ')).toMatch(/Login/i);
     for (const expected of [
+      'Client name:',
+      'Client ID',
+      'Client type:',
+      'Application type:',
+      'Organization:',
+      'Application:',
+      'Authentication:',
+      'Login methods:',
       client.clientName,
-      client.clientId,
       organization.name,
       application.name,
       client.clientType,
@@ -281,6 +288,16 @@ describe('OIDC client detail surface', () => {
     ]) {
       expect(frame).toContain(expected);
     }
+
+    const clientId = views
+      .filter((view) => view instanceof Input)
+      .find((input) => input.getValueSignal().peek() === client.clientId);
+    if (!(clientId instanceof Input)) throw new Error('Selectable Client ID field missing.');
+    mounted.host.loop.focusView(clientId);
+    mounted.host.loop.dispatch({
+      type: 'key', key: 'x', codepoint: 120, ctrl: false, alt: false, shift: false,
+    });
+    expect(clientId.getValueSignal().peek()).toBe(client.clientId);
   });
 
   // One TabView selects every detail section without replacing the maximized workspace.
@@ -299,7 +316,7 @@ describe('OIDC client detail surface', () => {
     expect(tabs.tabs.peek().map((tab) => tab.title)).toEqual(expectedItems);
 
     const sectionContent = [
-      client.clientId,
+      'Client ID',
       'URL / origin',
       'Grant types',
       'Effective methods',
@@ -326,7 +343,9 @@ describe('OIDC client detail surface', () => {
     if (!(tabs instanceof TabView)) throw new Error('Client tab pane missing.');
     await selectSection(tabs, 2);
 
-    const views = descendants(mounted.window);
+    const protocolPage = tabs.tabs.peek()[2]?.content;
+    if (!protocolPage) throw new Error('Protocol tab missing.');
+    const views = descendants(protocolPage);
     const grants = views.find((view) => view instanceof CheckGroup);
     const scope = views.find((view) => view instanceof Input);
     const authentication = views.find((view) => view instanceof RadioGroup);
@@ -440,7 +459,9 @@ describe('OIDC client detail surface', () => {
     expect(credentialActions).not.toEqual(expect.arrayContaining(['Add', 'Delete']));
 
     await selectSection(tabs, 2);
-    const protocolViews = descendants(mounted.window);
+    const protocolPage = tabs.tabs.peek()[2]?.content;
+    if (!protocolPage) throw new Error('Protocol tab missing.');
+    const protocolViews = descendants(protocolPage);
     const pkce = protocolViews.find((view) => view instanceof Switch);
     const authentication = protocolViews.find((view) => view instanceof RadioGroup);
     const scope = protocolViews.find((view) => view instanceof Input);

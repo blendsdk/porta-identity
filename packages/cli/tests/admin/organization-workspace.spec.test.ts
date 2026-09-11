@@ -103,6 +103,17 @@ function descendants(root: View): View[] {
   return result;
 }
 
+/** Returns a view's vertical position in the mounted window. */
+function absoluteY(view: View): number {
+  let y = view.bounds.y;
+  let parent = view.parent;
+  while (parent) {
+    y += parent.bounds.y;
+    parent = parent.parent;
+  }
+  return y;
+}
+
 /** Reads all visible characters from a real headless terminal frame. */
 function frameText(host: ReturnType<typeof createApplication>): string {
   return host.loop.renderRoot
@@ -324,7 +335,6 @@ describe('organization overview', () => {
     const mounted = await mount();
     const text = frameText(mounted.host);
 
-    expect(text).toContain(organization.id);
     expect(text).toContain(organization.slug);
     expect(text).toContain('ACTIVE');
     expect(text).toContain('02 Jan 2026, 03:04 UTC');
@@ -337,8 +347,29 @@ describe('organization overview', () => {
     );
     expect(
       views.filter((view) => view instanceof Input && !comboInputs.has(view)),
-    ).toHaveLength(1);
+    ).toHaveLength(3);
+    for (const value of [organization.id, organization.slug]) {
+      expect(
+        views
+          .filter((view) => view instanceof Input)
+          .some((input) => input.getValueSignal().peek() === value),
+      ).toBe(true);
+    }
     expect(button(mounted.window, 'Save').state.disabled).toBe(true);
+  });
+
+  it('keeps Overview editors at readable form widths instead of filling the tab', async () => {
+    const mounted = await mount();
+    const overview = organizationTabs(mounted.window).tabs.peek()[0]?.content;
+    if (!overview) throw new Error('Overview page missing.');
+    const name = descendants(overview).find((view) => view instanceof Input);
+    const locale = descendants(overview).find((view) => view instanceof ComboBox);
+    if (!(name instanceof Input) || !(locale instanceof ComboBox)) {
+      throw new Error('Overview editors missing.');
+    }
+
+    expect(name.bounds.width).toBeLessThanOrEqual(36);
+    expect(locale.bounds.width).toBeLessThanOrEqual(20);
   });
 
   it('preserves an unknown valid locale until an explicit English selection', async () => {
@@ -461,6 +492,50 @@ describe('organization authentication', () => {
 });
 
 describe('organization branding', () => {
+  it('uses complete labels, readable field widths, and one-row form spacing', async () => {
+    const mounted = await mount();
+    const tabs = organizationTabs(mounted.window);
+    await selectTab(mounted.host, tabs, 2);
+    const page = tabs.tabs.peek()[2]?.content;
+    if (!page) throw new Error('Branding page missing.');
+    const inputs = descendants(page).filter((view) => view instanceof Input);
+
+    expect(frameText(mounted.host)).toContain('Fallback logo URL');
+    expect(frameText(mounted.host)).toContain('Fallback favicon');
+    expect(inputs).toHaveLength(4);
+    expect(inputs[0]?.bounds.width).toBeLessThanOrEqual(36);
+    expect(inputs[1]?.bounds.width).toBeLessThanOrEqual(12);
+    expect(inputs[2]?.bounds.width).toBeLessThanOrEqual(36);
+    expect(inputs[3]?.bounds.width).toBeLessThanOrEqual(36);
+    const fieldRows = inputs.map((input) => input.parent?.bounds.y);
+    expect(fieldRows).toEqual([0, 2, 4, 6]);
+  });
+
+  it('shows the required hexadecimal format when Primary color is empty', async () => {
+    const mounted = await mount({
+      organization: { ...organization, brandingPrimaryColor: null },
+    });
+    await selectTab(mounted.host, organizationTabs(mounted.window), 2);
+
+    expect(frameText(mounted.host)).toContain('#RRGGBB');
+  });
+
+  it('places image actions directly after their metadata and before Save', async () => {
+    const mounted = await mount();
+    const tabs = organizationTabs(mounted.window);
+    await selectTab(mounted.host, tabs, 2);
+    const page = tabs.tabs.peek()[2]?.content;
+    if (!page) throw new Error('Branding page missing.');
+    const actions = descendants(page).filter(
+      (view) => view instanceof Button && view.activation.label === 'Add',
+    );
+    const save = button(page, 'Save');
+
+    expect(actions).toHaveLength(2);
+    expect(actions.every((action) => action.bounds.x < 50)).toBe(true);
+    expect(actions.every((action) => absoluteY(action) < absoluteY(save))).toBe(true);
+  });
+
   it('validates only the four approved text settings and omits custom CSS', async () => {
     const mounted = await mount();
     const tabs = organizationTabs(mounted.window);
@@ -485,6 +560,30 @@ describe('organization branding', () => {
       kind: 'save-branding',
       input: { primaryColor: '#112233' },
     });
+  });
+
+  it('enables Save after ordinary keyboard editing', async () => {
+    const mounted = await mount();
+    const tabs = organizationTabs(mounted.window);
+    await selectTab(mounted.host, tabs, 2);
+    const page = tabs.tabs.peek()[2]?.content;
+    if (!page) throw new Error('Branding page missing.');
+    const companyName = descendants(page).find((view) => view instanceof Input);
+    if (!(companyName instanceof Input)) throw new Error('Company name input missing.');
+    const save = button(page, 'Save');
+
+    mounted.host.loop.focusView(companyName);
+    mounted.host.loop.dispatch({
+      type: 'key',
+      key: 'x',
+      codepoint: 120,
+      ctrl: false,
+      alt: false,
+      shift: false,
+    });
+    await settle();
+
+    expect(save.state.disabled).toBe(false);
   });
 
   it('always renders Logo and Favicon rows and changes Add to Replace when metadata exists', async () => {
@@ -711,6 +810,13 @@ describe('organization controller request semantics', () => {
     for (const type of ['png', 'jpeg', 'webp', 'ico', 'svg']) {
       expect(JSON.stringify(openFile.mock.calls[0])).toMatch(new RegExp(type, 'i'));
     }
+    const pickerOptions = openFile.mock.calls[0]?.[0];
+    if (!pickerOptions || typeof pickerOptions.filter !== 'function') {
+      throw new Error('Image picker filter missing.');
+    }
+    expect(pickerOptions.filter({ name: 'pictures', kind: 'dir' })).toBe(true);
+    expect(pickerOptions.filter({ name: 'brand.svg', kind: 'file' })).toBe(true);
+    expect(pickerOptions.filter({ name: 'notes.txt', kind: 'file' })).toBe(false);
     expect(readFile).toHaveBeenCalledWith('/tmp/brand.png');
     expect(mounted.operations.uploadAsset).toHaveBeenCalledOnce();
     expect(mounted.operations.uploadAsset).toHaveBeenCalledWith(

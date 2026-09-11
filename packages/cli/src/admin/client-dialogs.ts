@@ -17,11 +17,12 @@ import {
 } from '@jsvision/ui';
 
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
-import type { DispatchEvent, EventLoop, ModalDialogHost } from '@jsvision/ui';
+import type { EventLoop, ModalDialogHost } from '@jsvision/ui';
 
 import { formatOptionalAdminDateTime } from './admin-date-time.js';
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminClient, AdminClientSecret } from './client-state.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
@@ -118,23 +119,6 @@ async function runDialog(
 /** Creates one fixed one-row labeled input. */
 function inputRow(label: string, input: Input): ReturnType<typeof row> {
   return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
-}
-
-/** Selectable single-line secret field that restores its value after every editing gesture. */
-class ReadOnlySecretInput extends Input {
-  /** Exact plaintext retained only for the lifetime of the one-time dialog. */
-  protected readonly originalValue: string;
-
-  constructor(value: string) {
-    super({ value: signal(value), maxLength: value.length });
-    this.originalValue = value;
-  }
-
-  /** Allows navigation and copying while discarding cut, paste, delete, and typing mutations. */
-  override onEvent(event: DispatchEvent): void {
-    super.onEvent(event);
-    if (this.value.peek() !== this.originalValue) this.value.set(this.originalValue);
-  }
 }
 
 /** Shows one small editor for the only mutable field in the Overview section. */
@@ -299,13 +283,17 @@ export async function showOneTimeClientSecretDialog(
 ): Promise<void> {
   const { width, height } = dialogSize(host, 76, 15);
   const dialog = new Dialog({ title: 'One-time client secret', width, height, centered: true });
-  const secretInput = new ReadOnlySecretInput(value.plaintext);
+  const clientIdInput = new SelectableReadOnlyInput(value.clientId);
+  const secretInput = new SelectableReadOnlyInput(value.plaintext);
   dialog.add(
     cover(
       col(
         { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
         fixed(new Text(`Client: ${value.clientName}`), 1),
-        fixed(new Text(`Client ID: ${value.clientId}`), 1),
+        fixed(
+          row({ gap: 1 }, fixed(new Label('Client ID', clientIdInput), 12), grow(clientIdInput)),
+          1,
+        ),
         fixed(new Text(`Label: ${value.label ?? 'Not provided'}`), 1),
         fixed(new Text(`Expires: ${formatOptionalAdminDateTime(value.expiresAt, 'Never')}`), 1),
         fixed(row({ gap: 1 }, fixed(new Label('Secret', secretInput), 12), grow(secretInput)), 1),

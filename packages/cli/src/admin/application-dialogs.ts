@@ -27,6 +27,7 @@ import type { EventLoop, ModalDialogHost, Signal, Validator } from '@jsvision/ui
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication, AdminApplicationModule } from './application-state.js';
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
 import { textValidator } from './user-dialog-fields.js';
 
 /** Plain-language scope note shown when an application is created. */
@@ -252,7 +253,7 @@ function formLayout(
     { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
     inputRow('Name', form.nameInput),
     form.slugInput && inputRow('Slug', form.slugInput),
-    readOnlySlug ? fixed(new Text(`Slug: ${readOnlySlug} (read only)`), 1) : undefined,
+    readOnlySlug ? inputRow('Slug', new SelectableReadOnlyInput(readOnlySlug)) : undefined,
     fixed(new Text('Description'), 1),
     grow(form.descriptionMemo, 1, { min: 4 }),
     fixed(new Text(scopeNotice), 1),

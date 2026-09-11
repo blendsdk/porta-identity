@@ -1,6 +1,6 @@
 /** Implementation diagnostics for organization workspace bindings and controller ownership. */
 
-import { Button, createApplication, Dialog, Group, Input, TabView, View } from '@jsvision/ui';
+import { Button, ComboBox, createApplication, Dialog, Group, Input, TabView, View } from '@jsvision/ui';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -201,6 +201,47 @@ function controllerHarness(
 }
 
 describe('organization workspace implementation', () => {
+  it.each([
+    [80, 24],
+    [49, 19],
+  ])('navigates every organization tab without a JSVision layout warning at %ix%i', async (width, height) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const presentation = createAdminPresentation(authenticated(), false, { width, height });
+    const host = createApplication({
+      content: presentation.content,
+      menuBar: presentation.menu,
+      statusLine: presentation.status,
+      viewport: { width, height },
+    });
+    const workspace = createAdminOrganizationWorkspace({ capabilities, onIntent: vi.fn() });
+    presentation.setWorkspace(workspace.content);
+    workspace.setState({ kind: 'ready', organization, assets: [] });
+    const tabs = descendants(workspace.content).find((view) => view instanceof TabView);
+    if (!(tabs instanceof TabView)) throw new Error('Organization tabs missing.');
+
+    const locale = descendants(tabs.tabs.peek()[0]!.content).find(
+      (view) => view instanceof ComboBox,
+    );
+    if (!(locale instanceof ComboBox)) throw new Error('Organization locale selector missing.');
+    host.loop.focusView(locale.input);
+    host.loop.dispatch({ type: 'key', key: 'down', ctrl: false, alt: true, shift: false });
+    await settle();
+    host.loop.dispatch({ type: 'key', key: 'escape', ctrl: false, alt: false, shift: false });
+    await settle();
+
+    tabs.select(1);
+    await settle();
+    tabs.select(2);
+    await settle();
+    tabs.select(0);
+    await settle();
+
+    expect(
+      warn.mock.calls.filter(([message]) => String(message).startsWith('[jsvision/ui layout]')),
+    ).toEqual([]);
+    warn.mockRestore();
+  });
+
   it('retains the selected tab and focuses its first editable field after replacement', async () => {
     const presentation = createAdminPresentation(authenticated(), false, { width: 80, height: 24 });
     const host = createApplication({

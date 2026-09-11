@@ -299,6 +299,11 @@ describe('global applications workspace', () => {
       .filter((view) => view instanceof Button)
       .map((button) => button.activation.label);
     expect(overviewViews.some((view) => view instanceof DataGrid)).toBe(false);
+    expect(
+      overviewViews
+        .filter((view) => view instanceof Input)
+        .some((input) => input.getValueSignal().peek() === application.slug),
+    ).toBe(true);
     expect(moduleViews.filter((view) => view instanceof DataGrid)).toHaveLength(1);
     expect(applicationActions).toEqual(expect.arrayContaining(['Edit', 'Deactivate', 'Delete']));
     expect(applicationActions).not.toContain('Back to applications');
@@ -679,15 +684,21 @@ describe('application and module dialogs', () => {
     const host = createApplication({ viewport: { width: 80, height: 24 } });
     const editing = showEditApplicationDialog(host, new AbortController().signal, application);
     await settle();
-    expect(descendants(activeDialog(host)).filter((view) => view instanceof Input)).toHaveLength(1);
-    expect(frameText(host)).toContain('customer-portal (read only)');
+    const applicationInputs = descendants(activeDialog(host)).filter(
+      (view) => view instanceof Input,
+    );
+    expect(applicationInputs).toHaveLength(2);
+    expect(
+      applicationInputs.some((input) => input.getValueSignal().peek() === 'customer-portal'),
+    ).toBe(true);
     host.loop.endModal('cancel');
     await editing;
 
     const moduleEditing = showEditModuleDialog(host, new AbortController().signal, moduleRow);
     await settle();
-    expect(descendants(activeDialog(host)).filter((view) => view instanceof Input)).toHaveLength(1);
-    expect(frameText(host)).toContain('billing (read only)');
+    const moduleInputs = descendants(activeDialog(host)).filter((view) => view instanceof Input);
+    expect(moduleInputs).toHaveLength(2);
+    expect(moduleInputs.some((input) => input.getValueSignal().peek() === 'billing')).toBe(true);
     host.loop.endModal('cancel');
     await moduleEditing;
   });

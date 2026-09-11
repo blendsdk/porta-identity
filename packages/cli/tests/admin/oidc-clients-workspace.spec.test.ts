@@ -291,11 +291,16 @@ describe('organization OIDC client workspace', () => {
       for (const expected of [
         organization.name,
         application.name,
-        value.clientId,
+        'Client ID',
         value.clientType,
         value.applicationType,
       ])
         expect(text).toContain(expected);
+      expect(
+        descendants(tabs.tabs.peek()[0]!.content)
+          .filter((view) => view instanceof Input)
+          .some((input) => input.getValueSignal().peek() === value.clientId),
+      ).toBe(true);
       expect(tabs.tabs.peek().map((tab) => tab.title)).toEqual([
         'Overview',
         'Authentication',
@@ -429,9 +434,15 @@ describe('client lifecycle and one-time secrets', () => {
       expect(text).toContain(expected);
     expect(text).toContain('Expires: 08 Mar 2027, 00:00 UTC');
     expect(text).not.toContain('2027-03-08T00:00:00.000Z');
-    const secretInput = views.find((view) => view instanceof Input);
+    const secretInput = views
+      .filter((view) => view instanceof Input)
+      .find((input) => input.getValueSignal().peek() === plaintext);
     if (!(secretInput instanceof Input)) throw new Error('Selectable secret field missing.');
-    expect(views.filter((view) => view instanceof Input)).toHaveLength(1);
+    const clientIdInput = views
+      .filter((view) => view instanceof Input)
+      .find((input) => input.getValueSignal().peek() === client.clientId);
+    expect(clientIdInput).toBeInstanceOf(Input);
+    expect(views.filter((view) => view instanceof Input)).toHaveLength(2);
     expect(secretInput.getValueSignal().peek()).toBe(plaintext);
     host.loop.focusView(secretInput);
     host.loop.dispatch({ type: 'key', key: 'a', codepoint: 97, ctrl: true, alt: false, shift: false });
