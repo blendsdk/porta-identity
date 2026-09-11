@@ -19,6 +19,13 @@ const credentials = {
   userInfo: { sub: 'subject-1', email: 'admin@example.test' },
 };
 
+const noOrganizationCapabilities = {
+  canReadOrganizations: false,
+  canCreateOrganizations: false,
+  canUpdateOrganizations: false,
+  canSuspendOrganizations: false,
+};
+
 const noUserCapabilities = {
   canReadUsers: false,
   canCreateUsers: false,
@@ -57,8 +64,7 @@ const noRbacCapabilities = {
 describe('admin session implementation edges', () => {
   it('treats malformed authorization arrays as least-privileged values', () => {
     expect(validateAdminCapabilities(['porta-admin', 'bad\u0000role'], undefined)).toEqual({
-      canReadOrganizations: false,
-      canCreateOrganizations: false,
+      ...noOrganizationCapabilities,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
@@ -66,11 +72,25 @@ describe('admin session implementation edges', () => {
     expect(
       validateAdminCapabilities(['porta-user-admin'], ['admin:org:read', 'bad\u0085permission']),
     ).toEqual({
-      canReadOrganizations: false,
-      canCreateOrganizations: false,
+      ...noOrganizationCapabilities,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+    });
+  });
+
+  it('derives organization update and suspend permissions independently', () => {
+    expect(validateAdminCapabilities([], ['admin:org:update'])).toMatchObject({
+      canReadOrganizations: false,
+      canCreateOrganizations: false,
+      canUpdateOrganizations: true,
+      canSuspendOrganizations: false,
+    });
+    expect(validateAdminCapabilities([], ['admin:org:suspend'])).toMatchObject({
+      canReadOrganizations: false,
+      canCreateOrganizations: false,
+      canUpdateOrganizations: false,
+      canSuspendOrganizations: true,
     });
   });
 
@@ -79,8 +99,8 @@ describe('admin session implementation edges', () => {
 
     expect(longPermission.length).toBeGreaterThan(100);
     expect(validateAdminCapabilities([], ['admin:org:read', longPermission])).toEqual({
+      ...noOrganizationCapabilities,
       canReadOrganizations: true,
-      canCreateOrganizations: false,
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,

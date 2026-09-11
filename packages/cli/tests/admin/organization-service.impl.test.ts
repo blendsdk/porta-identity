@@ -4,7 +4,9 @@ import { PortaAuthenticationError, PortaForbiddenError } from '@portaidentity/sd
 import { describe, expect, it, vi } from 'vitest';
 import {
   createAdminOrganizationOperations,
+  createAdminOrganizationWorkspaceOperations,
   validateOrganizationContext,
+  validateOrganizationSettings,
 } from '../../src/admin/organization-service.js';
 
 /** Creates a complete SDK-shaped organization for implementation diagnostics. */
@@ -39,6 +41,65 @@ describe('organization context validation', () => {
       slug: 'munchen-organization',
       status: 'active',
     });
+  });
+});
+
+describe('organization workspace validation', () => {
+  it.each([
+    ['duplicate login method', { defaultLoginMethods: ['password', 'password'] }],
+    ['external insecure logo URL', { brandingLogoUrl: 'http://cdn.example.test/logo.png' }],
+    ['invalid update timestamp', { updatedAt: '2026-08-28' }],
+  ])('rejects settings with an %s', (_case, override) => {
+    expect(validateOrganizationSettings(organization(override))).toBeUndefined();
+  });
+
+  it('resolves only the SDK domain needed by the requested workspace operation', async () => {
+    const organizationId = String(organization().id);
+    const organizations = vi.fn(() => ({
+      get: vi.fn(),
+      update: vi.fn(),
+      activate: vi.fn(),
+      suspend: vi.fn(),
+    }));
+    const branding = vi.fn(() => ({
+      listAssets: vi.fn().mockResolvedValue([
+        {
+          id: '22222222-2222-4222-8222-222222222222',
+          organizationId,
+          assetType: 'logo',
+          contentType: 'image/png',
+          fileSize: 8,
+          updatedAt: '2026-08-28T10:00:00.000Z',
+        },
+      ]),
+      updateSettings: vi.fn(),
+      uploadAsset: vi.fn(),
+      deleteAsset: vi.fn(),
+    }));
+    const twoFactor = vi.fn(() => ({ getPolicy: vi.fn(), setPolicy: vi.fn() }));
+    const workspace = createAdminOrganizationWorkspaceOperations({
+      organizations,
+      branding,
+      twoFactor,
+    });
+
+    expect(organizations).not.toHaveBeenCalled();
+    expect(branding).not.toHaveBeenCalled();
+    expect(twoFactor).not.toHaveBeenCalled();
+    await expect(workspace.listAssets(organizationId)).resolves.toEqual({
+      kind: 'success',
+      value: [
+        {
+          assetType: 'logo',
+          contentType: 'image/png',
+          size: 8,
+          updatedAt: '2026-08-28T10:00:00.000Z',
+        },
+      ],
+    });
+    expect(branding).toHaveBeenCalledOnce();
+    expect(organizations).not.toHaveBeenCalled();
+    expect(twoFactor).not.toHaveBeenCalled();
   });
 });
 

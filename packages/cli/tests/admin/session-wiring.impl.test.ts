@@ -2,6 +2,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { UsersDomain } from '@portaidentity/sdk';
+import type { AdminOrganizationWorkspaceDomains } from '../../src/admin/organization-service.js';
 
 const credentialStore = vi.hoisted(() => ({
   createCliCredentialPersistence: vi.fn(() => ({
@@ -149,5 +150,68 @@ describe('admin session production wiring', () => {
     });
     expect(userDomain).toHaveBeenCalledOnce();
     expect(list).toHaveBeenCalledOnce();
+  });
+
+  it('should retain organization workspace SDK domains lazily and independently', async () => {
+    const organizationId = '11111111-1111-4111-8111-111111111111';
+    const get = vi.fn().mockResolvedValue({
+      data: {
+        id: organizationId,
+        name: 'Example Organization',
+        slug: 'example-organization',
+        status: 'active',
+        isSuperAdmin: false,
+        defaultLocale: 'en',
+        defaultLoginMethods: ['password'],
+        twoFactorPolicy: 'optional',
+        brandingCompanyName: null,
+        brandingPrimaryColor: null,
+        brandingLogoUrl: null,
+        brandingFaviconUrl: null,
+        createdAt: '2026-01-02T03:04:00.000Z',
+        updatedAt: '2026-08-09T10:11:00.000Z',
+      },
+    });
+    const organizations = vi.fn(() => ({
+      get,
+      update: vi.fn(),
+      activate: vi.fn(),
+      suspend: vi.fn(),
+    }));
+    const branding = vi.fn(() => ({
+      listAssets: vi.fn(),
+      updateSettings: vi.fn(),
+      uploadAsset: vi.fn(),
+      deleteAsset: vi.fn(),
+    }));
+    const twoFactor = vi.fn(() => ({ getPolicy: vi.fn(), setPolicy: vi.fn() }));
+    const workspaceDomains: AdminOrganizationWorkspaceDomains = {
+      organizations,
+      branding,
+      twoFactor,
+    };
+    const prepared = prepareAdminSession(
+      server,
+      interaction,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      workspaceDomains,
+    );
+
+    expect(prepared.session.organizationWorkspace).toBeDefined();
+    expect(organizations).not.toHaveBeenCalled();
+    expect(branding).not.toHaveBeenCalled();
+    expect(twoFactor).not.toHaveBeenCalled();
+    await expect(prepared.session.organizationWorkspace?.get(organizationId)).resolves.toEqual({
+      kind: 'success',
+      value: expect.objectContaining({ id: organizationId, name: 'Example Organization' }),
+    });
+    expect(organizations).toHaveBeenCalledOnce();
+    expect(get).toHaveBeenCalledWith(organizationId);
+    expect(branding).not.toHaveBeenCalled();
+    expect(twoFactor).not.toHaveBeenCalled();
   });
 });
