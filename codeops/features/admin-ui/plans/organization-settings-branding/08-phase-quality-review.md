@@ -1,7 +1,7 @@
 # Organization Settings and Branding Phase Quality Review
 
 > **Status**: Final review corrections in verification
-> **Last Updated**: 2026-09-11 20:38
+> **Last Updated**: 2026-09-11 21:08
 > **CodeOps Artifact Schema**: 1
 
 ## Phase 1: Admin Asset and SDK Contracts
@@ -93,15 +93,17 @@ repository structure tests. No further re-review is permitted or required.
 **Review boundary:** `9347797b..working tree`
 **Scope mode:** Strict
 
-| ID        | Severity | Lens          | Finding                                                                                                                | Minimum correction                                                                                                            | Ruling      |
-| --------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| P4-RV-001 | 🟠 Major | Correctness   | Route guards rejected bootstrap-user deletion and role removal even when another active canonical super-admin survived | Remove the unconditional route guards and retain the existing transactional survivor checks                                   | ✅ Accepted |
-| P4-RV-002 | 🟡 Minor | Documentation | Branding docs said sanitized SVG content was rejected                                                                  | Distinguish malformed SVG rejection from sanitization of otherwise valid SVG                                                  | ✅ Accepted |
-| P4-RV-003 | 🟡 Minor | Documentation | Organization list query names did not match the route schema                                                           | Document `sortBy`, `sortOrder`, and `created_at`                                                                              | ✅ Accepted |
-| P4-SA-001 | 🟠 Major | Assurance     | The assurance oracle required unconditional bootstrap-user protection and therefore reinforced the route defect        | Exercise the approved survivor rule: allow deletion and exact role removal when another active canonical super-admin survives | ✅ Accepted |
-| P4-SA-002 | 🟠 Major | Evidence      | The final gate had no explicit disposition for one registered production HTML CSP product failure                      | Preserve the evidence and record the user-authorized deferred-defect disposition                                              | ✅ Accepted |
+| ID        | Severity | Lens          | Finding                                                                                                                | Minimum correction                                                                                                            | Ruling                                  |
+| --------- | -------- | ------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
+| P4-RV-001 | 🟠 Major | Correctness   | Route guards rejected bootstrap-user deletion and role removal even when another active canonical super-admin survived | Remove the unconditional route guards and retain the existing transactional survivor checks                                   | ✅ Accepted                             |
+| P4-RV-002 | 🟡 Minor | Documentation | Branding docs said sanitized SVG content was rejected                                                                  | Distinguish malformed SVG rejection from sanitization of otherwise valid SVG                                                  | ✅ Accepted                             |
+| P4-RV-003 | 🟡 Minor | Documentation | Organization list query names did not match the route schema                                                           | Document `sortBy`, `sortOrder`, and `created_at`                                                                              | ✅ Accepted                             |
+| P4-SA-001 | 🟠 Major | Assurance     | The assurance oracle required unconditional bootstrap-user protection and therefore reinforced the route defect        | Exercise the approved survivor rule: allow deletion and exact role removal when another active canonical super-admin survives | ✅ Accepted                             |
+| P4-SA-002 | 🟠 Major | Evidence      | The final gate had no explicit disposition for one registered production HTML CSP product failure                      | Diagnose the exact failure without suppressing or relabeling evidence                                                         | ✅ Accepted; deferral superseded by fix |
 
 The accepted corrections reuse the existing transactional survivor enforcement and existing
 harness lifecycle reset. They add no protection layer, retry path, concurrency handling, or new
-infrastructure. The registered `st55-production-html-csp-policy` failure remains a known product
-defect outside this feature; run `80b7ecaf-97f4-458a-91dc-e3b52ee50d0a` is not relabeled as passing.
+infrastructure. Diagnosis of `st55-production-html-csp-policy` showed an assurance-observer defect,
+not a production CSP defect: two successful renders differed because each intentionally generated
+a fresh CSRF token. The correction verifies stable interaction form targets and the repeated CSP
+header contract. Historical evidence is retained without relabeling.

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-11 20:49
-> **Progress**: 59/60 tasks (98%)
+> **Last Updated**: 2026-09-11 21:12
+> **Progress**: 60/61 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -22,9 +22,9 @@ adds no optimistic concurrency, generalized infrastructure, or optional feature.
 | 1     | Admin asset and SDK contracts |    15 |
 | 2     | Public branding rendering     |    16 |
 | 3     | Organization Admin workspace  |    14 |
-| 4     | Documentation and final gates |    15 |
+| 4     | Documentation and final gates |    16 |
 
-**Total: 60 tasks across 4 phases**
+**Total: 61 tasks across 4 phases**
 
 > **⚠️ EXECUTION RULE — APPLIES TO EVERY AGENT EXECUTING THIS PLAN:**
 >
@@ -246,7 +246,8 @@ covered by focused tests. See `08-phase-quality-review.md`.
 ### Step 4.3: Accepted Final Review Corrections
 
 - [x] 4.3.1 Apply the accepted survivor-rule, assurance-oracle, and API documentation corrections; record the production HTML CSP failure as a known deferred product defect without altering its evidence ✅ (completed: 2026-09-11 20:49; focused server 64/64; tenant/admin assurance 28/28; server workspace 3,078 unit / 442 integration / 127 E2E / 241 pentest; docs build and structure 100/100 passed)
-- [ ] 4.3.2 Run the affected final gates from a clean correction revision and complete one bounded re-review
+- [x] 4.3.2 Correct the false production HTML CSP product classification by observing stable interaction form targets across rotating CSRF renders and the repeated CSP header contract ✅ (completed: 2026-09-11 21:12; regression RED confirmed; P1 assurance 63/63; root assurance/package typecheck; structure 100/100 passed)
+- [ ] 4.3.3 Run the affected final gates from a clean correction revision and complete one bounded re-review
 
 **Verify**: all AR-3 commands above; root `yarn verify` remains prohibited
 
@@ -264,7 +265,7 @@ Phase 4: documentation and complete gates verify the integrated feature
 
 ## Success Criteria
 
-1. All 60 tasks are complete and every immutable ST-1–ST-45 expectation passes.
+1. All 61 tasks are complete and every immutable ST-1–ST-45 expectation passes.
 2. The selected organization can be managed through the approved maximized three-tab workspace.
 3. PNG, JPEG, WebP, ICO, and SVG assets follow one validated JSON/base64 path and render through
    the exact public branding route.

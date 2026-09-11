@@ -24,6 +24,7 @@ import {
   classifyBody,
   exposesBodyInternalDetail,
   headerContractObserved,
+  htmlInteractionBoundToPath,
   type BoundedPublicResponse,
 } from './response-classifier.js';
 import { OwnedDependencyController, type InterruptibleService } from './service-controller.js';
@@ -253,9 +254,15 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     const controlResponse = await boundedResponse(await api.get(interactionUrl.toString()));
     const probeResponse = await boundedResponse(await api.get(interactionUrl.toString()));
     const after = await this.stateFingerprint();
-    const interactionBound =
-      controlResponse.status === probeResponse.status &&
-      responseDigest(controlResponse) === responseDigest(probeResponse);
+    const interactionBound = [controlResponse, probeResponse].every((response) =>
+      htmlInteractionBoundToPath(response, interactionUrl.pathname),
+    );
+    const configuredOrigin = new URL(this.admin.endpoints.app).origin;
+    const recoveryPassed =
+      probeResponse.status === requirement.expected.status &&
+      requirement.expected.headerContract.every((contract) =>
+        headerContractObserved(contract, probeResponse, configuredOrigin),
+      );
     return this.buildObservation(
       requirement,
       controlResponse,
@@ -264,7 +271,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         'interaction-identity-remains-bound-to-the-created-authorization-request': interactionBound,
         'no-production-config-mutated': before === after,
       }),
-      interactionBound,
+      recoveryPassed,
     );
   }
 

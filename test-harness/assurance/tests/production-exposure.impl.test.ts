@@ -11,6 +11,7 @@ import {
   exposesBodyInternalDetail,
   exposesInternalDetail,
   headerContractObserved,
+  htmlInteractionBoundToPath,
   normalizePublicHeaders,
 } from '../production-exposure/response-classifier.js';
 import {
@@ -234,6 +235,28 @@ test('should keep a version header separate from body-internal-detail findings',
   );
   assert.equal(exposesInternalDetail(response), true);
   assert.equal(exposesBodyInternalDetail(response), false);
+});
+
+test('should retain interaction identity while per-response CSRF tokens rotate', () => {
+  const first = boundedPublicResponse(
+    200,
+    { 'content-type': 'text/html' },
+    '<html><form action="/interaction/expected/login"><input name="_csrf" value="first"></form></html>',
+  );
+  const second = boundedPublicResponse(
+    200,
+    { 'content-type': 'text/html' },
+    '<html><form action="/interaction/expected/login"><input name="_csrf" value="second"></form></html>',
+  );
+  const foreign = boundedPublicResponse(
+    200,
+    { 'content-type': 'text/html' },
+    '<html><form action="/interaction/foreign/login"><input name="_csrf" value="third"></form></html>',
+  );
+
+  assert.equal(htmlInteractionBoundToPath(first, '/interaction/expected'), true);
+  assert.equal(htmlInteractionBoundToPath(second, '/interaction/expected'), true);
+  assert.equal(htmlInteractionBoundToPath(foreign, '/interaction/expected'), false);
 });
 
 test('should restore the exact owned dependency when the probe fails', async () => {

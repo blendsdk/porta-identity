@@ -42,6 +42,27 @@ export function boundedPublicResponse(
   return Object.freeze({ status, headers: normalizePublicHeaders(headers), body });
 }
 
+/**
+ * Verifies that every form in an interaction response submits beneath the expected interaction.
+ *
+ * Response bodies are intentionally not compared byte-for-byte because each safe render rotates
+ * its CSRF token. The form targets provide the stable public identity binding without retaining
+ * or returning the interaction identifier.
+ */
+export function htmlInteractionBoundToPath(
+  response: BoundedPublicResponse,
+  interactionPath: string,
+): boolean {
+  if (!/^\/interaction\/[A-Za-z0-9_-]+$/u.test(interactionPath)) return false;
+  const actions = [...response.body.matchAll(/\baction="([^"]+)"/giu)].map((match) => match[1]);
+  return (
+    actions.length > 0 &&
+    actions.every(
+      (action) => action === interactionPath || action?.startsWith(`${interactionPath}/`) === true,
+    )
+  );
+}
+
 /** Returns whether the public response contains internal or protected implementation detail. */
 export function exposesInternalDetail(response: BoundedPublicResponse): boolean {
   const material = `${response.body}\n${Object.entries(response.headers)
