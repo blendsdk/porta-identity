@@ -111,11 +111,10 @@ export function decryptPrivateKey(
     ]);
 
     return decrypted.toString('utf8');
-  } catch (error) {
-    // Re-throw as a domain error — the underlying error may be
-    // "Unsupported state or unable to authenticate data" (wrong key/tag)
-    const message = error instanceof Error ? error.message : 'Unknown decryption error';
-    throw new SigningKeyCryptoError(`Decryption failed: ${message}`);
+  } catch {
+    // Cryptographic library errors can contain operational details. Callers receive one stable
+    // domain message so neither logs nor CLI output accidentally disclose those details.
+    throw new SigningKeyCryptoError('Signing key record is invalid');
   }
 }
 

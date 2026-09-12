@@ -20,7 +20,11 @@ import { createPrivateKey, generateKeyPairSync, createHash } from 'node:crypto';
 import { config } from '../config/index.js';
 import { getPool } from './database.js';
 import { logger } from './logger.js';
-import { encryptPrivateKey, decryptPrivateKey } from './signing-key-crypto.js';
+import {
+  encryptPrivateKey,
+  decryptPrivateKey,
+  SigningKeyCryptoError,
+} from './signing-key-crypto.js';
 
 // ---------------------------------------------------------------------------
 // Cached JWKS for JWT verification (admin auth middleware, etc.)
@@ -183,10 +187,8 @@ export function signingKeysToJwks(records: SigningKeyRecord[]): { keys: JwkKeyPa
   for (const record of records) {
     try {
       keys.push(pemToJwk(record.privateKey, record.kid));
-    } catch (error) {
-      // Skip invalid PEM keys rather than crashing — log error and continue
-      // with remaining keys so the provider can still start
-      logger.error({ kid: record.kid, error }, 'Failed to convert signing key PEM to JWK, skipping');
+    } catch {
+      throw invalidSigningKeyRecord(record.kid);
     }
   }
 
@@ -228,35 +230,51 @@ export async function loadSigningKeysFromDb(): Promise<SigningKeyRecord[]> {
      ORDER BY activated_at DESC`,
   );
 
-  // Map snake_case DB columns to camelCase TypeScript interface.
-  // Decrypt private keys that are stored encrypted; pass through plaintext legacy keys.
+  // Map snake_case DB columns to camelCase TypeScript interface. Every private key must use the
+  // authenticated encrypted representation; accepting a partial or plaintext row would weaken
+  // the storage guarantee and could expose key material through later error handling.
   return result.rows.map((row) => {
-    let privateKey: string;
-    if (row.encrypted && row.private_key_iv && row.private_key_tag) {
-      // Encrypted key — decrypt with AES-256-GCM
-      privateKey = decryptPrivateKey(
+    if (!row.encrypted || !row.private_key_iv || !row.private_key_tag) {
+      throw invalidSigningKeyRecord(row.kid);
+    }
+
+    try {
+      const privateKey = decryptPrivateKey(
         row.private_key,
         row.private_key_iv,
         row.private_key_tag,
         config.signingKeyEncryptionKey,
       );
-    } else {
-      // Legacy plaintext key — use as-is
-      privateKey = row.private_key;
-    }
 
-    return {
-      id: row.id,
-      kid: row.kid,
-      algorithm: row.algorithm,
-      publicKey: row.public_key,
-      privateKey,
-      status: row.status,
-      activatedAt: row.activated_at,
-      retiredAt: row.retired_at,
-      expiresAt: row.expires_at,
-    };
+      return {
+        id: row.id,
+        kid: row.kid,
+        algorithm: row.algorithm,
+        publicKey: row.public_key,
+        privateKey,
+        status: row.status,
+        activatedAt: row.activated_at,
+        retiredAt: row.retired_at,
+        expiresAt: row.expires_at,
+      };
+    } catch {
+      throw invalidSigningKeyRecord(row.kid);
+    }
   });
+}
+
+/**
+ * Creates and records the fixed failure used for any unusable stored signing key.
+ *
+ * Only the public key identifier is logged. Ciphertext, metadata, parser errors, and stack traces
+ * are deliberately omitted because they can reveal secrets or internal deployment details.
+ *
+ * @param kid - Public identifier of the unusable database row.
+ * @returns A safe domain error suitable for propagation to startup and CLI boundaries.
+ */
+function invalidSigningKeyRecord(kid: string): SigningKeyCryptoError {
+  logger.error({ event: 'signing-key-record-invalid', kid }, 'Signing key record is invalid');
+  return new SigningKeyCryptoError('Signing key record is invalid');
 }
 
 /**
