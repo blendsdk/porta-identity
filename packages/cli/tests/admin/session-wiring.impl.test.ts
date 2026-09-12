@@ -1,0 +1,217 @@
+/** Focused implementation tests for the admin session production wiring. */
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { UsersDomain } from '@portaidentity/sdk';
+import type { AdminOrganizationWorkspaceDomains } from '../../src/admin/organization-service.js';
+
+const credentialStore = vi.hoisted(() => ({
+  createCliCredentialPersistence: vi.fn(() => ({
+    withRefreshLock: vi.fn(),
+    persistRefreshedCredentials: vi.fn(),
+  })),
+  getCredentialsPath: vi.fn(() => '/tmp/porta-credentials.json'),
+  loadCredentials: vi.fn(),
+  saveCredentialsDurably: vi.fn(),
+}));
+const sdk = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue('fresh-access') }));
+const login = vi.hoisted(() => ({ authenticateCliSession: vi.fn() }));
+
+vi.mock('../../src/credential-store.js', () => credentialStore);
+vi.mock('@portaidentity/sdk/node', () => ({ createCliAuth: vi.fn(() => sdk) }));
+vi.mock('../../src/auth/login-coordinator.js', () => login);
+
+import { prepareAdminSession } from '../../src/admin/session-service.js';
+
+const server = new URL('https://porta.example.test');
+const credentials = {
+  server: server.origin,
+  orgSlug: 'porta-admin',
+  clientId: 'porta-cli',
+  accessToken: 'access-token',
+  refreshToken: 'refresh-token',
+  idToken: 'id-token',
+  expiresAt: '2099-01-01T00:00:00.000Z',
+  userInfo: { sub: 'subject-1', email: 'admin@example.test' },
+};
+const interaction = {
+  presentAuthorizationUrl: vi.fn(),
+  requestManualCallback: vi.fn(),
+  confirmCredentialReplacement: vi.fn(),
+};
+
+describe('admin session production wiring', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    credentialStore.loadCredentials.mockReturnValue(null);
+  });
+
+  it('should start unauthenticated and avoid credential services when no profile exists', async () => {
+    const prepared = prepareAdminSession(server, interaction);
+    expect(prepared.initialState).toEqual({ kind: 'unauthenticated', server });
+    await expect(prepared.session.verify?.(new AbortController().signal)).resolves.toEqual({
+      kind: 'unauthenticated',
+      server,
+    });
+    expect(credentialStore.createCliCredentialPersistence).not.toHaveBeenCalled();
+  });
+
+  it('should map successful and cancelled login results to safe application states', async () => {
+    login.authenticateCliSession
+      .mockResolvedValueOnce({
+        status: 'authenticated',
+        identity: { sub: 'subject-1', email: 'admin@example.test' },
+      })
+      .mockResolvedValueOnce({ status: 'cancelled' })
+      .mockResolvedValueOnce({ status: 'cancelled' });
+    const prepared = prepareAdminSession(server, interaction);
+    const signal = new AbortController().signal;
+
+    await expect(prepared.session.authenticate?.(signal)).resolves.toMatchObject({
+      kind: 'authenticated',
+      identity: { sub: 'subject-1' },
+    });
+    await expect(prepared.session.authenticate?.(signal)).resolves.toEqual({
+      kind: 'unauthenticated',
+      server,
+    });
+    await expect(prepared.session.reauthenticate?.(signal)).resolves.toBeUndefined();
+  });
+
+  it('should verify a stored profile through a fresh SDK token provider', async () => {
+    credentialStore.loadCredentials.mockReturnValue(credentials);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify(credentials.userInfo), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+    const prepared = prepareAdminSession(server, interaction);
+    const signal = new AbortController().signal;
+
+    expect(prepared.initialState).toEqual({ kind: 'verifying', server, canCancel: true });
+    await expect(prepared.session.verify?.(signal)).resolves.toMatchObject({
+      kind: 'authenticated',
+      identity: { sub: 'subject-1' },
+    });
+    expect(credentialStore.createCliCredentialPersistence).toHaveBeenCalledWith(
+      expect.objectContaining({ signal, lockTimeoutMs: 5_000 }),
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it('should defer the organization domain until an operation requests it', async () => {
+    const listAll = vi.fn().mockResolvedValue([]);
+    const organizationDomain = vi.fn(() => ({ listAll, create: vi.fn() }));
+    const prepared = prepareAdminSession(server, interaction, organizationDomain);
+
+    expect(organizationDomain).not.toHaveBeenCalled();
+    await expect(prepared.session.organizations?.listAll()).resolves.toEqual({
+      kind: 'success',
+      value: [],
+    });
+    expect(organizationDomain).toHaveBeenCalledOnce();
+    expect(listAll).toHaveBeenCalledOnce();
+  });
+
+  it('should defer the user domain until a validated operation requests it', async () => {
+    const list = vi
+      .fn()
+      .mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 });
+    const unused = vi.fn();
+    const users: UsersDomain = {
+      list,
+      listAll: unused,
+      get: unused,
+      create: unused,
+      update: unused,
+      invite: unused,
+      invitePreview: unused,
+      setPassword: unused,
+      clearPassword: unused,
+      verifyEmail: unused,
+      exportData: unused,
+      delete: unused,
+      deactivate: unused,
+      activate: unused,
+      getHistory: unused,
+    };
+    const userDomain = vi.fn(() => users);
+    const prepared = prepareAdminSession(server, interaction, undefined, userDomain);
+
+    expect(userDomain).not.toHaveBeenCalled();
+    await expect(
+      prepared.session.users?.list('11111111-1111-4111-8111-111111111111', { page: 1 }),
+    ).resolves.toEqual({
+      kind: 'success',
+      value: { data: [], total: 0, page: 1, pageSize: 20, totalPages: 0 },
+    });
+    expect(userDomain).toHaveBeenCalledOnce();
+    expect(list).toHaveBeenCalledOnce();
+  });
+
+  it('should retain organization workspace SDK domains lazily and independently', async () => {
+    const organizationId = '11111111-1111-4111-8111-111111111111';
+    const get = vi.fn().mockResolvedValue({
+      data: {
+        id: organizationId,
+        name: 'Example Organization',
+        slug: 'example-organization',
+        status: 'active',
+        isSuperAdmin: false,
+        defaultLocale: 'en',
+        defaultLoginMethods: ['password'],
+        twoFactorPolicy: 'optional',
+        brandingCompanyName: null,
+        brandingPrimaryColor: null,
+        brandingLogoUrl: null,
+        brandingFaviconUrl: null,
+        createdAt: '2026-01-02T03:04:00.000Z',
+        updatedAt: '2026-08-09T10:11:00.000Z',
+      },
+    });
+    const organizations = vi.fn(() => ({
+      get,
+      update: vi.fn(),
+      activate: vi.fn(),
+      suspend: vi.fn(),
+    }));
+    const branding = vi.fn(() => ({
+      listAssets: vi.fn(),
+      updateSettings: vi.fn(),
+      uploadAsset: vi.fn(),
+      deleteAsset: vi.fn(),
+    }));
+    const twoFactor = vi.fn(() => ({ getPolicy: vi.fn(), setPolicy: vi.fn() }));
+    const workspaceDomains: AdminOrganizationWorkspaceDomains = {
+      organizations,
+      branding,
+      twoFactor,
+    };
+    const prepared = prepareAdminSession(
+      server,
+      interaction,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      workspaceDomains,
+    );
+
+    expect(prepared.session.organizationWorkspace).toBeDefined();
+    expect(organizations).not.toHaveBeenCalled();
+    expect(branding).not.toHaveBeenCalled();
+    expect(twoFactor).not.toHaveBeenCalled();
+    await expect(prepared.session.organizationWorkspace?.get(organizationId)).resolves.toEqual({
+      kind: 'success',
+      value: expect.objectContaining({ id: organizationId, name: 'Example Organization' }),
+    });
+    expect(organizations).toHaveBeenCalledOnce();
+    expect(get).toHaveBeenCalledWith(organizationId);
+    expect(branding).not.toHaveBeenCalled();
+    expect(twoFactor).not.toHaveBeenCalled();
+  });
+});

@@ -63,24 +63,21 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const sdkClient = createClient(argv);
               const roles = await sdkClient.userRoles.list(argv.org, argv['user-id']);
 
+              if (argv.json) {
+                printJson(roles);
+                return;
+              }
+
               if (roles.length === 0) {
                 warn('No roles assigned');
                 return;
               }
 
-              if (argv.json) {
-                printJson(roles);
-              } else {
-                printTable(
-                  ['Role ID', 'Role Name', 'Assigned At'],
-                  roles.map((r) => [
-                    r.roleId,
-                    r.roleName ?? '—',
-                    r.assignedAt ? formatDate(r.assignedAt) : '—',
-                  ]),
-                );
-                info(`Total: ${roles.length} roles`);
-              }
+              printTable(
+                ['Role ID', 'Role Name', 'Slug', 'Created'],
+                roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
+              );
+              info(`Total: ${roles.length} roles`);
             } catch (err) {
               handleError(err, argv.verbose);
             }
@@ -111,7 +108,7 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.userRoles.assign(argv.org, argv['user-id'], argv.role);
+              await sdkClient.userRoles.assign(argv.org, argv['user-id'], [argv.role]);
               success(`Role ${argv.role} assigned to user ${argv['user-id']}`);
             } catch (err) {
               handleError(err, argv.verbose);
@@ -143,8 +140,17 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.userRoles.remove(argv.org, argv['user-id'], argv.role);
-              success(`Role ${argv.role} removed from user ${argv['user-id']}`);
+              const result = await sdkClient.userRoles.remove(argv.org, argv['user-id'], [
+                argv.role,
+              ]);
+              if (argv.json) {
+                printJson(result);
+              } else {
+                success(`Role ${argv.role} removed from user ${argv['user-id']}`);
+                if (result.reauthenticationRequired) {
+                  warn('Authenticate again before the next command.');
+                }
+              }
             } catch (err) {
               handleError(err, argv.verbose);
             }

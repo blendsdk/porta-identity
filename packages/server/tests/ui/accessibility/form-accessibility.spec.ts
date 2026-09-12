@@ -121,10 +121,8 @@ test.describe('Form Accessibility', () => {
       await page.keyboard.press('Tab');
     }
 
-    // The focused element should be the email input (or close to it)
-    const focusedId = await page.evaluate(() => document.activeElement?.id);
-    // Accept if it's the email input or another form input (some pages focus differently)
-    expect(focusedId).toBeTruthy();
+    // Assert the intended control directly and allow Playwright to wait for focus to settle.
+    await expect(emailInput).toBeFocused();
   });
 
   // ── 14.4: Keyboard navigation through form ───────────────────────────

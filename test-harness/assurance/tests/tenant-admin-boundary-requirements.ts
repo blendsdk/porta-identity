@@ -60,12 +60,7 @@ export const staleAuthoritySentinel = {
   id: 'ST-31',
   implementationBoundary: 'dedicated-stale-authority-orchestration',
   includedHere: false,
-  supportedTransitions: [
-    'role-removal',
-    'actor-deactivation',
-    'actor-suspension',
-    'session-revocation',
-  ],
+  supportedTransitions: ['role-removal', 'actor-deactivation', 'session-revocation'],
   unavailableTransitions: ['organization-membership-removal', 'organization-reassignment'],
 } as const;
 
@@ -82,20 +77,13 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
     authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
     mutationMethod: 'DELETE',
     mutationRoute: '/api/admin/organizations/:orgId/users/:userId/roles',
-    expectedResult: 'forbidden',
+    expectedResult: 'unauthenticated',
   },
   {
     transition: 'actor-deactivation',
     authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
     mutationMethod: 'POST',
     mutationRoute: '/api/admin/organizations/:orgId/users/:userId/deactivate',
-    expectedResult: 'unauthenticated',
-  },
-  {
-    transition: 'actor-suspension',
-    authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
-    mutationMethod: 'POST',
-    mutationRoute: '/api/admin/organizations/:orgId/users/:userId/suspend',
     expectedResult: 'unauthenticated',
   },
   {
@@ -107,14 +95,12 @@ export const staleAuthorityScenarios: readonly StaleAuthorityScenarioRequest[] =
   },
 ];
 
-/** Exact destructive operations forbidden for the protected bootstrap super-admin user. */
-export const protectedSuperAdminOperations = [
-  'deactivate',
-  'delete',
-  'lock',
-  'manage-2fa',
-  'remove-super-admin-role',
-  'suspend',
+/** Expected outcomes for destructive operations on the bootstrap administrator. */
+export const bootstrapAdministratorOperations = [
+  { operation: 'deactivate', expectedResult: 'forbidden', targetUnchanged: true },
+  { operation: 'manage-2fa', expectedResult: 'forbidden', targetUnchanged: true },
+  { operation: 'remove-super-admin-role', expectedResult: 'allowed', targetUnchanged: false },
+  { operation: 'delete', expectedResult: 'allowed', targetUnchanged: false },
 ] as const;
 
 /** Bootstrap-user operations that have no current public product lifecycle. */

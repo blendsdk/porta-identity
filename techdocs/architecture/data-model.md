@@ -1,10 +1,10 @@
 # Data Model
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-09-11
 
 ## Overview
 
-Porta's data model is defined across 23 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
+Porta's data model is defined across 27 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
 
 ## Entity Relationship Diagram
 
@@ -18,10 +18,10 @@ erDiagram
     applications ||--o{ clients : "belongs to"
     applications ||--o{ roles : "defines"
     applications ||--o{ permissions : "defines"
-    applications ||--o{ claim_definitions : "defines"
+    applications ||--o{ custom_claim_definitions : "defines"
 
     users ||--o{ user_roles : "assigned"
-    users ||--o{ user_claim_values : "has"
+    users ||--o{ custom_claim_values : "has"
     users ||--o{ two_factor_settings : "has"
     users ||--o{ auth_tokens : "has"
 
@@ -29,7 +29,7 @@ erDiagram
     roles ||--o{ role_permissions : "has"
     permissions ||--o{ role_permissions : "granted to"
 
-    claim_definitions ||--o{ user_claim_values : "defined by"
+    custom_claim_definitions ||--o{ custom_claim_values : "defined by"
 
     clients ||--o{ client_secrets : "has"
 
@@ -47,7 +47,7 @@ The root tenant entity. Every user, client, and data record is scoped to an orga
 | `id`                        | UUID         | Primary key                                                    |
 | `name`                      | VARCHAR(255) | Display name                                                   |
 | `slug`                      | CITEXT       | URL-safe identifier, unique, used in OIDC issuer path          |
-| `status`                    | VARCHAR(20)  | `active`, `suspended`, `archived`                              |
+| `status`                    | VARCHAR(20)  | `active`, `suspended`                                          |
 | `is_super_admin`            | BOOLEAN      | Only one org can be super-admin (partial unique index)         |
 | `default_locale`            | VARCHAR(10)  | Default locale for auth UI                                     |
 | `two_factor_policy`         | VARCHAR(20)  | `disabled`, `optional`, `required`                             |
@@ -61,13 +61,13 @@ The root tenant entity. Every user, client, and data record is scoped to an orga
 
 SaaS product definitions. Applications group roles, permissions, and claim definitions.
 
-| Column        | Type         | Description                      |
-| ------------- | ------------ | -------------------------------- |
-| `id`          | UUID         | Primary key                      |
-| `name`        | VARCHAR(255) | Display name                     |
-| `slug`        | CITEXT       | Unique identifier                |
-| `description` | TEXT         | Optional description             |
-| `status`      | VARCHAR(20)  | `active`, `inactive`, `archived` |
+| Column        | Type         | Description          |
+| ------------- | ------------ | -------------------- |
+| `id`          | UUID         | Primary key          |
+| `name`        | VARCHAR(255) | Display name         |
+| `slug`        | CITEXT       | Unique identifier    |
+| `description` | TEXT         | Optional description |
+| `status`      | VARCHAR(20)  | `active`, `inactive` |
 
 **Application Modules** (`application_modules`): Logical groupings within an application. Composite unique key `(application_id, slug)`.
 
@@ -82,7 +82,7 @@ OIDC client registrations, scoped to an organization and optionally to an applic
 | `organization_id`              | UUID         | FK → organizations                                         |
 | `application_id`               | UUID         | FK → applications (nullable)                               |
 | `name`                         | VARCHAR(255) | Display name                                               |
-| `status`                       | VARCHAR(20)  | `active`, `suspended`, `revoked`                           |
+| `status`                       | VARCHAR(20)  | `active`, `inactive`                                       |
 | `grant_types`                  | TEXT[]       | Allowed OIDC grant types                                   |
 | `response_types`               | TEXT[]       | Allowed response types                                     |
 | `redirect_uris`                | TEXT[]       | Registered redirect URIs                                   |
@@ -109,28 +109,36 @@ Hashed client secrets with lifecycle management.
 | `expires_at`    | TIMESTAMPTZ  | Optional expiry                           |
 | `last_used_at`  | TIMESTAMPTZ  | Usage tracking                            |
 
+Confidential clients can keep overlapping active secrets during rotation, with a hard maximum of
+10 active secrets per client. Secret creation locks the parent client row, rechecks that the client
+is still confidential and non-revoked, then counts and inserts within the same short transaction.
+Secret list and mutation queries always qualify both the client and secret identifiers.
+
 ### Users
 
 User accounts, scoped to an organization.
 
-| Column                       | Type         | Description                                                        |
-| ---------------------------- | ------------ | ------------------------------------------------------------------ |
-| `id`                         | UUID         | Primary key                                                        |
-| `organization_id`            | UUID         | FK → organizations                                                 |
-| `email`                      | CITEXT       | Unique within organization (composite unique index)                |
-| `email_verified`             | BOOLEAN      | Email verification status                                          |
-| `password_hash`              | TEXT         | Argon2id hash (nullable for passwordless users)                    |
-| `name`                       | VARCHAR(255) | Display name                                                       |
-| `given_name` / `family_name` | VARCHAR(255) | Name components                                                    |
-| `status`                     | VARCHAR(20)  | `active`, `inactive`, `suspended`, `locked`, `archived`, `invited` |
-| `failed_login_count`         | INTEGER      | Brute-force tracking                                               |
-| `last_login_at`              | TIMESTAMPTZ  | Login tracking                                                     |
-| `locale`                     | VARCHAR(10)  | User's preferred locale                                            |
-| `metadata`                   | JSONB        | Extensible metadata                                                |
+| Column                       | Type         | Description                                         |
+| ---------------------------- | ------------ | --------------------------------------------------- |
+| `id`                         | UUID         | Primary key                                         |
+| `organization_id`            | UUID         | FK → organizations                                  |
+| `email`                      | CITEXT       | Unique within organization (composite unique index) |
+| `email_verified`             | BOOLEAN      | Email verification status                           |
+| `password_hash`              | TEXT         | Argon2id hash (nullable for passwordless users)     |
+| `name`                       | VARCHAR(255) | Display name                                        |
+| `given_name` / `family_name` | VARCHAR(255) | Name components                                     |
+| `status`                     | VARCHAR(20)  | `active`, `inactive`, `locked`                      |
+| `failed_login_count`         | INTEGER      | Brute-force tracking                                |
+| `last_login_at`              | TIMESTAMPTZ  | Login tracking                                      |
+| `locale`                     | VARCHAR(10)  | User's preferred locale                             |
+| `metadata`                   | JSONB        | Extensible metadata                                 |
 
 **Key constraint**: Composite unique index on `(organization_id, email)` — ensures email uniqueness per tenant.
 
-**Status lifecycle**: `invited` → `active` → `suspended` → `active`, `active` → `locked` → `active`, `active|suspended` → `archived` → `active`, `active` → `inactive` → `active`.
+**Status lifecycle**: administrators can move users between `active` and `inactive`. The security
+system moves an account to `locked` after repeated failed login attempts and returns it to `active`
+after the cooldown. Invitations are token-backed setup flows rather than a user status. Permanent
+removal physically deletes the user and its owned rows.
 
 ## RBAC Entities
 
@@ -138,15 +146,13 @@ User accounts, scoped to an organization.
 
 Application-scoped role definitions.
 
-| Column           | Type         | Description                    |
-| ---------------- | ------------ | ------------------------------ |
-| `id`             | UUID         | Primary key                    |
-| `application_id` | UUID         | FK → applications              |
-| `name`           | VARCHAR(255) | Display name                   |
-| `slug`           | CITEXT       | Unique within application      |
-| `description`    | TEXT         | Optional description           |
-| `status`         | VARCHAR(20)  | `active`, `archived`           |
-| `is_system`      | BOOLEAN      | System roles cannot be deleted |
+| Column           | Type         | Description               |
+| ---------------- | ------------ | ------------------------- |
+| `id`             | UUID         | Primary key               |
+| `application_id` | UUID         | FK → applications         |
+| `name`           | VARCHAR(255) | Display name              |
+| `slug`           | CITEXT       | Unique within application |
+| `description`    | TEXT         | Optional description      |
 
 ### Permissions
 
@@ -159,7 +165,6 @@ Application-scoped permission definitions.
 | `name`           | VARCHAR(255) | Display name              |
 | `slug`           | CITEXT       | Unique within application |
 | `description`    | TEXT         | Optional description      |
-| `status`         | VARCHAR(20)  | `active`, `archived`      |
 
 ### Role-Permission Mappings
 
@@ -171,6 +176,11 @@ Many-to-many relationship between roles and permissions.
 | `permission_id` | UUID | FK → permissions |
 
 Composite primary key `(role_id, permission_id)`.
+
+Migration 025 changes the optional `permissions.module_id` relationship from `ON DELETE SET NULL`
+to `ON DELETE CASCADE`. Deleting an application module therefore deletes the permissions owned by
+that module, and the existing `role_permissions.permission_id` cascade removes their role links.
+Application-wide permissions whose `module_id` is null are not included in that module cascade.
 
 ### User-Role Assignments
 
@@ -186,33 +196,33 @@ Composite primary key `(user_id, role_id, organization_id)`.
 
 ## Custom Claims
 
-### Claim Definitions
+### Custom Claim Definitions
 
 Application-scoped claim type definitions.
 
-| Column             | Type         | Description                           |
-| ------------------ | ------------ | ------------------------------------- |
-| `id`               | UUID         | Primary key                           |
-| `application_id`   | UUID         | FK → applications                     |
-| `name`             | VARCHAR(255) | Claim name (unique per app)           |
-| `slug`             | CITEXT       | URL-safe identifier                   |
-| `description`      | TEXT         | Optional description                  |
-| `value_type`       | VARCHAR(20)  | `string`, `number`, `boolean`, `json` |
-| `validation_rules` | JSONB        | Optional validation constraints       |
-| `status`           | VARCHAR(20)  | `active`, `archived`                  |
+| Column                    | Type         | Description                           |
+| ------------------------- | ------------ | ------------------------------------- |
+| `id`                      | UUID         | Primary key                           |
+| `application_id`          | UUID         | FK → applications                     |
+| `claim_name`              | VARCHAR(255) | Claim name, unique per application    |
+| `claim_type`              | VARCHAR(20)  | `string`, `number`, `boolean`, `json` |
+| `description`             | TEXT         | Optional description                  |
+| `include_in_id_token`     | BOOLEAN      | Include the claim in ID tokens        |
+| `include_in_access_token` | BOOLEAN      | Include the claim in access tokens    |
+| `include_in_userinfo`     | BOOLEAN      | Include the claim in UserInfo         |
 
-### User Claim Values
+### Custom Claim Values
 
 Per-user claim values, referencing a claim definition.
 
-| Column                | Type | Description                                       |
-| --------------------- | ---- | ------------------------------------------------- |
-| `id`                  | UUID | Primary key                                       |
-| `user_id`             | UUID | FK → users                                        |
-| `claim_definition_id` | UUID | FK → claim_definitions                            |
-| `value`               | TEXT | Stored value (validated against definition rules) |
+| Column     | Type  | Description                          |
+| ---------- | ----- | ------------------------------------ |
+| `id`       | UUID  | Primary key                          |
+| `user_id`  | UUID  | FK → users                           |
+| `claim_id` | UUID  | FK → custom_claim_definitions        |
+| `value`    | JSONB | Typed value for the claim definition |
 
-Composite unique index `(user_id, claim_definition_id)`.
+Composite unique constraint `(user_id, claim_id)`.
 
 ## Two-Factor Authentication
 
@@ -306,53 +316,68 @@ ES256 (ECDSA P-256) signing key pairs for JWT tokens.
 
 Immutable audit trail for all administrative actions.
 
-| Column            | Type         | Description                                      |
-| ----------------- | ------------ | ------------------------------------------------ |
-| `id`              | UUID         | Primary key                                      |
-| `action`          | VARCHAR(100) | Action identifier (e.g., `organization.created`) |
-| `actor_id`        | UUID         | Who performed the action                         |
-| `actor_type`      | VARCHAR(50)  | `user`, `system`, `cli`                          |
-| `resource_type`   | VARCHAR(50)  | Entity type                                      |
-| `resource_id`     | UUID         | Entity ID                                        |
-| `organization_id` | UUID         | Tenant context                                   |
-| `details`         | JSONB        | Action-specific details                          |
-| `created_at`      | TIMESTAMPTZ  | Event timestamp                                  |
+| Column            | Type           | Description                                                       |
+| ----------------- | -------------- | ----------------------------------------------------------------- |
+| `id`              | UUID           | Primary key                                                       |
+| `organization_id` | UUID, nullable | Tenant context; `ON DELETE SET NULL` preserves history            |
+| `user_id`         | UUID, nullable | Subject user; `ON DELETE SET NULL` preserves history              |
+| `actor_id`        | UUID, nullable | Acting user; `ON DELETE SET NULL` supports successful self-delete |
+| `event_type`      | VARCHAR(100)   | Closed event identifier such as `app.module.deleted`              |
+| `event_category`  | VARCHAR(50)    | Event category                                                    |
+| `description`     | TEXT           | Bounded description                                               |
+| `metadata`        | JSONB          | Safe target identity, state, and parent metadata                  |
+| `ip_address`      | INET           | Optional request address                                          |
+| `user_agent`      | TEXT           | Optional request user agent                                       |
+| `created_at`      | TIMESTAMPTZ    | Event timestamp                                                   |
 
-Includes an **automated retention policy** (migration 017) with a cleanup function triggered by a cron-like mechanism.
+Deletion events are inserted before the target is removed and commit in the same transaction. The
+nullable foreign keys keep the audit record after an organization or user is deleted, including
+when the acting user deletes their own account. Metadata excludes secrets, protocol payloads,
+affected-user lists, cache keys, and raw errors. The existing automated retention policy from
+migration 017 remains authoritative.
 
-### Branding Assets (Migration 018)
+### Branding Assets (Migrations 018 and 027)
 
 Binary storage for organization logos and favicons.
 
-| Column                      | Type         | Description                    |
-| --------------------------- | ------------ | ------------------------------ |
-| `id`                        | UUID         | Primary key                    |
-| `organization_id`           | UUID         | FK → organizations             |
-| `asset_type`                | VARCHAR(20)  | `logo` or `favicon`            |
-| `data`                      | BYTEA        | Binary image data (max 512 KB) |
-| `mime_type`                 | VARCHAR(100) | Image MIME type                |
-| `created_at` / `updated_at` | TIMESTAMPTZ  | Auto-managed timestamps        |
+| Column                      | Type        | Description                             |
+| --------------------------- | ----------- | --------------------------------------- |
+| `id`                        | UUID        | Primary key                             |
+| `organization_id`           | UUID        | FK → organizations with cascade delete  |
+| `asset_type`                | VARCHAR(20) | `logo` or `favicon`                     |
+| `content_type`              | VARCHAR(50) | Verified image media type               |
+| `data`                      | BYTEA       | Validated binary or sanitized SVG bytes |
+| `file_size`                 | INTEGER     | Stored byte length                      |
+| `created_at` / `updated_at` | TIMESTAMPTZ | Auto-managed timestamps                 |
 
-**Key constraint**: Unique index on `(organization_id, asset_type)` — one logo and one favicon per organization.
+The unique `(organization_id, asset_type)` constraint permits one logo and one favicon per
+organization. Migration 027 replaces the original shared 512 KiB ceiling with type-sensitive
+limits: logos are at most 2 MiB, favicons are at most 512 KiB, and every stored asset must contain
+at least one byte. The migration is forward-only because reducing the limit could invalidate logos
+accepted after deployment.
 
 ### Admin Sessions (Migration 018)
 
 OIDC session tracking for the admin session viewer and revocation UI.
 
-| Column             | Type         | Description                    |
-| ------------------ | ------------ | ------------------------------ |
-| `id`               | UUID         | Primary key                    |
-| `session_uid`      | VARCHAR(255) | OIDC session unique identifier |
-| `user_id`          | UUID         | FK → users (nullable)          |
-| `organization_id`  | UUID         | FK → organizations (nullable)  |
-| `client_id`        | VARCHAR(64)  | OIDC client identifier         |
-| `ip_address`       | INET         | Client IP address              |
-| `user_agent`       | TEXT         | Client user-agent string       |
-| `last_activity_at` | TIMESTAMPTZ  | Last session activity          |
-| `expires_at`       | TIMESTAMPTZ  | Session expiry time            |
-| `created_at`       | TIMESTAMPTZ  | Session creation time          |
+| Column             | Type                   | Description                                       |
+| ------------------ | ---------------------- | ------------------------------------------------- |
+| `session_id`       | VARCHAR(128)           | OIDC Session identifier and primary key           |
+| `user_id`          | UUID, nullable         | FK → users, cascading on user deletion            |
+| `client_id`        | UUID, nullable         | FK → clients; not a complete multi-client mapping |
+| `organization_id`  | UUID, nullable         | FK → organizations                                |
+| `grant_id`         | VARCHAR(128), nullable | Grant captured when available                     |
+| `ip_address`       | INET, nullable         | Client IP address                                 |
+| `user_agent`       | TEXT, nullable         | Client user-agent string                          |
+| `last_activity_at` | TIMESTAMPTZ            | Last tracking update                              |
+| `expires_at`       | TIMESTAMPTZ            | Absolute Session authority expiry                 |
+| `revoked_at`       | TIMESTAMPTZ, nullable  | Revocation time; null while live                  |
+| `created_at`       | TIMESTAMPTZ            | Tracking-row creation time                        |
 
-Mirrors Redis session data to PostgreSQL for admin viewing and revocation.
+The row is an authority dependency for a Redis Session, not only an administrative mirror. Porta
+persists it before publishing the Redis payload and rejects cached Sessions whose row is missing,
+expired, or revoked. The nullable `client_id` is informational because one Session can authorize
+several clients through its Redis payload.
 
 ### Invitation Details (Migration 019)
 
@@ -371,8 +396,13 @@ Migrations are managed programmatically via `packages/server/src/lib/migrator.ts
 
 - **Forward-only in production** — Migrations run automatically on startup
 - **CLI management** — `porta migrate up/down/status` for manual control
-- **Numbered sequencing** — `001_` through `019_` prefix ensures deterministic order
+- **Numbered sequencing** — `001_` through `025_` prefix ensures deterministic order
 - **Idempotent patterns** — `IF NOT EXISTS` used where possible
+
+Migration 025 is deliberately forward-only. It narrows organization status to `active` or
+`suspended`, application and client status to `active` or `inactive`, and makes module-owned
+permissions cascade with their module. Its Down section is an explicit no-op: removed lifecycle
+values and weaker module ownership are not restored.
 
 ## Related Documentation
 

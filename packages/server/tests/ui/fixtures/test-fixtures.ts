@@ -66,8 +66,6 @@ export interface TestData {
 
   // ── Phase 2 fields (user status tests) ─────────────────────────────
 
-  /** Email of a user with 'suspended' status */
-  suspendedUserEmail: string;
   /** Email of a user with 'inactive' status */
   inactiveUserEmail: string;
   /** Email of a user with 'locked' status */
@@ -89,8 +87,8 @@ export interface TestData {
 
   /** Slug of an org with 'suspended' status */
   suspendedOrgSlug: string;
-  /** Slug of an org with 'archived' status */
-  archivedOrgSlug: string;
+  /** Slug of an organization that was physically deleted during setup. */
+  deletedOrgSlug: string;
 
   // ── 2FA fields (seeded 2FA-enabled users) ──────────────────────────
 
@@ -201,7 +199,6 @@ export const test = base.extend<{
       confUserPassword: process.env.TEST_CONF_USER_PASSWORD!,
 
       // Phase 2: Additional users for status tests
-      suspendedUserEmail: process.env.UI_TEST_SUSPENDED_USER_EMAIL!,
       inactiveUserEmail: process.env.UI_TEST_INACTIVE_USER_EMAIL!,
       lockedUserEmail: process.env.UI_TEST_LOCKED_USER_EMAIL!,
       lockableUserEmail: process.env.UI_TEST_LOCKABLE_USER_EMAIL!,
@@ -213,7 +210,7 @@ export const test = base.extend<{
 
       // Phase 2: Additional orgs for tenant isolation tests
       suspendedOrgSlug: process.env.UI_TEST_SUSPENDED_ORG_SLUG!,
-      archivedOrgSlug: process.env.UI_TEST_ARCHIVED_ORG_SLUG!,
+      deletedOrgSlug: process.env.UI_TEST_DELETED_ORG_SLUG!,
 
       // 2FA test data — seeded users with 2FA enabled
       twoFactorEmailUser: process.env.UI_TEST_2FA_EMAIL_USER!,

@@ -1,6 +1,6 @@
 # Integrations Reference
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-09-09
 
 ## Overview
 
@@ -132,6 +132,11 @@ oidc:user_code:{userCode}    → UID lookup (device flow)
 
 Models stored in Redis: `Session`, `Interaction`, `AuthorizationCode`, `ReplayDetection`, `ClientCredentials`, `PushedAuthorizationRequest`.
 
+Redis storage is not sufficient authority by itself. Session publication first persists its
+PostgreSQL tracking row. Cached adapter reads validate every referenced active client, active user,
+and live grant against PostgreSQL; Session reads also require live tracking. OIDC Client and account
+lookup, plus token role and permission claims, bypass entity caches.
+
 #### Tenant Cache
 
 ```
@@ -153,7 +158,8 @@ Sliding window implementation using Redis `INCR` and `EXPIRE`.
 
 - **On write**: Service layer invalidates cache after successful DB writes
 - **Graceful degradation**: Cache miss falls through to PostgreSQL
-- **Never block**: Cache operations don't fail requests
+- **Ordinary cache degradation**: Non-authoritative entity cache misses fall through to PostgreSQL
+- **Authority failure**: Session tracking or live-reference validation failure stops the OIDC operation
 
 ### Data Persistence
 
@@ -274,9 +280,9 @@ The OIDC provider is configured in `packages/server/src/oidc/configuration.ts`:
 | **Signing algorithm** | ES256 (ECDSA P-256) only                                    |
 | **PKCE**              | Enforced for public clients (S256 method)                   |
 | **Scopes**            | `openid`, `profile`, `email`, `offline_access` + custom     |
-| **Claims**            | Standard OIDC claims + RBAC roles + custom claims           |
+| **Claims**            | Standard claims + application-scoped RBAC and custom claims |
 | **Grant types**       | `authorization_code`, `refresh_token`, `client_credentials` |
-| **Token format**      | JWT (signed with ES256)                                     |
+| **Token format**      | ES256 JWT ID tokens; opaque access/client-credential tokens |
 | **Interactions**      | Custom login/consent pages                                  |
 | **TTLs**              | Loaded from `system_config` table at startup                |
 
@@ -311,9 +317,14 @@ The adapter factory (`packages/server/src/oidc/adapter-factory.ts`) routes OIDC 
 
 1. Load user by ID from the users service
 2. Build standard OIDC claims (profile, email)
-3. Load RBAC roles for the user
-4. Load custom claim values for the user
-5. Return scope-filtered claims
+3. Validate the requesting client's private application UUID
+4. Load only roles and permissions owned by that application
+5. Load custom claim values for the same application
+6. Return scope-filtered claims without emitting the private application UUID
+
+If the application UUID is absent or malformed, standard claims remain available while `roles` and
+`permissions` are empty and custom claims are skipped. Repository failures use the existing fixed
+account-lookup failure path rather than returning partial authority.
 
 ### Interaction Handling
 

@@ -21,6 +21,7 @@ import type { UserRow, UserListOptions, PaginatedResult, User } from './types.js
 import { mapRowToUser } from './types.js';
 import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
+import { UserValidationError } from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -161,7 +162,7 @@ export async function findUserByEmail(orgId: string, email: string): Promise<Use
  * Get the password hash for a user (active users only).
  *
  * Returns the raw Argon2id hash for password verification. Only returns
- * the hash if the user status is 'active' — inactive, suspended, and
+ * the hash if the user status is 'active' — inactive and automatically
  * locked users cannot authenticate.
  *
  * This is the only function that exposes password_hash; the User
@@ -677,8 +678,8 @@ export async function unlockEligiblePasswordAccount(
  * Reset the failed login counter and unlock an auto-locked account.
  *
  * Used by `checkAutoUnlock` when the lockout cooldown has elapsed.
- * Only affects rows that are actually auto-locked — the WHERE clause
- * ensures we don't accidentally unlock manually-locked accounts.
+ * Only affects rows created by automatic lockout. The reason predicate keeps
+ * the update limited to that security mechanism.
  *
  * @param id - User UUID
  */
@@ -716,4 +717,192 @@ export async function countByOrganization(orgId: string): Promise<number> {
   );
 
   return parseInt(result.rows[0].count, 10);
+}
+
+/** Authority identifiers captured before a user cascade runs. */
+export interface UserDeletionCapture {
+  user: User;
+  userIds: string[];
+  grantIds: string[];
+  roleIds: string[];
+  claimIds: string[];
+  applicationIds: string[];
+}
+
+/**
+ * Lock the control-plane organization so every final-admin check uses the same
+ * transaction serialization point.
+ *
+ * @param organizationId - Organization that may own administrative authority
+ * @returns Whether the organization is the control plane
+ */
+export async function lockControlPlaneOrganization(organizationId: string): Promise<boolean> {
+  const pool = getPool();
+  const controlPlane = await pool.query<{ id: string }>(
+    `SELECT id FROM organizations
+     WHERE id = $1 AND is_super_admin = TRUE
+     FOR UPDATE`,
+    [organizationId],
+  );
+  return controlPlane.rows[0] !== undefined;
+}
+
+/**
+ * Check for another active exact super administrator after the caller has
+ * locked the control-plane organization.
+ *
+ * @param organizationId - Locked control-plane organization
+ * @param excludedUserId - User being deleted or losing the exact role
+ * @throws UserValidationError when no other active exact holder remains
+ */
+async function requireActiveSuperAdminSurvivorAfterLock(
+  organizationId: string,
+  excludedUserId: string,
+): Promise<void> {
+  const pool = getPool();
+  const survivor = await pool.query<{ exists: boolean }>(
+    `SELECT EXISTS(
+       SELECT 1 FROM users candidate
+       JOIN user_roles assignment ON assignment.user_id = candidate.id
+       JOIN roles role ON role.id = assignment.role_id
+       JOIN applications application ON application.id = role.application_id
+       WHERE candidate.organization_id = $1
+         AND candidate.id <> $2
+         AND candidate.status = 'active'
+         AND role.slug = 'porta-super-admin'
+         AND application.slug = 'porta-admin'
+     ) AS exists`,
+    [organizationId, excludedUserId],
+  );
+  if (!survivor.rows[0]?.exists) {
+    throw new UserValidationError('Cannot remove the last active porta-super-admin user');
+  }
+}
+
+/**
+ * Preserve another active exact Porta super administrator in the control plane.
+ *
+ * The organization row is the shared serialization point for user deletion and
+ * role removal. Non-control-plane organizations need no survivor check.
+ *
+ * @param organizationId - Organization whose control-plane row is locked
+ * @param excludedUserId - User being deleted or losing the exact role
+ * @throws UserValidationError when no other active exact holder remains
+ */
+export async function requireActiveSuperAdminSurvivor(
+  organizationId: string,
+  excludedUserId: string,
+): Promise<void> {
+  if (!(await lockControlPlaneOrganization(organizationId))) return;
+  await requireActiveSuperAdminSurvivorAfterLock(organizationId, excludedUserId);
+}
+
+/**
+ * Lock, protect, capture, and physically delete one organization-owned user.
+ *
+ * Control-plane deletions first serialize on the single control-plane
+ * organization row. Deleting an active holder of the exact built-in
+ * `porta-super-admin` role is permitted only while another such active user
+ * remains.
+ *
+ * @param organizationId - Owning organization UUID.
+ * @param userId - User UUID.
+ * @returns Captured authority, or null for a missing or mismatched user.
+ * @throws UserValidationError when deletion would remove the last super administrator.
+ */
+export async function deleteUserCapture(
+  organizationId: string,
+  userId: string,
+): Promise<UserDeletionCapture | null> {
+  const pool = getPool();
+  const isControlPlane = await lockControlPlaneOrganization(organizationId);
+  const target = await pool.query<UserRow>(
+    `SELECT * FROM users
+     WHERE organization_id = $1 AND id = $2
+     FOR UPDATE`,
+    [organizationId, userId],
+  );
+  if (!target.rows[0]) return null;
+  const user = mapRowToUser(target.rows[0]);
+
+  if (user.status === 'active') {
+    const exactRole = await pool.query<{ assigned: boolean }>(
+      `SELECT EXISTS(
+         SELECT 1 FROM user_roles assignment
+         JOIN roles role ON role.id = assignment.role_id
+         JOIN applications application ON application.id = role.application_id
+         WHERE assignment.user_id = $1
+           AND role.slug = 'porta-super-admin'
+           AND application.slug = 'porta-admin'
+       ) AS assigned`,
+      [userId],
+    );
+    if (isControlPlane && exactRole.rows[0]?.assigned) {
+      await requireActiveSuperAdminSurvivorAfterLock(organizationId, userId);
+    }
+  }
+
+  const graph = await pool.query<{
+    grant_ids: string[];
+    role_ids: string[];
+    claim_ids: string[];
+    application_ids: string[];
+  }>(
+    `WITH assigned_roles AS (
+       SELECT role.id, role.application_id
+       FROM user_roles assignment
+       JOIN roles role ON role.id = assignment.role_id
+       WHERE assignment.user_id = $1
+     ), assigned_claims AS (
+       SELECT definition.id, definition.application_id
+       FROM custom_claim_values value
+       JOIN custom_claim_definitions definition ON definition.id = value.claim_id
+       WHERE value.user_id = $1
+     )
+     SELECT
+       ARRAY(
+         SELECT id FROM oidc_payloads
+         WHERE type = 'Grant' AND payload->>'accountId' = $1::text
+         ORDER BY id
+       ) AS grant_ids,
+       ARRAY(SELECT id FROM assigned_roles ORDER BY id) AS role_ids,
+       ARRAY(SELECT id FROM assigned_claims ORDER BY id) AS claim_ids,
+       ARRAY(
+         SELECT DISTINCT application_id FROM (
+           SELECT application_id FROM assigned_roles
+           UNION ALL
+           SELECT application_id FROM assigned_claims
+         ) authority
+         ORDER BY application_id
+       ) AS application_ids`,
+    [userId],
+  );
+  const captured = graph.rows[0]!;
+  return {
+    user,
+    userIds: [user.id],
+    grantIds: captured.grant_ids,
+    roleIds: captured.role_ids,
+    claimIds: captured.claim_ids,
+    applicationIds: captured.application_ids,
+  };
+}
+
+/** Physically delete a user previously locked through its organization boundary. */
+export async function deleteCapturedUser(organizationId: string, userId: string): Promise<void> {
+  await getPool().query('DELETE FROM users WHERE organization_id = $1 AND id = $2', [
+    organizationId,
+    userId,
+  ]);
+}
+
+/** Capture and immediately delete a user for direct repository callers. */
+export async function deleteUser(
+  organizationId: string,
+  userId: string,
+): Promise<UserDeletionCapture | null> {
+  const capture = await deleteUserCapture(organizationId, userId);
+  if (!capture) return null;
+  await deleteCapturedUser(organizationId, userId);
+  return capture;
 }

@@ -11,6 +11,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { truncateAllTables, seedBaseData } from '../helpers/database.js';
 import { flushTestRedis } from '../helpers/redis.js';
 import { createTestOrganization, createTestUser } from '../helpers/factories.js';
+import { getPool } from '../../../src/lib/database.js';
 import {
   upsertSession,
   getSession,
@@ -143,7 +144,11 @@ describe('Session Tracking (Integration)', () => {
         expiresAt: new Date(Date.now() + 3600_000),
       });
 
-      const result = await listSessions({ organizationId: org1.id, pageSize: 10, activeOnly: false });
+      const result = await listSessions({
+        organizationId: org1.id,
+        pageSize: 10,
+        activeOnly: false,
+      });
 
       expect(result.data.every((s) => s.organizationId === org1.id)).toBe(true);
     });
@@ -237,11 +242,19 @@ describe('Session Tracking (Integration)', () => {
       const expiredId = randomUUID();
       const activeId = randomUUID();
 
-      // Create an expired session (in the past)
+      // Create a valid row first, then age both timestamps while preserving
+      // the database invariant that expiry must follow creation.
       await upsertSession({
         sessionId: expiredId,
-        expiresAt: new Date(Date.now() - 1000),
+        expiresAt: new Date(Date.now() + 3600_000),
       });
+      await getPool().query(
+        `UPDATE admin_sessions
+         SET created_at = NOW() - INTERVAL '9 days',
+             expires_at = NOW() - INTERVAL '8 days'
+         WHERE session_id = $1`,
+        [expiredId],
+      );
       // Create an active session (in the future)
       await upsertSession({
         sessionId: activeId,

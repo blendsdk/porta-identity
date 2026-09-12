@@ -28,11 +28,7 @@ export {
   listUsersByOrganization,
   listUsersCursor,
   deactivateUser,
-  reactivateUser,
-  suspendUser,
-  unsuspendUser,
-  lockUser,
-  unlockUser,
+  activateUser,
   setUserPassword,
   verifyUserPassword,
   clearUserPassword,
@@ -56,13 +52,10 @@ export type { CursorPaginatedResult } from '../lib/cursor.js';
 export { UserNotFoundError, UserValidationError } from './errors.js';
 
 // Password utilities (for external consumers like CLI)
-export {
-  validatePassword,
-  MIN_PASSWORD_LENGTH,
-  MAX_PASSWORD_LENGTH,
-} from './password.js';
+export { validatePassword, MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH } from './password.js';
 export type { PasswordValidationResult } from './password.js';
 
-// GDPR export/purge (Article 17 + Article 20)
-export { exportUserData, purgeUserData } from './gdpr.js';
-export type { UserDataExport, PurgeResult } from './gdpr.js';
+// User data export
+export { exportUserData } from './gdpr.js';
+export { deleteUser } from './service.js';
+export type { UserDataExport } from './gdpr.js';

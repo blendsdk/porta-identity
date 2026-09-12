@@ -3,20 +3,20 @@
  *
  * All routes are under `/api/admin/clients` and require
  * admin authentication (Bearer JWT). Provides CRUD for clients,
- * status lifecycle (activate, deactivate, revoke), and nested
- * secret management (generate, list, revoke).
+ * status lifecycle (activate, deactivate), and nested
+ * secret management (generate, list, delete).
  *
  * Route structure:
  *   POST   /                               — Create a new client
  *   GET    /                               — List clients (paginated)
  *   GET    /:id                            — Get client by ID
  *   PUT    /:id                            — Update client
- *   POST   /:id/revoke                     — Revoke client (permanent)
+ *   DELETE /:id                            — Delete client
  *   POST   /:id/activate                   — Activate client
  *   POST   /:id/deactivate                 — Deactivate client
  *   POST   /:id/secrets                    — Generate new secret
  *   GET    /:id/secrets                    — List secrets (no hashes)
- *   POST   /:id/secrets/:secretId/revoke   — Revoke a secret
+ *   POST   /:id/secrets/:secretId/revoke   — Permanently delete a secret
  *
  * Error mapping:
  *   ClientNotFoundError → 404
@@ -43,6 +43,10 @@ import { LOGIN_METHODS } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
+import {
+  getDefaultGrantTypes,
+  validateClientProtocolCompatibility,
+} from '../clients/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -67,24 +71,81 @@ const loginMethodSchema = z.enum(LOGIN_METHODS);
  */
 const clientLoginMethodsSchema = z.array(loginMethodSchema).min(1).nullable();
 
+/** Return whether text contains a C0, DEL, or C1 control code point. */
+function containsControlCharacter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0);
+    return (
+      codePoint !== undefined &&
+      (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
+    );
+  });
+}
+
+/**
+ * Optional secret labels are safe to render in terminals and audit metadata.
+ * C0, DEL, and C1 controls are rejected because they can alter terminal output
+ * without contributing useful label text.
+ */
+const secretLabelSchema = z
+  .string()
+  .max(255)
+  .refine((value) => !containsControlCharacter(value), {
+    message: 'Secret label must not contain control characters',
+  });
+
+/**
+ * Secret expiry values use one deterministic wire format for creation and
+ * rotation. Validation happens after parsing the ISO instant so both routes
+ * compare the same absolute time with the current request time.
+ */
+const futureSecretExpirySchema = z
+  .string()
+  .datetime({ offset: true })
+  .transform((value) => new Date(value))
+  .refine((value) => value.getTime() > Date.now(), {
+    message: 'Secret expiry must be in the future',
+  });
+
 /** Schema for creating a new client */
-const createClientSchema = z.object({
-  organizationId: z.string().uuid(),
-  applicationId: z.string().uuid(),
-  clientName: z.string().min(1).max(255),
-  clientType: z.enum(['confidential', 'public']),
-  applicationType: z.enum(['web', 'native', 'spa']),
-  redirectUris: z.array(z.string().url()).min(1).max(10),
-  postLogoutRedirectUris: z.array(z.string().url()).max(10).optional(),
-  grantTypes: z.array(z.string()).optional(),
-  responseTypes: z.array(z.string()).optional(),
-  scope: z.string().optional(),
-  tokenEndpointAuthMethod: z.enum(['client_secret_basic', 'client_secret_post', 'none']).optional(),
-  allowedOrigins: z.array(z.string().url()).optional(),
-  requirePkce: z.boolean().optional(),
-  loginMethods: clientLoginMethodsSchema.optional(),
-  secretLabel: z.string().max(255).optional(),
-});
+const createClientSchema = z
+  .object({
+    organizationId: z.string().uuid(),
+    applicationId: z.string().uuid(),
+    clientName: z.string().min(1).max(255),
+    clientType: z.enum(['confidential', 'public']),
+    applicationType: z.enum(['web', 'native', 'spa']),
+    redirectUris: z.array(z.string().url()).min(1).max(10),
+    postLogoutRedirectUris: z.array(z.string().url()).max(10).optional(),
+    grantTypes: z
+      .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
+      .optional(),
+    responseTypes: z.array(z.literal('code')).optional(),
+    scope: z.string().optional(),
+    tokenEndpointAuthMethod: z
+      .enum(['client_secret_basic', 'client_secret_post', 'none'])
+      .optional(),
+    allowedOrigins: z.array(z.string().url()).max(10).optional(),
+    requirePkce: z.boolean().optional(),
+    loginMethods: clientLoginMethodsSchema.optional(),
+    secretLabel: secretLabelSchema.optional(),
+    secretExpiresAt: futureSecretExpirySchema.optional(),
+  })
+  .superRefine((value, context) => {
+    const result = validateClientProtocolCompatibility({
+      clientType: value.clientType,
+      redirectUris: value.redirectUris,
+      postLogoutRedirectUris: value.postLogoutRedirectUris,
+      grantTypes: value.grantTypes ?? getDefaultGrantTypes(value.clientType, value.applicationType),
+      responseTypes: value.responseTypes ?? ['code'],
+      tokenEndpointAuthMethod:
+        value.tokenEndpointAuthMethod ??
+        (value.clientType === 'public' ? 'none' : 'client_secret_basic'),
+      requirePkce: value.requirePkce ?? true,
+      allowedOrigins: value.allowedOrigins ?? [],
+    });
+    for (const message of result.errors) context.addIssue({ code: 'custom', message });
+  });
 
 /** Schema for updating a client (all fields optional) */
 const updateClientSchema = z.object({
@@ -106,7 +167,7 @@ const listClientsSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   organizationId: z.string().uuid().optional(),
   applicationId: z.string().uuid().optional(),
-  status: z.enum(['active', 'inactive', 'revoked']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['client_name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -118,7 +179,7 @@ const listClientsCursorSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(25),
   organizationId: z.string().uuid().optional(),
   applicationId: z.string().uuid().optional(),
-  status: z.enum(['active', 'inactive', 'revoked']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['client_name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -126,9 +187,12 @@ const listClientsCursorSchema = z.object({
 
 /** Schema for generating a new secret */
 const createSecretSchema = z.object({
-  label: z.string().max(255).optional(),
-  expiresAt: z.coerce.date().optional(),
+  label: secretLabelSchema.optional(),
+  expiresAt: futureSecretExpirySchema.optional(),
 });
+
+/** Parameters accepted by client deletion. */
+const identifierSchema = z.object({ id: z.string().uuid() });
 
 // ---------------------------------------------------------------------------
 // Response decoration helper
@@ -212,34 +276,43 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   // POST / — Create client
   // -------------------------------------------------------------------------
-  router.post('/', requirePermission(ADMIN_PERMISSIONS.CLIENT_CREATE), async (ctx) => {
-    try {
-      const body = createClientSchema.parse(ctx.request.body);
+  router.post(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.CLIENT_CREATE, ADMIN_PERMISSIONS.APP_READ),
+    async (ctx) => {
+      try {
+        const body = createClientSchema.parse(ctx.request.body);
 
-      // Create client (returns ClientWithSecret — secret is null here)
-      const result = await clientService.createClient(body);
+        // Secret fields belong to the nested secret mutation and must never
+        // leak into the client persistence input.
+        const { secretLabel, secretExpiresAt, ...clientInput } = body;
 
-      // For confidential clients, generate the initial secret automatically
-      let secret = result.secret;
-      if (body.clientType === 'confidential') {
-        secret = await secretService.generateAndStore(result.client.id, {
-          label: body.secretLabel,
-        });
+        // Create client (returns ClientWithSecret — secret is null here)
+        const result = await clientService.createClient(clientInput);
+
+        // For confidential clients, generate the initial secret automatically
+        let secret = result.secret;
+        if (body.clientType === 'confidential') {
+          secret = await secretService.generateAndStore(result.client.id, {
+            ...(secretLabel === undefined ? {} : { label: secretLabel }),
+            ...(secretExpiresAt === undefined ? {} : { expiresAt: secretExpiresAt }),
+          });
+        }
+
+        // Decorate the client with its resolved `effectiveLoginMethods` so
+        // API consumers get both the raw override and the effective value.
+        const decoratedClient = await withEffectiveLoginMethods(result.client);
+
+        ctx.status = 201;
+        ctx.body = {
+          data: { client: decoratedClient, secret },
+          ...(secret ? { warning: 'Store the secret securely. It will not be shown again.' } : {}),
+        };
+      } catch (err) {
+        handleError(ctx, err);
       }
-
-      // Decorate the client with its resolved `effectiveLoginMethods` so
-      // API consumers get both the raw override and the effective value.
-      const decoratedClient = await withEffectiveLoginMethods(result.client);
-
-      ctx.status = 201;
-      ctx.body = {
-        data: { client: decoratedClient, secret },
-        ...(secret ? { warning: 'Store the secret securely. It will not be shown again.' } : {}),
-      };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET / — List clients (paginated)
@@ -250,7 +323,10 @@ export function createClientRouter(): Router {
       if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
         const query = listClientsCursorSchema.parse(ctx.query);
         const result = await clientService.listClientsCursor(query);
-        ctx.body = result;
+        ctx.body = {
+          ...result,
+          data: await Promise.all(result.data.map(withEffectiveLoginMethods)),
+        };
         return;
       }
       // Default: offset-based pagination (backward compatible)
@@ -259,7 +335,10 @@ export function createClientRouter(): Router {
         query.organizationId ?? '',
         query,
       );
-      ctx.body = result;
+      ctx.body = {
+        ...result,
+        data: await Promise.all(result.data.map(withEffectiveLoginMethods)),
+      };
     } catch (err) {
       handleError(ctx, err);
     }
@@ -295,11 +374,12 @@ export function createClientRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/revoke — Revoke client (permanent)
+  // DELETE /:id — Delete client
   // -------------------------------------------------------------------------
-  router.post('/:id/revoke', requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE), async (ctx) => {
+  router.delete('/:id', requirePermission(ADMIN_PERMISSIONS.CLIENT_DELETE), async (ctx) => {
     try {
-      await clientService.revokeClient(ctx.params.id);
+      const { id } = identifierSchema.parse(ctx.params);
+      await clientService.deleteClient(id, ctx.state.adminUser?.id);
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);
@@ -339,6 +419,8 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   router.post('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
+      const client = await requireEligibleSecretParent(ctx.params.id);
+      if (!client) ctx.throw(404, 'Client not found');
       const body = createSecretSchema.parse(ctx.request.body);
       const secret = await secretService.generateAndStore(ctx.params.id, body);
       ctx.status = 201;
@@ -355,6 +437,8 @@ export function createClientRouter(): Router {
   // GET /:id/secrets — List secrets (no hashes)
   // -------------------------------------------------------------------------
   router.get('/:id/secrets', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
+    const client = await requireEligibleSecretParent(ctx.params.id);
+    if (!client) ctx.throw(404, 'Client not found');
     const secrets = await secretService.listByClient(ctx.params.id);
     ctx.body = { data: secrets };
   });
@@ -373,14 +457,16 @@ export function createClientRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/secrets/:secretId/revoke — Revoke a secret
+  // POST /:id/secrets/:secretId/revoke — Permanently delete a secret
   // -------------------------------------------------------------------------
   router.post(
     '/:id/secrets/:secretId/revoke',
     requirePermission(ADMIN_PERMISSIONS.CLIENT_REVOKE),
     async (ctx) => {
       try {
-        await secretService.revoke(ctx.params.secretId);
+        const client = await requireEligibleSecretParent(ctx.params.id);
+        if (!client) ctx.throw(404, 'Client not found');
+        await secretService.revoke(ctx.params.id, ctx.params.secretId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -389,4 +475,11 @@ export function createClientRouter(): Router {
   );
 
   return router;
+}
+
+/** Return a client only when its secret collection is administratively available. */
+async function requireEligibleSecretParent(id: string): Promise<Client | null> {
+  const client = await clientService.getClientById(id);
+  if (!client || client.clientType !== 'confidential') return null;
+  return client;
 }

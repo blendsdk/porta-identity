@@ -34,14 +34,13 @@ describe('super-admin-protection', () => {
   describe('PROTECTED_OPERATIONS', () => {
     it('should include all expected protected operations', () => {
       expect(PROTECTED_OPERATIONS).toContain('delete');
-      expect(PROTECTED_OPERATIONS).toContain('suspend');
-      expect(PROTECTED_OPERATIONS).toContain('lock');
       expect(PROTECTED_OPERATIONS).toContain('deactivate');
       expect(PROTECTED_OPERATIONS).toContain('remove-super-admin-role');
+      expect(PROTECTED_OPERATIONS).toContain('manage-2fa');
     });
 
-    it('should have exactly 6 operations', () => {
-      expect(PROTECTED_OPERATIONS.length).toBe(6);
+    it('should have exactly 4 operations', () => {
+      expect(PROTECTED_OPERATIONS.length).toBe(4);
     });
   });
 
@@ -109,7 +108,7 @@ describe('super-admin-protection', () => {
     });
 
     it('should have name SuperAdminProtectionError', () => {
-      const error = new SuperAdminProtectionError('suspend');
+      const error = new SuperAdminProtectionError('deactivate');
       expect(error.name).toBe('SuperAdminProtectionError');
     });
 
@@ -156,7 +155,7 @@ describe('super-admin-protection', () => {
     it('should not throw when no super-admin is configured', async () => {
       mockGetConfig.mockResolvedValue('');
 
-      await expect(guardSuperAdmin('any-user-id', 'suspend')).resolves.toBeUndefined();
+      await expect(guardSuperAdmin('any-user-id', 'deactivate')).resolves.toBeUndefined();
     });
 
     it('should throw with correct operation for each protected operation', async () => {
@@ -175,16 +174,16 @@ describe('super-admin-protection', () => {
       }
     });
 
-    it('should throw with 403 status for suspend operation', async () => {
+    it('should throw with 403 status for deactivate operation', async () => {
       mockGetConfig.mockResolvedValue(superAdminId);
 
       try {
-        await guardSuperAdmin(superAdminId, 'suspend');
+        await guardSuperAdmin(superAdminId, 'deactivate');
         expect.fail('Should have thrown');
       } catch (error) {
         const e = error as SuperAdminProtectionError;
         expect(e.status).toBe(403);
-        expect(e.message).toBe('Cannot suspend the super-admin user');
+        expect(e.message).toBe('Cannot deactivate the super-admin user');
       }
     });
 

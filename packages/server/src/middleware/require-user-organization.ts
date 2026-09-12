@@ -9,7 +9,7 @@
 import type { Middleware } from 'koa';
 import { z } from 'zod';
 
-import { getUserById } from '../users/service.js';
+import { findUserById } from '../users/repository.js';
 import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
 
 const organizationUserParamsSchema = z.object({
@@ -40,7 +40,9 @@ export function requireUserOrganization(): Middleware {
       return;
     }
 
-    const user = await getUserById(parsed.data.userId);
+    // Authorization must use the live row. A cache miss inside a mutation transaction would
+    // otherwise register a post-commit cache write for a user the same request may delete.
+    const user = await findUserById(parsed.data.userId);
     if (user === null || user.organizationId !== parsed.data.orgId) {
       recordSecurityDecision(ctx, {
         decisionPoint: 'resource',

@@ -1,15 +1,10 @@
 /**
  * Role service — business logic for role management.
  *
- * Orchestrates role CRUD operations with slug validation, uniqueness
- * checks, deletion guards, cache management, and audit logging.
- * Also handles role-permission assignment operations.
- *
- * All write operations follow the pattern:
- *   validate → DB operation → cache invalidate/re-cache → audit log
- *
- * Uses fire-and-forget audit logging — audit failures never block
- * the primary operation.
+ * Orchestrates application-scoped role CRUD and direct permission mappings.
+ * Authority reductions revoke affected database state in the request transaction;
+ * cache cleanup runs after commit. Canonical Porta Admin roles and mappings are
+ * protected from generic mutation.
  *
  * @see role-repository.ts — Database operations
  * @see mapping-repository.ts — Role-permission join table operations
@@ -19,28 +14,41 @@
 import {
   insertRole,
   findRoleById as repoFindRoleById,
+  lockRoleById,
   findRoleBySlug as repoFindRoleBySlug,
   updateRole as repoUpdateRole,
-  deleteRole as repoDeleteRole,
+  captureRoleForDeletion,
+  deleteCapturedRole,
   listRolesByApplication as repoListRolesByApplication,
   roleSlugExists,
-  countUsersWithRole,
 } from './role-repository.js';
 import {
   assignPermissionsToRole as repoAssignPermissions,
   removePermissionsFromRole as repoRemovePermissions,
   getPermissionsForRole as repoGetPermissionsForRole,
+  getUserIdsForRole,
+  lockRolePermissionTargets,
 } from './mapping-repository.js';
-import {
-  getCachedRole,
-  setCachedRole,
-  invalidateRoleCache,
-  invalidateAllUserRbacCaches,
-} from './cache.js';
-import { generateRoleSlug, validateRoleSlug } from './slugs.js';
+import { getCachedRole, setCachedRole } from './cache.js';
+import { generateRoleSlug, normalizeRbacSlug, validateRoleSlug } from './slugs.js';
 import { RoleNotFoundError, RbacValidationError } from './errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import type { Role, Permission, CreateRoleInput, UpdateRoleInput } from './types.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerAuthorityCleanup, registerDeletionCleanup } from '../lib/deletion-cleanup.js';
+import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
+import { getApplicationBySlug } from '../applications/service.js';
+import {
+  ALL_ADMIN_PERMISSIONS,
+  ALL_ADMIN_ROLES,
+  LEGACY_ADMIN_ROLE,
+} from '../lib/admin-permissions.js';
+
+const ROLE_DELETED_EVENT = 'role.deleted';
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+const ADMIN_ROLE_SLUGS = new Set([...ALL_ADMIN_ROLES.map((role) => role.slug), LEGACY_ADMIN_ROLE]);
+const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 
 // ---------------------------------------------------------------------------
 // Create
@@ -59,21 +67,20 @@ import type { Role, Permission, CreateRoleInput, UpdateRoleInput } from './types
  */
 export async function createRole(input: CreateRoleInput, actorId?: string): Promise<Role> {
   // Generate slug from name if not provided
-  const slug = input.slug ?? generateRoleSlug(input.name);
+  const slug = normalizeRbacSlug(input.slug ?? generateRoleSlug(input.name));
 
   // Validate slug format
   if (!validateRoleSlug(slug)) {
     throw new RbacValidationError(
-      `Invalid role slug format: "${slug}". Must be 1-100 chars, lowercase alphanumeric and hyphens.`,
+      'Invalid role slug. Must be 1-100 characters without control characters.',
     );
   }
+  await guardCanonicalAdminRole(input.applicationId, slug);
 
   // Check slug uniqueness within the application
   const exists = await roleSlugExists(input.applicationId, slug);
   if (exists) {
-    throw new RbacValidationError(
-      `Role slug "${slug}" already exists for this application.`,
-    );
+    throw new RbacValidationError(`Role slug "${slug}" already exists for this application.`);
   }
 
   // Insert with the validated slug
@@ -100,16 +107,17 @@ export async function createRole(input: CreateRoleInput, actorId?: string): Prom
 /**
  * Find a role by ID. Cache-first, falls back to DB.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Role UUID
  * @returns Role or null if not found
  */
-export async function findRoleById(id: string): Promise<Role | null> {
+export async function findRoleById(applicationId: string, id: string): Promise<Role | null> {
   // Try cache first
   const cached = await getCachedRole(id);
-  if (cached) return cached;
+  if (cached) return cached.applicationId === applicationId ? cached : null;
 
   // Cache miss — query DB
-  const role = await repoFindRoleById(id);
+  const role = await repoFindRoleById(applicationId, id);
   if (role) {
     // Cache for future lookups
     await setCachedRole(role);
@@ -147,59 +155,90 @@ export async function listRolesByApplication(applicationId: string): Promise<Rol
  * Update a role by ID.
  *
  * If the slug is being changed, validates the new slug format and
- * checks uniqueness within the application. Invalidates and re-caches
- * the role after update.
+ * checks uniqueness within the application. An actual slug change revokes
+ * authority for users assigned to the role; metadata-only changes do not.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Role UUID
  * @param input - Fields to update
  * @param actorId - Optional UUID of the admin performing the action
- * @returns Updated role
+ * @returns Updated role and whether the actor must authenticate again
  * @throws RoleNotFoundError if role doesn't exist
  * @throws RbacValidationError if new slug is invalid or already exists
  */
 export async function updateRole(
+  applicationId: string,
   id: string,
   input: UpdateRoleInput,
   actorId?: string,
-): Promise<Role> {
-  // Verify role exists (needed for applicationId if slug is changing)
-  const existing = await repoFindRoleById(id);
+): Promise<{ role: Role; reauthenticationRequired: boolean }> {
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) throw new Error('Role update requires an active database transaction');
+  const existing = await lockRoleById(applicationId, id);
   if (!existing) {
     throw new RoleNotFoundError(id);
   }
+  await guardCanonicalAdminRole(existing.applicationId, existing.slug);
+
+  const normalizedInput =
+    input.slug === undefined ? input : { ...input, slug: normalizeRbacSlug(input.slug) };
+  const changed =
+    (input.name !== undefined && input.name !== existing.name) ||
+    (normalizedInput.slug !== undefined && normalizedInput.slug !== existing.slug) ||
+    (input.description !== undefined && input.description !== existing.description);
+  if (!changed) return { role: existing, reauthenticationRequired: false };
 
   // If slug is changing, validate format and uniqueness
-  if (input.slug !== undefined && input.slug !== existing.slug) {
-    if (!validateRoleSlug(input.slug)) {
+  const requestedSlug = normalizedInput.slug;
+  const slugChanged = requestedSlug !== undefined && requestedSlug !== existing.slug;
+  if (slugChanged) {
+    await guardCanonicalAdminRole(applicationId, requestedSlug);
+    if (!validateRoleSlug(requestedSlug)) {
       throw new RbacValidationError(
-        `Invalid role slug format: "${input.slug}". Must be 1-100 chars, lowercase alphanumeric and hyphens.`,
+        'Invalid role slug. Must be 1-100 characters without control characters.',
       );
     }
 
-    const slugTaken = await roleSlugExists(existing.applicationId, input.slug, id);
+    const slugTaken = await roleSlugExists(applicationId, requestedSlug, id);
     if (slugTaken) {
       throw new RbacValidationError(
-        `Role slug "${input.slug}" already exists for this application.`,
+        `Role slug "${requestedSlug}" already exists for this application.`,
       );
     }
   }
 
-  // Perform the update
-  const updated = await repoUpdateRole(id, input);
+  const userIds = slugChanged ? await getUserIdsForRole(applicationId, id) : [];
+  const revoked = slugChanged
+    ? await revokeAffectedAuthorityInTransaction(userIds)
+    : { grantIds: [] };
+  const updated = await repoUpdateRole(applicationId, id, normalizedInput);
 
-  // Invalidate old cache and store updated role
-  await invalidateRoleCache(id);
-  await setCachedRole(updated);
-
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
-    eventType: 'role.updated',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { roleId: id, changes: input },
+  if (slugChanged) {
+    await writeAuditLogInTransaction(transaction, {
+      eventType: 'role.updated',
+      eventCategory: 'admin',
+      actorId,
+      metadata: { applicationId, roleId: id, changes: normalizedInput },
+    });
+  } else {
+    void writeAuditLog({
+      eventType: 'role.updated',
+      eventCategory: 'admin',
+      actorId,
+      metadata: { applicationId, roleId: id, changes: normalizedInput },
+    });
+  }
+  await registerAuthorityCleanup({
+    userIds,
+    grantIds: revoked.grantIds,
+    roleIds: [id],
+    revokeOidcState: slugChanged,
   });
 
-  return updated;
+  return {
+    role: updated,
+    reauthenticationRequired: slugChanged && actorId !== undefined && userIds.includes(actorId),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -207,56 +246,52 @@ export async function updateRole(
 // ---------------------------------------------------------------------------
 
 /**
- * Delete a role by ID.
+ * Delete a role through its authoritative application parent.
  *
- * By default (force=false), refuses to delete roles that have users
- * assigned. Pass force=true to delete regardless — CASCADE will
- * remove user_roles and role_permissions entries.
- *
- * @param id - Role UUID
- * @param force - If true, delete even if users are assigned
- * @param actorId - Optional UUID of the admin performing the action
- * @throws RoleNotFoundError if role doesn't exist
- * @throws RbacValidationError if users are assigned and force is false
+ * @param applicationId - Parent application UUID.
+ * @param roleId - Child role UUID.
+ * @param actorId - Actor identifier used for audit attribution when applicable.
+ * @returns Whether the actor must authenticate again
+ * @throws RoleNotFoundError when the selected role does not exist within the requested boundary.
  */
 export async function deleteRole(
-  id: string,
-  force: boolean = false,
+  applicationId: string,
+  roleId: string,
   actorId?: string,
-): Promise<void> {
-  // Verify role exists
-  const existing = await repoFindRoleById(id);
-  if (!existing) {
-    throw new RoleNotFoundError(id);
-  }
-
-  // Deletion guard: check for assigned users
-  if (!force) {
-    const userCount = await countUsersWithRole(id);
-    if (userCount > 0) {
-      throw new RbacValidationError(
-        `Cannot delete role "${existing.slug}": ${userCount} user(s) still assigned. Use force=true to override.`,
-      );
-    }
-  }
-
-  // Delete the role (CASCADE handles related records)
-  await repoDeleteRole(id);
-
-  // Invalidate caches
-  await invalidateRoleCache(id);
-  // User caches may be stale if role had users (force=true case)
-  if (force) {
-    await invalidateAllUserRbacCaches();
-  }
-
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
-    eventType: 'role.deleted',
-    eventCategory: 'admin',
+): Promise<{ reauthenticationRequired: boolean }> {
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) throw new Error('Role deletion requires an active database transaction');
+  const capture = await captureRoleForDeletion(applicationId, roleId);
+  if (!capture) throw new RoleNotFoundError(roleId);
+  await guardCanonicalAdminRole(capture.role.applicationId, capture.role.slug);
+  const revoked = await revokeAffectedAuthorityInTransaction(capture.userIds);
+  await writeAuditLogInTransaction(transaction, {
     actorId,
-    metadata: { roleId: id, slug: existing.slug, force },
+    eventType: ROLE_DELETED_EVENT,
+    eventCategory: 'admin',
+    metadata: {
+      applicationId,
+      roleId,
+      slug: capture.role.slug,
+    },
   });
+  await deleteCapturedRole(applicationId, roleId);
+  await registerDeletionCleanup({
+    resource: 'role',
+    targetId: roleId,
+    parentId: applicationId,
+    userIds: capture.userIds,
+    clientIds: [],
+    publicClientIds: [],
+    grantIds: revoked.grantIds,
+    roleIds: [roleId],
+    permissionIds: capture.permissionIds,
+    claimIds: [],
+    applicationIds: [applicationId],
+  });
+  return {
+    reauthenticationRequired: actorId !== undefined && capture.userIds.includes(actorId),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -266,71 +301,153 @@ export async function deleteRole(
 /**
  * Assign permissions to a role.
  *
- * Delegates to the mapping repository for bulk insert. Invalidates
- * all user RBAC caches since user permissions may have changed.
+ * Validates every permission against the role's application and schedules
+ * cache invalidation only for users assigned to the role.
  *
+ * @param applicationId - Parent application UUID
  * @param roleId - Role UUID
  * @param permissionIds - Array of permission UUIDs to assign
  * @param actorId - Optional UUID of the admin performing the action
  */
 export async function assignPermissionsToRole(
+  applicationId: string,
   roleId: string,
   permissionIds: string[],
   actorId?: string,
 ): Promise<void> {
   if (permissionIds.length === 0) return;
+  if (!getDatabaseTransactionClient()) {
+    throw new Error('Role permission assignment requires an active database transaction');
+  }
 
-  await repoAssignPermissions(roleId, permissionIds);
-
-  // Invalidate all user RBAC caches — permissions through roles may have changed
-  await invalidateAllUserRbacCaches();
+  const targets = await requireRolePermissionTargets(applicationId, roleId, permissionIds);
+  await guardCanonicalAdminRole(targets.role.applicationId, targets.role.slug);
+  await guardCanonicalAdminPermissions(applicationId, targets.permissions);
+  const insertedPermissionIds = await repoAssignPermissions(applicationId, roleId, permissionIds);
+  if (insertedPermissionIds.length === 0) return;
+  const userIds = await getUserIdsForRole(applicationId, roleId);
+  await registerAuthorityCleanup({
+    userIds,
+    grantIds: [],
+    roleIds: [],
+    revokeOidcState: false,
+  });
 
   // Audit log (fire-and-forget)
   void writeAuditLog({
     eventType: 'role.permissions.assigned',
     eventCategory: 'admin',
     actorId,
-    metadata: { roleId, permissionIds },
+    metadata: { applicationId, roleId, permissionIds: insertedPermissionIds },
   });
 }
 
 /**
  * Remove permissions from a role.
  *
- * Delegates to the mapping repository. Invalidates all user RBAC
- * caches since user permissions may have changed.
+ * Validates every permission against the role's application. An actual
+ * removal revokes affected authority; an absent mapping is a committed no-op.
  *
+ * @param applicationId - Parent application UUID
  * @param roleId - Role UUID
  * @param permissionIds - Array of permission UUIDs to remove
  * @param actorId - Optional UUID of the admin performing the action
  */
 export async function removePermissionsFromRole(
+  applicationId: string,
   roleId: string,
   permissionIds: string[],
   actorId?: string,
-): Promise<void> {
-  if (permissionIds.length === 0) return;
-
-  await repoRemovePermissions(roleId, permissionIds);
-
-  // Invalidate all user RBAC caches
-  await invalidateAllUserRbacCaches();
-
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
+): Promise<{ reauthenticationRequired: boolean }> {
+  if (permissionIds.length === 0) return { reauthenticationRequired: false };
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) {
+    throw new Error('Role permission removal requires an active database transaction');
+  }
+  const targets = await requireRolePermissionTargets(applicationId, roleId, permissionIds);
+  await guardCanonicalAdminRole(targets.role.applicationId, targets.role.slug);
+  await guardCanonicalAdminPermissions(applicationId, targets.permissions);
+  if (targets.assignedPermissionIds.length === 0) {
+    return { reauthenticationRequired: false };
+  }
+  const userIds = await getUserIdsForRole(applicationId, roleId);
+  const revoked = await revokeAffectedAuthorityInTransaction(userIds);
+  const removedPermissionIds = await repoRemovePermissions(applicationId, roleId, [
+    ...targets.assignedPermissionIds,
+  ]);
+  await writeAuditLogInTransaction(transaction, {
     eventType: 'role.permissions.removed',
     eventCategory: 'admin',
     actorId,
-    metadata: { roleId, permissionIds },
+    metadata: { applicationId, roleId, permissionIds: removedPermissionIds },
   });
+  await registerAuthorityCleanup({
+    userIds,
+    grantIds: revoked.grantIds,
+    roleIds: [],
+    revokeOidcState: true,
+  });
+  return {
+    reauthenticationRequired: actorId !== undefined && userIds.includes(actorId),
+  };
 }
 
 /**
  * Get all permissions assigned to a role.
  *
+ * @param applicationId - Parent application UUID
  * @param roleId - Role UUID
  * @returns Array of permissions
  */
-export async function getPermissionsForRole(roleId: string): Promise<Permission[]> {
-  return repoGetPermissionsForRole(roleId);
+export async function getPermissionsForRole(
+  applicationId: string,
+  roleId: string,
+): Promise<Permission[]> {
+  const role = await repoFindRoleById(applicationId, roleId);
+  if (!role) throw new RoleNotFoundError(roleId);
+  return repoGetPermissionsForRole(applicationId, roleId);
+}
+
+/** Reject generic mutations of canonical Porta Admin role definitions and mappings. */
+async function guardCanonicalAdminRole(applicationId: string, roleSlug: string): Promise<void> {
+  if (!ADMIN_ROLE_SLUGS.has(roleSlug)) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin roles cannot be modified');
+  }
+}
+
+/** Reject mappings involving canonical Porta Admin permission definitions. */
+async function guardCanonicalAdminPermissions(
+  applicationId: string,
+  permissions: readonly Permission[],
+): Promise<void> {
+  if (!permissions.some((permission) => ADMIN_PERMISSION_SLUGS.has(permission.slug))) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin permissions cannot be modified');
+  }
+}
+
+/** Lock and validate every target in one application-scoped mapping request. */
+async function requireRolePermissionTargets(
+  applicationId: string,
+  roleId: string,
+  permissionIds: readonly string[],
+): Promise<{
+  role: Role;
+  permissions: readonly Permission[];
+  assignedPermissionIds: readonly string[];
+}> {
+  const requestedPermissionIds = [...new Set(permissionIds)].sort();
+  const targets = await lockRolePermissionTargets(applicationId, roleId, requestedPermissionIds);
+  if (!targets.role) throw new RoleNotFoundError(roleId);
+  if (targets.permissions.length !== requestedPermissionIds.length) {
+    throw new RbacValidationError('Every permission must belong to the selected application');
+  }
+  return {
+    role: targets.role,
+    permissions: targets.permissions,
+    assignedPermissionIds: targets.assignedPermissionIds,
+  };
 }

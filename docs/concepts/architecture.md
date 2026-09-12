@@ -113,7 +113,7 @@ Request: GET /acme-corp/.well-known/openid-configuration
         1. Extract "acme-corp" from path
         2. Check Redis cache for org
         3. If miss, query PostgreSQL
-        4. Verify org status (active/suspended/archived)
+        4. Verify org status (active/suspended)
         5. Set ctx.state.organization
                 ↓
         node-oidc-provider handles the OIDC request

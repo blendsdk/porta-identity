@@ -24,6 +24,8 @@ import {
   classifyBody,
   exposesBodyInternalDetail,
   headerContractObserved,
+  htmlInteractionBoundToPath,
+  htmlPolicyRetainedAcrossResponses,
   type BoundedPublicResponse,
 } from './response-classifier.js';
 import { OwnedDependencyController, type InterruptibleService } from './service-controller.js';
@@ -253,9 +255,18 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     const controlResponse = await boundedResponse(await api.get(interactionUrl.toString()));
     const probeResponse = await boundedResponse(await api.get(interactionUrl.toString()));
     const after = await this.stateFingerprint();
-    const interactionBound =
-      controlResponse.status === probeResponse.status &&
-      responseDigest(controlResponse) === responseDigest(probeResponse);
+    const interactionBound = [controlResponse, probeResponse].every((response) =>
+      htmlInteractionBoundToPath(response, interactionUrl.pathname),
+    );
+    const configuredOrigin = new URL(this.admin.endpoints.app).origin;
+    const recoveryPassed =
+      controlResponse.status === requirement.control.expectedStatus &&
+      probeResponse.status === requirement.expected.status &&
+      htmlPolicyRetainedAcrossResponses(
+        [controlResponse, probeResponse],
+        requirement.expected.headerContract,
+        configuredOrigin,
+      );
     return this.buildObservation(
       requirement,
       controlResponse,
@@ -264,7 +275,7 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
         'interaction-identity-remains-bound-to-the-created-authorization-request': interactionBound,
         'no-production-config-mutated': before === after,
       }),
-      interactionBound,
+      recoveryPassed,
     );
   }
 
@@ -379,17 +390,18 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     try {
       const context = await browser.newContext({ ignoreHTTPSErrors: true });
       const healthy = await this.submitForgotPassword(context);
-      const probe = await this.dependencies.whileUnavailable('mailhog', () =>
+      const probe = await this.dependencies.observePasswordResetMailFailure(() =>
         this.submitForgotPassword(context),
       );
       const recovery = await this.submitForgotPassword(context);
       return this.buildObservation(
         requirement,
         healthy,
-        probe,
+        probe.response,
         this.namedStateObservations(requirement, {
-          'protected-state-fingerprint-after-equals-before': unobserved,
-          'no-partial-durable-effect': unobserved,
+          'exactly-one-probe-recovery-job-has-valid-failure-state':
+            probe.integrity.validFailureState,
+          'probe-recovery-token-is-job-bound-without-orphans': probe.integrity.validTokenOwnership,
         }),
         recovery.status === requirement.control.expectedStatus,
         undefined,

@@ -3,7 +3,7 @@
  *
  * All routes are under `/api/admin/applications` and require
  * admin authentication (Bearer JWT). Provides CRUD for applications,
- * status lifecycle (activate, deactivate, archive), and nested
+ * status lifecycle (activate, deactivate), and nested
  * module management (CRUD, deactivate).
  *
  * Route structure:
@@ -11,13 +11,15 @@
  *   GET    /                                — List applications (paginated)
  *   GET    /:id                             — Get application by ID
  *   PUT    /:id                             — Update application
- *   POST   /:id/archive                     — Archive application
+ *   DELETE /:id                             — Delete application
  *   POST   /:id/activate                    — Activate application
  *   POST   /:id/deactivate                  — Deactivate application
  *   POST   /:id/modules                     — Create module
  *   GET    /:id/modules                     — List modules
  *   PUT    /:id/modules/:moduleId           — Update module
+ *   POST   /:id/modules/:moduleId/activate   — Activate module
  *   POST   /:id/modules/:moduleId/deactivate — Deactivate module
+ *   DELETE /:appId/modules/:moduleId        — Delete module
  *
  * Error mapping:
  *   ApplicationNotFoundError → 404
@@ -56,7 +58,7 @@ const updateApplicationSchema = z.object({
 const listApplicationsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['active', 'inactive', 'archived']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -66,7 +68,7 @@ const listApplicationsSchema = z.object({
 const listApplicationsCursorSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.enum(['active', 'inactive', 'archived']).optional(),
+  status: z.enum(['active', 'inactive']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -83,6 +85,15 @@ const createModuleSchema = z.object({
 const updateModuleSchema = z.object({
   name: z.string().min(1).max(255).optional(),
   description: z.string().max(2000).nullable().optional(),
+});
+
+/** Parameters accepted by application deletion. */
+const applicationIdentifierSchema = z.object({ id: z.string().uuid() });
+
+/** Parent-qualified parameters accepted by module deletion. */
+const moduleIdentifierSchema = z.object({
+  appId: z.string().uuid(),
+  moduleId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -204,11 +215,12 @@ export function createApplicationRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/archive — Archive application
+  // DELETE /:id — Delete application
   // -------------------------------------------------------------------------
-  router.post('/:id/archive', requirePermission(ADMIN_PERMISSIONS.APP_ARCHIVE), async (ctx) => {
+  router.delete('/:id', requirePermission(ADMIN_PERMISSIONS.APP_DELETE), async (ctx) => {
     try {
-      await applicationService.archiveApplication(ctx.params.id);
+      const { id } = applicationIdentifierSchema.parse(ctx.params);
+      await applicationService.deleteApplication(id, ctx.state.adminUser?.id);
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);
@@ -270,8 +282,24 @@ export function createApplicationRouter(): Router {
     async (ctx) => {
       try {
         const body = updateModuleSchema.parse(ctx.request.body);
-        const mod = await applicationService.updateModule(ctx.params.moduleId, body);
+        const mod = await applicationService.updateModule(ctx.params.id, ctx.params.moduleId, body);
         ctx.body = { data: mod };
+      } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // POST /:id/modules/:moduleId/activate — Activate module
+  // -------------------------------------------------------------------------
+  router.post(
+    '/:id/modules/:moduleId/activate',
+    requirePermission(ADMIN_PERMISSIONS.APP_UPDATE),
+    async (ctx) => {
+      try {
+        await applicationService.activateModule(ctx.params.id, ctx.params.moduleId);
+        ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
       }
@@ -299,9 +327,31 @@ export function createApplicationRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.APP_UPDATE),
     async (ctx) => {
       try {
-        await applicationService.deactivateModule(ctx.params.moduleId);
+        await applicationService.deactivateModule(ctx.params.id, ctx.params.moduleId);
         ctx.status = 204;
       } catch (err) {
+        handleError(ctx, err);
+      }
+    },
+  );
+
+  // -------------------------------------------------------------------------
+  // DELETE /:appId/modules/:moduleId — Delete module
+  // -------------------------------------------------------------------------
+  router.delete(
+    '/:appId/modules/:moduleId',
+    requirePermission(ADMIN_PERMISSIONS.MODULE_DELETE),
+    async (ctx) => {
+      try {
+        moduleIdentifierSchema.parse(ctx.params);
+        await applicationService.deleteModule(
+          ctx.params.appId,
+          ctx.params.moduleId,
+          ctx.state.adminUser?.id,
+        );
+        ctx.status = 204;
+      } catch (err) {
+        if (err instanceof ApplicationNotFoundError) ctx.throw(404, 'Module not found');
         handleError(ctx, err);
       }
     },

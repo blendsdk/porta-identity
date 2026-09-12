@@ -22,11 +22,6 @@ export interface SlugValidation {
   slug: string;
 }
 
-export interface DestroyResult {
-  deleted: boolean;
-  counts?: Record<string, number>;
-}
-
 export interface OrganizationsDomain {
   list(params?: ListParams): Promise<PaginatedResponse<Organization>>;
   listAll(params?: Omit<ListParams, 'page' | 'cursor'>): Promise<Organization[]>;
@@ -35,9 +30,8 @@ export interface OrganizationsDomain {
   update(idOrSlug: string, input: UpdateOrganizationInput, etag?: string): Promise<Organization>;
   suspend(idOrSlug: string): Promise<void>;
   activate(idOrSlug: string): Promise<void>;
-  archive(idOrSlug: string): Promise<void>;
-  restore(idOrSlug: string): Promise<void>;
-  destroy(idOrSlug: string, params?: { dryRun?: boolean }): Promise<DestroyResult>;
+  /** Permanently delete an organization and its owned data. */
+  delete(idOrSlug: string): Promise<void>;
   validateSlug(slug: string): Promise<SlugValidation>;
   getHistory(idOrSlug: string, params?: ListParams): Promise<HistoryEntry[]>;
 }
@@ -83,21 +77,8 @@ export function createOrganizationsDomain(transport: HttpTransport): Organizatio
       await transport.request({ method: 'POST', path: `${base}/${idOrSlug}/activate` });
     },
 
-    async archive(idOrSlug) {
-      await transport.request({ method: 'POST', path: `${base}/${idOrSlug}/archive` });
-    },
-
-    async restore(idOrSlug) {
-      await transport.request({ method: 'POST', path: `${base}/${idOrSlug}/restore` });
-    },
-
-    async destroy(idOrSlug, params?) {
-      const res = await transport.request({
-        method: 'DELETE',
-        path: `${base}/${idOrSlug}`,
-        params: params?.dryRun ? { dryRun: true } : undefined,
-      });
-      return res.body as DestroyResult;
+    async delete(idOrSlug) {
+      await transport.request({ method: 'DELETE', path: `${base}/${idOrSlug}` });
     },
 
     async validateSlug(slug) {

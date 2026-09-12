@@ -18,7 +18,12 @@
  */
 
 import { getPool } from '../lib/database.js';
-import type { Permission, PermissionRow, CreatePermissionInput, UpdatePermissionInput } from './types.js';
+import type {
+  Permission,
+  PermissionRow,
+  CreatePermissionInput,
+  UpdatePermissionInput,
+} from './types.js';
 import { mapRowToPermission } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -59,21 +64,45 @@ export async function insertPermission(input: CreatePermissionInput): Promise<Pe
 // ---------------------------------------------------------------------------
 
 /**
- * Find a permission by its UUID.
+ * Find a permission through its authoritative application parent.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Permission UUID
  * @returns Permission or null if not found
  */
-export async function findPermissionById(id: string): Promise<Permission | null> {
+export async function findPermissionById(
+  applicationId: string,
+  id: string,
+): Promise<Permission | null> {
   const pool = getPool();
 
   const result = await pool.query<PermissionRow>(
-    'SELECT * FROM permissions WHERE id = $1',
-    [id],
+    'SELECT * FROM permissions WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
   );
 
   if (result.rows.length === 0) return null;
   return mapRowToPermission(result.rows[0]);
+}
+
+/**
+ * Lock and return a permission through its authoritative application parent.
+ *
+ * @param applicationId - Parent application UUID
+ * @param id - Permission UUID
+ * @returns Locked permission or null when the parent-child pair does not exist
+ */
+export async function lockPermissionById(
+  applicationId: string,
+  id: string,
+): Promise<Permission | null> {
+  const result = await getPool().query<PermissionRow>(
+    `SELECT * FROM permissions
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, id],
+  );
+  return result.rows[0] ? mapRowToPermission(result.rows[0]) : null;
 }
 
 /**
@@ -108,12 +137,14 @@ export async function findPermissionBySlug(
  * Only explicitly provided fields (not undefined) are included in the
  * UPDATE statement. Null is a valid value for description (clears it).
  *
+ * @param applicationId - Parent application UUID
  * @param id - Permission UUID
  * @param input - Fields to update (name, description only)
  * @returns Updated permission
  * @throws Error if permission not found or no fields provided
  */
 export async function updatePermission(
+  applicationId: string,
   id: string,
   input: UpdatePermissionInput,
 ): Promise<Permission> {
@@ -121,8 +152,8 @@ export async function updatePermission(
 
   // Build dynamic SET clause — only name and description are updatable
   const setClauses: string[] = [];
-  const values: unknown[] = [id]; // $1 is always the ID
-  let paramIndex = 2;
+  const values: unknown[] = [applicationId, id];
+  let paramIndex = 3;
 
   if (input.name !== undefined) {
     setClauses.push(`name = $${paramIndex}`);
@@ -139,7 +170,8 @@ export async function updatePermission(
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE permissions SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`;
+  const sql = `UPDATE permissions SET ${setClauses.join(', ')}
+    WHERE application_id = $1 AND id = $2 RETURNING *`;
   const result = await pool.query<PermissionRow>(sql, values);
 
   if (result.rows.length === 0) {
@@ -149,28 +181,121 @@ export async function updatePermission(
   return mapRowToPermission(result.rows[0]);
 }
 
+/**
+ * Check whether a module belongs to an application before permission creation.
+ *
+ * The parent predicate prevents a globally valid module UUID from being attached
+ * to a permission owned by another application.
+ *
+ * @param applicationId - Parent application UUID
+ * @param moduleId - Module UUID supplied by the permission request
+ * @returns True when the module exists beneath the application
+ */
+export async function lockPermissionModule(
+  applicationId: string,
+  moduleId: string,
+): Promise<boolean> {
+  const result = await getPool().query<{ id: string }>(
+    `SELECT id FROM application_modules
+     WHERE application_id = $1 AND id = $2
+     FOR KEY SHARE`,
+    [applicationId, moduleId],
+  );
+  return result.rows.length === 1;
+}
+
 // ---------------------------------------------------------------------------
 // Delete
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a permission by ID.
- *
- * Returns true if a row was deleted, false if the permission didn't exist.
- * CASCADE constraints will automatically remove related role_permissions entries.
- *
- * @param id - Permission UUID
- * @returns true if deleted, false if not found
- */
-export async function deletePermission(id: string): Promise<boolean> {
+/** Lock, capture, and delete a permission through its authoritative application parent. */
+export async function deletePermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<{
+  permission: Permission;
+  userIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+} | null> {
+  const capture = await capturePermissionForDeletion(applicationId, permissionId);
+  if (!capture) return null;
+  await deleteCapturedPermission(applicationId, permissionId);
+  return capture;
+}
+
+/** Lock and capture a permission without deleting it. */
+export async function capturePermissionForDeletion(
+  applicationId: string,
+  permissionId: string,
+): Promise<{
+  permission: Permission;
+  userIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+} | null> {
   const pool = getPool();
-
-  const result = await pool.query(
-    'DELETE FROM permissions WHERE id = $1',
-    [id],
+  const target = await pool.query<PermissionRow>(
+    `SELECT * FROM permissions WHERE application_id = $1 AND id = $2 FOR UPDATE`,
+    [applicationId, permissionId],
   );
+  if (!target.rows[0]) return null;
+  await pool.query(
+    `SELECT role.id
+     FROM roles role
+     JOIN role_permissions mapping ON mapping.role_id = role.id
+     WHERE mapping.permission_id = $1
+       AND role.application_id = $2
+     ORDER BY role.id
+     FOR UPDATE OF role`,
+    [permissionId, applicationId],
+  );
+  const graph = await pool.query<{
+    user_ids: string[];
+    role_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH affected_roles AS (
+       SELECT mapping.role_id
+       FROM role_permissions mapping
+       JOIN roles role ON role.id = mapping.role_id
+       WHERE mapping.permission_id = $1
+         AND role.application_id = $2
+     ), affected_users AS (
+       SELECT DISTINCT assignment.user_id FROM user_roles assignment
+       WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(SELECT role_id FROM affected_roles ORDER BY role_id) AS role_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(SELECT user_id::text FROM affected_users))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $2
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [permissionId, applicationId],
+  );
+  return {
+    permission: mapRowToPermission(target.rows[0]),
+    userIds: graph.rows[0]!.user_ids,
+    roleIds: graph.rows[0]!.role_ids,
+    grantIds: graph.rows[0]!.grant_ids,
+  };
+}
 
-  return (result.rowCount ?? 0) > 0;
+/** Physically delete a permission previously locked through its parent. */
+export async function deleteCapturedPermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<void> {
+  await getPool().query('DELETE FROM permissions WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    permissionId,
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -222,10 +347,7 @@ export async function listPermissionsByApplication(
  * @param slug - Slug to check
  * @returns true if the slug already exists
  */
-export async function permissionSlugExists(
-  applicationId: string,
-  slug: string,
-): Promise<boolean> {
+export async function permissionSlugExists(applicationId: string, slug: string): Promise<boolean> {
   const pool = getPool();
 
   const result = await pool.query<{ exists: boolean }>(
@@ -233,28 +355,4 @@ export async function permissionSlugExists(
     [applicationId, slug],
   );
   return result.rows[0].exists;
-}
-
-// ---------------------------------------------------------------------------
-// Role count (deletion guard)
-// ---------------------------------------------------------------------------
-
-/**
- * Count roles that have a specific permission assigned.
- *
- * Used by the service layer as a deletion guard: if roles have this
- * permission, it cannot be deleted without force=true.
- *
- * @param permissionId - Permission UUID
- * @returns Number of roles with this permission
- */
-export async function countRolesWithPermission(permissionId: string): Promise<number> {
-  const pool = getPool();
-
-  const result = await pool.query<{ count: string }>(
-    'SELECT COUNT(*)::int as count FROM role_permissions WHERE permission_id = $1',
-    [permissionId],
-  );
-
-  return parseInt(result.rows[0].count, 10);
 }

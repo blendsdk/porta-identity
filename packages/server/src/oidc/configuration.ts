@@ -19,8 +19,13 @@
 import type { OidcTtlConfig } from '../lib/system-config.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { config } from '../config/index.js';
-import { HTML_CSP } from '../middleware/security-headers.js';
+import { buildHtmlCsp, HTML_CSP } from '../middleware/security-headers.js';
 import { renderPage } from '../auth/template-engine.js';
+import {
+  DEFAULT_BRANDING_PRIMARY_COLOR,
+  resolveEffectiveBranding,
+  type EffectiveBranding,
+} from '../auth/effective-branding.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { logger } from '../lib/logger.js';
 import { getUserById } from '../users/service.js';
@@ -37,7 +42,16 @@ export interface BuildProviderConfigParams {
   /** Cookie signing keys from application config (supports rotation) */
   cookieKeys: string[];
   /** Account finder function — looks up users by subject ID */
-  findAccount: (ctx: unknown, sub: string) => Promise<{ accountId: string; claims: (use: string, scope: string) => Promise<Record<string, unknown>> } | undefined>;
+  findAccount: (
+    ctx: unknown,
+    sub: string,
+  ) => Promise<
+    | {
+        accountId: string;
+        claims: (use: string, scope: string) => Promise<Record<string, unknown>>;
+      }
+    | undefined
+  >;
   /** Adapter class factory — node-oidc-provider instantiates with `new` */
   adapterFactory: unknown;
   /** Interaction URL builder — returns the login/consent URL for a given interaction */
@@ -56,30 +70,14 @@ export interface BuildProviderConfigParams {
  *
  * @returns Default branding with Porta's standard blue primary color
  */
-export function buildDefaultBranding() {
+export function buildDefaultBranding(): EffectiveBranding {
   return {
-    logoUrl: null as string | null,
-    faviconUrl: null as string | null,
-    primaryColor: '#3B82F6',
+    logoUrl: null,
+    faviconUrl: null,
+    primaryColor: DEFAULT_BRANDING_PRIMARY_COLOR,
     companyName: '',
-    customCss: null as string | null,
-  };
-}
-
-/**
- * Build branding context from a resolved organization.
- * Maps Organization entity fields to the TemplateContext branding shape.
- *
- * @param org - The resolved organization
- * @returns Branding object for TemplateContext
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
+    customCss: null,
+    imageSources: [],
   };
 }
 
@@ -151,7 +149,7 @@ export async function logoutSourceHook(ctx: any, form: string): Promise<void> {
   try {
     // Resolve org for branding (best-effort, defaults on failure)
     const org = await resolveOrgForProviderHook(ctx);
-    const branding = org ? buildBrandingFromOrg(org) : buildDefaultBranding();
+    const branding = org ? await resolveEffectiveBranding(org) : buildDefaultBranding();
 
     // Resolve locale and translation function
     const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');
@@ -189,7 +187,7 @@ export async function logoutSourceHook(ctx: any, form: string): Promise<void> {
     });
 
     ctx.type = 'text/html';
-    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.set('Content-Security-Policy', buildHtmlCsp(branding.imageSources));
     ctx.body = html;
   } catch (err) {
     // Fallback: render minimal HTML if template engine fails.
@@ -231,13 +229,14 @@ export async function postLogoutSuccessSourceHook(ctx: any): Promise<void> {
     });
 
     ctx.type = 'text/html';
-    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.set('Content-Security-Policy', buildHtmlCsp(branding.imageSources));
     ctx.body = html;
   } catch (err) {
     logger.error({ err }, 'Failed to render custom post-logout page');
     ctx.type = 'text/html';
     ctx.set('Content-Security-Policy', HTML_CSP);
-    ctx.body = '<!DOCTYPE html><html><body><h1>Signed out</h1><p>You have been signed out successfully.</p></body></html>';
+    ctx.body =
+      '<!DOCTYPE html><html><body><h1>Signed out</h1><p>You have been signed out successfully.</p></body></html>';
   }
 }
 
@@ -275,7 +274,7 @@ function isSessionNotFoundError(
  *
  * Resolves the session cookie name from the provider (defaulting to
  * `_session`) and delegates to the shared, signing-free `clearSessionCookies`
- * helper so the middleware and this hook use one tested code path (PF-002).
+ * helper so the middleware and this hook use one tested code path.
  *
  * @param ctx - oidc-provider's enhanced Koa context
  */
@@ -285,7 +284,9 @@ function clearProviderSessionCookies(
 ): void {
   const cookieNameFn = ctx?.oidc?.provider?.cookieName;
   const sessionCookieName =
-    typeof cookieNameFn === 'function' ? cookieNameFn.call(ctx.oidc.provider, 'session') : '_session';
+    typeof cookieNameFn === 'function'
+      ? cookieNameFn.call(ctx.oidc.provider, 'session')
+      : '_session';
   clearSessionCookies(ctx, sessionCookieName);
 }
 
@@ -314,14 +315,14 @@ export async function renderErrorHook(
   try {
     // Resolve org from client context for branding (best-effort)
     const org = await resolveOrgForProviderHook(ctx);
-    const branding = org ? buildBrandingFromOrg(org) : buildDefaultBranding();
+    const branding = org ? await resolveEffectiveBranding(org) : buildDefaultBranding();
 
     // Resolve locale and translation function
     const locale = await resolveLocale(undefined, undefined, org?.defaultLocale ?? '');
     const t = getTranslationFunction(locale, org?.slug);
 
     // ---------------------------------------------------------------------
-    // Graceful SessionNotFound recovery (Bug #1, AR-4).
+    // Gracefully recover when the provider cannot resolve its session.
     //
     // node-oidc-provider throws `SessionNotFound` during authorize/resume when
     // the interaction's recorded session uid no longer matches the live session
@@ -342,9 +343,7 @@ export async function renderErrorHook(
       clearProviderSessionCookies(ctx);
     }
 
-    const errorMessage = isSessionNotFound
-      ? t('errors.session_expired')
-      : t('errors.generic');
+    const errorMessage = isSessionNotFound ? t('errors.session_expired') : t('errors.generic');
 
     // SECURITY: Never expose raw error_description to the user — it may
     // contain internal details. Use generic i18n message instead.
@@ -360,7 +359,7 @@ export async function renderErrorHook(
     });
 
     ctx.type = 'text/html';
-    ctx.set('Content-Security-Policy', HTML_CSP);
+    ctx.set('Content-Security-Policy', buildHtmlCsp(branding.imageSources));
     ctx.body = html;
   } catch (err) {
     logger.error({ err }, 'Failed to render custom error page');
@@ -388,7 +387,7 @@ export async function renderErrorHook(
  * scopes, and `issueRefreshToken` returns false — so no refresh token is minted.
  * This is exactly the CLI failure ("no refresh_token available" ~1h later).
  *
- * The upgrade is strictly gated (AR-6 / AR-7): only when the request asked for
+ * The upgrade is strictly gated: it applies only when the request asked for
  * `offline_access`, the client allows the `refresh_token` grant, AND the grant
  * does not already include `offline_access`. In every other case the grant is
  * returned unchanged — identical to the provider default — so no other client
@@ -402,16 +401,15 @@ export async function loadExistingGrant(
   ctx: any,
 ): Promise<unknown | undefined> {
   const grantId =
-    ctx.oidc.result?.consent?.grantId ||
-    ctx.oidc.session.grantIdFor(ctx.oidc.client.clientId);
+    ctx.oidc.result?.consent?.grantId || ctx.oidc.session.grantIdFor(ctx.oidc.client.clientId);
 
   if (!grantId) return undefined;
 
   const grant = await ctx.oidc.provider.Grant.find(grantId);
   if (!grant) return undefined;
 
-  // AR-6/AR-7: upgrade an existing grant to include offline_access when the
-  // request asked for it, the client allows refresh_token, and it's missing.
+  // Upgrade an existing grant only when the request asked for offline_access,
+  // the client allows refresh_token, and the scope is missing.
   const requestedScopes = String(ctx.oidc.params?.scope ?? '')
     .split(' ')
     .filter(Boolean);
@@ -446,8 +444,11 @@ export async function loadExistingGrant(
  * @param params - All dependencies for the provider configuration
  * @returns Complete Configuration object for node-oidc-provider
  */
-export function buildProviderConfiguration(params: BuildProviderConfigParams): Record<string, unknown> {
-  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS } = params;
+export function buildProviderConfiguration(
+  params: BuildProviderConfigParams,
+): Record<string, unknown> {
+  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS } =
+    params;
 
   return {
     // Adapter — hybrid Postgres/Redis via factory
@@ -502,10 +503,11 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
       ClientCredentials: 'opaque',
     },
 
-    // PKCE — required for all authorization code flows, S256 only.
-    // This is a security best practice that prevents authorization code interception.
+    // Public authorization-code clients always require PKCE. Confidential clients use their
+    // persisted setting, while S256 remains the only accepted challenge method.
     pkce: {
-      required: () => true,
+      required: (_ctx: unknown, client: Record<string, unknown>) =>
+        client['urn:porta:client_type'] === 'public' || client['urn:porta:require_pkce'] === true,
       methods: ['S256'],
     },
 
@@ -530,11 +532,12 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
       client: { grantTypeAllowed: (type: string) => boolean },
       code: { scopes: Set<string> },
     ) => {
-      return client.grantTypeAllowed('refresh_token') && (
-        code.scopes.has('offline_access') ||
-        // Fallback: also issue for confidential web clients (web + auth method != none)
-        ((client as Record<string, unknown>).applicationType === 'web' &&
-         (client as Record<string, unknown>).tokenEndpointAuthMethod !== 'none')
+      return (
+        client.grantTypeAllowed('refresh_token') &&
+        (code.scopes.has('offline_access') ||
+          // Fallback: also issue for confidential web clients (web + auth method != none)
+          ((client as Record<string, unknown>).applicationType === 'web' &&
+            (client as Record<string, unknown>).tokenEndpointAuthMethod !== 'none'))
       );
     },
 
@@ -553,14 +556,29 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
       openid: [
         'sub',
         // RBAC claims — always included
-        'roles', 'permissions',
+        'roles',
+        'permissions',
         // Custom ERP claims — always included
-        'department', 'employee_id', 'cost_center', 'job_title',
+        'department',
+        'employee_id',
+        'cost_center',
+        'job_title',
       ],
       profile: [
-        'name', 'given_name', 'family_name', 'middle_name', 'nickname',
-        'preferred_username', 'profile', 'picture', 'website',
-        'gender', 'birthdate', 'zoneinfo', 'locale', 'updated_at',
+        'name',
+        'given_name',
+        'family_name',
+        'middle_name',
+        'nickname',
+        'preferred_username',
+        'profile',
+        'picture',
+        'website',
+        'gender',
+        'birthdate',
+        'zoneinfo',
+        'locale',
+        'updated_at',
       ],
       email: ['email', 'email_verified'],
       address: ['address'],
@@ -572,7 +590,7 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
     grantTypes: ['authorization_code', 'client_credentials', 'refresh_token'],
 
     // Interaction URL — where users are redirected for login/consent.
-    // Placeholder for RD-03; real login UI implemented in RD-07.
+    // The host application owns the concrete login and consent interaction UI.
     interactions: {
       url: interactionUrl,
     },
@@ -587,8 +605,18 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
     // This is the same check used by the HSTS header in security-headers.ts.
     cookies: {
       keys: cookieKeys,
-      long: { signed: true, httpOnly: true, sameSite: 'lax' as const, secure: config.issuerBaseUrl.startsWith('https://') },
-      short: { signed: true, httpOnly: true, sameSite: 'lax' as const, secure: config.issuerBaseUrl.startsWith('https://') },
+      long: {
+        signed: true,
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        secure: config.issuerBaseUrl.startsWith('https://'),
+      },
+      short: {
+        signed: true,
+        httpOnly: true,
+        sameSite: 'lax' as const,
+        secure: config.issuerBaseUrl.startsWith('https://'),
+      },
     },
 
     // CORS handler — checks client's allowed_origins
@@ -607,6 +635,8 @@ export function buildProviderConfiguration(params: BuildProviderConfigParams): R
         'client_name',
         'urn:porta:allowed_origins',
         'urn:porta:client_type',
+        'urn:porta:require_pkce',
+        'urn:porta:internal_application_id',
         // Per-client login method override. Raw value from findForOidc():
         //   null       → inherit organization.defaultLoginMethods
         //   string[]   → explicit override (subset of ['password','magic_link'])

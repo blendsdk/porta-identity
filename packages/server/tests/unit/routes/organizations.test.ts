@@ -14,8 +14,7 @@ vi.mock('../../../src/organizations/service.js', () => ({
   updateOrganizationBranding: vi.fn(),
   suspendOrganization: vi.fn(),
   activateOrganization: vi.fn(),
-  archiveOrganization: vi.fn(),
-  restoreOrganization: vi.fn(),
+  deleteOrganization: vi.fn(),
   listOrganizations: vi.fn(),
   validateSlugAvailability: vi.fn(),
 }));
@@ -412,6 +411,43 @@ describe('organization routes', () => {
 
       expect(ctx.body).toEqual({ data: org });
     });
+
+    it('should trim HTTPS fallback URLs before updating branding', async () => {
+      const org = createTestOrg({ brandingLogoUrl: 'https://assets.example.test/logo.png' });
+      (
+        organizationService.updateOrganizationBranding as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(org);
+      const router = createOrganizationRouter();
+      const layer = router.stack.find(
+        (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id/branding',
+      );
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { logoUrl: '  https://assets.example.test/logo.png  ' },
+      });
+
+      await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+      expect(organizationService.updateOrganizationBranding).toHaveBeenCalledWith('org-uuid-1', {
+        logoUrl: 'https://assets.example.test/logo.png',
+      });
+    });
+
+    it('should reject non-loopback HTTP fallback URLs', async () => {
+      const router = createOrganizationRouter();
+      const layer = router.stack.find(
+        (l) => l.methods.includes('PUT') && l.path === '/api/admin/organizations/:id/branding',
+      );
+      const ctx = createMockCtx({
+        params: { id: 'org-uuid-1' },
+        body: { logoUrl: 'http://assets.example.test/logo.png' },
+      });
+
+      await expect(
+        layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn()),
+      ).rejects.toMatchObject({ status: 400, message: 'Organization request is invalid' });
+      expect(organizationService.updateOrganizationBranding).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -465,46 +501,6 @@ describe('organization routes', () => {
       const router = createOrganizationRouter();
       const layer = router.stack.find(
         (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations/:id/activate',
-      );
-
-      const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
-      const next = vi.fn();
-
-      await layer!.stack[layer!.stack.length - 1](ctx as never, next);
-
-      expect(ctx.status).toBe(204);
-    });
-  });
-
-  describe('POST /:id/archive', () => {
-    it('should return 204 on success', async () => {
-      (organizationService.archiveOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
-        undefined,
-      );
-
-      const router = createOrganizationRouter();
-      const layer = router.stack.find(
-        (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations/:id/archive',
-      );
-
-      const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
-      const next = vi.fn();
-
-      await layer!.stack[layer!.stack.length - 1](ctx as never, next);
-
-      expect(ctx.status).toBe(204);
-    });
-  });
-
-  describe('POST /:id/restore', () => {
-    it('should return 204 on success', async () => {
-      (organizationService.restoreOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
-        undefined,
-      );
-
-      const router = createOrganizationRouter();
-      const layer = router.stack.find(
-        (l) => l.methods.includes('POST') && l.path === '/api/admin/organizations/:id/restore',
       );
 
       const ctx = createMockCtx({ params: { id: 'org-uuid-1' } });
@@ -583,8 +579,7 @@ describe('organization routes', () => {
       expect(paths).toContain('PUT /api/admin/organizations/:id/branding');
       expect(paths).toContain('POST /api/admin/organizations/:id/suspend');
       expect(paths).toContain('POST /api/admin/organizations/:id/activate');
-      expect(paths).toContain('POST /api/admin/organizations/:id/archive');
-      expect(paths).toContain('POST /api/admin/organizations/:id/restore');
+      expect(paths).toContain('DELETE /api/admin/organizations/:idOrSlug');
     });
   });
 });

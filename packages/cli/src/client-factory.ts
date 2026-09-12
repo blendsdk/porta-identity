@@ -15,7 +15,12 @@
 import { createPortaClient } from '@portaidentity/sdk';
 import { createNodeTransport, createCliAuth } from '@portaidentity/sdk/node';
 import type { PortaClient } from '@portaidentity/sdk';
-import { resolveServerUrl, type GlobalOptions } from './global-options.js';
+import { normalizeServerOrigin, resolveServerUrl, type GlobalOptions } from './global-options.js';
+import {
+  createCliCredentialPersistence,
+  getCredentialsPath,
+  loadCredentials,
+} from './credential-store.js';
 
 // ---------------------------------------------------------------------------
 // Client Creation
@@ -35,6 +40,13 @@ import { resolveServerUrl, type GlobalOptions } from './global-options.js';
  */
 export function createClient(options: GlobalOptions): PortaClient {
   const baseUrl = resolveServerUrl(options);
+  const credentials = loadCredentials();
+  if (
+    credentials &&
+    normalizeServerOrigin(credentials.server).origin !== normalizeServerOrigin(baseUrl).origin
+  ) {
+    throw new Error('Stored credentials belong to a different Porta server. Run porta login.');
+  }
 
   // Handle --insecure flag for self-signed certificates
   // This must be set before creating the transport so fetch() picks it up
@@ -42,7 +54,14 @@ export function createClient(options: GlobalOptions): PortaClient {
     process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
   }
 
-  const auth = createCliAuth();
+  const credentialsPath = getCredentialsPath();
+  const auth = createCliAuth({
+    credentialsPath,
+    credentialPersistence: createCliCredentialPersistence({
+      credentialsPath,
+      lockTimeoutMs: 5_000,
+    }),
+  });
   const transport = createNodeTransport({ baseUrl, auth });
 
   return createPortaClient({ transport });

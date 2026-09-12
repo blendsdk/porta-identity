@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-09-11
 
 ## Overview
 
@@ -17,12 +17,12 @@ graph TB
 
     subgraph "Authentication Layer"
         OIDC[OIDC Protocol<br/>node-oidc-provider]
-        ADMIN_AUTH[Admin JWT Auth<br/>ES256 Bearer]
+        ADMIN_AUTH[Admin Opaque Token Auth<br/>Provider Lookup]
         PKCE[PKCE Enforcement<br/>Public Clients]
     end
 
     subgraph "Authorization Layer"
-        RBAC[RBAC Middleware<br/>porta-admin role]
+        RBAC[RBAC Middleware<br/>Canonical Admin Roles]
         TENANT[Tenant Isolation<br/>org-scoped queries]
     end
 
@@ -82,6 +82,16 @@ Client secrets use a two-layer hashing strategy:
 1. **SHA-256 pre-hash** — Computed at registration, stored in `secret_sha256` column for `client_secret_post` authentication (node-oidc-provider uses SHA-256 for comparison)
 2. **Argon2id full hash** — Stored in `secret_hash` column for offline verification
 
+Modern rows use the SHA-256 index to select one Argon2id candidate. Legacy rows without that index
+are checked sequentially with a maximum of 10 candidates, one admitted verification batch per
+process, and the existing issuer/client Redis rate limit. Admission ends before control returns to
+`node-oidc-provider`. This bounds expensive hashing while keeping the provider responsible for the
+actual protocol authentication result.
+
+Rotation supports at most 10 active secrets for an eligible confidential client. The bound and the
+client lifecycle check are enforced atomically under the parent row lock; revocation updates only an
+active row so concurrent requests cannot both report the same transition.
+
 ### 2FA Secret Encryption: AES-256-GCM
 
 TOTP secrets are encrypted at rest using AES-256-GCM:
@@ -127,12 +137,42 @@ sequenceDiagram
 The admin API authenticates against Porta's own OIDC tokens:
 
 1. Admin user logs in via OIDC to the **super-admin organization**
-2. Token is signed with Porta's own ES256 keys
-3. Admin auth middleware validates the token against those same keys
-4. Middleware verifies issuer matches the super-admin org URL
-5. Middleware checks user has `porta-admin` RBAC role
+2. Admin auth middleware resolves the opaque Bearer token through the provider's authoritative
+   `AccessToken` model
+3. Middleware loads the active user and verifies membership in the super-admin organization
+4. Middleware resolves the canonical `porta-admin` application
+5. Only recognized built-in roles assigned from that application contribute code-defined Admin
+   capabilities; a matching role slug from another application grants nothing
 
 This self-authentication pattern means Porta has **no external auth dependency** for its admin API.
+Missing, expired, revoked, or rejected tokens receive a fixed authentication failure without
+revealing lookup details.
+
+### Admin mutation request admission
+
+Admin CORS and the existing per-IP mutation rate limiter run before request-body parsing and Admin
+authentication. This order lets browser preflight requests complete without credentials and rejects
+rate-limited uploads before allocating their JSON bodies. Ordinary parsed routes retain the 100 KiB
+limit. Only exact logo/favicon `PUT` routes receive the 3 MiB encoded-body allowance needed for a
+2 MiB logo represented as base64.
+
+Authentication and operation-specific permission checks still run before resource lookup. Branding
+asset routes then validate and resolve the organization, so callers without the required capability
+cannot use response differences to discover organization existence.
+
+### Public branding isolation
+
+The anonymous `GET /:orgSlug/branding/:type` route exposes only validated image bytes. It performs
+one exact organization lookup and one exact asset lookup; missing organizations, invalid asset
+types, and empty slots share the same `404` response. It returns no organization identifiers,
+filenames, storage metadata, or cookies. SVG responses receive a sandboxed CSP with no script or
+external network access.
+
+Authentication pages and emails use one effective-branding resolver. Uploaded assets take
+precedence over validated configured URLs, followed by the existing text and color defaults.
+HTML routes copy the resolver's unique image origins into request state, and the security-header
+middleware adds only those validated origins to `img-src`. The base policy continues to allow
+same-origin and `data:` images for uploaded assets and TOTP QR codes.
 
 ### Magic Link Authentication
 
@@ -207,6 +247,10 @@ SELECT * FROM users WHERE id = $1;
 - Organization-prefixed user and role routes validate that the target user belongs to the
   `:orgId` path organization after permission checks and before the handler runs. Foreign and
   missing targets both return `404`, avoiding cross-tenant existence disclosure.
+- OIDC role and permission claims are filtered by the requesting client's application UUID. The
+  provider carries this UUID in private client metadata, validates it before querying RBAC, and
+  returns empty RBAC arrays when it is missing or malformed. The private identifier is not emitted
+  in tokens, UserInfo, introspection, discovery, rendered authentication output, errors, or logs.
 
 ### Cache Isolation
 
@@ -225,7 +269,7 @@ The tenant resolver middleware validates the organization from the URL path:
 
 1. Extract `orgSlug` from `/:orgSlug/*` route parameter
 2. Lookup organization (cache-first, DB fallback)
-3. Verify organization status: `active` → proceed, `suspended` → 403, `archived` → 410
+3. Verify organization status: `active` → proceed, `suspended` → 403
 4. Set `ctx.state.organization` for downstream handlers
 
 Cross-tenant requests are impossible because:
@@ -339,8 +383,63 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 
 - **New session on authentication** — prevents session fixation
 - **Configurable TTLs** — stored in `system_config` table
+- **Database-backed authority** — PostgreSQL tracking is persisted before Redis publication; missing, expired, or revoked tracking invalidates the cached Session
+- **Live reference checks** — cached OIDC artifacts are rejected when their referenced client, account, grant, or Session authorization is no longer live in PostgreSQL
 - **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
+
+## Permanent Deletion Authority
+
+Permanent deletion uses PostgreSQL as the synchronous authority boundary. Each of the eight domain
+services operates inside the request-owned transaction and follows this order:
+
+1. Lock the target and capture its bounded affected graph with parameterized, set-based queries.
+2. Revoke `admin_sessions` for exactly the affected users.
+3. Delete identifiable PostgreSQL `oidc_payloads` using captured users, public clients, and grants.
+4. Insert exactly one resource deletion audit event with safe target identity, state, and parent
+   metadata.
+5. Physically delete the target and let declared foreign-key cascades remove owned rows.
+6. Register one immutable cleanup descriptor that becomes runnable only after commit.
+
+Any failure through target deletion or audit insertion rolls back the transaction. Because the
+cleanup callback is registered on the transaction's post-commit boundary, rollback schedules no
+Redis work. Application deletion is deployment-global, so its affected-user and protocol capture
+can legitimately span organizations; organization and user deletion remain organization-qualified,
+and module, role, permission, and claim deletion remain application-qualified.
+
+The detached cleanup callback schedules one `setImmediate` Redis-only pass and returns without
+waiting for it. That pass deletes exact captured cache and grant keys, compares reusable
+organization/application slug entries with the deleted UUID before removing them, and performs one
+terminating scan of the closed `oidc:*` namespace for short-lived artifacts that reference captured
+users, public clients, grants, or Session authorization pairs. Malformed or unrelated entries are
+ignored. Cleanup failure is absorbed with one fixed identifier-free warning; there is no retry,
+worker, queue, or open PostgreSQL transaction. Live PostgreSQL validation remains authoritative if
+Redis cleanup is delayed or fails.
+
+Role and permission reductions reuse the same short transaction boundary. Permission and
+role-permission operations lock requested permission rows in stable UUID order before locking role
+rows. Permission deletion then rechecks only roles owned by the permission's application before it
+captures users and revokes their stored authority. User-role assignment locks the affected role,
+so it cannot cross that capture unnoticed. Authority additions do not log users out; they schedule
+only the affected users' RBAC cache keys for post-commit invalidation.
+
+When a role is removed from a user in the control-plane organization, the service locks that
+organization before locking the user and role targets. User deletion uses the same organization-
+first order, preventing the two rare administrative operations from deadlocking each other.
+
+Canonical `porta-admin` roles, permissions, and their mappings reject generic create, update,
+delete, and mapping operations. The direct initialization workflow writes those fixed definitions
+through repository functions before normal Admin authorization exists.
+
+Two control-plane guards prevent deletion from removing the ability to administer Porta:
+
+- The organization marked `is_super_admin` cannot be deleted through either the service or
+  repository boundary.
+- Deleting a user from that organization locks its single organization row before target/survivor
+  evaluation and requires another active user assigned the exact built-in `porta-super-admin` role
+  for the `porta-admin` application. Concurrent attempts therefore cannot both remove the last
+  qualifying administrator. A current administrator may delete their own account when a survivor
+  exists.
 
 ## Audit Trail
 
@@ -349,7 +448,7 @@ All security-relevant actions are logged to the `audit_log` table:
 | Event Category | Examples                                                          |
 | -------------- | ----------------------------------------------------------------- |
 | Authentication | `user.login_success`, `user.login_failed`, `user.magic_link_used` |
-| Account        | `user.created`, `user.suspended`, `user.password_changed`         |
+| Account        | `user.created`, `user.deactivated`, `user.password_changed`       |
 | Security       | `security.login_method_disabled`, `security.rate_limited`         |
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
 | System         | `system.config_changed`, `system.key_rotated`                     |
@@ -359,6 +458,12 @@ successful state-changing administrative request also writes a durable business 
 the same PostgreSQL transaction as its database mutation. A failed audit insert therefore rolls
 back that request's database changes. Bulk operations preserve their documented per-item
 transactions, while imports retain one manifest-wide transaction.
+
+The deletion events are `org.deleted`, `app.deleted`, `app.module.deleted`, `client.deleted`,
+`role.deleted`, `permission.deleted`, `claim.deleted`, and `user.deleted`. Audit foreign keys for
+the organization, subject user, and actor use `ON DELETE SET NULL`, so deletion preserves historical
+evidence. Generic mutation audit resolves its actor through the live user table and permits a null
+result, allowing self-deletion to commit without retaining a live account solely for attribution.
 
 Covered administrative and public-authentication requests emit one strict
 `security.decision.v1` terminal event after the final response status is known. Correlation starts

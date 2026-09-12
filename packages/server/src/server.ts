@@ -60,6 +60,7 @@ import { createBulkRouter } from './routes/bulk.js';
 import { createExportRouter } from './routes/exports.js';
 import { createImportRouter } from './routes/imports.js';
 import { createBrandingRouter } from './routes/branding.js';
+import { createPublicBrandingRouter } from './routes/public-branding.js';
 import {
   createTwoFactorUserAdminRouter,
   createTwoFactorOrgAdminRouter,
@@ -113,7 +114,8 @@ export function createApp(oidcProvider?: Provider): Koa {
   // 1. Request correlation and terminal finalization wrap every Koa request
   // 2. Error handler converts downstream failures into minimal public responses
   // 3. Security headers (CSP, HSTS, X-Frame-Options, etc.)
-  // 4. Selective body parser — only routes that need it (NOT OIDC routes)
+  // 4. Admin CORS and mutation rate limiting run before request-body allocation
+  // 5. Selective body parser — only routes that need it (NOT OIDC routes)
   app.use(requestLogger());
   app.use(errorHandler());
   app.use(securityHeaders());
@@ -123,6 +125,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   if (config.metricsEnabled) {
     app.use(metricsCounter());
   }
+
+  // Admin CORS must precede authentication because preflight requests carry no
+  // credentials. The existing mutation limiter runs here so rejected large
+  // uploads never reach JSON parsing and allocation.
+  app.use(adminCors(config));
+  app.use(adminRateLimiter());
 
   // Selective body parser: apply only to admin API, interaction, and auth routes.
   // OIDC provider routes (/:orgSlug/*) must NOT have pre-parsed bodies because
@@ -139,10 +147,15 @@ export function createApp(oidcProvider?: Provider): Koa {
   //
   // Routes that must NOT be body-parsed:
   //   /:orgSlug/*      — OIDC provider endpoints (token, revocation, introspection, etc.)
-  const bp = bodyParser({
+  const standardBodyParser = bodyParser({
     jsonLimit: '100kb', // Defence-in-depth: limit JSON body size (default was 1mb)
     formLimit: '100kb', // Limit form body size
     textLimit: '100kb', // Limit text body size
+  });
+  const brandingUploadBodyParser = bodyParser({
+    jsonLimit: '3mb',
+    formLimit: '100kb',
+    textLimit: '100kb',
   });
   app.use(async (ctx, next) => {
     if (
@@ -151,7 +164,10 @@ export function createApp(oidcProvider?: Provider): Koa {
       ctx.path.startsWith('/health') ||
       ctx.path.includes('/auth/')
     ) {
-      return bp(ctx, next);
+      const isBrandingUpload =
+        ctx.method === 'PUT' &&
+        /^\/api\/admin\/organizations\/[^/]+\/branding\/(?:logo|favicon)$/.test(ctx.path);
+      return isBrandingUpload ? brandingUploadBodyParser(ctx, next) : standardBodyParser(ctx, next);
     }
     return next();
   });
@@ -224,17 +240,6 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(metadataRouter.routes());
   app.use(metadataRouter.allowedMethods());
 
-  // Admin CORS allow-list — emits CORS headers for /api/admin/* only when
-  // ADMIN_CORS_ORIGINS is configured.  Mounted before admin-auth because
-  // preflight OPTIONS requests don't carry Authorization headers.
-  // Default (empty config) = deny all cross-origin requests.
-  app.use(adminCors(config));
-
-  // Admin API rate limiter — protects state-changing admin endpoints
-  // (POST/PUT/PATCH/DELETE /api/admin/*) against brute-force and abuse.
-  // Per-IP key, 60 req / 60s.  GET requests pass through unmetered.
-  // Mounted before admin routes so it fires before route handlers.
-  app.use(adminRateLimiter());
   app.use(adminMutationAudit());
 
   // Set the OIDC provider for admin auth middleware — enables opaque access
@@ -414,6 +419,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(invitationRouter.routes());
   app.use(invitationRouter.allowedMethods());
 
+  // Uploaded branding images remain available to authentication pages for both active and
+  // suspended organizations. This exact route must precede the tenant-wide OIDC catch-all.
+  const publicBrandingRouter = createPublicBrandingRouter();
+  app.use(publicBrandingRouter.routes());
+  app.use(publicBrandingRouter.allowedMethods());
+
   // Token endpoint rate limiter — protects POST /:orgSlug/oidc/token against
   // flooding and brute-force.  Uses per-IP + per-client_id composite key,
   // 30 req / 5 min.  Returns 429 with Retry-After when exceeded.
@@ -486,10 +497,10 @@ export function createApp(oidcProvider?: Provider): Koa {
     // origin checks. OPTIONS preflights are short-circuited here with 204.
     oidcRouter.use(oidcPreflightCors());
 
-    // Pre-hash client secrets with SHA-256 before oidc-provider processes them.
-    // This enables secure secret storage: we store SHA-256 hashes in the DB,
-    // the middleware hashes the presented secret, and oidc-provider compares them.
-    // Requires body parser above so ctx.request.body.client_secret is available.
+    // Validate active confidential-client credentials before oidc-provider processes them, then
+    // replace a proven credential with the canonical SHA-256 value stored in provider metadata.
+    // Provider parsing and authentication-method checks remain authoritative. The body parser above
+    // makes client_secret_post available to this bounded bridge.
     oidcRouter.use(clientSecretHash());
 
     // Delegate all OIDC requests to node-oidc-provider's callback handler.

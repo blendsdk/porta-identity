@@ -481,3 +481,51 @@ export async function countClientsByApp(applicationId: string): Promise<number> 
 
   return parseInt(result.rows[0].count, 10);
 }
+
+/** Authority identifiers captured before a client cascade runs. */
+export interface ClientDeletionCapture {
+  client: Client;
+  clientIds: string[];
+  publicClientIds: string[];
+  grantIds: string[];
+}
+
+/**
+ * Lock, capture, and physically delete one OIDC client.
+ *
+ * @param id - Internal client UUID.
+ * @returns The captured graph, or null when the client does not exist.
+ */
+export async function captureClientForDeletion(id: string): Promise<ClientDeletionCapture | null> {
+  const pool = getPool();
+  const target = await pool.query<ClientRow>('SELECT * FROM clients WHERE id = $1 FOR UPDATE', [
+    id,
+  ]);
+  if (!target.rows[0]) return null;
+  const client = mapRowToClient(target.rows[0]);
+  const grants = await pool.query<{ id: string }>(
+    `SELECT id FROM oidc_payloads
+     WHERE type = 'Grant' AND payload->>'clientId' = $1
+     ORDER BY id`,
+    [client.clientId],
+  );
+  return {
+    client,
+    clientIds: [client.id],
+    publicClientIds: [client.clientId],
+    grantIds: grants.rows.map((row) => row.id),
+  };
+}
+
+/** Physically delete a client previously locked and captured. */
+export async function deleteCapturedClient(id: string): Promise<void> {
+  await getPool().query('DELETE FROM clients WHERE id = $1', [id]);
+}
+
+/** Capture and immediately delete a client for direct repository callers. */
+export async function deleteClient(id: string): Promise<ClientDeletionCapture | null> {
+  const capture = await captureClientForDeletion(id);
+  if (!capture) return null;
+  await deleteCapturedClient(id);
+  return capture;
+}

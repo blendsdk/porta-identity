@@ -30,12 +30,11 @@ export type { PaginatedResult };
  * User status values — matches the DB CHECK constraint.
  *
  * Lifecycle transitions:
- *   - active → inactive (deactivate), suspended (suspend), locked (lock)
- *   - inactive → active (reactivate)
- *   - suspended → active (unsuspend)
- *   - locked → active (unlock)
+ *   - active → inactive (administrator deactivation)
+ *   - inactive → active (activate)
+ *   - active → locked → active (automatic failed-login protection)
  */
-export type UserStatus = 'active' | 'inactive' | 'suspended' | 'locked';
+export type UserStatus = 'active' | 'inactive' | 'locked';
 
 // ---------------------------------------------------------------------------
 // Full user record

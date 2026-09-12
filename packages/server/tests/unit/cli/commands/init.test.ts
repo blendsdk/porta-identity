@@ -21,16 +21,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.mock('../../../../src/cli/bootstrap.js', () => ({
   withBootstrap: vi
     .fn()
-    .mockImplementation(
-      async (_argv: unknown, fn: () => Promise<unknown>) => fn(),
-    ),
+    .mockImplementation(async (_argv: unknown, fn: () => Promise<unknown>) => fn()),
 }));
 
 // Mock error handler — run fn directly, skip process.exit
 vi.mock('../../../../src/cli/error-handler.js', () => ({
-  withErrorHandling: vi
-    .fn()
-    .mockImplementation(async (fn: () => Promise<void>) => fn()),
+  withErrorHandling: vi.fn().mockImplementation(async (fn: () => Promise<void>) => fn()),
 }));
 
 // Mock output helpers
@@ -64,13 +60,19 @@ vi.mock('../../../../src/clients/index.js', () => ({
 
 vi.mock('../../../../src/users/index.js', () => ({
   createUser: vi.fn(),
-  reactivateUser: vi.fn(),
+  activateUser: vi.fn(),
   markEmailVerified: vi.fn(),
 }));
 
-vi.mock('../../../../src/rbac/index.js', () => ({
-  createPermission: vi.fn(),
-  createRole: vi.fn(),
+vi.mock('../../../../src/rbac/permission-repository.js', () => ({
+  insertPermission: vi.fn(),
+}));
+
+vi.mock('../../../../src/rbac/role-repository.js', () => ({
+  insertRole: vi.fn(),
+}));
+
+vi.mock('../../../../src/rbac/mapping-repository.js', () => ({
   assignPermissionsToRole: vi.fn(),
   assignRolesToUser: vi.fn(),
 }));
@@ -94,22 +96,15 @@ import { initCommand } from '../../../../src/cli/commands/init.js';
 import { success, warn } from '../../../../src/cli/output.js';
 import { confirm } from '../../../../src/cli/prompt.js';
 import { findSuperAdminOrganization } from '../../../../src/organizations/repository.js';
-import {
-  getApplicationBySlug,
-  createApplication,
-} from '../../../../src/applications/index.js';
+import { getApplicationBySlug, createApplication } from '../../../../src/applications/index.js';
 import { createClient, generateSecret } from '../../../../src/clients/index.js';
+import { createUser, activateUser, markEmailVerified } from '../../../../src/users/index.js';
+import { insertPermission } from '../../../../src/rbac/permission-repository.js';
+import { insertRole } from '../../../../src/rbac/role-repository.js';
 import {
-  createUser,
-  reactivateUser,
-  markEmailVerified,
-} from '../../../../src/users/index.js';
-import {
-  createRole,
-  createPermission,
   assignPermissionsToRole,
   assignRolesToUser,
-} from '../../../../src/rbac/index.js';
+} from '../../../../src/rbac/mapping-repository.js';
 import { ensureSigningKeys } from '../../../../src/lib/signing-keys.js';
 import { ALL_ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../../../../src/lib/admin-permissions.js';
 import type { GlobalOptions } from '../../../../src/cli/index.js';
@@ -158,26 +153,6 @@ const fakeAdminClient = {
   status: 'active' as const,
 };
 
-/** Fake admin GUI confidential client (Step 7b in init) */
-const fakeGuiClient = {
-  id: 'client-gui-id',
-  clientId: 'porta-gui-xyz789',
-  clientName: 'Porta Admin GUI',
-  clientType: 'confidential' as const,
-  applicationType: 'web' as const,
-  status: 'active' as const,
-};
-
-/** Fake secret result returned by generateSecret for the GUI client */
-const fakeGuiSecretResult = {
-  id: 'secret-gui-id',
-  clientId: 'client-gui-id',
-  label: 'Initial secret (porta init)',
-  plaintext: 'super-secret-gui-plaintext-abc123',
-  expiresAt: null,
-  createdAt: new Date(),
-};
-
 const fakeAdminUser = {
   id: 'user-admin-id',
   email: 'admin@example.com',
@@ -213,9 +188,7 @@ function createArgv(overrides: Partial<InitTestOptions> = {}): InitTestOptions {
 }
 
 async function runInit(argv: InitTestOptions): Promise<void> {
-  await (
-    initCommand.handler as (args: InitTestOptions) => Promise<void>
-  )(argv);
+  await (initCommand.handler as (args: InitTestOptions) => Promise<void>)(argv);
 }
 
 // ---------------------------------------------------------------------------
@@ -230,26 +203,25 @@ describe('CLI Init Command', () => {
     permissionCounter = 0;
 
     // Set up default mock implementations
-    vi.mocked(findSuperAdminOrganization).mockResolvedValue(
-      fakeSuperAdminOrg as never,
-    );
+    vi.mocked(findSuperAdminOrganization).mockResolvedValue(fakeSuperAdminOrg as never);
     vi.mocked(getApplicationBySlug).mockResolvedValue(null);
     vi.mocked(createApplication).mockResolvedValue(fakeAdminApp as never);
 
-    // createClient is called twice: first for CLI (public), then for GUI (confidential).
-    // Use mockResolvedValueOnce to return different clients per call.
-    vi.mocked(createClient)
-      .mockResolvedValueOnce({ client: fakeAdminClient as never, secret: null })
-      .mockResolvedValueOnce({ client: fakeGuiClient as never, secret: null });
-
-    // generateSecret is called once for the GUI confidential client
-    vi.mocked(generateSecret).mockResolvedValue(fakeGuiSecretResult as never);
+    vi.mocked(createClient).mockResolvedValue({
+      client: fakeAdminClient as never,
+      secret: null,
+    });
     vi.mocked(createUser).mockResolvedValue(fakeAdminUser as never);
-    vi.mocked(reactivateUser).mockResolvedValue(undefined as never);
+    vi.mocked(activateUser).mockResolvedValue(undefined as never);
     vi.mocked(markEmailVerified).mockResolvedValue(undefined as never);
-    vi.mocked(createRole).mockResolvedValue(fakeAdminRole as never);
-    vi.mocked(createPermission).mockImplementation(
-      async (input: { applicationId: string; slug: string; name: string; description?: string }) => ({
+    vi.mocked(insertRole).mockResolvedValue(fakeAdminRole as never);
+    vi.mocked(insertPermission).mockImplementation(
+      async (input: {
+        applicationId: string;
+        slug: string;
+        name: string;
+        description?: string;
+      }) => ({
         id: `perm-${++permissionCounter}`,
         applicationId: input.applicationId,
         moduleId: null,
@@ -283,20 +255,20 @@ describe('CLI Init Command', () => {
       );
 
       // Should create all 42 granular permissions
-      expect(createPermission).toHaveBeenCalledTimes(ALL_ADMIN_PERMISSIONS.length);
-      expect(createPermission).toHaveBeenCalledWith(
+      expect(insertPermission).toHaveBeenCalledTimes(ALL_ADMIN_PERMISSIONS.length);
+      expect(insertPermission).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
           slug: 'admin:org:create',
         }),
       );
-      expect(createPermission).toHaveBeenCalledWith(
+      expect(insertPermission).toHaveBeenCalledWith(
         expect.objectContaining({ slug: 'admin:audit:read' }),
       );
 
       // Should create all 5 admin roles
-      expect(createRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
-      expect(createRole).toHaveBeenCalledWith(
+      expect(insertRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
+      expect(insertRole).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
           slug: 'porta-super-admin',
@@ -329,25 +301,27 @@ describe('CLI Init Command', () => {
         }),
       );
 
-      expect(reactivateUser).toHaveBeenCalledWith('user-admin-id');
+      expect(activateUser).toHaveBeenCalledWith('user-admin-id');
       expect(markEmailVerified).toHaveBeenCalledWith('user-admin-id');
-      expect(assignRolesToUser).toHaveBeenCalledWith('user-admin-id', [
-        'role-admin-id',
-      ]);
+      expect(assignRolesToUser).toHaveBeenCalledWith(
+        'org-super-admin-id',
+        'user-admin-id',
+        ['role-admin-id'],
+        'user-admin-id',
+      );
 
       expect(success).toHaveBeenCalledWith('Porta initialization complete!');
     });
   });
 
   // -------------------------------------------------------------------------
-  // Admin GUI client creation (Step 7b)
+  // Public administration client creation
   // -------------------------------------------------------------------------
 
   describe('admin client creation', () => {
-    it('should create a single public CLI client (shared by CLI and GUI)', async () => {
+    it('should create a single public administration client', async () => {
       await runInit(createArgv());
 
-      // createClient should be called once — the public CLI/GUI client
       expect(createClient).toHaveBeenCalledTimes(1);
 
       expect(createClient).toHaveBeenCalledWith(
@@ -376,9 +350,7 @@ describe('CLI Init Command', () => {
     it('should refuse when admin app already exists and --force is not set', async () => {
       vi.mocked(getApplicationBySlug).mockResolvedValue(fakeAdminApp as never);
 
-      await expect(runInit(createArgv())).rejects.toThrow(
-        'System already initialized',
-      );
+      await expect(runInit(createArgv())).rejects.toThrow('System already initialized');
 
       expect(createApplication).not.toHaveBeenCalled();
       expect(createClient).not.toHaveBeenCalled();
@@ -404,9 +376,7 @@ describe('CLI Init Command', () => {
     it('should throw error when super-admin org does not exist', async () => {
       vi.mocked(findSuperAdminOrganization).mockResolvedValue(null as never);
 
-      await expect(runInit(createArgv())).rejects.toThrow(
-        'Super-admin organization not found',
-      );
+      await expect(runInit(createArgv())).rejects.toThrow('Super-admin organization not found');
 
       expect(createApplication).not.toHaveBeenCalled();
     });

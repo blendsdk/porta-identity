@@ -62,8 +62,8 @@ test('should reject stale authority in existing fresh and restarted contexts', a
 });
 
 // The immutable request set is grounded in the public administrative routes and exact public
-// outcomes. Role removal reaches admin authentication but removes its porta-* role; inactive actors
-// and revoked OIDC sessions instead fail authentication.
+// outcomes. Every supported transition revokes the affected user's existing authority material, so
+// the pre-transition access token or browser session fails authentication immediately.
 test('should use only the supported public stale-authority transitions', () => {
   assert.deepEqual(staleAuthorityScenarios, [
     {
@@ -71,20 +71,13 @@ test('should use only the supported public stale-authority transitions', () => {
       authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
       mutationMethod: 'DELETE',
       mutationRoute: '/api/admin/organizations/:orgId/users/:userId/roles',
-      expectedResult: 'forbidden',
+      expectedResult: 'unauthenticated',
     },
     {
       transition: 'actor-deactivation',
       authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
       mutationMethod: 'POST',
       mutationRoute: '/api/admin/organizations/:orgId/users/:userId/deactivate',
-      expectedResult: 'unauthenticated',
-    },
-    {
-      transition: 'actor-suspension',
-      authorizedControlCaseId: 'admin-limited-read-target-user-admin-target-alpha-user',
-      mutationMethod: 'POST',
-      mutationRoute: '/api/admin/organizations/:orgId/users/:userId/suspend',
       expectedResult: 'unauthenticated',
     },
     {

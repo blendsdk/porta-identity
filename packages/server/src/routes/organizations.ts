@@ -14,8 +14,7 @@
  *   PUT    /:id/branding      — Update branding
  *   POST   /:id/suspend       — Suspend organization
  *   POST   /:id/activate      — Activate organization
- *   POST   /:id/archive       — Archive organization
- *   POST   /:id/restore       — Restore organization
+ *   DELETE /:idOrSlug         — Delete organization
  *
  * Error mapping:
  *   OrganizationNotFoundError → 404
@@ -33,6 +32,7 @@ import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
 import { LOGIN_METHODS } from '../clients/types.js';
+import { validateBrandingImageUrl } from '../organizations/branding-url.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -52,48 +52,11 @@ const loginMethodSchema = z.enum(LOGIN_METHODS);
  */
 const defaultLoginMethodsSchema = z.array(loginMethodSchema).min(1);
 
-const createOrganizationSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(3).max(100).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z
-    .object({
-      logoUrl: z.string().url().nullable().optional(),
-      faviconUrl: z.string().url().nullable().optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .nullable()
-        .optional(),
-      companyName: z.string().max(255).nullable().optional(),
-      customCss: z.string().max(10000).nullable().optional(),
-    })
-    .optional(),
-});
+const brandingImageUrlSchema = z.string().transform(validateBrandingImageUrl);
 
-const updateOrganizationSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z
-    .object({
-      logoUrl: z.string().url().nullable().optional(),
-      faviconUrl: z.string().url().nullable().optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .nullable()
-        .optional(),
-      companyName: z.string().max(255).nullable().optional(),
-      customCss: z.string().max(10000).nullable().optional(),
-    })
-    .optional(),
-});
-
-const updateBrandingSchema = z.object({
-  logoUrl: z.string().url().nullable().optional(),
-  faviconUrl: z.string().url().nullable().optional(),
+const brandingSchema = z.object({
+  logoUrl: brandingImageUrlSchema.nullable().optional(),
+  faviconUrl: brandingImageUrlSchema.nullable().optional(),
   primaryColor: z
     .string()
     .regex(/^#[0-9A-Fa-f]{6}$/)
@@ -103,10 +66,27 @@ const updateBrandingSchema = z.object({
   customCss: z.string().max(10000).nullable().optional(),
 });
 
+const createOrganizationSchema = z.object({
+  name: z.string().min(1).max(255),
+  slug: z.string().min(3).max(100).optional(),
+  defaultLocale: z.string().min(2).max(10).optional(),
+  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
+  branding: brandingSchema.optional(),
+});
+
+const updateOrganizationSchema = z.object({
+  name: z.string().min(1).max(255).optional(),
+  defaultLocale: z.string().min(2).max(10).optional(),
+  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
+  branding: brandingSchema.optional(),
+});
+
+const updateBrandingSchema = brandingSchema;
+
 const listOrganizationsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['active', 'suspended', 'archived']).optional(),
+  status: z.enum(['active', 'suspended']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -116,7 +96,7 @@ const listOrganizationsSchema = z.object({
 const listOrganizationsCursorSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.enum(['active', 'suspended', 'archived']).optional(),
+  status: z.enum(['active', 'suspended']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -124,6 +104,18 @@ const listOrganizationsCursorSchema = z.object({
 
 const validateSlugSchema = z.object({
   slug: z.string().min(1),
+});
+
+/** UUID or slug accepted by the organization deletion endpoint. */
+const idOrSlugSchema = z.object({
+  idOrSlug: z.union([
+    z.string().uuid(),
+    z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  ]),
 });
 
 // ---------------------------------------------------------------------------
@@ -297,18 +289,6 @@ export function createOrganizationRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/archive — Archive organization
-  // -------------------------------------------------------------------------
-  router.post('/:id/archive', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
-    try {
-      await organizationService.archiveOrganization(ctx.params.id);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
-
-  // -------------------------------------------------------------------------
   // GET /:id/history — Organization change history
   // -------------------------------------------------------------------------
   router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
@@ -322,48 +302,13 @@ export function createOrganizationRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/restore — Restore organization
+  // DELETE /:idOrSlug — Permanently delete organization
   // -------------------------------------------------------------------------
-  router.post('/:id/restore', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
+  router.delete('/:idOrSlug', requirePermission(ADMIN_PERMISSIONS.ORG_DELETE), async (ctx) => {
     try {
-      await organizationService.restoreOrganization(ctx.params.id);
+      const { idOrSlug } = idOrSlugSchema.parse(ctx.params);
+      await organizationService.deleteOrganization(idOrSlug, ctx.state.adminUser?.id);
       ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
-
-  // -------------------------------------------------------------------------
-  // DELETE /:idOrSlug — Permanently destroy organization (cascade)
-  // -------------------------------------------------------------------------
-  router.delete('/:idOrSlug', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
-    try {
-      const { idOrSlug } = ctx.params;
-      const dryRun = ctx.query['dry-run'] === 'true';
-
-      if (dryRun) {
-        // Resolve org and return cascade counts without deleting
-        const org =
-          (await organizationService.getOrganizationById(idOrSlug)) ??
-          (await organizationService.getOrganizationBySlug(idOrSlug));
-        if (!org) {
-          ctx.throw(404, `Organization not found: ${idOrSlug}`);
-          return;
-        }
-        if (org.isSuperAdmin) {
-          ctx.throw(400, 'Cannot destroy the super-admin organization');
-          return;
-        }
-        const cascadeCounts = await organizationService.getCascadeCounts(org.id);
-        ctx.body = { dryRun: true, organization: org, cascadeCounts };
-        return;
-      }
-
-      const result = await organizationService.destroyOrganization(
-        idOrSlug,
-        ctx.state.adminUser?.id,
-      );
-      ctx.body = result;
     } catch (err) {
       handleError(ctx, err);
     }

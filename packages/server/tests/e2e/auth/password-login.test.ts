@@ -148,21 +148,18 @@ describe('Password Login Flow (E2E)', () => {
     expect(loginResponse.status).toBe(200);
   });
 
-  // ── Suspended account ──────────────────────────────────────────
+  // ── Inactive account ───────────────────────────────────────────
 
-  it('should reject login for suspended account', async () => {
-    // Create a suspended user
-    const { user: suspendedUser } = await createTestUserWithPassword(
-      org.id,
-      DEFAULT_TEST_PASSWORD,
-      { status: 'suspended' },
-    );
+  it('should reject login for inactive account', async () => {
+    const { user: inactiveUser } = await createTestUserWithPassword(org.id, DEFAULT_TEST_PASSWORD, {
+      status: 'inactive',
+    });
 
     const { interactionUrl, csrfToken } = await startAuthFlowAndGetLoginPage();
     const uid = interactionUrl.split('/interaction/')[1]?.split('/')[0]?.split('?')[0];
 
     const loginResponse = await http.post(`/interaction/${uid}/login`, {
-      email: suspendedUser.email,
+      email: inactiveUser.email,
       password: DEFAULT_TEST_PASSWORD,
       _csrf: csrfToken,
       _csrfStored: csrfToken,
@@ -175,11 +172,9 @@ describe('Password Login Flow (E2E)', () => {
   // ── Locked account ─────────────────────────────────────────────
 
   it('should reject login for locked account', async () => {
-    const { user: lockedUser } = await createTestUserWithPassword(
-      org.id,
-      DEFAULT_TEST_PASSWORD,
-      { status: 'locked' },
-    );
+    const { user: lockedUser } = await createTestUserWithPassword(org.id, DEFAULT_TEST_PASSWORD, {
+      status: 'locked',
+    });
 
     const { interactionUrl, csrfToken } = await startAuthFlowAndGetLoginPage();
     const uid = interactionUrl.split('/interaction/')[1]?.split('/')[0]?.split('?')[0];

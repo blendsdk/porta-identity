@@ -351,6 +351,9 @@ describe('password reset routes', () => {
       const router = createPasswordResetRouter();
       const layer = findLayer(router, 'GET', 'reset-password');
       const ctx = createMockCtx({ params: { token: 'expired-token' } });
+      ctx.state.organization = createMockOrg({
+        brandingLogoUrl: 'https://static.example.test/brands/logo.png',
+      });
 
       await exec(layer!, ctx);
 
@@ -359,6 +362,7 @@ describe('password reset routes', () => {
         expect.objectContaining({ errorMessage: expect.stringContaining('reset_link_expired') }),
       );
       expect(ctx.status).toBe(400);
+      expect(ctx.state.brandingImageSources).toEqual(['https://static.example.test']);
     });
   });
 

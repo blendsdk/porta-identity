@@ -116,7 +116,7 @@ describe('bulk-operations', () => {
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['user-missing'],
-      action: 'suspend',
+      action: 'deactivate',
       organizationId: ORGANIZATION_ID,
     });
 
@@ -138,7 +138,7 @@ describe('bulk-operations', () => {
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['user-1'],
-      action: 'suspend',
+      action: 'deactivate',
       organizationId: ORGANIZATION_ID,
     });
 
@@ -169,7 +169,7 @@ describe('bulk-operations', () => {
     const result = await bulkStatusChange({
       entityType: 'user',
       entityIds: ['u1', 'u2', 'u3'],
-      action: 'suspend',
+      action: 'deactivate',
       organizationId: ORGANIZATION_ID,
     });
 
@@ -194,7 +194,7 @@ describe('bulk-operations', () => {
     await bulkStatusChange({
       entityType: 'user',
       entityIds: ['user-1'],
-      action: 'suspend',
+      action: 'deactivate',
       organizationId: ORGANIZATION_ID,
     });
 

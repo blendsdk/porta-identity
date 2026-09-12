@@ -1,0 +1,20 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "noEmit": true,
+    "rootDir": "../..",
+    "sourceMap": false,
+    "types": ["node", "vitest/globals"]
+  },
+  "exclude": [],
+  "include": [
+    "users-contract.spec.test.ts",
+    "client-secret-expiry-contract.spec.test.ts",
+    "rbac-contracts.spec.test.ts",
+    "branding-rd06.spec.test.ts",
+    "../applications-rd04.spec.test.ts",
+    "../clients-rd04.spec.test.ts"
+  ]
+}

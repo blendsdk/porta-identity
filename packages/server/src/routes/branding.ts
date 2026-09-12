@@ -1,8 +1,8 @@
 /**
  * Branding assets API routes.
  *
- * Manages organization logo and favicon image uploads. Images are stored
- * as PostgreSQL bytea for simplicity (images are small, <512KB).
+ * Manages organization logo and favicon image uploads. Images are transported
+ * as bounded base64 JSON and stored as validated PostgreSQL binary data.
  *
  * Route structure:
  *   GET    /api/admin/organizations/:orgId/branding         — List assets
@@ -10,28 +10,55 @@
  *   PUT    /api/admin/organizations/:orgId/branding/:type   — Upload asset
  *   DELETE /api/admin/organizations/:orgId/branding/:type   — Delete asset
  *
- * @see 06-bulk-operations-branding.md
  */
 
 import Router from '@koa/router';
+import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as brandingAssets from '../lib/branding-assets.js';
 import type { AssetType } from '../lib/branding-assets.js';
+import { getOrganizationById } from '../organizations/service.js';
+
+const brandingUploadSchema = z
+  .object({
+    data: z.base64().min(1),
+    contentType: z.enum([
+      'image/png',
+      'image/jpeg',
+      'image/webp',
+      'image/x-icon',
+      'image/vnd.microsoft.icon',
+      'image/svg+xml',
+    ]),
+  })
+  .strict();
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Return whether a route value names one supported branding slot. */
 function validateAssetType(type: string): type is AssetType {
   return type === 'logo' || type === 'favicon';
+}
+
+/** Reject invalid or missing organization IDs through one non-enumerating not-found response. */
+async function requireExistingOrganization(
+  organizationId: string,
+  throwHttp: (status: number, message: string) => never,
+): Promise<void> {
+  const parsedId = z.string().uuid().safeParse(organizationId);
+  const organization = parsedId.success ? await getOrganizationById(parsedId.data) : null;
+  if (organization === null) throwHttp(404, 'Organization not found');
 }
 
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
 
+/** Create the authenticated Admin API router for organization branding assets. */
 export function createBrandingRouter(): Router {
   const router = new Router({ prefix: '/api/admin/organizations/:orgId/branding' });
 
@@ -41,6 +68,7 @@ export function createBrandingRouter(): Router {
   // GET / — List branding assets (metadata only)
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const assets = await brandingAssets.listAssets(ctx.params.orgId);
     ctx.body = { data: assets };
   });
@@ -49,6 +77,7 @@ export function createBrandingRouter(): Router {
   // GET /:type — Get branding asset (serves binary image)
   // -------------------------------------------------------------------------
   router.get('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const { type } = ctx.params;
     if (!validateAssetType(type)) {
       ctx.throw(400, 'Invalid asset type. Must be "logo" or "favicon"');
@@ -69,43 +98,46 @@ export function createBrandingRouter(): Router {
   // -------------------------------------------------------------------------
   // PUT /:type — Upload/replace branding asset
   //
-  // Expects raw binary body with appropriate Content-Type header.
-  // For JSON-based uploads, accepts base64-encoded body:
+  // Accepts one JSON/base64 envelope:
   //   { "data": "<base64>", "contentType": "image/png" }
   // -------------------------------------------------------------------------
   router.put('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const { type } = ctx.params;
     if (!validateAssetType(type)) {
       ctx.throw(400, 'Invalid asset type. Must be "logo" or "favicon"');
       return;
     }
 
-    // Support JSON-encoded base64 uploads for admin UI convenience
-    const body = ctx.request.body as Record<string, unknown> | undefined;
-    if (body && typeof body.data === 'string' && typeof body.contentType === 'string') {
-      try {
-        const buffer = Buffer.from(body.data, 'base64');
-        const asset = await brandingAssets.uploadAsset(
-          ctx.params.orgId,
-          type,
-          body.contentType,
-          buffer,
-        );
-        ctx.body = { data: asset };
-        return;
-      } catch {
+    const parsed = brandingUploadSchema.safeParse(ctx.request.body);
+    if (!parsed.success) {
+      ctx.throw(400, 'Branding upload is invalid');
+      return;
+    }
+
+    try {
+      const decoded = Buffer.from(parsed.data.data, 'base64');
+      const asset = await brandingAssets.uploadAsset(
+        ctx.params.orgId,
+        type,
+        parsed.data.contentType,
+        decoded,
+      );
+      ctx.body = { data: asset };
+    } catch (error) {
+      if (error instanceof brandingAssets.BrandingAssetValidationError) {
         ctx.throw(400, 'Branding upload is invalid');
         return;
       }
+      throw error;
     }
-
-    ctx.throw(400, 'Request body must include "data" (base64) and "contentType" fields');
   });
 
   // -------------------------------------------------------------------------
   // DELETE /:type — Delete branding asset
   // -------------------------------------------------------------------------
   router.delete('/:type', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
+    await requireExistingOrganization(ctx.params.orgId, ctx.throw.bind(ctx));
     const { type } = ctx.params;
     if (!validateAssetType(type)) {
       ctx.throw(400, 'Invalid asset type. Must be "logo" or "favicon"');

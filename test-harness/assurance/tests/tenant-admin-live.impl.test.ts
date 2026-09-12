@@ -176,6 +176,24 @@ test('should distinguish handler permission and resource boundaries after authen
   );
   assert.deepEqual(
     controlPlaneReachability(
+      'admin-unprivileged',
+      {
+        status: 403,
+        body: {
+          error: 'Forbidden',
+          message: 'Administrative access is not permitted',
+        },
+      },
+      proof,
+    ),
+    {
+      adminAuthenticationAccepted: false,
+      handlerReached: false,
+      decisionBoundary: 'membership',
+    },
+  );
+  assert.deepEqual(
+    controlPlaneReachability(
       'admin-full',
       { status: 404, body: { error: 'User not found' } },
       proof,

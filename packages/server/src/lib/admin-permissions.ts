@@ -30,26 +30,28 @@ export const ADMIN_PERMISSIONS = {
   ORG_READ: 'admin:org:read',
   ORG_UPDATE: 'admin:org:update',
   ORG_SUSPEND: 'admin:org:suspend',
-  ORG_ARCHIVE: 'admin:org:archive',
+  ORG_DELETE: 'admin:org:delete',
 
   // Application management
   APP_CREATE: 'admin:app:create',
   APP_READ: 'admin:app:read',
   APP_UPDATE: 'admin:app:update',
-  APP_ARCHIVE: 'admin:app:archive',
+  APP_DELETE: 'admin:app:delete',
+  MODULE_DELETE: 'admin:module:delete',
 
   // Client management
   CLIENT_CREATE: 'admin:client:create',
   CLIENT_READ: 'admin:client:read',
   CLIENT_UPDATE: 'admin:client:update',
   CLIENT_REVOKE: 'admin:client:revoke',
+  CLIENT_DELETE: 'admin:client:delete',
 
   // User management
   USER_CREATE: 'admin:user:create',
   USER_READ: 'admin:user:read',
   USER_UPDATE: 'admin:user:update',
-  USER_SUSPEND: 'admin:user:suspend',
-  USER_ARCHIVE: 'admin:user:archive',
+  USER_LIFECYCLE: 'admin:user:lifecycle',
+  USER_DELETE: 'admin:user:delete',
   USER_INVITE: 'admin:user:invite',
   USER_2FA: 'admin:user:2fa',
 
@@ -57,19 +59,20 @@ export const ADMIN_PERMISSIONS = {
   ROLE_CREATE: 'admin:role:create',
   ROLE_READ: 'admin:role:read',
   ROLE_UPDATE: 'admin:role:update',
-  ROLE_ARCHIVE: 'admin:role:archive',
+  ROLE_DELETE: 'admin:role:delete',
   ROLE_ASSIGN: 'admin:role:assign',
 
   // Permission management
   PERMISSION_CREATE: 'admin:permission:create',
   PERMISSION_READ: 'admin:permission:read',
-  PERMISSION_ARCHIVE: 'admin:permission:archive',
+  PERMISSION_UPDATE: 'admin:permission:update',
+  PERMISSION_DELETE: 'admin:permission:delete',
 
   // Custom claims management
   CLAIM_CREATE: 'admin:claim:create',
   CLAIM_READ: 'admin:claim:read',
   CLAIM_UPDATE: 'admin:claim:update',
-  CLAIM_ARCHIVE: 'admin:claim:archive',
+  CLAIM_DELETE: 'admin:claim:delete',
 
   // System configuration
   CONFIG_READ: 'admin:config:read',
@@ -148,7 +151,7 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
       ADMIN_PERMISSIONS.ORG_READ,
       ADMIN_PERMISSIONS.ORG_UPDATE,
       ADMIN_PERMISSIONS.ORG_SUSPEND,
-      ADMIN_PERMISSIONS.ORG_ARCHIVE,
+      ADMIN_PERMISSIONS.ORG_DELETE,
       ADMIN_PERMISSIONS.STATS_READ,
     ],
   },
@@ -160,10 +163,11 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
       ADMIN_PERMISSIONS.USER_CREATE,
       ADMIN_PERMISSIONS.USER_READ,
       ADMIN_PERMISSIONS.USER_UPDATE,
-      ADMIN_PERMISSIONS.USER_SUSPEND,
-      ADMIN_PERMISSIONS.USER_ARCHIVE,
+      ADMIN_PERMISSIONS.USER_LIFECYCLE,
+      ADMIN_PERMISSIONS.USER_DELETE,
       ADMIN_PERMISSIONS.USER_INVITE,
       ADMIN_PERMISSIONS.USER_2FA,
+      ADMIN_PERMISSIONS.APP_READ,
       ADMIN_PERMISSIONS.ROLE_ASSIGN,
       ADMIN_PERMISSIONS.ROLE_READ,
       ADMIN_PERMISSIONS.CLAIM_READ,
@@ -176,25 +180,29 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
     name: 'Application Admin',
     description: 'Manage applications, clients, RBAC definitions',
     permissions: [
+      ADMIN_PERMISSIONS.ORG_READ,
       ADMIN_PERMISSIONS.APP_CREATE,
       ADMIN_PERMISSIONS.APP_READ,
       ADMIN_PERMISSIONS.APP_UPDATE,
-      ADMIN_PERMISSIONS.APP_ARCHIVE,
+      ADMIN_PERMISSIONS.APP_DELETE,
+      ADMIN_PERMISSIONS.MODULE_DELETE,
       ADMIN_PERMISSIONS.CLIENT_CREATE,
       ADMIN_PERMISSIONS.CLIENT_READ,
       ADMIN_PERMISSIONS.CLIENT_UPDATE,
       ADMIN_PERMISSIONS.CLIENT_REVOKE,
+      ADMIN_PERMISSIONS.CLIENT_DELETE,
       ADMIN_PERMISSIONS.ROLE_CREATE,
       ADMIN_PERMISSIONS.ROLE_READ,
       ADMIN_PERMISSIONS.ROLE_UPDATE,
-      ADMIN_PERMISSIONS.ROLE_ARCHIVE,
+      ADMIN_PERMISSIONS.ROLE_DELETE,
       ADMIN_PERMISSIONS.PERMISSION_CREATE,
       ADMIN_PERMISSIONS.PERMISSION_READ,
-      ADMIN_PERMISSIONS.PERMISSION_ARCHIVE,
+      ADMIN_PERMISSIONS.PERMISSION_UPDATE,
+      ADMIN_PERMISSIONS.PERMISSION_DELETE,
       ADMIN_PERMISSIONS.CLAIM_CREATE,
       ADMIN_PERMISSIONS.CLAIM_READ,
       ADMIN_PERMISSIONS.CLAIM_UPDATE,
-      ADMIN_PERMISSIONS.CLAIM_ARCHIVE,
+      ADMIN_PERMISSIONS.CLAIM_DELETE,
     ],
   },
   AUDITOR: {
@@ -220,7 +228,8 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
 } as const;
 
 /** All admin role definition values as an array (for iteration) */
-export const ALL_ADMIN_ROLES: readonly AdminRoleDefinition[] = Object.values(ADMIN_ROLE_DEFINITIONS);
+export const ALL_ADMIN_ROLES: readonly AdminRoleDefinition[] =
+  Object.values(ADMIN_ROLE_DEFINITIONS);
 
 // ============================================================================
 // Legacy Compatibility
@@ -241,9 +250,7 @@ export const LEGACY_ADMIN_ROLE = 'porta-admin';
  * @returns true if the role grants super-admin level access
  */
 export function isSuperAdminRole(roleSlug: string): boolean {
-  return (
-    roleSlug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug || roleSlug === LEGACY_ADMIN_ROLE
-  );
+  return roleSlug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug || roleSlug === LEGACY_ADMIN_ROLE;
 }
 
 /**

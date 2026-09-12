@@ -37,8 +37,9 @@ vi.mock('../../src/prompt.js', () => ({
   question: vi.fn(),
 }));
 
-vi.mock('jose', () => ({
-  decodeJwt: vi.fn().mockReturnValue({
+vi.mock('../../src/auth/id-token-verifier.js', () => ({
+  fetchIssuerJwks: vi.fn().mockResolvedValue({ keys: [] }),
+  verifyCliIdToken: vi.fn().mockResolvedValue({
     sub: 'user-123',
     email: 'admin@example.com',
     name: 'Admin User',

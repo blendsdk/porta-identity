@@ -38,7 +38,7 @@ const superAdminUser = {
     'admin:org:read',
     'admin:org:update',
     'admin:org:suspend',
-    'admin:org:archive',
+    'admin:org:delete',
     'admin:user:create',
     'admin:user:read',
     'admin:user:update',

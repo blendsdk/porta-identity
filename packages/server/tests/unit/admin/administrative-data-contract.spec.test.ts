@@ -48,6 +48,7 @@ function clientManifest(
       application_slug: fixture.alphaApplicationSlug,
       organization_slug: fixture.alphaOrganizationSlug,
       client_type: 'confidential',
+      redirect_uris: ['https://client.example.test/callback'],
     })),
   };
 }
@@ -92,7 +93,7 @@ describe('administrative data requirement catalog', () => {
       maximumReasonCharacters: 500,
       actions: {
         organization: ['activate', 'suspend', 'archive'],
-        user: ['activate', 'deactivate', 'suspend', 'lock', 'unlock'],
+        user: ['activate', 'deactivate'],
       },
       envelopeFields: ['total', 'succeeded', 'failed', 'results'],
       concealedItemCode: 'not_found_or_not_authorized',
@@ -168,15 +169,6 @@ if (capability.available) {
         (fixture: AdministrativeDataFixture) => ({
           ids: [fixture.alphaUserIds[0]],
           action: 'destroy',
-          organizationId: fixture.alphaOrganizationId,
-        }),
-      ],
-      [
-        'oversized reason',
-        (fixture: AdministrativeDataFixture) => ({
-          ids: [fixture.alphaUserIds[0]],
-          action: 'deactivate',
-          reason: 'r'.repeat(ADMINISTRATIVE_DATA_ORACLE.bulk.maximumReasonCharacters + 1),
           organizationId: fixture.alphaOrganizationId,
         }),
       ],
@@ -335,6 +327,7 @@ if (capability.available) {
               application_slug: fixture.alphaApplicationSlug,
               organization_slug: fixture.alphaOrganizationSlug,
               client_type: 'confidential',
+              redirect_uris: ['https://client.example.test/callback'],
             },
           ],
         };
@@ -454,6 +447,7 @@ if (capability.available) {
                 application_slug: 'missing-parent',
                 organization_slug: fixture.alphaOrganizationSlug,
                 client_type: 'confidential',
+                redirect_uris: ['https://client.example.test/callback'],
               },
             ],
           },
@@ -492,6 +486,7 @@ if (capability.available) {
                 application_slug: fixture.bravoApplicationSlug,
                 organization_slug: fixture.bravoOrganizationSlug,
                 client_type: 'confidential',
+                redirect_uris: ['https://client.example.test/callback'],
               },
             ],
           },

@@ -35,12 +35,14 @@
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
     "docker:logs": "docker compose -f docker/docker-compose.yml logs -f",
+    "admin:env": "node docker/admin-playground/scripts/admin-env.mjs",
     "migrate": "node-pg-migrate up --migrations-dir packages/server/migrations --migration-file-language sql",
     "migrate:rollback": "node-pg-migrate down --migrations-dir packages/server/migrations --migration-file-language sql --count 1",
     "migrate:status": "node-pg-migrate status --migrations-dir packages/server/migrations --migration-file-language sql",
     "migrate:create": "node-pg-migrate create --migrations-dir packages/server/migrations --migration-file-language sql",
     "porta": "tsx packages/server/src/cli/index.ts",
     "cli": "tsx packages/cli/src/index.ts --insecure",
+    "admin": "NODE_USE_SYSTEM_CA=1 tsx packages/cli/src/index.ts admin --server https://porta-admin-playground.ci.portaidentity.com:3543",
     "harness:start": "bash test-harness/scripts/start.sh",
     "harness:stop": "bash test-harness/scripts/stop.sh",
     "harness:test": "bash test-harness/scripts/test.sh",
@@ -85,6 +87,7 @@
     "dotenv": "17.4.2",
     "eslint": "10.8.1",
     "eslint-config-prettier": "10.1.8",
+    "fs-ext-extra-prebuilt": "2.2.13",
     "koa": "^3.2.1",
     "koa-session": "^7.0.2",
     "koa-static": "^5.0.0",
@@ -103,5 +106,8 @@
     "vitest": "4.1.10",
     "zod": "4.4.3"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
+  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
+  "resolutions": {
+    "**/co-body/qs": "6.16.0"
+  }
 }

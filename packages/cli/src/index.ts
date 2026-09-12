@@ -48,7 +48,7 @@ import { sessionsCommand } from './commands/sessions.js';
 import { bulkCommand } from './commands/bulk.js';
 import { statsCommand } from './commands/stats.js';
 import { exportsCommand } from './commands/exports.js';
-import { guiCommand } from './commands/gui.js';
+import { adminCommand } from './commands/admin.js';
 
 /**
  * Builds and runs the CLI.
@@ -112,8 +112,8 @@ async function main(): Promise<void> {
     .command(provisionCommand)
     // Unauthenticated commands
     .command(healthCommand)
-    // GUI launcher (no auth required — admin-gui handles its own auth)
-    .command(guiCommand)
+    // Embedded administration application (handles its own session)
+    .command(adminCommand)
     .demandCommand(1, 'Please specify a command')
     .strict()
     .help()

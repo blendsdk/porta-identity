@@ -259,11 +259,20 @@ test('requires safe database, cache, and mail failures in both harness profiles'
     );
     assert.ok(entry.requiredLogFields.includes('dependency-class'), entry.id);
     assert.ok(entry.requiredLogFields.includes('recovery-outcome'), entry.id);
-    assert.deepEqual(entry.recoveryExpectations, [
-      'owned-dependency-restored',
-      'same-handler-control-succeeds-after-restoration',
-      'target-fingerprint-confirms-no-partial-write',
-    ]);
+    assert.deepEqual(
+      entry.recoveryExpectations,
+      entry.family === 'mail-error-exposure'
+        ? [
+            'owned-dependency-restored',
+            'same-handler-control-succeeds-after-restoration',
+            'probe-recovery-state-is-consistent',
+          ]
+        : [
+            'owned-dependency-restored',
+            'same-handler-control-succeeds-after-restoration',
+            'target-fingerprint-confirms-no-partial-write',
+          ],
+    );
   }
 
   const mailCases = dependencyCases.filter((entry) => entry.family === 'mail-error-exposure');
@@ -273,6 +282,15 @@ test('requires safe database, cache, and mail failures in both harness profiles'
     assert.equal(entry.request.body, 'email={syntheticAlphaEmail}&_csrf={acquiredCsrf}');
     assert.equal(entry.control.expectedStatus, 200);
     assert.equal(entry.expected.status, 200);
+    assert.deepEqual(entry.independentStateObservations, [
+      'exactly-one-probe-recovery-job-has-valid-failure-state',
+      'probe-recovery-token-is-job-bound-without-orphans',
+    ]);
+    assert.deepEqual(entry.recoveryExpectations, [
+      'owned-dependency-restored',
+      'same-handler-control-succeeds-after-restoration',
+      'probe-recovery-state-is-consistent',
+    ]);
   }
 });
 

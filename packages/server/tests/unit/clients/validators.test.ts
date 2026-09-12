@@ -6,6 +6,7 @@ import {
   getDefaultTokenEndpointAuthMethod,
   getDefaultResponseTypes,
   getDefaultScope,
+  validateClientProtocolCompatibility,
 } from '../../../src/clients/validators.js';
 
 describe('client validators', () => {
@@ -86,10 +87,7 @@ describe('client validators', () => {
     });
 
     it('should accept URIs with paths and query parameters', () => {
-      const result = validateRedirectUri(
-        'https://example.com/auth/callback?state=abc',
-        true,
-      );
+      const result = validateRedirectUri('https://example.com/auth/callback?state=abc', true);
       expect(result.isValid).toBe(true);
     });
   });
@@ -128,12 +126,34 @@ describe('client validators', () => {
     });
 
     it('should collect errors from multiple invalid URIs', () => {
-      const result = validateRedirectUris(
-        ['', 'http://example.com/callback#bad'],
-        false,
-      );
+      const result = validateRedirectUris(['', 'http://example.com/callback#bad'], false);
       expect(result.isValid).toBe(false);
       expect(result.errors!.length).toBe(2);
+    });
+  });
+
+  describe('validateClientProtocolCompatibility', () => {
+    it.each([
+      ['redirectUris', { redirectUris: ['https://example.com/cb', 'https://example.com/cb'] }],
+      [
+        'postLogoutRedirectUris',
+        { postLogoutRedirectUris: ['https://example.com/out', 'https://example.com/out'] },
+      ],
+      ['allowedOrigins', { allowedOrigins: ['https://example.com', 'https://example.com'] }],
+    ] as const)('should reject duplicate %s values', (_name, duplicate) => {
+      const result = validateClientProtocolCompatibility({
+        clientType: 'confidential',
+        redirectUris: ['https://example.com/cb'],
+        postLogoutRedirectUris: [],
+        grantTypes: ['authorization_code'],
+        responseTypes: ['code'],
+        tokenEndpointAuthMethod: 'client_secret_basic',
+        requirePkce: true,
+        allowedOrigins: [],
+        ...duplicate,
+      });
+
+      expect(result.isValid).toBe(false);
     });
   });
 
@@ -144,11 +164,7 @@ describe('client validators', () => {
   describe('getDefaultGrantTypes', () => {
     it('should return auth_code + refresh + client_creds for confidential web', () => {
       const grants = getDefaultGrantTypes('confidential', 'web');
-      expect(grants).toEqual([
-        'authorization_code',
-        'refresh_token',
-        'client_credentials',
-      ]);
+      expect(grants).toEqual(['authorization_code', 'refresh_token', 'client_credentials']);
     });
 
     it('should return auth_code + refresh for confidential native', () => {
@@ -173,9 +189,7 @@ describe('client validators', () => {
 
   describe('getDefaultTokenEndpointAuthMethod', () => {
     it('should return client_secret_basic for confidential', () => {
-      expect(getDefaultTokenEndpointAuthMethod('confidential')).toBe(
-        'client_secret_basic',
-      );
+      expect(getDefaultTokenEndpointAuthMethod('confidential')).toBe('client_secret_basic');
     });
 
     it('should return none for public', () => {

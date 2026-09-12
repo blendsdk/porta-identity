@@ -13,7 +13,7 @@
  * @example
  *   await initTemplateEngine();
  *   const html = await renderPage('login', {
- *     branding: { logoUrl: null, faviconUrl: null, primaryColor: '#3B82F6', companyName: 'Acme', customCss: null },
+ *     branding: { logoUrl: null, faviconUrl: null, primaryColor: '#3B82F6', companyName: 'Acme', customCss: null, imageSources: [] },
  *     locale: 'en',
  *     t: translationFn,
  *     csrfToken: 'abc123',
@@ -59,6 +59,8 @@ export interface TemplateContext {
     companyName: string;
     /** Optional custom CSS injected into layout <head> */
     customCss: string | null;
+    /** Validated image origins required by the response CSP. */
+    imageSources: readonly string[];
   };
 
   /** Current locale for the page (e.g., 'en') */
@@ -238,10 +240,7 @@ function registerHelpers(): void {
  * @param orgSlug - Organization slug for override lookup
  * @returns Absolute path to the template file, or null if not found
  */
-async function resolvePageTemplatePath(
-  pageName: string,
-  orgSlug: string,
-): Promise<string | null> {
+async function resolvePageTemplatePath(pageName: string, orgSlug: string): Promise<string | null> {
   // Try org-specific page template first
   const orgPath = path.join(TEMPLATES_DIR, orgSlug, 'pages', `${pageName}.hbs`);
   try {
@@ -282,10 +281,7 @@ async function resolvePageTemplatePath(
  * @throws Error if the template engine hasn't been initialized
  * @throws Error if the page template cannot be found
  */
-export async function renderPage(
-  pageName: string,
-  context: TemplateContext,
-): Promise<string> {
+export async function renderPage(pageName: string, context: TemplateContext): Promise<string> {
   if (!initialized || !layoutTemplate) {
     throw new Error('Template engine not initialized — call initTemplateEngine() first');
   }

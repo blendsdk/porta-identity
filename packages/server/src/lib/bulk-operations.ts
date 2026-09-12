@@ -17,7 +17,7 @@ import { writeAuditLogInTransaction } from './audit-log.js';
 export type BulkEntityType = 'organization' | 'user';
 
 /** Supported actions across both bulk entity types. */
-export type BulkAction = 'activate' | 'suspend' | 'deactivate' | 'lock' | 'unlock' | 'archive';
+export type BulkAction = 'activate' | 'suspend' | 'deactivate';
 
 /** Closed public outcome for one requested item. */
 export type BulkItemOutcome = 'succeeded' | 'failed' | 'not_attempted';
@@ -66,15 +66,11 @@ interface StatusTransition {
 const ORGANIZATION_TRANSITIONS: Readonly<Record<string, StatusTransition>> = Object.freeze({
   activate: { from: ['suspended'], to: 'active' },
   suspend: { from: ['active'], to: 'suspended' },
-  archive: { from: ['active', 'suspended'], to: 'archived' },
 });
 
 const USER_TRANSITIONS: Readonly<Record<string, StatusTransition>> = Object.freeze({
-  activate: { from: ['inactive', 'suspended'], to: 'active' },
+  activate: { from: ['inactive'], to: 'active' },
   deactivate: { from: ['active'], to: 'inactive' },
-  suspend: { from: ['active'], to: 'suspended' },
-  lock: { from: ['active'], to: 'locked' },
-  unlock: { from: ['locked'], to: 'active' },
 });
 
 const MAXIMUM_ITEMS = 100;
@@ -140,20 +136,6 @@ async function updateStatus(
   id: string,
   nextStatus: string,
 ): Promise<void> {
-  if (
-    input.entityType === 'user' &&
-    input.reason &&
-    (input.action === 'suspend' || input.action === 'lock')
-  ) {
-    await client.query(
-      `UPDATE users
-       SET status = $1, updated_at = NOW(), suspension_reason = $2
-       WHERE id = $3 AND organization_id = $4`,
-      [nextStatus, input.reason, id, input.organizationId],
-    );
-    return;
-  }
-
   if (input.entityType === 'user') {
     await client.query(
       `UPDATE users SET status = $1, updated_at = NOW()

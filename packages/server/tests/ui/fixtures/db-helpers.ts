@@ -87,7 +87,7 @@ export interface TokenCreateOptions {
 export interface UserRecord {
   /** User UUID */
   id: string;
-  /** User status (active, inactive, suspended, locked) */
+  /** User status (active, inactive, or automatic lockout) */
   status: string;
   /** Whether the user's email has been verified */
   emailVerified: boolean;
@@ -136,10 +136,7 @@ export interface DbHelpers {
   getUserByEmail(email: string, orgId: string): Promise<UserRecord | null>;
 
   /** Update user status directly in the database */
-  updateUserStatus(
-    userId: string,
-    status: 'active' | 'inactive' | 'suspended' | 'locked',
-  ): Promise<void>;
+  updateUserStatus(userId: string, status: 'active' | 'inactive' | 'locked'): Promise<void>;
 
   /** Reset rate limit counters for a key pattern in Redis */
   resetRateLimits(pattern: string): Promise<void>;
@@ -352,7 +349,7 @@ async function getUserByEmail(email: string, orgId: string): Promise<UserRecord 
  */
 async function updateUserStatus(
   userId: string,
-  status: 'active' | 'inactive' | 'suspended' | 'locked',
+  status: 'active' | 'inactive' | 'locked',
 ): Promise<void> {
   const db = getTestPool();
   await db.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [

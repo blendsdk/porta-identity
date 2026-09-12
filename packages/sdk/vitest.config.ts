@@ -16,8 +16,11 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/**/*.ts'],
-      exclude: ['src/**/index.ts'],
+      include: ['src/auth/cli-auth.ts', 'src/transport/node-transport.ts'],
+      thresholds: {
+        'src/auth/cli-auth.ts': { lines: 90 },
+        'src/transport/node-transport.ts': { lines: 80 },
+      },
     },
   },
 });

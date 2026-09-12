@@ -12,9 +12,9 @@
  * Non-browser clients (CLI, same-origin requests) never send an `Origin`
  * header, so they pass through this middleware untouched.
  *
- * Placement: mount after the admin metadata router and before
- * `setAdminAuthProvider()` — preflight `OPTIONS` requests don't carry
- * an `Authorization` header, so CORS must respond before auth runs.
+ * Placement: mount before Admin rate limiting, body parsing, and authentication.
+ * Preflight `OPTIONS` requests carry no `Authorization` header, so CORS must
+ * respond before authentication runs.
  *
  * @module middleware/admin-cors
  */

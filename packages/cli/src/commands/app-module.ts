@@ -10,6 +10,7 @@ import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -33,7 +34,17 @@ interface ModuleUpdateArgs extends GlobalOptions {
   description?: string;
 }
 
-interface ModuleRemoveArgs extends GlobalOptions {
+interface ModuleDeactivateArgs extends GlobalOptions {
+  'app-id': string;
+  'module-id': string;
+}
+
+interface ModuleActivateArgs extends GlobalOptions {
+  'app-id': string;
+  'module-id': string;
+}
+
+interface ModuleDeleteArgs extends GlobalOptions {
   'app-id': string;
   'module-id': string;
 }
@@ -95,7 +106,11 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             const modules = await client.applications.listModules(argv['app-id']);
 
             if (modules.length === 0) {
-              warn('No modules found');
+              if (argv.json) {
+                printJson(modules);
+              } else {
+                warn('No modules found');
+              }
               return;
             }
 
@@ -103,14 +118,8 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               printJson(modules);
             } else {
               printTable(
-                ['ID', 'Name', 'Slug', 'Active', 'Created'],
-                modules.map((m) => [
-                  m.id,
-                  m.name,
-                  m.slug,
-                  String(m.isActive),
-                  formatDate(m.createdAt),
-                ]),
+                ['ID', 'Name', 'Slug', 'Status', 'Created'],
+                modules.map((m) => [m.id, m.name, m.slug, m.status, formatDate(m.createdAt)]),
               );
               info(`Total: ${modules.length} modules`);
             }
@@ -160,9 +169,9 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
-      .command<ModuleRemoveArgs>(
-        'remove <app-id> <module-id>',
-        'Remove a module from an application',
+      .command<ModuleDeactivateArgs>(
+        'deactivate <app-id> <module-id>',
+        'Deactivate a module',
         (y) =>
           y
             .positional('app-id', {
@@ -178,14 +187,76 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.applications.removeModule(argv['app-id'], argv['module-id']);
-            success('Module removed');
+            await client.applications.deactivateModule(argv['app-id'], argv['module-id']);
+            success('Module deactivated');
           } catch (err) {
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Specify a module subcommand: add, list, update, remove');
+
+      .command<ModuleActivateArgs>(
+        'activate <app-id> <module-id>',
+        'Activate a module',
+        (y) =>
+          y
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module ID',
+            }),
+        async (argv) => {
+          try {
+            const client = createClient(argv);
+            await client.applications.activateModule(argv['app-id'], argv['module-id']);
+            success('Module activated');
+          } catch (err) {
+            handleError(err, argv.verbose);
+          }
+        },
+      )
+
+      .command<ModuleDeleteArgs>(
+        'delete <app-id> <module-id>',
+        'Permanently delete a module and its owned permissions',
+        (y) =>
+          y
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('module-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Module ID',
+            }),
+        async (argv) => {
+          try {
+            const client = createClient(argv);
+            const modules = await client.applications.listModules(argv['app-id']);
+            const module = modules.find(({ id }) => id === argv['module-id']);
+            if (!module) throw new Error('Module not found');
+            const confirmed = await confirm(
+              `Keep module "${module.name}" (${module.slug}), or Delete ${module.name}? This permanently deletes its permissions and dependent links.`,
+            );
+            if (!confirmed) {
+              warn('Operation cancelled');
+              return;
+            }
+            await client.applications.deleteModule(argv['app-id'], argv['module-id']);
+            success(`Module deleted: ${module.name} (${module.slug})`);
+          } catch (err) {
+            handleError(err, argv.verbose);
+          }
+        },
+      )
+      .demandCommand(1, 'Specify a module subcommand: add, list, update, deactivate, delete');
   },
   handler: () => {},
 };

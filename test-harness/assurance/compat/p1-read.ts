@@ -195,7 +195,7 @@ const evidenceSchema = z
     version: z.literal(1),
     provenance: z
       .object({
-        nodeVersion: z.string().regex(/^v22\./u),
+        nodeVersion: z.string().regex(/^v24\./u),
         nodeExecutableSha256: bareDigestSchema,
         sourceRevision: z.string().regex(/^[a-f0-9]{40}$/u),
         serverImageDigest: digestSchema,

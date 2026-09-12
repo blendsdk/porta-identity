@@ -189,23 +189,60 @@ export async function updateDefinition(
 // Delete
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a claim definition by ID.
- *
- * CASCADE constraint automatically removes all associated claim values.
- *
- * @param id - Definition UUID
- * @returns true if deleted, false if not found
- */
-export async function deleteDefinition(id: string): Promise<boolean> {
+/** Lock, capture, and delete a claim definition through its application parent. */
+export async function deleteDefinition(
+  applicationId: string,
+  id: string,
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null> {
+  const capture = await captureDefinitionForDeletion(applicationId, id);
+  if (!capture) return null;
+  await deleteCapturedDefinition(applicationId, id);
+  return capture;
+}
+
+/** Lock and capture a claim definition without deleting it. */
+export async function captureDefinitionForDeletion(
+  applicationId: string,
+  id: string,
+): Promise<{ definition: CustomClaimDefinition; userIds: string[]; grantIds: string[] } | null> {
   const pool = getPool();
-
-  const result = await pool.query(
-    'DELETE FROM custom_claim_definitions WHERE id = $1',
-    [id],
+  const target = await pool.query<CustomClaimDefinitionRow>(
+    `SELECT * FROM custom_claim_definitions
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, id],
   );
+  if (!target.rows[0]) return null;
+  const graph = await pool.query<{ user_ids: string[]; grant_ids: string[] }>(
+    `WITH affected_users AS (
+       SELECT DISTINCT user_id FROM custom_claim_values WHERE claim_id = $1
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(SELECT user_id::text FROM affected_users))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $2
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [id, applicationId],
+  );
+  return {
+    definition: mapRowToDefinition(target.rows[0]),
+    userIds: graph.rows[0]!.user_ids,
+    grantIds: graph.rows[0]!.grant_ids,
+  };
+}
 
-  return (result.rowCount ?? 0) > 0;
+/** Physically delete a claim definition previously locked through its parent. */
+export async function deleteCapturedDefinition(applicationId: string, id: string): Promise<void> {
+  await getPool().query(
+    'DELETE FROM custom_claim_definitions WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
+  );
 }
 
 // ---------------------------------------------------------------------------

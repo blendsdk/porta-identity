@@ -4,7 +4,6 @@
  * Validates image upload, retrieval, listing, and deletion
  * against the branding_assets table in PostgreSQL.
  *
- * @see 06-bulk-branding.md
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -31,6 +30,15 @@ const MINIMAL_PNG = Buffer.from(
 const MINIMAL_SVG = Buffer.from(
   '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"><rect width="1" height="1"/></svg>',
 );
+
+const PNG_SIGNATURE = MINIMAL_PNG.subarray(0, 8);
+
+/** Build a PNG-signature buffer of the requested size for boundary persistence tests. */
+function pngOfSize(size: number): Buffer {
+  const data = Buffer.alloc(size);
+  PNG_SIGNATURE.copy(data);
+  return data;
+}
 
 describe('Branding Assets (Integration)', () => {
   beforeEach(async () => {
@@ -79,6 +87,17 @@ describe('Branding Assets (Integration)', () => {
       const asset = await getAsset(org.id, 'logo');
 
       expect(asset!.contentType).toBe('image/svg+xml');
+    });
+
+    it('should store a logo larger than the favicon limit', async () => {
+      const org = await createTestOrganization({ name: 'Large Logo Org' });
+      const logo = pngOfSize(512 * 1024 + 1);
+
+      await uploadAsset(org.id, 'logo', 'image/png', logo);
+
+      const asset = await getAsset(org.id, 'logo');
+      expect(asset?.fileSize).toBe(logo.length);
+      expect(asset?.data).toEqual(logo);
     });
 
     it('should return null for non-existent asset', async () => {

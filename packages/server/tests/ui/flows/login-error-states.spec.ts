@@ -5,8 +5,8 @@
  * on failed login, and account lockout behavior. Covers Category 6 from the
  * UI Testing Phase 2 plan.
  *
- * Uses seeded users in various statuses (suspended, inactive, locked) and
- * organizations in non-active states (suspended, archived) from global-setup.
+ * Uses seeded users in inactive and locked statuses and
+ * organizations in suspended or physically deleted states from global setup.
  *
  * @see plans/ui-testing-v2/06-login-consent-interaction-tests.md — Category 6
  */
@@ -18,33 +18,7 @@ import { test, expect } from '../fixtures/test-fixtures.js';
 // ---------------------------------------------------------------------------
 
 test.describe('Login Error States', () => {
-  // ── 6.1: Suspended user ──────────────────────────────────────────────
-
-  test('suspended user sees account suspended error', async ({ page, testData, startAuthFlow }) => {
-    // Start OIDC auth flow → lands on login page
-    await startAuthFlow(page);
-    await page.waitForURL('**/interaction/**');
-
-    // Fill in suspended user credentials
-    await page.fill('#email', testData.suspendedUserEmail);
-    await page.fill('#password', 'TestPassword123!');
-
-    // Submit login form
-    await page.click('button[type="submit"]');
-    await page.waitForLoadState('networkidle');
-
-    // Should stay on login page (still an interaction URL)
-    expect(page.url()).toContain('/interaction/');
-
-    // Account state must not be disclosed to an unauthenticated caller.
-    const flash = page.locator('.flash-error, .error, .alert-error');
-    await expect(flash).toBeVisible();
-    const flashText = await flash.textContent();
-    expect(flashText?.toLowerCase()).toContain('invalid email or password');
-    expect(flashText?.toLowerCase()).not.toMatch(/suspend|status/);
-  });
-
-  // ── 6.2: Inactive user (no active account) ──────────────────────────
+  // ── 6.1: Inactive user (no active account) ──────────────────────────
 
   test('inactive user sees account error', async ({ page, testData, startAuthFlow }) => {
     // Start OIDC auth flow → lands on login page
@@ -134,15 +108,15 @@ test.describe('Login Error States', () => {
     await expect(page.locator('#email')).not.toBeVisible();
   });
 
-  // ── 6.6: Archived organization ──────────────────────────────────────
+  // A deleted tenant must not regain a public authentication surface.
 
-  test('archived org shows 404 error', async ({ page, testData }) => {
-    // Navigate to a page under the archived org slug
+  test('deleted org shows 404 error', async ({ page, testData }) => {
+    // Navigate to a page under the deleted org slug
     const response = await page.goto(
-      `${testData.baseUrl}/${testData.archivedOrgSlug}/auth/forgot-password`,
+      `${testData.baseUrl}/${testData.deletedOrgSlug}/auth/forgot-password`,
     );
 
-    // Tenant resolver returns 404 for archived orgs (treated as non-existent)
+    // Tenant resolver returns 404 for deleted orgs (treated as non-existent)
     expect(response?.status()).toBe(404);
 
     // Should NOT show the login form

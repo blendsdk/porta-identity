@@ -6,14 +6,14 @@ Porta is a full-featured, multi-tenant OpenID Connect (OIDC) provider designed f
 
 Porta is multi-tenant from the ground up. Every organization gets its own isolated OIDC endpoints, user pool, and configuration — all from a single deployment.
 
-| Capability | Description |
-|-----------|-------------|
-| **Path-based tenancy** | Each org gets its own OIDC namespace: `/{orgSlug}/.well-known/openid-configuration` |
-| **Per-org user pools** | Users belong to a specific organization; the same email can exist in different orgs |
-| **Per-org branding** | Logo, favicon, primary color, company name, and custom CSS — all configurable via API |
-| **Per-org login methods** | Choose which authentication methods are available per organization |
-| **Per-org 2FA policy** | Enforce two-factor authentication with configurable policies |
-| **Organization lifecycle** | Active → Suspended → Archived status transitions with audit logging |
+| Capability                 | Description                                                                                       |
+| -------------------------- | ------------------------------------------------------------------------------------------------- |
+| **Path-based tenancy**     | Each org gets its own OIDC namespace: `/{orgSlug}/.well-known/openid-configuration`               |
+| **Per-org user pools**     | Users belong to a specific organization; the same email can exist in different orgs               |
+| **Per-org branding**       | Logo, favicon, primary color, company name, and custom CSS — all configurable via API             |
+| **Per-org login methods**  | Choose which authentication methods are available per organization                                |
+| **Per-org 2FA policy**     | Enforce two-factor authentication with configurable policies                                      |
+| **Organization lifecycle** | Active or suspended for temporary control; permanent deletion is separately confirmed and audited |
 
 ### OIDC Standards Compliance
 
@@ -40,10 +40,10 @@ Porta supports multiple authentication methods that can be mixed and matched per
 
 ### Login Methods
 
-| Method | Description |
-|--------|-------------|
-| **Password** | Traditional email + password with Argon2id hashing and [NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html) compliant validation |
-| **Magic Link** | Passwordless email-based authentication with secure one-time tokens |
+| Method         | Description                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Password**   | Traditional email + password with Argon2id hashing and [NIST SP 800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html) compliant validation |
+| **Magic Link** | Passwordless email-based authentication with secure one-time tokens                                                                           |
 
 Login methods are configured at two levels:
 
@@ -61,13 +61,14 @@ Organization default: [password, magic_link]
 
 Porta provides three 2FA methods that can be combined:
 
-| Method | Description |
-|--------|-------------|
-| **Email OTP** | 6-digit code sent via email, configurable expiry |
-| **TOTP** | Authenticator app support (Google Authenticator, Authy, etc.) with QR code setup |
-| **Recovery Codes** | One-time backup codes for account recovery, Argon2id hashed |
+| Method             | Description                                                                      |
+| ------------------ | -------------------------------------------------------------------------------- |
+| **Email OTP**      | 6-digit code sent via email, configurable expiry                                 |
+| **TOTP**           | Authenticator app support (Google Authenticator, Authy, etc.) with QR code setup |
+| **Recovery Codes** | One-time backup codes for account recovery, Argon2id hashed                      |
 
 2FA can be enforced per-organization with policies:
+
 - **Optional** — Users choose whether to enable 2FA
 - **Encouraged** — Users are prompted but not required
 - **Required** — All users must configure 2FA
@@ -84,13 +85,13 @@ Every user-facing page in Porta — login, consent, password reset, magic link, 
 
 Without touching any templates, you can customize per organization via the Admin API or CLI:
 
-| Setting | Effect |
-|---------|--------|
-| **Logo URL** | Displayed in page headers and email headers |
-| **Favicon URL** | Browser tab icon |
-| **Primary Color** | Buttons, links, and accent colors (CSS `--primary` variable) |
-| **Company Name** | Page titles, headers, footers, and email signatures |
-| **Custom CSS** | Up to 10KB of raw CSS injected into every page (full style override) |
+| Setting           | Effect                                                               |
+| ----------------- | -------------------------------------------------------------------- |
+| **Logo URL**      | Displayed in page headers and email headers                          |
+| **Favicon URL**   | Browser tab icon                                                     |
+| **Primary Color** | Buttons, links, and accent colors (CSS `--primary` variable)         |
+| **Company Name**  | Page titles, headers, footers, and email signatures                  |
+| **Custom CSS**    | Up to 10KB of raw CSS injected into every page (full style override) |
 
 ```bash
 # Set branding via CLI
@@ -164,11 +165,11 @@ Roles and permissions are included in OIDC tokens, so your applications can make
 
 Define application-specific claims with type validation:
 
-| Claim Type | Example |
-|-----------|---------|
-| `string` | `department: "Engineering"` |
-| `number` | `employee_id: 42` |
-| `boolean` | `is_manager: true` |
+| Claim Type | Example                           |
+| ---------- | --------------------------------- |
+| `string`   | `department: "Engineering"`       |
+| `number`   | `employee_id: 42`                 |
+| `boolean`  | `is_manager: true`                |
 | `string[]` | `teams: ["frontend", "platform"]` |
 
 Custom claims are injected into OIDC tokens alongside standard claims, giving your applications rich user context without extra API calls.
@@ -181,18 +182,18 @@ Custom claims are injected into OIDC tokens alongside standard claims, giving yo
 
 A comprehensive command-line tool for managing every aspect of Porta:
 
-| Command | Description |
-|---------|-------------|
-| `porta init` | Bootstrap the admin system (first-time setup) |
-| `porta login` / `logout` / `whoami` | OIDC-based CLI authentication |
-| `porta org` | Create, list, update, suspend, archive organizations + branding |
-| `porta app` | Manage applications, modules, roles, permissions, claims |
-| `porta client` | Create clients, manage secrets, configure login methods |
-| `porta user` | Full user lifecycle, roles, claims, 2FA management |
-| `porta keys` | ES256 signing key management (list, generate, rotate) |
-| `porta config` | System configuration management |
-| `porta audit` | View audit logs with filtering |
-| `porta migrate` | Database migration management |
+| Command                             | Description                                                    |
+| ----------------------------------- | -------------------------------------------------------------- |
+| `porta init`                        | Bootstrap the admin system (first-time setup)                  |
+| `porta login` / `logout` / `whoami` | OIDC-based CLI authentication                                  |
+| `porta org`                         | Create, list, update, suspend, delete organizations + branding |
+| `porta app`                         | Manage applications, modules, roles, permissions, claims       |
+| `porta client`                      | Create clients, manage secrets, configure login methods        |
+| `porta user`                        | Full user lifecycle, roles, claims, 2FA management             |
+| `porta keys`                        | ES256 signing key management (list, generate, rotate)          |
+| `porta config`                      | System configuration management                                |
+| `porta audit`                       | View audit logs with filtering                                 |
+| `porta migrate`                     | Database migration management                                  |
 
 ### REST Admin API
 
@@ -211,87 +212,87 @@ Every CLI operation is backed by a JWT-authenticated REST API at `/api/admin/*`:
 
 ## Security & Compliance
 
-| Feature | Implementation |
-|---------|---------------|
-| **Token Signing** | ES256 (ECDSA P-256) — keys auto-generated, stored as PEM in database |
-| **Password Hashing** | Argon2id with NIST SP 800-63B compliant validation |
-| **Client Secrets** | Argon2id hashed with SHA-256 pre-hash for length normalization |
-| **PKCE** | Required for public clients, supported for all |
-| **CSRF Protection** | Token-based CSRF on all form submissions |
-| **Rate Limiting** | Redis-backed per-IP limiting: token (30/5min), admin API (60/60s), introspection (100/60s), login interactions |
-| **Account Lockout** | Auto-lock after N failed logins (default: 5), auto-unlock after cooldown (default: 15 min) |
-| **Audit Logging** | Every admin operation and security event logged with actor, target, metadata |
-| **Audit Retention** | Configurable `audit_retention_days` with CLI/API cleanup command |
-| **CORS** | Configurable per OIDC endpoint |
-| **Session Security** | Short-lived sessions in Redis with signed cookies |
-| **Key Rotation** | Active/retired/revoked key lifecycle with JWKS endpoint |
-| **2FA Secret Encryption** | AES-256-GCM for TOTP secrets at rest |
-| **Recovery Code Hashing** | Argon2id for recovery codes |
-| **Secure Headers** | CSP, X-Frame-Options, X-Content-Type-Options on all responses |
-| **No Information Leakage** | Root page returns neutral content; no product/vendor identification |
-| **PII Redaction** | Sensitive fields (password, token, cookie, client_secret) redacted from all log output |
-| **Config Safety** | Production startup validation — rejects dev placeholders, weak keys, insecure URLs (9 rules) |
-| **Body Size Limits** | 100 KB limit on JSON, form, and text request bodies |
-| **Graceful Shutdown** | SIGTERM/SIGINT → drain connections → close DB/Redis → 10s kill switch |
-| **GDPR Compliance** | Data export (Article 20) and data purge (Article 17) via API and CLI |
-| **Prometheus Metrics** | Optional `GET /metrics` endpoint with `prom-client` (counter, default Node.js metrics) |
-| **Readiness Probe** | `GET /ready` with DB + Redis connectivity check (2s timeout) |
+| Feature                    | Implementation                                                                                                 |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| **Token Signing**          | ES256 (ECDSA P-256) — keys auto-generated, stored as PEM in database                                           |
+| **Password Hashing**       | Argon2id with NIST SP 800-63B compliant validation                                                             |
+| **Client Secrets**         | Argon2id hashed with SHA-256 pre-hash for length normalization                                                 |
+| **PKCE**                   | Required for public clients, supported for all                                                                 |
+| **CSRF Protection**        | Token-based CSRF on all form submissions                                                                       |
+| **Rate Limiting**          | Redis-backed per-IP limiting: token (30/5min), admin API (60/60s), introspection (100/60s), login interactions |
+| **Account Lockout**        | Auto-lock after N failed logins (default: 5), auto-unlock after cooldown (default: 15 min)                     |
+| **Audit Logging**          | Every admin operation and security event logged with actor, target, metadata                                   |
+| **Audit Retention**        | Configurable `audit_retention_days` with CLI/API cleanup command                                               |
+| **CORS**                   | Configurable per OIDC endpoint                                                                                 |
+| **Session Security**       | Short-lived sessions in Redis with signed cookies                                                              |
+| **Key Rotation**           | Active/retired/revoked key lifecycle with JWKS endpoint                                                        |
+| **2FA Secret Encryption**  | AES-256-GCM for TOTP secrets at rest                                                                           |
+| **Recovery Code Hashing**  | Argon2id for recovery codes                                                                                    |
+| **Secure Headers**         | CSP, X-Frame-Options, X-Content-Type-Options on all responses                                                  |
+| **No Information Leakage** | Root page returns neutral content; no product/vendor identification                                            |
+| **PII Redaction**          | Sensitive fields (password, token, cookie, client_secret) redacted from all log output                         |
+| **Config Safety**          | Production startup validation — rejects dev placeholders, weak keys, insecure URLs (9 rules)                   |
+| **Body Size Limits**       | 100 KB limit on JSON, form, and text request bodies                                                            |
+| **Graceful Shutdown**      | SIGTERM/SIGINT → drain connections → close DB/Redis → 10s kill switch                                          |
+| **User Data Control**      | Data export and physical user deletion via API and CLI                                                         |
+| **Prometheus Metrics**     | Optional `GET /metrics` endpoint with `prom-client` (counter, default Node.js metrics)                         |
+| **Readiness Probe**        | `GET /ready` with DB + Redis connectivity check (2s timeout)                                                   |
 
 ---
 
 ## Infrastructure
 
-| Component | Technology |
-|-----------|-----------|
-| **Runtime** | Node.js ≥ 22 |
-| **Framework** | Koa (required for node-oidc-provider compatibility) |
-| **Language** | TypeScript (strict mode) |
-| **Database** | PostgreSQL 16 |
-| **Cache/Sessions** | Redis 7 |
-| **OIDC Engine** | node-oidc-provider 9.x |
-| **Deployment** | Docker image, Docker Compose, or standalone |
+| Component          | Technology                                          |
+| ------------------ | --------------------------------------------------- |
+| **Runtime**        | Node.js ≥ 22                                        |
+| **Framework**      | Koa (required for node-oidc-provider compatibility) |
+| **Language**       | TypeScript (strict mode)                            |
+| **Database**       | PostgreSQL 16                                       |
+| **Cache/Sessions** | Redis 7                                             |
+| **OIDC Engine**    | node-oidc-provider 9.x                              |
+| **Deployment**     | Docker image, Docker Compose, or standalone         |
 
 ### Hybrid Storage Architecture
 
 Porta uses a hybrid adapter strategy for optimal performance:
 
-| Data Type | Storage | Reason |
-|-----------|---------|--------|
-| Sessions, Interactions, Auth Codes | **Redis** | Ephemeral, high-speed, auto-expiry |
-| Access Tokens, Refresh Tokens, Grants | **PostgreSQL** | Durable, queryable, audit trail |
-| Organizations, Users, Clients, Roles | **PostgreSQL** | Primary data store |
-| Tenant resolution, RBAC lookups | **Redis cache** | Performance with graceful degradation |
+| Data Type                             | Storage         | Reason                                |
+| ------------------------------------- | --------------- | ------------------------------------- |
+| Sessions, Interactions, Auth Codes    | **Redis**       | Ephemeral, high-speed, auto-expiry    |
+| Access Tokens, Refresh Tokens, Grants | **PostgreSQL**  | Durable, queryable, audit trail       |
+| Organizations, Users, Clients, Roles  | **PostgreSQL**  | Primary data store                    |
+| Tenant resolution, RBAC lookups       | **Redis cache** | Performance with graceful degradation |
 
 ---
 
 ## At a Glance
 
-| Capability | Porta |
-|-----------|-------|
-| Multi-tenant | ✅ Path-based org isolation |
-| OIDC compliant | ✅ Authorization Code + PKCE, Client Credentials, Refresh |
-| Password login | ✅ Argon2id + NIST validation |
-| Magic link login | ✅ Secure one-time email tokens |
-| 2FA — Email OTP | ✅ Configurable expiry |
-| 2FA — TOTP | ✅ Authenticator app with QR setup |
-| 2FA — Recovery codes | ✅ Argon2id hashed backup codes |
-| Per-org login methods | ✅ Default + override per client |
-| Account lockout | ✅ Auto-lock/unlock with configurable thresholds |
-| Custom login UI | ✅ Handlebars templates + Docker volume mount |
-| Per-org branding (API) | ✅ Logo, colors, CSS, company name |
-| Custom email templates | ✅ HTML + plain text |
-| RBAC | ✅ Roles + permissions per application |
-| Custom claims | ✅ Type-validated, injected into tokens |
-| Admin CLI | ✅ 14+ commands |
-| Admin REST API | ✅ JWT-authenticated, 70+ endpoints |
-| Audit logging | ✅ All operations logged with configurable retention |
-| Rate limiting | ✅ Per-IP on token, admin API, introspection, login |
-| Key rotation | ✅ ES256 with lifecycle management |
-| GDPR compliance | ✅ Data export (Article 20) + purge (Article 17) |
-| Prometheus metrics | ✅ Optional `/metrics` endpoint |
-| Readiness probe | ✅ `GET /ready` with DB + Redis check |
-| Config safety | ✅ Production startup validation (9 rules) |
-| PII redaction | ✅ Sensitive fields redacted from logs |
-| Graceful shutdown | ✅ SIGTERM drain with 10s kill switch |
-| i18n | ✅ Locale-based translations |
-| Docker support | ✅ Production-ready image |
+| Capability             | Porta                                                     |
+| ---------------------- | --------------------------------------------------------- |
+| Multi-tenant           | ✅ Path-based org isolation                               |
+| OIDC compliant         | ✅ Authorization Code + PKCE, Client Credentials, Refresh |
+| Password login         | ✅ Argon2id + NIST validation                             |
+| Magic link login       | ✅ Secure one-time email tokens                           |
+| 2FA — Email OTP        | ✅ Configurable expiry                                    |
+| 2FA — TOTP             | ✅ Authenticator app with QR setup                        |
+| 2FA — Recovery codes   | ✅ Argon2id hashed backup codes                           |
+| Per-org login methods  | ✅ Default + override per client                          |
+| Account lockout        | ✅ Auto-lock/unlock with configurable thresholds          |
+| Custom login UI        | ✅ Handlebars templates + Docker volume mount             |
+| Per-org branding (API) | ✅ Logo, colors, CSS, company name                        |
+| Custom email templates | ✅ HTML + plain text                                      |
+| RBAC                   | ✅ Roles + permissions per application                    |
+| Custom claims          | ✅ Type-validated, injected into tokens                   |
+| Admin CLI              | ✅ 14+ commands                                           |
+| Admin REST API         | ✅ JWT-authenticated, 70+ endpoints                       |
+| Audit logging          | ✅ All operations logged with configurable retention      |
+| Rate limiting          | ✅ Per-IP on token, admin API, introspection, login       |
+| Key rotation           | ✅ ES256 with lifecycle management                        |
+| User data control      | ✅ Data export + physical deletion                        |
+| Prometheus metrics     | ✅ Optional `/metrics` endpoint                           |
+| Readiness probe        | ✅ `GET /ready` with DB + Redis check                     |
+| Config safety          | ✅ Production startup validation (9 rules)                |
+| PII redaction          | ✅ Sensitive fields redacted from logs                    |
+| Graceful shutdown      | ✅ SIGTERM drain with 10s kill switch                     |
+| i18n                   | ✅ Locale-based translations                              |
+| Docker support         | ✅ Production-ready image                                 |

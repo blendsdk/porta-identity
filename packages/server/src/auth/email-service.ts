@@ -18,8 +18,10 @@
 import type { EmailTransport } from './email-transport.js';
 import { createSmtpTransport } from './email-transport.js';
 import { renderEmail } from './email-renderer.js';
+import { resolveEffectiveBranding } from './effective-branding.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
+import type { Organization } from '../organizations/types.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -33,14 +35,8 @@ export interface EmailUser {
   familyName?: string | null;
 }
 
-/** Minimal org fields needed by email service */
-export interface EmailOrganization {
-  id: string;
-  slug: string;
-  brandingLogoUrl?: string | null;
-  brandingPrimaryColor?: string | null;
-  brandingCompanyName?: string | null;
-}
+/** Complete organization authority used to resolve email branding safely. */
+export type EmailOrganization = Organization;
 
 /** Closed recovery email variants sent by the durable worker. */
 export type RecoveryEmailType = 'magic_link' | 'password_reset';
@@ -88,6 +84,7 @@ function getTransport(): EmailTransport {
  */
 export async function sendRecoveryEmailStrict(input: StrictRecoveryEmailInput): Promise<void> {
   const isMagicLink = input.type === 'magic_link';
+  const branding = await resolveEffectiveBranding(input.organization);
   const { html, text } = await renderEmail(
     isMagicLink ? 'magic-link' : 'password-reset',
     input.organization.slug,
@@ -95,7 +92,7 @@ export async function sendRecoveryEmailStrict(input: StrictRecoveryEmailInput): 
       userName: getUserDisplayName(input.user),
       [isMagicLink ? 'magicLinkUrl' : 'resetUrl']: input.recoveryUrl,
       expiresMinutes: isMagicLink ? 15 : 60,
-      branding: buildBrandingContext(input.organization),
+      branding,
       locale: input.locale,
     },
   );
@@ -116,24 +113,6 @@ export async function sendRecoveryEmailStrict(input: StrictRecoveryEmailInput): 
  */
 export function setEmailTransport(override: EmailTransport | null): void {
   transport = override;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Build branding context object from organization data.
- *
- * @param org - Organization with branding fields
- * @returns Branding object for template context
- */
-function buildBrandingContext(org: EmailOrganization) {
-  return {
-    logoUrl: org.brandingLogoUrl ?? '',
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.slug,
-  };
 }
 
 /**
@@ -170,11 +149,12 @@ export async function sendMagicLinkEmail(
   locale: string,
 ): Promise<void> {
   try {
+    const branding = await resolveEffectiveBranding(org);
     const { html, text } = await renderEmail('magic-link', org.slug, {
       userName: getUserDisplayName(user),
       magicLinkUrl,
       expiresMinutes: 15,
-      branding: buildBrandingContext(org),
+      branding,
       locale,
     });
 
@@ -223,11 +203,12 @@ export async function sendPasswordResetEmail(
   locale: string,
 ): Promise<void> {
   try {
+    const branding = await resolveEffectiveBranding(org);
     const { html, text } = await renderEmail('password-reset', org.slug, {
       userName: getUserDisplayName(user),
       resetUrl,
       expiresMinutes: 60,
-      branding: buildBrandingContext(org),
+      branding,
       locale,
     });
 
@@ -289,21 +270,22 @@ export interface InvitationEmailOptions {
  * @param options - Optional personal message and inviter name
  * @returns Template context and computed subject line
  */
-function buildInvitationContext(
+async function buildInvitationContext(
   user: EmailUser,
   org: EmailOrganization,
   inviteUrl: string,
   locale: string,
   options?: InvitationEmailOptions,
-): { context: Record<string, unknown>; subject: string } {
-  const orgName = org.brandingCompanyName ?? org.slug;
+): Promise<{ context: Record<string, unknown>; subject: string }> {
+  const branding = await resolveEffectiveBranding(org);
+  const orgName = branding.companyName;
   return {
     context: {
       userName: getUserDisplayName(user),
       inviteUrl,
       orgName,
       expiresDays: 7,
-      branding: buildBrandingContext(org),
+      branding,
       locale,
       // Enhanced invitation fields — only included when provided
       personalMessage: options?.personalMessage ?? null,
@@ -332,7 +314,13 @@ export async function sendInvitationEmail(
   options?: InvitationEmailOptions,
 ): Promise<void> {
   try {
-    const { context, subject } = buildInvitationContext(user, org, inviteUrl, locale, options);
+    const { context, subject } = await buildInvitationContext(
+      user,
+      org,
+      inviteUrl,
+      locale,
+      options,
+    );
     const { html, text } = await renderEmail('invitation', org.slug, context);
 
     await getTransport().send({
@@ -384,7 +372,7 @@ export async function renderInvitationEmail(
   locale: string,
   options?: InvitationEmailOptions,
 ): Promise<{ html: string; text: string; subject: string }> {
-  const { context, subject } = buildInvitationContext(user, org, inviteUrl, locale, options);
+  const { context, subject } = await buildInvitationContext(user, org, inviteUrl, locale, options);
   const { html, text } = await renderEmail('invitation', org.slug, context);
   return { html, text, subject };
 }
@@ -402,16 +390,17 @@ export async function sendWelcomeEmail(
   locale: string,
 ): Promise<void> {
   try {
+    const branding = await resolveEffectiveBranding(org);
     const { html, text } = await renderEmail('welcome', org.slug, {
       userName: getUserDisplayName(user),
-      orgName: org.brandingCompanyName ?? org.slug,
-      branding: buildBrandingContext(org),
+      orgName: branding.companyName,
+      branding,
       locale,
     });
 
     await getTransport().send({
       to: user.email,
-      subject: `Welcome to ${org.brandingCompanyName ?? org.slug}`,
+      subject: `Welcome to ${branding.companyName}`,
       html,
       text,
     });
@@ -459,12 +448,13 @@ export async function sendOtpCodeEmail(
   locale: string,
 ): Promise<void> {
   try {
+    const branding = await resolveEffectiveBranding(org);
     const { html, text } = await renderEmail('otp-code', org.slug, {
       userName: getUserDisplayName(user),
       code,
       expiresMinutes,
-      orgName: org.brandingCompanyName ?? org.slug,
-      branding: buildBrandingContext(org),
+      orgName: branding.companyName,
+      branding,
       locale,
     });
 
@@ -511,9 +501,10 @@ export async function sendPasswordChangedEmail(
   locale: string,
 ): Promise<void> {
   try {
+    const branding = await resolveEffectiveBranding(org);
     const { html, text } = await renderEmail('password-changed', org.slug, {
       userName: getUserDisplayName(user),
-      branding: buildBrandingContext(org),
+      branding,
       locale,
     });
 

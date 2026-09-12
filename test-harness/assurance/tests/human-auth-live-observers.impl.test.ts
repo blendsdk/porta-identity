@@ -3,8 +3,10 @@ import test from 'node:test';
 
 import {
   configuredLifetimeObserved,
+  emailOtpMailInventory,
   humanAuthDiagnostic,
   independentTotpValue,
+  mailhogInventoryPath,
   pollForExactHumanAuthMailValue,
   publicStateUnchanged,
 } from './human-auth-live-observers.js';
@@ -38,6 +40,24 @@ test('should reject duplicate messages and ambiguous values without disclosing t
       assert.doesNotMatch(error.message, /111111|222222/u);
       return true;
     },
+  );
+});
+
+test('should scope synthetic mailbox reads to the exact recipient', () => {
+  assert.equal(mailhogInventoryPath(), '/api/v2/messages');
+  assert.equal(
+    mailhogInventoryPath('otp+test@test-harness.local'),
+    '/api/v2/search?kind=to&query=otp%2Btest%40test-harness.local',
+  );
+});
+
+test('should count only OTP messages within a recipient mailbox', () => {
+  assert.deepEqual(
+    emailOtpMailInventory([
+      { subjects: ['Reset your password'], body: 'Recovery message' },
+      { subjects: ['Your verification code: 123456'], body: 'Code 123456' },
+    ]),
+    { count: 1, bodies: ['Code 123456'] },
   );
 });
 

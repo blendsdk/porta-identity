@@ -48,7 +48,9 @@ import { confirm } from '../../src/prompt.js';
 // ---------------------------------------------------------------------------
 
 const orgSuccessResult = {
-  total: 3, succeeded: 3, failed: 0,
+  total: 3,
+  succeeded: 3,
+  failed: 0,
   results: [
     { id: 'o1', success: true, previousStatus: 'active', newStatus: 'suspended' },
     { id: 'o2', success: true, previousStatus: 'active', newStatus: 'suspended' },
@@ -57,10 +59,12 @@ const orgSuccessResult = {
 };
 
 const userPartialResult = {
-  total: 3, succeeded: 2, failed: 1,
+  total: 3,
+  succeeded: 2,
+  failed: 1,
   results: [
-    { id: 'u1', success: true, previousStatus: 'active', newStatus: 'suspended' },
-    { id: 'u2', success: true, previousStatus: 'active', newStatus: 'suspended' },
+    { id: 'u1', success: true, previousStatus: 'active', newStatus: 'inactive' },
+    { id: 'u2', success: true, previousStatus: 'active', newStatus: 'inactive' },
     { id: 'u3', success: false, error: 'User not found', previousStatus: undefined },
   ],
 };
@@ -153,7 +157,7 @@ describe('bulk command', () => {
 
       await invokeSubcommand('execute', {
         'entity-type': 'users',
-        action: 'suspend',
+        action: 'deactivate',
         ids: 'u1,u2,u3',
         'organization-id': 'org-id-123',
         force: true,
@@ -161,9 +165,8 @@ describe('bulk command', () => {
 
       expect(mockBulk.userStatus).toHaveBeenCalledWith({
         ids: ['u1', 'u2', 'u3'],
-        action: 'suspend',
+        action: 'deactivate',
         organizationId: 'org-id-123',
-        reason: undefined,
       });
       expect(success).toHaveBeenCalledWith(expect.stringContaining('2 succeeded'));
     });
@@ -174,7 +177,7 @@ describe('bulk command', () => {
 
       await invokeSubcommand('execute', {
         'entity-type': 'users',
-        action: 'suspend',
+        action: 'deactivate',
         ids: 'u1,u2,u3',
         'organization-id': 'org-id',
         force: true,
@@ -189,7 +192,7 @@ describe('bulk command', () => {
 
       await invokeSubcommand('execute', {
         'entity-type': 'users',
-        action: 'suspend',
+        action: 'deactivate',
         ids: 'u1',
         force: true,
       });
@@ -205,7 +208,7 @@ describe('bulk command', () => {
 
       await invokeSubcommand('execute', {
         'entity-type': 'users',
-        action: 'suspend',
+        action: 'deactivate',
         ids: 'u1,u2',
         'organization-id': 'org-id',
       });

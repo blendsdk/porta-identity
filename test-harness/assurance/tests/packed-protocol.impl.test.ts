@@ -148,6 +148,14 @@ test('should select the supported manual-mode environment without the broken neg
   assert.doesNotMatch(driver, /['"]--no-browser['"]/u);
 });
 
+test('should bind independent ID-token verification to the CLI authorization nonce', () => {
+  const driver = readFileSync(
+    resolve(process.cwd(), 'test-harness/assurance/compat/protocol-cli-login.ts'),
+    'utf8',
+  );
+  assert.match(driver, /nonce:\s*authorization\.get\('nonce'\)\s*\?\?\s*undefined/u);
+});
+
 test('should capture one exact manual callback through an owner-bound loopback listener', async () => {
   const capture = await startPackedManualCallbackCapture(0);
   try {

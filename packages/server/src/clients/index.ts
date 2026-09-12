@@ -55,7 +55,7 @@ export type { CursorPaginatedResult } from '../lib/cursor.js';
 export {
   deactivateClient,
   activateClient,
-  revokeClient,
+  deleteClient,
 } from './service.js';
 
 // Service functions — OIDC integration

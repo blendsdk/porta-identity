@@ -1,6 +1,6 @@
 # Authentication Modes
 
-Porta supports multiple authentication methods that can be configured per organization and per client. This page covers all login methods, two-factor authentication options, and how they're configured and enforced.
+Porta supports multiple authentication methods that can be configured per organization and per client. This page covers all login methods, password-login two-factor authentication options, and how they are configured and enforced.
 
 ## Overview
 
@@ -9,9 +9,10 @@ Porta provides a layered authentication system:
 | Layer                      | Methods                         | Description                                |
 | -------------------------- | ------------------------------- | ------------------------------------------ |
 | **Primary authentication** | Password, Magic Link            | How users prove their identity             |
-| **Second factor (2FA)**    | Email OTP, TOTP, Recovery Codes | Additional verification after primary auth |
+| **Password-login 2FA**    | Email OTP, TOTP, Recovery Codes | Additional verification after a password   |
 
-These layers combine to create flexible, secure authentication flows tailored to each organization's needs.
+The 2FA policy applies only when a user signs in with a password. A validated magic link is already
+a complete passwordless proof, so Porta does not add an email OTP or TOTP prompt after it.
 
 ### Login Method Matrix
 
@@ -131,12 +132,7 @@ sequenceDiagram
     Porta->>DB: Lock and validate token, tenant, user, and interaction
     Porta->>DB: Consume token, update account, and write audit atomically
     Porta->>Porta: Create short-lived tenant-bound continuation
-    Porta->>DB: Check 2FA requirement
-    alt 2FA required
-        Porta->>User: Redirect to 2FA verification
-    else No 2FA
-        Porta->>User: Redirect to OIDC callback (success)
-    end
+    Porta->>User: Complete OIDC login without an additional 2FA prompt
 ```
 
 ### Magic Link Security
@@ -167,9 +163,10 @@ Magic link is ideal for:
 
 ---
 
-## Two-Factor Authentication (2FA) {#two-factor}
+## Password-Login Two-Factor Authentication (2FA) {#two-factor}
 
-After successful primary authentication (password or magic link), Porta can require a second factor for additional security.
+After successful password authentication, Porta can require a second factor. This policy does not
+run after magic-link authentication.
 
 ### Email OTP {#email-otp}
 
@@ -185,7 +182,7 @@ A 6-digit one-time password sent to the user's email.
 
 **User flow:**
 
-1. User completes primary login (password or magic link)
+1. User completes password login
 2. Porta generates a 6-digit code and stores it in the database
 3. Code is emailed to the user
 4. User enters the code on the verification page
@@ -214,7 +211,7 @@ Time-based One-Time Password using authenticator apps like Google Authenticator,
 
 **Login flow:**
 
-1. User completes primary login
+1. User completes password login
 2. Porta detects TOTP is configured for this user
 3. User enters the current 6-digit code from their authenticator app
 4. Porta verifies the code against the encrypted secret
@@ -241,7 +238,8 @@ Recovery codes are shown only once during 2FA setup. Users should save them in a
 
 ## Per-Organization Configuration {#per-org}
 
-Each organization has a `default_login_methods` setting that controls which primary authentication methods are available to all clients in that organization.
+Each organization has a `defaultLoginMethods` setting. Clients configured to inherit login methods
+use this non-empty selection.
 
 ### Setting Organization Login Methods
 
@@ -249,13 +247,13 @@ Each organization has a `default_login_methods` setting that controls which prim
 
 ```bash
 # Enable both password and magic link (default)
-porta org update <org-id> --login-methods password,magic_link
+porta org update <id-or-slug> --login-methods password,magic_link
 
 # Password only
-porta org update <org-id> --login-methods password
+porta org update <id-or-slug> --login-methods password
 
 # Magic link only
-porta org update <org-id> --login-methods magic_link
+porta org update <id-or-slug> --login-methods magic_link
 ```
 
 **Via Admin API:**
@@ -269,13 +267,20 @@ curl -X PUT https://porta.local:3443/api/admin/organizations/<org-id> \
 
 ### 2FA Organization Policy
 
-2FA enforcement is configured per organization:
+Password-login 2FA enforcement is configured per organization:
 
-| Policy           | Behavior                                                   |
-| ---------------- | ---------------------------------------------------------- |
-| **`optional`**   | Users can optionally enable 2FA in their account settings  |
-| **`encouraged`** | Users are prompted to set up 2FA but can skip              |
-| **`required`**   | All users must configure 2FA before accessing applications |
+| Policy              | Password-login behavior                                      |
+| ------------------- | ------------------------------------------------------------ |
+| **`optional`**      | Use a user's enrolled method when enabled; otherwise continue |
+| **`required_email`** | Require an email one-time password                           |
+| **`required_totp`** | Require authenticator/TOTP enrollment and verification       |
+| **`required_any`**  | Require an available email OTP or TOTP method                 |
+
+The embedded Admin UI edits this policy on the selected organization's **Authentication** tab.
+The SDK exposes the same resource through `porta.twoFactor.getPolicy(organizationId)` and
+`porta.twoFactor.setPolicy(organizationId, policy)`. The policy endpoint uses
+`admin:org:update`; the Admin UI reloads the displayed policy after a failed partial save and does
+not retry automatically.
 
 ---
 

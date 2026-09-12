@@ -9,7 +9,8 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { printTable, printJson, success, warn, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -24,8 +25,6 @@ interface RoleCreateArgs extends GlobalOptions {
 
 interface RoleListArgs extends GlobalOptions {
   'app-id': string;
-  page: number;
-  'page-size': number;
 }
 
 interface RoleShowArgs extends GlobalOptions {
@@ -40,7 +39,7 @@ interface RoleUpdateArgs extends GlobalOptions {
   description?: string;
 }
 
-interface RoleArchiveArgs extends GlobalOptions {
+interface RoleDeleteArgs extends GlobalOptions {
   'app-id': string;
   'role-id': string;
 }
@@ -77,7 +76,6 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           try {
             const client = createClient(argv);
             const role = await client.roles.create(argv['app-id'], {
-              applicationId: argv['app-id'],
               name: argv.name,
               slug: argv.slug,
               description: argv.description,
@@ -107,36 +105,30 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         'list <app-id>',
         'List roles for an application',
         (y) =>
-          y
-            .positional('app-id', {
-              type: 'string',
-              demandOption: true,
-              description: 'Application ID',
-            })
-            .option('page', { type: 'number', default: 1, description: 'Page number' })
-            .option('page-size', { type: 'number', default: 20, description: 'Items per page' }),
+          y.positional('app-id', {
+            type: 'string',
+            demandOption: true,
+            description: 'Application ID',
+          }),
         async (argv) => {
           try {
             const client = createClient(argv);
-            const result = await client.roles.list(argv['app-id'], {
-              page: argv.page,
-              pageSize: argv['page-size'],
-            });
+            const roles = await client.roles.list(argv['app-id']);
 
-            if (result.data.length === 0) {
+            if (argv.json) {
+              printJson(roles);
+              return;
+            }
+
+            if (roles.length === 0) {
               warn('No roles found');
               return;
             }
 
-            if (argv.json) {
-              printJson(result);
-            } else {
-              printTable(
-                ['ID', 'Name', 'Slug', 'Created'],
-                result.data.map((r) => [r.id, r.name, r.slug, formatDate(r.createdAt)]),
-              );
-              info(`Total: ${result.total} roles`);
-            }
+            printTable(
+              ['ID', 'Name', 'Slug', 'Created'],
+              roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
+            );
           } catch (err) {
             handleError(err, argv.verbose);
           }
@@ -204,7 +196,10 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             if (argv.json) {
               printJson(updated);
             } else {
-              success(`Role updated: ${updated.name}`);
+              success(`Role updated: ${updated.role.name}`);
+              if (updated.reauthenticationRequired) {
+                warn('Authenticate again before the next command.');
+              }
             }
           } catch (err) {
             handleError(err, argv.verbose);
@@ -212,9 +207,9 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
-      .command<RoleArchiveArgs>(
-        'archive <app-id> <role-id>',
-        'Archive a role',
+      .command<RoleDeleteArgs>(
+        'delete <app-id> <role-id>',
+        'Permanently delete a role and its assignments',
         (y) =>
           y
             .positional('app-id', {
@@ -226,8 +221,23 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.roles.archive(argv['app-id'], argv['role-id']);
-            success('Role archived');
+            const role = await client.roles.get(argv['app-id'], argv['role-id']);
+            const confirmed = await confirm(
+              `Keep role "${role.name}" (${role.slug}), or Delete ${role.name}? This permanently deletes its assignments and permission links.`,
+            );
+            if (!confirmed) {
+              warn('Operation cancelled');
+              return;
+            }
+            const result = await client.roles.delete(argv['app-id'], argv['role-id']);
+            if (argv.json) {
+              printJson(result);
+            } else {
+              success(`Role deleted: ${role.name} (${role.slug})`);
+              if (result.reauthenticationRequired) {
+                warn('Authenticate again before the next command.');
+              }
+            }
           } catch (err) {
             handleError(err, argv.verbose);
           }
@@ -253,11 +263,9 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.roles.assignPermission(
-              argv['app-id'],
-              argv['role-id'],
+            await client.roles.assignPermissions(argv['app-id'], argv['role-id'], [
               argv['permission-id'],
-            );
+            ]);
             success('Permission assigned to role');
           } catch (err) {
             handleError(err, argv.verbose);
@@ -284,12 +292,17 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.roles.removePermission(
-              argv['app-id'],
-              argv['role-id'],
+            const result = await client.roles.removePermissions(argv['app-id'], argv['role-id'], [
               argv['permission-id'],
-            );
-            success('Permission removed from role');
+            ]);
+            if (argv.json) {
+              printJson(result);
+            } else {
+              success('Permission removed from role');
+              if (result.reauthenticationRequired) {
+                warn('Authenticate again before the next command.');
+              }
+            }
           } catch (err) {
             handleError(err, argv.verbose);
           }
@@ -297,7 +310,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
       )
       .demandCommand(
         1,
-        'Specify a role subcommand: create, list, show, update, archive, assign-perm, remove-perm',
+        'Specify a role subcommand: create, list, show, update, delete, assign-perm, remove-perm',
       );
   },
   handler: () => {},

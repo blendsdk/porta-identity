@@ -36,6 +36,7 @@ import { getPool } from '../lib/database.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
+import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { setUserPassword, markEmailVerified } from '../users/service.js';
 import { validatePassword } from '../users/password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -59,22 +60,6 @@ interface AuthContext extends Context {
 // ---------------------------------------------------------------------------
 
 /**
- * Build branding context from organization data.
- *
- * @param org - Organization with branding fields
- * @returns Branding context for templates
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
-  };
-}
-
-/**
  * Render an HTML page and send it as the response.
  *
  * @param ctx - Koa context
@@ -88,6 +73,7 @@ async function renderAndRespond(
   context: TemplateContext,
   statusCode = 200,
 ): Promise<void> {
+  ctx.state.brandingImageSources = context.branding.imageSources;
   const html = await renderPage(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
@@ -158,7 +144,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -173,7 +159,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -238,7 +224,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -300,7 +286,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -345,7 +331,7 @@ async function renderInviteFormWithError(
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: buildBrandingFromOrg(org),
+    branding: await resolveEffectiveBranding(org),
     locale,
     t,
     csrfToken,
@@ -437,7 +423,7 @@ async function applyPreAssignments(
       try {
         // Verify claim definition still exists
         const defCheck = await pool.query(
-          `SELECT id FROM claim_definitions WHERE id = $1 AND application_id = $2`,
+          `SELECT id FROM custom_claim_definitions WHERE id = $1 AND application_id = $2`,
           [claim.claimDefinitionId, claim.applicationId],
         );
         if (defCheck.rows.length === 0) {
@@ -450,9 +436,9 @@ async function applyPreAssignments(
 
         // Upsert user claim value
         await pool.query(
-          `INSERT INTO user_claim_values (user_id, claim_definition_id, value)
+          `INSERT INTO custom_claim_values (user_id, claim_id, value)
            VALUES ($1, $2, $3)
-           ON CONFLICT (user_id, claim_definition_id) DO UPDATE SET value = EXCLUDED.value`,
+           ON CONFLICT (user_id, claim_id) DO UPDATE SET value = EXCLUDED.value`,
           [userId, claim.claimDefinitionId, JSON.stringify(claim.value)],
         );
 

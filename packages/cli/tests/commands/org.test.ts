@@ -15,9 +15,7 @@ const mockOrganizations = {
   update: vi.fn(),
   suspend: vi.fn(),
   activate: vi.fn(),
-  archive: vi.fn(),
-  restore: vi.fn(),
-  destroy: vi.fn(),
+  delete: vi.fn(),
   getHistory: vi.fn(),
 };
 
@@ -57,13 +55,12 @@ vi.mock('../../src/parsers.js', () => ({
 }));
 
 import { handleError } from '../../src/error-handler.js';
-import { printTable, printJson, success, warn, error, info } from '../../src/output.js';
-import { confirm, question } from '../../src/prompt.js';
+import { printTable, printJson, success, warn, info } from '../../src/output.js';
+import { confirm } from '../../src/prompt.js';
 
 // ---------------------------------------------------------------------------
 // Test data
 // ---------------------------------------------------------------------------
-
 
 const sampleOrg = {
   id: 'org-uuid-1234-5678-abcd',
@@ -265,7 +262,10 @@ describe('org command', () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       mockOrganizations.update.mockResolvedValue(sampleOrg);
 
-      await invokeSubcommand('update', { _pos_: 'acme-corp', 'login-methods': 'password,magic_link' });
+      await invokeSubcommand('update', {
+        _pos_: 'acme-corp',
+        'login-methods': 'password,magic_link',
+      });
 
       expect(mockOrganizations.update).toHaveBeenCalledWith(
         sampleOrg.id,
@@ -318,35 +318,25 @@ describe('org command', () => {
     });
   });
 
-  describe('archive', () => {
-    it('archives organization after confirmation', async () => {
+  describe('delete', () => {
+    it('deletes organization after confirmation', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       vi.mocked(confirm).mockResolvedValue(true);
 
-      await invokeSubcommand('archive', { _pos_: 'acme-corp' });
+      await invokeSubcommand('delete', { _pos_: 'acme-corp' });
 
       expect(confirm).toHaveBeenCalled();
-      expect(mockOrganizations.archive).toHaveBeenCalledWith(sampleOrg.id);
+      expect(mockOrganizations.delete).toHaveBeenCalledWith('acme-corp');
     });
 
-    it('skips confirmation with --force', async () => {
+    it('still confirms with --force', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
+      vi.mocked(confirm).mockResolvedValue(true);
 
-      await invokeSubcommand('archive', { _pos_: 'acme-corp', force: true });
+      await invokeSubcommand('delete', { _pos_: 'acme-corp', force: true });
 
-      expect(confirm).not.toHaveBeenCalled();
-      expect(mockOrganizations.archive).toHaveBeenCalledWith(sampleOrg.id);
-    });
-  });
-
-  describe('restore', () => {
-    it('restores an archived organization', async () => {
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-
-      await invokeSubcommand('restore', { _pos_: 'acme-corp' });
-
-      expect(mockOrganizations.restore).toHaveBeenCalledWith(sampleOrg.id);
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('restored'));
+      expect(confirm).toHaveBeenCalled();
+      expect(mockOrganizations.delete).toHaveBeenCalledWith('acme-corp');
     });
   });
 
@@ -371,15 +361,16 @@ describe('org command', () => {
     });
 
     it('shows history in JSON format', async () => {
-      const history = [{
-        id: 'h1',
-        eventType: 'org.updated',
-        actorId: null,
-        metadata: { name: 'New' },
-        createdAt: '2024-01-02T00:00:00Z',
-      }];
+      const history = [
+        {
+          id: 'h1',
+          eventType: 'org.updated',
+          actorId: null,
+          metadata: { name: 'New' },
+          createdAt: '2024-01-02T00:00:00Z',
+        },
+      ];
       mockOrganizations.getHistory.mockResolvedValue(history);
-
 
       await invokeSubcommand('history', { _pos_: 'acme-corp', json: true });
 
@@ -399,8 +390,9 @@ describe('org command', () => {
     it('updates branding settings', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
       mockBranding.updateSettings.mockResolvedValue({
-        primaryColor: '#ff0000',
-        companyName: 'Acme Updated',
+        ...sampleOrg,
+        brandingPrimaryColor: '#ff0000',
+        brandingCompanyName: 'Acme Updated',
       });
 
       await invokeSubcommand('branding', {
@@ -420,49 +412,24 @@ describe('org command', () => {
 
       expect(success).toHaveBeenCalledWith(expect.stringContaining('Branding updated'));
     });
-  });
 
-  describe('destroy', () => {
-    it('shows preview and destroys after type confirmation', async () => {
-      mockOrganizations.destroy
-        .mockResolvedValueOnce({ deleted: false, counts: { applications: 2, users: 5 } })
-        .mockResolvedValueOnce({ deleted: true });
+    it('prints the updated organization response as JSON', async () => {
+      const updatedOrganization = {
+        ...sampleOrg,
+        brandingPrimaryColor: '#ff0000',
+        brandingCompanyName: 'Acme Updated',
+      };
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-      vi.mocked(question).mockResolvedValue('acme-corp');
+      mockBranding.updateSettings.mockResolvedValue(updatedOrganization);
 
-      await invokeSubcommand('destroy', { _pos_: 'acme-corp' });
+      await invokeSubcommand('branding', {
+        _pos_: 'acme-corp',
+        'primary-color': '#ff0000',
+        'company-name': 'Acme Updated',
+        json: true,
+      });
 
-      // First call is dry-run
-      expect(mockOrganizations.destroy).toHaveBeenCalledWith('acme-corp', { dryRun: true });
-      // Type confirmation
-      expect(question).toHaveBeenCalled();
-      // Second call is actual destroy
-      expect(mockOrganizations.destroy).toHaveBeenCalledWith('acme-corp');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('permanently destroyed'));
-    });
-
-    it('cancels when slug does not match', async () => {
-      mockOrganizations.destroy.mockResolvedValue({ deleted: false, counts: {} });
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-      vi.mocked(question).mockResolvedValue('wrong-slug');
-
-      await invokeSubcommand('destroy', { _pos_: 'acme-corp' });
-
-      expect(error).toHaveBeenCalledWith(expect.stringContaining('does not match'));
-      // Only dry-run call, no actual destroy
-      expect(mockOrganizations.destroy).toHaveBeenCalledTimes(1);
-    });
-
-    it('skips confirmation with --force', async () => {
-      mockOrganizations.destroy
-        .mockResolvedValueOnce({ deleted: false, counts: {} })
-        .mockResolvedValueOnce({ deleted: true });
-      mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-
-      await invokeSubcommand('destroy', { _pos_: 'acme-corp', force: true });
-
-      expect(question).not.toHaveBeenCalled();
-      expect(mockOrganizations.destroy).toHaveBeenCalledTimes(2);
+      expect(printJson).toHaveBeenCalledWith(updatedOrganization);
     });
   });
 });

@@ -26,6 +26,7 @@ import { mapRowToOrganization } from './types.js';
 import type { LoginMethod } from '../clients/types.js';
 import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
+import { OrganizationValidationError } from './errors.js';
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -123,7 +124,7 @@ export async function findOrganizationById(id: string): Promise<Organization | n
 /**
  * Find an organization by its slug.
  *
- * Returns organizations of any status (active, suspended, archived).
+ * Returns organizations of any retained status (active or suspended).
  * The caller (service/middleware) is responsible for status-based access control.
  *
  * @param slug - Organization slug
@@ -415,7 +416,7 @@ export async function listOrganizationsCursor(
 /**
  * Check if a slug is already taken in the database.
  *
- * Checks across all statuses (active, suspended, archived) because
+ * Checks across all retained statuses because
  * slugs must be globally unique regardless of organization status.
  *
  * @param slug - Slug to check
@@ -440,68 +441,100 @@ export async function slugExists(slug: string, excludeId?: string): Promise<bool
   return result.rows[0].exists;
 }
 
-// ---------------------------------------------------------------------------
-// Hard delete
-// ---------------------------------------------------------------------------
-
-/**
- * Hard-delete an organization from the database.
- *
- * PostgreSQL CASCADE foreign keys automatically delete all child entities:
- * applications, clients, users, roles, permissions, claim definitions,
- * user claim values, user roles, branding assets, and admin sessions.
- * Audit log entries have their organization_id set to NULL (ON DELETE SET NULL).
- *
- * The `AND is_super_admin = FALSE` clause is a database-level safety check —
- * even if application code has a bug, the super-admin org cannot be deleted.
- *
- * @param id - Organization UUID
- * @returns true if the row was deleted, false if not found or super-admin
- */
-export async function hardDeleteOrganization(id: string): Promise<boolean> {
-  const pool = getPool();
-  const result = await pool.query(
-    'DELETE FROM organizations WHERE id = $1 AND is_super_admin = FALSE RETURNING id',
-    [id],
-  );
-  return (result.rowCount ?? 0) > 0;
+/** Authority identifiers captured before an organization cascade runs. */
+export interface OrganizationDeletionCapture {
+  organization: Organization;
+  userIds: string[];
+  clientIds: string[];
+  publicClientIds: string[];
+  grantIds: string[];
 }
 
 /**
- * Count all child entities that will be cascade-deleted with an organization.
- * Used for dry-run display and confirmation prompts.
+ * Lock, capture, and physically delete a non-control-plane organization.
  *
- * Runs all counts in a single query using scalar subqueries for efficiency.
- * Roles, permissions, and claim definitions are counted via their parent
- * application's organization_id join.
+ * All queries use the request-owned transaction client exposed by `getPool()`.
+ * The returned identifiers describe authority that existed immediately before
+ * PostgreSQL applied the declared organization cascade.
  *
- * @param orgId - Organization UUID
- * @returns Counts of each child entity type
+ * @param idOrSlug - Organization UUID or slug.
+ * @returns Captured deletion graph, or null when the target does not exist.
+ * @throws OrganizationValidationError when the target is the control plane.
  */
-export async function getCascadeCounts(orgId: string): Promise<{
-  applications: number;
-  clients: number;
-  users: number;
-  roles: number;
-  permissions: number;
-  claim_definitions: number;
-}> {
+export async function captureOrganizationForDeletion(
+  idOrSlug: string,
+): Promise<OrganizationDeletionCapture | null> {
   const pool = getPool();
-  const result = await pool.query(
-    `SELECT
-       (SELECT COUNT(*) FROM applications WHERE organization_id = $1)::int AS applications,
-       (SELECT COUNT(*) FROM clients WHERE organization_id = $1)::int AS clients,
-       (SELECT COUNT(*) FROM users WHERE organization_id = $1)::int AS users,
-       (SELECT COUNT(*) FROM roles r
-        JOIN applications a ON r.application_id = a.id
-        WHERE a.organization_id = $1)::int AS roles,
-       (SELECT COUNT(*) FROM permissions p
-        JOIN applications a ON p.application_id = a.id
-        WHERE a.organization_id = $1)::int AS permissions,
-       (SELECT COUNT(*) FROM claim_definitions cd
-        JOIN applications a ON cd.application_id = a.id
-        WHERE a.organization_id = $1)::int AS claim_definitions`,
-    [orgId],
+  const targetResult = await pool.query<OrganizationRow>(
+    `SELECT * FROM organizations
+     WHERE id::text = $1 OR slug = $1
+     ORDER BY (id::text = $1) DESC
+     LIMIT 1
+     FOR UPDATE`,
+    [idOrSlug],
   );
-  return result.rows[0];
+  const row = targetResult.rows[0];
+  if (!row) return null;
+  const organization = mapRowToOrganization(row);
+  if (organization.isSuperAdmin) {
+    throw new OrganizationValidationError('The control-plane organization cannot be deleted');
+  }
+
+  const graph = await pool.query<{
+    user_ids: string[];
+    client_ids: string[];
+    public_client_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH owned_users AS (
+       SELECT id FROM users WHERE organization_id = $1
+     ), owned_clients AS (
+       SELECT id, client_id FROM clients WHERE organization_id = $1
+     )
+     SELECT
+       ARRAY(SELECT id FROM owned_users ORDER BY id) AS user_ids,
+       ARRAY(SELECT id FROM owned_clients ORDER BY id) AS client_ids,
+       ARRAY(SELECT client_id FROM owned_clients ORDER BY client_id) AS public_client_ids,
+       ARRAY(
+         SELECT DISTINCT payload.id
+         FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND (
+             payload.payload->>'clientId' = ANY(ARRAY(SELECT client_id FROM owned_clients))
+             OR payload.payload->>'accountId' = ANY(ARRAY(SELECT id::text FROM owned_users))
+           )
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [organization.id],
+  );
+
+  const captured = graph.rows[0]!;
+  return {
+    organization,
+    userIds: captured.user_ids,
+    clientIds: captured.client_ids,
+    publicClientIds: captured.public_client_ids,
+    grantIds: captured.grant_ids,
+  };
+}
+
+/** Physically delete the already guarded organization row. */
+export async function deleteOrganizationCaptured(id: string): Promise<void> {
+  const deleted = await getPool().query(
+    'DELETE FROM organizations WHERE id = $1 AND is_super_admin = FALSE RETURNING id',
+    [id],
+  );
+  if (deleted.rowCount !== 1) {
+    throw new OrganizationValidationError('The control-plane organization cannot be deleted');
+  }
+}
+
+/** Capture and immediately delete an organization for direct repository callers. */
+export async function deleteOrganization(
+  idOrSlug: string,
+): Promise<OrganizationDeletionCapture | null> {
+  const capture = await captureOrganizationForDeletion(idOrSlug);
+  if (!capture) return null;
+  await deleteOrganizationCaptured(capture.organization.id);
+  return capture;
 }

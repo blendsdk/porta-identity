@@ -175,8 +175,8 @@ describe('Cursor Pagination (Integration)', () => {
       await createTestApplication({ organizationId: org.id, name: 'Active App', status: 'active' });
       await createTestApplication({
         organizationId: org.id,
-        name: 'Archived App',
-        status: 'archived',
+        name: 'Inactive App',
+        status: 'inactive',
       });
 
       const result = await listApplicationsCursor({ limit: 10, status: 'active' });
@@ -218,7 +218,9 @@ describe('Cursor Pagination (Integration)', () => {
       const org = await createTestOrganization();
       const app = await createTestApplication({ organizationId: org.id });
       for (let i = 0; i < 5; i++) {
-        await createTestClient(org.id, app.id, { clientName: `Client ${String(i).padStart(2, '0')}` });
+        await createTestClient(org.id, app.id, {
+          clientName: `Client ${String(i).padStart(2, '0')}`,
+        });
       }
 
       const page1 = await listClientsCursor({
@@ -257,7 +259,9 @@ describe('Cursor Pagination (Integration)', () => {
     it('should paginate forward without duplicates', async () => {
       const org = await createTestOrganization();
       for (let i = 0; i < 5; i++) {
-        await createTestUser(org.id, { email: `paginate${String(i).padStart(2, '0')}@cursor-test.com` });
+        await createTestUser(org.id, {
+          email: `paginate${String(i).padStart(2, '0')}@cursor-test.com`,
+        });
       }
 
       const page1 = await listUsersCursor({
@@ -281,11 +285,10 @@ describe('Cursor Pagination (Integration)', () => {
     it('should filter by status', async () => {
       const org = await createTestOrganization();
       await createTestUser(org.id, { email: 'active@test.com' });
-      const suspUser = await createTestUser(org.id, { email: 'suspended@test.com' });
-      // Change status to suspended via direct update
+      const inactiveUser = await createTestUser(org.id, { email: 'inactive@test.com' });
+      // Change status so the active filter has a record to exclude.
       const { updateUser } = await import('../../../src/users/repository.js');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- partial update for test setup
-      await updateUser(suspUser.id, { status: 'suspended' } as any);
+      await updateUser(inactiveUser.id, { status: 'inactive' });
 
       const result = await listUsersCursor({
         organizationId: org.id,

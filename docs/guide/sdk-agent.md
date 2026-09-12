@@ -38,7 +38,7 @@ const porta = createPortaClient({
 
 // 2. Get tool definitions for the AI model
 const tools = getToolDefinitions();
-// → 47 tool definitions with name, description, parameters, returns
+// → 69 tool definitions with name, description, parameters, returns
 
 // 3. Execute a tool from AI agent output
 const result = await executeTool(porta, 'organizations.list', { pageSize: 10 });
@@ -48,15 +48,15 @@ const result = await executeTool(porta, 'organizations.list', { pageSize: 10 });
 
 Each tool definition includes:
 
-| Field | Type | Description |
-|---|---|---|
-| `name` | `string` | Unique tool name (e.g., `organizations.create`) |
-| `description` | `string` | Human-readable description for the LLM |
-| `parameters` | `ToolParameter[]` | Input parameters with types and descriptions |
-| `returns` | `string` | Description of the return value |
-| `sideEffects` | `boolean` | Whether the tool modifies state |
-| `prerequisites` | `string[]` | What must exist before calling this tool |
-| `relatedTools` | `string[]` | Tools commonly used together |
+| Field           | Type              | Description                                     |
+| --------------- | ----------------- | ----------------------------------------------- |
+| `name`          | `string`          | Unique tool name (e.g., `organizations.create`) |
+| `description`   | `string`          | Human-readable description for the LLM          |
+| `parameters`    | `ToolParameter[]` | Input parameters with types and descriptions    |
+| `returns`       | `string`          | Description of the return value                 |
+| `sideEffects`   | `boolean`         | Whether the tool modifies state                 |
+| `prerequisites` | `string[]`        | What must exist before calling this tool        |
+| `relatedTools`  | `string[]`        | Tools commonly used together                    |
 
 ### Example Tool Definition
 
@@ -83,7 +83,7 @@ const tools = getToolDefinitions();
 console.log(`Available tools: ${tools.length}`);
 
 // Group by domain
-const domains = new Set(tools.map(t => t.name.split('.')[0]));
+const domains = new Set(tools.map((t) => t.name.split('.')[0]));
 console.log('Domains:', [...domains]);
 // → organizations, applications, clients, users, roles, permissions, ...
 ```
@@ -107,18 +107,13 @@ const result = await executeTool(porta, 'organizations.create', {
 ### Error Handling
 
 ```typescript
-try {
-  const result = await executeTool(porta, toolName, toolArgs);
-  return { success: true, data: result };
-} catch (err) {
-  if (err instanceof PortaValidationError) {
-    return { success: false, error: 'Validation failed', details: err.details };
-  }
-  if (err instanceof PortaNotFoundError) {
-    return { success: false, error: 'Not found', message: err.message };
-  }
-  return { success: false, error: err.message };
+const result = await executeTool(porta, toolName, toolArgs);
+if (!result.success) {
+  // The agent layer deliberately returns a minimal error and does not expose
+  // transport, server, or validation details to the model.
+  return { success: false, error: result.error };
 }
+return { success: true, data: result.data };
 ```
 
 ## MCP Server Integration
@@ -149,7 +144,9 @@ for (const tool of getToolDefinitions()) {
   server.tool(
     tool.name,
     tool.description,
-    Object.fromEntries(tool.parameters.map(p => [p.name, { type: p.type, description: p.description }])),
+    Object.fromEntries(
+      tool.parameters.map((p) => [p.name, { type: p.type, description: p.description }]),
+    ),
     async (args) => {
       const result = await executeTool(porta, tool.name, args);
       return { content: [{ type: 'text', text: JSON.stringify(result, null, 2) }] };
@@ -166,7 +163,7 @@ await server.start();
 import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 // Convert to OpenAI function-calling format
-const openAiTools = getToolDefinitions().map(tool => ({
+const openAiTools = getToolDefinitions().map((tool) => ({
   type: 'function' as const,
   function: {
     name: tool.name,
@@ -174,12 +171,15 @@ const openAiTools = getToolDefinitions().map(tool => ({
     parameters: {
       type: 'object',
       properties: Object.fromEntries(
-        tool.parameters.map(p => [p.name, {
-          type: p.type,
-          description: p.description,
-        }])
+        tool.parameters.map((p) => [
+          p.name,
+          {
+            type: p.type,
+            description: p.description,
+          },
+        ]),
       ),
-      required: tool.parameters.filter(p => p.required).map(p => p.name),
+      required: tool.parameters.filter((p) => p.required).map((p) => p.name),
     },
   },
 }));
@@ -201,32 +201,52 @@ for (const toolCall of response.choices[0].message.tool_calls ?? []) {
 
 ## Available Tool Domains
 
-| Domain | Tools | Description |
-|---|---|---|
-| `organizations` | 10 | Org CRUD, status lifecycle, destroy |
-| `applications` | 8 | App CRUD, modules |
-| `clients` | 8 | Client CRUD, secrets |
-| `users` | 12 | User CRUD, invite, password, status |
-| `roles` | 5 | Application roles, permission mapping |
-| `permissions` | 3 | Application permissions |
-| `userRoles` | 3 | User-role assignments |
-| `customClaims` | 4 | Claim definitions |
-| `userClaims` | 3 | User claim values |
-| `config` | 3 | System configuration |
-| `keys` | 3 | Signing key management |
-| `audit` | 1 | Audit log |
-| `stats` | 1 | Dashboard statistics |
-| `sessions` | 3 | Session management |
-| `bulk` | 1 | Bulk status operations |
-| `branding` | 4 | Org branding & assets |
-| `exports` | 1 | Data export |
-| `twoFactor` | 3 | 2FA admin management |
-| `imports` | 1 | Declarative provisioning |
+| Domain          | Tools | Description                                     |
+| --------------- | ----- | ----------------------------------------------- |
+| `organizations` | 7     | Org CRUD, status lifecycle, delete              |
+| `applications`  | 6     | App CRUD, module deletion                       |
+| `clients`       | 7     | Client CRUD, secrets                            |
+| `users`         | 12    | User CRUD, invite, password, status             |
+| `roles`         | 5     | Application roles and assigned-permission reads |
+| `permissions`   | 4     | Application permission CRUD                     |
+| `userRoles`     | 3     | User-role assignments                           |
+| `customClaims`  | 3     | Claim definitions                               |
+| `config`        | 3     | System configuration                            |
+| `keys`          | 3     | Signing key management                          |
+| `audit`         | 1     | Audit log                                       |
+| `stats`         | 2     | Dashboard statistics                            |
+| `sessions`      | 3     | Session management                              |
+| `bulk`          | 2     | Bulk status operations                          |
+| `twoFactor`     | 7     | 2FA administration and policy                   |
+| `imports`       | 1     | Declarative provisioning                        |
+
+### RBAC Tool Examples
+
+Role and permission tools always take an `appId`, which keeps each RBAC definition inside its
+application boundary. User-role tools additionally take the organization and selected user IDs.
+
+```typescript
+await executeTool(porta, 'permissions.create', {
+  appId: 'application-id',
+  input: { name: 'Edit deals', slug: 'sales:deal:write' },
+});
+
+await executeTool(porta, 'userRoles.assign', {
+  orgId: 'organization-id',
+  userId: 'user-id',
+  roleIds: ['role-id'],
+});
+```
+
+`roles.delete`, `permissions.delete`, and `userRoles.remove` return a
+`reauthenticationRequired` flag. If it is `true`, discard the current admin authentication and
+authenticate again before sending another command. These agent tools perform the requested
+operation directly, so the calling agent must obtain user confirmation before destructive calls.
 
 ## Security Considerations
 
 - The agent operates with the **same permissions** as the SDK client's authentication. Use a dedicated service account with minimal required permissions.
-- **Side-effect awareness**: Tools with `sideEffects: true` modify state. AI agents should confirm destructive actions (e.g., `organizations.destroy`) with the user.
+- **Side-effect awareness**: Tools with `sideEffects: true` modify state. AI agents should confirm destructive actions such as `organizations.delete` with the user.
 - **Rate limiting**: The Porta API enforces rate limits. Agent loops that make many rapid requests may be throttled.
 - **No credential exposure**: Never pass credentials through tool parameters. Authentication is handled by the transport layer.
 

@@ -20,10 +20,13 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
-import { executeBrowserFlow } from '../auth/browser-flow.js';
-import { saveCredentials } from '../credential-store.js';
+import { authenticateCliSession } from '../auth/login-coordinator.js';
+import { isContainerized } from '../auth/callback-server.js';
+import { loadCredentials, saveCredentialsDurably } from '../credential-store.js';
 import { success } from '../output.js';
 import { handleError } from '../error-handler.js';
+import { confirm, question } from '../prompt.js';
+import { normalizeServerOrigin } from '../global-options.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -81,17 +84,34 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
         process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
       }
 
-      // Execute the OIDC browser flow
-      const result = await executeBrowserFlow({
-        server: argv.server,
-        clientId: argv['client-id'],
-        noBrowser: argv['no-browser'],
-      });
-
-      // Store credentials to disk
-      saveCredentials(result);
-
-      success(`Logged in as ${result.userInfo.email || result.userInfo.sub}`);
+      const server = normalizeServerOrigin(argv.server);
+      const current = loadCredentials();
+      const controller = new AbortController();
+      const result = await authenticateCliSession(
+        {
+          server,
+          clientId: argv['client-id'],
+          noBrowser: argv['no-browser'] || isContainerized(),
+          currentServer: current ? normalizeServerOrigin(current.server) : undefined,
+          persistCredentials: async (credentials) =>
+            saveCredentialsDurably(credentials, controller.signal),
+        },
+        {
+          presentAuthorizationUrl: async (url) => {
+            console.log('Open this URL in your browser to log in:\n');
+            console.log(`  ${url.toString()}\n`);
+          },
+          requestManualCallback: async (signal) => question('Paste the callback URL: ', signal),
+          confirmCredentialReplacement: async (currentServer, nextServer, signal) =>
+            confirm(
+              `Replace credentials for ${currentServer.origin} with ${nextServer.origin}?`,
+              signal,
+            ),
+        },
+        { signal: controller.signal },
+      );
+      if (result.status === 'cancelled') return;
+      success(`Logged in as ${result.identity.email || result.identity.sub}`);
       process.exit(0);
     } catch (err) {
       handleError(err, argv.verbose);

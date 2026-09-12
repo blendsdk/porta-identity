@@ -11,7 +11,7 @@
  *   GET    /                       — List all roles for an application
  *   GET    /:roleId                — Get a role by ID
  *   PUT    /:roleId                — Update a role
- *   DELETE /:roleId                — Delete a role (?force=true)
+ *   DELETE /:roleId                — Delete a role
  *   GET    /:roleId/permissions    — List permissions for a role
  *   PUT    /:roleId/permissions    — Assign permissions to a role
  *   DELETE /:roleId/permissions    — Remove permissions from a role
@@ -27,10 +27,14 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
-import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../lib/admin-permissions.js';
+import { getApplicationBySlug } from '../applications/service.js';
 import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
+
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+const ADMIN_ROLE_SLUGS = new Set(ALL_ADMIN_ROLES.map((role) => role.slug));
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -39,14 +43,14 @@ import { RoleNotFoundError, PermissionNotFoundError, RbacValidationError } from 
 /** Schema for creating a new role */
 const createRoleSchema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(100).optional(),
+  slug: z.string().trim().min(1).max(100).optional(),
   description: z.string().max(1000).optional(),
 });
 
 /** Schema for updating a role (all fields optional) */
 const updateRoleSchema = z.object({
   name: z.string().min(1).max(255).optional(),
-  slug: z.string().min(1).max(100).optional(),
+  slug: z.string().trim().min(1).max(100).optional(),
   description: z.string().max(1000).nullable().optional(),
 });
 
@@ -61,6 +65,15 @@ const listUsersWithRoleSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
+
+/** Parent-qualified parameters accepted by role deletion. */
+const identifierSchema = z.object({
+  appId: z.string().uuid(),
+  roleId: z.string().uuid(),
+});
+
+/** Application parent parameter accepted by collection routes. */
+const applicationIdentifierSchema = z.object({ appId: z.string().uuid() });
 
 // ---------------------------------------------------------------------------
 // Error handler helper
@@ -91,6 +104,19 @@ function handleError(
   throw err;
 }
 
+/** Reject generic route mutations of a canonical Porta Admin role. */
+async function requireMutableRole(applicationId: string, roleId: string): Promise<void> {
+  const role = await roleService.findRoleById(applicationId, roleId);
+  // The mutation service remains responsible for authoritative not-found handling and repeats the
+  // canonical check after locking. This route lookup exists only for an early sanitized rejection.
+  if (!role) return;
+  if (!ADMIN_ROLE_SLUGS.has(role.slug)) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === role.applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin roles cannot be modified');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -116,11 +142,15 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.post('/', requirePermission(ADMIN_PERMISSIONS.ROLE_CREATE), async (ctx) => {
     try {
+      applicationIdentifierSchema.parse(ctx.params);
       const body = createRoleSchema.parse(ctx.request.body);
-      const role = await roleService.createRole({
-        applicationId: ctx.params.appId,
-        ...body,
-      });
+      const role = await roleService.createRole(
+        {
+          applicationId: ctx.params.appId,
+          ...body,
+        },
+        ctx.state.adminUser?.id,
+      );
       ctx.status = 201;
       ctx.body = { data: role };
     } catch (err) {
@@ -133,6 +163,7 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
+      applicationIdentifierSchema.parse(ctx.params);
       const roles = await roleService.listRolesByApplication(ctx.params.appId);
       ctx.body = { data: roles };
     } catch (err) {
@@ -144,20 +175,12 @@ export function createRoleRouter(): Router {
   // GET /:roleId — Get role by ID
   // -------------------------------------------------------------------------
   router.get('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
-    const role = await roleService.findRoleById(ctx.params.roleId);
-    if (!role) {
-      ctx.throw(404, 'Role not found');
-    }
-    ctx.body = { data: role };
-  });
-
-  // -------------------------------------------------------------------------
-  // PUT /:roleId — Update role
-  // -------------------------------------------------------------------------
-  router.put('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE), async (ctx) => {
     try {
-      const body = updateRoleSchema.parse(ctx.request.body);
-      const role = await roleService.updateRole(ctx.params.roleId, body);
+      identifierSchema.parse(ctx.params);
+      const role = await roleService.findRoleById(ctx.params.appId, ctx.params.roleId);
+      if (!role) {
+        ctx.throw(404, 'Role not found');
+      }
       ctx.body = { data: role };
     } catch (err) {
       handleError(ctx, err);
@@ -165,14 +188,39 @@ export function createRoleRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // DELETE /:roleId — Delete role
-  // Supports ?force=true to delete even when users are assigned
+  // PUT /:roleId — Update role
   // -------------------------------------------------------------------------
-  router.delete('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_ARCHIVE), async (ctx) => {
+  router.put('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE), async (ctx) => {
     try {
-      const force = ctx.query.force === 'true';
-      await roleService.deleteRole(ctx.params.roleId, force);
-      ctx.status = 204;
+      identifierSchema.parse(ctx.params);
+      const body = updateRoleSchema.parse(ctx.request.body);
+      await requireMutableRole(ctx.params.appId, ctx.params.roleId);
+      const result = await roleService.updateRole(
+        ctx.params.appId,
+        ctx.params.roleId,
+        body,
+        ctx.state.adminUser?.id,
+      );
+      ctx.body = { data: result };
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // DELETE /:roleId — Delete role
+  // -------------------------------------------------------------------------
+  router.delete('/:roleId', requirePermission(ADMIN_PERMISSIONS.ROLE_DELETE), async (ctx) => {
+    try {
+      identifierSchema.parse(ctx.params);
+      await requireMutableRole(ctx.params.appId, ctx.params.roleId);
+      const result = await roleService.deleteRole(
+        ctx.params.appId,
+        ctx.params.roleId,
+        ctx.state.adminUser?.id,
+      );
+      ctx.status = 200;
+      ctx.body = { data: result };
     } catch (err) {
       handleError(ctx, err);
     }
@@ -186,7 +234,11 @@ export function createRoleRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.ROLE_READ),
     async (ctx) => {
       try {
-        const permissions = await roleService.getPermissionsForRole(ctx.params.roleId);
+        identifierSchema.parse(ctx.params);
+        const permissions = await roleService.getPermissionsForRole(
+          ctx.params.appId,
+          ctx.params.roleId,
+        );
         ctx.body = { data: permissions };
       } catch (err) {
         handleError(ctx, err);
@@ -202,8 +254,15 @@ export function createRoleRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE),
     async (ctx) => {
       try {
+        identifierSchema.parse(ctx.params);
         const body = permissionIdsSchema.parse(ctx.request.body);
-        await roleService.assignPermissionsToRole(ctx.params.roleId, body.permissionIds);
+        await requireMutableRole(ctx.params.appId, ctx.params.roleId);
+        await roleService.assignPermissionsToRole(
+          ctx.params.appId,
+          ctx.params.roleId,
+          body.permissionIds,
+          ctx.state.adminUser?.id,
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -219,9 +278,17 @@ export function createRoleRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.ROLE_UPDATE),
     async (ctx) => {
       try {
+        identifierSchema.parse(ctx.params);
         const body = permissionIdsSchema.parse(ctx.request.body);
-        await roleService.removePermissionsFromRole(ctx.params.roleId, body.permissionIds);
-        ctx.status = 204;
+        await requireMutableRole(ctx.params.appId, ctx.params.roleId);
+        const result = await roleService.removePermissionsFromRole(
+          ctx.params.appId,
+          ctx.params.roleId,
+          body.permissionIds,
+          ctx.state.adminUser?.id,
+        );
+        ctx.status = 200;
+        ctx.body = { data: result };
       } catch (err) {
         handleError(ctx, err);
       }
@@ -234,11 +301,17 @@ export function createRoleRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/:roleId/users', requirePermission(ADMIN_PERMISSIONS.ROLE_READ), async (ctx) => {
     try {
+      identifierSchema.parse(ctx.params);
       const query = listUsersWithRoleSchema.parse(ctx.query);
-      const result = await userRoleService.getUsersWithRole(ctx.params.roleId, query.orgId, {
-        page: query.page,
-        pageSize: query.pageSize,
-      });
+      const result = await userRoleService.getUsersWithRole(
+        ctx.params.appId,
+        ctx.params.roleId,
+        query.orgId,
+        {
+          page: query.page,
+          pageSize: query.pageSize,
+        },
+      );
       ctx.body = { data: result.rows, total: result.total };
     } catch (err) {
       handleError(ctx, err);

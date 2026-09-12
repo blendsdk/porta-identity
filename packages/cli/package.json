@@ -15,6 +15,7 @@
   "scripts": {
     "build": "../../node_modules/@typescript/native/bin/tsc",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "../../node_modules/@typescript/native/bin/tsc --noEmit",
@@ -22,9 +23,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@jsvision/core": "1.7.1",
+    "@jsvision/files": "1.7.1",
+    "@jsvision/ui": "1.7.1",
     "@portaidentity/sdk": "1.7.3",
     "chalk": "^6.0.0",
     "cli-table3": "^0.6.5",
+    "fs-ext-extra-prebuilt": "2.2.13",
     "jose": "^6.2.8",
     "open": "^11.0.0",
     "yaml": "^2.9.0",

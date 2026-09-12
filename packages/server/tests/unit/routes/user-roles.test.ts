@@ -11,17 +11,22 @@ vi.mock('../../../src/rbac/user-role-service.js', () => ({
   getUserPermissions: vi.fn(),
 }));
 
+vi.mock('../../../src/rbac/role-service.js', () => ({
+  findRoleById: vi.fn(),
+}));
+
+vi.mock('../../../src/applications/service.js', () => ({
+  getApplicationBySlug: vi.fn(),
+}));
+
 // Mock super-admin middleware to always pass through
 vi.mock('../../../src/middleware/admin-auth.js', () => ({
   requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
 }));
 
-vi.mock('../../../src/lib/super-admin-protection.js', () => ({
-  guardSuperAdmin: vi.fn(),
-}));
-
 import * as userRoleService from '../../../src/rbac/user-role-service.js';
-import { guardSuperAdmin } from '../../../src/lib/super-admin-protection.js';
+import * as roleService from '../../../src/rbac/role-service.js';
+import { getApplicationBySlug } from '../../../src/applications/service.js';
 import { createUserRoleRouter } from '../../../src/routes/user-roles.js';
 
 // ---------------------------------------------------------------------------
@@ -86,7 +91,16 @@ function createMockCtx(
     set body(v: unknown) {
       responseBody = v;
     },
-    state: { organization: { isSuperAdmin: true } },
+    state: {
+      organization: { isSuperAdmin: true },
+      adminUser: {
+        id: 'actor-uuid-1',
+        email: 'actor@example.test',
+        organizationId: 'org-uuid-1',
+        roles: ['porta-super-admin'],
+        permissions: ['admin:role:assign'],
+      },
+    },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
       err.status = status;
@@ -125,7 +139,19 @@ const defaultParams = { orgId: 'org-uuid-1', userId: 'user-uuid-1' };
 // ---------------------------------------------------------------------------
 
 describe('user-role routes', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(getApplicationBySlug).mockResolvedValue({
+      id: 'admin-app-uuid-1',
+      name: 'Porta Admin',
+      slug: 'porta-admin',
+      description: null,
+      status: 'active',
+      createdAt: new Date('2026-01-01T00:00:00Z'),
+      updatedAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    vi.mocked(roleService.findRoleById).mockResolvedValue(createTestRole());
+  });
 
   // -------------------------------------------------------------------------
   // GET / — List roles for user
@@ -143,7 +169,7 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: roles });
-      expect(userRoleService.getUserRoles).toHaveBeenCalledWith('user-uuid-1');
+      expect(userRoleService.getUserRoles).toHaveBeenCalledWith('org-uuid-1', 'user-uuid-1');
     });
 
     it('should return empty array when user has no roles', async () => {
@@ -173,9 +199,12 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
-      expect(userRoleService.assignRolesToUser).toHaveBeenCalledWith('user-uuid-1', [
-        'a0000000-0000-4000-a000-000000000001',
-      ]);
+      expect(userRoleService.assignRolesToUser).toHaveBeenCalledWith(
+        'org-uuid-1',
+        'user-uuid-1',
+        ['a0000000-0000-4000-a000-000000000001'],
+        'actor-uuid-1',
+      );
     });
 
     it('should return 400 for invalid role IDs (not UUIDs)', async () => {
@@ -221,9 +250,9 @@ describe('user-role routes', () => {
   // -------------------------------------------------------------------------
 
   describe('DELETE / — Remove roles from user', () => {
-    it('should return 204 on successful removal', async () => {
-      vi.mocked(guardSuperAdmin).mockResolvedValue(undefined);
-      vi.mocked(userRoleService.removeRolesFromUser).mockResolvedValue(undefined);
+    it('should return the committed reduction result on successful removal', async () => {
+      const result = { reauthenticationRequired: false };
+      vi.mocked(userRoleService.removeRolesFromUser).mockResolvedValue(result);
 
       const layer = findLayer(createUserRoleRouter(), 'DELETE', '');
       const ctx = createMockCtx({
@@ -232,21 +261,28 @@ describe('user-role routes', () => {
       });
       await execHandler(layer!, ctx);
 
-      expect(ctx.status).toBe(204);
-      expect(guardSuperAdmin).toHaveBeenCalledWith('user-uuid-1', 'remove-super-admin-role');
+      expect(ctx.status).toBe(200);
+      expect(ctx.body).toEqual({ data: result });
+      expect(userRoleService.removeRolesFromUser).toHaveBeenCalledWith(
+        'org-uuid-1',
+        'user-uuid-1',
+        ['a0000000-0000-4000-a000-000000000001'],
+        'actor-uuid-1',
+      );
     });
 
-    it('should not remove roles when bootstrap-user protection rejects the request', async () => {
-      vi.mocked(guardSuperAdmin).mockRejectedValue(new Error('protected bootstrap user'));
+    it('should preserve the explicit false result for an idempotent removal', async () => {
+      const result = { reauthenticationRequired: false };
+      vi.mocked(userRoleService.removeRolesFromUser).mockResolvedValue(result);
       const layer = findLayer(createUserRoleRouter(), 'DELETE', '');
       const ctx = createMockCtx({
         params: defaultParams,
         body: { roleIds: ['a0000000-0000-4000-a000-000000000001'] },
       });
 
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('protected bootstrap user');
+      await execHandler(layer!, ctx);
 
-      expect(userRoleService.removeRolesFromUser).not.toHaveBeenCalled();
+      expect(ctx.body).toEqual({ data: result });
     });
 
     it('should return 400 for missing roleIds', async () => {
@@ -275,7 +311,7 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: permissions });
-      expect(userRoleService.getUserPermissions).toHaveBeenCalledWith('user-uuid-1');
+      expect(userRoleService.getUserPermissions).toHaveBeenCalledWith('org-uuid-1', 'user-uuid-1');
     });
 
     it('should return empty array when user has no permissions', async () => {

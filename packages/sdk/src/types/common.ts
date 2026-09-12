@@ -72,7 +72,7 @@ export interface ETagResponse<T> {
  * Mirrors the server `HistoryEntry` (src/lib/entity-history.ts) — entries are
  * audit-log rows projected to `{ id, eventType, actorId, metadata, createdAt }`.
  * The server has no `entityType`/`entityId`/`action`/`changes`/`performedBy`
- * fields; those were SDK drift (AR-18).
+ * fields.
  */
 export interface HistoryEntry {
   /** History entry (audit-log) ID */
@@ -87,3 +87,17 @@ export interface HistoryEntry {
   createdAt: string;
 }
 
+/**
+ * A page of entity history returned by history endpoints.
+ *
+ * The cursor is opaque and should only be passed back to the API when
+ * requesting the next page.
+ */
+export interface HistoryResult {
+  /** History entries in newest-first order. */
+  data: HistoryEntry[];
+  /** Whether another page is available. */
+  hasMore: boolean;
+  /** Opaque cursor for the next page, or null when this is the last page. */
+  nextCursor: string | null;
+}

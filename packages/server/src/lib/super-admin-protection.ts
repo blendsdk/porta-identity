@@ -11,8 +11,6 @@
  *
  * Protected operations (all throw 403 Forbidden):
  *   - Delete
- *   - Suspend
- *   - Lock
  *   - Deactivate
  *   - Remove porta-super-admin role
  *   - Manage 2FA (disable, reset, regenerate recovery codes)
@@ -35,8 +33,6 @@ export const SUPER_ADMIN_USER_ID_KEY = 'super_admin_user_id';
  */
 export const PROTECTED_OPERATIONS = [
   'delete',
-  'suspend',
-  'lock',
   'deactivate',
   'remove-super-admin-role',
   'manage-2fa',
@@ -94,8 +90,8 @@ export class SuperAdminProtectionError extends Error {
  *
  * Call this before executing any destructive operation on a user:
  * ```typescript
- * await guardSuperAdmin(userId, 'suspend');
- * // ... proceed with suspend logic
+ * await guardSuperAdmin(userId, 'deactivate');
+ * // ... proceed with deactivation
  * ```
  *
  * If the user is not the super-admin, this function is a no-op.

@@ -17,4 +17,9 @@ export type { TokenAuthOptions } from './token-auth.js';
 export { createClientCredentialsAuth } from './client-credentials-auth.js';
 export type { ClientCredentialsAuthOptions } from './client-credentials-auth.js';
 export { createCliAuth } from './cli-auth.js';
-export type { CliAuthOptions, StoredCredentials } from './cli-auth.js';
+export type {
+  CliAuthOptions,
+  CliCredentialPersistence,
+  StoredCredentials,
+  StoredUserInfo,
+} from './cli-auth.js';

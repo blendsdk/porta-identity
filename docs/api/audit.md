@@ -55,24 +55,22 @@ GET /api/admin/audit
 | `organization.updated`          | Organization details updated |
 | `organization.suspended`        | Organization suspended       |
 | `organization.activated`        | Organization reactivated     |
-| `organization.archived`         | Organization archived        |
+| `org.deleted`                   | Organization deleted         |
 | `organization.branding_updated` | Branding settings changed    |
 
 ### User Events
 
-| Action                  | Description            |
-| ----------------------- | ---------------------- |
-| `user.created`          | New user created       |
-| `user.invited`          | User invitation sent   |
-| `user.updated`          | User profile updated   |
-| `user.suspended`        | User suspended         |
-| `user.activated`        | User activated         |
-| `user.locked`           | User locked (security) |
-| `user.unlocked`         | User unlocked          |
-| `user.archived`         | User archived          |
-| `user.password_changed` | Password changed       |
-| `user.login_success`    | Successful login       |
-| `user.login_failure`    | Failed login attempt   |
+| Action                  | Description          |
+| ----------------------- | -------------------- |
+| `user.created`          | New user created     |
+| `user.invited`          | User invitation sent |
+| `user.updated`          | User profile updated |
+| `user.deactivated`      | User deactivated     |
+| `user.activated`        | User activated       |
+| `user.deleted`          | User deleted         |
+| `user.password_changed` | Password changed     |
+| `user.login_success`    | Successful login     |
+| `user.login_failure`    | Failed login attempt |
 
 ### Client Events
 
@@ -80,7 +78,7 @@ GET /api/admin/audit
 | ------------------------- | ---------------------------- |
 | `client.created`          | New OIDC client created      |
 | `client.updated`          | Client configuration updated |
-| `client.revoked`          | Client revoked               |
+| `client.deleted`          | Client deleted               |
 | `client.secret_generated` | New client secret generated  |
 | `client.secret_revoked`   | Client secret revoked        |
 
@@ -90,7 +88,8 @@ GET /api/admin/audit
 | -------------------------- | ---------------------------- |
 | `role.created`             | New role created             |
 | `role.updated`             | Role updated                 |
-| `role.archived`            | Role archived                |
+| `role.deleted`             | Role deleted                 |
+| `permission.deleted`       | Permission deleted           |
 | `role.permission_assigned` | Permission assigned to role  |
 | `role.permission_removed`  | Permission removed from role |
 | `user.role_assigned`       | Role assigned to user        |
@@ -105,12 +104,14 @@ GET /api/admin/audit
 | `security.2fa_disabled`          | 2FA disabled for user               |
 | `security.rate_limited`          | Rate limit triggered                |
 
-### GDPR Events
+### Data Export and Deletion Events
 
 | Action               | Description                          |
 | -------------------- | ------------------------------------ |
 | `user.data_exported` | User data exported (GDPR Article 20) |
-| `user.data_purged`   | User data purged (GDPR Article 17)   |
+| `app.deleted`        | Application deleted                  |
+| `app.module.deleted` | Application module deleted           |
+| `claim.deleted`      | Claim definition deleted             |
 
 ### Account Lockout Events
 

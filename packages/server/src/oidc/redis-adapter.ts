@@ -12,10 +12,33 @@
  *   oidc:{type}:grant:{grantId}     — Grant set of primary IDs (for revocation)
  */
 
+import { errors } from 'oidc-provider';
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
-import { upsertSession, revokeSession } from '../lib/session-tracking.js';
+import { getSession, upsertSession, revokeSession } from '../lib/session-tracking.js';
 import type { AdapterPayload } from './postgres-adapter.js';
+
+/**
+ * Atomically marks one Redis-backed OIDC artifact as consumed without changing its expiry.
+ *
+ * A separate read and write permits concurrent requests to consume the same single-use artifact.
+ * Redis executes this script as one operation, so only the first request can add `consumed`.
+ */
+const CONSUME_UNCONSUMED_ARTIFACT = `
+local payloadJson = redis.call('GET', KEYS[1])
+if not payloadJson then
+  return 0
+end
+
+local payload = cjson.decode(payloadJson)
+if payload.consumed ~= nil then
+  return 0
+end
+
+payload.consumed = tonumber(ARGV[1])
+redis.call('SET', KEYS[1], cjson.encode(payload), 'KEEPTTL')
+return 1
+`;
 
 /**
  * Redis adapter implementing the node-oidc-provider storage interface.
@@ -83,6 +106,20 @@ export class RedisAdapter {
     const redis = getRedis();
     const mainKey = this.key(id);
 
+    // PostgreSQL is the revocation authority for Session payloads. Persist it
+    // before preparing or executing Redis writes so a tracking failure cannot
+    // publish a Session that administrative deletion is unable to revoke.
+    if (this.name === 'Session') {
+      const expiresAt = new Date(Date.now() + expiresIn * 1000);
+      await upsertSession({
+        sessionId: id,
+        userId: typeof payload.accountId === 'string' ? payload.accountId : undefined,
+        organizationId: typeof payload.orgId === 'string' ? payload.orgId : undefined,
+        grantId: typeof payload.grantId === 'string' ? payload.grantId : undefined,
+        expiresAt,
+      });
+    }
+
     // Use pipeline for atomic multi-key operations
     const pipeline = redis.pipeline();
 
@@ -122,23 +159,9 @@ export class RedisAdapter {
       }
     }
 
-    await pipeline.exec();
-
-    // Fire-and-forget: mirror session data to PostgreSQL for admin listing.
-    // Only Session model needs tracking — other models (Interaction, AuthorizationCode, etc.)
-    // are short-lived artifacts that don't need admin visibility.
-    if (this.name === 'Session') {
-      const expiresAt = new Date(Date.now() + expiresIn * 1000);
-      upsertSession({
-        sessionId: id,
-        userId: payload.accountId as string | undefined,
-        organizationId: payload.orgId as string | undefined,
-        grantId: payload.grantId as string | undefined,
-        expiresAt,
-      }).catch(() => {
-        // Intentionally swallowed — tracking must never break the OIDC flow.
-        // upsertSession already logs warnings internally.
-      });
+    const results = await pipeline.exec();
+    if (results === null || results.some(([error]) => error !== null)) {
+      throw new Error('Redis pipeline execution failed');
     }
   }
 
@@ -155,6 +178,13 @@ export class RedisAdapter {
     const data = await redis.get(this.key(id));
 
     if (!data) return undefined;
+
+    if (this.name === 'Session') {
+      const tracking = await getSession(id);
+      if (!tracking || tracking.revokedAt !== null || tracking.expiresAt.getTime() <= Date.now()) {
+        return undefined;
+      }
+    }
 
     try {
       return JSON.parse(data) as AdapterPayload;
@@ -203,34 +233,21 @@ export class RedisAdapter {
   /**
    * Mark an artifact as consumed.
    *
-   * Reads the current payload, adds a `consumed` timestamp (epoch seconds),
-   * and writes it back with the remaining TTL preserved. This is used for
-   * authorization code replay detection.
+   * Atomically adds a `consumed` timestamp while preserving the existing TTL. A missing or already
+   * consumed artifact is rejected so concurrent authorization-code requests cannot both succeed.
    *
    * @param id - Artifact ID to mark as consumed
    */
   async consume(id: string): Promise<void> {
     const redis = getRedis();
     const mainKey = this.key(id);
-
-    const data = await redis.get(mainKey);
-    if (!data) return;
-
-    try {
-      const payload = JSON.parse(data) as AdapterPayload;
-      payload.consumed = Math.floor(Date.now() / 1000);
-
-      // Preserve the remaining TTL when updating the payload
-      const ttl = await redis.ttl(mainKey);
-      if (ttl > 0) {
-        await redis.set(mainKey, JSON.stringify(payload), 'EX', ttl);
-      } else {
-        // No TTL set (or key is expiring imminently) — just update
-        await redis.set(mainKey, JSON.stringify(payload));
-      }
-    } catch (error) {
-      logger.warn({ key: mainKey, error }, 'Failed to consume OIDC artifact in Redis');
-    }
+    const consumed = await redis.eval(
+      CONSUME_UNCONSUMED_ARTIFACT,
+      1,
+      mainKey,
+      Math.floor(Date.now() / 1000),
+    );
+    if (consumed !== 1) throw new errors.InvalidGrant();
   }
 
   /**
@@ -260,16 +277,13 @@ export class RedisAdapter {
       }
     }
 
-    await redis.del(...keysToDelete);
-
-    // Fire-and-forget: mark session as revoked in PostgreSQL tracking table.
-    // Only Session model needs tracking — other model destroys don't need admin visibility.
+    // Session revocation is the durable authority boundary. Complete it before
+    // deleting Redis so a concurrent publication cannot restore a live session.
     if (this.name === 'Session') {
-      revokeSession(id).catch(() => {
-        // Intentionally swallowed — tracking must never break the OIDC flow.
-        // revokeSession already logs warnings internally.
-      });
+      await revokeSession(id);
     }
+
+    await redis.del(...keysToDelete);
   }
 
   /**
@@ -368,6 +382,9 @@ export async function cleanupRedisGrants(grantIds: string[]): Promise<void> {
     }
   } catch (err) {
     // Best-effort — Redis keys have TTLs and will expire naturally
-    logger.warn({ err, grantIds }, 'Failed to clean up Redis grant keys (keys will expire via TTL)');
+    logger.warn(
+      { err, grantIds },
+      'Failed to clean up Redis grant keys (keys will expire via TTL)',
+    );
   }
 }

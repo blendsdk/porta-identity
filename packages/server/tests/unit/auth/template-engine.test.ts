@@ -92,6 +92,7 @@ function buildTestContext(overrides: Partial<TemplateContext> = {}): TemplateCon
       primaryColor: '#3B82F6',
       companyName: 'Test Corp',
       customCss: null,
+      imageSources: [],
     },
     locale: 'en',
     t: (key: string) => key,
@@ -343,6 +344,7 @@ describe('template-engine', () => {
           primaryColor: '#FF0000',
           companyName: 'My Corp',
           customCss: null,
+          imageSources: ['https://example.com'],
         },
       });
       await renderPage('login', context);
@@ -350,6 +352,9 @@ describe('template-engine', () => {
       expect(capturedContext).toBeDefined();
       expect(capturedContext!.csrfToken).toBe('my-csrf-token');
       expect((capturedContext!.branding as Record<string, unknown>).primaryColor).toBe('#FF0000');
+      expect((capturedContext!.branding as Record<string, unknown>).imageSources).toEqual([
+        'https://example.com',
+      ]);
     });
   });
 });

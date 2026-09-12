@@ -31,12 +31,15 @@ vi.mock('../../../src/auth/i18n.js', () => ({
   getTranslationFunction: vi.fn(() => mockT),
 }));
 vi.mock('../../../src/users/service.js', () => ({ getUserById: vi.fn(async () => undefined) }));
-vi.mock('../../../src/organizations/service.js', () => ({ getOrganizationById: vi.fn(async () => undefined) }));
+vi.mock('../../../src/organizations/service.js', () => ({
+  getOrganizationById: vi.fn(async () => undefined),
+}));
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 vi.mock('../../../src/middleware/security-headers.js', () => ({
   HTML_CSP: "default-src 'none'",
+  buildHtmlCsp: () => "default-src 'none'; img-src 'self' data:",
 }));
 
 import { renderErrorHook } from '../../../src/oidc/configuration.js';
@@ -111,7 +114,10 @@ describe('renderErrorHook SessionNotFound recovery (spec)', () => {
     const ctx = makeCtx();
     await renderErrorHook(
       ctx as never,
-      { error: 'invalid_request', error_description: 'interaction session and authentication session mismatch' },
+      {
+        error: 'invalid_request',
+        error_description: 'interaction session and authentication session mismatch',
+      },
       sessionNotFoundError('interaction session and authentication session mismatch'),
     );
 

@@ -1,7 +1,7 @@
 /**
  * Unit tests for user-role service.
  *
- * Tests user role assignment, cache-first claims building,
+ * Tests user role assignment, database-backed claims building,
  * and audit logging. All dependencies are mocked.
  */
 
@@ -14,18 +14,35 @@ vi.mock('../../../src/rbac/mapping-repository.js', () => ({
   getRolesForUser: vi.fn(),
   getPermissionsForUser: vi.fn(),
   getUsersWithRole: vi.fn(),
-}));
-
-vi.mock('../../../src/rbac/cache.js', () => ({
-  getCachedUserRoles: vi.fn(),
-  setCachedUserRoles: vi.fn(),
-  getCachedUserPermissions: vi.fn(),
-  setCachedUserPermissions: vi.fn(),
-  invalidateUserRbacCache: vi.fn(),
+  getRolesForOrganizationUser: vi.fn(),
+  getPermissionsForOrganizationUser: vi.fn(),
+  lockUserRoleTargets: vi.fn(),
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getDatabaseTransactionClient: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/deletion-cleanup.js', () => ({
+  registerAuthorityCleanup: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/authority-revocation.js', () => ({
+  revokeAffectedAuthorityInTransaction: vi.fn(),
+}));
+
+vi.mock('../../../src/applications/service.js', () => ({
+  getApplicationBySlug: vi.fn(),
+}));
+
+vi.mock('../../../src/users/repository.js', () => ({
+  lockControlPlaneOrganization: vi.fn(),
+  requireActiveSuperAdminSurvivor: vi.fn(),
 }));
 
 import {
@@ -34,15 +51,21 @@ import {
   getRolesForUser as mockRepoGetRoles,
   getPermissionsForUser as mockRepoGetPerms,
   getUsersWithRole as mockRepoGetUsers,
+  getRolesForOrganizationUser as mockGetOrganizationRoles,
+  getPermissionsForOrganizationUser as mockGetOrganizationPermissions,
+  lockUserRoleTargets as mockLockTargets,
 } from '../../../src/rbac/mapping-repository.js';
-import {
-  getCachedUserRoles as mockGetCachedRoles,
-  setCachedUserRoles as mockSetCachedRoles,
-  getCachedUserPermissions as mockGetCachedPerms,
-  setCachedUserPermissions as mockSetCachedPerms,
-  invalidateUserRbacCache as mockInvalidateUser,
-} from '../../../src/rbac/cache.js';
 import { writeAuditLog as mockAuditLog } from '../../../src/lib/audit-log.js';
+import { writeAuditLogInTransaction as mockTransactionalAudit } from '../../../src/lib/audit-log.js';
+import { getDatabaseTransactionClient } from '../../../src/lib/database.js';
+import { registerAuthorityCleanup as mockAuthorityCleanup } from '../../../src/lib/deletion-cleanup.js';
+import { revokeAffectedAuthorityInTransaction as mockRevokeAuthority } from '../../../src/lib/authority-revocation.js';
+import { getApplicationBySlug as mockGetApplicationBySlug } from '../../../src/applications/service.js';
+import {
+  lockControlPlaneOrganization as mockLockControlPlaneOrganization,
+  requireActiveSuperAdminSurvivor as mockRequireSurvivor,
+} from '../../../src/users/repository.js';
+import { ADMIN_ROLE_DEFINITIONS } from '../../../src/lib/admin-permissions.js';
 
 import {
   assignRolesToUser,
@@ -54,6 +77,8 @@ import {
   buildPermissionClaims,
 } from '../../../src/rbac/user-role-service.js';
 import type { Role, Permission } from '../../../src/rbac/types.js';
+
+const APPLICATION_ID = 'app-uuid-1';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -88,14 +113,21 @@ function createTestPermission(overrides: Partial<Permission> = {}): Permission {
 beforeEach(() => {
   vi.clearAllMocks();
   // Reset default mock return values
-  vi.mocked(mockRepoAssign).mockResolvedValue(undefined);
-  vi.mocked(mockRepoRemove).mockResolvedValue(undefined);
-  vi.mocked(mockGetCachedRoles).mockResolvedValue(null);
-  vi.mocked(mockSetCachedRoles).mockResolvedValue(undefined);
-  vi.mocked(mockGetCachedPerms).mockResolvedValue(null);
-  vi.mocked(mockSetCachedPerms).mockResolvedValue(undefined);
-  vi.mocked(mockInvalidateUser).mockResolvedValue(undefined);
+  vi.mocked(mockRepoAssign).mockResolvedValue(['role-uuid-1']);
+  vi.mocked(mockRepoRemove).mockResolvedValue(['role-uuid-1']);
   vi.mocked(mockAuditLog).mockResolvedValue(undefined);
+  vi.mocked(mockTransactionalAudit).mockResolvedValue(undefined);
+  vi.mocked(getDatabaseTransactionClient).mockReturnValue({ query: vi.fn() } as never);
+  vi.mocked(mockAuthorityCleanup).mockResolvedValue(undefined);
+  vi.mocked(mockRevokeAuthority).mockResolvedValue({ grantIds: [] });
+  vi.mocked(mockGetApplicationBySlug).mockResolvedValue(null);
+  vi.mocked(mockLockControlPlaneOrganization).mockResolvedValue(false);
+  vi.mocked(mockRequireSurvivor).mockResolvedValue(undefined);
+  vi.mocked(mockLockTargets).mockResolvedValue({
+    user: { id: 'user-1', status: 'active' },
+    roles: [createTestRole()],
+    assignedRoleIds: ['role-uuid-1'],
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -103,22 +135,34 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('assignRolesToUser', () => {
-  it('should assign roles and invalidate user cache', async () => {
-    await assignRolesToUser('user-1', ['role-1', 'role-2'], 'admin-1');
+  it('should assign roles and schedule targeted cache cleanup', async () => {
+    const roles = [createTestRole({ id: 'role-1' }), createTestRole({ id: 'role-2' })];
+    vi.mocked(mockLockTargets).mockResolvedValue({
+      user: { id: 'user-1', status: 'active' },
+      roles,
+      assignedRoleIds: [],
+    });
+    vi.mocked(mockRepoAssign).mockResolvedValue(['role-1', 'role-2']);
+    await assignRolesToUser('org-1', 'user-1', ['role-1', 'role-2'], 'admin-1');
 
-    expect(mockRepoAssign).toHaveBeenCalledWith('user-1', ['role-1', 'role-2'], 'admin-1');
-    expect(mockInvalidateUser).toHaveBeenCalledWith('user-1');
+    expect(mockRepoAssign).toHaveBeenCalledWith('org-1', 'user-1', ['role-1', 'role-2'], 'admin-1');
+    expect(mockAuthorityCleanup).toHaveBeenCalledWith({
+      userIds: ['user-1'],
+      grantIds: [],
+      roleIds: [],
+      revokeOidcState: false,
+    });
   });
 
   it('should do nothing when roleIds is empty', async () => {
-    await assignRolesToUser('user-1', []);
+    await assignRolesToUser('org-1', 'user-1', [], 'admin-1');
 
     expect(mockRepoAssign).not.toHaveBeenCalled();
-    expect(mockInvalidateUser).not.toHaveBeenCalled();
+    expect(mockAuthorityCleanup).not.toHaveBeenCalled();
   });
 
   it('should write audit log with userId and actorId', async () => {
-    await assignRolesToUser('user-1', ['role-1'], 'admin-1');
+    await assignRolesToUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
 
     expect(mockAuditLog).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -129,27 +173,49 @@ describe('assignRolesToUser', () => {
       }),
     );
   });
+
+  it('should not schedule cleanup or audit for an existing assignment', async () => {
+    vi.mocked(mockRepoAssign).mockResolvedValue([]);
+
+    await assignRolesToUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+
+    expect(mockAuthorityCleanup).not.toHaveBeenCalled();
+    expect(mockAuditLog).not.toHaveBeenCalled();
+  });
 });
 
 describe('removeRolesFromUser', () => {
-  it('should remove roles and invalidate user cache', async () => {
-    await removeRolesFromUser('user-1', ['role-1'], 'admin-1');
+  it('locks the control-plane organization before the target user and roles', async () => {
+    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
 
-    expect(mockRepoRemove).toHaveBeenCalledWith('user-1', ['role-1']);
-    expect(mockInvalidateUser).toHaveBeenCalledWith('user-1');
+    expect(mockLockControlPlaneOrganization).toHaveBeenCalledWith('org-1');
+    expect(mockLockControlPlaneOrganization.mock.invocationCallOrder[0]).toBeLessThan(
+      mockLockTargets.mock.invocationCallOrder[0]!,
+    );
+  });
+
+  it('should remove roles and revoke only the affected user', async () => {
+    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+
+    expect(mockRevokeAuthority).toHaveBeenCalledWith(['user-1']);
+    expect(mockRepoRemove).toHaveBeenCalledWith('org-1', 'user-1', ['role-uuid-1']);
+    expect(mockAuthorityCleanup).toHaveBeenCalledWith(
+      expect.objectContaining({ userIds: ['user-1'], revokeOidcState: true }),
+    );
   });
 
   it('should do nothing when roleIds is empty', async () => {
-    await removeRolesFromUser('user-1', []);
+    await removeRolesFromUser('org-1', 'user-1', [], 'admin-1');
 
     expect(mockRepoRemove).not.toHaveBeenCalled();
-    expect(mockInvalidateUser).not.toHaveBeenCalled();
+    expect(mockAuthorityCleanup).not.toHaveBeenCalled();
   });
 
   it('should write audit log', async () => {
-    await removeRolesFromUser('user-1', ['role-1'], 'admin-1');
+    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
 
-    expect(mockAuditLog).toHaveBeenCalledWith(
+    expect(mockTransactionalAudit).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
         eventType: 'user.roles.removed',
         userId: 'user-1',
@@ -157,29 +223,67 @@ describe('removeRolesFromUser', () => {
       }),
     );
   });
+
+  it('should return false without revocation when no requested assignment exists', async () => {
+    vi.mocked(mockLockTargets).mockResolvedValue({
+      user: { id: 'user-1', status: 'active' },
+      roles: [createTestRole()],
+      assignedRoleIds: [],
+    });
+
+    await expect(
+      removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1'),
+    ).resolves.toEqual({ reauthenticationRequired: false });
+    expect(mockRevokeAuthority).not.toHaveBeenCalled();
+    expect(mockRepoRemove).not.toHaveBeenCalled();
+  });
+
+  it('checks the shared survivor guard before removing an active canonical super admin', async () => {
+    vi.mocked(mockGetApplicationBySlug).mockResolvedValue({
+      id: 'admin-app',
+      slug: 'porta-admin',
+    } as never);
+    vi.mocked(mockLockTargets).mockResolvedValue({
+      user: { id: 'user-1', status: 'active' },
+      roles: [
+        createTestRole({
+          applicationId: 'admin-app',
+          slug: ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
+        }),
+      ],
+      assignedRoleIds: ['role-uuid-1'],
+    });
+
+    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+
+    expect(mockRequireSurvivor).toHaveBeenCalledWith('org-1', 'user-1');
+    expect(mockRequireSurvivor.mock.invocationCallOrder[0]).toBeLessThan(
+      mockRevokeAuthority.mock.invocationCallOrder[0]!,
+    );
+  });
 });
 
 describe('getUserRoles', () => {
   it('should delegate to mapping repository', async () => {
     const roles = [createTestRole()];
-    vi.mocked(mockRepoGetRoles).mockResolvedValue(roles);
+    vi.mocked(mockGetOrganizationRoles).mockResolvedValue(roles);
 
-    const result = await getUserRoles('user-1');
+    const result = await getUserRoles('org-1', 'user-1');
 
     expect(result).toEqual(roles);
-    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1');
+    expect(mockGetOrganizationRoles).toHaveBeenCalledWith('org-1', 'user-1');
   });
 });
 
 describe('getUserPermissions', () => {
   it('should delegate to mapping repository', async () => {
     const perms = [createTestPermission()];
-    vi.mocked(mockRepoGetPerms).mockResolvedValue(perms);
+    vi.mocked(mockGetOrganizationPermissions).mockResolvedValue(perms);
 
-    const result = await getUserPermissions('user-1');
+    const result = await getUserPermissions('org-1', 'user-1');
 
     expect(result).toEqual(perms);
-    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1');
+    expect(mockGetOrganizationPermissions).toHaveBeenCalledWith('org-1', 'user-1');
   });
 });
 
@@ -187,17 +291,17 @@ describe('getUsersWithRole', () => {
   it('should delegate to mapping repository with default pagination', async () => {
     vi.mocked(mockRepoGetUsers).mockResolvedValue({ rows: [], total: 0 });
 
-    await getUsersWithRole('role-1', 'org-1');
+    await getUsersWithRole('app-1', 'role-1', 'org-1');
 
-    expect(mockRepoGetUsers).toHaveBeenCalledWith('role-1', 'org-1', 1, 20);
+    expect(mockRepoGetUsers).toHaveBeenCalledWith('app-1', 'role-1', 'org-1', 1, 20);
   });
 
   it('should pass custom pagination options', async () => {
     vi.mocked(mockRepoGetUsers).mockResolvedValue({ rows: [], total: 0 });
 
-    await getUsersWithRole('role-1', 'org-1', { page: 3, pageSize: 50 });
+    await getUsersWithRole('app-1', 'role-1', 'org-1', { page: 3, pageSize: 50 });
 
-    expect(mockRepoGetUsers).toHaveBeenCalledWith('role-1', 'org-1', 3, 50);
+    expect(mockRepoGetUsers).toHaveBeenCalledWith('app-1', 'role-1', 'org-1', 3, 50);
   });
 });
 
@@ -206,94 +310,65 @@ describe('getUsersWithRole', () => {
 // ===========================================================================
 
 describe('buildRoleClaims', () => {
-  it('should return cached slugs on cache hit', async () => {
-    vi.mocked(mockGetCachedRoles).mockResolvedValue(['admin', 'editor']);
-
-    const result = await buildRoleClaims('user-1');
-
-    expect(result).toEqual(['admin', 'editor']);
-    // Should NOT call the DB
-    expect(mockRepoGetRoles).not.toHaveBeenCalled();
-  });
-
-  it('should query DB and cache result on cache miss', async () => {
-    vi.mocked(mockGetCachedRoles).mockResolvedValue(null);
+  it('should return role slugs from PostgreSQL', async () => {
     vi.mocked(mockRepoGetRoles).mockResolvedValue([
       createTestRole({ slug: 'admin' }),
       createTestRole({ slug: 'editor' }),
     ]);
 
-    const result = await buildRoleClaims('user-1');
+    const result = await buildRoleClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual(['admin', 'editor']);
-    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1');
-    expect(mockSetCachedRoles).toHaveBeenCalledWith('user-1', ['admin', 'editor']);
+    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 
   it('should return empty array when user has no roles', async () => {
-    vi.mocked(mockGetCachedRoles).mockResolvedValue(null);
     vi.mocked(mockRepoGetRoles).mockResolvedValue([]);
 
-    const result = await buildRoleClaims('user-1');
+    const result = await buildRoleClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual([]);
-    expect(mockSetCachedRoles).toHaveBeenCalledWith('user-1', []);
+    expect(mockRepoGetRoles).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 
-  it('should return cached empty array (no DB call)', async () => {
-    // Empty array is a valid cached value — means user has no roles
-    vi.mocked(mockGetCachedRoles).mockResolvedValue([]);
+  it('should emit each role claim value once', async () => {
+    vi.mocked(mockRepoGetRoles).mockResolvedValue([
+      createTestRole({ slug: 'GROUP_ADMIN' }),
+      createTestRole({ slug: 'GROUP_ADMIN' }),
+    ]);
 
-    const result = await buildRoleClaims('user-1');
-
-    expect(result).toEqual([]);
-    expect(mockRepoGetRoles).not.toHaveBeenCalled();
+    expect(await buildRoleClaims('user-1', APPLICATION_ID)).toEqual(['GROUP_ADMIN']);
   });
 });
 
 describe('buildPermissionClaims', () => {
-  it('should return cached slugs on cache hit', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue(['crm:contacts:read', 'crm:deals:write']);
-
-    const result = await buildPermissionClaims('user-1');
-
-    expect(result).toEqual(['crm:contacts:read', 'crm:deals:write']);
-    expect(mockRepoGetPerms).not.toHaveBeenCalled();
-  });
-
-  it('should query DB and cache result on cache miss', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue(null);
+  it('should return permission slugs from PostgreSQL', async () => {
     vi.mocked(mockRepoGetPerms).mockResolvedValue([
       createTestPermission({ slug: 'crm:contacts:read' }),
       createTestPermission({ slug: 'crm:deals:write' }),
     ]);
 
-    const result = await buildPermissionClaims('user-1');
+    const result = await buildPermissionClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual(['crm:contacts:read', 'crm:deals:write']);
-    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1');
-    expect(mockSetCachedPerms).toHaveBeenCalledWith(
-      'user-1',
-      ['crm:contacts:read', 'crm:deals:write'],
-    );
+    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 
   it('should return empty array when user has no permissions', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue(null);
     vi.mocked(mockRepoGetPerms).mockResolvedValue([]);
 
-    const result = await buildPermissionClaims('user-1');
+    const result = await buildPermissionClaims('user-1', APPLICATION_ID);
 
     expect(result).toEqual([]);
-    expect(mockSetCachedPerms).toHaveBeenCalledWith('user-1', []);
+    expect(mockRepoGetPerms).toHaveBeenCalledWith('user-1', APPLICATION_ID);
   });
 
-  it('should return cached empty array (no DB call)', async () => {
-    vi.mocked(mockGetCachedPerms).mockResolvedValue([]);
+  it('should emit each permission claim value once', async () => {
+    vi.mocked(mockRepoGetPerms).mockResolvedValue([
+      createTestPermission({ slug: 'CAN_ADD_ORDER' }),
+      createTestPermission({ slug: 'CAN_ADD_ORDER' }),
+    ]);
 
-    const result = await buildPermissionClaims('user-1');
-
-    expect(result).toEqual([]);
-    expect(mockRepoGetPerms).not.toHaveBeenCalled();
+    expect(await buildPermissionClaims('user-1', APPLICATION_ID)).toEqual(['CAN_ADD_ORDER']);
   });
 });

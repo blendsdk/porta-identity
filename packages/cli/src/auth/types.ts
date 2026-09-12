@@ -95,3 +95,19 @@ export interface AuthFlowResult {
     name?: string;
   };
 }
+
+/** Allowlisted identity claims accepted from a verified OIDC ID token. */
+export interface VerifiedIdentity {
+  /** Stable, non-empty OIDC subject identifier. */
+  readonly sub: string;
+  /** Optional verified display email. */
+  readonly email?: string;
+  /** Optional verified display name. */
+  readonly name?: string;
+}
+
+/** Cancellation boundary shared by authentication network operations. */
+export interface CliAuthOperationOptions {
+  /** Aborts the active request without accepting late results. */
+  readonly signal: AbortSignal;
+}

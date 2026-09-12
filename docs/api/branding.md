@@ -1,80 +1,67 @@
 # Branding Assets API
 
-The branding API manages organization-level logo and favicon images. Assets are stored as PostgreSQL bytea for simple deployment.
+Porta stores one optional logo and one optional favicon per organization. Stored assets are used by
+authentication pages and HTML email. They take precedence over the external fallback URLs in the
+organization's branding settings.
 
 ## Endpoints
 
-| Method | Path | Permission | Description |
-|--------|------|-----------|-------------|
-| `GET` | `/api/admin/organizations/:orgId/branding` | `org:read` | List branding assets |
-| `GET` | `/api/admin/organizations/:orgId/branding/:type` | `org:read` | Get asset (binary) |
-| `PUT` | `/api/admin/organizations/:orgId/branding/:type` | `org:update` | Upload/replace asset |
-| `DELETE` | `/api/admin/organizations/:orgId/branding/:type` | `org:update` | Delete asset |
+| Method   | Path                                             | Permission         | Description                       |
+| -------- | ------------------------------------------------ | ------------------ | --------------------------------- |
+| `GET`    | `/api/admin/organizations/:orgId/branding`       | `admin:org:read`   | List asset metadata               |
+| `GET`    | `/api/admin/organizations/:orgId/branding/:type` | `admin:org:read`   | Read protected asset bytes        |
+| `PUT`    | `/api/admin/organizations/:orgId/branding/:type` | `admin:org:update` | Create or replace an asset        |
+| `DELETE` | `/api/admin/organizations/:orgId/branding/:type` | `admin:org:update` | Permanently delete an asset       |
+| `GET`    | `/:orgSlug/branding/:type`                       | Public             | Serve an effective uploaded image |
 
-## Asset Types
+`:type` is either `logo` or `favicon`.
 
-| Type | Description |
-|------|-------------|
-| `logo` | Organization logo (displayed in login pages, admin UI) |
-| `favicon` | Browser favicon for the organization |
+## Accepted images and limits
 
-## Supported Formats
+| Content type               | Logo limit | Favicon limit |
+| -------------------------- | ---------- | ------------- |
+| `image/png`                | 2 MiB      | 512 KiB       |
+| `image/jpeg`               | 2 MiB      | 512 KiB       |
+| `image/webp`               | 2 MiB      | 512 KiB       |
+| `image/x-icon`             | 2 MiB      | 512 KiB       |
+| `image/vnd.microsoft.icon` | 2 MiB      | 512 KiB       |
+| `image/svg+xml`            | 2 MiB      | 512 KiB       |
 
-| Content Type | Description |
-|-------------|-------------|
-| `image/png` | PNG image |
-| `image/svg+xml` | SVG vector image |
-| `image/x-icon` | ICO favicon |
-| `image/vnd.microsoft.icon` | Microsoft ICO format |
-| `image/jpeg` | JPEG image |
-| `image/webp` | WebP image |
+The limits apply to decoded image bytes. The server checks the declared content type against the
+actual PNG, JPEG, WebP, ICO, or SVG content. SVG is accepted through Porta's existing validation and
+sanitization path. Malformed SVG returns the same sanitized `400` response as invalid base64,
+empty content, type mismatches, and oversized images. Scripts, event handlers, and dangerous links
+are removed from otherwise valid SVG before storage.
 
-**Maximum file size:** 512 KB
+The upload request is base64 inside JSON, so the exact upload route accepts a 3 MiB JSON body in the
+server and bundled development proxies. Other Admin API routes keep their smaller default limit.
 
-## List Branding Assets
+## List asset metadata
 
 ```http
 GET /api/admin/organizations/:orgId/branding
 Authorization: Bearer <token>
 ```
 
-Returns metadata only (no binary data):
+The response contains metadata only:
 
 ```json
 {
   "data": [
     {
-      "id": "uuid",
-      "organizationId": "uuid",
+      "id": "5ea2ad30-a62c-427f-a560-497875dc1fdd",
+      "organizationId": "550e8400-e29b-41d4-a716-446655440000",
       "assetType": "logo",
       "contentType": "image/png",
       "fileSize": 15234,
-      "createdAt": "2026-01-15T10:00:00Z",
-      "updatedAt": "2026-01-15T10:00:00Z"
-    },
-    {
-      "id": "uuid",
-      "organizationId": "uuid",
-      "assetType": "favicon",
-      "contentType": "image/x-icon",
-      "fileSize": 4096,
-      "createdAt": "2026-01-15T10:00:00Z",
-      "updatedAt": "2026-01-15T10:00:00Z"
+      "createdAt": "2026-01-15T10:00:00.000Z",
+      "updatedAt": "2026-01-15T10:00:00.000Z"
     }
   ]
 }
 ```
 
-## Get Asset (Binary)
-
-```http
-GET /api/admin/organizations/:orgId/branding/logo
-Authorization: Bearer <token>
-```
-
-Returns the raw binary image data with appropriate `Content-Type` header and 1-hour cache control.
-
-## Upload Asset
+## Upload or replace an asset
 
 ```http
 PUT /api/admin/organizations/:orgId/branding/logo
@@ -82,7 +69,7 @@ Authorization: Bearer <token>
 Content-Type: application/json
 ```
 
-### Request Body (JSON with base64)
+The body has exactly two fields:
 
 ```json
 {
@@ -91,34 +78,62 @@ Content-Type: application/json
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `data` | string | Yes | Base64-encoded image data |
-| `contentType` | string | Yes | MIME type of the image |
+| Field         | Type   | Required | Description                                  |
+| ------------- | ------ | -------- | -------------------------------------------- |
+| `data`        | string | Yes      | Image bytes encoded as standard base64       |
+| `contentType` | string | Yes      | One accepted media type from the table above |
 
-### Response
+The response is `{ "data": <asset metadata> }`. Uploading the same asset type again atomically
+replaces it.
 
-```json
-{
-  "data": {
-    "id": "uuid",
-    "organizationId": "uuid",
-    "assetType": "logo",
-    "contentType": "image/png",
-    "fileSize": 15234,
-    "createdAt": "2026-01-15T10:00:00Z",
-    "updatedAt": "2026-01-15T10:00:00Z"
-  }
-}
+The TypeScript SDK accepts the same envelope:
+
+```ts
+const bytes = await readFile('logo.png');
+const asset = await porta.branding.uploadAsset(organizationId, 'logo', {
+  data: bytes.toString('base64'),
+  contentType: 'image/png',
+});
 ```
 
-If an asset of the same type already exists, it is replaced (upsert behavior).
+`porta.branding.listAssets()` returns metadata. `porta.branding.getAsset()` returns the protected
+binary response. `porta.branding.deleteAsset()` removes an asset. Branding text settings are
+updated with `porta.branding.updateSettings()`, which returns the complete updated organization.
 
-## Delete Asset
+## Delete an asset
 
 ```http
 DELETE /api/admin/organizations/:orgId/branding/logo
 Authorization: Bearer <token>
 ```
 
-Returns `204 No Content` on success, `404` if no asset of that type exists.
+Deletion returns `204 No Content`. A missing asset returns `404`. If an external fallback URL is
+configured for this slot, authentication pages use it after the uploaded asset is deleted.
+
+## Protected and public reads
+
+The protected Admin read returns raw bytes, the stored `Content-Type`, and one-hour cache control:
+
+```http
+GET /api/admin/organizations/:orgId/branding/logo
+Authorization: Bearer <token>
+```
+
+Authentication pages and email use the public URL instead:
+
+```http
+GET /:orgSlug/branding/logo
+```
+
+The public response contains only the validated bytes and media type. It uses an `ETag` and
+`Cache-Control: public, no-cache` for revalidation. It sets no cookies and exposes no organization
+ID, filename, size, or storage metadata. Unknown organizations, unsupported asset types, and empty
+asset slots all return the same minimal `404` response.
+
+Suspended organizations keep their existing branding available so their authentication UI remains
+consistent while an administrator repairs or reactivates them. Deleted organizations return the
+same minimal `404` as every other missing case.
+
+SVG public responses add a restrictive sandbox Content Security Policy (CSP) and rely on the
+global `nosniff` header. Authentication HTML permits same-origin uploaded images, `data:` images
+such as TOTP QR codes, and only the validated origins needed by configured external fallback URLs.

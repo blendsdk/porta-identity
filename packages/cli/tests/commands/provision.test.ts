@@ -65,9 +65,10 @@ describe('parseDuration', () => {
 
   it('parses months', async () => {
     const parseDuration = await getDurationParser();
-    const now = new Date();
+    const expected = new Date();
+    expected.setMonth(expected.getMonth() + 6);
     const result = parseDuration('6m');
-    expect(result.getMonth()).toBe((now.getMonth() + 6) % 12);
+    expect(result.getMonth()).toBe(expected.getMonth());
   });
 
   it('parses years', async () => {
@@ -108,31 +109,19 @@ describe('provision command handler', () => {
   }
 
   async function invokeProvision(extraArgs: Record<string, unknown> = {}) {
-    const yargs = (await import('yargs')).default;
     const cmd = await getCommand();
-
-    const args = ['provision'];
-    for (const [key, value] of Object.entries(extraArgs)) {
-      if (typeof value === 'boolean') {
-        if (value) args.push(`--${key}`);
-      } else {
-        args.push(`--${key}`, String(value));
-      }
-    }
-
-    try {
-      await yargs(args)
-        .command(cmd)
-        .option('json', { type: 'boolean', default: false })
-        .option('verbose', { type: 'boolean', default: false })
-        .option('insecure', { type: 'boolean', default: false })
-        .option('force', { type: 'boolean', default: false })
-        .option('server', { type: 'string' })
-        .fail(false)
-        .parse();
-    } catch {
-      // yargs may throw
-    }
+    if (typeof cmd.handler !== 'function') throw new Error('Provision handler is unavailable');
+    await cmd.handler({
+      $0: 'porta',
+      _: ['provision'],
+      file: typeof extraArgs.file === 'string' ? extraArgs.file : '',
+      mode: extraArgs.mode === 'overwrite' ? 'overwrite' : 'merge',
+      'dry-run': extraArgs['dry-run'] === true,
+      json: extraArgs.json === true,
+      verbose: false,
+      insecure: false,
+      force: false,
+    });
   }
 
   function mockFileRead(data: object) {

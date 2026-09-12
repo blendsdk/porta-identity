@@ -28,6 +28,32 @@ export interface HumanAuthMailPollingResult {
   readonly deliveryCount: 1;
 }
 
+/** Builds the MailHog inventory path for all mail or one exact synthetic recipient. */
+export function mailhogInventoryPath(recipient?: string): string {
+  return recipient === undefined
+    ? '/api/v2/messages'
+    : `/api/v2/search?kind=to&query=${encodeURIComponent(recipient)}`;
+}
+
+/** MailHog fields needed to distinguish OTP delivery from other mail to the same recipient. */
+export interface HumanAuthMailMessage {
+  readonly subjects: readonly string[];
+  readonly body: string;
+}
+
+/** Returns only exact OTP messages before the caller enforces delivery cardinality. */
+export function emailOtpMailInventory(
+  messages: readonly HumanAuthMailMessage[],
+): HumanAuthMailInventory {
+  const otpMessages = messages.filter((message) =>
+    message.subjects.some((subject) => /^Your verification code: \d{6}$/u.test(subject)),
+  );
+  return Object.freeze({
+    count: otpMessages.length,
+    bodies: Object.freeze(otpMessages.map((message) => message.body)),
+  });
+}
+
 /**
  * Polls until exactly one message contains exactly one distinct value.
  *

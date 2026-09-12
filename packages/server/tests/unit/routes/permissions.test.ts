@@ -29,8 +29,8 @@ import { createPermissionRouter } from '../../../src/routes/permissions.js';
 /** Standard test permission */
 function createTestPermission(overrides: Partial<Permission> = {}): Permission {
   return {
-    id: 'perm-uuid-1',
-    applicationId: 'app-uuid-1',
+    id: '30000000-0000-4000-8000-000000000001',
+    applicationId: '10000000-0000-4000-8000-000000000001',
     moduleId: null,
     name: 'Read Contacts',
     slug: 'crm:contacts:read',
@@ -43,8 +43,8 @@ function createTestPermission(overrides: Partial<Permission> = {}): Permission {
 /** Standard test role (for getRolesWithPermission results) */
 function createTestRole(overrides: Partial<Role> = {}): Role {
   return {
-    id: 'role-uuid-1',
-    applicationId: 'app-uuid-1',
+    id: '20000000-0000-4000-8000-000000000001',
+    applicationId: '10000000-0000-4000-8000-000000000001',
     name: 'Editor',
     slug: 'editor',
     description: 'Can edit content',
@@ -84,7 +84,10 @@ function createMockCtx(
     set body(v: unknown) {
       responseBody = v;
     },
-    state: { organization: { isSuperAdmin: true } },
+    state: {
+      organization: { isSuperAdmin: true },
+      adminUser: { id: 'actor-uuid-1' },
+    },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
       err.status = status;
@@ -135,38 +138,44 @@ describe('permission routes', () => {
       expect(layer).toBeDefined();
 
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1' },
-        body: { name: 'Read Contacts', slug: 'crm:contacts:read' },
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
+        body: { name: 'Read Contacts', slug: '  CAN_READ_CONTACTS  ' },
       });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(201);
       expect(ctx.body).toEqual({ data: permission });
-      expect(permissionService.createPermission).toHaveBeenCalledWith({
-        applicationId: 'app-uuid-1',
-        name: 'Read Contacts',
-        slug: 'crm:contacts:read',
-      });
+      expect(permissionService.createPermission).toHaveBeenCalledWith(
+        {
+          applicationId: '10000000-0000-4000-8000-000000000001',
+          name: 'Read Contacts',
+          slug: 'CAN_READ_CONTACTS',
+        },
+        'actor-uuid-1',
+      );
     });
 
     it('should return 400 for invalid input (missing required fields)', async () => {
       const layer = findLayer(createPermissionRouter(), 'POST', '');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1' }, body: {} });
+      const ctx = createMockCtx({
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
+        body: {},
+      });
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(400);
       expect((ctx.body as { error: string }).error).toBe('Permission request is invalid');
     });
 
-    it('should return 400 for invalid slug format', async () => {
+    it('should return 400 for a rejected permission claim value', async () => {
       vi.mocked(permissionService.createPermission).mockRejectedValue(
         new RbacValidationError('Invalid permission slug format'),
       );
 
       const layer = findLayer(createPermissionRouter(), 'POST', '');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1' },
-        body: { name: 'Bad Permission', slug: 'INVALID' },
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
+        body: { name: 'Bad Permission', slug: 'INVALID\nVALUE' },
       });
 
       await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission request is invalid');
@@ -183,12 +192,12 @@ describe('permission routes', () => {
       vi.mocked(permissionService.listPermissionsByApplication).mockResolvedValue(permissions);
 
       const layer = findLayer(createPermissionRouter(), 'GET', '');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1' } });
+      const ctx = createMockCtx({ params: { appId: '10000000-0000-4000-8000-000000000001' } });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: permissions });
       expect(permissionService.listPermissionsByApplication).toHaveBeenCalledWith(
-        'app-uuid-1',
+        '10000000-0000-4000-8000-000000000001',
         undefined,
       );
     });
@@ -198,13 +207,13 @@ describe('permission routes', () => {
 
       const layer = findLayer(createPermissionRouter(), 'GET', '');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1' },
+        params: { appId: '10000000-0000-4000-8000-000000000001' },
         query: { moduleId: 'a0000000-0000-4000-a000-000000000001' },
       });
       await execHandler(layer!, ctx);
 
       expect(permissionService.listPermissionsByApplication).toHaveBeenCalledWith(
-        'app-uuid-1',
+        '10000000-0000-4000-8000-000000000001',
         'a0000000-0000-4000-a000-000000000001',
       );
     });
@@ -213,7 +222,7 @@ describe('permission routes', () => {
       vi.mocked(permissionService.listPermissionsByApplication).mockResolvedValue([]);
 
       const layer = findLayer(createPermissionRouter(), 'GET', '');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1' } });
+      const ctx = createMockCtx({ params: { appId: '10000000-0000-4000-8000-000000000001' } });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: [] });
@@ -230,7 +239,12 @@ describe('permission routes', () => {
       vi.mocked(permissionService.findPermissionById).mockResolvedValue(permission);
 
       const layer = findLayer(createPermissionRouter(), 'GET', '/:permId');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' } });
+      const ctx = createMockCtx({
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permId: '30000000-0000-4000-8000-000000000001',
+        },
+      });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: permission });
@@ -240,7 +254,12 @@ describe('permission routes', () => {
       vi.mocked(permissionService.findPermissionById).mockResolvedValue(null);
 
       const layer = findLayer(createPermissionRouter(), 'GET', '/:permId');
-      const ctx = createMockCtx({ params: { appId: 'app-uuid-1', permId: 'nonexistent' } });
+      const ctx = createMockCtx({
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permId: '90000000-0000-4000-8000-000000000001',
+        },
+      });
 
       await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission not found');
     });
@@ -257,25 +276,34 @@ describe('permission routes', () => {
 
       const layer = findLayer(createPermissionRouter(), 'PUT', '/:permId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permId: '30000000-0000-4000-8000-000000000001',
+        },
         body: { name: 'Updated' },
       });
       await execHandler(layer!, ctx);
 
       expect(ctx.body).toEqual({ data: permission });
-      expect(permissionService.updatePermission).toHaveBeenCalledWith('perm-uuid-1', {
-        name: 'Updated',
-      });
+      expect(permissionService.updatePermission).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+        '30000000-0000-4000-8000-000000000001',
+        { name: 'Updated' },
+        'actor-uuid-1',
+      );
     });
 
     it('should throw 404 when permission not found', async () => {
       vi.mocked(permissionService.updatePermission).mockRejectedValue(
-        new PermissionNotFoundError('nonexistent'),
+        new PermissionNotFoundError('90000000-0000-4000-8000-000000000001'),
       );
 
       const layer = findLayer(createPermissionRouter(), 'PUT', '/:permId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'nonexistent' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permId: '90000000-0000-4000-8000-000000000001',
+        },
         body: { name: 'Test' },
       });
 
@@ -284,48 +312,30 @@ describe('permission routes', () => {
   });
 
   // -------------------------------------------------------------------------
-  // DELETE /:permId — Delete permission
+  // DELETE /:permissionId — Delete permission
   // -------------------------------------------------------------------------
 
-  describe('DELETE /:permId — Delete permission', () => {
-    it('should return 204 on successful delete', async () => {
-      vi.mocked(permissionService.deletePermission).mockResolvedValue(undefined);
+  describe('DELETE /:permissionId — Delete permission', () => {
+    it('should return the committed reduction result on successful delete', async () => {
+      const result = { reauthenticationRequired: false };
+      vi.mocked(permissionService.deletePermission).mockResolvedValue(result);
 
-      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permId');
+      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permissionId');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permissionId: '10000000-0000-4000-8000-000000000002',
+        },
       });
       await execHandler(layer!, ctx);
 
-      expect(ctx.status).toBe(204);
-      expect(permissionService.deletePermission).toHaveBeenCalledWith('perm-uuid-1', false);
-    });
-
-    it('should pass force=true when query param is set', async () => {
-      vi.mocked(permissionService.deletePermission).mockResolvedValue(undefined);
-
-      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permId');
-      const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
-        query: { force: 'true' },
-      });
-      await execHandler(layer!, ctx);
-
-      expect(ctx.status).toBe(204);
-      expect(permissionService.deletePermission).toHaveBeenCalledWith('perm-uuid-1', true);
-    });
-
-    it('should throw 400 when permission is used by roles (no force)', async () => {
-      vi.mocked(permissionService.deletePermission).mockRejectedValue(
-        new RbacValidationError('Permission is used by 3 roles. Use force=true to delete.'),
+      expect(ctx.status).toBe(200);
+      expect(ctx.body).toEqual({ data: result });
+      expect(permissionService.deletePermission).toHaveBeenCalledWith(
+        '10000000-0000-4000-8000-000000000001',
+        '10000000-0000-4000-8000-000000000002',
+        'actor-uuid-1',
       );
-
-      const layer = findLayer(createPermissionRouter(), 'DELETE', '/:permId');
-      const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
-      });
-
-      await expect(execHandler(layer!, ctx)).rejects.toThrow('Permission request is invalid');
     });
   });
 
@@ -340,7 +350,10 @@ describe('permission routes', () => {
 
       const layer = findLayer(createPermissionRouter(), 'GET', '/:permId/roles');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permId: '30000000-0000-4000-8000-000000000001',
+        },
       });
       await execHandler(layer!, ctx);
 
@@ -352,7 +365,10 @@ describe('permission routes', () => {
 
       const layer = findLayer(createPermissionRouter(), 'GET', '/:permId/roles');
       const ctx = createMockCtx({
-        params: { appId: 'app-uuid-1', permId: 'perm-uuid-1' },
+        params: {
+          appId: '10000000-0000-4000-8000-000000000001',
+          permId: '30000000-0000-4000-8000-000000000001',
+        },
       });
       await execHandler(layer!, ctx);
 
@@ -381,7 +397,7 @@ describe('permission routes', () => {
       expect(paths).toContain(`GET ${prefix}`);
       expect(paths).toContain(`GET ${prefix}/:permId`);
       expect(paths).toContain(`PUT ${prefix}/:permId`);
-      expect(paths).toContain(`DELETE ${prefix}/:permId`);
+      expect(paths).toContain(`DELETE ${prefix}/:permissionId`);
       expect(paths).toContain(`GET ${prefix}/:permId/roles`);
     });
   });

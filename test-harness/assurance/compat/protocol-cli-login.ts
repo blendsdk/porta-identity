@@ -487,16 +487,17 @@ export async function executePackedProtocolCliLogin(
       const discovery = discoverySchema.parse(await discoveryResponse.json());
       const jwksResponse = await api.get(discovery.jwks_uri);
       if (!jwksResponse.ok()) throw new Error('packed protocol JWKS was unavailable');
+      const authorization = result.authorizationUrl.searchParams;
       const idToken = verifyIndependentIdToken(credentials.idToken, await jwksResponse.json(), {
         issuer: metadata.issuer,
         audience: metadata.clientId,
         subject,
+        nonce: authorization.get('nonce') ?? undefined,
         now: Math.floor(Date.now() / 1000),
       });
       const observer = await api.get(`${endpoints.porta}/api/admin/organizations`, {
         headers: { Authorization: `Bearer ${credentials.accessToken}` },
       });
-      const authorization = result.authorizationUrl.searchParams;
       const callback = result.callbackUrl.searchParams;
       const outputRedacted = [
         password,

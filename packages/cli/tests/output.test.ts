@@ -14,6 +14,7 @@ import {
   error,
   info,
   formatDate,
+  sanitizeTerminalText,
   truncate,
 } from '../src/output.js';
 
@@ -54,6 +55,15 @@ describe('output', () => {
     it('handles empty rows', () => {
       printTable(['Name'], []);
       expect(logSpy).toHaveBeenCalledOnce();
+    });
+
+    it('replaces terminal controls in headers and cells before rendering', () => {
+      printTable(['Na\u001bme'], [['stored\u009bvalue']]);
+      const output = logSpy.mock.calls[0][0] as string;
+      expect(output).not.toContain('\u001bme');
+      expect(output).not.toContain('\u009b');
+      expect(output).toContain('Na\ufffdme');
+      expect(output).toContain('stored\ufffdvalue');
     });
 
     it('never truncates full UUIDs, even in a narrow terminal', () => {
@@ -112,6 +122,40 @@ describe('output', () => {
       // The output includes chalk coloring and ✓ prefix
       const output = logSpy.mock.calls[0][0] as string;
       expect(output).toContain('Operation completed');
+    });
+
+    it('does not emit controls from a remote success label', () => {
+      success('saved\u001b]52;clipboard\u0007');
+      const output = logSpy.mock.calls[0][0] as string;
+      expect(output).not.toContain('\u001b]52');
+      expect(output).not.toContain('\u0007');
+    });
+  });
+
+  describe('sanitizeTerminalText', () => {
+    it('replaces C0, DEL, and C1 controls while preserving printable Unicode', () => {
+      expect(sanitizeTerminalText('A\u0000B\u007fC\u009fD café')).toBe(
+        'A\ufffdB\ufffdC\ufffdD café',
+      );
+    });
+
+    it('sanitizes text before readline renders an interactive prompt', async () => {
+      const readlineQuestion = vi.fn((_prompt: string, callback: (answer: string) => void) =>
+        callback('yes'),
+      );
+      vi.doMock('node:readline', () => ({
+        createInterface: vi.fn(() => ({
+          close: vi.fn(),
+          question: readlineQuestion,
+        })),
+      }));
+      const { confirm } = await import('../src/prompt.js');
+
+      await expect(confirm('Revoke stored\u001b]52;value\u0007?')).resolves.toBe(true);
+      expect(readlineQuestion).toHaveBeenCalledWith(
+        'Revoke stored\ufffd]52;value\ufffd? [y/N] ',
+        expect.any(Function),
+      );
     });
   });
 

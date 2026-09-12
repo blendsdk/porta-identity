@@ -1,13 +1,14 @@
 # API Design
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-09-11
 
 ## Overview
 
-Porta exposes two distinct API surfaces:
+Porta exposes three distinct HTTP surfaces:
 
 1. **Admin API** (`/api/admin/*`) — RESTful management API for organizations, applications, clients, users, RBAC, and system configuration
-2. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
+2. **Public branding** (`/:orgSlug/branding/*`) — Anonymous delivery of uploaded organization logos and favicons
+3. **OIDC Endpoints** (`/:orgSlug/*`) — OpenID Connect protocol endpoints powered by node-oidc-provider
    This document covers the design principles, conventions, and patterns used in the Admin API. For OIDC protocol details, see the [node-oidc-provider documentation](https://github.com/panva/node-oidc-provider).
 
 ## REST Conventions
@@ -42,6 +43,48 @@ All admin endpoints follow a consistent RESTful pattern:
 | `PATCH`  | Partial update / status change | Yes        | 200 + body    |
 | `DELETE` | Remove resource                | Yes        | 204 (no body) |
 
+### Permanent record deletion
+
+The Admin API exposes eight physical deletion routes. Each route requires Admin authentication,
+validates every path identifier, and checks its dedicated Delete permission. Nested resources are
+resolved through both parent and child identifiers; a child from another parent is indistinguishable
+from a missing child.
+
+| Resource           | Route                                                             | Permission                |
+| ------------------ | ----------------------------------------------------------------- | ------------------------- |
+| Organization       | `DELETE /api/admin/organizations/:idOrSlug`                       | `admin:org:delete`        |
+| Application        | `DELETE /api/admin/applications/:id`                              | `admin:app:delete`        |
+| Application module | `DELETE /api/admin/applications/:appId/modules/:moduleId`         | `admin:module:delete`     |
+| Client             | `DELETE /api/admin/clients/:id`                                   | `admin:client:delete`     |
+| Role               | `DELETE /api/admin/applications/:appId/roles/:roleId`             | `admin:role:delete`       |
+| Permission         | `DELETE /api/admin/applications/:appId/permissions/:permissionId` | `admin:permission:delete` |
+| Claim definition   | `DELETE /api/admin/applications/:appId/claims/:claimId`           | `admin:claim:delete`      |
+| User               | `DELETE /api/admin/organizations/:orgId/users/:userId`            | `admin:user:delete`       |
+
+Most successful deletions return `204` with no response body. Role and permission deletion return
+`200 { data: { reauthenticationRequired } }` so an administrator whose own authority changed can
+authenticate again without an unsafe follow-up request. Role-slug updates, role-permission removal,
+and user-role removal use the same result flag. A missing or parent-mismatched record returns a
+fixed resource-specific `404`; it does not expose dependency counts or partial cascade details.
+Repeating a completed deletion therefore returns `404` and creates no second deletion event.
+
+### RBAC SDK and CLI contracts
+
+The public SDK mirrors the application-qualified RBAC routes without inventing pagination or
+duplicating parent identifiers in request bodies. `roles.list(appId)` and
+`permissions.list(appId, { moduleId? })` validate and return complete arrays. User-role assignment
+uses collection `PUT` and `DELETE` requests with `{ roleIds }`, while the conventional CLI wraps a
+single selected role in a one-element array. Role, permission, role-permission, and user-role
+reduction methods validate the committed `reauthenticationRequired` result before the CLI reports
+success. The SDK agent reuses these same domain methods and exposes permission metadata updates
+through its existing definition-driven dispatcher.
+
+Archive, Restore, user Purge, and whole-client Revoke are not Admin API lifecycle operations.
+Applications, modules, and clients retain reversible Activate/Deactivate operations; organizations
+and users retain their applicable reversible status operations. Revocation remains available for
+security artifacts, including client credentials, sessions, and tokens. The retained
+`admin:client:revoke` permission applies to client-secret revocation, not client lifecycle.
+
 ### Endpoint Inventory
 
 | Route File         | Base Path                                             | Endpoints | Description                                    |
@@ -60,8 +103,43 @@ All admin endpoints follow a consistent RESTful pattern:
 | `stats.ts`         | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
 | `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
 | `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
-| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | —         | Logo/favicon upload (bytea)                    |
+| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
 | `exports.ts`       | `/api/admin/export/:entityType`                       | —         | CSV/JSON data export                           |
+
+### Organization branding assets
+
+Branding assets are direct organization subresources:
+
+| Method   | Route                                            | Result                              | Permission         |
+| -------- | ------------------------------------------------ | ----------------------------------- | ------------------ |
+| `GET`    | `/api/admin/organizations/:orgId/branding`       | Stored asset metadata               | `admin:org:read`   |
+| `GET`    | `/api/admin/organizations/:orgId/branding/:type` | Protected image bytes               | `admin:org:read`   |
+| `PUT`    | `/api/admin/organizations/:orgId/branding/:type` | Stored metadata after create/update | `admin:org:update` |
+| `DELETE` | `/api/admin/organizations/:orgId/branding/:type` | `204`                               | `admin:org:update` |
+
+`type` is exactly `logo` or `favicon`. Uploads use a strict JSON object containing standard
+base64 `data` and one allowed `contentType`. The server decodes once, verifies the actual PNG,
+JPEG, WebP, ICO, or sanitized SVG content, and stores the verified bytes. Logo data is limited to
+2 MiB and favicon data to 512 KiB. Invalid content receives one fixed `400`; database and other
+operational failures continue through the global sanitized server-error boundary.
+
+After permission checks, every operation validates the organization UUID and resolves the existing
+organization before touching asset storage. Invalid and missing organization identifiers therefore
+share the same `404` boundary. The SDK mirrors these four routes with `listAssets`, `getAsset`,
+`uploadAsset`, and `deleteAsset`; `updateSettings` uses the existing organization branding-settings
+route and returns the complete updated organization.
+
+### Public organization branding
+
+Authentication pages load uploaded assets from `GET /:orgSlug/branding/:type`, where `type` is
+exactly `logo` or `favicon`. This route is anonymous because login pages must render before a user
+authenticates. Missing organizations, unsupported types, and empty asset slots all return the same
+minimal `404`, which avoids exposing whether a tenant or asset exists.
+
+Successful responses contain only the validated stored bytes and media type. They use
+`Cache-Control: public, no-cache` plus an ETag for revalidation. SVG responses also receive a
+restrictive document CSP. Suspended organizations retain asset delivery so their authentication
+pages remain consistently branded while an administrator repairs or reactivates them.
 
 ## Authentication
 
@@ -73,28 +151,35 @@ All `/api/admin/*` routes (except the metadata endpoint) are protected by the `a
 sequenceDiagram
     participant Client
     participant AdminAuth as admin-auth.ts
-    participant SigningKeys as Signing Keys
+    participant Provider as OIDC Provider
     participant UserService as User Service
+    participant Applications as Application Service
     participant RBAC as RBAC Service
 
     Client->>AdminAuth: Authorization: Bearer <token>
-    AdminAuth->>SigningKeys: Load active signing keys
-    AdminAuth->>AdminAuth: Verify ES256 JWT signature
-    AdminAuth->>AdminAuth: Verify issuer = super-admin org
-    AdminAuth->>AdminAuth: Verify token not expired
+    AdminAuth->>Provider: AccessToken.find(token)
+    Provider-->>AdminAuth: Active token accountId or no match
     AdminAuth->>UserService: Lookup user by sub claim
     AdminAuth->>AdminAuth: Verify user is active
     AdminAuth->>AdminAuth: Verify user belongs to super-admin org
-    AdminAuth->>RBAC: Check porta-admin role
+    AdminAuth->>Applications: Resolve canonical porta-admin application
+    AdminAuth->>RBAC: Load assigned roles
+    AdminAuth->>AdminAuth: Keep recognized canonical-app roles
+    AdminAuth->>AdminAuth: Resolve static capabilities
     AdminAuth->>AdminAuth: Set ctx.state.adminUser
     AdminAuth-->>Client: 200 (proceed) / 401 / 403
 ```
 
 **Key properties:**
 
-- **Self-authentication** — Porta validates tokens signed by its own keys
-- **ES256 only** — No algorithm negotiation; ECDSA P-256 is enforced
-- **Role-based** — Requires `porta-admin` role in the super-admin organization
+- **Self-authentication** — Porta resolves its own opaque access tokens through the OIDC provider
+- **Fail-closed token lookup** — Missing, expired, revoked, or rejected tokens receive the same
+  minimal authentication failure
+- **Canonical role provenance** — Only recognized built-in role slugs owned by the canonical
+  `porta-admin` application grant Admin API capabilities; matching slugs in external applications
+  grant nothing
+- **Static capabilities** — Built-in Admin capabilities come from code definitions, not editable
+  application role-permission rows
 - **Nested-resource isolation** — Organization-prefixed user and user-role routes run permission
   middleware first, then require the target user to belong to the path organization before the
   handler can read or mutate it
@@ -236,7 +321,6 @@ All errors follow a consistent JSON format:
 | 403  | Forbidden             | Insufficient permissions or suspended tenant |
 | 404  | Not Found             | Resource does not exist                      |
 | 409  | Conflict              | Duplicate slug, email uniqueness violation   |
-| 410  | Gone                  | Archived tenant                              |
 | 412  | Precondition Failed   | ETag mismatch                                |
 | 429  | Too Many Requests     | Rate limit exceeded                          |
 | 500  | Internal Server Error | Unhandled error (details hidden)             |
@@ -279,6 +363,14 @@ graph LR
 5. **Audit log** records the action (best-effort for compatibility workflows; transaction-bound
    for covered administrative data mutations)
 6. **Response** is returned as JSON
+
+Permanent deletion tightens this pattern to one request-owned PostgreSQL transaction: lock and
+capture the target graph, revoke affected tracked sessions, remove identifiable PostgreSQL OIDC
+payloads, write one bounded deletion audit event, physically delete through foreign-key cascades,
+and register one immutable post-commit cleanup descriptor. A failure before commit rolls back all
+of those database changes and schedules no Redis work. After commit, one detached best-effort Redis
+pass runs without delaying the HTTP response. See [Security](./security.md#permanent-deletion-authority)
+for the authority and failure boundaries.
 
 ### Functional Style
 

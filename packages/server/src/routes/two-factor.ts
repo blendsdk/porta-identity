@@ -30,6 +30,7 @@ import { checkRateLimit, buildRateLimitKey, type RateLimitConfig } from '../auth
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
+import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { sendOtpCodeEmail } from '../auth/email-service.js';
 import { recordLogin } from '../users/service.js';
 import { findUserById } from '../users/repository.js';
@@ -82,38 +83,22 @@ const RESEND_RATE_LIMIT: RateLimitConfig = { max: 3, windowSeconds: 300 };
 // ---------------------------------------------------------------------------
 
 /**
- * Build branding context from organization data.
- *
- * @param org - Organization with branding fields
- * @returns Branding context for templates
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
-  };
-}
-
-/**
  * Build a base template context for 2FA pages.
  *
  * @param ctx - Koa context with organization state
  * @param locale - Resolved locale
  * @param csrfToken - CSRF token for form protection
  * @param orgSlug - Organization slug
- * @returns Base template context
+ * @returns Base template context.
  */
-function buildBaseContext(
+async function buildBaseContext(
   ctx: TwoFactorContext,
   locale: string,
   csrfToken: string,
   orgSlug: string,
 ) {
   return {
-    branding: buildBrandingFromOrg(ctx.state.organization),
+    branding: await resolveEffectiveBranding(ctx.state.organization),
     locale,
     csrfToken,
     orgSlug,
@@ -134,6 +119,7 @@ async function renderAndRespond(
   context: TemplateContext,
   statusCode = 200,
 ): Promise<void> {
+  ctx.state.brandingImageSources = context.branding.imageSources;
   const html = await renderPage(pageName, context);
   ctx.status = statusCode;
   ctx.type = 'text/html';
@@ -260,7 +246,7 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     setCsrfCookie(ctx, csrfToken);
 
     const context: TemplateContext = {
-      ...buildBaseContext(ctx, locale, csrfToken, org.slug),
+      ...(await buildBaseContext(ctx, locale, csrfToken, org.slug)),
       t,
       interaction: {
         uid: interaction.uid,
@@ -500,13 +486,7 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
           givenName: user?.givenName,
           familyName: user?.familyName,
         },
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
+        org,
         otpCode,
         10,
         locale,
@@ -597,7 +577,7 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
     const errorParam = (ctx.query.error as string) ?? '';
 
     const context: TemplateContext = {
-      ...buildBaseContext(ctx, locale, csrfToken, org.slug),
+      ...(await buildBaseContext(ctx, locale, csrfToken, org.slug)),
       t,
       interaction: {
         uid: interaction.uid,
@@ -696,13 +676,7 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
             givenName: user?.givenName,
             familyName: user?.familyName,
           },
-          {
-            id: org.id,
-            slug: org.slug,
-            brandingLogoUrl: org.brandingLogoUrl,
-            brandingPrimaryColor: org.brandingPrimaryColor,
-            brandingCompanyName: org.brandingCompanyName,
-          },
+          org,
           otpCode,
           10,
           locale,
@@ -802,7 +776,7 @@ async function renderTwoFactorWithError(
   setCsrfCookie(ctx, csrfToken);
 
   const context: TemplateContext = {
-    ...buildBaseContext(ctx, locale, csrfToken, ctx.state.organization.slug),
+    ...(await buildBaseContext(ctx, locale, csrfToken, ctx.state.organization.slug)),
     t,
     interaction: {
       uid,

@@ -11,11 +11,15 @@ import {
   exposesBodyInternalDetail,
   exposesInternalDetail,
   headerContractObserved,
+  htmlInteractionBoundToPath,
+  htmlPolicyRetainedAcrossResponses,
   normalizePublicHeaders,
 } from '../production-exposure/response-classifier.js';
 import {
   OwnedDependencyController,
+  passwordResetMailFailureIntegrity,
   type ProductionExposureCommandRunner,
+  type PasswordResetRecoveryStateObservation,
 } from '../production-exposure/service-controller.js';
 import {
   createdSessionIds,
@@ -75,9 +79,11 @@ function fakeRunner(options?: {
   readonly listedId?: string;
   readonly failStart?: boolean;
   readonly root?: string;
+  readonly recoveryStates?: readonly string[];
 }): { readonly runner: ProductionExposureCommandRunner; readonly calls: string[][] } {
   const calls: string[][] = [];
   let selectedService = 'redis';
+  let recoveryStateIndex = 0;
   return {
     calls,
     runner: {
@@ -100,7 +106,17 @@ function fakeRunner(options?: {
           };
         }
         if (args[0] === 'inspect') {
-          return { exitCode: 0, stdout: 'true|healthy\n', stderr: '' };
+          return {
+            exitCode: 0,
+            stdout: `true|${selectedService === 'mailhog' ? 'none' : 'healthy'}\n`,
+            stderr: '',
+          };
+        }
+        if (args[0] === 'exec' && args[2] === 'psql') {
+          const state = options?.recoveryStates?.[recoveryStateIndex];
+          if (state === undefined) throw new Error('recovery state fixture is unavailable');
+          recoveryStateIndex += 1;
+          return { exitCode: 0, stdout: `${state}\n`, stderr: '' };
         }
         if (args[0] === 'start' && options?.failStart === true) {
           throw new Error('start failed');
@@ -109,6 +125,19 @@ function fakeRunner(options?: {
       },
     },
   };
+}
+
+/** Builds one redacted recovery snapshot without exposing database UUIDs. */
+function recoveryState(
+  jobs: PasswordResetRecoveryStateObservation['jobs'],
+  counts: { readonly jobs: number; readonly tokens: number; readonly orphans?: number },
+): PasswordResetRecoveryStateObservation {
+  return Object.freeze({
+    jobs: Object.freeze(jobs),
+    totalJobCount: counts.jobs,
+    totalTokenCount: counts.tokens,
+    orphanTokenCount: counts.orphans ?? 0,
+  });
 }
 
 test('should reject version-bearing public server headers', () => {
@@ -209,6 +238,54 @@ test('should keep a version header separate from body-internal-detail findings',
   assert.equal(exposesBodyInternalDetail(response), false);
 });
 
+test('should retain interaction identity while per-response CSRF tokens rotate', () => {
+  const first = boundedPublicResponse(
+    200,
+    { 'content-type': 'text/html' },
+    '<html><form action="/interaction/expected/login"><input name="_csrf" value="first"></form></html>',
+  );
+  const second = boundedPublicResponse(
+    200,
+    { 'content-type': 'text/html' },
+    '<html><form action="/interaction/expected/login"><input name="_csrf" value="second"></form></html>',
+  );
+  const foreign = boundedPublicResponse(
+    200,
+    { 'content-type': 'text/html' },
+    '<html><form action="/interaction/foreign/login"><input name="_csrf" value="third"></form></html>',
+  );
+
+  assert.equal(htmlInteractionBoundToPath(first, '/interaction/expected'), true);
+  assert.equal(htmlInteractionBoundToPath(second, '/interaction/expected'), true);
+  assert.equal(htmlInteractionBoundToPath(foreign, '/interaction/expected'), false);
+});
+
+test('should require the HTML security policy on both interaction reads', () => {
+  const missingFirstPolicy = boundedPublicResponse(200, { 'x-frame-options': 'DENY' }, '<html/>');
+  const completePolicy = boundedPublicResponse(
+    200,
+    {
+      'content-security-policy': "default-src 'none'; frame-ancestors 'none'",
+      'x-frame-options': 'DENY',
+    },
+    '<html/>',
+  );
+  const contracts = [
+    "content-security-policy-includes:default-src 'none'",
+    "content-security-policy-includes:frame-ancestors 'none'",
+    'x-frame-options:DENY',
+  ];
+
+  assert.equal(
+    htmlPolicyRetainedAcrossResponses([missingFirstPolicy, completePolicy], contracts),
+    false,
+  );
+  assert.equal(
+    htmlPolicyRetainedAcrossResponses([completePolicy, completePolicy], contracts),
+    true,
+  );
+});
+
 test('should restore the exact owned dependency when the probe fails', async () => {
   const root = mkdtempSync(resolve(tmpdir(), 'porta-production-exposure-'));
   try {
@@ -275,6 +352,122 @@ test('should restore an owned dependency after the caller signal is aborted', as
     );
     const start = fake.calls.find((call) => call[1] === 'start');
     assert.ok(start);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('should classify one bounded retry job with one owned token as intact', () => {
+  const before = recoveryState([], { jobs: 0, tokens: 0 });
+  const after = recoveryState(
+    [
+      {
+        identity: `sha256:${'a'.repeat(64)}`,
+        status: 'available',
+        attemptCount: 1,
+        failureReason: 'smtp_outcome_unknown',
+        tokenCount: 1,
+      },
+    ],
+    { jobs: 1, tokens: 1 },
+  );
+  assert.deepEqual(passwordResetMailFailureIntegrity(before, after), {
+    validFailureState: true,
+    validTokenOwnership: true,
+  });
+});
+
+test('should reject duplicate probe jobs, duplicate tokens, and new orphan tokens', () => {
+  const before = recoveryState([], { jobs: 0, tokens: 0 });
+  const after = recoveryState(
+    [
+      {
+        identity: `sha256:${'a'.repeat(64)}`,
+        status: 'available',
+        attemptCount: 1,
+        failureReason: 'smtp_outcome_unknown',
+        tokenCount: 2,
+      },
+      {
+        identity: `sha256:${'b'.repeat(64)}`,
+        status: 'available',
+        attemptCount: 1,
+        failureReason: 'smtp_outcome_unknown',
+        tokenCount: 0,
+      },
+    ],
+    { jobs: 2, tokens: 2, orphans: 1 },
+  );
+  assert.deepEqual(passwordResetMailFailureIntegrity(before, after), {
+    validFailureState: false,
+    validTokenOwnership: false,
+  });
+});
+
+test('should reject a terminal recovery job before its retry budget is exhausted', () => {
+  const before = recoveryState([], { jobs: 0, tokens: 0 });
+  const after = recoveryState(
+    [
+      {
+        identity: `sha256:${'a'.repeat(64)}`,
+        status: 'terminal_failure',
+        attemptCount: 1,
+        failureReason: 'smtp_outcome_unknown',
+        tokenCount: 1,
+      },
+    ],
+    { jobs: 1, tokens: 1 },
+  );
+  assert.deepEqual(passwordResetMailFailureIntegrity(before, after), {
+    validFailureState: false,
+    validTokenOwnership: true,
+  });
+});
+
+test('should observe mail failure through only the owned bounded recovery query', async () => {
+  const root = mkdtempSync(resolve(tmpdir(), 'porta-production-exposure-'));
+  const completedJob = {
+    id: '11111111-1111-4111-8111-111111111111',
+    status: 'completed',
+    attemptCount: 1,
+    failureReason: null,
+    tokenCount: 1,
+  };
+  const failedJob = {
+    id: '22222222-2222-4222-8222-222222222222',
+    status: 'available',
+    attemptCount: 1,
+    failureReason: 'smtp_outcome_unknown',
+    tokenCount: 1,
+  };
+  try {
+    const fake = fakeRunner({
+      root,
+      recoveryStates: [
+        JSON.stringify({
+          jobs: [completedJob],
+          totalJobCount: 1,
+          totalTokenCount: 1,
+          orphanTokenCount: 0,
+        }),
+        JSON.stringify({
+          jobs: [completedJob, failedJob],
+          totalJobCount: 2,
+          totalTokenCount: 2,
+          orphanTokenCount: 0,
+        }),
+      ],
+    });
+    const controller = new OwnedDependencyController(root, activeRun(root), fake.runner);
+    const observation = await controller.observePasswordResetMailFailure(async () => 'response');
+    assert.deepEqual(observation, {
+      response: 'response',
+      integrity: { validFailureState: true, validTokenOwnership: true },
+    });
+    const query = fake.calls.find((call) => call[1] === 'exec')?.at(-1);
+    assert.ok(query);
+    assert.match(query, /LIMIT 64/u);
+    assert.doesNotMatch(query, /address_ciphertext|address_iv|address_tag|token_hash/u);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

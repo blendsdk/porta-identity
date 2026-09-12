@@ -1,0 +1,232 @@
+# Phase Reviews: Applications and OIDC Clients
+
+> **Document**: 01-phase-reviews.md
+> **Parent**: [Index](00-index.md)
+> **Last Updated**: 2026-08-30 21:58
+> **Scope mode**: strict
+
+## Phase 1: Server Safety, Runtime, and Role Data
+
+**Baseline tree:** `69319bb66147243e3a4b8b4bf3f253d04f34c88f`
+
+**Pre-review verification:** focused specifications 50/50; implementation regressions 20/20;
+unit 2,904/2,904; integration 386/386; E2E 128/128; pentest 224/224; browser 132/132;
+retained OIDC harness 6/6; protocol assurance 15/15; Node 24 `yarn verify` passed.
+
+**Reviewers:** correctness/maintainability/standards/API reviewer; auth-protocol and
+tenant-isolation security auditor; concurrency and migration auditor. The security auditor reported
+no additional findings.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-C001 | Critical | Secret insertion opens a second connection inside the request transaction, so confidential create cannot see its uncommitted parent and rotation can escape request/audit rollback. | Reuse `runDatabaseTransaction` and the AsyncLocal transaction pool for the short parent-lock/count/insert unit. | Accepted — re-review passed |
+| RV-C002 | Major | Migration precondition can race a concurrent legacy secret write. | Acquire a transaction-held `SHARE ROW EXCLUSIVE` lock on `client_secrets` before checking the bound and add a two-connection regression. | Accepted — re-review passed |
+| RV-C003 | Major | Generation can pass the route eligibility read, race client revocation, then insert under a lock that checks only the parent ID. | Recheck confidential/non-revoked parent state while holding the insertion lock and translate failure to the absent-eligible-parent result. | Accepted — re-review passed |
+| RV-C004 | Major | Legacy admission stays held through the provider request after Argon2 work finishes. | Release admission after bounded verification, then perform the credential-free hook/provider handoff outside the protected block. | Accepted — re-review passed |
+| RV-C005 | Minor | Concurrent secret revokes can both report success and emit duplicate audit records. | Make the update conditional on active state and use the transition result to distinguish already-revoked from missing/cross-parent. | Accepted — re-review passed |
+| RV-C006 | Major | Migration Down removes a mapping that may have existed before the migration. | Make Down a documented no-op because insertion provenance is indistinguishable. | Accepted — re-review passed |
+| RV-001 | Major | Import validation substitutes a fake callback and persists an empty redirect list, bypassing the shared 1–10 rule. | Validate the real manifest and require redirect URIs for imported clients. | Accepted — re-review passed |
+| RV-002 | Major | The active-secret cap throws an untyped error that becomes HTTP 500. | Raise the existing bounded client validation error and verify the fixed 4xx route category. | Accepted — re-review passed |
+
+All resolutions are necessary corrections inside the confirmed Phase 1 behavior. Authority: AI —
+delegated by `--auto-design`; category: internal correctness, concurrency, migration, and failure
+mechanics. Objective: satisfy the approved server/security contract without scope expansion.
+Rejected alternative: waive or defer findings despite a green suite; this would ship concrete
+security and correctness defects. Strongest counterargument: several fixes require extra race
+fixtures, but they test already approved invariants rather than new behavior. Confidence: High.
+Hardening: three independent reviews, with the concurrency auditor providing concrete schedules.
+Policy version: 1. Root invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: a fix changes
+product behavior or cannot preserve the immutable specification expectations.
+
+**Re-review evidence:** all eight fixes were accepted; 6 focused files and 150 tests passed on
+Node 24.20.0. The post-fix gate passed Node 24 `yarn verify`, the retained OIDC harness 6/6, and
+operational protocol assurance 15/15. No critical or major finding remains.
+
+## Phase 2: SDK and Conventional CLI Contracts
+
+**Baseline tree:** `605722dfa75b86fc94c52f2f1f45e7beff2eefe8`
+
+**Pre-review verification:** focused SDK specifications 20/20; conventional CLI specifications
+23/23; SDK 451/451; CLI 784/784; repository structure 96/96; Node 24 `yarn verify` passed.
+
+**Reviewers:** correctness/maintainability/standards/API reviewer; security and terminal-output
+auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| P2-RV-001 / RV-S001 | Major | Successful SDK responses were trusted without validating wrappers or the confidential/public one-time-secret invariant. | Validate every application/client response with fixed public errors; require a confidential create secret and reject a public create secret. | Accepted — re-review passed |
+| P2-RV-002 / RV-S003 | Major | Conventional CLI help and a contract fixture implied that the generated OIDC `client_id` could target internal-UUID-only Admin routes. | Use and document internal client UUIDs for get/mutation/history operations; retain slug resolution only where the command actually performs it. | Accepted — re-review passed |
+| P2-RV-003 / RV-S002 | Major | Stored server values could emit terminal control sequences in human CLI output, including the one-time plaintext display. | Sanitize C0, DEL, and C1 controls at human-output and readline prompt boundaries while leaving JSON serialization unchanged. | Accepted — final re-review passed |
+| P2-RV-004 / RV-S004 | Major | Token endpoint authentication remained an unrestricted string and two approved public aliases were absent from the barrel. | Close the authentication-method union and export all approved aliases. | Accepted — re-review passed |
+| RV-S005 | Minor | Empty list commands emitted a warning or no machine-readable result under `--json`. | Emit the valid empty page or array in JSON mode and retain the human warning otherwise. | Accepted — re-review passed |
+| RV-S006 | Minor | Client list advertised application slugs but passed the value directly to a UUID-only server filter. | Document the existing list filter truthfully as an application UUID. | Accepted — re-review passed |
+| P2-RV-005 | Major | Server list responses omitted required `effectiveLoginMethods` even though create/get/update already returned that approved projection. | Reuse the existing response decorator for offset and cursor client lists and add focused route regressions. | Accepted — re-review passed |
+
+All resolutions are contract corrections inside the confirmed Phase 2 behavior. Authority: AI —
+delegated by `--auto-design`; category: public-contract correctness, response validation, and safe
+terminal rendering. Objective: make the existing SDK and CLI match the approved server contract
+without a new command family, dependency, API, or generalized layer. Rejected alternative: weaken
+the public projection or defer concrete mismatches to the UI phases. Confidence: High. Hardening:
+two independent reviews plus focused post-fix SDK, CLI, and server gates. Policy version: 1. Root
+invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: a fix changes product behavior or cannot
+preserve the approved contract.
+
+Three immutable test corrections were necessary because their fixtures contradicted approved
+behavior: the token authentication oracle now uses the closed server allowlist; internal client
+routes use an internal UUID fixture; and later-page rejection fixtures contain valid first-page
+entities so the intended transport failure is reached. These corrections do not broaden a product
+expectation. The small server-route addition is the direct producer-side half of the already
+approved required client projection.
+
+**Post-fix evidence before re-review:** focused SDK tests 53/53 and its permanent type oracle
+passed; focused CLI tests 123/123 and typecheck passed; SDK, CLI, and server lint passed; focused
+server route tests 33/33 and server typecheck passed.
+
+**Re-review evidence:** six findings passed the first fix re-review. The remaining terminal-output
+finding exposed unsanitized readline confirmations; the shared prompt boundary and regression were
+added, focused CLI tests passed 124/124, and the permitted final re-review accepted the fix. No
+critical or major finding remains. The final Node 24 root `yarn verify` passed in 11m39s with SDK
+455/455, CLI 792/792, server unit 2,913/2,913, integration 392/392, E2E 128/128, pentest 224/224,
+and repository structure 96/96.
+
+## Phase 3: Admin State, Services, and Controllers
+
+**Baseline tree:** `b6ab2c17fdc06bdc250f6d7e1acfcf39ea01c7fd`
+
+**Pre-review verification:** immutable specifications 58/58; focused implementation/specification
+suite 63/63; CLI 855/855; repository structure 96/96; Node 24 `yarn verify` passed.
+
+**Reviewers:** correctness/maintainability/plan reviewer; security, tenant-context, and plaintext
+ownership auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P3-001 / P3-SEC-001 | Major | Client and secret operations accepted an organization UUID but could dispatch a foreign client UUID. | Resolve and validate the client against the selected organization before every existing-client operation, then add a no-dispatch table across all operation families. | Accepted — final re-review passed |
+| RV-P3-002 / P3-SEC-003 | Major | Missing or failed one-time-secret presentation could silently lose plaintext, and controller continuations retained the create result during presentation. | Treat missing/failed presentation and malformed post-mutation responses as reconciliation-required; synchronously hand plaintext to a separate presenter continuation without retaining the result frame. | Accepted — final re-review passed |
+| RV-P3-003 | Major | Phase 3 marked speculative detail/action controller APIs complete even though concrete view intents are defined in Phases 4 and 5. | Correct the design and execution tasks so Phase 3 owns list/context/reconciliation foundations and Phases 4/5 add exact controller intents beside their real views. | Accepted — final re-review passed |
+| RV-P3-004 / P3-SEC-002 | Major | Retained client responses admitted incompatible protocol combinations, malformed URI/origin shapes, normalized timestamps, and arbitrary ETags. | Mirror the approved protocol relationships and safe URI/origin shapes; require canonical UTC instants and the server's exact weak-ETag format. | Accepted — final re-review passed |
+| RV-P3-R001 | Major | Organization context could change while ownership preflight awaited, allowing a later mutation dispatch whose result was only quarantined afterward. | Carry the controller abort signal through mutation operations and check it after ownership preflight immediately before dispatch. | Accepted — final re-review passed |
+
+All resolutions are narrow corrections inside the confirmed Phase 3 security and workflow
+boundary. Authority: AI — delegated by `--auto-design`; category: response validation,
+organization-context integrity, transient-secret ownership, and plan precision. No generalized UI
+framework, dependency, persistence, polling, search, pagination control, or multi-operator behavior
+was added. Two existing specification fixtures were corrected additively for the expanded exact
+capability shape and the new lifecycle abort signal; no approved expectation was weakened.
+Confidence: High. Hardening: two independent reviewers and two bounded re-review rounds. Policy
+version: 1. Root invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: a fix changes product
+behavior beyond the approved organization-bound application/client administration contract.
+
+**Re-review evidence:** final focused Phase 3 tests passed 84/84, CLI typecheck/lint passed, and
+both reviewers reported no remaining critical or major finding. Final Node 24 `yarn verify` passed
+in 10m47s with SDK 455/455, CLI 873/873, server unit 2,913/2,913, integration 392/392, E2E
+128/128, pentest 224/224, and repository structure 96/96.
+
+## Phase 4: Global Applications Workspace
+
+**Baseline tree:** `f694491ed00c8527ddbd9fdca1db82ff9a3e4d1c`
+
+**Pre-review verification:** immutable workspace/dialog specifications 16/16; implementation
+diagnostics 7/7; CLI 899/899; Node 24 `yarn verify` passed, including server pentest 224/224.
+
+**Reviewers:** correctness/maintainability/standards reviewer; security and operation-ownership
+auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P4-001 | Major | Module deactivation is unreachable and archived module rows still emit edit intents. | Add explicit Edit/Deactivate module controls, disable every module mutation for archived parents, and recheck the retained same-parent non-archived projection in the controller. | Accepted — re-review passed |
+| RV-P4-002 | Major | Detail and mutation dialogs omit the required deployment-global/multi-organization warning. | Render one concise shared scope notice in detail and every application/module mutation dialog. | Accepted — re-review passed |
+| RV-P4-003 | Major | Failure/loading overlays obscure retained validated content and Retry cannot deterministically select list versus detail reload. | Render retained content with a bounded status row and add a controller reload operation that follows its retained projection. | Accepted — re-review passed |
+| P4-SEC-001 | Major | Cancellation after mutation dispatch releases ownership without requiring reconciliation, and confirmation dialogs do not receive the controller abort signal. | Track dispatch state, require reconciliation when cancellation follows dispatch, and pass the owned signal into confirmations so session/resize cancellation closes the modal. | Accepted — re-review passed |
+| RV-P4-004 | Minor | Detail actions lack fixed capability-denial reasons. | Add compact fixed denial text for update and archive capability gaps. | Accepted — fix verified |
+| RV-P4-005 | Minor | The recorded baseline used an invalid full hash. | Replace it with the actual Phase 3 commit hash. | Accepted — corrected |
+
+All resolutions are necessary corrections inside the approved Phase 4 behavior. Authority: AI —
+delegated by `--auto-design`; eligibility: internal UI routing, cancellation mechanics, retry
+mechanics, and required presentation fidelity. Objective: make the deployment-global Applications
+workspace complete without adding a framework, dependency, search, pagination, or shell/client
+scope. Rejected alternatives: defer the unreachable/unsafe actions to shell integration, or add a
+generic action framework; the first leaves approved behavior broken and the second adds needless
+architecture. Strongest counterargument: explicit module controls add a small amount of local UI
+state, but they are required for reachable keyboard/mouse actions and remain feature-specific.
+Confidence: High. Hardening: two independent reviewers converged on module reachability/read-only
+guarding and separately challenged operation ownership. Policy version: 1. Root invocation ID:
+`exec-rd04-20260830T1228`. Reopen trigger: a fix changes product scope or cannot preserve the
+immutable specification expectations.
+
+**Post-fix evidence before re-review:** focused application/state suites passed 87/87; CLI passed
+905/905; and Node 24 `yarn verify` passed in 11m35s, including server pentest 224/224.
+
+**Re-review evidence:** the correctness reviewer accepted RV-P4-001 through RV-P4-003, and the
+security auditor accepted P4-SEC-001 plus the overlapping parent/read-only guards. Neither found a
+remaining or newly introduced critical or major issue.
+
+## Phase 5: Organization OIDC Clients Workspace
+
+**Baseline tree:** `89940b63fbdbf443746d8877bd46699f48bf8755`
+
+**Pre-review verification:** focused client/state suites 147/147; CLI 968/968; Node 24 CLI lint,
+typecheck, test, and build passed.
+
+**Reviewers:** correctness/maintainability/standards reviewer; security, organization-context, and
+plaintext-ownership auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P5-001 / P5-SEC-005 | Major | Collection Edit/Remove actions did not share the DataGrid's keyboard or mouse-focused row. | Bind collection actions and the DataGrid to one focused-row signal and cover both input paths. | Accepted — re-review passed |
+| RV-P5-002 / P5-SEC-002 / P5-SEC-003 | Major | One-time-secret presentation omitted safe client metadata and could release operation ownership during presentation or reload. | Carry client name and generated OIDC client ID in the transient handoff, retain mutation ownership through presentation and authoritative reload, and require reconciliation after cancellation. | Accepted — re-review passed |
+| RV-P5-003 / P5-SEC-001 / P5-SEC-007 | Major | Client, secret, and create actions could dispatch without rechecking the exact retained parent and eligible active state. | Fail closed on mismatched or absent projections, require active organization/application context, and recheck confidential, non-revoked client and active-secret eligibility. | Accepted — re-review passed |
+| RV-P5-004 | Major | Application names could be resolved without application-read permission. | Gate name resolution on the exact capability and otherwise display only the immutable application UUID. | Accepted — re-review passed |
+| RV-P5-005 | Major | Detail retrieval did not reject a response for a different requested internal client ID. | Require exact requested-ID equality in the service ownership preflight and add a regression. | Accepted — re-review passed |
+| RV-P5-006 / P5-SEC-004 | Major | Expiry validation accepted normalized but non-canonical timestamps. | Require canonical UTC instant equality after parsing and test both offset and fractional normalization cases. | Accepted — re-review passed |
+| P5-SEC-006 / RV-P5-008 | Minor | Legacy guidance claimed a current secret classification the API does not expose. | Use conditional migration guidance without classifying stored secret hashes. | Accepted — re-review passed |
+
+All resolutions are narrow corrections inside the approved organization-scoped client workflow.
+Authority: AI — delegated by `--auto-design`; eligibility: operation ownership, response validation,
+parent integrity, capability-safe rendering, and transient-secret handling. No generalized UI
+framework, dependency, search, pagination, polling, persistence, or multi-operator behavior was
+added. Confidence: High. Hardening: two independent reviewers and focused post-fix verification.
+Policy version: 1. Root invocation ID: `exec-rd04-20260830T1228`. Reopen trigger: a fix changes the
+approved selected-organization client scope or cannot preserve the immutable specifications.
+
+**Post-fix evidence:** focused client/state suites passed 156/156; CLI verify passed 977/977; both
+reviewers accepted every fix with no remaining or newly introduced critical or major finding. Final
+Node 24 `yarn verify` passed in 11m49s with repository structure 96/96, SDK 455/455, server unit
+2,913/2,913, integration 392/392, E2E 128/128, and pentest 224/224.
+
+## Phase 6: Shell Integration, Packed Journey, Docs, and Assurance
+
+**Baseline tree:** `5bd034a36a1420be298a99586c0e85ea62dbbd21`
+
+**Pre-review verification:** focused shell/runtime suites 93/93; packed Admin UI journey 4/4;
+CLI verification passed before review remediation.
+
+**Reviewers:** correctness/maintainability/standards reviewer; security, organization-context, and
+plaintext-ownership auditor.
+
+| ID | Severity | Finding | Resolution | State |
+| --- | --- | --- | --- | --- |
+| RV-P6-001 | Major | One-time plaintext dialog ownership could end before the shell finished displaying the secret. | Keep the presentation lifetime shell-owned and release it only after modal teardown. | Accepted — re-review passed |
+| RV-P6-002 | Major | A late organization result could reopen a dialog after the selected organization changed. | Tie dialog ownership to the current organization and workflow generation and discard stale completion. | Accepted — re-review passed |
+| RV-P6-003 | Major | Shell composition exposed duplicate top-level client navigation and an incorrect Users availability reason. | Keep one organization-scoped OIDC Clients entry and one truthful Users denial reason. | Accepted — re-review passed |
+| RV-P6-004 | Major | The packed journey created its fixtures through the SDK instead of proving application, module, client, and secret operations through the PTY UI. | Drive every approved creation and lifecycle step through the packed Admin UI; use the SDK only for observation and owned cleanup. | Accepted — re-review passed |
+| RV-P6-005 | Major | Public documentation described module activation more broadly than the implemented lifecycle permits. | Align the module lifecycle wording with the actual create, edit, and deactivate behavior. | Accepted — re-review passed |
+| RV-P6-R001 | Major | Repeated client-create activation while application preload was pending could issue duplicate list requests and open duplicate dialogs. | Give preload one controller-owned promise and ignore duplicate activation until it settles. | Accepted — final re-review passed |
+| P6-SEC-002 | Major | Independent session invalidation could leave a stale feature dialog and in-flight operation alive. | Cancel feature-owned dialogs and controllers whenever the synchronized session or organization epoch changes. | Accepted — final re-review passed |
+
+All resolutions are necessary corrections inside the approved Phase 6 integration and proof
+boundary. Authority: AI — delegated by `--auto-design`; eligibility: shell ownership, stale-result
+suppression, focused navigation, and faithful end-to-end verification. No generalized UI framework,
+dependency, additional harness, search, pagination, polling, persistence, or multi-operator
+coordination was added. Confidence: High. Hardening: independent correctness and security reviews
+plus the permitted focused re-review. Policy version: 1. Root invocation ID:
+`exec-rd04-20260830T1228`. Reopen trigger: a correction changes approved product behavior or cannot
+preserve the immutable specifications.
+
+**Post-fix evidence:** focused shell/runtime suites passed 95/95; CLI verification passed 992/992;
+the packed Admin UI journey passed 4/4 after the final ownership fixes. Both reviewers accepted the
+duplicate-preload and independent-session-invalidation corrections and reported no remaining or
+newly introduced critical or major finding. Final Node 24 root verification passed in 11m23s.
+Clean-revision production-security retained only its registered pre-existing exit-40 observations;
+`p1-admin` and `protocol` compatibility both passed with revision-bound provenance, complete cleanup,
+and no RD-04 application/client failure.

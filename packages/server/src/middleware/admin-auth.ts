@@ -3,9 +3,9 @@
  *
  * Validates Bearer access tokens against Porta's own OIDC provider
  * using opaque token lookup (provider.AccessToken.find()). Verifies
- * the user belongs to the super-admin organization and has the
- * porta-admin role. Sets ctx.state.adminUser for downstream handlers
- * and audit logging.
+ * the user belongs to the super-admin organization and has a recognized
+ * built-in role owned by the canonical Porta Admin application. Sets
+ * ctx.state.adminUser for downstream handlers and audit logging.
  *
  * This middleware replaces the old requireSuperAdmin() that checked
  * ctx.state.organization.isSuperAdmin (which required tenant-resolver
@@ -17,7 +17,7 @@
  *   3. Resolve super-admin organization
  *   4. Look up user — must be active
  *   5. Verify user belongs to the super-admin organization
- *   6. Verify user has the porta-admin role
+ *   6. Verify the user has a recognized role from the canonical Admin application
  *   7. Set ctx.state.adminUser and proceed
  *
  * Response codes:
@@ -30,9 +30,13 @@ import type { Middleware } from 'koa';
 import type { Organization } from '../organizations/types.js';
 import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
-import { getUserRoles } from '../rbac/user-role-service.js';
+import { getUserRolesForAuthority } from '../rbac/user-role-service.js';
+import { getApplicationBySlug } from '../applications/service.js';
 import { logger } from '../lib/logger.js';
-import { resolvePermissionsFromRoles } from '../lib/admin-permissions.js';
+import {
+  getPermissionsForAdminRole,
+  resolvePermissionsFromRoles,
+} from '../lib/admin-permissions.js';
 import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
 
 // ---------------------------------------------------------------------------
@@ -135,18 +139,16 @@ declare module 'koa' {
 // Admin auth middleware factory
 // ---------------------------------------------------------------------------
 
-/**
- * Admin role slug prefix — all admin roles start with 'porta-'.
- * Legacy 'porta-admin' role is treated as super-admin for backward compatibility.
- */
-const ADMIN_ROLE_PREFIX = 'porta-';
+/** Immutable slug of the application that owns Porta's control-plane roles. */
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
 
 /**
  * Create middleware that requires admin authentication and authorization.
  *
  * Validates the Bearer access token in the Authorization header by looking
  * it up via the OIDC provider's opaque token store, then verifies the user
- * is an active member of the super-admin organization with the porta-admin role.
+ * is an active member of the super-admin organization with a recognized role
+ * owned by the canonical Porta Admin application.
  *
  * On success, sets ctx.state.adminUser with the authenticated identity.
  * On failure, responds with 401 (unauthenticated) or 403 (unauthorized).
@@ -272,14 +274,29 @@ export function requireAdminAuth(): Middleware {
     if (!requireAdminOrganizationMembership(ctx, user.organizationId, superAdminOrg.id)) return;
 
     // -----------------------------------------------------------------
-    // Step 6: Verify user has an admin role (any porta-* role)
+    // Step 6: Verify the user has a recognized role from the canonical Admin application.
     // -----------------------------------------------------------------
-    // Supports both legacy porta-admin and new granular roles:
-    // porta-super-admin, porta-org-admin, porta-user-admin, etc.
-    const userRoles = await getUserRoles(userId);
+    const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+    if (!adminApplication) {
+      logger.error('Admin auth: canonical application not found — run porta init');
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'handler',
+        reasonCode: 'handler-failed',
+        outcome: 'error',
+      });
+      ctx.status = 500;
+      ctx.body = { error: 'Server configuration error' };
+      return;
+    }
+
+    const userRoles = await getUserRolesForAuthority(userId);
     const adminRoleSlugs = userRoles
-      .map((role) => role.slug)
-      .filter((slug) => slug.startsWith(ADMIN_ROLE_PREFIX));
+      .filter(
+        (role) =>
+          role.applicationId === adminApplication.id &&
+          getPermissionsForAdminRole(role.slug).length > 0,
+      )
+      .map((role) => role.slug);
 
     if (adminRoleSlugs.length === 0) {
       recordSecurityDecision(ctx, {

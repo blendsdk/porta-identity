@@ -214,19 +214,12 @@ export class ProductionEnumerationResistanceDriver implements EnumerationResista
           ? await createTestUser(organization.id, { email })
           : (await createTestUserWithPassword(organization.id, DEFAULT_TEST_PASSWORD, { email }))
               .user;
-      const status =
-        state === 'disabled'
-          ? 'inactive'
-          : state === 'suspended'
-            ? 'suspended'
-            : state === 'locked'
-              ? 'locked'
-              : 'active';
+      const status = state === 'disabled' ? 'inactive' : state === 'locked' ? 'locked' : 'active';
       await getPool().query(
         `UPDATE users
          SET status = $2,
              locked_at = CASE WHEN $3 THEN NOW() ELSE NULL END,
-             locked_reason = CASE WHEN $3 THEN 'manual' ELSE NULL END
+             locked_reason = CASE WHEN $3 THEN 'auto_lockout' ELSE NULL END
          WHERE id = $1`,
         [user.id, status, status === 'locked'],
       );

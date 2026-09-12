@@ -23,6 +23,7 @@ vi.mock('../../../src/clients/crypto.js', () => ({
 
 vi.mock('../../../src/clients/validators.js', () => ({
   validateRedirectUris: vi.fn().mockReturnValue({ isValid: true }),
+  validateClientProtocolCompatibility: vi.fn().mockReturnValue({ isValid: true, errors: [] }),
   getDefaultGrantTypes: vi.fn().mockReturnValue(['authorization_code', 'refresh_token']),
   getDefaultTokenEndpointAuthMethod: vi.fn().mockReturnValue('client_secret_basic'),
   getDefaultResponseTypes: vi.fn().mockReturnValue(['code']),
@@ -77,7 +78,6 @@ import {
   listClientsByApplication,
   deactivateClient,
   activateClient,
-  revokeClient,
   findForOidc,
   verifyClientSecret,
 } from '../../../src/clients/service.js';
@@ -114,7 +114,6 @@ function createTestClient(overrides: Partial<Client> = {}): Client {
     ...overrides,
   };
 }
-
 
 /** Standard create input */
 function createTestInput(overrides: Partial<CreateClientInput> = {}): CreateClientInput {
@@ -328,7 +327,11 @@ describe('client service', () => {
       const updated = createTestClient({ clientName: 'Renamed App' });
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
 
-      const result = await updateClient('client-db-uuid-1', { clientName: 'Renamed App' }, 'actor-1');
+      const result = await updateClient(
+        'client-db-uuid-1',
+        { clientName: 'Renamed App' },
+        'actor-1',
+      );
 
       expect(result.clientName).toBe('Renamed App');
       expect(invalidateClientCache).toHaveBeenCalledWith(updated.clientId, updated.id);
@@ -344,9 +347,9 @@ describe('client service', () => {
         errors: ['Must use HTTPS'],
       });
 
-      await expect(
-        updateClient('id', { redirectUris: ['http://insecure.com'] }),
-      ).rejects.toThrow('Invalid redirect URIs');
+      await expect(updateClient('id', { redirectUris: ['http://insecure.com'] })).rejects.toThrow(
+        'Invalid redirect URIs',
+      );
     });
 
     it('should throw ClientNotFoundError when client not found', async () => {
@@ -354,9 +357,9 @@ describe('client service', () => {
         new Error('Client not found'),
       );
 
-      await expect(
-        updateClient('nonexistent', { clientName: 'X' }),
-      ).rejects.toThrow(ClientNotFoundError);
+      await expect(updateClient('nonexistent', { clientName: 'X' })).rejects.toThrow(
+        ClientNotFoundError,
+      );
     });
 
     it('should re-throw unexpected errors', async () => {
@@ -364,9 +367,7 @@ describe('client service', () => {
         new Error('DB connection lost'),
       );
 
-      await expect(
-        updateClient('id', { clientName: 'X' }),
-      ).rejects.toThrow('DB connection lost');
+      await expect(updateClient('id', { clientName: 'X' })).rejects.toThrow('DB connection lost');
     });
   });
 
@@ -474,56 +475,6 @@ describe('client service', () => {
     });
   });
 
-  describe('revokeClient', () => {
-    it('should revoke an active client', async () => {
-      const client = createTestClient({ status: 'active' });
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
-      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ...client,
-        status: 'revoked',
-      });
-
-      await revokeClient('client-db-uuid-1', 'actor-1');
-
-      expect(repoUpdateClient).toHaveBeenCalledWith('client-db-uuid-1', { status: 'revoked' });
-      expect(invalidateClientCache).toHaveBeenCalled();
-      expect(writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventType: 'client.revoked',
-          metadata: expect.objectContaining({ previousStatus: 'active' }),
-        }),
-      );
-    });
-
-    it('should revoke an inactive client', async () => {
-      const client = createTestClient({ status: 'inactive' });
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
-      (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue({
-        ...client,
-        status: 'revoked',
-      });
-
-      await revokeClient('client-db-uuid-1');
-
-      expect(repoUpdateClient).toHaveBeenCalledWith('client-db-uuid-1', { status: 'revoked' });
-    });
-
-    it('should throw ClientNotFoundError when client not found', async () => {
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-
-      await expect(revokeClient('nonexistent')).rejects.toThrow(ClientNotFoundError);
-    });
-
-    it('should throw ClientValidationError when already revoked', async () => {
-      const client = createTestClient({ status: 'revoked' });
-      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(client);
-
-      await expect(revokeClient('client-db-uuid-1')).rejects.toThrow(
-        'Client is already revoked',
-      );
-    });
-  });
-
   // =========================================================================
   // findForOidc
   // =========================================================================
@@ -531,7 +482,7 @@ describe('client service', () => {
   describe('findForOidc', () => {
     it('should return OIDC metadata for an active client', async () => {
       const client = createTestClient();
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -543,6 +494,7 @@ describe('client service', () => {
       expect(result!.response_types).toEqual(['code']);
       expect(result!.scope).toBe('openid profile email');
       expect(result!.token_endpoint_auth_method).toBe('client_secret_basic');
+      expect(result!['urn:porta:internal_application_id']).toBe('app-uuid-1');
     });
 
     it('should return undefined for non-existent client', async () => {
@@ -556,7 +508,7 @@ describe('client service', () => {
 
     it('should return undefined for inactive client', async () => {
       const client = createTestClient({ status: 'inactive' });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -565,7 +517,7 @@ describe('client service', () => {
 
     it('should return undefined for revoked client', async () => {
       const client = createTestClient({ status: 'revoked' });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -577,7 +529,7 @@ describe('client service', () => {
         clientType: 'public',
         tokenEndpointAuthMethod: 'client_secret_basic',
       });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -588,7 +540,7 @@ describe('client service', () => {
       const client = createTestClient({
         allowedOrigins: ['https://a.com', 'https://b.com'],
       });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -597,7 +549,7 @@ describe('client service', () => {
 
     it('should include client_type under custom URN', async () => {
       const client = createTestClient({ clientType: 'confidential' });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -682,7 +634,6 @@ describe('client service', () => {
       (validateRedirectUris as ReturnType<typeof vi.fn>).mockReturnValue({ isValid: true });
     });
 
-
     it('omits the loginMethods key entirely when input is undefined (DB default applies)', async () => {
       const client = createTestClient({ loginMethods: null });
       (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
@@ -703,9 +654,7 @@ describe('client service', () => {
 
       await createClient(createTestInput({ loginMethods: null }), 'actor-1');
 
-      expect(insertClient).toHaveBeenCalledWith(
-        expect.objectContaining({ loginMethods: null }),
-      );
+      expect(insertClient).toHaveBeenCalledWith(expect.objectContaining({ loginMethods: null }));
     });
 
     it('normalizes a non-empty array before insert (dedup, order preserved)', async () => {
@@ -724,9 +673,9 @@ describe('client service', () => {
     });
 
     it('rejects an empty array with ClientValidationError', async () => {
-      await expect(
-        createClient(createTestInput({ loginMethods: [] })),
-      ).rejects.toThrow(ClientValidationError);
+      await expect(createClient(createTestInput({ loginMethods: [] }))).rejects.toThrow(
+        ClientValidationError,
+      );
       // Repo must never be called when validation fails — otherwise we'd
       // risk producing half-initialized state on retry.
       expect(insertClient).not.toHaveBeenCalled();
@@ -788,10 +737,9 @@ describe('client service', () => {
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 
-      await updateClient(
-        'client-db-uuid-1',
-        { loginMethods: ['magic_link', 'magic_link', 'password'] },
-      );
+      await updateClient('client-db-uuid-1', {
+        loginMethods: ['magic_link', 'magic_link', 'password'],
+      });
 
       expect(repoUpdateClient).toHaveBeenCalledWith(
         'client-db-uuid-1',
@@ -800,9 +748,9 @@ describe('client service', () => {
     });
 
     it('rejects an empty array without touching the repository', async () => {
-      await expect(
-        updateClient('client-db-uuid-1', { loginMethods: [] }),
-      ).rejects.toThrow(ClientValidationError);
+      await expect(updateClient('client-db-uuid-1', { loginMethods: [] })).rejects.toThrow(
+        ClientValidationError,
+      );
       expect(repoUpdateClient).not.toHaveBeenCalled();
     });
 
@@ -844,7 +792,7 @@ describe('client service', () => {
   describe('findForOidc — loginMethods URN', () => {
     it('exposes null as-is under urn:porta:login_methods when inheriting', async () => {
       const client = createTestClient({ loginMethods: null });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -856,7 +804,7 @@ describe('client service', () => {
 
     it('exposes the validated array under urn:porta:login_methods when overridden', async () => {
       const client = createTestClient({ loginMethods: ['magic_link'] });
-      (getCachedClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+      (findClientByClientId as ReturnType<typeof vi.fn>).mockResolvedValue(client);
 
       const result = await findForOidc('generated-client-id-abc123');
 
@@ -864,4 +812,3 @@ describe('client service', () => {
     });
   });
 });
-

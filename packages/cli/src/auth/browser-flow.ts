@@ -18,7 +18,6 @@
  * @module auth/browser-flow
  */
 
-import { decodeJwt } from 'jose';
 import { URL } from 'node:url';
 import { question } from '../prompt.js';
 import {
@@ -28,8 +27,9 @@ import {
   startCallbackServer,
 } from './callback-server.js';
 import { fetchAdminMetadata } from './metadata.js';
+import { fetchIssuerJwks, verifyCliIdToken } from './id-token-verifier.js';
 import { generateCodeChallenge, generateCodeVerifier, generateState } from './pkce.js';
-import type { AuthFlowResult, TokenResponse } from './types.js';
+import type { AuthFlowResult, CliAuthOperationOptions, TokenResponse } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -50,6 +50,8 @@ export interface BrowserFlowOptions {
   clientId?: string;
   /** Force manual mode (print URL instead of opening browser) */
   noBrowser?: boolean;
+  /** Optional cancellation signal owned by the calling UI. */
+  signal?: AbortSignal;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,17 +68,25 @@ export interface BrowserFlowOptions {
  * @returns Token response with access, refresh, and ID tokens
  * @throws Error if the token exchange fails
  */
-async function exchangeCode(params: {
-  server: string;
-  orgSlug: string;
-  code: string;
-  redirectUri: string;
-  clientId: string;
-  codeVerifier: string;
-}): Promise<TokenResponse> {
-  const tokenUrl = `${params.server}/${params.orgSlug}/token`;
+export interface AuthorizationCodeExchange {
+  /** Exact discovered token endpoint. */
+  readonly tokenEndpoint: string;
+  /** Public client identifier. */
+  readonly clientId: string;
+  /** Single-use authorization code. */
+  readonly code: string;
+  /** PKCE verifier bound to the authorization request. */
+  readonly codeVerifier: string;
+  /** Exact redirect URI used in the authorization request. */
+  readonly redirectUri: string;
+}
 
-  const response = await fetch(tokenUrl, {
+/** Exchanges a code once while propagating caller-owned cancellation. */
+export async function exchangeAuthorizationCode(
+  params: AuthorizationCodeExchange,
+  options: CliAuthOperationOptions,
+): Promise<TokenResponse> {
+  const response = await fetch(params.tokenEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
@@ -86,18 +96,40 @@ async function exchangeCode(params: {
       client_id: params.clientId,
       code_verifier: params.codeVerifier,
     }),
+    signal: options.signal,
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    const desc =
-      (errorData as Record<string, string>).error_description ||
-      (errorData as Record<string, string>).error ||
-      `HTTP ${response.status}`;
-    throw new Error(`Token exchange failed: ${desc}`);
+    throw new Error(`Authentication failed (HTTP ${response.status})`);
   }
 
-  return response.json() as Promise<TokenResponse>;
+  let value: unknown;
+  try {
+    value = await response.json();
+  } catch {
+    throw new Error('Authentication failed');
+  }
+  if (!value || typeof value !== 'object') throw new Error('Authentication failed');
+  const token = value as Record<string, unknown>;
+  if (
+    typeof token.access_token !== 'string' ||
+    token.access_token.length === 0 ||
+    typeof token.id_token !== 'string' ||
+    token.id_token.length === 0 ||
+    typeof token.expires_in !== 'number' ||
+    !Number.isFinite(token.expires_in) ||
+    token.expires_in <= 0 ||
+    (token.refresh_token !== undefined &&
+      (typeof token.refresh_token !== 'string' || token.refresh_token.length === 0))
+  ) {
+    throw new Error('Authentication failed');
+  }
+  return {
+    access_token: token.access_token,
+    refresh_token: token.refresh_token,
+    id_token: token.id_token,
+    expires_in: token.expires_in,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -120,6 +152,7 @@ export async function executeBrowserFlow(
   log: (message: string) => void = console.log,
 ): Promise<AuthFlowResult> {
   const { server, noBrowser } = options;
+  const signal = options.signal ?? new AbortController().signal;
 
   // ---------------------------------------------------------------
   // Step 1: Determine login mode (browser vs. manual)
@@ -135,14 +168,17 @@ export async function executeBrowserFlow(
   // ---------------------------------------------------------------
   let clientId: string;
   let orgSlug: string;
+  let issuer: string;
 
   if (options.clientId) {
     clientId = options.clientId;
     orgSlug = 'porta-admin';
+    issuer = `${server}/porta-admin`;
   } else {
-    const metadata = await fetchAdminMetadata(server);
+    const metadata = await fetchAdminMetadata(server, { signal });
     clientId = metadata.clientId;
     orgSlug = metadata.orgSlug;
+    issuer = metadata.issuer;
   }
 
   // ---------------------------------------------------------------
@@ -151,6 +187,7 @@ export async function executeBrowserFlow(
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = generateCodeChallenge(codeVerifier);
   const state = generateState();
+  const nonce = generateState();
 
   // ---------------------------------------------------------------
   // Step 4: Set up redirect URI — mode-dependent
@@ -178,6 +215,7 @@ export async function executeBrowserFlow(
   authUrl.searchParams.set('code_challenge', codeChallenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('state', state);
+  authUrl.searchParams.set('nonce', nonce);
   // prompt MUST include `consent` for `offline_access` to survive.
   //
   // Per OIDC Core §3.1.2.1 and node-oidc-provider's check_scope, the provider
@@ -187,7 +225,6 @@ export async function executeBrowserFlow(
   // every `porta login`. Porta auto-consents first-party clients, so adding
   // `consent` shows no extra UI to the admin.
   authUrl.searchParams.set('prompt', 'login consent');
-
 
   // ---------------------------------------------------------------
   // Step 6: Open browser or print URL + collect auth code
@@ -220,14 +257,16 @@ export async function executeBrowserFlow(
   // ---------------------------------------------------------------
   // Step 7: Exchange the authorization code for tokens
   // ---------------------------------------------------------------
-  const tokens = await exchangeCode({
-    server,
-    orgSlug,
-    code,
-    redirectUri,
-    clientId,
-    codeVerifier,
-  });
+  const tokens = await exchangeAuthorizationCode(
+    {
+      tokenEndpoint: `${server}/${orgSlug}/token`,
+      code,
+      redirectUri,
+      clientId,
+      codeVerifier,
+    },
+    { signal },
+  );
 
   // ---------------------------------------------------------------
   // Step 7.5: Warn if the server did not issue a refresh token.
@@ -247,9 +286,16 @@ export async function executeBrowserFlow(
   }
 
   // ---------------------------------------------------------------
-  // Step 8: Decode the ID token to extract user identity
+  // Step 8: Authenticate the ID token before accepting identity
   // ---------------------------------------------------------------
-  const claims = decodeJwt(tokens.id_token);
+  const jwks = await fetchIssuerJwks(`${issuer}/jwks`, { signal });
+  const identity = await verifyCliIdToken({
+    token: tokens.id_token,
+    issuer,
+    clientId,
+    nonce,
+    jwks,
+  });
 
   // ---------------------------------------------------------------
   // Step 9: Build and return the auth flow result
@@ -263,9 +309,9 @@ export async function executeBrowserFlow(
     idToken: tokens.id_token,
     expiresAt: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
     userInfo: {
-      sub: claims.sub ?? '',
-      email: (claims.email as string) ?? '',
-      name: (claims.name as string) ?? undefined,
+      sub: identity.sub,
+      email: identity.email ?? '',
+      name: identity.name,
     },
   };
 }

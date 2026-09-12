@@ -26,37 +26,27 @@ describe('callback-server', () => {
     });
 
     it('throws on invalid URL', () => {
-      expect(() => parseCallbackUrl('not-a-url', state)).toThrow(
-        'Invalid URL',
-      );
+      expect(() => parseCallbackUrl('not-a-url', state)).toThrow('Invalid URL');
     });
 
     it('throws on OIDC error response', () => {
       const url = `http://127.0.0.1:11111/callback?error=access_denied&error_description=User+cancelled&state=${state}`;
-      expect(() => parseCallbackUrl(url, state)).toThrow(
-        'Authentication failed: User cancelled',
-      );
+      expect(() => parseCallbackUrl(url, state)).toThrow('Authentication failed');
     });
 
     it('throws on OIDC error without description', () => {
       const url = `http://127.0.0.1:11111/callback?error=server_error&state=${state}`;
-      expect(() => parseCallbackUrl(url, state)).toThrow(
-        'Authentication failed: server_error',
-      );
+      expect(() => parseCallbackUrl(url, state)).toThrow('Authentication failed');
     });
 
     it('throws on state mismatch', () => {
       const url = 'http://127.0.0.1:11111/callback?code=code&state=wrong-state';
-      expect(() => parseCallbackUrl(url, state)).toThrow(
-        'Security error: state mismatch',
-      );
+      expect(() => parseCallbackUrl(url, state)).toThrow('Security error: state mismatch');
     });
 
     it('throws when no code in URL', () => {
       const url = `http://127.0.0.1:11111/callback?state=${state}`;
-      expect(() => parseCallbackUrl(url, state)).toThrow(
-        'No authorization code found',
-      );
+      expect(() => parseCallbackUrl(url, state)).toThrow('No authorization code found');
     });
 
     it('handles URL with whitespace', () => {

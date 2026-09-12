@@ -35,7 +35,6 @@ test.describe('UI test infrastructure', () => {
 
   test('Phase 2 user fixtures are populated', async ({ testData }) => {
     // Verify additional user data for status/error state tests
-    expect(testData.suspendedUserEmail).toBeTruthy();
     expect(testData.inactiveUserEmail).toBeTruthy();
     expect(testData.lockedUserEmail).toBeTruthy();
     expect(testData.lockableUserEmail).toBeTruthy();
@@ -49,6 +48,6 @@ test.describe('UI test infrastructure', () => {
   test('Phase 2 org fixtures are populated', async ({ testData }) => {
     // Verify additional org data for tenant isolation tests
     expect(testData.suspendedOrgSlug).toBe('suspended-org');
-    expect(testData.archivedOrgSlug).toBe('archived-org');
+    expect(testData.deletedOrgSlug).toBe('deleted-org');
   });
 });
