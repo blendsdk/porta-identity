@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 01:45
-> **Progress**: 12/51 tasks (24%)
+> **Last Updated**: 2026-09-13 01:48
+> **Progress**: 13/51 tasks (25%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -27,7 +27,7 @@ never changed to match implementation.
 specification/implementation tests, this plan, review evidence, and roadmap only.
 
 > **Phase baseline tree**: `638c3d1f2ac4e3260f623a6c13e59b6be1124c52`
-> **Expected modification set**: named signing-key source and tests, this plan, phase review evidence, and the feature roadmap
+> **Expected modification set**: named signing-key source and tests, the mechanical retained-test count, this plan, phase review evidence, and the feature roadmap
 > **Scope mode**: strict
 
 ### Step 1.1: Specification Tests
@@ -57,7 +57,12 @@ bootstrap behavior. Log: `/tmp/porta-rd01-exec.noLev5/verify-1.1.3-red.log`.
 - [x] 1.3.1 Update existing crypto, loader, and CLI error-handler tests for encrypted-only rows and bounded startup/verbose errors — `packages/server/tests/unit/lib/signing-key-crypto.test.ts`, `packages/server/tests/unit/lib/signing-keys.test.ts`, `packages/server/tests/unit/cli/error-handler.test.ts` ✅ (completed: 2026-09-13 01:40)
 - [x] 1.3.2 Add route internals and update real-database coverage for encrypted mutations — `packages/server/tests/unit/routes/keys.impl.test.ts`, `packages/server/tests/integration/services/signing-key.service.test.ts` ✅ (completed: 2026-09-13 01:44)
 - [x] 1.3.3 Add cache-generation and bootstrap-lock implementation branches — `packages/server/tests/unit/lib/signing-key-cache.impl.test.ts` ✅ (completed: 2026-09-13 01:45)
-- [ ] 1.3.4 Run focused Phase 1 suites, server lint/typecheck/build, and `yarn test:structure`
+- [x] 1.3.4 Run focused Phase 1 suites, server lint/typecheck/build, and `yarn test:structure` ✅ (completed: 2026-09-13 01:48)
+
+**Phase verification evidence:** 77 focused unit and 8 focused integration tests passed; server
+lint, typecheck, and build passed; structure passed 100/100 after the mechanical retained-file
+count advanced from 292 to 296. Logs: `/tmp/porta-rd01-exec.noLev5/verify-1.3.4.log` and
+`/tmp/porta-rd01-exec.noLev5/verify-1.3.4-structure-rerun.log`.
 - [ ] 1.3.5 Complete the risk-derived phase review and resolve every critical/major finding before checkpointing
 
 ## Phase 2: TOTP Schema and Atomic Replay Consumption
