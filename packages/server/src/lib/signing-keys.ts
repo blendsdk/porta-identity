@@ -18,7 +18,7 @@
 
 import { createPrivateKey, generateKeyPairSync, createHash } from 'node:crypto';
 import { config } from '../config/index.js';
-import { getPool } from './database.js';
+import { getPool, runDatabaseTransaction } from './database.js';
 import { logger } from './logger.js';
 import {
   encryptPrivateKey,
@@ -292,10 +292,9 @@ function invalidSigningKeyRecord(kid: string): SigningKeyCryptoError {
 /**
  * Ensure at least one active signing key exists in the database.
  *
- * Called at application startup. If no active keys are found:
- * 1. Generate a new ES256 key pair
- * 2. Insert it into the signing_keys table with status='active'
- * 3. Log a warning that a key was auto-generated
+ * Called at application startup. A transaction-scoped table lock serializes the active-key
+ * recheck and optional encrypted insert, so simultaneous new processes cannot each create a
+ * bootstrap key. Every caller reloads the committed rows after releasing the lock.
  *
  * This guarantees the OIDC provider can always start, even on a fresh database
  * that has no signing keys yet (e.g., first run after migrations).
@@ -303,16 +302,17 @@ function invalidSigningKeyRecord(kid: string): SigningKeyCryptoError {
  * @returns The JWK key set containing all active and retired keys
  */
 export async function ensureSigningKeys(): Promise<{ keys: JwkKeyPair[] }> {
-  let records = await loadSigningKeysFromDb();
-
-  // Check if there are any active keys
-  const hasActiveKey = records.some((r) => r.status === 'active');
-
-  if (!hasActiveKey) {
-    logger.warn('No active signing keys found — auto-generating a new ES256 key pair');
-
-    const keyPair = generateES256KeyPair();
+  await runDatabaseTransaction(async () => {
     const pool = getPool();
+    await pool.query('LOCK TABLE signing_keys IN SHARE ROW EXCLUSIVE MODE');
+
+    // Recheck under the lock because another process may have inserted the first key while this
+    // process was waiting. Only the lock holder that still sees no active key may create one.
+    const lockedRecords = await loadSigningKeysFromDb();
+    if (lockedRecords.some((record) => record.status === 'active')) return;
+
+    logger.warn('No active signing keys found — auto-generating a new ES256 key pair');
+    const keyPair = generateES256KeyPair();
 
     // Encrypt the private key before storage (AES-256-GCM)
     const { encrypted, iv, tag } = encryptPrivateKey(
@@ -328,10 +328,10 @@ export async function ensureSigningKeys(): Promise<{ keys: JwkKeyPair[] }> {
     );
 
     logger.info({ kid: keyPair.kid }, 'Auto-generated signing key inserted into database');
+  });
 
-    // Reload keys from DB to get the full record including generated UUID
-    records = await loadSigningKeysFromDb();
-  }
-
+  // Every caller reloads after the lock transaction commits. This gives both the inserting caller
+  // and any waiter the same authoritative winner, including its database-generated identifier.
+  const records = await loadSigningKeysFromDb();
   return signingKeysToJwks(records);
 }
