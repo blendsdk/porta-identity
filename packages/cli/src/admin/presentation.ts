@@ -273,6 +273,8 @@ export function createAdminPresentation(
   /** Replaces the complete main surface without retaining covered feature content. */
   const setWorkspace = (next: View | null): void => {
     if (next === workspace) return;
+    // Keep a focusable child visible while Desktop removes its active window and restores focus.
+    landing.state.visible = true;
     if (workspace instanceof Window) content.removeWindow(workspace);
     else if (workspace) content.remove(workspace);
     workspace = next;

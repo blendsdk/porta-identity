@@ -201,6 +201,27 @@ function controllerHarness(
 }
 
 describe('organization workspace implementation', () => {
+  it('restores landing focus without targeting Desktop when the workspace closes', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const presentation = createAdminPresentation(authenticated(), false, { width: 80, height: 24 });
+    const host = createApplication({
+      content: presentation.content,
+      menuBar: presentation.menu,
+      statusLine: presentation.status,
+      viewport: { width: 80, height: 24 },
+    });
+    const workspace = createAdminOrganizationWorkspace({ capabilities, onIntent: vi.fn() });
+    presentation.setWorkspace(workspace.content);
+
+    presentation.setWorkspace(null);
+
+    expect(host.loop.getFocused()?.focusable).toBe(true);
+    expect(
+      warn.mock.calls.filter(([message]) => String(message).includes('focusView(Desktop)')),
+    ).toEqual([]);
+    warn.mockRestore();
+  });
+
   it.each([
     [80, 24],
     [49, 19],

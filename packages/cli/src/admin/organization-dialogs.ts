@@ -297,14 +297,15 @@ export async function showWhoAmIDialog(
     `Authenticated — Name: ${safeIdentityText(state.identity.name, 'Verified administrator')}`,
     `Email: ${safeIdentityText(state.identity.email, 'Not provided')}`,
   ];
-  if (insecure) lines.push('Warning: insecure TLS verification is enabled.');
+  if (insecure) lines.push('Warning: insecure TLS verification.');
 
   const dialog = new Dialog({ title: 'Who am I', width, height, centered: true });
   dialog.add(
     cover(
       col(
-        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
-        grow(new Text(lines.join('\n'))),
+        { padding: { top: 1, right: 2, bottom: 0, left: 2 } },
+        fixed(new Text(lines.join('\n')), lines.length),
+        spacer(),
         fixed(
           row({ justify: 'center' }, new Button('~O~K', { command: Commands.ok, default: true })),
           2,
