@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-09-13 01:37
-> **Progress**: 8/51 tasks (16%)
+> **Progress**: 9/51 tasks (18%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -47,7 +47,10 @@ bootstrap behavior. Log: `/tmp/porta-rd01-exec.noLev5/verify-1.1.3-red.log`.
 - [x] 1.2.3 Add the local cache-generation guard against stale in-flight installation — `packages/server/src/lib/signing-keys.ts` ✅ (completed: 2026-09-13 01:33)
 - [x] 1.2.4 Serialize the bootstrap recheck/insertion with the short PostgreSQL transaction lock — `packages/server/src/lib/signing-keys.ts` ✅ (completed: 2026-09-13 01:34)
 - [x] 1.2.5 Suppress sensitive signing-row stacks from server startup and every server CLI mode — `packages/server/src/index.ts`, `packages/server/src/cli/error-handler.ts` ✅ (completed: 2026-09-13 01:37)
-- [ ] 1.2.6 Run ST-01–ST-08 and make the immutable Phase 1 expectations green
+- [x] 1.2.6 Run ST-01–ST-08 and make the immutable Phase 1 expectations green ✅ (completed: 2026-09-13 01:37)
+
+**Green evidence:** unit 15 passed; integration 4 passed. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-1.2.6-green.log`.
 
 ### Step 1.3: Implementation Tests and Verification
 
