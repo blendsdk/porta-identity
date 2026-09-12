@@ -14,6 +14,7 @@ const mocks = vi.hoisted(() => ({
   log: {
     debug: vi.fn(),
     error: vi.fn(),
+    fatal: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
   },
@@ -423,7 +424,7 @@ describe('signing-key security specification', () => {
   // Verbose initialization still reduces an invalid stored key to the fixed operator-safe message.
   it('does not expose signing-row internals through porta init --verbose', async () => {
     const pair = generateES256KeyPair();
-    mocks.query.mockResolvedValueOnce({
+    mocks.query.mockResolvedValue({
       rows: [
         storedRow(pair.privateKeyPem, {
           kid: 'verbose-init-kid',
@@ -466,7 +467,7 @@ describe('signing-key security specification', () => {
   // Server startup reports the fixed domain message without passing the caught error to the logger.
   it('does not expose signing-row internals when server startup fails', async () => {
     const pair = generateES256KeyPair();
-    mocks.query.mockResolvedValueOnce({
+    mocks.query.mockResolvedValue({
       rows: [
         storedRow(pair.privateKeyPem, {
           kid: 'startup-kid',

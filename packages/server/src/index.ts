@@ -16,6 +16,7 @@ import { config } from './config/index.js';
 import { logger } from './lib/logger.js';
 import { connectDatabase, disconnectDatabase } from './lib/database.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
+import { SigningKeyCryptoError } from './lib/signing-key-crypto.js';
 import { ensureSigningKeys } from './lib/signing-keys.js';
 import { loadOidcTtlConfig } from './lib/system-config.js';
 import { createOidcProvider } from './oidc/provider.js';
@@ -93,7 +94,11 @@ async function main() {
   process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
-main().catch((err) => {
-  logger.fatal(err, 'Failed to start server');
+main().catch((error: unknown) => {
+  if (error instanceof SigningKeyCryptoError) {
+    logger.fatal(error.message);
+  } else {
+    logger.fatal(error, 'Failed to start server');
+  }
   process.exit(1);
 });
