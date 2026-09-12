@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 01:37
-> **Progress**: 9/51 tasks (18%)
+> **Last Updated**: 2026-09-13 01:40
+> **Progress**: 10/51 tasks (20%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -54,7 +54,7 @@ bootstrap behavior. Log: `/tmp/porta-rd01-exec.noLev5/verify-1.1.3-red.log`.
 
 ### Step 1.3: Implementation Tests and Verification
 
-- [ ] 1.3.1 Update existing crypto, loader, and CLI error-handler tests for encrypted-only rows and bounded startup/verbose errors — `packages/server/tests/unit/lib/signing-key-crypto.test.ts`, `packages/server/tests/unit/lib/signing-keys.test.ts`, `packages/server/tests/unit/cli/error-handler.test.ts`
+- [x] 1.3.1 Update existing crypto, loader, and CLI error-handler tests for encrypted-only rows and bounded startup/verbose errors — `packages/server/tests/unit/lib/signing-key-crypto.test.ts`, `packages/server/tests/unit/lib/signing-keys.test.ts`, `packages/server/tests/unit/cli/error-handler.test.ts` ✅ (completed: 2026-09-13 01:40)
 - [ ] 1.3.2 Add route internals and update real-database coverage for encrypted mutations — `packages/server/tests/unit/routes/keys.impl.test.ts`, `packages/server/tests/integration/services/signing-key.service.test.ts`
 - [ ] 1.3.3 Add cache-generation and bootstrap-lock implementation branches — `packages/server/tests/unit/lib/signing-key-cache.impl.test.ts`
 - [ ] 1.3.4 Run focused Phase 1 suites, server lint/typecheck/build, and `yarn test:structure`

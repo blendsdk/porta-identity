@@ -7,6 +7,7 @@ vi.mock('../../../src/cli/output.js', () => ({
 
 import { withErrorHandling } from '../../../src/cli/error-handler.js';
 import { error } from '../../../src/cli/output.js';
+import { SigningKeyCryptoError } from '../../../src/lib/signing-key-crypto.js';
 
 /**
  * Custom error classes for testing domain error mapping.
@@ -74,9 +75,7 @@ describe('CLI Error Handler', () => {
         throw new OrganizationNotFoundError('Organization not found: acme');
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Not found: Organization not found: acme',
-      );
+      expect(error).toHaveBeenCalledWith('Not found: Organization not found: acme');
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -85,9 +84,7 @@ describe('CLI Error Handler', () => {
         throw new ClientNotFoundError('Client not found: abc123');
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Not found: Client not found: abc123',
-      );
+      expect(error).toHaveBeenCalledWith('Not found: Client not found: abc123');
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -104,9 +101,7 @@ describe('CLI Error Handler', () => {
         throw new CustomEntityNotFoundError();
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Not found: Entity 42 does not exist',
-      );
+      expect(error).toHaveBeenCalledWith('Not found: Entity 42 does not exist');
     });
   });
 
@@ -116,9 +111,7 @@ describe('CLI Error Handler', () => {
         throw new UserValidationError('Email is required');
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Validation error: Email is required',
-      );
+      expect(error).toHaveBeenCalledWith('Validation error: Email is required');
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -127,9 +120,7 @@ describe('CLI Error Handler', () => {
         throw new RbacValidationError('Role slug already exists');
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Validation error: Role slug already exists',
-      );
+      expect(error).toHaveBeenCalledWith('Validation error: Role slug already exists');
       expect(mockExit).toHaveBeenCalledWith(1);
     });
 
@@ -145,9 +136,7 @@ describe('CLI Error Handler', () => {
         throw new AnyModuleValidationError();
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Validation error: Field X is invalid',
-      );
+      expect(error).toHaveBeenCalledWith('Validation error: Field X is invalid');
     });
   });
 
@@ -166,9 +155,7 @@ describe('CLI Error Handler', () => {
         throw new TypeError('Cannot read property of null');
       });
 
-      expect(error).toHaveBeenCalledWith(
-        'Error: Cannot read property of null',
-      );
+      expect(error).toHaveBeenCalledWith('Error: Cannot read property of null');
     });
   });
 
@@ -208,9 +195,7 @@ describe('CLI Error Handler', () => {
       }, true);
 
       // Stack trace should be printed to console.error
-      expect(console.error).toHaveBeenCalledWith(
-        expect.stringContaining('Error: Something broke'),
-      );
+      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error: Something broke'));
     });
 
     it('should not print stack trace when verbose is false', async () => {
@@ -242,6 +227,19 @@ describe('CLI Error Handler', () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('OrganizationNotFoundError'),
       );
+    });
+
+    it('should suppress signing-key stacks in verbose mode', async () => {
+      const signingError = new SigningKeyCryptoError('Signing key record is invalid');
+      signingError.stack = 'Error: secret crypto detail\n at /srv/porta/private.ts:44';
+
+      await withErrorHandling(async () => {
+        throw signingError;
+      }, true);
+
+      expect(error).toHaveBeenCalledWith('Error: Signing key record is invalid');
+      expect(console.error).not.toHaveBeenCalled();
+      expect(mockExit).toHaveBeenCalledWith(1);
     });
   });
 
