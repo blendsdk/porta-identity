@@ -32,7 +32,10 @@ import {
 
 /** In-memory cache for the active JWK set — avoids a DB round-trip per request */
 let cachedJwks: { keys: JwkKeyPair[] } | null = null;
+/** Millisecond timestamp of the currently installed cache entry. */
 let jwksCacheTimestamp = 0;
+/** Monotonic invalidation marker used to reject stale in-flight cache installations. */
+let jwksCacheGeneration = 0;
 
 /** Cache TTL for the active JWK set — 60 seconds matches system-config cache */
 const JWKS_CACHE_TTL_MS = 60_000;
@@ -52,16 +55,25 @@ export async function getActiveJwks(): Promise<{ keys: JwkKeyPair[] }> {
     return cachedJwks;
   }
 
+  const loadGeneration = jwksCacheGeneration;
   const records = await loadSigningKeysFromDb();
-  cachedJwks = signingKeysToJwks(records);
-  jwksCacheTimestamp = now;
-  return cachedJwks;
+  const loadedJwks = signingKeysToJwks(records);
+
+  // A mutation may invalidate the cache while this database read is pending. The caller may use
+  // its completed snapshot, but installing it would make later callers observe stale key state.
+  if (loadGeneration === jwksCacheGeneration) {
+    cachedJwks = loadedJwks;
+    jwksCacheTimestamp = now;
+  }
+
+  return loadedJwks;
 }
 
 /**
  * Clear the cached JWK set — useful for testing and after key rotation.
  */
 export function clearJwksCache(): void {
+  jwksCacheGeneration += 1;
   cachedJwks = null;
   jwksCacheTimestamp = 0;
 }

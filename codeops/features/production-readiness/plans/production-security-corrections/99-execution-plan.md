@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 01:32
-> **Progress**: 5/51 tasks (10%)
+> **Last Updated**: 2026-09-13 01:33
+> **Progress**: 6/51 tasks (12%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -44,7 +44,7 @@ bootstrap behavior. Log: `/tmp/porta-rd01-exec.noLev5/verify-1.1.3-red.log`.
 
 - [x] 1.2.1 Make decryption/row/PEM failures use the fixed domain error and bounded `kid` diagnostic — `packages/server/src/lib/signing-key-crypto.ts`, `packages/server/src/lib/signing-keys.ts` ✅ (completed: 2026-09-13 01:29)
 - [x] 1.2.2 Encrypt Admin-generated keys and register post-commit invalidation while retaining the existing transaction and response contracts — `packages/server/src/routes/keys.ts` ✅ (completed: 2026-09-13 01:32)
-- [ ] 1.2.3 Add the local cache-generation guard against stale in-flight installation — `packages/server/src/lib/signing-keys.ts`
+- [x] 1.2.3 Add the local cache-generation guard against stale in-flight installation — `packages/server/src/lib/signing-keys.ts` ✅ (completed: 2026-09-13 01:33)
 - [ ] 1.2.4 Serialize the bootstrap recheck/insertion with the short PostgreSQL transaction lock — `packages/server/src/lib/signing-keys.ts`
 - [ ] 1.2.5 Suppress sensitive signing-row stacks from server startup and every server CLI mode — `packages/server/src/index.ts`, `packages/server/src/cli/error-handler.ts`
 - [ ] 1.2.6 Run ST-01–ST-08 and make the immutable Phase 1 expectations green
