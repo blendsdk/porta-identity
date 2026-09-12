@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-13
 
 ## Overview
 
@@ -56,7 +56,13 @@ All JWTs are signed using ECDSA P-256 (ES256). This is a non-negotiable standard
 | Key Rotation  | Supported via `porta keys rotate` CLI command                    |
 | JWKS Endpoint | `/:orgSlug/.well-known/jwks` (auto-served by node-oidc-provider) |
 
-**Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `rotated`, or `revoked`. The OIDC provider loads active keys on startup and serves them via the JWKS endpoint.
+**Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `retired`, or
+`revoked`. Active and unexpired retired private keys are decrypted only in process for provider
+startup. Plaintext, incomplete, corrupt, or invalid-PEM rows stop startup with a bounded diagnostic.
+On a fresh database, a PostgreSQL table lock ensures simultaneous processes create only one
+encrypted active key. Admin generation and rotation invalidate each process's JWKS cache only
+after the database transaction commits; every Porta process must still restart after a key change
+because the OIDC provider receives its signing set at startup.
 
 ### Password Hashing: Argon2id
 

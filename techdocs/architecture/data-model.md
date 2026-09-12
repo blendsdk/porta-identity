@@ -1,6 +1,6 @@
 # Data Model
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-13
 
 ## Overview
 
@@ -303,14 +303,25 @@ Key-value configuration store with 60-second in-memory cache.
 
 ES256 (ECDSA P-256) signing key pairs for JWT tokens.
 
-| Column        | Type         | Description                                 |
-| ------------- | ------------ | ------------------------------------------- |
-| `id`          | UUID         | Primary key                                 |
-| `kid`         | VARCHAR(255) | Key ID (for JWKS)                           |
-| `public_key`  | TEXT         | PEM-encoded public key                      |
-| `private_key` | TEXT         | PEM-encoded private key (encrypted at rest) |
-| `status`      | VARCHAR(20)  | `active`, `rotated`, `revoked`              |
-| `created_at`  | TIMESTAMPTZ  | Key creation time                           |
+| Column            | Type         | Description                                              |
+| ----------------- | ------------ | -------------------------------------------------------- |
+| `id`              | UUID         | Primary key                                              |
+| `kid`             | VARCHAR(255) | Key ID published through JWKS                            |
+| `algorithm`       | VARCHAR(10)  | Signing algorithm; runtime generation uses `ES256`       |
+| `public_key`      | TEXT         | PEM-encoded public key                                   |
+| `private_key`     | TEXT         | AES-256-GCM ciphertext containing the private PEM        |
+| `private_key_iv`  | VARCHAR(24)  | Hex-encoded per-record initialization vector             |
+| `private_key_tag` | VARCHAR(32)  | Hex-encoded authentication tag                           |
+| `encrypted`       | BOOLEAN      | Must be `true` for every row accepted by the runtime     |
+| `status`          | VARCHAR(20)  | `active`, `retired`, or `revoked`                        |
+| `activated_at`    | TIMESTAMPTZ  | Activation time                                          |
+| `retired_at`      | TIMESTAMPTZ  | Retirement time, when applicable                         |
+| `expires_at`      | TIMESTAMPTZ  | Verification grace-period expiry, when applicable        |
+| `created_at`      | TIMESTAMPTZ  | Key creation time                                        |
+
+The schema retains nullable encryption metadata for migration compatibility, but the runtime
+fails closed on plaintext or incomplete rows. A fresh database bootstrap inserts one encrypted
+active key under a transaction-scoped table lock.
 
 ### Audit Log
 

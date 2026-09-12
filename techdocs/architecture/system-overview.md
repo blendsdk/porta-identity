@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-13
 
 ## High-Level Architecture
 
@@ -158,7 +158,7 @@ sequenceDiagram
     Main->>Redis: 1. Connect Redis client
     Main->>Main: 2. Init i18n + template engine
     Main->>Keys: 3. Load signing keys (auto-generate if empty)
-    Keys->>DB: Read/write PEM keys
+    Keys->>DB: Read/write encrypted private keys
     Main->>Config: 4. Load OIDC TTLs from system_config
     Config->>DB: Read TTL configuration
     Main->>OIDC: 5. Create provider with config + keys
