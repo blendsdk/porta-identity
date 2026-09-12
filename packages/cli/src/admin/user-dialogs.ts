@@ -2,22 +2,25 @@
 
 import type { UpdateUserInput } from '@portaidentity/sdk';
 import {
-  at,
   Button,
   CheckGroup,
+  col,
   Commands,
   cover,
   Dialog,
+  fixed,
   Group,
+  grow,
   Input,
   Label,
   Memo,
   row,
   signal,
+  spacer,
   TabView,
   Text,
 } from '@jsvision/ui';
-import type { EventLoop, ModalDialogHost, Tab } from '@jsvision/ui';
+import type { EventLoop, ModalDialogHost, Tab, View } from '@jsvision/ui';
 
 import type {
   AdminCreateUserInput,
@@ -31,7 +34,6 @@ import { runAbortableAdminDialog } from './application-runtime.js';
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
 import {
   addCreateProfile,
-  addField,
   profileInput,
   profileSignals,
   profileTabs,
@@ -97,22 +99,25 @@ function validMultilineText(value: string, maximum: number): boolean {
   return true;
 }
 
-/** Adds naturally sized buttons to one trailing Layout DSL row. */
-function addDialogActions(
-  dialog: Dialog,
-  width: number,
-  height: number,
-  ...buttons: Button[]
-): void {
-  dialog.add(
-    at(
-      row({ gap: 1, justify: 'end' }, ...buttons),
-      2,
-      Math.max(1, height - 5),
-      Math.max(1, width - 6),
-      2,
-    ),
-  );
+/** Creates one naturally sized trailing action row. */
+function actionRow(...buttons: Button[]): ReturnType<typeof fixed> {
+  return fixed(row({ gap: 1, justify: 'end' }, ...buttons), 2);
+}
+
+/** Creates one padded form row with a stable label column. */
+function inputRow(label: string, input: Input): ReturnType<typeof fixed> {
+  return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
+}
+
+/** Collects nested inputs from Layout DSL groups for form-wide validation. */
+function descendantInputs(root: View): Input[] {
+  const result: Input[] = [];
+  const visit = (view: View): void => {
+    if (view instanceof Input) result.push(view);
+    if (view instanceof Group) for (const child of view.children) visit(child);
+  };
+  visit(root);
+  return result;
 }
 
 /** Converts an abort into the ordinary dialog cancellation command. */
@@ -167,30 +172,26 @@ export async function showCreateUserDialog(
     validator: confirmationValidator,
   });
   const basic = new Group();
-  addField(basic, 'Email *', emailInput, 1, width - 4);
-  addField(basic, 'Given name', givenNameInput, 3, width - 4);
-  addField(basic, 'Family name', familyNameInput, 5, width - 4);
-  addField(basic, 'Password', passwordInput, 7, width - 4);
-  addField(basic, 'Confirm password', confirmationInput, 9, width - 4);
-  basic.add(at(new Text('* Required'), 1, 11, Math.max(1, width - 8), 1));
-  const tabs = signal<Tab[]>([
-    { title: '~B~asic', content: basic },
-    ...profileTabs(values, width - 4),
-  ]);
-  const dialog = new Dialog({ title: 'Create user', width, height, centered: true });
-  dialog.add(
-    at(
-      new TabView({ tabs, active: signal(0) }),
-      1,
-      1,
-      Math.max(1, width - 4),
-      Math.max(1, height - 7),
+  basic.add(
+    cover(
+      col(
+        { gap: 1, padding: 1 },
+        inputRow('Email *', emailInput),
+        inputRow('Given name', givenNameInput),
+        inputRow('Family name', familyNameInput),
+        inputRow('Password', passwordInput),
+        inputRow('Confirm password', confirmationInput),
+        fixed(new Text('* Required'), 1),
+      ),
     ),
   );
+  const tabs = signal<Tab[]>([
+    { title: '~B~asic', content: basic },
+    ...profileTabs(values),
+  ]);
+  const dialog = new Dialog({ title: 'Create user', width, height, centered: true });
   const inputs = [emailInput, givenNameInput, familyNameInput, passwordInput, confirmationInput];
-  for (const tab of tabs.peek().slice(1)) {
-    for (const child of tab.content.children) if (child instanceof Input) inputs.push(child);
-  }
+  for (const tab of tabs.peek().slice(1)) inputs.push(...descendantInputs(tab.content));
   const canCreate = (): boolean => {
     const emailValue = email();
     const passwordValue = password();
@@ -207,16 +208,19 @@ export async function showCreateUserDialog(
       passwordValue === confirmationValue
     );
   };
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button('~C~reate', {
-      command: Commands.ok,
-      default: true,
-      disabled: () => !canCreate(),
-    }),
-    new Button('Cancel', { command: Commands.cancel }),
+  const createButton = new Button('~C~reate', {
+    command: Commands.ok,
+    default: true,
+    disabled: () => !canCreate(),
+  });
+  dialog.add(
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(new TabView({ tabs, active: signal(0) })),
+        actionRow(createButton, new Button('Cancel', { command: Commands.cancel })),
+      ),
+    ),
   );
 
   try {
@@ -248,19 +252,13 @@ async function showInvitationPreview(
   const { width, height } = dialogSize(host, 72, 20);
   const dialog = new Dialog({ title: 'Invitation preview', width, height, centered: true });
   dialog.add(
-    at(
-      new Text(`Subject: ${preview.subject}\n\n${preview.text}`),
-      2,
-      1,
-      Math.max(1, width - 6),
-      Math.max(1, height - 6),
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(new Text(`Subject: ${preview.subject}\n\n${preview.text}`)),
+        actionRow(new Button('~O~K', { command: Commands.ok, default: true })),
+      ),
     ),
-  );
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button('~O~K', { command: Commands.ok, default: true }),
   );
   await runDialog(host, dialog, operationSignal);
 }
@@ -288,12 +286,6 @@ export async function showInviteUserDialog(
   ];
   const personalMessageMemo = new Memo({ value: personalMessage });
   const dialog = new Dialog({ title: 'Invite user', width, height, centered: true });
-  ['Email', 'Given name', 'Family name', 'Locale'].forEach((label, index) =>
-    addField(dialog, label, inputs[index]!, 1 + index * 2, width),
-  );
-  dialog.add(at(new Label('Personal message', personalMessageMemo), 1, 9, 18, 1));
-  dialog.add(at(personalMessageMemo, 19, 9, Math.max(1, width - 21), 4));
-  dialog.add(at(new Text(message), 2, 14, Math.max(1, width - 6), 1));
   let previewBusy = false;
   let parentOpen = true;
   let previewGeneration = 0;
@@ -337,21 +329,44 @@ export async function showInviteUserDialog(
             );
         })
         .finally(() => {
-          if (parentOpen && generation === previewGeneration) previewBusy = false;
+      if (parentOpen && generation === previewGeneration) previewBusy = false;
         });
     },
   });
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    previewButton,
-    new Button('~I~nvite', {
-      command: Commands.ok,
-      default: true,
-      disabled: () => previewBusy,
-    }),
-    new Button('Cancel', { command: Commands.cancel }),
+  const inviteButton = new Button('~I~nvite', {
+    command: Commands.ok,
+    default: true,
+    disabled: () => previewBusy,
+  });
+  const cancelButton = new Button('Cancel', { command: Commands.cancel });
+  dialog.add(
+    cover(
+      col(
+        { padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(
+          col(
+            { gap: 1 },
+            inputRow('Email', inputs[0]!),
+            inputRow('Given name', inputs[1]!),
+            inputRow('Family name', inputs[2]!),
+            inputRow('Locale', inputs[3]!),
+          ),
+          7,
+        ),
+        spacer({ fixed: 1 }),
+        fixed(
+          row(
+            { gap: 1 },
+            fixed(new Label('Personal message', personalMessageMemo), 18),
+            grow(personalMessageMemo),
+          ),
+          4,
+        ),
+        fixed(new Text(message), 1),
+        spacer(),
+        fixed(row({ gap: 1, justify: 'end' }, previewButton, inviteButton, cancelButton), 2),
+      ),
+    ),
   );
 
   try {
@@ -389,38 +404,39 @@ export async function showEditUserDialog(
   const values = profileSignals(detail);
   const givenNameInput = profileInput(values.givenName, 255);
   const familyNameInput = profileInput(values.familyName, 255);
-  const basic = new Group();
-  basic.add(at(new Text(`Email: ${detail.email} (read only)`), 1, 1, Math.max(1, width - 8), 1));
-  addField(basic, 'Given name', givenNameInput, 3, width - 4);
-  addField(basic, 'Family name', familyNameInput, 5, width - 4);
   const verified = signal([detail.phoneNumberVerified]);
   const verification = new CheckGroup({ labels: ['Phone number ~v~erified'], value: verified });
-  basic.add(at(verification, 1, 7, 30, 1));
+  const basic = new Group();
+  basic.add(
+    cover(
+      col(
+        { gap: 1, padding: 1 },
+        fixed(new Text(`Email: ${detail.email} (read only)`), 1),
+        inputRow('Given name', givenNameInput),
+        inputRow('Family name', familyNameInput),
+        fixed(verification, 1),
+      ),
+    ),
+  );
   const tabs = signal<Tab[]>([
     { title: '~B~asic', content: basic },
-    ...profileTabs(values, width - 4),
+    ...profileTabs(values),
   ]);
   const dialog = new Dialog({ title: 'Edit user', width, height, centered: true });
   dialog.add(
-    at(
-      new TabView({ tabs, active: signal(0) }),
-      1,
-      1,
-      Math.max(1, width - 4),
-      Math.max(1, height - 7),
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(new TabView({ tabs, active: signal(0) })),
+        actionRow(
+          new Button('~S~ave', { command: Commands.ok, default: true }),
+          new Button('Cancel', { command: Commands.cancel }),
+        ),
+      ),
     ),
   );
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button('~S~ave', { command: Commands.ok, default: true }),
-    new Button('Cancel', { command: Commands.cancel }),
-  );
   const inputs = [givenNameInput, familyNameInput];
-  for (const tab of tabs.peek().slice(1)) {
-    for (const child of tab.content.children) if (child instanceof Input) inputs.push(child);
-  }
+  for (const tab of tabs.peek().slice(1)) inputs.push(...descendantInputs(tab.content));
 
   while (true) {
     const command = await runDialog(host, dialog, operationSignal);
@@ -485,15 +501,20 @@ export async function showSetUserPasswordDialog(
     validator: textValidator(8, 128, false),
   });
   const dialog = new Dialog({ title: 'Set password', width, height, centered: true });
-  dialog.add(at(new Text(`User: ${email}`), 2, 1, Math.max(1, width - 6), 1));
-  addField(dialog, 'Password', passwordInput, 3, width);
-  addField(dialog, 'Confirm password', confirmationInput, 5, width);
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button('~S~et password', { command: Commands.ok, default: true }),
-    new Button('Cancel', { command: Commands.cancel }),
+  dialog.add(
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(new Text(`User: ${email}`), 1),
+        inputRow('Password', passwordInput),
+        inputRow('Confirm password', confirmationInput),
+        spacer(),
+        actionRow(
+          new Button('~S~et password', { command: Commands.ok, default: true }),
+          new Button('Cancel', { command: Commands.cancel }),
+        ),
+      ),
+    ),
   );
   try {
     while (true) {
@@ -534,20 +555,20 @@ export async function showUserConfirmationDialog(
     action === 'deactivate' ? 'inactive' : action === 'activate' ? 'active' : undefined;
   const dialog = new Dialog({ title: label, width, height, centered: true });
   dialog.add(
-    at(
-      new Text(`${label} for ${email}?${targetState ? `\nTarget state: ${targetState}` : ''}`),
-      2,
-      1,
-      Math.max(1, width - 6),
-      2,
+    cover(
+      col(
+        { padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(
+          new Text(`${label} for ${email}?${targetState ? `\nTarget state: ${targetState}` : ''}`),
+          2,
+        ),
+        spacer(),
+        actionRow(
+          new Button(label, { command: Commands.ok, default: true }),
+          new Button('Cancel', { command: Commands.cancel }),
+        ),
+      ),
     ),
-  );
-  addDialogActions(
-    dialog,
-    width,
-    height,
-    new Button(label, { command: Commands.ok, default: true }),
-    new Button('Cancel', { command: Commands.cancel }),
   );
   return (await runDialog(host, dialog, operationSignal)) === Commands.ok
     ? { kind: action }

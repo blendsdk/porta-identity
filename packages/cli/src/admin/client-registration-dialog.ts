@@ -9,7 +9,6 @@ import {
   cover,
   Dialog,
   fixed,
-  GroupBox,
   grow,
   Input,
   Label,
@@ -33,16 +32,12 @@ const REGISTRATION_FORM_GAP = 1;
 const REGISTRATION_ACTIONS_HEIGHT = 2;
 
 /**
- * Calculates the Client details group height from its visible component heights and spacing.
- * GroupBox padding provides the one-row inset needed to keep content inside each frame edge.
+ * Calculates the client-details form height from its visible component heights and spacing.
  */
-function clientDetailsGroupHeight(): number {
+function clientDetailsHeight(): number {
   const componentHeights = [1, 1, 1, 2, 3, 1];
   const componentGaps = (componentHeights.length - 1) * REGISTRATION_FORM_GAP;
-  const groupFrameInset = 2;
-  return (
-    componentHeights.reduce((total, height) => total + height, 0) + componentGaps + groupFrameInset
-  );
+  return componentHeights.reduce((total, height) => total + height, 0) + componentGaps;
 }
 
 /**
@@ -52,7 +47,7 @@ function clientDetailsGroupHeight(): number {
 function registrationDialogHeight(): number {
   const dialogFrameAndFormPadding = 3;
   return (
-    clientDetailsGroupHeight() +
+    clientDetailsHeight() +
     REGISTRATION_FORM_GAP +
     REGISTRATION_ACTIONS_HEIGHT +
     dialogFrameAndFormPadding
@@ -201,50 +196,44 @@ function registrationInputRow(label: string, input: Input): ReturnType<typeof ro
   return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
 }
 
-/** Builds the spacious client identity and type region of the registration form. */
-function clientDetailsGroup(
+/** Builds the client identity and type fields with the Layout DSL. */
+function clientDetailsLayout(
   form: RegistrationForm,
   organization: AdminOrganizationContext,
-): GroupBox {
-  const details = new GroupBox({ title: 'Client details', padding: 1 });
-  details.add(
-    cover(
-      col(
+): ReturnType<typeof col> {
+  return col(
+    { gap: 1 },
+    fixed(new Text(`Organization: ${organization.name} (read only)`), 1),
+    registrationInputRow('Client name', form.nameInput),
+    fixed(row({ gap: 1 }, fixed(new Text('Application'), 18), grow(form.applicationPicker)), 1),
+    fixed(
+      row(
         { gap: 1 },
-        fixed(new Text(`Organization: ${organization.name} (read only)`), 1),
-        registrationInputRow('Client name', form.nameInput),
-        fixed(row({ gap: 1 }, fixed(new Text('Application'), 18), grow(form.applicationPicker)), 1),
-        fixed(
-          row(
-            { gap: 1 },
-            fixed(new Text('Client type'), 18),
-            grow(
-              new RadioGroup({
-                labels: ['~P~ublic', 'Con~f~idential'],
-                value: form.clientType,
-              }),
-            ),
-          ),
-          2,
+        fixed(new Text('Client type'), 18),
+        grow(
+          new RadioGroup({
+            labels: ['~P~ublic', 'Con~f~idential'],
+            value: form.clientType,
+          }),
         ),
-        fixed(
-          row(
-            { gap: 1 },
-            fixed(new Text('Application type'), 18),
-            grow(
-              new RadioGroup({
-                labels: ['~W~eb', '~N~ative', '~S~PA'],
-                value: form.applicationType,
-              }),
-            ),
-          ),
-          3,
-        ),
-        registrationInputRow('Redirect URI', form.redirectInput),
       ),
+      2,
     ),
+    fixed(
+      row(
+        { gap: 1 },
+        fixed(new Text('Application type'), 18),
+        grow(
+          new RadioGroup({
+            labels: ['~W~eb', '~N~ative', '~S~PA'],
+            value: form.applicationType,
+          }),
+        ),
+      ),
+      3,
+    ),
+    registrationInputRow('Redirect URI', form.redirectInput),
   );
-  return details;
 }
 
 /** Builds the complete non-scrolling registration layout. */
@@ -257,7 +246,7 @@ function registrationLayout(
       gap: REGISTRATION_FORM_GAP,
       padding: { top: 1, right: 2, bottom: 0, left: 2 },
     },
-    fixed(clientDetailsGroup(form, organization), clientDetailsGroupHeight()),
+    fixed(clientDetailsLayout(form, organization), clientDetailsHeight()),
     fixed(
       row(
         { gap: 1 },

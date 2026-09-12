@@ -260,19 +260,17 @@ describe('compact OIDC client registration', () => {
 
     expect(dialog.title()).toBe('Register OIDC client');
     expect(dialog.isZoomed()).toBe(false);
-    expect(dialog.bounds.height).toBe(22);
+    expect(dialog.bounds.height).toBe(20);
     expect(dialog.bounds.width).toBeLessThan(host.desktop.bounds.width);
     expect(dialog.bounds.height).toBeLessThan(host.desktop.bounds.height);
     expect(dialog.closable).toBe(false);
     expect(dialog.resizable).toBe(false);
     expect(dialog.zoomable).toBe(false);
     const groups = views.filter((view) => view instanceof GroupBox);
-    expect(groups).toHaveLength(1);
-    expect(groups[0]?.bounds.height).toBe(16);
+    expect(groups).toHaveLength(0);
     expect(views.filter((view) => view instanceof Scroller)).toHaveLength(0);
     const initialFrame = frameText(host);
     for (const label of [
-      'Client details',
       'Client name',
       'Application',
       'Client type',

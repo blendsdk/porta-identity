@@ -2,11 +2,13 @@
 
 import type { CreateOrganizationInput } from '@portaidentity/sdk';
 import {
-  at,
   Button,
+  col,
   Commands,
   cover,
   Dialog,
+  fixed,
+  grow,
   Input,
   Label,
   ListView,
@@ -205,18 +207,21 @@ export async function showAuthenticationGate(
     centered: true,
   });
   dialog.closable = false;
-  dialog.add(at(new Text('Authenticate with Porta to continue.'), 2, 1, Math.max(1, width - 6), 1));
   dialog.add(
-    at(
-      row(
-        { gap: 1, justify: 'end' },
-        new Button('~A~uthenticate', { command: Commands.ok, default: true }),
-        new AuthenticationQuitButton('~Q~uit', { command: Commands.no }),
+    cover(
+      col(
+        { padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(new Text('Authenticate with Porta to continue.'), 1),
+        spacer(),
+        fixed(
+          row(
+            { gap: 1, justify: 'end' },
+            new Button('~A~uthenticate', { command: Commands.ok, default: true }),
+            new AuthenticationQuitButton('~Q~uit', { command: Commands.no }),
+          ),
+          2,
+        ),
       ),
-      2,
-      Math.max(1, height - 5),
-      Math.max(1, width - 6),
-      2,
     ),
   );
 
@@ -295,14 +300,16 @@ export async function showWhoAmIDialog(
   if (insecure) lines.push('Warning: insecure TLS verification is enabled.');
 
   const dialog = new Dialog({ title: 'Who am I', width, height, centered: true });
-  dialog.add(at(new Text(lines.join('\n')), 2, 1, Math.max(1, width - 6), Math.max(1, height - 6)));
   dialog.add(
-    at(
-      row({ justify: 'center' }, new Button('~O~K', { command: Commands.ok, default: true })),
-      2,
-      Math.max(1, height - 5),
-      Math.max(1, width - 6),
-      2,
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(new Text(lines.join('\n'))),
+        fixed(
+          row({ justify: 'center' }, new Button('~O~K', { command: Commands.ok, default: true })),
+          2,
+        ),
+      ),
     ),
   );
   await runDialog(host, dialog);
@@ -330,32 +337,7 @@ export async function showOrganizationChooser(
     height,
     centered: true,
   });
-  dialog.add(at(new Text(() => message()), 2, 1, Math.max(1, width - 6), 1));
-  dialog.add(at(list, 2, 3, Math.max(1, width - 6), Math.max(1, height - 9)));
-
   const createAllowed = options.capabilities.canCreateOrganizations;
-  if (!createAllowed) {
-    dialog.add(
-      at(
-        new Text('Create organization… (requires organization create)'),
-        2,
-        Math.max(1, height - 8),
-        Math.max(1, width - 6),
-        1,
-      ),
-    );
-  }
-  if (!options.capabilities.canReadOrganizations) {
-    dialog.add(
-      at(
-        new Text('Switch organization… (requires organization read)'),
-        2,
-        Math.max(1, height - 7),
-        Math.max(1, width - 6),
-        1,
-      ),
-    );
-  }
   const chooserActions = row(
     { gap: 1 },
     new Button('Cancel', { command: Commands.cancel }),
@@ -373,7 +355,20 @@ export async function showOrganizationChooser(
     spacer(),
     new Button('~R~eauthenticate', { command: Commands.no }),
   );
-  dialog.add(at(chooserActions, 2, Math.max(1, height - 5), Math.max(1, width - 6), 2));
+  dialog.add(
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        fixed(new Text(() => message()), 1),
+        grow(list),
+        !createAllowed &&
+          fixed(new Text('Create organization… (requires organization create)'), 1),
+        !options.capabilities.canReadOrganizations &&
+          fixed(new Text('Switch organization… (requires organization read)'), 1),
+        fixed(chooserActions, 2),
+      ),
+    ),
+  );
 
   if (options.organizations && options.capabilities.canReadOrganizations) {
     void options.organizations.then((result) => {
@@ -432,25 +427,26 @@ export async function showCreateOrganizationDialog(
     maxLength: 10,
     validator: lengthValidator(2, 10, true),
   });
-  const inputWidth = Math.max(1, width - 23);
   const dialog = new Dialog({ title: 'Create organization', width, height, centered: true });
-  dialog.add(at(new Label('~N~ame', nameInput), 2, 1, 17, 1));
-  dialog.add(at(nameInput, 19, 1, inputWidth, 1));
-  dialog.add(at(new Label('~S~lug', slugInput), 2, 3, 17, 1));
-  dialog.add(at(slugInput, 19, 3, inputWidth, 1));
-  dialog.add(at(new Label('~D~efault locale', localeInput), 2, 5, 17, 1));
-  dialog.add(at(localeInput, 19, 5, inputWidth, 1));
+  const field = (label: string, input: Input) =>
+    fixed(row({ gap: 1 }, fixed(new Label(label, input), 17), grow(input)), 1);
   dialog.add(
-    at(
-      row(
-        { gap: 1, justify: 'end' },
-        new Button('~C~reate', { command: Commands.ok, default: true }),
-        new Button('Cancel', { command: Commands.cancel }),
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        field('~N~ame', nameInput),
+        field('~S~lug', slugInput),
+        field('~D~efault locale', localeInput),
+        spacer(),
+        fixed(
+          row(
+            { gap: 1, justify: 'end' },
+            new Button('~C~reate', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
+          ),
+          2,
+        ),
       ),
-      2,
-      Math.max(1, height - 5),
-      Math.max(1, width - 6),
-      2,
     ),
   );
 

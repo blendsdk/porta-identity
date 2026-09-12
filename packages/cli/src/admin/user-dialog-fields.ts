@@ -2,7 +2,7 @@
 
 import type { AdminCreateUserInput } from './user-service.js';
 import type { AdminUserDetail } from './user-state.js';
-import { at, Group, Input, Label, signal } from '@jsvision/ui';
+import { col, cover, fixed, Group, grow, Input, Label, row, signal } from '@jsvision/ui';
 import type { DrawContext, Signal, Tab, Validator } from '@jsvision/ui';
 
 /** Signals for the complete editable user profile. */
@@ -63,18 +63,6 @@ export function textValidator(minimum: number, maximum: number, optional = true)
   };
 }
 
-/** Adds one labelled input row to an absolute-layout group. */
-export function addField(
-  group: Group,
-  label: string,
-  input: Input,
-  row: number,
-  width: number,
-): void {
-  group.add(at(new Label(label, input), 1, row, 18, 1));
-  group.add(at(input, 19, row, Math.max(1, width - 21), 1));
-}
-
 /** Creates signals for the complete persisted profile projection. */
 export function profileSignals(detail?: AdminUserDetail): ProfileSignals {
   const value = (field: keyof AdminUserDetail): string => {
@@ -108,29 +96,46 @@ export function profileInput(value: Signal<string>, maximum: number): Input {
   return new Input({ value, maxLength: maximum, validator: textValidator(0, maximum) });
 }
 
+/** Builds one padded profile tab with evenly spaced Layout DSL fields. */
+function profilePage(fields: ReadonlyArray<readonly [string, Input]>): Group {
+  const page = new Group();
+  page.add(
+    cover(
+      col(
+        { gap: 1, padding: 1 },
+        ...fields.map(([label, input]) =>
+          fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1),
+        ),
+      ),
+    ),
+  );
+  return page;
+}
+
 /** Builds the familiar identity/contact/address tab pages. */
-export function profileTabs(values: ProfileSignals, width: number): Tab[] {
-  const identity = new Group();
-  addField(identity, 'Middle name', profileInput(values.middleName, 255), 1, width);
-  addField(identity, 'Nickname', profileInput(values.nickname, 255), 3, width);
-  addField(identity, 'Preferred username', profileInput(values.preferredUsername, 255), 5, width);
-  addField(identity, 'Gender', profileInput(values.gender, 50), 7, width);
-  addField(identity, 'Birthdate', profileInput(values.birthdate, 10), 9, width);
-
-  const contact = new Group();
-  addField(contact, 'Profile URL', profileInput(values.profileUrl, 2_048), 1, width);
-  addField(contact, 'Picture URL', profileInput(values.pictureUrl, 2_048), 3, width);
-  addField(contact, 'Website URL', profileInput(values.websiteUrl, 2_048), 5, width);
-  addField(contact, 'Phone', profileInput(values.phoneNumber, 50), 7, width);
-  addField(contact, 'Locale', profileInput(values.locale, 10), 9, width);
-  addField(contact, 'Time zone', profileInput(values.zoneinfo, 50), 11, width);
-
-  const address = new Group();
-  addField(address, 'Street', profileInput(values.addressStreet, 500), 1, width);
-  addField(address, 'Locality', profileInput(values.addressLocality, 255), 3, width);
-  addField(address, 'Region', profileInput(values.addressRegion, 255), 5, width);
-  addField(address, 'Postal code', profileInput(values.addressPostalCode, 20), 7, width);
-  addField(address, 'Country', profileInput(values.addressCountry, 2), 9, width);
+export function profileTabs(values: ProfileSignals): Tab[] {
+  const identity = profilePage([
+    ['Middle name', profileInput(values.middleName, 255)],
+    ['Nickname', profileInput(values.nickname, 255)],
+    ['Preferred username', profileInput(values.preferredUsername, 255)],
+    ['Gender', profileInput(values.gender, 50)],
+    ['Birthdate', profileInput(values.birthdate, 10)],
+  ]);
+  const contact = profilePage([
+    ['Profile URL', profileInput(values.profileUrl, 2_048)],
+    ['Picture URL', profileInput(values.pictureUrl, 2_048)],
+    ['Website URL', profileInput(values.websiteUrl, 2_048)],
+    ['Phone', profileInput(values.phoneNumber, 50)],
+    ['Locale', profileInput(values.locale, 10)],
+    ['Time zone', profileInput(values.zoneinfo, 50)],
+  ]);
+  const address = profilePage([
+    ['Street', profileInput(values.addressStreet, 500)],
+    ['Locality', profileInput(values.addressLocality, 255)],
+    ['Region', profileInput(values.addressRegion, 255)],
+    ['Postal code', profileInput(values.addressPostalCode, 20)],
+    ['Country', profileInput(values.addressCountry, 2)],
+  ]);
 
   return [
     { title: '~P~rofile', content: identity },
