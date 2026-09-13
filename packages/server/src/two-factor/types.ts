@@ -46,6 +46,8 @@ export interface UserTotp {
   period: number;
   /** True after the user has verified their first TOTP code. */
   verified: boolean;
+  /** Absolute 30-second step of the most recently accepted code, or null before first use. */
+  lastAcceptedTimeStep: number | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,6 +147,7 @@ export interface UserTotpRow {
   digits: number;
   period: number;
   verified: boolean;
+  last_accepted_time_step: string | null;
   created_at: Date;
   updated_at: Date;
 }
@@ -175,6 +178,12 @@ export interface RecoveryCodeRow {
  * @returns Mapped UserTotp object with camelCase properties
  */
 export function mapRowToUserTotp(row: UserTotpRow): UserTotp {
+  const lastAcceptedTimeStep =
+    row.last_accepted_time_step === null ? null : Number(row.last_accepted_time_step);
+  if (lastAcceptedTimeStep !== null && !Number.isSafeInteger(lastAcceptedTimeStep)) {
+    throw new Error('TOTP replay time step is invalid');
+  }
+
   return {
     id: row.id,
     userId: row.user_id,
@@ -185,6 +194,7 @@ export function mapRowToUserTotp(row: UserTotpRow): UserTotp {
     digits: row.digits,
     period: row.period,
     verified: row.verified,
+    lastAcceptedTimeStep,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
