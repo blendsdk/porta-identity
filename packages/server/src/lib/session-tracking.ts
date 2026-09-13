@@ -135,6 +135,27 @@ export async function revokeSession(sessionId: string): Promise<void> {
 }
 
 /**
+ * Revoke a session by its non-secret administrative identifier.
+ *
+ * The Redis key is returned only to the trusted route so it can remove the
+ * corresponding live session after the database update commits.
+ *
+ * @param publicId - UUID exposed by the administrative API.
+ * @returns The private Redis session key, or null when no active row matched.
+ */
+export async function revokeSessionByPublicId(publicId: string): Promise<string | null> {
+  const pool = getPool();
+  const { rows } = await pool.query<{ sessionId: string }>(
+    `UPDATE admin_sessions
+     SET revoked_at = NOW()
+     WHERE public_id = $1 AND revoked_at IS NULL
+     RETURNING session_id AS "sessionId"`,
+    [publicId],
+  );
+  return rows[0]?.sessionId ?? null;
+}
+
+/**
  * Revoke all active sessions for a user.
  *
  * @param userId - User UUID whose active tracking rows are revoked.
@@ -166,6 +187,26 @@ export async function getSession(sessionId: string): Promise<TrackedSession | nu
             last_activity_at AS "lastActivityAt", revoked_at AS "revokedAt"
      FROM admin_sessions WHERE session_id = $1`,
     [sessionId],
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * Read a tracked session through its non-secret administrative identifier.
+ *
+ * @param publicId - UUID exposed by the administrative API.
+ * @returns The public tracking record, or null when no row exists.
+ */
+export async function getSessionByPublicId(publicId: string): Promise<TrackedSession | null> {
+  const pool = getPool();
+  const { rows } = await pool.query<TrackedSession>(
+    `SELECT public_id AS "sessionId", user_id AS "userId", client_id AS "clientId",
+            organization_id AS "organizationId", grant_id AS "grantId",
+            ip_address AS "ipAddress", user_agent AS "userAgent",
+            created_at AS "createdAt", expires_at AS "expiresAt",
+            last_activity_at AS "lastActivityAt", revoked_at AS "revokedAt"
+     FROM admin_sessions WHERE public_id = $1`,
+    [publicId],
   );
   return rows[0] ?? null;
 }
@@ -217,7 +258,7 @@ export async function listSessions(options: ListSessionsOptions = {}): Promise<{
       params,
     ),
     pool.query<TrackedSession>(
-      `SELECT session_id AS "sessionId", user_id AS "userId", client_id AS "clientId",
+      `SELECT public_id AS "sessionId", user_id AS "userId", client_id AS "clientId",
               organization_id AS "organizationId", grant_id AS "grantId",
               ip_address AS "ipAddress", user_agent AS "userAgent",
               created_at AS "createdAt", expires_at AS "expiresAt",
