@@ -420,12 +420,15 @@ export interface PortabilityActor {
 
 /** Stable safe portability failures that route adapters may expose. */
 export type PortabilityErrorCode =
-  'export_manifest_too_large' | 'export_scope_rejected' | 'import_plan_rejected';
+  | 'export_manifest_too_large'
+  | 'export_scope_rejected'
+  | 'import_plan_rejected'
+  | 'import_execution_failed';
 
 /** Typed expected failure from a portability service. */
 export class PortabilityError extends Error {
   /** HTTP status selected by the closed API contract. */
-  readonly status: 409 | 413;
+  readonly status: 409 | 413 | 503;
   /** Stable safe error code. */
   readonly code: PortabilityErrorCode;
   /** Safe rejected plan result when the code is import_plan_rejected. */
@@ -433,7 +436,7 @@ export class PortabilityError extends Error {
 
   /** Create one expected portability failure for route mapping. */
   constructor(
-    status: 409 | 413,
+    status: 409 | 413 | 503,
     code: PortabilityErrorCode,
     message: string,
     result?: PortabilityResult,

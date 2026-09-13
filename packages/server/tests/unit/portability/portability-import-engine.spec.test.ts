@@ -62,8 +62,18 @@ function errorCodes(result: Awaited<ReturnType<typeof portability.buildPortabili
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.runTransaction.mockImplementation(async (work: () => Promise<unknown>) => work());
   useRows({});
+  mocks.runTransaction.mockImplementation(async (work: () => Promise<unknown>) => {
+    await mocks.query('BEGIN');
+    try {
+      const result = await work();
+      await mocks.query('COMMIT');
+      return result;
+    } catch (error) {
+      await mocks.query('ROLLBACK');
+      throw error;
+    }
+  });
 });
 
 describe('portability import planning specification', () => {
@@ -574,10 +584,12 @@ describe('portability atomic apply specification', () => {
 
   // Final write failure rolls back and exposes no credential or internal content.
   it('should roll back when the final audit write fails', async () => {
-    mocks.query.mockImplementation((sqlValue: unknown) => {
+    useRows({ organizations: [alphaOrganization], applications: [alphaApplication] });
+    const queryDestination = mocks.query.getMockImplementation();
+    mocks.query.mockImplementation((sqlValue: unknown, values?: readonly unknown[]) => {
       const sql = String(sqlValue);
       if (/insert\s+into\s+audit_log/i.test(sql)) return Promise.reject(new Error('private SQL'));
-      return Promise.resolve({ rows: [], rowCount: 1 });
+      return queryDestination?.(sqlValue, values);
     });
 
     await expect(
@@ -665,7 +677,7 @@ describe('portability atomic apply specification', () => {
       /insert\s+into\s+audit_log/i.test(String(sql)),
     );
     const durable = JSON.stringify({
-      audit: audit?.[1] ?? [],
+      auditMetadata: Array.isArray(audit?.[1]) ? audit[1][6] : undefined,
       logs: Object.values(mocks.log).flatMap((log) => log.mock.calls),
     });
     const { credentials, ...repeatableResult } = result;

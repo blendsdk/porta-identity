@@ -1,6 +1,9 @@
 /** Atomic selective portability import orchestration. */
 
-import { runDatabaseTransaction } from '../lib/database.js';
+import { createHash } from 'node:crypto';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { getPool, runDatabaseTransaction } from '../lib/database.js';
+import { registerPortabilityCleanup, type PortabilityWriteIds } from './cleanup.js';
 import {
   writePortabilityApplication,
   writePortabilityClaimDefinition,
@@ -29,14 +32,6 @@ import {
   type PortabilityNaturalKey,
   type PortabilityResult,
 } from './types.js';
-
-/** Resolved identifiers shared with dependent user and client writes. */
-interface ResolvedWriteIds {
-  readonly organizationIds: Map<string, string>;
-  readonly applicationIds: Map<string, string>;
-  readonly roleIds: Map<string, string>;
-  readonly claimIds: Map<string, string>;
-}
 
 /**
  * @param plan - Valid resolved plan
@@ -77,7 +72,9 @@ function existingId<Row extends { readonly id: string }>(
  *
  * @param plan - Valid plan and destination snapshot from this transaction
  */
-async function applyAuthorizationRecords(plan: ResolvedPortabilityPlan): Promise<ResolvedWriteIds> {
+async function applyAuthorizationRecords(
+  plan: ResolvedPortabilityPlan,
+): Promise<PortabilityWriteIds> {
   const { manifest, snapshot } = plan;
   const organizationIds = new Map(
     snapshot.organizations.map((row) => [normalizedSlug(row.slug), row.id]),
@@ -109,6 +106,13 @@ async function applyAuthorizationRecords(plan: ResolvedPortabilityPlan): Promise
       row.id,
     ]),
   );
+  const userIds = new Map(
+    snapshot.users.map((row) => [
+      key(normalizedSlug(row.organization_slug), normalizedEmail(row.email)),
+      row.id,
+    ]),
+  );
+  const clientIds = new Map(snapshot.clients.map((row) => [row.client_id, row.id]));
 
   for (const record of manifest.organizations) {
     const naturalKey = { slug: record.slug };
@@ -220,7 +224,7 @@ async function applyAuthorizationRecords(plan: ResolvedPortabilityPlan): Promise
     });
     await writePortabilityRolePermissions(roleId, mappedPermissionIds);
   }
-  return { organizationIds, applicationIds, roleIds, claimIds };
+  return { organizationIds, applicationIds, roleIds, claimIds, userIds, clientIds };
 }
 
 /**
@@ -232,15 +236,8 @@ async function applyAuthorizationRecords(plan: ResolvedPortabilityPlan): Promise
  */
 async function applyUserAndClientRecords(
   plan: ResolvedPortabilityPlan,
-  ids: ResolvedWriteIds,
+  ids: PortabilityWriteIds,
 ): Promise<PortabilityResult> {
-  const userIds = new Map(
-    plan.snapshot.users.map((row) => [
-      key(normalizedSlug(row.organization_slug), normalizedEmail(row.email)),
-      row.id,
-    ]),
-  );
-  const clientIds = new Map(plan.snapshot.clients.map((row) => [row.client_id, row.id]));
   const credentials: PortabilityCredential[] = [];
 
   for (const record of plan.manifest.users) {
@@ -251,8 +248,8 @@ async function applyUserAndClientRecords(
     const organizationId = ids.organizationIds.get(orgKey);
     if (organizationId === undefined) throw new Error('Resolved organization is missing');
     const userKey = key(orgKey, normalizedEmail(record.email));
-    const id = await writePortabilityUser(record, organizationId, userIds.get(userKey) ?? null);
-    userIds.set(userKey, id);
+    const id = await writePortabilityUser(record, organizationId, ids.userIds.get(userKey) ?? null);
+    ids.userIds.set(userKey, id);
   }
 
   for (const record of plan.manifest.user_role_assignments) {
@@ -263,7 +260,7 @@ async function applyUserAndClientRecords(
       role_slug: record.role_slug,
     };
     if (plannedAction(plan, 'user_role_assignments', naturalKey) === 'skipped') continue;
-    const userId = userIds.get(
+    const userId = ids.userIds.get(
       key(normalizedSlug(record.organization_slug), normalizedEmail(record.email)),
     );
     const roleId = ids.roleIds.get(
@@ -282,7 +279,7 @@ async function applyUserAndClientRecords(
       claim_name: record.claim_name,
     };
     if (plannedAction(plan, 'user_claim_values', naturalKey) === 'skipped') continue;
-    const userId = userIds.get(
+    const userId = ids.userIds.get(
       key(normalizedSlug(record.organization_slug), normalizedEmail(record.email)),
     );
     const claimId = ids.claimIds.get(
@@ -304,9 +301,9 @@ async function applyUserAndClientRecords(
       record,
       organizationId,
       applicationId,
-      clientIds.get(record.client_id) ?? null,
+      ids.clientIds.get(record.client_id) ?? null,
     );
-    clientIds.set(record.client_id, written.id);
+    ids.clientIds.set(record.client_id, written.id);
     if (written.credential !== undefined) credentials.push(written.credential);
   }
 
@@ -316,8 +313,8 @@ async function applyUserAndClientRecords(
 /**
  * Validate and atomically apply one portability manifest.
  *
- * It applies the currently supported organization and application-authorization collections in
- * dependency order and returns the safe plan result from the same transaction snapshot.
+ * It applies every selected portable collection in dependency order, writes one content-free
+ * audit row, and returns the safe result only after the transaction commits.
  *
  * @param manifest - Complete manifest received from an import request
  * @param mode - Keep-existing or update-existing behavior
@@ -329,13 +326,40 @@ export async function applyPortabilityManifest(
   mode: Exclude<PortabilityImportMode, 'dry-run'>,
   actor: PortabilityActor,
 ): Promise<PortabilityResult> {
-  return runDatabaseTransaction(async () => {
-    void actor;
-    const plan = await buildResolvedPortabilityPlan(manifest, mode);
-    if (plan.result.errors.length > 0) {
-      throw new PortabilityError(409, 'import_plan_rejected', 'Import plan rejected', plan.result);
-    }
-    const ids = await applyAuthorizationRecords(plan);
-    return applyUserAndClientRecords(plan, ids);
-  });
+  try {
+    return await runDatabaseTransaction(async () => {
+      const plan = await buildResolvedPortabilityPlan(manifest, mode);
+      if (plan.result.errors.length > 0) {
+        throw new PortabilityError(
+          409,
+          'import_plan_rejected',
+          'Import plan rejected',
+          plan.result,
+        );
+      }
+      const ids = await applyAuthorizationRecords(plan);
+      const result = await applyUserAndClientRecords(plan, ids);
+      await registerPortabilityCleanup(plan, ids);
+      await writeAuditLogInTransaction(getPool(), {
+        organizationId:
+          plan.manifest.scope.kind === 'organization'
+            ? ids.organizationIds.get(normalizedSlug(plan.manifest.scope.organization_slug))
+            : actor.controlPlaneOrganizationId,
+        actorId: actor.userId,
+        eventType: 'admin.import',
+        eventCategory: 'admin',
+        metadata: {
+          manifest_version: plan.manifest.version,
+          sha256_digest: createHash('sha256').update(JSON.stringify(plan.manifest)).digest('hex'),
+          mode,
+          categories: plan.manifest.categories,
+          record_counts: plan.result.summary,
+        },
+      });
+      return result;
+    });
+  } catch (error) {
+    if (error instanceof PortabilityError) throw error;
+    throw new PortabilityError(503, 'import_execution_failed', 'Import failed');
+  }
 }
