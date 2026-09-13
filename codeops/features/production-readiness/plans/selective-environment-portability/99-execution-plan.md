@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 21:43
-> **Progress**: 17/60 tasks (28%)
+> **Last Updated**: 2026-09-13 22:39
+> **Progress**: 18/60 tasks (30%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -94,7 +94,7 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 > **Scope mode**: strict
 > **Expected modification set**: Phase 2 export specification and implementation tests,
 > portability repository/export modules and manifest route, this execution plan, phase review
-> evidence, and directly affected technical documentation.
+> evidence, repository structure inventory, and directly affected technical documentation.
 
 ### Step 2.1: Specification Tests
 
@@ -118,7 +118,7 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 **Reference**: [03-02 §Testing Requirements](03-02-portability-engine.md) · AR-6
 
 - [x] 2.3.1 Add export normalization, ordering, exclusion, and size-edge implementation tests — `packages/server/tests/unit/portability/export.impl.test.ts` ✅ (completed: 2026-09-13 21:43)
-- [ ] 2.3.2 Run focused server tests, `yarn test:structure`, and `yarn verify`
+- [x] 2.3.2 Run focused server tests, `yarn test:structure`, and `yarn verify` ✅ (completed: 2026-09-13 22:39; focused 7 files/79 tests, structure 104 tests, and full repository verification passed; one host-load timing failure was investigated without changing its security assertion, then all 5 timing cases and the complete rerun passed)
 
 **Deliverables:** deterministic selective manifest export, content-free audit, safe size failure, and
 retained report exports.
