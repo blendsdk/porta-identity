@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 21:12
-> **Progress**: 11/60 tasks (18%)
+> **Last Updated**: 2026-09-13 21:14
+> **Progress**: 12/60 tasks (20%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -102,7 +102,7 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 
 - [x] 2.1.1 [spec-author] Write export-engine specification tests ST-11–ST-18 and ST-37 — `packages/server/tests/unit/portability/portability-engine.spec.test.ts` ✅ (completed: 2026-09-13 21:04)
 - [x] 2.1.2 [spec-author] Write live export and audit round-trip cases for ST-11–ST-18 — `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts` ✅ (completed: 2026-09-13 21:12)
-- [ ] 2.1.3 Run the Phase 2 selectors and record the expected missing-export failures (red phase)
+- [x] 2.1.3 Run the Phase 2 selectors and record the expected missing-export failures (red phase) ✅ (completed: 2026-09-13 21:14; expected red: 2 suites, 20 tests, public export entry point unavailable)
 
 ### Step 2.2: Implementation
 
