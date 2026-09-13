@@ -132,6 +132,7 @@ export function handleError(err: unknown, verbose = false): never {
   // --- SDK Server Error (5xx) ---
   if (err instanceof PortaServerError) {
     printError(`Server error (${err.status}): ${err.message}`);
+    if (err.requestId) printError(`Request ID: ${err.requestId}`);
     if (verbose) printVerboseDetails(err);
     process.exit(EXIT_GENERAL_ERROR);
   }

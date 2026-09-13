@@ -70,7 +70,9 @@ describe('error-handler', () => {
 
   describe('handleError', () => {
     it('exits with code 3 for PortaValidationError', () => {
-      expect(() => handleError(new PortaValidationError({ error: 'Bad input', details: [] }))).toThrow();
+      expect(() =>
+        handleError(new PortaValidationError({ error: 'Bad input', details: [] })),
+      ).toThrow();
       expect(mockExit).toHaveBeenCalledWith(EXIT_VALIDATION_ERROR);
     });
 
@@ -102,6 +104,17 @@ describe('error-handler', () => {
     it('exits with code 1 for PortaServerError', () => {
       expect(() => handleError(new PortaServerError(500))).toThrow();
       expect(mockExit).toHaveBeenCalledWith(EXIT_GENERAL_ERROR);
+    });
+
+    it('prints a safe server request identifier when available', () => {
+      const requestId = '2ea48f51-e02e-4ff8-905d-713c616736f9';
+      const consoleErrorSpy = vi.spyOn(console, 'error');
+
+      expect(() => handleError(new PortaServerError(503, { request_id: requestId }))).toThrow();
+
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`Request ID: ${requestId}`),
+      );
     });
 
     it('exits with code 1 for generic PortaHttpError', () => {

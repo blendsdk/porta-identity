@@ -256,6 +256,12 @@ describe('PortaServerError', () => {
     const err = new PortaServerError(503);
     expect(err.message).toBe('Server error');
   });
+
+  it('exposes only a UUID-shaped server request identifier', () => {
+    const requestId = '2ea48f51-e02e-4ff8-905d-713c616736f9';
+    expect(new PortaServerError(503, { request_id: requestId }).requestId).toBe(requestId);
+    expect(new PortaServerError(503, { request_id: 'unsafe\nvalue' }).requestId).toBeNull();
+  });
 });
 
 // ── mapResponseToError ──────────────────────────────────────────
@@ -292,7 +298,9 @@ describe('mapResponseToError', () => {
   });
 
   it('maps 429 to PortaRateLimitError with Retry-After', () => {
-    const err = mapResponseToError(makeResponse(429, { error: 'slow down' }, { 'retry-after': '60' }));
+    const err = mapResponseToError(
+      makeResponse(429, { error: 'slow down' }, { 'retry-after': '60' }),
+    );
     expect(err).toBeInstanceOf(PortaRateLimitError);
     expect((err as PortaRateLimitError).retryAfter).toBe(60);
   });

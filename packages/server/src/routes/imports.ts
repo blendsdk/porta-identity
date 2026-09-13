@@ -1,8 +1,8 @@
 /**
  * Data import API routes.
  *
- * Provides admin endpoint for importing configuration from a JSON manifest.
- * Supports three modes: merge (skip existing), overwrite, and dry-run.
+ * Provides the Admin endpoint for previewing or atomically applying a strict portability manifest.
+ * Supports dry-run, keep-existing, and update-existing behavior.
  *
  * Route structure:
  *   POST /api/admin/import  — Import configuration manifest
@@ -10,24 +10,20 @@
  * @see 07-import-export-invitation.md
  */
 
-import Router from '@koa/router';
-import { z } from 'zod';
+import Router, { type RouterContext } from '@koa/router';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
-import { importData, importManifestSchema, ImportOperationError } from '../lib/data-import.js';
-
-// ---------------------------------------------------------------------------
-// Validation
-// ---------------------------------------------------------------------------
-
-const importRequestSchema = z
-  .object({
-    mode: z.enum(['merge', 'overwrite', 'dry-run']).default('dry-run'),
-    organizationId: z.string().uuid().optional(),
-    manifest: importManifestSchema,
-  })
-  .strict();
+import { logger } from '../lib/logger.js';
+import { applyPortabilityManifest } from '../portability/apply.js';
+import {
+  importManifestRequestSchema,
+  PortabilityError,
+  requirePortabilityAuthorization,
+  type ImportManifestRequest,
+  type PortabilityActor,
+} from '../portability/index.js';
+import { buildPortabilityPlan } from '../portability/plan.js';
 
 // ---------------------------------------------------------------------------
 // Router factory
@@ -40,41 +36,75 @@ const importRequestSchema = z
 export function createImportRouter(): Router {
   const router = new Router({ prefix: '/api/admin/import' });
 
+  router.use(async (ctx, next) => {
+    ctx.set('Cache-Control', 'no-store');
+    await next();
+  });
   router.use(requireAdminAuth());
 
   // -------------------------------------------------------------------------
   // POST / — Import configuration
   // -------------------------------------------------------------------------
   router.post('/', requirePermission(ADMIN_PERMISSIONS.IMPORT_WRITE), async (ctx) => {
-    try {
-      const body = importRequestSchema.parse(ctx.request.body);
-      const actorId = ctx.state.adminUser?.id;
-
-      const result = await importData(body.manifest, body.mode, actorId, body.organizationId);
-
-      ctx.body = result;
-    } catch (err) {
-      if (err instanceof z.ZodError) {
-        ctx.status = 400;
-        ctx.body = { error: 'Import manifest is invalid', code: 'import_manifest_invalid' };
-        return;
-      }
-      if (err instanceof ImportOperationError) {
-        ctx.status = err.status;
-        ctx.body = {
-          error: 'Import request could not be completed',
-          code: err.code,
-          correlationId: err.correlationId,
-        };
-        return;
-      }
-      ctx.status = 503;
-      ctx.body = {
-        error: 'Import request could not be completed',
-        code: 'import_execution_failed',
-      };
+    const parsed = importManifestRequestSchema.safeParse(ctx.request.body);
+    if (!parsed.success) {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid import manifest', code: 'import_manifest_invalid' };
+      return;
     }
+
+    await requirePortabilityAuthorization('import', () => parsed.data.manifest.categories)(
+      ctx,
+      async () => {
+        await handleManifestImport(ctx, parsed.data);
+      },
+    );
   });
 
   return router;
+}
+
+/** Preview or apply a validated manifest and expose only fixed safe failures. */
+async function handleManifestImport(
+  ctx: RouterContext,
+  request: ImportManifestRequest,
+): Promise<void> {
+  try {
+    ctx.body =
+      request.mode === 'dry-run'
+        ? await buildPortabilityPlan(request.manifest, request.mode)
+        : await applyPortabilityManifest(request.manifest, request.mode, portabilityActor(ctx));
+  } catch (error) {
+    if (error instanceof PortabilityError && error.code === 'import_plan_rejected') {
+      ctx.status = 409;
+      ctx.body = {
+        error: 'Import plan rejected',
+        code: error.code,
+        result: error.result,
+      };
+      return;
+    }
+    const requestId = ctx.state.requestId;
+    logger.error(
+      {
+        operation: 'import',
+        code: 'import_execution_failed',
+        request_id: requestId,
+        mode: request.mode,
+      },
+      'Portability import failed',
+    );
+    ctx.status = 503;
+    ctx.body = { error: 'Import failed', code: 'import_execution_failed', request_id: requestId };
+  }
+}
+
+/** Build the audit actor from the authenticated Admin identity. */
+function portabilityActor(ctx: RouterContext): PortabilityActor {
+  const adminUser = ctx.state.adminUser;
+  if (!adminUser) throw new Error('Admin identity is unavailable');
+  return {
+    userId: adminUser.id,
+    controlPlaneOrganizationId: adminUser.organizationId,
+  };
 }

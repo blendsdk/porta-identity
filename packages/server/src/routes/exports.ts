@@ -5,7 +5,8 @@
  * Exports exclude sensitive data (passwords, secrets, keys).
  *
  * Route structure:
- *   GET /api/admin/export/:entityType  — Export entity data
+ *   POST /api/admin/export/manifest    — Export a selective portability manifest
+ *   GET  /api/admin/export/:entityType — Export legacy report data
  *
  * Query parameters:
  *   format: 'json' | 'csv' (default: json)
@@ -17,13 +18,22 @@
  * @see 07-import-export-invitations.md
  */
 
-import Router from '@koa/router';
+import Router, { type RouterContext } from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { exportData, ExportOperationError } from '../lib/data-export.js';
 import type { ExportEntityType } from '../lib/data-export.js';
+import { logger } from '../lib/logger.js';
+import {
+  exportManifestRequestSchema,
+  PortabilityError,
+  requirePortabilityAuthorization,
+  type ExportManifestRequest,
+  type PortabilityActor,
+} from '../portability/index.js';
+import { exportPortabilityManifest } from '../portability/export.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -56,7 +66,24 @@ const ENTITY_PERMISSIONS: Record<string, string> = {
 export function createExportRouter(): Router {
   const router = new Router({ prefix: '/api/admin/export' });
 
+  router.use(async (ctx, next) => {
+    ctx.set('Cache-Control', 'no-store');
+    await next();
+  });
   router.use(requireAdminAuth());
+
+  router.post('/manifest', requirePermission(ADMIN_PERMISSIONS.EXPORT_READ), async (ctx) => {
+    const parsed = exportManifestRequestSchema.safeParse(ctx.request.body);
+    if (!parsed.success) {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid export request', code: 'export_request_invalid' };
+      return;
+    }
+
+    await requirePortabilityAuthorization('export', () => parsed.data.categories)(ctx, async () => {
+      await handleManifestExport(ctx, parsed.data);
+    });
+  });
 
   // -------------------------------------------------------------------------
   // GET /:entityType — Export data
@@ -106,4 +133,48 @@ export function createExportRouter(): Router {
   });
 
   return router;
+}
+
+/** Export a validated manifest and map only fixed safe failures to HTTP. */
+async function handleManifestExport(
+  ctx: RouterContext,
+  request: ExportManifestRequest,
+): Promise<void> {
+  try {
+    const actor = portabilityActor(ctx);
+    const result = await exportPortabilityManifest(request, actor);
+    ctx.set('Content-Disposition', `attachment; filename="${result.filename}"`);
+    ctx.type = 'application/json; charset=utf-8';
+    ctx.body = result.manifest;
+  } catch (error) {
+    if (error instanceof PortabilityError) {
+      if (error.code === 'export_manifest_too_large') {
+        ctx.status = 413;
+        ctx.body = { error: 'Export manifest is too large', code: error.code };
+        return;
+      }
+      if (error.code === 'export_scope_rejected') {
+        ctx.status = 409;
+        ctx.body = { error: 'Export scope rejected', code: error.code };
+        return;
+      }
+    }
+    const requestId = ctx.state.requestId;
+    logger.error(
+      { operation: 'export', code: 'export_failed', request_id: requestId },
+      'Portability export failed',
+    );
+    ctx.status = 503;
+    ctx.body = { error: 'Export failed', code: 'export_failed', request_id: requestId };
+  }
+}
+
+/** Build the audit actor from the authenticated Admin identity. */
+function portabilityActor(ctx: RouterContext): PortabilityActor {
+  const adminUser = ctx.state.adminUser;
+  if (!adminUser) throw new Error('Admin identity is unavailable');
+  return {
+    userId: adminUser.id,
+    controlPlaneOrganizationId: adminUser.organizationId,
+  };
 }
