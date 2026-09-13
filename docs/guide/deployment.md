@@ -160,50 +160,31 @@ Ensure `.env` is listed in `.gitignore` (it is by default in Porta). Never commi
 environment files containing real credentials.
 :::
 
-### Docker Secrets
+### Secret Injection
 
-For Docker Swarm deployments, use [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/)
-to inject sensitive values as files rather than environment variables:
+Porta reads sensitive configuration from its documented environment variables. Have the
+deployment platform or secret manager inject those values into the container environment before
+the process starts. For Docker Compose, reference values from the host environment or an
+uncommitted `.env` file:
 
 ```yaml
 services:
   porta:
     image: blendsdk/porta:latest
     environment:
-      # Non-secret configuration
       NODE_ENV: production
       ISSUER_BASE_URL: https://auth.example.com
-      # Read secrets from files mounted by Docker
-      DATABASE_URL_FILE: /run/secrets/database_url
-      COOKIE_KEYS_FILE: /run/secrets/cookie_keys
-      TWO_FACTOR_ENCRYPTION_KEY_FILE: /run/secrets/2fa_key
-    secrets:
-      - database_url
-      - cookie_keys
-      - 2fa_key
-
-secrets:
-  database_url:
-    external: true
-  cookie_keys:
-    external: true
-  2fa_key:
-    external: true
+      DATABASE_URL: ${DATABASE_URL}
+      COOKIE_KEYS: ${COOKIE_KEYS}
+      TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
+      SIGNING_KEY_ENCRYPTION_KEY: ${SIGNING_KEY_ENCRYPTION_KEY}
 ```
 
-Create the secrets before deploying:
-
-```bash
-# Create secrets in Docker Swarm
-echo "postgresql://porta:secret@postgres:5432/porta" | docker secret create database_url -
-echo "your-cookie-signing-key-here" | docker secret create cookie_keys -
-echo "0123456789abcdef..." | docker secret create 2fa_key -
-```
-
-::: tip
-Porta's Docker entrypoint supports the `_FILE` suffix convention — if `DATABASE_URL_FILE`
-is set, Porta reads the secret from that file path instead of the `DATABASE_URL` environment
-variable.
+::: warning
+Porta does not read `*_FILE` variables. A platform that mounts secrets as files must materialize
+their contents into the documented environment variables before starting Porta. The two
+encryption root keys must each contain exactly 64 hexadecimal characters and must have different
+values.
 :::
 
 ### Cloud Secret Managers

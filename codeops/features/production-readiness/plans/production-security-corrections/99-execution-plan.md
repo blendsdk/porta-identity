@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 04:05
+> **Last Updated**: 2026-09-13 04:16
 > **Progress**: 41/51 tasks (80%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
@@ -217,13 +217,21 @@ later migration is newest. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.2.5-r3.log
 
 ### Step 4.3: Final Security and Compatibility Gates
 
-- [ ] 4.3.1 Complete the final risk-derived review and resolve every critical/major finding, then checkpoint a clean committed revision
+- [~] 4.3.1 Complete the final risk-derived review and resolve every critical/major finding, then checkpoint a clean committed revision ⏳ (implemented: 2026-09-13 04:16)
 - [ ] 4.3.2 Run `yarn verify` and record evidence
 - [ ] 4.3.3 Run `yarn test:ui` and record evidence
 - [ ] 4.3.4 Run `yarn harness:test` and record evidence
 - [ ] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence
 - [ ] 4.3.6 Run `yarn assurance:compat --select p1-admin` from the clean committed checkpoint; inspect its registered exit taxonomy and record evidence
 - [ ] 4.3.7 Run `yarn docs:build` and record evidence
+
+**Initial Phase 4 review findings:** RV-4-001 / SA-4-001 identified the unsupported `*_FILE`
+production guidance and omitted signing-key root secret. The user accepted the smallest fix: remove
+the unsupported convention and document direct injection of both distinct root keys through the
+actual environment variables. The correction passed all four documentation contracts, 104
+structure tests, and the docs build. RV-4-002 (MINOR, report-only) notes that aggregate positive
+documentation assertions may let one named surface mask an omission in another. Remediation log:
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.1-fix.log`.
 
 ## Dependencies
 
