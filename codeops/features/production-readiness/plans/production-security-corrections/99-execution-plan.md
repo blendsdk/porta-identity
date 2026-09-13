@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 09:28
-> **Progress**: 46/51 tasks (90%)
+> **Last Updated**: 2026-09-13 09:33
+> **Progress**: 47/51 tasks (92%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -219,7 +219,7 @@ later migration is newest. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.2.5-r3.log
 
 - [x] 4.3.1 Complete the final risk-derived review and resolve every critical/major finding, then checkpoint a clean committed revision ✅ (completed: 2026-09-13 04:25)
 - [x] 4.3.2 Run `yarn verify` and record evidence ✅ (completed: 2026-09-13 09:28)
-- [ ] 4.3.3 Run `yarn test:ui` and record evidence
+- [x] 4.3.3 Run `yarn test:ui` and record evidence ✅ (completed: 2026-09-13 09:33)
 - [ ] 4.3.4 Run `yarn harness:test` and record evidence
 - [ ] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence
 - [ ] 4.3.6 Run `yarn assurance:compat --select p1-admin` from the clean committed checkpoint; inspect its registered exit taxonomy and record evidence
@@ -244,6 +244,9 @@ guides. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.3.1-rereview-fix.log`.
 typecheck, build, and 508 tests; CLI lint, typecheck, build, and 1,241 tests; server lint,
 typecheck, build, 3,155 unit, 456 integration, 127 E2E, and 241 penetration tests. Log:
 `/tmp/porta-rd01-exec.noLev5/verify-4.3.2.log`.
+
+**Browser evidence:** `yarn test:ui` passed all 133 Chromium tests. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.3-ui.log`.
 
 ## Dependencies
 
