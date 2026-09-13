@@ -165,7 +165,7 @@ enrollment, and bounded unsupported-configuration diagnostics. Log:
 **Phase verification evidence:** 204 focused unit, 42 integration, 10 E2E, and 34 penetration
 tests passed; server lint, typecheck, and build passed; structure passed 100/100 with the retained
 server test count at 301. Log: `/tmp/porta-rd01-exec.noLev5/verify-3.3.2.log`.
-- [ ] 3.3.3 Complete the risk-derived phase review and resolve every critical/major finding before checkpointing
+- [~] 3.3.3 Complete the risk-derived phase review and resolve every critical/major finding before checkpointing ⏳ (implemented: 2026-09-13 03:08)
 
 ## Phase 4: Production Configuration, Operations, Documentation, and Final Gates
 

@@ -282,7 +282,11 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
 async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const code = (body.code ?? '').trim();
-  const codeType = body.codeType ?? 'otp'; // 'otp', 'totp', or 'recovery'
+  const submittedCodeType = body.codeType;
+  const codeType =
+    submittedCodeType === 'totp' || submittedCodeType === 'recovery' || submittedCodeType === 'otp'
+      ? submittedCodeType
+      : 'otp';
   const submittedCsrf = body._csrf ?? '';
   const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 

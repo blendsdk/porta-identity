@@ -83,6 +83,8 @@ import { createTwoFactorRouter } from '../../../src/routes/two-factor.js';
 import { verifyCsrfToken } from '../../../src/auth/csrf.js';
 import { checkRateLimit } from '../../../src/auth/rate-limiter.js';
 import { renderPage } from '../../../src/auth/template-engine.js';
+import { writeAuditLog } from '../../../src/lib/audit-log.js';
+import { logger } from '../../../src/lib/logger.js';
 import {
   verifyOtp,
   verifyTotp,
@@ -325,6 +327,28 @@ describe('two-factor routes', () => {
         (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
           .interactionFinished,
       ).not.toHaveBeenCalled();
+    });
+
+    it('should replace an unrecognized code type before writing logs or audit data', async () => {
+      const sensitiveCodeType = 'SENSITIVE-UNTRUSTED-CODE-TYPE';
+      (verifyTotp as ReturnType<typeof vi.fn>).mockResolvedValueOnce(false);
+      const provider = createMockProvider(PENDING_TOTP);
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor',
+      );
+
+      const ctx = createMockCtx({ codeType: sensitiveCodeType });
+      await route!.stack[0](ctx as never, vi.fn());
+
+      const diagnosticOutput = JSON.stringify({
+        logger: (logger.debug as ReturnType<typeof vi.fn>).mock.calls,
+        audit: (writeAuditLog as ReturnType<typeof vi.fn>).mock.calls,
+      });
+      expect(diagnosticOutput).not.toContain(sensitiveCodeType);
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ description: '2FA verification failed (otp)' }),
+      );
     });
   });
 
