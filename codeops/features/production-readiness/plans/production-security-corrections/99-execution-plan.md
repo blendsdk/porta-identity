@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 10:15
-> **Progress**: 49/51 tasks (96%)
+> **Last Updated**: 2026-09-13 11:02
+> **Progress**: 50/51 tasks (98%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -222,7 +222,7 @@ later migration is newest. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.2.5-r3.log
 - [x] 4.3.3 Run `yarn test:ui` and record evidence ✅ (completed: 2026-09-13 09:33)
 - [x] 4.3.4 Run `yarn harness:test` and record evidence ✅ (completed: 2026-09-13 09:40)
 - [x] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence ✅ (completed: 2026-09-13 10:15)
-- [ ] 4.3.6 Run `yarn assurance:compat --select p1-admin` from the clean committed checkpoint; inspect its registered exit taxonomy and record evidence
+- [x] 4.3.6 Run `yarn assurance:compat --select p1-admin` from the clean committed checkpoint; inspect its registered exit taxonomy and record evidence ✅ (completed: 2026-09-13 11:02)
 - [ ] 4.3.7 Run `yarn docs:build` and record evidence
 
 **Initial Phase 4 review findings:** RV-4-001 / SA-4-001 identified the unsupported `*_FILE`
@@ -280,6 +280,20 @@ tenant/admin observations passed 17/17. The mode-0600 artifact records source co
 `f598512639146a6dbf4bc54067f62765702cae77`; cleanup left no matching containers or active run.
 Independent correctness and security reviews reported no findings. Log:
 `/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness-fixed.log`.
+
+**Packed compatibility correction and evidence:** the first clean `p1-admin` run truthfully
+recorded two product failures: the cursor-based SDK user list omitted its matching total, and the
+administrative session list exposed the Redis session bearer key. The runner also failed to return
+the registered product-failure exit. The user approved the smallest correction: return the user
+count, add a separate public UUID for administrative session reads and revocation, and map admitted
+product failures to exit 20. Malformed public session identifiers now return generic HTTP 400.
+Full verification passed with 104 structure tests; SDK 508 tests; CLI 1,241 tests; and server 3,165
+unit, 456 integration, 127 E2E, and 241 penetration tests. The independent correction re-review
+reported no findings. Clean run `4f07a64d-1ffb-42d8-9628-59065cf7ed9e` then passed all six packed
+SDK/CLI journeys with no forbidden output, exact package/image/source provenance for commit
+`ed9440f99acc3f8744ea7041ae9352e99858ab71`, a mode-0600 artifact, and complete cleanup. Logs:
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.6-product-fix-final.log` and
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.6-compat-fixed.log`.
 
 ## Dependencies
 
