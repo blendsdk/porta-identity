@@ -11,6 +11,7 @@
  */
 
 import Router, { type RouterContext } from '@koa/router';
+import bodyParser from 'koa-bodyparser';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
@@ -25,6 +26,42 @@ import {
 } from '../portability/index.js';
 import { buildPortabilityPlan } from '../portability/plan.js';
 
+/** Route-owned JSON parser used only after authentication and the base import permission. */
+const importManifestBodyParser = bodyParser({
+  enableTypes: ['json'],
+  jsonLimit: '64mb',
+});
+
+/** Return the public status carried by a body-parser error, when present. */
+function bodyParserStatus(error: unknown): number | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const status = Reflect.get(error, 'status');
+  return typeof status === 'number' ? status : undefined;
+}
+
+/** Parse one protected manifest body and map parser failures to fixed safe responses. */
+async function parseImportManifestBody(
+  ctx: RouterContext,
+  next: () => Promise<unknown>,
+): Promise<void> {
+  try {
+    await importManifestBodyParser(ctx, next);
+  } catch (error) {
+    const status = bodyParserStatus(error);
+    if (status === 413) {
+      ctx.status = 413;
+      ctx.body = { error: 'Import manifest is too large', code: 'import_manifest_too_large' };
+      return;
+    }
+    if (status === 400) {
+      ctx.status = 400;
+      ctx.body = { error: 'Invalid import manifest', code: 'import_manifest_invalid' };
+      return;
+    }
+    throw error;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -34,32 +71,36 @@ import { buildPortabilityPlan } from '../portability/plan.js';
  * @returns Configured Koa router
  */
 export function createImportRouter(): Router {
-  const router = new Router({ prefix: '/api/admin/import' });
-
-  router.use(async (ctx, next) => {
-    ctx.set('Cache-Control', 'no-store');
-    await next();
-  });
-  router.use(requireAdminAuth());
+  const router = new Router({ sensitive: false, strict: false });
 
   // -------------------------------------------------------------------------
   // POST / — Import configuration
   // -------------------------------------------------------------------------
-  router.post('/', requirePermission(ADMIN_PERMISSIONS.IMPORT_WRITE), async (ctx) => {
-    const parsed = importManifestRequestSchema.safeParse(ctx.request.body);
-    if (!parsed.success) {
-      ctx.status = 400;
-      ctx.body = { error: 'Invalid import manifest', code: 'import_manifest_invalid' };
-      return;
-    }
+  router.post(
+    '/api/admin/import',
+    async (ctx, next) => {
+      ctx.set('Cache-Control', 'no-store');
+      await next();
+    },
+    requireAdminAuth(),
+    requirePermission(ADMIN_PERMISSIONS.IMPORT_WRITE),
+    parseImportManifestBody,
+    async (ctx) => {
+      const parsed = importManifestRequestSchema.safeParse(ctx.request.body);
+      if (!parsed.success) {
+        ctx.status = 400;
+        ctx.body = { error: 'Invalid import manifest', code: 'import_manifest_invalid' };
+        return;
+      }
 
-    await requirePortabilityAuthorization('import', () => parsed.data.manifest.categories)(
-      ctx,
-      async () => {
-        await handleManifestImport(ctx, parsed.data);
-      },
-    );
-  });
+      await requirePortabilityAuthorization('import', () => parsed.data.manifest.categories)(
+        ctx,
+        async () => {
+          await handleManifestImport(ctx, parsed.data);
+        },
+      );
+    },
+  );
 
   return router;
 }
