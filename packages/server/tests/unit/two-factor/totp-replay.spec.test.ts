@@ -319,8 +319,8 @@ describe('password login interaction boundary', () => {
       email: 'person@example.test',
       status: 'active',
       hasPassword: true,
-      twoFactorEnabled: true,
-      twoFactorMethod: 'totp',
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
     };
     const prepare = vi.fn().mockResolvedValue(user);
     const verifyPassword = vi.fn().mockResolvedValue(true);
@@ -447,8 +447,8 @@ describe('password login interaction boundary', () => {
 
     expect(prepare).toHaveBeenCalledWith(organizationId, user.email);
     expect(verifyPassword).toHaveBeenCalledWith(user.id, 'valid-password');
-    expect(requires).toHaveBeenCalledWith(user, context.state.organization);
-    expect(determine).toHaveBeenCalledWith(user, context.state.organization);
+    expect(requires).toHaveBeenCalledWith(context.state.organization, user);
+    expect(determine).toHaveBeenCalledWith(context.state.organization, user);
     expect(events).toEqual(['prepare', 'policy']);
     expect(provider.interactionResult).toHaveBeenCalledWith(
       context.req,

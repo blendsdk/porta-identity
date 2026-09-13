@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 02:09
+> **Last Updated**: 2026-09-13 02:12
 > **Progress**: 18/51 tasks (35%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
@@ -86,10 +86,11 @@ TOTP types/utility/repository/service, named tests, this plan, review evidence, 
 - [x] 2.1.3 [spec-author] Write real PostgreSQL consume, concurrency, replacement, enrollment, rollback, and exact-row specifications from ST-12–ST-19 and ST-23 — `packages/server/tests/integration/security/totp-replay.spec.test.ts` ✅ (completed: 2026-09-13 02:07)
 - [x] 2.1.4 Run all three Phase 2 specification files and record their expected red results before implementation ✅ (completed: 2026-09-13 02:09)
 
-**Red evidence:** unit 22 failed / 1 passed; integration 8 failed. The failures cover the planned
+**Red evidence:** unit 21 failed / 2 passed; integration 8 failed. The failures cover the planned
 migration, absolute-step validation, fixed stored parameters, safe BIGINT mapping, exact-row
-conditional writes, transactional enrollment, replay/concurrency, replacement-row, and
-tenant-context behavior. Log: `/tmp/porta-rd01-exec.noLev5/verify-2.1.4-red.log`.
+conditional writes, transactional enrollment, replay/concurrency, and replacement-row behavior.
+The existing organization-scoped interaction boundary remains green. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-2.1.4-red.log`.
 
 ### Step 2.2: Implementation
 
