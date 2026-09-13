@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 21:39
-> **Progress**: 16/60 tasks (27%)
+> **Last Updated**: 2026-09-13 21:43
+> **Progress**: 17/60 tasks (28%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -117,7 +117,7 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 
 **Reference**: [03-02 §Testing Requirements](03-02-portability-engine.md) · AR-6
 
-- [ ] 2.3.1 Add export normalization, ordering, exclusion, and size-edge implementation tests — `packages/server/tests/unit/portability/export.impl.test.ts`
+- [x] 2.3.1 Add export normalization, ordering, exclusion, and size-edge implementation tests — `packages/server/tests/unit/portability/export.impl.test.ts` ✅ (completed: 2026-09-13 21:43)
 - [ ] 2.3.2 Run focused server tests, `yarn test:structure`, and `yarn verify`
 
 **Deliverables:** deterministic selective manifest export, content-free audit, safe size failure, and
