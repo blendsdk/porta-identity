@@ -15,6 +15,8 @@ import {
   verifyTotpCode,
 } from '../../../src/two-factor/totp.js';
 
+const TOTP_PARAMETERS = { algorithm: 'SHA1', digits: 6, period: 30 };
+
 describe('two-factor totp', () => {
   // -------------------------------------------------------------------------
   // generateTotpSecret
@@ -112,8 +114,9 @@ describe('two-factor totp', () => {
   // -------------------------------------------------------------------------
 
   describe('verifyTotpCode', () => {
-    it('should return true for a valid current TOTP code', () => {
+    it('should return the matched step for a valid current TOTP code', () => {
       const secret = generateTotpSecret();
+      const validationTime = Date.now();
 
       // Generate the current valid code using the same library
       const totp = new TOTP({
@@ -122,19 +125,22 @@ describe('two-factor totp', () => {
         period: 30,
         secret: Secret.fromBase32(secret),
       });
-      const validCode = totp.generate();
+      const validCode = totp.generate({ timestamp: validationTime });
 
-      expect(verifyTotpCode(validCode, secret)).toBe(true);
+      expect(verifyTotpCode(validCode, secret, TOTP_PARAMETERS, validationTime)).toEqual({
+        timeStep: Math.floor(validationTime / 30_000),
+      });
     });
 
-    it('should return false for an incorrect code', () => {
+    it('should return null for an incorrect code', () => {
       const secret = generateTotpSecret();
       // A code that is extremely unlikely to be valid
-      expect(verifyTotpCode('000000', secret)).toBe(false);
+      expect(verifyTotpCode('000000', secret, TOTP_PARAMETERS, Date.now())).toBeNull();
     });
 
     it('should accept codes within the ±1 step time window', () => {
       const secret = generateTotpSecret();
+      const validationTime = Date.now();
 
       // Generate code for the current time step
       const totp = new TOTP({
@@ -143,11 +149,11 @@ describe('two-factor totp', () => {
         period: 30,
         secret: Secret.fromBase32(secret),
       });
-      const currentCode = totp.generate();
+      const priorTime = validationTime - 30_000;
+      const priorCode = totp.generate({ timestamp: priorTime });
 
-      // The current code should be valid with window=1
-      const result = verifyTotpCode(currentCode, secret);
-      expect(result).toBe(true);
+      const result = verifyTotpCode(priorCode, secret, TOTP_PARAMETERS, validationTime);
+      expect(result).toEqual({ timeStep: Math.floor(priorTime / 30_000) });
     });
 
     it('should reject codes that are too far from current time', () => {
@@ -161,10 +167,11 @@ describe('two-factor totp', () => {
         secret: Secret.fromBase32(secret),
       });
       // Generate at a time 100 periods in the future
-      const futureTime = Math.floor(Date.now() / 1000) + 30 * 100;
-      const futureCode = totp.generate({ timestamp: futureTime * 1000 });
+      const validationTime = Date.now();
+      const futureTime = validationTime + 30_000 * 100;
+      const futureCode = totp.generate({ timestamp: futureTime });
 
-      expect(verifyTotpCode(futureCode, secret)).toBe(false);
+      expect(verifyTotpCode(futureCode, secret, TOTP_PARAMETERS, validationTime)).toBeNull();
     });
   });
 });
