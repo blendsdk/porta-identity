@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 02:39
-> **Progress**: 25/51 tasks (49%)
+> **Last Updated**: 2026-09-13 02:45
+> **Progress**: 26/51 tasks (51%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -107,7 +107,7 @@ The existing organization-scoped interaction boundary remains green. Log:
 
 - [x] 2.3.1 Update existing migration, type, and TOTP utility tests for changed internals — `packages/server/tests/unit/migrations.test.ts`, `packages/server/tests/unit/two-factor/types.test.ts`, `packages/server/tests/unit/two-factor/totp.test.ts` ✅ (completed: 2026-09-13 02:33)
 - [x] 2.3.2 Update existing repository and service tests for conditional consume and transactional enrollment — `packages/server/tests/unit/two-factor/repository.test.ts`, `packages/server/tests/unit/two-factor/service.test.ts` ✅ (completed: 2026-09-13 02:39)
-- [ ] 2.3.3 Add conditional-update and transaction-rollback implementation branches — `packages/server/tests/unit/two-factor/totp-replay.impl.test.ts`
+- [x] 2.3.3 Add conditional-update and transaction-rollback implementation branches — `packages/server/tests/unit/two-factor/totp-replay.impl.test.ts` ✅ (completed: 2026-09-13 02:45)
 - [ ] 2.3.4 Run focused Phase 2 unit/integration suites, server lint/typecheck/build, and `yarn test:structure`
 - [ ] 2.3.5 Complete the risk-derived phase review and resolve every critical/major finding before checkpointing
 
