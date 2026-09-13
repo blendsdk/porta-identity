@@ -39,12 +39,21 @@ import * as secretService from '../clients/secret-service.js';
 import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
 import * as organizationService from '../organizations/service.js';
 import type { Client } from '../clients/types.js';
-import { LOGIN_METHODS } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import {
   getDefaultGrantTypes,
+  clientApplicationTypeSchema,
+  clientGrantTypesSchema,
+  clientLoginMethodsSchema,
+  clientNameSchema,
+  clientResponseTypesSchema,
+  clientScopeSchema,
+  clientTypeSchema,
+  optionalClientUrisSchema,
+  redirectUrisSchema,
+  tokenEndpointAuthMethodSchema,
   validateClientProtocolCompatibility,
 } from '../clients/validators.js';
 
@@ -52,32 +61,12 @@ import {
 // Validation schemas
 // ---------------------------------------------------------------------------
 
-/**
- * Login method Zod schema — single source of truth for HTTP payload validation.
- * Uses the runtime `LOGIN_METHODS` const so adding a new method only requires
- * updating the union in `src/clients/types.ts`.
- */
-const loginMethodSchema = z.enum(LOGIN_METHODS);
-
-/**
- * Client-level login methods — three-state semantics at the HTTP boundary:
- *   - field omitted → undefined  (leave unchanged / use DB default on create)
- *   - `null`         → clear override, inherit org default
- *   - non-empty array → explicit override
- *
- * `.min(1)` rejects empty arrays (service layer also rejects but the 400
- * carries a useful validation message). `.nullable().optional()` allows
- * both `null` and absence.
- */
-const clientLoginMethodsSchema = z.array(loginMethodSchema).min(1).nullable();
-
 /** Return whether text contains a C0, DEL, or C1 control code point. */
 function containsControlCharacter(value: string): boolean {
   return Array.from(value).some((character) => {
     const codePoint = character.codePointAt(0);
     return (
-      codePoint !== undefined &&
-      (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
+      codePoint !== undefined && (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
     );
   });
 }
@@ -112,20 +101,16 @@ const createClientSchema = z
   .object({
     organizationId: z.string().uuid(),
     applicationId: z.string().uuid(),
-    clientName: z.string().min(1).max(255),
-    clientType: z.enum(['confidential', 'public']),
-    applicationType: z.enum(['web', 'native', 'spa']),
-    redirectUris: z.array(z.string().url()).min(1).max(10),
-    postLogoutRedirectUris: z.array(z.string().url()).max(10).optional(),
-    grantTypes: z
-      .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
-      .optional(),
-    responseTypes: z.array(z.literal('code')).optional(),
-    scope: z.string().optional(),
-    tokenEndpointAuthMethod: z
-      .enum(['client_secret_basic', 'client_secret_post', 'none'])
-      .optional(),
-    allowedOrigins: z.array(z.string().url()).max(10).optional(),
+    clientName: clientNameSchema,
+    clientType: clientTypeSchema,
+    applicationType: clientApplicationTypeSchema,
+    redirectUris: redirectUrisSchema,
+    postLogoutRedirectUris: optionalClientUrisSchema.optional(),
+    grantTypes: clientGrantTypesSchema.optional(),
+    responseTypes: clientResponseTypesSchema.optional(),
+    scope: clientScopeSchema.optional(),
+    tokenEndpointAuthMethod: tokenEndpointAuthMethodSchema.optional(),
+    allowedOrigins: optionalClientUrisSchema.optional(),
     requirePkce: z.boolean().optional(),
     loginMethods: clientLoginMethodsSchema.optional(),
     secretLabel: secretLabelSchema.optional(),
@@ -149,14 +134,14 @@ const createClientSchema = z
 
 /** Schema for updating a client (all fields optional) */
 const updateClientSchema = z.object({
-  clientName: z.string().min(1).max(255).optional(),
-  redirectUris: z.array(z.string().url()).min(1).max(10).optional(),
-  postLogoutRedirectUris: z.array(z.string().url()).max(10).optional(),
-  grantTypes: z.array(z.string()).optional(),
-  responseTypes: z.array(z.string()).optional(),
-  scope: z.string().optional(),
-  tokenEndpointAuthMethod: z.enum(['client_secret_basic', 'client_secret_post', 'none']).optional(),
-  allowedOrigins: z.array(z.string().url()).optional(),
+  clientName: clientNameSchema.optional(),
+  redirectUris: redirectUrisSchema.optional(),
+  postLogoutRedirectUris: optionalClientUrisSchema.optional(),
+  grantTypes: clientGrantTypesSchema.optional(),
+  responseTypes: clientResponseTypesSchema.optional(),
+  scope: clientScopeSchema.optional(),
+  tokenEndpointAuthMethod: tokenEndpointAuthMethodSchema.optional(),
+  allowedOrigins: optionalClientUrisSchema.optional(),
   requirePkce: z.boolean().optional(),
   loginMethods: clientLoginMethodsSchema.optional(),
 });

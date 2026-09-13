@@ -46,6 +46,18 @@ import { getOrganizationById } from '../organizations/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData } from '../users/gdpr.js';
 import * as userService from '../users/service.js';
+import {
+  userBirthdateSchema,
+  userCountrySchema,
+  userEmailSchema,
+  userGenderSchema,
+  userLocaleSchema,
+  userPhoneNumberSchema,
+  userPostalCodeSchema,
+  userProfileNameSchema,
+  userProfileUrlSchema,
+  userZoneinfoSchema,
+} from '../users/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -53,63 +65,56 @@ import * as userService from '../users/service.js';
 
 /** Schema for creating a new user */
 const createUserSchema = z.object({
-  email: z.string().email().max(255),
+  email: userEmailSchema,
   password: z.string().min(8).max(128).optional(),
-  givenName: z.string().max(255).optional(),
-  familyName: z.string().max(255).optional(),
-  middleName: z.string().max(255).optional(),
-  nickname: z.string().max(255).optional(),
-  preferredUsername: z.string().max(255).optional(),
-  profileUrl: z.string().url().optional(),
-  pictureUrl: z.string().url().optional(),
-  websiteUrl: z.string().url().optional(),
-  gender: z.string().max(50).optional(),
-  birthdate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  zoneinfo: z.string().max(50).optional(),
-  locale: z.string().max(10).optional(),
-  phoneNumber: z.string().max(50).optional(),
+  givenName: userProfileNameSchema.optional(),
+  familyName: userProfileNameSchema.optional(),
+  middleName: userProfileNameSchema.optional(),
+  nickname: userProfileNameSchema.optional(),
+  preferredUsername: userProfileNameSchema.optional(),
+  profileUrl: userProfileUrlSchema.optional(),
+  pictureUrl: userProfileUrlSchema.optional(),
+  websiteUrl: userProfileUrlSchema.optional(),
+  gender: userGenderSchema.optional(),
+  birthdate: userBirthdateSchema.optional(),
+  zoneinfo: userZoneinfoSchema.optional(),
+  locale: userLocaleSchema.optional(),
+  phoneNumber: userPhoneNumberSchema.optional(),
   phoneNumberVerified: z.boolean().optional(),
   address: z
     .object({
       street: z.string().nullable().optional(),
-      locality: z.string().max(255).nullable().optional(),
-      region: z.string().max(255).nullable().optional(),
-      postalCode: z.string().max(20).nullable().optional(),
-      country: z.string().length(2).nullable().optional(),
+      locality: userProfileNameSchema.nullable().optional(),
+      region: userProfileNameSchema.nullable().optional(),
+      postalCode: userPostalCodeSchema.nullable().optional(),
+      country: userCountrySchema.nullable().optional(),
     })
     .optional(),
 });
 
 /** Schema for updating a user (all fields optional, nullable for clearing) */
 const updateUserSchema = z.object({
-  givenName: z.string().max(255).nullable().optional(),
-  familyName: z.string().max(255).nullable().optional(),
-  middleName: z.string().max(255).nullable().optional(),
-  nickname: z.string().max(255).nullable().optional(),
-  preferredUsername: z.string().max(255).nullable().optional(),
-  profileUrl: z.string().url().nullable().optional(),
-  pictureUrl: z.string().url().nullable().optional(),
-  websiteUrl: z.string().url().nullable().optional(),
-  gender: z.string().max(50).nullable().optional(),
-  birthdate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
-  zoneinfo: z.string().max(50).nullable().optional(),
-  locale: z.string().max(10).nullable().optional(),
-  phoneNumber: z.string().max(50).nullable().optional(),
+  givenName: userProfileNameSchema.nullable().optional(),
+  familyName: userProfileNameSchema.nullable().optional(),
+  middleName: userProfileNameSchema.nullable().optional(),
+  nickname: userProfileNameSchema.nullable().optional(),
+  preferredUsername: userProfileNameSchema.nullable().optional(),
+  profileUrl: userProfileUrlSchema.nullable().optional(),
+  pictureUrl: userProfileUrlSchema.nullable().optional(),
+  websiteUrl: userProfileUrlSchema.nullable().optional(),
+  gender: userGenderSchema.nullable().optional(),
+  birthdate: userBirthdateSchema.nullable().optional(),
+  zoneinfo: userZoneinfoSchema.nullable().optional(),
+  locale: userLocaleSchema.nullable().optional(),
+  phoneNumber: userPhoneNumberSchema.nullable().optional(),
   phoneNumberVerified: z.boolean().optional(),
   address: z
     .object({
       street: z.string().nullable().optional(),
-      locality: z.string().max(255).nullable().optional(),
-      region: z.string().max(255).nullable().optional(),
-      postalCode: z.string().max(20).nullable().optional(),
-      country: z.string().length(2).nullable().optional(),
+      locality: userProfileNameSchema.nullable().optional(),
+      region: userProfileNameSchema.nullable().optional(),
+      postalCode: userPostalCodeSchema.nullable().optional(),
+      country: userCountrySchema.nullable().optional(),
     })
     .nullable()
     .optional(),

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 18:14
-> **Progress**: 3/60 tasks (5%)
+> **Last Updated**: 2026-09-13 18:31
+> **Progress**: 4/60 tasks (7%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -66,7 +66,7 @@ with immutable specification tests and a recorded red phase. (AR-1, AR-2, AR-6)
 
 **Reference**: [03-01 §Public Types and Schemas](03-01-server-contract.md) · [03-01 §Authorization](03-01-server-contract.md) · AR-1, AR-2
 
-- [ ] 1.2.1 Add exact manifest/result types and strict Zod schemas; extract only shared field validators into existing domain areas and make ordinary routes consume them — `packages/server/src/portability/types.ts`, `packages/server/src/portability/schema.ts`, `packages/server/src/portability/index.ts`, `packages/server/src/organizations/validators.ts`, `packages/server/src/applications/validators.ts`, `packages/server/src/users/validators.ts`, `packages/server/src/clients/validators.ts`, and the four affected route modules
+- [x] 1.2.1 Add exact manifest/result types and strict Zod schemas; extract only shared field validators into existing domain areas and make ordinary routes consume them — `packages/server/src/portability/types.ts`, `packages/server/src/portability/schema.ts`, `packages/server/src/portability/index.ts`, `packages/server/src/organizations/validators.ts`, `packages/server/src/applications/validators.ts`, `packages/server/src/users/validators.ts`, `packages/server/src/clients/validators.ts`, and the four affected route modules ✅ (completed: 2026-09-13 18:31)
 - [ ] 1.2.2 Add the closed category-permission and exact-super-admin authorization helper — `packages/server/src/portability/authorization.ts`, `packages/server/src/lib/admin-permissions.ts`
 - [ ] 1.2.3 Correct export/import routes with the exact status/code/body contract, existing request-ID correlation, content-free 503 logging, and safe consumer diagnostics — `packages/server/src/routes/exports.ts`, `packages/server/src/routes/imports.ts`, affected SDK/CLI/Admin UI error adapters
 - [ ] 1.2.4 Exclude every router-accepted import POST path variant from the standard parser and mount the protected 64 MiB parser — `packages/server/src/server.ts`, `packages/server/src/routes/imports.ts`
