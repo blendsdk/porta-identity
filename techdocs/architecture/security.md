@@ -102,12 +102,12 @@ active row so concurrent requests cannot both report the same transition.
 
 TOTP secrets are encrypted at rest using AES-256-GCM:
 
-| Property       | Value                                   |
-| -------------- | --------------------------------------- |
-| Algorithm      | AES-256-GCM                             |
-| Key Source     | `TWO_FACTOR_ENCRYPTION_KEY` (32-byte hex value) |
-| IV             | Random 12 bytes per encryption          |
-| Auth Tag       | 16 bytes, stored alongside ciphertext   |
+| Property   | Value                                           |
+| ---------- | ----------------------------------------------- |
+| Algorithm  | AES-256-GCM                                     |
+| Key Source | `TWO_FACTOR_ENCRYPTION_KEY` (32-byte hex value) |
+| IV         | Random 12 bytes per encryption                  |
+| Auth Tag   | 16 bytes, stored alongside ciphertext           |
 
 Recovery codes are hashed with Argon2id — never stored in plaintext.
 
@@ -116,6 +116,18 @@ parameters and one captured timestamp to identify the matched absolute time step
 atomically advances the exact verified configuration row only when that step is newer than the
 stored value. The first enrollment step and the user's enabled state commit in one transaction;
 invalid, repeated, concurrent, replaced-row, or stale attempts do not advance replay state.
+
+The login and TOTP-enrollment routes present all invalid or replayed codes through the same
+localized invalid-code result and never retry a failed consume. Both routes share the resolved
+organization/user `2fa_verify` budget. An exhausted enrollment request returns `429` with
+`Retry-After` while reusing the pending secret and QR data; it does not generate replacement
+credentials or recovery codes. Email enrollment returns before this TOTP-specific check.
+
+Persisted TOTP parameters outside the supported contract produce the existing login or enrollment
+page with a generic localized `503` message. The only diagnostic is the fixed
+`totp-configuration-unsupported` event; stored parameters, codes, secrets, replay steps,
+cryptographic fields, and caught errors are not logged or returned. Submitted code-type values are
+limited to `otp`, `totp`, or `recovery` before they can enter diagnostics or audit descriptions.
 
 ## Authentication Flows
 
@@ -296,13 +308,13 @@ Cross-tenant requests are impossible because:
 
 Authentication endpoints are protected by sliding-window rate limiting:
 
-| Endpoint           | Rate Limit   | Window            |
-| ------------------ | ------------ | ----------------- |
-| Login (password)   | Configurable | Sliding window    |
-| Magic link request | Configurable | Sliding window    |
-| Password reset     | Configurable | Sliding window    |
-| 2FA verification   | Configurable | Sliding window    |
-| Email OTP          | Configurable | Per-user cooldown |
+| Endpoint                             | Rate Limit   | Window                                   |
+| ------------------------------------ | ------------ | ---------------------------------------- |
+| Login (password)                     | Configurable | Sliding window                           |
+| Magic link request                   | Configurable | Sliding window                           |
+| Password reset                       | Configurable | Sliding window                           |
+| 2FA verification and TOTP enrollment | 5 attempts   | 5 minutes per resolved organization/user |
+| Email OTP                            | Configurable | Per-user cooldown                        |
 
 **Implementation** (`packages/server/src/auth/rate-limiter.ts`):
 
