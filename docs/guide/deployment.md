@@ -191,31 +191,26 @@ values.
 
 For cloud deployments, use your provider's secret management service:
 
-| Provider  | Service                                                            | Inject Via                                                  |
-| --------- | ------------------------------------------------------------------ | ----------------------------------------------------------- |
-| **AWS**   | [Secrets Manager](https://aws.amazon.com/secrets-manager/)         | ECS task definition `secrets` block, or Lambda env from SSM |
-| **GCP**   | [Secret Manager](https://cloud.google.com/secret-manager)          | Cloud Run `--set-secrets`, or GKE volume mount              |
-| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault references, or AKS CSI driver         |
+| Provider  | Service                                                            | Inject Via                                   |
+| --------- | ------------------------------------------------------------------ | -------------------------------------------- |
+| **AWS**   | [Secrets Manager](https://aws.amazon.com/secrets-manager/)         | ECS task definition environment secrets      |
+| **GCP**   | [Secret Manager](https://cloud.google.com/secret-manager)          | Cloud Run or GKE Secret environment values   |
+| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault environment references |
 
-Each service supports automatic rotation and audit logging. Refer to your provider's
-documentation for integration details.
+Refer to your provider's documentation for environment injection and audit capabilities.
 
 ### HashiCorp Vault
 
 For self-hosted or multi-cloud setups, [HashiCorp Vault](https://www.vaultproject.io/)
 provides centralised secret management:
 
-**Agent sidecar pattern** (recommended for containers):
+Use `vault kv get` or [envconsul](https://github.com/hashicorp/envconsul) to populate Porta's
+documented environment variables before starting the process. This must include distinct
+`SIGNING_KEY_ENCRYPTION_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` values. For example:
 
-1. Run a Vault Agent sidecar alongside Porta
-2. The agent authenticates to Vault, fetches secrets, and writes them to a shared volume
-3. Porta reads secrets from the file paths via the `_FILE` env var convention
-
-**Environment injection pattern** (simpler for VMs):
-
-1. Use `vault kv get` or [envconsul](https://github.com/hashicorp/envconsul) to inject
-   secrets as environment variables before starting Porta
-2. Example: `envconsul -prefix porta/config ./start.sh`
+```bash
+envconsul -prefix porta/config ./start.sh
+```
 
 ## Database
 
