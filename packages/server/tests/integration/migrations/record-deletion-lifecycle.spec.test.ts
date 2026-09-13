@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { PoolClient } from 'pg';
 import { describe, expect, it } from 'vitest';
@@ -40,23 +40,17 @@ const ROLE_DELETE_PERMISSIONS = new Map<string, readonly string[]>([
   ['porta-auditor', []],
 ]);
 
-/** Up and Down sections of the newest ordered migration. */
+/** Up and Down sections of the record-deletion lifecycle migration. */
 interface MigrationSql {
   readonly name: string;
   readonly up: string;
   readonly down: string;
 }
 
-/** Read the newest ordered SQL migration without applying it again. */
-async function newestMigrationSql(): Promise<MigrationSql> {
-  const migrationsDirectory = join(process.cwd(), 'migrations');
-  const names = (await readdir(migrationsDirectory))
-    .filter((name) => /^\d+_.+\.sql$/.test(name))
-    .sort();
-  const name = names.at(-1);
-  if (name === undefined) throw new Error('No ordered SQL migration was found');
-
-  const sql = await readFile(join(migrationsDirectory, name), 'utf8');
+/** Read the migration owned by this specification without coupling it to later migrations. */
+async function recordDeletionMigrationSql(): Promise<MigrationSql> {
+  const name = '025_record_deletion_lifecycle.sql';
+  const sql = await readFile(join(process.cwd(), 'migrations', name), 'utf8');
   const marker = '-- Down Migration';
   const markerIndex = sql.indexOf(marker);
   if (markerIndex < 0) throw new Error(`${name} has no Down Migration section`);
@@ -350,8 +344,8 @@ describe('record deletion lifecycle migration specification', () => {
   });
 
   // The forward migration changes schema only; normal init remains the sole permission owner.
-  it('ST-05 keeps the newest migration forward-only and free of permission seeding', async () => {
-    const migration = await newestMigrationSql();
+  it('ST-05 keeps the record-deletion migration forward-only and free of permission seeding', async () => {
+    const migration = await recordDeletionMigrationSql();
 
     expect(Number.parseInt(migration.name, 10)).toBeGreaterThan(24);
     expect(migration.up).not.toMatch(/INSERT\s+INTO\s+(?:permissions|role_permissions)\b/i);

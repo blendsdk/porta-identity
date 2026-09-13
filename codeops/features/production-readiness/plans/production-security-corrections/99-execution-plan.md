@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 03:51
+> **Last Updated**: 2026-09-13 04:05
 > **Progress**: 41/51 tasks (80%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
@@ -207,7 +207,13 @@ of automatic steady-state migration recommendations. Log:
 - [x] 4.2.2 Add successful generate/rotate restart and verification guidance and update existing CLI tests — `packages/cli/src/commands/keys.ts`, `packages/cli/tests/commands/keys.test.ts` ✅ (completed: 2026-09-13 03:32)
 - [x] 4.2.3 Correct production secret and restart guidance — `README.md`, `docs/guide/environment.md`, `docs/guide/deployment.md` ✅ (completed: 2026-09-13 03:41)
 - [x] 4.2.4 Correct conventional CLI, production Docker, and migration guidance — `docs/cli/infrastructure.md`, `docker/DOCKERHUB.md`, `docs/database/migrations.md` ✅ (completed: 2026-09-13 03:51)
-- [ ] 4.2.5 Run ST-24–ST-28, affected workspace verification, `yarn test:structure`, and `yarn docs:build`; make all immutable expectations green
+- [x] 4.2.5 Run ST-24–ST-28, affected workspace verification, `yarn test:structure`, and `yarn docs:build`; make all immutable expectations green ✅ (completed: 2026-09-13 04:05)
+
+**Green evidence:** ST-24–ST-28 passed; server lint, typecheck, build, 3,155 unit, 456
+integration, 127 E2E, and 241 pentest tests passed; CLI lint, typecheck, build, and 1,241 tests
+passed; all 104 structure tests and the public documentation build passed. The migration lifecycle
+spec now reads its owned migration 025 directly instead of coupling its assertions to whichever
+later migration is newest. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.2.5-r3.log`.
 
 ### Step 4.3: Final Security and Compatibility Gates
 
