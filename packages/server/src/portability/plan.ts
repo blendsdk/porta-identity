@@ -326,11 +326,13 @@ export async function buildResolvedPortabilityPlan(
   }
 
   const rolePermissionEdges = new Set(
-    snapshot.rolePermissions.map((row) =>
-      key(
-        normalizedSlug(row.application_slug),
-        normalizedRbac(row.role_slug),
-        normalizedRbac(row.permission_slug),
+    snapshot.rolePermissions.flatMap((row) =>
+      row.permission_slugs.map((permissionSlug) =>
+        key(
+          normalizedSlug(row.application_slug),
+          normalizedRbac(row.role_slug),
+          normalizedRbac(permissionSlug),
+        ),
       ),
     ),
   );

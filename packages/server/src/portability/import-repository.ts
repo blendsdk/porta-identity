@@ -1,5 +1,6 @@
 /** Explicit PostgreSQL reads used to plan selective portability imports. */
 
+import { randomUUID } from 'node:crypto';
 import { getPool } from '../lib/database.js';
 import type {
   PortabilityApplication,
@@ -83,14 +84,14 @@ export interface ImportClaimDefinitionRow extends PortabilityClaimDefinition {
   readonly application_id: string;
 }
 
-/** One existing role-to-permission edge, qualified by public natural keys. */
+/** Existing role-to-permission edges aggregated for one public role natural key. */
 export interface ImportRolePermissionRow {
   /** Owning application slug. */
   readonly application_slug: string;
   /** Role claim value. */
   readonly role_slug: string;
-  /** Permission claim value. */
-  readonly permission_slug: string;
+  /** Existing permission claim values for this role. */
+  readonly permission_slugs: readonly string[];
 }
 
 /** Destination user fields plus internal ownership identifiers. */
@@ -216,12 +217,14 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
        JOIN applications a ON a.id = c.application_id`,
   );
   const rolePermissions = await pool.query<ImportRolePermissionRow>(
-    `SELECT a.slug AS application_slug, r.slug AS role_slug, p.slug AS permission_slug
+    `SELECT a.slug AS application_slug, r.slug AS role_slug,
+            ARRAY_AGG(p.slug ORDER BY BTRIM(p.slug) COLLATE "C") AS permission_slugs
        FROM role_permissions rp
        JOIN roles r ON r.id = rp.role_id
        JOIN permissions p ON p.id = rp.permission_id
        JOIN applications a ON a.id = r.application_id
-      WHERE p.application_id = r.application_id`,
+      WHERE p.application_id = r.application_id
+      GROUP BY a.slug, r.slug`,
   );
   const users = await pool.query<ImportUserRow>(
     `SELECT u.id, u.organization_id, o.slug AS organization_slug, u.email::text AS email,
@@ -279,4 +282,251 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
     userClaimValues: userClaimValues.rows,
     clients: clients.rows,
   };
+}
+
+/**
+ * Insert or update one organization and its optional branding assets.
+ *
+ * @param record - Strict portable organization fields
+ * @param destinationId - Existing identifier for update, or null for create
+ * @returns Authoritative destination identifier
+ */
+export async function writePortabilityOrganization(
+  record: PortabilityOrganization,
+  destinationId: string | null,
+): Promise<string> {
+  const pool = getPool();
+  const authoritativeId = destinationId ?? randomUUID();
+  const values = [
+    record.name,
+    record.status,
+    record.default_locale,
+    record.default_login_methods,
+    record.two_factor_policy,
+    record.branding.logo_url,
+    record.branding.favicon_url,
+    record.branding.primary_color,
+    record.branding.company_name,
+    record.branding.custom_css,
+  ];
+  const result =
+    destinationId === null
+      ? await pool.query<{ id: string }>(
+          `INSERT INTO organizations
+           (id, name, status, default_locale, default_login_methods, two_factor_policy,
+            branding_logo_url, branding_favicon_url, branding_primary_color,
+            branding_company_name, branding_custom_css, slug)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+          [authoritativeId, ...values, record.slug],
+        )
+      : await pool.query<{ id: string }>(
+          `UPDATE organizations SET name = $1, status = $2, default_locale = $3,
+                default_login_methods = $4, two_factor_policy = $5, branding_logo_url = $6,
+                branding_favicon_url = $7, branding_primary_color = $8,
+                branding_company_name = $9, branding_custom_css = $10, updated_at = NOW()
+          WHERE id = $11 RETURNING id`,
+          [...values, destinationId],
+        );
+  const organizationId = result.rows[0]?.id ?? authoritativeId;
+
+  for (const assetType of ['logo', 'favicon'] as const) {
+    const asset = assetType === 'logo' ? record.branding.logo_asset : record.branding.favicon_asset;
+    if (asset === null) {
+      await pool.query(
+        'DELETE FROM branding_assets WHERE organization_id = $1 AND asset_type = $2',
+        [organizationId, assetType],
+      );
+    } else {
+      const data = Buffer.from(asset.content_base64, 'base64');
+      await pool.query(
+        `INSERT INTO branding_assets
+           (organization_id, asset_type, file_name, content_type, file_size, data)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         ON CONFLICT (organization_id, asset_type) DO UPDATE
+         SET file_name = EXCLUDED.file_name, content_type = EXCLUDED.content_type,
+             file_size = EXCLUDED.file_size, data = EXCLUDED.data, updated_at = NOW()`,
+        [organizationId, assetType, `imported-${assetType}`, asset.media_type, data.length, data],
+      );
+    }
+  }
+  return organizationId;
+}
+
+/**
+ * @param record - Strict portable application fields
+ * @param destinationId - Existing identifier for update, or null for create
+ * @returns Authoritative destination identifier
+ */
+export async function writePortabilityApplication(
+  record: PortabilityApplication,
+  destinationId: string | null,
+): Promise<string> {
+  const authoritativeId = destinationId ?? randomUUID();
+  const result =
+    destinationId === null
+      ? await getPool().query<{ id: string }>(
+          `INSERT INTO applications (id, slug, name, description, status)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [authoritativeId, record.slug, record.name, record.description, record.status],
+        )
+      : await getPool().query<{ id: string }>(
+          `UPDATE applications SET name = $1, description = $2, status = $3, updated_at = NOW()
+          WHERE id = $4 RETURNING id`,
+          [record.name, record.description, record.status, destinationId],
+        );
+  return result.rows[0]?.id ?? authoritativeId;
+}
+
+/**
+ * @param record - Strict portable module fields
+ * @param applicationId - Resolved parent application identifier
+ * @param destinationId - Existing identifier for update, or null for create
+ * @returns Authoritative destination identifier
+ */
+export async function writePortabilityModule(
+  record: PortabilityApplicationModule,
+  applicationId: string,
+  destinationId: string | null,
+): Promise<string> {
+  const authoritativeId = destinationId ?? randomUUID();
+  const result =
+    destinationId === null
+      ? await getPool().query<{ id: string }>(
+          `INSERT INTO application_modules (id, application_id, slug, name, description, status)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [
+            authoritativeId,
+            applicationId,
+            record.slug,
+            record.name,
+            record.description,
+            record.status,
+          ],
+        )
+      : await getPool().query<{ id: string }>(
+          `UPDATE application_modules SET name = $1, description = $2, status = $3,
+                updated_at = NOW() WHERE id = $4 RETURNING id`,
+          [record.name, record.description, record.status, destinationId],
+        );
+  return result.rows[0]?.id ?? authoritativeId;
+}
+
+/**
+ * @param record - Strict portable role fields
+ * @param applicationId - Resolved parent application identifier
+ * @param destinationId - Existing identifier for update, or null for create
+ * @returns Authoritative destination identifier
+ */
+export async function writePortabilityRole(
+  record: PortabilityRole,
+  applicationId: string,
+  destinationId: string | null,
+): Promise<string> {
+  const authoritativeId = destinationId ?? randomUUID();
+  const result =
+    destinationId === null
+      ? await getPool().query<{ id: string }>(
+          `INSERT INTO roles (id, application_id, slug, name, description)
+         VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [authoritativeId, applicationId, record.slug, record.name, record.description],
+        )
+      : await getPool().query<{ id: string }>(
+          `UPDATE roles SET name = $1, description = $2, updated_at = NOW()
+          WHERE id = $3 RETURNING id`,
+          [record.name, record.description, destinationId],
+        );
+  return result.rows[0]?.id ?? authoritativeId;
+}
+
+/**
+ * @param record - Strict portable permission fields
+ * @param applicationId - Resolved parent application identifier
+ * @param moduleId - Resolved optional module identifier
+ * @param destinationId - Existing identifier for update, or null for create
+ * @returns Authoritative destination identifier
+ */
+export async function writePortabilityPermission(
+  record: PortabilityPermission,
+  applicationId: string,
+  moduleId: string | null,
+  destinationId: string | null,
+): Promise<string> {
+  const authoritativeId = destinationId ?? randomUUID();
+  const result =
+    destinationId === null
+      ? await getPool().query<{ id: string }>(
+          `INSERT INTO permissions (id, application_id, module_id, slug, name, description)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+          [authoritativeId, applicationId, moduleId, record.slug, record.name, record.description],
+        )
+      : await getPool().query<{ id: string }>(
+          `UPDATE permissions SET name = $1, description = $2
+          WHERE id = $3 RETURNING id`,
+          [record.name, record.description, destinationId],
+        );
+  return result.rows[0]?.id ?? authoritativeId;
+}
+
+/**
+ * @param record - Strict portable claim-definition fields
+ * @param applicationId - Resolved parent application identifier
+ * @param destinationId - Existing identifier for update, or null for create
+ * @returns Authoritative destination identifier
+ */
+export async function writePortabilityClaimDefinition(
+  record: PortabilityClaimDefinition,
+  applicationId: string,
+  destinationId: string | null,
+): Promise<string> {
+  const authoritativeId = destinationId ?? randomUUID();
+  const result =
+    destinationId === null
+      ? await getPool().query<{ id: string }>(
+          `INSERT INTO custom_claim_definitions
+           (id, application_id, claim_name, claim_type, description, include_in_id_token,
+            include_in_access_token, include_in_userinfo)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+          [
+            authoritativeId,
+            applicationId,
+            record.claim_name,
+            record.claim_type,
+            record.description,
+            record.include_in_id_token,
+            record.include_in_access_token,
+            record.include_in_userinfo,
+          ],
+        )
+      : await getPool().query<{ id: string }>(
+          `UPDATE custom_claim_definitions SET description = $1, include_in_id_token = $2,
+                include_in_access_token = $3, include_in_userinfo = $4, updated_at = NOW()
+          WHERE id = $5 RETURNING id`,
+          [
+            record.description,
+            record.include_in_id_token,
+            record.include_in_access_token,
+            record.include_in_userinfo,
+            destinationId,
+          ],
+        );
+  return result.rows[0]?.id ?? authoritativeId;
+}
+
+/**
+ * Add listed role-permission edges without removing destination-only edges.
+ *
+ * @param roleId - Resolved role identifier
+ * @param permissionIds - Resolved permission identifiers listed by the manifest
+ */
+export async function writePortabilityRolePermissions(
+  roleId: string,
+  permissionIds: readonly string[],
+): Promise<void> {
+  for (const permissionId of permissionIds) {
+    await getPool().query(
+      `INSERT INTO role_permissions (role_id, permission_id)
+       VALUES ($1, $2) ON CONFLICT (role_id, permission_id) DO NOTHING`,
+      [roleId, permissionId],
+    );
+  }
 }

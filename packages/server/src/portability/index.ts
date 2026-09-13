@@ -16,6 +16,7 @@ export {
 } from './authorization.js';
 export { exportPortabilityManifest, type PortabilityExport } from './export.js';
 export { buildPortabilityPlan } from './plan.js';
+export { applyPortabilityManifest } from './apply.js';
 export {
   PortabilityError,
   type ExportManifestRequest,
