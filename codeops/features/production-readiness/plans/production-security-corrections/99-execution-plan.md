@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 09:42
-> **Progress**: 48/51 tasks (94%)
+> **Last Updated**: 2026-09-13 10:15
+> **Progress**: 49/51 tasks (96%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -221,7 +221,7 @@ later migration is newest. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.2.5-r3.log
 - [x] 4.3.2 Run `yarn verify` and record evidence ✅ (completed: 2026-09-13 09:28)
 - [x] 4.3.3 Run `yarn test:ui` and record evidence ✅ (completed: 2026-09-13 09:33)
 - [x] 4.3.4 Run `yarn harness:test` and record evidence ✅ (completed: 2026-09-13 09:40)
-- [~] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence ⏳ (started: 2026-09-13 09:42)
+- [x] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence ✅ (completed: 2026-09-13 10:15)
 - [ ] 4.3.6 Run `yarn assurance:compat --select p1-admin` from the clean committed checkpoint; inspect its registered exit taxonomy and record evidence
 - [ ] 4.3.7 Run `yarn docs:build` and record evidence
 
@@ -267,6 +267,19 @@ formatting/lint, full typecheck, and 104 structure tests passed. Logs:
 `/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness-clean-r2.log`,
 `/tmp/porta-rd01-exec.noLev5/verify-4.3.5-navigation-green.log`, and
 `/tmp/porta-rd01-exec.noLev5/verify-4.3.5-navigation-structure.log`.
+
+**Assurance harness evidence:** the clean committed revision produced admissible run
+`c73c156f-ef4f-4f7a-b464-38f37b3685e5` with registered exit 40 (`coverage-incomplete`), 8 passed,
+0 product failures, 3 incomplete observations, and 0 execution failures. The three incomplete
+observations are the registered forwarded-header cases `st53-untrusted-forwarded-host`,
+`st53-untrusted-forwarded-proto`, and `st53-untrusted-forwarded-client-ip`; their configured
+origin, cookie, rate-limit-key, and prohibited spoofed-budget effects were not observable. The
+functional human-auth observations passed 7/7, second-factor observations passed 4/4, and
+tenant/admin observations passed 17/17. The mode-0600 artifact records source commit
+`fde88eb67132f556cc59f6efa1c75c265b9bede7` and source tree
+`f598512639146a6dbf4bc54067f62765702cae77`; cleanup left no matching containers or active run.
+Independent correctness and security reviews reported no findings. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness-fixed.log`.
 
 ## Dependencies
 
