@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 01:00
-> **Progress**: 28/60 tasks (47%)
+> **Last Updated**: 2026-09-14 01:07
+> **Progress**: 29/60 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -163,7 +163,7 @@ correctness reviewer and tenant-isolation security auditor found no Critical, Ma
 
 **Reference**: [03-02 §Testing Requirements](03-02-portability-engine.md) · AR-6
 
-- [ ] 3.3.1 Add planner/apply internal edge tests — `packages/server/tests/unit/portability/plan.impl.test.ts`, `packages/server/tests/unit/portability/apply.impl.test.ts`
+- [x] 3.3.1 Add planner/apply internal edge tests — `packages/server/tests/unit/portability/plan.impl.test.ts`, `packages/server/tests/unit/portability/apply.impl.test.ts` ✅ (completed: 2026-09-14 01:07; 4 focused implementation edge tests plus server lint, typecheck, build, and 104 structure tests passed)
 - [ ] 3.3.2 From the phase checkpoint, run focused suites, `yarn assurance:harness --project security --profile production-security`, `yarn test:structure`, and `yarn verify`; review the assurance exit taxonomy and artifact
 
 **Deliverables:** mutation-free preview, atomic keep/update apply, one-time new-client credentials,
