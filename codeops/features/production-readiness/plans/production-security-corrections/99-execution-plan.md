@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 03:17
-> **Progress**: 36/51 tasks (71%)
+> **Last Updated**: 2026-09-13 03:25
+> **Progress**: 39/51 tasks (76%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -185,11 +185,21 @@ server lint, typecheck, and build. Log:
 **Reference:** [03-03](03-03-production-configuration-and-operations.md), AR-4, AR-7–AR-8, ST-24–ST-28. **Scope:**
 production schema, CLI keys, named docs/examples/tests, this plan, review evidence, and roadmaps.
 
+> **Phase baseline tree**: `99a21bd7b9a8f661bd10adc2a69b215ec024610b`
+> **Expected modification set**: production schema, CLI key commands, named documentation and examples, named tests, this plan, phase review evidence, and feature/portfolio roadmaps
+> **Scope mode**: strict
+
 ### Step 4.1: Specification Tests
 
-- [ ] 4.1.1 [spec-author] Write unequal-key and CLI success/failure guidance specifications from ST-24–ST-26 — `packages/server/tests/unit/config/production-key-separation.spec.test.ts`, `packages/cli/tests/commands/key-restart-guidance.spec.test.ts`
-- [ ] 4.1.2 [spec-author] Write the production documentation contract specifications from ST-27–ST-28 — `repo-tests/monorepo/production-security-guidance.spec.test.mjs`
-- [ ] 4.1.3 Run the Phase 4 specification files and record their expected red results before implementation
+- [x] 4.1.1 [spec-author] Write unequal-key and CLI success/failure guidance specifications from ST-24–ST-26 — `packages/server/tests/unit/config/production-key-separation.spec.test.ts`, `packages/cli/tests/commands/key-restart-guidance.spec.test.ts` ✅ (completed: 2026-09-13 03:25)
+- [x] 4.1.2 [spec-author] Write the production documentation contract specifications from ST-27–ST-28 — `repo-tests/monorepo/production-security-guidance.spec.test.mjs` ✅ (completed: 2026-09-13 03:25)
+- [x] 4.1.3 Run the Phase 4 specification files and record their expected red results before implementation ✅ (completed: 2026-09-13 03:26)
+
+**Red evidence:** server 4 failed / 2 passed; CLI 2 failed / 4 passed; documentation 4 failed.
+The failures cover byte-equivalent production root keys, successful human key lifecycle/restart
+guidance, consistent production-secret and migration guidance, later-work boundaries, and removal
+of automatic steady-state migration recommendations. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-4.1.3-red.log`.
 
 ### Step 4.2: Implementation and Focused Verification
 
