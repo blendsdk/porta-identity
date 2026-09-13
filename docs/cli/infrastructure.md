@@ -14,8 +14,8 @@ porta health
 porta health --direct
 ```
 
-| Flag | Description |
-|------|-------------|
+| Flag       | Description                                      |
+| ---------- | ------------------------------------------------ |
 | `--direct` | Connect directly to DB and Redis instead of HTTP |
 
 **Output:**
@@ -102,13 +102,20 @@ porta keys generate
 
 Generates a new ES256 key pair.
 
+This command adds another active signing key.
+It does so without retiring existing active keys.
+
 ### `porta keys rotate`
 
 ```bash
 porta keys rotate
 ```
 
-Generates a new key and schedules the old key for retirement.
+Retires every active signing key and creates one new active key.
+
+After either successful command, restart every running Porta instance. After restarting, run
+`porta keys list` and verify the committed active signing key before returning the deployment to
+normal operation.
 
 ---
 
@@ -160,16 +167,16 @@ porta audit list \
   [--page-size 20]
 ```
 
-| Flag | Description |
-|------|-------------|
-| `--action` | Filter by action type |
+| Flag            | Description           |
+| --------------- | --------------------- |
+| `--action`      | Filter by action type |
 | `--entity-type` | Filter by entity type |
-| `--entity-id` | Filter by entity ID |
-| `--actor-id` | Filter by actor ID |
-| `--from` | Start date (ISO 8601) |
-| `--to` | End date (ISO 8601) |
-| `--page` | Page number |
-| `--page-size` | Items per page |
+| `--entity-id`   | Filter by entity ID   |
+| `--actor-id`    | Filter by actor ID    |
+| `--from`        | Start date (ISO 8601) |
+| `--to`          | End date (ISO 8601)   |
+| `--page`        | Page number           |
+| `--page-size`   | Items per page        |
 
 ### `porta audit cleanup`
 

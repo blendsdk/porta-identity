@@ -5,8 +5,6 @@
 
 Multi-tenant OpenID Connect provider built on [node-oidc-provider](https://github.com/panva/node-oidc-provider) + Koa + TypeScript. Provides organization-scoped authentication, user management, RBAC, custom claims, two-factor authentication, and a comprehensive admin CLI.
 
-> ⚠️ **Beta Software** — Porta is under active development. APIs, configuration, and database schemas may change between versions. Not recommended for production use yet.
-
 Porta requires **PostgreSQL** and **Redis** as companion services. The fastest way to get started is with Docker Compose.
 
 ---
@@ -31,7 +29,7 @@ services:
     env_file:
       - .env
     environment:
-      DATABASE_URL: postgresql://porta:${POSTGRES_PASSWORD:-porta_secret}@postgres:5432/porta
+      DATABASE_URL: postgresql://porta:${POSTGRES_PASSWORD}@postgres:5432/porta
       REDIS_URL: redis://redis:6379
     depends_on:
       postgres:
@@ -53,7 +51,7 @@ services:
     environment:
       POSTGRES_DB: porta
       POSTGRES_USER: porta
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-porta_secret}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - porta_pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -89,46 +87,47 @@ PORT=3000
 HOST=0.0.0.0
 
 # Database password (used by both Porta and PostgreSQL)
-POSTGRES_PASSWORD=porta_secret
+POSTGRES_PASSWORD=<replace-with-a-random-database-password>
 
 # OIDC issuer — change to your public-facing URL
-ISSUER_BASE_URL=http://localhost:3000
+ISSUER_BASE_URL=https://auth.example.com
 
 # Cookie signing key — CHANGE THIS in production!
 COOKIE_KEYS=CHANGE-ME-to-a-random-string-at-least-32-chars
 
 # Email (configure SMTP for magic links, invitations, password reset)
-SMTP_HOST=localhost
-SMTP_PORT=1025
-SMTP_USER=
-SMTP_PASS=
-SMTP_FROM=noreply@porta.local
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_USER=<smtp-user>
+SMTP_PASS=<smtp-password>
+SMTP_FROM=noreply@example.com
 
 # Logging
 LOG_LEVEL=info
 
-# Two-Factor Authentication — CHANGE THIS in production!
-TWO_FACTOR_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string
+# Two-factor encryption root key — required in production
+TWO_FACTOR_ENCRYPTION_KEY=<replace-with-exactly-64-hex-characters>
 
-# Signing Key Encryption — CHANGE THIS in production!
-# AES-256-GCM key for encrypting ES256 signing key private keys at rest.
-# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-SIGNING_KEY_ENCRYPTION_KEY=CHANGE-ME-generate-a-64-char-hex-string-for-signing-keys
+# Signing-key encryption root key — required in production
+SIGNING_KEY_ENCRYPTION_KEY=<replace-with-a-different-64-hex-character-value>
 
 # Reverse proxy — set to "true" when behind a TLS-terminating proxy
 # TRUST_PROXY=false
 
-# Auto-run database migrations on startup (set to "false" after initial setup)
-PORTA_AUTO_MIGRATE=true
+# Apply migrations as a controlled deployment step
+PORTA_AUTO_MIGRATE=false
 ```
 
 ### 3. Start services
 
 ```bash
-docker compose up -d
+docker compose up -d postgres redis
+docker compose run --rm porta node dist/cli/index.js migrate up
+docker compose up -d porta
 ```
 
-This starts Porta, PostgreSQL, and Redis. The entrypoint automatically waits for the database and Redis to be ready, then runs migrations (when `PORTA_AUTO_MIGRATE=true`).
+This starts PostgreSQL and Redis, applies pending migrations as a controlled step, and then starts
+Porta. Keep `PORTA_AUTO_MIGRATE=false` for normal production operation.
 
 ### 4. Verify health
 
@@ -206,26 +205,26 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 
 ## Environment Variables
 
-| Variable                     | Default      | Description                                                                     |
-| ---------------------------- | ------------ | ------------------------------------------------------------------------------- |
-| `NODE_ENV`                   | `production` | Runtime mode                                                                    |
-| `PORT`                       | `3000`       | HTTP server port                                                                |
-| `HOST`                       | `0.0.0.0`    | HTTP listen address                                                             |
-| `DATABASE_URL`               | —            | PostgreSQL connection string (set in compose)                                   |
-| `REDIS_URL`                  | —            | Redis connection string (set in compose)                                        |
-| `ISSUER_BASE_URL`            | —            | **Required.** Public URL of your Porta instance                                 |
-| `COOKIE_KEYS`                | —            | **Required.** Cookie signing key (≥32 random chars)                             |
-| `TWO_FACTOR_ENCRYPTION_KEY`  | —            | **Required.** AES-256-GCM key for TOTP secrets (64 hex chars)                   |
-| `SIGNING_KEY_ENCRYPTION_KEY` | —            | **Required.** AES-256-GCM key for signing key encryption at rest (64 hex chars) |
-| `TRUST_PROXY`                | `false`      | Set `true` behind a TLS-terminating reverse proxy                               |
-| `SMTP_HOST`                  | —            | SMTP relay hostname                                                             |
-| `SMTP_PORT`                  | `587`        | SMTP port                                                                       |
-| `SMTP_USER`                  | —            | SMTP username                                                                   |
-| `SMTP_PASS`                  | —            | SMTP password                                                                   |
-| `SMTP_FROM`                  | —            | Sender email address                                                            |
-| `LOG_LEVEL`                  | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)                                |
-| `PORTA_AUTO_MIGRATE`         | `false`      | Auto-run DB migrations on startup                                               |
-| `PORTA_WAIT_TIMEOUT`         | `60`         | Seconds to wait for DB/Redis at startup                                         |
+| Variable                     | Default      | Description                                                              |
+| ---------------------------- | ------------ | ------------------------------------------------------------------------ |
+| `NODE_ENV`                   | `production` | Runtime mode                                                             |
+| `PORT`                       | `3000`       | HTTP server port                                                         |
+| `HOST`                       | `0.0.0.0`    | HTTP listen address                                                      |
+| `DATABASE_URL`               | —            | PostgreSQL connection string (set in compose)                            |
+| `REDIS_URL`                  | —            | Redis connection string (set in compose)                                 |
+| `ISSUER_BASE_URL`            | —            | **Required.** Public URL of your Porta instance                          |
+| `COOKIE_KEYS`                | —            | **Required.** Cookie signing key (≥32 random chars)                      |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | —            | **Required.** AES-256-GCM root key (exactly 64 hex characters)           |
+| `SIGNING_KEY_ENCRYPTION_KEY` | —            | **Required.** Different AES-256-GCM root key (exactly 64 hex characters) |
+| `TRUST_PROXY`                | `false`      | Set `true` behind a TLS-terminating reverse proxy                        |
+| `SMTP_HOST`                  | —            | SMTP relay hostname                                                      |
+| `SMTP_PORT`                  | `587`        | SMTP port                                                                |
+| `SMTP_USER`                  | —            | SMTP username                                                            |
+| `SMTP_PASS`                  | —            | SMTP password                                                            |
+| `SMTP_FROM`                  | —            | Sender email address                                                     |
+| `LOG_LEVEL`                  | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)                         |
+| `PORTA_AUTO_MIGRATE`         | `false`      | Keep disabled; apply migrations as a controlled deployment step          |
+| `PORTA_WAIT_TIMEOUT`         | `60`         | Seconds to wait for DB/Redis at startup                                  |
 
 ### Generating Production Secrets
 
@@ -242,6 +241,19 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # Database password
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
+
+Generate the two encryption root keys separately and keep the results in the deployment
+environment or a secret manager. The values must be different.
+
+Root keys remain outside PostgreSQL.
+
+### Changing Signing Keys
+
+`porta keys generate` adds another active signing key.
+It does so without retiring existing active keys.
+`porta keys rotate` retires every active signing key and creates one new active key. After either
+successful command, restart every running Porta instance. After restarting, run `porta keys list`
+and verify the committed active signing key.
 
 ---
 
@@ -306,7 +318,7 @@ See the [full Custom UI Tutorial](https://blendsdk.github.io/porta-identity/guid
 - **Login Methods** — Per-org and per-client configurable (password, magic link)
 - **Admin CLI** — 14+ commands for managing orgs, apps, clients, users, roles
 - **Admin API** — JWT-authenticated REST API for all admin operations
-- **ES256 Signing** — ECDSA P-256 keys, auto-bootstrapped, stored in database
+- **ES256 Signing** — ECDSA P-256 keys with encrypted private material at rest
 - **Audit Logging** — Comprehensive event logging for security and compliance
 
 ---
