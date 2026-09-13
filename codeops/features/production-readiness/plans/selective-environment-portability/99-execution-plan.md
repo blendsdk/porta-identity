@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 00:57
-> **Progress**: 27/60 tasks (45%)
+> **Last Updated**: 2026-09-14 01:00
+> **Progress**: 28/60 tasks (47%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -157,7 +157,7 @@ correctness reviewer and tenant-isolation security auditor found no Critical, Ma
 - [x] 3.2.3 Implement user, role-assignment, claim-value, and client writers plus one-time client-secret creation — `packages/server/src/portability/apply.ts`, `packages/server/src/portability/import-user-client-writers.ts`, `packages/server/src/portability/import-repository.ts` ✅ (completed: 2026-09-14 00:29; 6 focused unit cases, 6 live PostgreSQL cases, server lint, typecheck, build, and 104 structure tests passed; 3 unit and 2 live red cases remain assigned to task 3.2.4)
 - [x] 3.2.4 Add transaction-bound audit and targeted post-commit cache/authority cleanup — `packages/server/src/portability/apply.ts`, `packages/server/src/portability/cleanup.ts` ✅ (completed: 2026-09-14 00:40; 24 unit specifications, 14 live PostgreSQL/Redis specifications, server lint, typecheck, build, and 104 structure tests passed)
 - [x] 3.2.5 Remove the legacy import engine/plan, connect preview/apply routes, and migrate its direct server test consumers while preserving still-valid security and atomicity assertions — `packages/server/src/lib/data-import.ts`, `packages/server/src/lib/data-import-plan.ts`, `packages/server/src/routes/imports.ts`, `packages/server/tests/unit/admin/administrative-data-{adapter,contract,production-driver}.ts`, `packages/server/tests/unit/admin/administrative-data-{contract.spec,impl}.test.ts`, `packages/server/tests/unit/clients/protocol-compatibility.spec.test.ts`, `packages/server/tests/unit/lib/data-import-extensions.test.ts`, `packages/server/tests/integration/services/data-export-import.test.ts` ✅ (completed: 2026-09-14 00:57; 3,179 server unit tests, 23 migrated live administrative/report-export tests, 9 portability pentests, server lint, typecheck, build, and 104 structure tests passed; legacy provisioning smoke removal remains assigned to Phase 4)
-- [ ] 3.2.6 Run Phase 3 specification, integration, and pentest selectors and make them pass (green phase)
+- [x] 3.2.6 Run Phase 3 specification, integration, and pentest selectors and make them pass (green phase) ✅ (completed: 2026-09-14 01:00; 54 unit/route specifications, 27 sequential live PostgreSQL/Redis specifications, and 9 penetration specifications passed)
 
 ### Step 3.3: Implementation Tests and Hardening
 
