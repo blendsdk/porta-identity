@@ -14,6 +14,7 @@ export {
   requiredPortabilityPermissions,
   requirePortabilityAuthorization,
 } from './authorization.js';
+export { exportPortabilityManifest, type PortabilityExport } from './export.js';
 export {
   PortabilityError,
   type ExportManifestRequest,

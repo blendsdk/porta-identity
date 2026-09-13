@@ -134,8 +134,7 @@ const alphaUser = {
 
 /** Return the planned public export function without reading its implementation. */
 function exportFunction(): ExportPortabilityManifest {
-  const descriptor = Object.getOwnPropertyDescriptor(portability, 'exportPortabilityManifest');
-  const candidate: unknown = descriptor?.value;
+  const candidate: unknown = portability.exportPortabilityManifest;
   expect(
     candidate,
     'exportPortabilityManifest must be available from the portability API',
@@ -154,7 +153,9 @@ function request(
     scope,
     categories,
     application_selection: {
-      all_applications: false,
+      all_applications:
+        applicationSlugs.length === 0 &&
+        categories.some((category) => category !== 'organizations'),
       application_slugs: applicationSlugs,
     },
   };
@@ -183,8 +184,14 @@ function useRows(rows: ExportRows): void {
       'organizations',
     ];
     const table = tableOrder.find((name) => new RegExp(`\\b${name}\\b`).test(sql));
+    const defaultRows =
+      table === 'organizations'
+        ? [alphaOrganization]
+        : table === 'applications'
+          ? [alphaApplication]
+          : [];
     return Promise.resolve({
-      rows: table === undefined ? [] : [...(rows[table] ?? [])],
+      rows: table === undefined ? [] : [...(rows[table] ?? defaultRows)],
       rowCount: 0,
     });
   });
