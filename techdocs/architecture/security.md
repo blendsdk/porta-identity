@@ -105,11 +105,17 @@ TOTP secrets are encrypted at rest using AES-256-GCM:
 | Property       | Value                                   |
 | -------------- | --------------------------------------- |
 | Algorithm      | AES-256-GCM                             |
-| Key Derivation | From `COOKIE_KEYS` environment variable |
+| Key Source     | `TWO_FACTOR_ENCRYPTION_KEY` (32-byte hex value) |
 | IV             | Random 12 bytes per encryption          |
 | Auth Tag       | 16 bytes, stored alongside ciphertext   |
 
 Recovery codes are hashed with Argon2id — never stored in plaintext.
+
+Accepted TOTP codes are single-use. Validation uses the stored fixed `SHA1`/6-digit/30-second
+parameters and one captured timestamp to identify the matched absolute time step. PostgreSQL then
+atomically advances the exact verified configuration row only when that step is newer than the
+stored value. The first enrollment step and the user's enabled state commit in one transaction;
+invalid, repeated, concurrent, replaced-row, or stale attempts do not advance replay state.
 
 ## Authentication Flows
 
