@@ -2,14 +2,13 @@
  * Contract test: SDK ImportManifest request shape vs server Zod schema.
  *
  * Validates that the SDK's request body shape is accepted by the server's
- * importManifestSchema, and that the SDK's ImportResult type covers all
- * fields returned by the server.
+ * strict portability schema while the SDK result migration is completed in its owning phase.
  *
  * @module contracts/sdk-imports-contract
  */
 
 import { describe, it, expect } from 'vitest';
-import { importManifestSchema } from '../../../src/lib/data-import.js';
+import { portabilityManifestSchema } from '../../../src/portability/index.js';
 import type {
   ImportResult,
   ImportEntityResult,
@@ -23,22 +22,49 @@ describe('SDK↔Server contract: Imports', () => {
     it('SDK ImportManifest passes server Zod validation', () => {
       const manifest = {
         version: '1.0',
+        exported_at: '2026-09-14T00:00:00.000Z',
+        scope: { kind: 'organization', organization_slug: 'test-org' },
+        categories: ['organizations'],
+        application_selection: { all_applications: false, application_slugs: [] },
         organizations: [
           {
             name: 'Test Org',
             slug: 'test-org',
+            status: 'active',
+            default_locale: 'en',
+            default_login_methods: ['password'],
+            two_factor_policy: 'optional',
+            branding: {
+              logo_url: null,
+              favicon_url: null,
+              primary_color: null,
+              company_name: null,
+              custom_css: null,
+              logo_asset: null,
+              favicon_asset: null,
+            },
           },
         ],
+        applications: [],
+        application_modules: [],
+        roles: [],
+        permissions: [],
+        claim_definitions: [],
+        role_permission_mappings: [],
+        users: [],
+        user_role_assignments: [],
+        user_claim_values: [],
+        clients: [],
       };
 
       // Should not throw — SDK shape accepted by server schema
-      const result = importManifestSchema.safeParse(manifest);
+      const result = portabilityManifestSchema.safeParse(manifest);
       expect(result.success).toBe(true);
     });
 
     it('rejects invalid manifest shapes', () => {
       const invalid = { mode: 'invalid-mode' };
-      const result = importManifestSchema.safeParse(invalid);
+      const result = portabilityManifestSchema.safeParse(invalid);
       expect(result.success).toBe(false);
     });
   });

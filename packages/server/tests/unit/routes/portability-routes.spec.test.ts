@@ -123,6 +123,7 @@ const EMPTY_MANIFEST = {
 const EMPTY_RESULT = {
   summary: { created: 0, updated: 0, skipped: 0, rejected: 0 },
   items: [],
+  errors: [],
 };
 
 const RESULT_ENTITY_TYPES = [

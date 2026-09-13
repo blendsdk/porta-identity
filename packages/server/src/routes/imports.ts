@@ -111,10 +111,21 @@ async function handleManifestImport(
   request: ImportManifestRequest,
 ): Promise<void> {
   try {
-    ctx.body =
-      request.mode === 'dry-run'
-        ? await buildPortabilityPlan(request.manifest, request.mode)
-        : await applyPortabilityManifest(request.manifest, request.mode, portabilityActor(ctx));
+    if (request.mode === 'dry-run') {
+      const result = await buildPortabilityPlan(request.manifest, request.mode);
+      if (result.errors.length > 0) {
+        ctx.status = 409;
+        ctx.body = { error: 'Import plan rejected', code: 'import_plan_rejected', result };
+        return;
+      }
+      ctx.body = result;
+      return;
+    }
+    ctx.body = await applyPortabilityManifest(
+      request.manifest,
+      request.mode,
+      portabilityActor(ctx),
+    );
   } catch (error) {
     if (error instanceof PortabilityError && error.code === 'import_plan_rejected') {
       ctx.status = 409;

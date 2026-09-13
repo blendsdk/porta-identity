@@ -129,9 +129,17 @@ export async function buildResolvedPortabilityPlan(
       key(normalizedSlug(row.organization_slug), normalizedEmail(row.email)),
     ),
   );
+  const selectedOrganization =
+    manifest.scope.kind === 'organization'
+      ? normalizedSlug(manifest.scope.organization_slug)
+      : null;
 
   for (const source of manifest.organizations) {
     const naturalKey = { slug: source.slug };
+    if (selectedOrganization !== null && normalizedSlug(source.slug) !== selectedOrganization) {
+      addError(accumulator, 'organizations', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     if (source.slug === 'porta-admin') {
       addError(accumulator, 'organizations', naturalKey, 'control_plane_record');
       continue;
@@ -383,6 +391,15 @@ export async function buildResolvedPortabilityPlan(
   for (const source of manifest.users) {
     const naturalKey = { organization_slug: source.organization_slug, email: source.email };
     const orgKey = normalizedSlug(source.organization_slug);
+    if (selectedOrganization !== null && orgKey !== selectedOrganization) {
+      addError(
+        accumulator,
+        'users',
+        { organization_slug: source.organization_slug, email: '[redacted]' },
+        'cross_scope_reference',
+      );
+      continue;
+    }
     const dependency = parentError(manifestOrganizations.has(orgKey), organizations.get(orgKey));
     if (orgKey === 'porta-admin')
       addError(accumulator, 'users', naturalKey, 'control_plane_record');
@@ -429,7 +446,9 @@ export async function buildResolvedPortabilityPlan(
     const userKey = key(orgKey, normalizedEmail(source.email));
     const roleKey = key(appKey, normalizedRbac(source.role_slug));
     let error: PortabilityResultErrorCode | null = null;
-    if (orgKey === 'porta-admin' || appKey === 'porta-admin') error = 'control_plane_record';
+    if (selectedOrganization !== null && orgKey !== selectedOrganization)
+      error = 'cross_scope_reference';
+    else if (orgKey === 'porta-admin' || appKey === 'porta-admin') error = 'control_plane_record';
     else if (!manifestUsers.has(userKey) && dependencyState(users.get(userKey)) !== 'resolved') {
       const elsewhere =
         manifest.users.some(
@@ -445,7 +464,20 @@ export async function buildResolvedPortabilityPlan(
         snapshot.roles.some((row) => normalizedRbac(row.slug) === normalizedRbac(source.role_slug));
       error = elsewhere ? 'cross_scope_reference' : 'missing_dependency';
     }
-    if (error !== null) addError(accumulator, 'user_role_assignments', naturalKey, error);
+    if (error !== null)
+      addError(
+        accumulator,
+        'user_role_assignments',
+        error === 'cross_scope_reference'
+          ? {
+              organization_slug: source.organization_slug,
+              email: '[redacted]',
+              application_slug: source.application_slug,
+              role_slug: source.role_slug,
+            }
+          : naturalKey,
+        error,
+      );
     else
       addItem(
         accumulator,
@@ -479,7 +511,9 @@ export async function buildResolvedPortabilityPlan(
     const userKey = key(orgKey, normalizedEmail(source.email));
     const claimKey = key(appKey, source.claim_name);
     let error: PortabilityResultErrorCode | null = null;
-    if (orgKey === 'porta-admin' || appKey === 'porta-admin') error = 'control_plane_record';
+    if (selectedOrganization !== null && orgKey !== selectedOrganization)
+      error = 'cross_scope_reference';
+    else if (orgKey === 'porta-admin' || appKey === 'porta-admin') error = 'control_plane_record';
     else if (!manifestUsers.has(userKey) && dependencyState(users.get(userKey)) !== 'resolved')
       error = 'missing_dependency';
     else if (
@@ -503,7 +537,20 @@ export async function buildResolvedPortabilityPlan(
     ) {
       error = 'invalid_record';
     }
-    if (error !== null) addError(accumulator, 'user_claim_values', naturalKey, error);
+    if (error !== null)
+      addError(
+        accumulator,
+        'user_claim_values',
+        error === 'cross_scope_reference'
+          ? {
+              organization_slug: source.organization_slug,
+              email: '[redacted]',
+              application_slug: source.application_slug,
+              claim_name: source.claim_name,
+            }
+          : naturalKey,
+        error,
+      );
     else {
       const matches = claimValues.get(
         key(orgKey, normalizedEmail(source.email), appKey, source.claim_name),
@@ -530,6 +577,10 @@ export async function buildResolvedPortabilityPlan(
     const naturalKey = { client_id: source.client_id };
     const orgKey = normalizedSlug(source.organization_slug);
     const appKey = normalizedSlug(source.application_slug);
+    if (selectedOrganization !== null && orgKey !== selectedOrganization) {
+      addError(accumulator, 'clients', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     if (orgKey === 'porta-admin' || appKey === 'porta-admin') {
       addError(accumulator, 'clients', naturalKey, 'control_plane_record');
       continue;
