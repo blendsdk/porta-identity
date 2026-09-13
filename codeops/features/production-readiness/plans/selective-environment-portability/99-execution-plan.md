@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 15:34
-> **Progress**: 0/60 tasks (0%)
+> **Last Updated**: 2026-09-13 18:02
+> **Progress**: 1/60 tasks (2%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -48,11 +48,17 @@ with immutable specification tests and a recorded red phase. (AR-1, AR-2, AR-6)
 
 ## Phase 1: Strict Server Contract and Protected Routes
 
+> **Phase baseline tree**: `fc747d694d1d6d68fc5964be3324bca4adf41b53`
+> **Scope mode**: strict
+> **Expected modification set**: Phase 1 server contract, shared domain validators and affected
+> routes, focused server specification/implementation tests, this execution plan, phase review
+> evidence, and directly affected technical documentation.
+
 ### Step 1.1: Specification Tests
 
 **Reference**: [03-01](03-01-server-contract.md) · [ST-1–ST-10](07-testing-strategy.md) · AR-1, AR-2
 
-- [ ] 1.1.1 [spec-author] Write strict manifest specification tests ST-1–ST-4 — `packages/server/tests/unit/portability/manifest-contract.spec.test.ts`
+- [x] 1.1.1 [spec-author] Write strict manifest specification tests ST-1–ST-4 — `packages/server/tests/unit/portability/manifest-contract.spec.test.ts` ✅ (completed: 2026-09-13 18:02)
 - [ ] 1.1.2 [spec-author] Write exact error/request-ID, permission, accepted-path parser, limit, and no-store route specifications ST-5–ST-10 — `packages/server/tests/unit/routes/portability-routes.spec.test.ts`
 - [ ] 1.1.3 Run the Phase 1 specification selectors and record the expected missing-contract failures (red phase)
 
