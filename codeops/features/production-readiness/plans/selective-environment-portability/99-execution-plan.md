@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 18:56
-> **Progress**: 7/60 tasks (12%)
+> **Last Updated**: 2026-09-13 18:59
+> **Progress**: 8/60 tasks (13%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -70,7 +70,7 @@ with immutable specification tests and a recorded red phase. (AR-1, AR-2, AR-6)
 - [x] 1.2.2 Add the closed category-permission and exact-super-admin authorization helper — `packages/server/src/portability/authorization.ts`, `packages/server/src/lib/admin-permissions.ts` ✅ (completed: 2026-09-13 18:37)
 - [x] 1.2.3 Correct export/import routes with the exact status/code/body contract, existing request-ID correlation, content-free 503 logging, and safe consumer diagnostics — `packages/server/src/routes/exports.ts`, `packages/server/src/routes/imports.ts`, affected SDK/CLI/Admin UI error adapters ✅ (completed: 2026-09-13 18:50)
 - [x] 1.2.4 Exclude every router-accepted import POST path variant from the standard parser and mount the protected 64 MiB parser — `packages/server/src/server.ts`, `packages/server/src/routes/imports.ts` ✅ (completed: 2026-09-13 18:56)
-- [ ] 1.2.5 Run Phase 1 specification selectors and make them pass without changing expectations (green phase)
+- [x] 1.2.5 Run Phase 1 specification selectors and make them pass without changing expectations (green phase) ✅ (completed: 2026-09-13 18:59; 2 suites, 41 tests)
 
 ### Step 1.3: Implementation Tests and Hardening
 
