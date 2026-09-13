@@ -257,6 +257,17 @@ correctly emitted no admissible evidence. The marker is checkpointed before reru
 revision. Rejected-run log:
 `/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness.log`.
 
+**Assurance harness runtime correction:** two clean runs produced stable collector evidence (8
+passed, 0 product failures, 3 registered incomplete) but the later functional browser observer
+raised Chromium `ERR_NETWORK_CHANGED` during a valid-login redirect. The user approved a narrow,
+non-retrying correction: tolerate only that exact transport error and only when the expected
+callback URL is independently observed; otherwise rethrow it. Four implementation tests, focused
+formatting/lint, full typecheck, and 104 structure tests passed. Logs:
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness-clean.log`,
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness-clean-r2.log`,
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.5-navigation-green.log`, and
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.5-navigation-structure.log`.
+
 ## Dependencies
 
 ```text

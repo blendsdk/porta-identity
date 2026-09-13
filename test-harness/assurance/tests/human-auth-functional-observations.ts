@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import type {
   HumanAuthFunctionalCaseObservation,
   HumanAuthFunctionalCaseRequirement,
@@ -70,6 +72,32 @@ export function observedFunctionalStep(
 }
 
 /**
+ * Preserves a Chromium navigation failure unless the expected callback independently completed.
+ *
+ * Docker-backed test environments can make Chromium report `ERR_NETWORK_CHANGED` while a redirect
+ * still reaches the intercepted callback. Only that exact transport error is tolerated, and only
+ * after the caller has observed the callback URL. No request is retried.
+ *
+ * @param navigationError - Error raised while waiting for the form navigation, when present.
+ * @param callbackObserved - Whether the expected callback URL was independently reached.
+ * @throws The original value for every incomplete callback or different navigation error.
+ */
+export function assertCallbackNavigationOutcome(
+  navigationError: unknown,
+  callbackObserved: boolean,
+): void {
+  if (navigationError === undefined) return;
+  if (
+    callbackObserved &&
+    navigationError instanceof Error &&
+    navigationError.message.includes('net::ERR_NETWORK_CHANGED')
+  ) {
+    return;
+  }
+  throw navigationError;
+}
+
+/**
  * Digests normalized public text without retaining the response body.
  *
  * Whitespace is the only discarded dimension. Submitted identities and every visible error word
@@ -101,4 +129,3 @@ export function functionalHeaderFingerprint(headers: Readonly<Record<string, str
     .sort(([left], [right]) => left.localeCompare(right));
   return `sha256:${createHash('sha256').update(JSON.stringify(normalized)).digest('hex')}`;
 }
-import { createHash } from 'node:crypto';
