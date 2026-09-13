@@ -221,18 +221,28 @@ export async function seedDestination(): Promise<DestinationFixture> {
   const organization = await createTestOrganization({
     name: 'Alpha Organization',
     slug: 'alpha-org',
+    defaultLoginMethods: ['password'],
   });
   const application = await createTestApplication({ name: 'Alpha Application', slug: 'alpha-app' });
+  const moduleResult = await pool.query<{ id: string }>(
+    `INSERT INTO application_modules (application_id, name, slug, description, status)
+     VALUES ($1, 'Orders', 'orders', NULL, 'active') RETURNING id`,
+    [application.id],
+  );
+  const moduleId = moduleResult.rows[0]?.id;
+  if (moduleId === undefined) throw new Error('Application module was not created');
   const role = await createTestRole(application.id, { name: 'Operator', slug: 'OPERATOR' });
   const permission = await createTestPermission(application.id, {
     name: 'Read orders',
     slug: 'orders:read / delegated',
+    moduleId,
   });
   const actorUser = await createTestUser(controlPlaneOrganizationId, {
     email: 'admin@porta.invalid',
   });
   const user = await createTestUser(organization.id, {
     email: 'member@alpha.example',
+    emailVerified: true,
     givenName: 'Alpha',
     familyName: 'Member',
   });

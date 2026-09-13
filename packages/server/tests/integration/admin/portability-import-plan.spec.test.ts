@@ -54,7 +54,7 @@ describe('live portability import planning specification', () => {
           {
             application_slug: 'alpha-app',
             slug: '  orders:read / delegated  ',
-            module_slug: null,
+            module_slug: 'orders',
             name: 'Delegated order read',
             description: null,
           },

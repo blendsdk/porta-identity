@@ -252,11 +252,17 @@ const portableUserProfileShape = {
   address_country: userCountrySchema.nullable(),
 } as const;
 
+/** Import email identity normalized like the case-insensitive PostgreSQL user key. */
+const portableUserEmailSchema = z.preprocess(
+  (value) => (typeof value === 'string' ? value.trim().toLowerCase() : value),
+  userEmailSchema,
+);
+
 /** Portable user record without credentials, lock state, or counters. */
 const userSchema = z
   .object({
     organization_slug: organizationSlugSchema,
-    email: userEmailSchema,
+    email: portableUserEmailSchema,
     email_verified: z.boolean(),
     ...portableUserProfileShape,
     status: portableUserStatusSchema,
@@ -267,7 +273,7 @@ const userSchema = z
 const userRoleAssignmentSchema = z
   .object({
     organization_slug: organizationSlugSchema,
-    email: userEmailSchema,
+    email: portableUserEmailSchema,
     application_slug: applicationSlugSchema,
     role_slug: roleSlugSchema,
   })
@@ -277,7 +283,7 @@ const userRoleAssignmentSchema = z
 const userClaimValueSchema = z
   .object({
     organization_slug: organizationSlugSchema,
-    email: userEmailSchema,
+    email: portableUserEmailSchema,
     application_slug: applicationSlugSchema,
     claim_name: claimNameSchema,
     value: z.json(),

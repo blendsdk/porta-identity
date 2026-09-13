@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 23:33
-> **Progress**: 22/60 tasks (37%)
+> **Last Updated**: 2026-09-14 00:05
+> **Progress**: 23/60 tasks (38%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -152,7 +152,7 @@ correctness reviewer and tenant-isolation security auditor found no Critical, Ma
 
 **Reference**: [03-02 §Atomic Apply](03-02-portability-engine.md) · AR-1, AR-2
 
-- [ ] 3.2.1 Implement normalization, duplicate rejection, natural-key resolution, compatibility, ordered result planning, and exact aggregate role-permission actions — `packages/server/src/portability/plan.ts`, `packages/server/src/portability/repository.ts`
+- [x] 3.2.1 Implement normalization, duplicate rejection, natural-key resolution, compatibility, ordered result planning, and exact aggregate role-permission actions — `packages/server/src/portability/plan.ts`, `packages/server/src/portability/plan-support.ts`, `packages/server/src/portability/import-repository.ts`, `packages/server/src/portability/schema.ts`, `packages/server/src/portability/index.ts`, focused live import fixtures ✅ (completed: 2026-09-14 00:05; 10 focused unit planner cases, 13 live PostgreSQL planner cases, lint, typecheck, build, and 104 structure tests passed; full verify retained 18 expected red apply/route cases assigned to later Phase 3 tasks)
 - [ ] 3.2.2 Implement organization, application, module, role, permission, claim, and role-permission writers — `packages/server/src/portability/apply.ts`, `packages/server/src/portability/repository.ts`
 - [ ] 3.2.3 Implement user, role-assignment, claim-value, and client writers plus one-time client-secret creation — `packages/server/src/portability/apply.ts`, `packages/server/src/portability/repository.ts`
 - [ ] 3.2.4 Add transaction-bound audit and targeted post-commit cache/authority cleanup — `packages/server/src/portability/apply.ts`, `packages/server/src/portability/cleanup.ts`
