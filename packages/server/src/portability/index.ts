@@ -11,6 +11,10 @@ export {
   portabilityScopeSchema,
 } from './schema.js';
 export {
+  requiredPortabilityPermissions,
+  requirePortabilityAuthorization,
+} from './authorization.js';
+export {
   PortabilityError,
   type ExportManifestRequest,
   type ImportManifestRequest,
