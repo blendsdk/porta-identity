@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 02:24
-> **Progress**: 22/51 tasks (43%)
+> **Last Updated**: 2026-09-13 02:28
+> **Progress**: 23/51 tasks (45%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -98,7 +98,10 @@ The existing organization-scoped interaction boundary remains green. Log:
 - [x] 2.2.2 Directly replace the internal validator with an absolute matched-step contract, add the typed unsupported-state error, and update barrel exports without a compatibility wrapper — `packages/server/src/two-factor/totp.ts`, `packages/server/src/two-factor/errors.ts`, `packages/server/src/two-factor/index.ts` ✅ (completed: 2026-09-13 02:17)
 - [x] 2.2.3 Add exact-row conditional consume and enrollment-confirm repository operations — `packages/server/src/two-factor/repository.ts` ✅ (completed: 2026-09-13 02:20)
 - [x] 2.2.4 Capture validation time once and use atomic consume/transactional enrollment in the service — `packages/server/src/two-factor/service.ts` ✅ (completed: 2026-09-13 02:24)
-- [ ] 2.2.5 Run ST-09–ST-19 and ST-23 and make the immutable Phase 2 expectations green
+- [x] 2.2.5 Run ST-09–ST-19 and ST-23 and make the immutable Phase 2 expectations green ✅ (completed: 2026-09-13 02:28)
+
+**Green evidence:** unit 23 passed; integration 8 passed. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-2.2.5-green.log`.
 
 ### Step 2.3: Implementation Tests and Verification
 

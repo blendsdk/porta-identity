@@ -196,7 +196,7 @@ describe('TOTP replay protection', () => {
           algorithm, digits, period, verified, last_accepted_time_step
         )
         SELECT user_id, encrypted_secret, encryption_iv, encryption_tag,
-               algorithm, digits, period, true, NULL
+               'SHA1', 6, 30, true, NULL
           FROM (VALUES ($1::uuid, $2::text, $3::text, $4::text))
                AS replacement(user_id, encrypted_secret, encryption_iv, encryption_tag)
         RETURNING id
