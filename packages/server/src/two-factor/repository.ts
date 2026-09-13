@@ -106,6 +106,63 @@ export async function markTotpVerified(userId: string): Promise<void> {
 }
 
 /**
+ * Atomically consume a matched TOTP time step for one verified configuration row.
+ *
+ * Binding the update to both row and user prevents a configuration replaced after
+ * validation from consuming the replacement. A step can only move forward.
+ *
+ * @param id - TOTP configuration UUID loaded before validation
+ * @param userId - User UUID that owns the loaded configuration
+ * @param timeStep - Absolute matched TOTP time step
+ * @returns True only when this attempt advanced the exact verified row
+ */
+export async function consumeTotpTimeStep(
+  id: string,
+  userId: string,
+  timeStep: number,
+): Promise<boolean> {
+  const pool = getPool();
+  const result = await pool.query(
+    `UPDATE user_totp
+        SET last_accepted_time_step = $3
+      WHERE id = $1
+        AND user_id = $2
+        AND verified = true
+        AND (last_accepted_time_step IS NULL OR last_accepted_time_step < $3)`,
+    [id, userId, timeStep],
+  );
+
+  return result.rowCount === 1;
+}
+
+/**
+ * Atomically confirm one pending TOTP configuration and store its first accepted step.
+ *
+ * @param id - Pending TOTP configuration UUID loaded before validation
+ * @param userId - User UUID that owns the pending configuration
+ * @param timeStep - Absolute matched TOTP time step
+ * @returns True only when the exact unverified row was confirmed
+ */
+export async function verifyTotpEnrollment(
+  id: string,
+  userId: string,
+  timeStep: number,
+): Promise<boolean> {
+  const pool = getPool();
+  const result = await pool.query(
+    `UPDATE user_totp
+        SET verified = true,
+            last_accepted_time_step = $3
+      WHERE id = $1
+        AND user_id = $2
+        AND verified = false`,
+    [id, userId, timeStep],
+  );
+
+  return result.rowCount === 1;
+}
+
+/**
  * Delete a user's TOTP configuration.
  *
  * Called when disabling 2FA or resetting TOTP setup.

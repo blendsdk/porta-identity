@@ -61,6 +61,8 @@ export {
   insertTotp,
   findTotpByUserId,
   markTotpVerified,
+  consumeTotpTimeStep,
+  verifyTotpEnrollment,
   deleteTotp,
   insertOtpCode,
   findActiveOtpCodes,

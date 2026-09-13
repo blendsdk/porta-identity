@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 02:17
-> **Progress**: 20/51 tasks (39%)
+> **Last Updated**: 2026-09-13 02:20
+> **Progress**: 21/51 tasks (41%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -96,7 +96,7 @@ The existing organization-scoped interaction boundary remains green. Log:
 
 - [x] 2.2.1 Add migration 028 and exact raw/domain replay-state mappings — `packages/server/migrations/028_totp_replay_protection.sql`, `packages/server/src/two-factor/types.ts` ✅ (completed: 2026-09-13 02:13)
 - [x] 2.2.2 Directly replace the internal validator with an absolute matched-step contract, add the typed unsupported-state error, and update barrel exports without a compatibility wrapper — `packages/server/src/two-factor/totp.ts`, `packages/server/src/two-factor/errors.ts`, `packages/server/src/two-factor/index.ts` ✅ (completed: 2026-09-13 02:17)
-- [ ] 2.2.3 Add exact-row conditional consume and enrollment-confirm repository operations — `packages/server/src/two-factor/repository.ts`
+- [x] 2.2.3 Add exact-row conditional consume and enrollment-confirm repository operations — `packages/server/src/two-factor/repository.ts` ✅ (completed: 2026-09-13 02:20)
 - [ ] 2.2.4 Capture validation time once and use atomic consume/transactional enrollment in the service — `packages/server/src/two-factor/service.ts`
 - [ ] 2.2.5 Run ST-09–ST-19 and ST-23 and make the immutable Phase 2 expectations green
 
