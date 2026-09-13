@@ -28,12 +28,12 @@ import type { ExportEntityType } from '../lib/data-export.js';
 import { logger } from '../lib/logger.js';
 import {
   exportManifestRequestSchema,
+  exportPortabilityManifest,
   PortabilityError,
   requirePortabilityAuthorization,
   type ExportManifestRequest,
   type PortabilityActor,
 } from '../portability/index.js';
-import { exportPortabilityManifest } from '../portability/export.js';
 
 // ---------------------------------------------------------------------------
 // Validation

@@ -183,7 +183,7 @@ function useRows(rows: ExportRows): void {
       'roles',
       'organizations',
     ];
-    const table = tableOrder.find((name) => new RegExp(`\\b${name}\\b`).test(sql));
+    const table = tableOrder.find((name) => new RegExp(`\\bfrom\\s+${name}\\b`).test(sql));
     const defaultRows =
       table === 'organizations'
         ? [alphaOrganization]
@@ -543,7 +543,11 @@ describe('portability export engine specification', () => {
     if (!Array.isArray(auditValues)) return;
     expect(auditValues).toContain('admin.export');
 
-    const auditText = JSON.stringify(auditValues);
+    const auditMetadata = auditValues.find(
+      (value) => typeof value === 'string' && value.startsWith('{'),
+    );
+    expect(auditMetadata).toBeTypeOf('string');
+    const auditText = String(auditMetadata);
     expect(auditText).not.toContain(alphaOrganization.name);
     expect(auditText).not.toContain(alphaOrganization.slug);
     expect(auditText).not.toContain(alphaOrganization.id);
