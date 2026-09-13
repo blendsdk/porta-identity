@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 23:05
-> **Progress**: 19/60 tasks (32%)
+> **Last Updated**: 2026-09-13 23:22
+> **Progress**: 20/60 tasks (33%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -144,7 +144,7 @@ correctness reviewer and tenant-isolation security auditor found no Critical, Ma
 **Reference**: [03-02 §Mutation-Free Plan](03-02-portability-engine.md) · [ST-19–ST-37](07-testing-strategy.md) · AR-1
 
 - [x] 3.1.1 [spec-author] Complete engine cases ST-19–ST-21 and ST-25–ST-37 plus route cases ST-22–ST-24 — `packages/server/tests/unit/portability/portability-import-engine.spec.test.ts`, `packages/server/tests/unit/portability/portability-import-fixtures.ts`, `packages/server/tests/unit/routes/portability-routes.spec.test.ts` ✅ (completed: 2026-09-13 23:05; 65 tests with 37 passing and 28 expected missing-planner/apply/409 failures; split import specifications from the existing export oracle to keep each file below the project size limit)
-- [ ] 3.1.2 [spec-author] Complete live plan/apply/rollback/cleanup round-trip cases ST-19–ST-37 — `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`
+- [x] 3.1.2 [spec-author] Complete live plan/apply/rollback/cleanup round-trip cases ST-19–ST-37 — `packages/server/tests/integration/admin/portability-import-plan.spec.test.ts`, `packages/server/tests/integration/admin/portability-import-apply.spec.test.ts`, `packages/server/tests/integration/admin/portability-import-live-fixtures.ts` ✅ (completed: 2026-09-13 23:22; 27 live tests with 27 expected missing-public-planner/apply failures; kept the existing 607-line export round-trip oracle unchanged and split import concerns into focused files)
 - [ ] 3.1.3 Add portability authorization pentest specifications for tenant scope, exact role, hostile values, payload limit, and secret exposure — `packages/server/tests/pentest/admin-security/portability.spec.test.ts`
 - [ ] 3.1.4 Run Phase 3 unit, integration, and pentest selectors and record expected missing-import failures (red phase)
 
