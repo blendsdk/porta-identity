@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 18:13
-> **Progress**: 2/60 tasks (3%)
+> **Last Updated**: 2026-09-13 18:14
+> **Progress**: 3/60 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -60,7 +60,7 @@ with immutable specification tests and a recorded red phase. (AR-1, AR-2, AR-6)
 
 - [x] 1.1.1 [spec-author] Write strict manifest specification tests ST-1–ST-4 — `packages/server/tests/unit/portability/manifest-contract.spec.test.ts` ✅ (completed: 2026-09-13 18:02)
 - [x] 1.1.2 [spec-author] Write exact error/request-ID, permission, accepted-path parser, limit, and no-store route specifications ST-5–ST-10 — `packages/server/tests/unit/routes/portability-routes.spec.test.ts` ✅ (completed: 2026-09-13 18:13)
-- [ ] 1.1.3 Run the Phase 1 specification selectors and record the expected missing-contract failures (red phase)
+- [x] 1.1.3 Run the Phase 1 specification selectors and record the expected missing-contract failures (red phase) ✅ (completed: 2026-09-13 18:14; expected red: 2 suites, planned portability modules absent)
 
 ### Step 1.2: Implementation
 
