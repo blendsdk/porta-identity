@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 20:49
-> **Progress**: 9/60 tasks (15%)
+> **Last Updated**: 2026-09-13 21:04
+> **Progress**: 10/60 tasks (17%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -90,11 +90,17 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 
 ## Phase 2: Selective Manifest Export
 
+> **Phase baseline tree**: `7ed4f9093c81d21a18a28b11b9a17c0e37c4a37f`
+> **Scope mode**: strict
+> **Expected modification set**: Phase 2 export specification and implementation tests,
+> portability repository/export modules and manifest route, this execution plan, phase review
+> evidence, and directly affected technical documentation.
+
 ### Step 2.1: Specification Tests
 
 **Reference**: [03-02 §Export](03-02-portability-engine.md) · [ST-11–ST-18, ST-37](07-testing-strategy.md) · AR-1
 
-- [ ] 2.1.1 [spec-author] Write export-engine specification tests ST-11–ST-18 and ST-37 — `packages/server/tests/unit/portability/portability-engine.spec.test.ts`
+- [x] 2.1.1 [spec-author] Write export-engine specification tests ST-11–ST-18 and ST-37 — `packages/server/tests/unit/portability/portability-engine.spec.test.ts` ✅ (completed: 2026-09-13 21:04)
 - [ ] 2.1.2 [spec-author] Write live export and audit round-trip cases for ST-11–ST-18 — `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`
 - [ ] 2.1.3 Run the Phase 2 selectors and record the expected missing-export failures (red phase)
 
