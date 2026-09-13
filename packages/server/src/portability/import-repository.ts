@@ -7,6 +7,7 @@ import type {
   PortabilityApplicationModule,
   PortabilityClaimDefinition,
   PortabilityClient,
+  PortabilityCategory,
   PortabilityJsonValue,
   PortabilityOrganization,
   PortabilityPermission,
@@ -173,9 +174,14 @@ export interface PortabilityImportSnapshot {
  * Explicit columns keep credentials, lock state, audit data, and other non-portable fields out of
  * planner memory. The surrounding request transaction provides the consistent snapshot.
  *
+ * @param categories - Manifest categories whose destination state is required
+ * @param includeClaimDefinitions - Whether claim definitions participate in this manifest
  * @returns Destination records with internal identifiers retained only for relationship matching
  */
-export async function readPortabilityImportSnapshot(): Promise<PortabilityImportSnapshot> {
+export async function readPortabilityImportSnapshot(
+  categories: readonly PortabilityCategory[],
+  includeClaimDefinitions: boolean,
+): Promise<PortabilityImportSnapshot> {
   const pool = getPool();
   const organizations = await pool.query<ImportOrganizationRow>(
     `SELECT id, slug, name, status, is_super_admin, default_locale, default_login_methods,
@@ -209,13 +215,15 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
        JOIN applications a ON a.id = p.application_id
        LEFT JOIN application_modules m ON m.id = p.module_id`,
   );
-  const claims = await pool.query<ImportClaimDefinitionRow>(
-    `SELECT c.id, c.application_id, a.slug AS application_slug, c.claim_name, c.claim_type,
+  const claims: { readonly rows: readonly ImportClaimDefinitionRow[] } = includeClaimDefinitions
+    ? await pool.query<ImportClaimDefinitionRow>(
+        `SELECT c.id, c.application_id, a.slug AS application_slug, c.claim_name, c.claim_type,
             c.description, c.include_in_id_token, c.include_in_access_token,
             c.include_in_userinfo
        FROM custom_claim_definitions c
        JOIN applications a ON a.id = c.application_id`,
-  );
+      )
+    : { rows: [] };
   const rolePermissions = await pool.query<ImportRolePermissionRow>(
     `SELECT a.slug AS application_slug, r.slug AS role_slug,
             ARRAY_AGG(p.slug ORDER BY BTRIM(p.slug) COLLATE "C") AS permission_slugs
@@ -255,8 +263,9 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
        JOIN custom_claim_definitions c ON c.id = v.claim_id
        JOIN applications a ON a.id = c.application_id`,
   );
-  const clients = await pool.query<ImportClientRow>(
-    `SELECT c.id, c.organization_id, c.application_id, c.client_id,
+  const clients: { readonly rows: readonly ImportClientRow[] } = categories.includes('oidc_clients')
+    ? await pool.query<ImportClientRow>(
+        `SELECT c.id, c.organization_id, c.application_id, c.client_id,
             o.slug AS organization_slug, a.slug AS application_slug,
             c.client_name AS name, c.client_type, c.application_type, c.status,
             c.grant_types, c.response_types, c.scope, c.login_methods,
@@ -266,7 +275,8 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
        FROM clients c
        JOIN organizations o ON o.id = c.organization_id
        JOIN applications a ON a.id = c.application_id`,
-  );
+      )
+    : { rows: [] };
 
   return {
     organizations: organizations.rows,
@@ -277,7 +287,10 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
     permissions: permissions.rows,
     claimDefinitions: claims.rows,
     rolePermissions: rolePermissions.rows,
-    users: users.rows,
+    users: users.rows.map((row) => ({
+      ...row,
+      status: row.status === 'inactive' ? 'inactive' : 'active',
+    })),
     userRoles: userRoles.rows,
     userClaimValues: userClaimValues.rows,
     clients: clients.rows,
@@ -289,11 +302,13 @@ export async function readPortabilityImportSnapshot(): Promise<PortabilityImport
  *
  * @param record - Strict portable organization fields
  * @param destinationId - Existing identifier for update, or null for create
+ * @param destinationAssetTypes - Branding slots which currently contain stored bytes
  * @returns Authoritative destination identifier
  */
 export async function writePortabilityOrganization(
   record: PortabilityOrganization,
   destinationId: string | null,
+  destinationAssetTypes: ReadonlySet<'logo' | 'favicon'>,
 ): Promise<string> {
   const pool = getPool();
   const authoritativeId = destinationId ?? randomUUID();
@@ -332,6 +347,7 @@ export async function writePortabilityOrganization(
   for (const assetType of ['logo', 'favicon'] as const) {
     const asset = assetType === 'logo' ? record.branding.logo_asset : record.branding.favicon_asset;
     if (asset === null) {
+      if (!destinationAssetTypes.has(assetType)) continue;
       await pool.query(
         'DELETE FROM branding_assets WHERE organization_id = $1 AND asset_type = $2',
         [organizationId, assetType],

@@ -316,8 +316,31 @@ export function userMatches(
   source: PortabilityManifest['users'][number],
   destination: ImportUserRow,
 ): boolean {
-  const { id: _id, organization_id: _organizationId, ...portableDestination } = destination;
-  return sameValue(source, { ...portableDestination, email: normalizedEmail(destination.email) });
+  return sameValue(source, {
+    organization_slug: destination.organization_slug,
+    email: normalizedEmail(destination.email),
+    email_verified: destination.email_verified,
+    given_name: destination.given_name,
+    family_name: destination.family_name,
+    middle_name: destination.middle_name,
+    nickname: destination.nickname,
+    preferred_username: destination.preferred_username,
+    profile_url: destination.profile_url,
+    picture_url: destination.picture_url,
+    website_url: destination.website_url,
+    gender: destination.gender,
+    birthdate: destination.birthdate,
+    zoneinfo: destination.zoneinfo,
+    locale: destination.locale,
+    phone_number: destination.phone_number,
+    phone_number_verified: destination.phone_number_verified,
+    address_street: destination.address_street,
+    address_locality: destination.address_locality,
+    address_region: destination.address_region,
+    address_postal_code: destination.address_postal_code,
+    address_country: destination.address_country,
+    status: destination.status,
+  });
 }
 
 /**

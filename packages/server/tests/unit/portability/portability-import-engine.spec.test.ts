@@ -457,6 +457,17 @@ describe('portability atomic apply specification', () => {
           application_selection: { all_applications: true, application_slugs: [] },
           organizations: [{ ...portableOrganization, name: 'Manifest Name' }],
           applications: [portableApplication],
+          claim_definitions: [
+            {
+              application_slug: 'alpha-app',
+              claim_name: 'department',
+              claim_type: 'string',
+              description: null,
+              include_in_id_token: true,
+              include_in_access_token: true,
+              include_in_userinfo: true,
+            },
+          ],
           users: [{ ...portableUser, given_name: 'Imported Name' }],
           user_claim_values: [
             {
@@ -502,6 +513,7 @@ describe('portability atomic apply specification', () => {
 
   // Confidential client creation returns one hashed Imported secret with clamped UTC expiry.
   it('should create one committed confidential-client credential', async () => {
+    useRows({ organizations: [alphaOrganization], applications: [alphaApplication] });
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-31T23:45:12.345Z'));
     try {
@@ -541,7 +553,11 @@ describe('portability atomic apply specification', () => {
     ],
     ['matched confidential', confidentialClient, [{ ...confidentialClient, id: 'client-id' }]],
   ] as const)('should return no secret for a %s client', async (_name, client, clients) => {
-    useRows({ clients });
+    useRows({
+      organizations: [alphaOrganization],
+      applications: [alphaApplication],
+      clients,
+    });
     const result = await portability.applyPortabilityManifest(
       importManifest({
         categories: ['oidc_clients'],
@@ -586,6 +602,7 @@ describe('portability atomic apply specification', () => {
     'should import %s lifecycle without restoring lock state',
     async (status) => {
       useRows({
+        organizations: [alphaOrganization],
         users: [
           {
             ...alphaUser,
@@ -616,6 +633,7 @@ describe('portability atomic apply specification', () => {
 
   // Authority cleanup is targeted and registered after commit rather than awaited in SQL work.
   it('should schedule only affected-user authority cleanup after commit', async () => {
+    useRows({ organizations: [alphaOrganization], users: [alphaUser] });
     await portability.applyPortabilityManifest(
       importManifest({
         categories: ['users_assignments'],
@@ -633,6 +651,7 @@ describe('portability atomic apply specification', () => {
 
   // Durable audit, logs, ordinary results, and later reads retain no one-time or internal content.
   it('should isolate the one-time credential from durable surfaces', async () => {
+    useRows({ organizations: [alphaOrganization], applications: [alphaApplication] });
     const result = await portability.applyPortabilityManifest(
       importManifest({
         categories: ['oidc_clients'],

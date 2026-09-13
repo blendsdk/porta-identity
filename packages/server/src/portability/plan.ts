@@ -60,7 +60,10 @@ export async function buildResolvedPortabilityPlan(
   mode: PortabilityImportMode,
 ): Promise<ResolvedPortabilityPlan> {
   const manifest = portabilityManifestSchema.parse(input);
-  const snapshot = await readPortabilityImportSnapshot();
+  const snapshot = await readPortabilityImportSnapshot(
+    manifest.categories,
+    manifest.claim_definitions.length > 0 || manifest.user_claim_values.length > 0,
+  );
   const accumulator: PlanAccumulator = { items: [], errors: [], summary: emptySummary() };
 
   if (rejectDuplicates(manifest, accumulator)) {
