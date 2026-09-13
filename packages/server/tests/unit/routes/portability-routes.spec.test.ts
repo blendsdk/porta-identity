@@ -125,6 +125,50 @@ const EMPTY_RESULT = {
   items: [],
 };
 
+const RESULT_ENTITY_TYPES = [
+  'organizations',
+  'applications',
+  'application_modules',
+  'roles',
+  'permissions',
+  'claim_definitions',
+  'role_permission_mappings',
+  'users',
+  'user_role_assignments',
+  'user_claim_values',
+  'clients',
+] as const;
+
+/** Build the exact bounded public result returned when import planning rejects one record. */
+function rejectedPlanResult(
+  entityType: (typeof RESULT_ENTITY_TYPES)[number],
+  naturalKey: Readonly<Record<string, string>>,
+  code: 'control_plane_record' | 'client_id_collision' | 'incompatible_record',
+) {
+  return {
+    mode: 'dry-run',
+    summary: Object.fromEntries(
+      RESULT_ENTITY_TYPES.map((type) => [
+        type,
+        {
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          rejected: type === entityType ? 1 : 0,
+        },
+      ]),
+    ),
+    items: [
+      {
+        entity_type: entityType,
+        action: 'rejected',
+        natural_key: naturalKey,
+      },
+    ],
+    errors: [{ entity_type: entityType, natural_key: naturalKey, code }],
+  };
+}
+
 /** Start the assembled server so parser ordering is exercised as an HTTP boundary. */
 async function startApplication(): Promise<{ baseUrl: string; server: Server }> {
   const server = createApp().listen(0, '127.0.0.1');
@@ -469,5 +513,137 @@ describe('portability Admin API specification', () => {
     expect(testState.exportManifest).not.toHaveBeenCalled();
     expect(testState.buildPlan).not.toHaveBeenCalled();
     expect(testState.applyManifest).not.toHaveBeenCalled();
+  });
+
+  // Protected control-plane scope and records return one fixed rejection before any apply or content exposure.
+  it.each([
+    {
+      caseName: 'the destination control-plane organization',
+      entityType: 'organizations',
+      naturalKey: { slug: 'porta-admin' },
+      manifest: {
+        ...EMPTY_MANIFEST,
+        scope: { kind: 'organization', organization_slug: 'porta-admin' },
+        organizations: [],
+      },
+    },
+    {
+      caseName: 'a protected control-plane application',
+      entityType: 'applications',
+      naturalKey: { slug: 'porta-admin' },
+      manifest: {
+        ...EMPTY_MANIFEST,
+        categories: ['applications_authorization'],
+        application_selection: { all_applications: false, application_slugs: ['porta-admin'] },
+        applications: [
+          { slug: 'porta-admin', name: 'Porta Admin', description: null, status: 'active' },
+        ],
+      },
+    },
+  ] as const)(
+    'should return a safe plan rejection for $caseName',
+    async ({ entityType, naturalKey, manifest }) => {
+      const result = rejectedPlanResult(entityType, naturalKey, 'control_plane_record');
+      testState.buildPlan.mockResolvedValue(result);
+
+      const response = await postJson(baseUrl, '/api/admin/import', {
+        manifest,
+        mode: 'dry-run',
+      });
+
+      expect(response.status).toBe(409);
+      expect(await response.json()).toStrictEqual({
+        error: 'Import plan rejected',
+        code: 'import_plan_rejected',
+        result,
+      });
+      expect(response.headers.get('cache-control')).toBe('no-store');
+      expect(testState.applyManifest).not.toHaveBeenCalled();
+    },
+  );
+
+  // Client identity collisions expose only the public natural key and fixed safe rejection code.
+  it('should map a cross-owner Client ID collision to a safe plan rejection', async () => {
+    const result = rejectedPlanResult(
+      'clients',
+      { client_id: 'portable-client' },
+      'client_id_collision',
+    );
+    testState.buildPlan.mockResolvedValue(result);
+
+    const response = await postJson(baseUrl, '/api/admin/import', {
+      manifest: {
+        ...EMPTY_MANIFEST,
+        categories: ['oidc_clients'],
+        application_selection: { all_applications: true, application_slugs: [] },
+      },
+      mode: 'dry-run',
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toStrictEqual({
+      error: 'Import plan rejected',
+      code: 'import_plan_rejected',
+      result,
+    });
+    expect(JSON.stringify(body)).not.toMatch(
+      /destination organization|destination application|database|internal-|uuid|sql/i,
+    );
+    expect(testState.applyManifest).not.toHaveBeenCalled();
+  });
+
+  // Immutable conflicts return a bounded safe result and cannot fall through to mutation.
+  it('should map an immutable-field mismatch to one bounded plan rejection', async () => {
+    const result = rejectedPlanResult(
+      'clients',
+      { client_id: 'portable-client' },
+      'incompatible_record',
+    );
+    testState.buildPlan.mockResolvedValue(result);
+
+    const response = await postJson(baseUrl, '/api/admin/import', {
+      manifest: {
+        ...EMPTY_MANIFEST,
+        categories: ['oidc_clients'],
+        application_selection: { all_applications: true, application_slugs: [] },
+      },
+      mode: 'dry-run',
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body).toStrictEqual({
+      error: 'Import plan rejected',
+      code: 'import_plan_rejected',
+      result,
+    });
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors.length).toBeLessThanOrEqual(100);
+    expect(testState.applyManifest).not.toHaveBeenCalled();
+  });
+
+  // A failed final apply maps to one correlated content-free response with no credential material.
+  it('should map a final apply failure to the fixed correlated execution error', async () => {
+    testState.applyManifest.mockRejectedValue(
+      new Error('private SQL detail containing one-time-import-secret'),
+    );
+
+    const response = await postJson(baseUrl, '/api/admin/import', {
+      manifest: EMPTY_MANIFEST,
+      mode: 'keep-existing',
+    });
+    const requestId = response.headers.get('x-request-id');
+    const body = await response.json();
+
+    expect(requestId).toBeTruthy();
+    expect(response.status).toBe(503);
+    expect(body).toStrictEqual({
+      error: 'Import failed',
+      code: 'import_execution_failed',
+      request_id: requestId,
+    });
+    expect(JSON.stringify(body)).not.toMatch(/private SQL|one-time-import-secret|credential/i);
+    expect(response.headers.get('cache-control')).toBe('no-store');
   });
 });
