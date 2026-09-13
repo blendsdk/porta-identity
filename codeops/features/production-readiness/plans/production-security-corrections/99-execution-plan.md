@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-09-13 02:54
-> **Progress**: 28/51 tasks (55%)
+> **Progress**: 30/51 tasks (59%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -134,10 +134,19 @@ and security auditor then reviewed the remediation diff once and both reported n
 **Reference:** [03-02](03-02-totp-replay.md), AR-1–AR-3, AR-6–AR-7, AR-9, ST-13 and ST-20–ST-23. **Scope:** TOTP route,
 English locale, named route tests, this plan, review evidence, and roadmap only.
 
+> **Phase baseline tree**: `57d4a8f825d0154018920195c81da6c0cf0ec3c1`
+> **Expected modification set**: TOTP route, English locale, named route tests, the mechanical retained-test count, this plan, phase review evidence, and the feature roadmap
+> **Scope mode**: strict
+
 ### Step 3.1: Specification Tests
 
-- [ ] 3.1.1 [spec-author] Write invalid/replay uniformity, enrollment limiter, 429 data reuse, 503 parity, non-disclosure, and tenant-context specifications from ST-13 and ST-20–ST-23 — `packages/server/tests/unit/routes/two-factor-security.spec.test.ts`
-- [ ] 3.1.2 Run the Phase 3 specification file and record its expected red result before implementation
+- [x] 3.1.1 [spec-author] Write invalid/replay uniformity, enrollment limiter, 429 data reuse, 503 parity, non-disclosure, and tenant-context specifications from ST-13 and ST-20–ST-23 — `packages/server/tests/unit/routes/two-factor-security.spec.test.ts` ✅ (completed: 2026-09-13 02:51)
+- [x] 3.1.2 Run the Phase 3 specification file and record its expected red result before implementation ✅ (completed: 2026-09-13 02:51)
+
+**Red evidence:** 5 failed / 6 passed. The failures cover the missing enrollment verification
+budget, stored pending-setup rendering on HTTP 429, generic HTTP 503 parity for login and
+enrollment, and bounded unsupported-configuration diagnostics. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-3.1.2-red.log`.
 
 ### Step 3.2: Implementation
 
