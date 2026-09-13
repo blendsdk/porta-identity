@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-13
 
 ## Overview
 
@@ -104,7 +104,8 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
 | `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
 | `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
-| `exports.ts`       | `/api/admin/export/:entityType`                       | —         | CSV/JSON data export                           |
+| `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports |
+| `imports.ts`       | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
 
 ### Organization branding assets
 
@@ -391,16 +392,35 @@ Administrative data APIs use closed schemas and explicit authorization boundarie
 ```text
 POST /api/admin/bulk/organizations/status
 POST /api/admin/bulk/users/status
-POST /api/admin/import
+POST /api/admin/export/manifest
+POST /api/admin/import/manifest
 GET  /api/admin/export/:entityType
 ```
+
+The portability endpoints accept one strict versioned JSON contract. Export requests select an
+organization or the non-control-plane environment, one or more closed data categories, and an
+explicit application filter. Import requests contain that same manifest and choose `dry-run`,
+`keep-existing`, or `update-existing`. Unknown fields and credential-equivalent fields are
+rejected at the request boundary.
+
+Each request requires the portability operation permission plus the complete permission union for
+its selected categories. Complete-environment operations additionally require the exact
+super-admin role. Responses and logs use fixed error codes and request-ID correlation without
+including manifest data. The import route alone receives the dedicated 64 MiB JSON parser; other
+Admin API requests retain the standard body limit. Both manifest routes set `Cache-Control:
+no-store`.
+
+The transaction-backed export and import engines are being introduced behind these fail-closed
+service boundaries. Until each engine is connected, an otherwise valid request returns its fixed
+`503` failure contract rather than executing a partial operation.
 
 Bulk status changes validate the complete request before persistence. Each accepted item then owns
 one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
 rejections are returned in input order. A dependency failure preserves earlier commits, marks the
 current and remaining items `not_attempted`, and exposes only a correlation identifier.
 
-Imports accept versioned manifests in `merge`, `overwrite`, or `dry-run` mode. The planner rejects
+The retained legacy import accepts versioned manifests in `merge`, `overwrite`, or `dry-run` mode.
+The planner rejects
 unknown fields, duplicate natural keys, unresolved parents, cross-tenant relationships, and
 credential-equivalent input before mutation. Merge skips existing tenant-qualified keys; overwrite
 changes only the documented presentation and configuration fields; dry-run rolls back its snapshot
