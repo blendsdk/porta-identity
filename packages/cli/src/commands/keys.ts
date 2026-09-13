@@ -13,7 +13,7 @@ import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, formatDate, truncate } from '../output.js';
+import { printTable, printJson, success, warn, info, formatDate, truncate } from '../output.js';
 import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
@@ -21,6 +21,12 @@ import { confirm } from '../prompt.js';
 // ---------------------------------------------------------------------------
 
 type KeysBaseArgs = GlobalOptions;
+
+/** Print the process-restart boundary that activates a committed signing-key change. */
+function printKeyActivationGuidance(): void {
+  info('Restart every running Porta instance.');
+  info('After restarting, run `porta keys list` and verify the committed active signing key.');
+}
 
 // ---------------------------------------------------------------------------
 // Command
@@ -84,7 +90,10 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            success(`Generated signing key: ${key.kid} (${truncate(key.id, 12)})`);
+            success(
+              `Added another active signing key without retiring existing active keys: ${key.kid} (${truncate(key.id, 12)})`,
+            );
+            printKeyActivationGuidance();
           } catch (err) {
             handleError(err, argv.verbose);
           }
@@ -100,7 +109,7 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           try {
             if (!argv.force) {
               const ok = await confirm(
-                'Rotate signing keys? This will retire the current active key.',
+                'Rotate signing keys? This will retire every active key and create one new active key.',
               );
               if (!ok) {
                 warn('Aborted');
@@ -116,7 +125,8 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
-            success(`Rotated signing keys. New active key: ${key.kid}`);
+            success(`Retired every active key and created one new active key: ${key.kid}`);
+            printKeyActivationGuidance();
           } catch (err) {
             handleError(err, argv.verbose);
           }

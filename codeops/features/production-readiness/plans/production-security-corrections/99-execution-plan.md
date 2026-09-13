@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 03:29
-> **Progress**: 40/51 tasks (78%)
+> **Last Updated**: 2026-09-13 03:30
+> **Progress**: 41/51 tasks (80%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -204,7 +204,7 @@ of automatic steady-state migration recommendations. Log:
 ### Step 4.2: Implementation and Focused Verification
 
 - [x] 4.2.1 Reject normalized byte-equivalent production encryption-key values before the safety escape hatch and update existing config tests — `packages/server/src/config/schema.ts`, `packages/server/tests/unit/config/schema.production.test.ts` ✅ (completed: 2026-09-13 03:29)
-- [ ] 4.2.2 Add successful generate/rotate restart and verification guidance and update existing CLI tests — `packages/cli/src/commands/keys.ts`, `packages/cli/tests/commands/keys.test.ts`
+- [x] 4.2.2 Add successful generate/rotate restart and verification guidance and update existing CLI tests — `packages/cli/src/commands/keys.ts`, `packages/cli/tests/commands/keys.test.ts` ✅ (completed: 2026-09-13 03:32)
 - [ ] 4.2.3 Correct production secret and restart guidance — `README.md`, `docs/guide/environment.md`, `docs/guide/deployment.md`
 - [ ] 4.2.4 Correct conventional CLI, production Docker, and migration guidance — `docs/cli/infrastructure.md`, `docker/DOCKERHUB.md`, `docs/database/migrations.md`
 - [ ] 4.2.5 Run ST-24–ST-28, affected workspace verification, `yarn test:structure`, and `yarn docs:build`; make all immutable expectations green
