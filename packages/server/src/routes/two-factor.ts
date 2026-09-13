@@ -699,6 +699,34 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       return;
     }
 
+    // TOTP confirmation uses the same attempt budget as normal 2FA verification.
+    // Email setup returns above because it does not verify a user-entered code.
+    const rateLimitKey = buildRateLimitKey('2fa_verify', org.id, pending.pendingAccountId);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, VERIFY_RATE_LIMIT);
+
+    if (!rateLimitResult.allowed) {
+      ctx.set('Retry-After', String(rateLimitResult.retryAfter));
+      writeAuditLog({
+        organizationId: org.id,
+        userId: pending.pendingAccountId,
+        eventType: 'rate_limit.2fa_verify',
+        eventCategory: 'security',
+        description: 'TOTP setup verification rate limit exceeded',
+        ipAddress: ctx.ip,
+      });
+      const t = getTranslationFunction(locale, org.slug);
+      await renderTotpSetupWithError(
+        ctx,
+        interaction.uid,
+        pending,
+        locale,
+        t,
+        t('errors.rate_limit_exceeded'),
+        429,
+      );
+      return;
+    }
+
     // TOTP setup confirmation — verify the code from authenticator app
     if (!code) {
       ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
@@ -746,6 +774,56 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
+}
+
+/**
+ * Render pending TOTP enrollment data with an error without creating new secrets.
+ *
+ * @param ctx - Koa context
+ * @param uid - Interaction UID
+ * @param pending - Pending two-factor state
+ * @param locale - Resolved locale
+ * @param t - Translation function
+ * @param errorMessage - Error to display
+ * @param statusCode - HTTP response status
+ * @throws Error when the pending enrollment record no longer exists
+ */
+async function renderTotpSetupWithError(
+  ctx: TwoFactorContext,
+  uid: string,
+  pending: PendingTwoFactor,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  errorMessage: string,
+  statusCode: number,
+): Promise<void> {
+  const setup = await getPendingTotpSetupInfo(
+    pending.pendingAccountId,
+    pending.email,
+    ctx.state.organization.slug,
+  );
+  if (!setup) {
+    throw new Error('Pending TOTP setup is unavailable');
+  }
+
+  const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
+  const context: TemplateContext = {
+    ...(await buildBaseContext(ctx, locale, csrfToken, ctx.state.organization.slug)),
+    t,
+    interaction: {
+      uid,
+      prompt: 'two-factor-setup',
+      params: {} as Record<string, unknown>,
+      client: { clientName: '' },
+    },
+    method: 'totp',
+    qrCodeDataUri: setup.qrCodeDataUri,
+    totpSecret: setup.totpSecret,
+    flash: { error: errorMessage },
+  };
+
+  await renderAndRespond(ctx, 'two-factor-setup', context, statusCode);
 }
 
 // ---------------------------------------------------------------------------
