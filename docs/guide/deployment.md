@@ -40,6 +40,7 @@ services:
       SMTP_FROM: noreply@example.com
       LOG_LEVEL: info
       TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
+      SIGNING_KEY_ENCRYPTION_KEY: ${SIGNING_KEY_ENCRYPTION_KEY}
       TRUST_PROXY: 'true'
       PORTA_AUTO_MIGRATE: 'false'
     depends_on:
@@ -83,36 +84,39 @@ volumes:
 ```
 
 ::: warning
-Never use default passwords in production. Generate strong, unique values for
-`POSTGRES_PASSWORD`, `COOKIE_KEYS`, and `TWO_FACTOR_ENCRYPTION_KEY`.
+Never use default passwords or reusable example secrets in production. Generate strong, unique
+values for `POSTGRES_PASSWORD` and `COOKIE_KEYS`. Generate
+`SIGNING_KEY_ENCRYPTION_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` separately: both are required,
+external secrets of exactly 64 hexadecimal characters, and they must contain different values.
 :::
 
 ## Environment Variables
 
 ### Required for Production
 
-| Variable                    | Description                                | Example                                         |
-| --------------------------- | ------------------------------------------ | ----------------------------------------------- |
-| `DATABASE_URL`              | PostgreSQL connection string               | `postgresql://porta:secret@postgres:5432/porta` |
-| `REDIS_URL`                 | Redis connection string                    | `redis://redis:6379`                            |
-| `ISSUER_BASE_URL`           | Public-facing URL (must match your domain) | `https://auth.example.com`                      |
-| `COOKIE_KEYS`               | Cookie signing key (≥32 random characters) | `a1b2c3d4e5f6...`                               |
-| `TWO_FACTOR_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars = 32 bytes)  | `0123456789abcdef...`                           |
-| `SMTP_HOST`                 | SMTP relay hostname                        | `smtp.sendgrid.net`                             |
-| `SMTP_PORT`                 | SMTP port                                  | `587`                                           |
-| `SMTP_FROM`                 | Sender email address                       | `noreply@example.com`                           |
+| Variable                     | Description                                | Example                                         |
+| ---------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| `DATABASE_URL`               | PostgreSQL connection string               | `postgresql://porta:secret@postgres:5432/porta` |
+| `REDIS_URL`                  | Redis connection string                    | `redis://redis:6379`                            |
+| `ISSUER_BASE_URL`            | Public-facing URL (must match your domain) | `https://auth.example.com`                      |
+| `COOKIE_KEYS`                | Cookie signing key (≥32 random characters) | `a1b2c3d4e5f6...`                               |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | AES-256-GCM key (exactly 64 hex chars)     | `${TWO_FACTOR_ENCRYPTION_KEY}`                  |
+| `SIGNING_KEY_ENCRYPTION_KEY` | AES-256-GCM key (exactly 64 hex chars)     | `${SIGNING_KEY_ENCRYPTION_KEY}`                 |
+| `SMTP_HOST`                  | SMTP relay hostname                        | `smtp.sendgrid.net`                             |
+| `SMTP_PORT`                  | SMTP port                                  | `587`                                           |
+| `SMTP_FROM`                  | Sender email address                       | `noreply@example.com`                           |
 
 ### Optional
 
-| Variable             | Default      | Description                                               |
-| -------------------- | ------------ | --------------------------------------------------------- |
-| `NODE_ENV`           | `production` | Runtime mode                                              |
-| `PORT`               | `3000`       | HTTP listen port                                          |
-| `HOST`               | `0.0.0.0`    | HTTP listen address                                       |
-| `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)          |
-| `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy |
-| `PORTA_AUTO_MIGRATE` | `false`      | Auto-run migrations on startup                            |
-| `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                   |
+| Variable             | Default      | Description                                                 |
+| -------------------- | ------------ | ----------------------------------------------------------- |
+| `NODE_ENV`           | `production` | Runtime mode                                                |
+| `PORT`               | `3000`       | HTTP listen port                                            |
+| `HOST`               | `0.0.0.0`    | HTTP listen address                                         |
+| `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)            |
+| `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy   |
+| `PORTA_AUTO_MIGRATE` | `false`      | Initial-setup migration switch; keep disabled in production |
+| `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                     |
 
 ### Generating Secrets
 
@@ -121,6 +125,9 @@ Never use default passwords in production. Generate strong, unique values for
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 # Two-factor encryption key (64 hex chars)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Signing-key encryption key (64 hex chars); run separately and do not reuse the first result
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Database password
@@ -246,9 +253,8 @@ docker exec porta-app node dist/cli/index.js migrate up
 docker exec porta-app node dist/cli/index.js migrate status
 ```
 
-**Auto-migration:** Set `PORTA_AUTO_MIGRATE=true` for the entrypoint to run migrations
-automatically on startup. This is convenient for initial setup but should be disabled
-in production once the schema is stable — run migrations explicitly during deployments.
+`PORTA_AUTO_MIGRATE` is an initial-setup convenience. Keep it `false` in production and run
+`porta migrate up` explicitly as a controlled deployment step before starting the new release.
 
 ### Backup & Recovery
 
@@ -340,9 +346,9 @@ Adjust based on your compliance requirements and storage budget.
 
 ### Access Controls
 
-Porta stores signing keys as PEM-encoded private keys in the `signing_keys` database
-table. Until at-rest encryption (KEK) is implemented, restrict database-level access
-as an interim security measure.
+Porta stores signing public data and AES-256-GCM-encrypted private-key material in the
+`signing_keys` table. The external `SIGNING_KEY_ENCRYPTION_KEY` decrypts that material and must
+remain outside PostgreSQL. Restrict database-level access as an additional control.
 
 #### Principle of Least Privilege
 
@@ -379,11 +385,6 @@ If you cannot use separate roles, at minimum restrict direct `SELECT` on the
 REVOKE ALL ON TABLE signing_keys FROM PUBLIC;
 GRANT SELECT, INSERT, UPDATE ON TABLE signing_keys TO porta_app;
 ```
-
-::: tip
-This is an interim mitigation. A future release will add envelope encryption (KEK)
-so that signing keys are encrypted at rest in the database.
-:::
 
 ## Redis
 
@@ -504,37 +505,27 @@ rotation for all three secret types: signing keys, cookie keys, and client secre
 Porta uses ES256 (ECDSA P-256) keys for JWT signing. Multiple keys can be active
 simultaneously — the newest key signs new tokens while older keys verify existing ones.
 
-**Zero-downtime rotation procedure:**
+**Signing-key change procedure:**
 
 ```bash
 # 1. List current signing keys
 docker exec porta-app node dist/cli/index.js keys list
 
-# 2. Generate a new signing key (becomes the active signing key)
+# 2. Add another active signing key without retiring existing active keys
 docker exec porta-app node dist/cli/index.js keys generate
 
-# 3. Verify the new key is active
+# 3. Restart every running Porta instance so each provider reloads committed keys
+docker compose -f docker/docker-compose.prod.yml restart porta
+
+# 4. After restarting, verify the committed active signing key
 docker exec porta-app node dist/cli/index.js keys list
 ```
 
-After generating a new key, the old key remains in the database for token verification.
-Wait for all existing tokens to expire before deactivating the old key:
-
-| Token Type    | Default TTL | Wait Before Deactivation |
-| ------------- | ----------- | ------------------------ |
-| Access Token  | 1 hour      | 1 hour                   |
-| Refresh Token | 14 days     | 14 days                  |
-| ID Token      | 1 hour      | 1 hour                   |
-
-```bash
-# 4. After the longest TTL has elapsed, deactivate the old key
-docker exec porta-app node dist/cli/index.js keys rotate
-```
-
-::: warning
-Never deactivate the old key before its tokens expire — clients will receive
-`invalid_token` errors when presenting tokens signed with a deactivated key.
-:::
+`porta keys generate` leaves every existing active key active. By contrast, `porta keys rotate`
+atomically retires every active key and creates one new active key. Rotation is therefore a
+deliberate replacement operation, not a later deactivation step for one generated key. After a
+successful rotation, restart every running Porta instance and verify the committed active signing
+key with `porta keys list` after restarting.
 
 **Recommended rotation schedule:** Every 90 days, or immediately if a key is suspected
 to be compromised.
@@ -742,9 +733,10 @@ services:
 ```
 
 ::: warning
-When running multiple replicas, ensure `COOKIE_KEYS` and `TWO_FACTOR_ENCRYPTION_KEY`
-are identical across all instances. These are encryption keys — different values will
-cause decryption failures.
+When running multiple replicas, each instance must receive the same `COOKIE_KEYS`, the same
+`TWO_FACTOR_ENCRYPTION_KEY`, and the same `SIGNING_KEY_ENCRYPTION_KEY`. The signing-key and
+two-factor root keys must still be different from one another. Mismatched per-variable values
+across instances cause verification or decryption failures.
 :::
 
 ## Custom UI & Templates

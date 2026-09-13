@@ -25,13 +25,13 @@ Multi-tenant OIDC provider built on [node-oidc-provider](https://github.com/panv
 
 ## 🔗 Quick Links
 
-| | |
-|---|---|
-| 📖 [Documentation](https://blendsdk.github.io/porta-identity/) | Full guides, API reference, CLI docs |
-| 🐳 [Docker Hub](https://hub.docker.com/r/blendsdk/porta) | Pull the production Docker image |
-| 🚀 [Quick Start](https://blendsdk.github.io/porta-identity/guide/quickstart) | Get running in under 5 minutes |
-| 📋 [Admin API](https://blendsdk.github.io/porta-identity/api/overview) | REST API reference for admin operations |
-| 💻 [CLI Reference](https://blendsdk.github.io/porta-identity/cli/overview) | Command-line administration tool |
+|                                                                              |                                         |
+| ---------------------------------------------------------------------------- | --------------------------------------- |
+| 📖 [Documentation](https://blendsdk.github.io/porta-identity/)               | Full guides, API reference, CLI docs    |
+| 🐳 [Docker Hub](https://hub.docker.com/r/blendsdk/porta)                     | Pull the production Docker image        |
+| 🚀 [Quick Start](https://blendsdk.github.io/porta-identity/guide/quickstart) | Get running in under 5 minutes          |
+| 📋 [Admin API](https://blendsdk.github.io/porta-identity/api/overview)       | REST API reference for admin operations |
+| 💻 [CLI Reference](https://blendsdk.github.io/porta-identity/cli/overview)   | Command-line administration tool        |
 
 ## 🚀 Quick Start
 
@@ -43,7 +43,7 @@ The fastest way to try Porta — no git clone required. Just create two files an
 services:
   porta:
     image: blendsdk/porta:latest
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
     env_file: [.env]
     environment:
       DATABASE_URL: postgresql://porta:porta_secret@postgres:5432/porta
@@ -55,10 +55,10 @@ services:
     image: postgres:16-alpine
     environment: { POSTGRES_DB: porta, POSTGRES_USER: porta, POSTGRES_PASSWORD: porta_secret }
     volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U porta"], interval: 5s, retries: 5 }
+    healthcheck: { test: ['CMD-SHELL', 'pg_isready -U porta'], interval: 5s, retries: 5 }
   redis:
     image: redis:7-alpine
-    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 5 }
+    healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 5s, retries: 5 }
 volumes:
   pgdata:
 ```
@@ -76,6 +76,22 @@ Then open [http://localhost:3000/health](http://localhost:3000/health) to verify
 
 For source development setup, see the [Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart#source).
 
+### Production security essentials
+
+Production requires `SIGNING_KEY_ENCRYPTION_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` to be different,
+random secrets of exactly 64 hexadecimal characters. Keep both root encryption keys in the
+deployment environment or a secret manager. PostgreSQL never contains these root keys.
+
+`porta keys generate` adds another active signing key.
+It does so without retiring existing active keys.
+`porta keys rotate` retires every active signing key and creates one new active key. After either
+successful command, restart every running Porta instance, then run `porta keys list` and verify the
+committed active signing key after restarting.
+
+Selective environment portability and PostgreSQL-backed global configuration are separate later
+operational features. Their absence is not a blocker for a correctly configured production
+installation.
+
 ## ✨ Features
 
 - **Multi-Tenant OIDC** — Path-based tenancy with per-org OIDC endpoints
@@ -86,7 +102,7 @@ For source development setup, see the [Quick Start guide](https://blendsdk.githu
 - **Login Methods** — Per-org and per-client configurable (password, magic link)
 - **Admin CLI** — 14+ commands for managing orgs, apps, clients, users, roles, and more
 - **Admin API** — JWT-authenticated REST API for all admin operations
-- **ES256 Signing** — ECDSA P-256 keys, auto-bootstrapped, stored in database
+- **ES256 Signing** — ECDSA P-256 keys with encrypted private material at rest
 - **Hybrid OIDC Adapters** — Redis for sessions, PostgreSQL for tokens/grants
 - **Audit Logging** — Comprehensive event logging for security and compliance
 
@@ -110,7 +126,7 @@ yarn install
 cp .env.example .env
 yarn docker:up        # Start PostgreSQL, Redis, MailHog
 yarn build && yarn porta migrate up && yarn porta init
-yarn dev              # Start dev server with hot-reload
+yarn dev              # Start the development server with live reload
 yarn verify           # Run lint + build + tests before committing
 ```
 

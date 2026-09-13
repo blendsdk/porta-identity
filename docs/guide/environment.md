@@ -112,8 +112,8 @@ Enabling it without a proxy allows clients to spoof `X-Forwarded-*` headers.
 
 | Variable                     | Default | Required       | Description                                                                                                                                                                                                                                                                                                |
 | ---------------------------- | ------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TWO_FACTOR_ENCRYPTION_KEY`  | —       | **Yes** (prod) | AES-256-GCM key for encrypting TOTP secrets. Must be exactly 64 hex characters (32 bytes). Optional in development/test.                                                                                                                                                                                   |
-| `SIGNING_KEY_ENCRYPTION_KEY` | —       | **Yes**        | AES-256-GCM key for encrypting ES256 signing key private keys at rest. Must be exactly 64 hex characters (32 bytes). **Always required** — Porta will not start without it.                                                                                                                                |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | —       | **Yes** (prod) | AES-256-GCM key for encrypting TOTP secrets. Must be exactly 64 hexadecimal characters (32 bytes). Development/test installations may omit it.                                                                                                                                                             |
+| `SIGNING_KEY_ENCRYPTION_KEY` | —       | **Yes**        | AES-256-GCM key for encrypting ES256 signing key private keys at rest. Must be exactly 64 hexadecimal characters (32 bytes). **Always required** — Porta will not start without it.                                                                                                                        |
 | `PORTA_SKIP_PROD_SAFETY`     | `false` | No             | Emergency escape hatch to bypass production config safety checks. When `true`, Porta logs an **ERROR** instead of exiting on startup. **Do not use in normal production** — this is intended only for disaster recovery or migration scenarios. See [Production Safety Checks](#production-safety-checks). |
 
 ### Production Safety Checks
@@ -131,8 +131,11 @@ When `NODE_ENV=production`, Porta validates your configuration at startup and **
 | R7   | `ISSUER_BASE_URL` uses `https://` for non-localhost hosts                             |
 | R8   | `LOG_LEVEL` is not `debug` (prevents verbose logging in production)                   |
 | R9   | `SMTP_HOST` is not `localhost` / `127.x.x.x` (catches MailHog dev inbox)              |
+| R10  | The signing-key and two-factor encryption keys contain different values               |
 
-If you need to temporarily bypass these checks (e.g., during disaster recovery), set `PORTA_SKIP_PROD_SAFETY=true`. Porta will still log each violation as an **ERROR** but will not exit.
+If you need to temporarily bypass the operational checks (e.g., during disaster recovery), set
+`PORTA_SKIP_PROD_SAFETY=true`. Porta will still require different signing-key and two-factor root
+keys because the escape hatch cannot disable cryptographic domain separation.
 
 ::: danger
 `PORTA_SKIP_PROD_SAFETY=true` should never be used in normal production. It exists only for emergency situations where you need to start Porta with an incomplete configuration.
@@ -154,12 +157,15 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+Run the two encryption-key commands separately and do not reuse either result. Production requires
+both external root keys to contain different values; Porta does not store them in PostgreSQL.
+
 ## Startup Behavior
 
-| Variable             | Default | Required | Description                                                                                                                                                                           |
-| -------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PORTA_AUTO_MIGRATE` | `false` | No       | When `true`, the Docker entrypoint runs database migrations automatically before starting the server. Convenient for initial setup; disable in production after the schema is stable. |
-| `PORTA_WAIT_TIMEOUT` | `60`    | No       | Maximum seconds the Docker entrypoint waits for PostgreSQL and Redis to become available before exiting.                                                                              |
+| Variable             | Default | Required | Description                                                                                                                                         |
+| -------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORTA_AUTO_MIGRATE` | `false` | No       | Entrypoint migration switch for development or one-time initialization. Keep `false` in production and run migrations explicitly during deployment. |
+| `PORTA_WAIT_TIMEOUT` | `60`    | No       | Maximum seconds the Docker entrypoint waits for PostgreSQL and Redis to become available before exiting.                                            |
 
 ## Test Environment
 
@@ -175,7 +181,7 @@ These variables are used by the test suite and should not be set in production.
 Porta ships with two example files:
 
 - **`.env.example`** — Development defaults (local PostgreSQL, Redis, MailHog)
-- **`.env.docker`** — Docker Compose defaults (service hostnames, production mode)
+- **`.env.docker`** — Local Docker Compose defaults (service hostnames and development services)
 
 Copy the appropriate file and customize:
 
