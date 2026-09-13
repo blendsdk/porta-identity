@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 21:38
-> **Progress**: 15/60 tasks (25%)
+> **Last Updated**: 2026-09-13 21:39
+> **Progress**: 16/60 tasks (27%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -111,7 +111,7 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 - [x] 2.2.1 Add explicit-column scope, organization, application, and authorization graph export queries — `packages/server/src/portability/repository.ts`, `packages/server/src/portability/export.ts` ✅ (completed: 2026-09-13 21:23; corrected Vitest static export linkage and invalid default fixtures without changing specification expectations)
 - [x] 2.2.2 Add users/assignments, clients, branding assets, normalized ordering, and control-plane exclusions — `packages/server/src/portability/repository.ts`, `packages/server/src/portability/export.ts` ✅ (completed: 2026-09-13 21:32; exact-byte fixture comparison corrected to avoid structural Buffer timeout)
 - [x] 2.2.3 Add repeatable-read audit/size/attachment completion and connect the manifest route — `packages/server/src/portability/export.ts`, `packages/server/src/routes/exports.ts` ✅ (completed: 2026-09-13 21:38; corrected unit SQL-table matching and audit-metadata inspection without changing oracle behavior)
-- [ ] 2.2.4 Run Phase 2 specification and integration selectors and make them pass (green phase)
+- [x] 2.2.4 Run Phase 2 specification and integration selectors and make them pass (green phase) ✅ (completed: 2026-09-13 21:39; 2 suites, 20 tests)
 
 ### Step 2.3: Implementation Tests and Hardening
 
