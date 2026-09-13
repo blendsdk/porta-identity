@@ -44,6 +44,7 @@ import {
   setupEmailOtp,
   confirmTotpSetup,
 } from '../two-factor/service.js';
+import { UnsupportedTotpConfigurationError } from '../two-factor/errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
@@ -375,7 +376,21 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
         // Email OTP
         verified = await verifyOtp(pending.pendingAccountId, code);
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof UnsupportedTotpConfigurationError) {
+        logUnsupportedTotpConfiguration();
+        await renderTwoFactorWithError(
+          ctx,
+          interaction.uid,
+          pending,
+          locale,
+          t,
+          t('errors.two_factor_unavailable'),
+          503,
+        );
+        return;
+      }
+
       // Verification service threw an error (invalid code, expired, exhausted, etc.)
       logger.debug({ event: 'two-factor-code-rejected', codeType }, 'Two-factor code rejected');
       verified = false;
@@ -733,7 +748,26 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       return;
     }
 
-    const confirmed = await confirmTotpSetup(pending.pendingAccountId, code);
+    let confirmed: boolean;
+    try {
+      confirmed = await confirmTotpSetup(pending.pendingAccountId, code);
+    } catch (error) {
+      if (error instanceof UnsupportedTotpConfigurationError) {
+        logUnsupportedTotpConfiguration();
+        const t = getTranslationFunction(locale, org.slug);
+        await renderTotpSetupWithError(
+          ctx,
+          interaction.uid,
+          pending,
+          locale,
+          t,
+          t('errors.two_factor_unavailable'),
+          503,
+        );
+        return;
+      }
+      throw error;
+    }
 
     if (!confirmed) {
       writeAuditLog({
@@ -774,6 +808,11 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
+}
+
+/** Record the fixed diagnostic for unsupported persisted TOTP parameters. */
+function logUnsupportedTotpConfiguration(): void {
+  logger.error({ event: 'totp-configuration-unsupported' }, 'TOTP configuration is unsupported');
 }
 
 /**

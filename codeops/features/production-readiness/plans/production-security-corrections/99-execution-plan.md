@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 02:55
-> **Progress**: 31/51 tasks (61%)
+> **Last Updated**: 2026-09-13 02:57
+> **Progress**: 32/51 tasks (63%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -151,7 +151,7 @@ enrollment, and bounded unsupported-configuration diagnostics. Log:
 ### Step 3.2: Implementation
 
 - [x] 3.2.1 Apply existing `2fa_verify` only after email setup returns, then re-render stored pending TOTP setup on 429 — `packages/server/src/routes/two-factor.ts` ✅ (completed: 2026-09-13 02:55)
-- [ ] 3.2.2 Map typed unsupported configuration consistently to a generic localized 503 page using the same pending enrollment data and fixed safe diagnostic — `packages/server/src/routes/two-factor.ts`, `packages/server/locales/default/en/errors.json`
+- [x] 3.2.2 Map typed unsupported configuration consistently to a generic localized 503 page using the same pending enrollment data and fixed safe diagnostic — `packages/server/src/routes/two-factor.ts`, `packages/server/locales/default/en/errors.json` ✅ (completed: 2026-09-13 02:57)
 - [ ] 3.2.3 Run ST-13 and ST-20–ST-23 and make the immutable Phase 3 expectations green
 
 ### Step 3.3: Implementation Tests and Verification
