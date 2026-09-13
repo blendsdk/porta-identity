@@ -167,6 +167,36 @@ describe('portability manifest schema implementation', () => {
     expect(portabilityManifestSchema.safeParse(beyondLimit).success).toBe(false);
   });
 
+  it('should retain sanitized SVG bytes instead of active content', () => {
+    const manifest = emptyManifest();
+    manifest.organizations = [
+      organization({
+        logo_asset: {
+          media_type: 'image/svg+xml',
+          content_base64: Buffer.from(
+            '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><rect width="1" height="1"/></svg>',
+          ).toString('base64'),
+        },
+      }),
+    ];
+
+    const parsed = portabilityManifestSchema.parse(manifest);
+    const sanitized = parsed.organizations[0]?.branding.logo_asset?.content_base64;
+
+    expect(sanitized).toBeDefined();
+    expect(Buffer.from(sanitized ?? '', 'base64').toString('utf8')).toBe(
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>',
+    );
+  });
+
+  it('should return a validation failure instead of throwing for unsafe branding URLs', () => {
+    const manifest = emptyManifest();
+    manifest.organizations = [organization({ logo_url: 'javascript:alert(1)' })];
+
+    expect(() => portabilityManifestSchema.safeParse(manifest)).not.toThrow();
+    expect(portabilityManifestSchema.safeParse(manifest).success).toBe(false);
+  });
+
   it('should reject non-UTC timestamps and unsorted permission mappings', () => {
     const timestamp = emptyManifest();
     timestamp.exported_at = '2026-09-13T14:34:56.789+02:00';

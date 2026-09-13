@@ -5,6 +5,7 @@
 import { z } from 'zod';
 import { LOGIN_METHODS } from '../clients/types.js';
 import { validateBrandingImageUrl } from './branding-url.js';
+import { OrganizationValidationError } from './errors.js';
 import { validateSlug } from './slugs.js';
 
 /** Organization display names are required and limited by the database column. */
@@ -36,7 +37,15 @@ export const organizationTwoFactorPolicySchema = z.enum([
 ]);
 
 /** Branding image URLs use the same normalization and safety checks as ordinary updates. */
-export const brandingImageUrlSchema = z.string().transform(validateBrandingImageUrl);
+export const brandingImageUrlSchema = z.string().transform((value, context) => {
+  try {
+    return validateBrandingImageUrl(value);
+  } catch (error) {
+    if (!(error instanceof OrganizationValidationError)) throw error;
+    context.addIssue({ code: 'custom', message: 'Branding image URL is invalid' });
+    return z.NEVER;
+  }
+});
 
 /** Branding accent colors use six-digit HTML hexadecimal notation. */
 export const brandingPrimaryColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);

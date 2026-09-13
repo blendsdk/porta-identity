@@ -72,11 +72,23 @@ function brandingAssetSchema(assetType: AssetType) {
       content_base64: z.string().min(1),
     })
     .strict()
-    .superRefine((asset, context) => {
+    .transform((asset, context) => {
       const bytes = decodeCanonicalBase64(asset.content_base64);
-      if (bytes === null || !validateImage(bytes, asset.media_type, assetType).valid) {
+      if (bytes === null) {
         context.addIssue({ code: 'custom', message: `Invalid ${assetType} asset` });
+        return z.NEVER;
       }
+
+      const validation = validateImage(bytes, asset.media_type, assetType);
+      if (!validation.valid || validation.data === undefined) {
+        context.addIssue({ code: 'custom', message: `Invalid ${assetType} asset` });
+        return z.NEVER;
+      }
+
+      return {
+        ...asset,
+        content_base64: validation.data.toString('base64'),
+      };
     });
 }
 

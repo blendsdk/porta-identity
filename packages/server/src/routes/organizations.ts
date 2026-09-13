@@ -248,8 +248,12 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   router.put('/:id/branding', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
     try {
-      const body = updateBrandingSchema.parse(ctx.request.body);
-      const org = await organizationService.updateOrganizationBranding(ctx.params.id, body);
+      const body = updateBrandingSchema.safeParse(ctx.request.body);
+      if (!body.success) {
+        ctx.throw(400, 'Organization request is invalid');
+        return;
+      }
+      const org = await organizationService.updateOrganizationBranding(ctx.params.id, body.data);
       ctx.body = { data: org };
     } catch (err) {
       handleError(ctx, err);
