@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 09:40
+> **Last Updated**: 2026-09-13 09:42
 > **Progress**: 48/51 tasks (94%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
@@ -221,7 +221,7 @@ later migration is newest. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.2.5-r3.log
 - [x] 4.3.2 Run `yarn verify` and record evidence ✅ (completed: 2026-09-13 09:28)
 - [x] 4.3.3 Run `yarn test:ui` and record evidence ✅ (completed: 2026-09-13 09:33)
 - [x] 4.3.4 Run `yarn harness:test` and record evidence ✅ (completed: 2026-09-13 09:40)
-- [ ] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence
+- [~] 4.3.5 Run `yarn assurance:harness --project security --profile production-security`; inspect its registered exit taxonomy and record evidence ⏳ (started: 2026-09-13 09:42)
 - [ ] 4.3.6 Run `yarn assurance:compat --select p1-admin` from the clean committed checkpoint; inspect its registered exit taxonomy and record evidence
 - [ ] 4.3.7 Run `yarn docs:build` and record evidence
 
@@ -250,6 +250,12 @@ typecheck, build, 3,155 unit, 456 integration, 127 E2E, and 241 penetration test
 
 **OIDC harness evidence:** `yarn harness:test` passed all six retained SPA/BFF tests and cleaned up
 its isolated Docker services. Log: `/tmp/porta-rd01-exec.noLev5/verify-4.3.4-harness.log`.
+
+**Assurance harness provenance note:** the first production-security invocation returned registered
+collector exit 30 because the in-progress plan marker made the source tree dirty. The collector
+correctly emitted no admissible evidence. The marker is checkpointed before rerunning from a clean
+revision. Rejected-run log:
+`/tmp/porta-rd01-exec.noLev5/verify-4.3.5-assurance-harness.log`.
 
 ## Dependencies
 
