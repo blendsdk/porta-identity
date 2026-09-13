@@ -19,7 +19,7 @@
  */
 
 import { config } from '../config/index.js';
-import { getPool } from '../lib/database.js';
+import { getPool, runDatabaseTransaction } from '../lib/database.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type {
@@ -53,7 +53,8 @@ import {
 import {
   insertTotp,
   findTotpByUserId,
-  markTotpVerified,
+  consumeTotpTimeStep,
+  verifyTotpEnrollment,
   deleteTotp,
   insertOtpCode,
   findActiveOtpCodes,
@@ -317,24 +318,28 @@ export async function confirmTotpSetup(userId: string, code: string): Promise<bo
   );
 
   // Verify the TOTP code
+  const validationTime = Date.now();
   const match = verifyTotpCode(
     code,
     secret,
     { algorithm: totp.algorithm, digits: totp.digits, period: totp.period },
-    Date.now(),
+    validationTime,
   );
   if (match === null) {
     return false;
   }
 
-  // Mark the TOTP config as verified
-  await markTotpVerified(userId);
+  const confirmed = await runDatabaseTransaction(async () => {
+    const enrollmentConsumed = await verifyTotpEnrollment(totp.id, userId, match.timeStep);
+    if (!enrollmentConsumed) return false;
 
-  // Enable 2FA on the user record
-  await repoUpdateUser(userId, {
-    twoFactorEnabled: true,
-    twoFactorMethod: 'totp',
+    await repoUpdateUser(userId, {
+      twoFactorEnabled: true,
+      twoFactorMethod: 'totp',
+    });
+    return true;
   });
+  if (!confirmed) return false;
 
   // Invalidate cache since 2FA state changed
   await invalidateTwoFactorCache(userId);
@@ -483,14 +488,16 @@ export async function verifyTotp(userId: string, code: string): Promise<boolean>
   );
 
   // Verify the code with ±1 step window
-  return (
-    verifyTotpCode(
-      code,
-      secret,
-      { algorithm: totp.algorithm, digits: totp.digits, period: totp.period },
-      Date.now(),
-    ) !== null
+  const validationTime = Date.now();
+  const match = verifyTotpCode(
+    code,
+    secret,
+    { algorithm: totp.algorithm, digits: totp.digits, period: totp.period },
+    validationTime,
   );
+  if (match === null) return false;
+
+  return consumeTotpTimeStep(totp.id, userId, match.timeStep);
 }
 
 /**
