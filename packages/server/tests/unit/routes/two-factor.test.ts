@@ -83,7 +83,13 @@ import { createTwoFactorRouter } from '../../../src/routes/two-factor.js';
 import { verifyCsrfToken } from '../../../src/auth/csrf.js';
 import { checkRateLimit } from '../../../src/auth/rate-limiter.js';
 import { renderPage } from '../../../src/auth/template-engine.js';
-import { verifyOtp, verifyTotp, confirmTotpSetup } from '../../../src/two-factor/service.js';
+import {
+  verifyOtp,
+  verifyTotp,
+  confirmTotpSetup,
+  getPendingTotpSetupInfo,
+} from '../../../src/two-factor/service.js';
+import { UnsupportedTotpConfigurationError } from '../../../src/two-factor/errors.js';
 import { recordLogin } from '../../../src/users/service.js';
 import type Provider from 'oidc-provider';
 
@@ -220,7 +226,10 @@ describe('two-factor routes', () => {
 
       expect(verifyOtp).toHaveBeenCalledWith('user-1', '123456');
       expect(recordLogin).toHaveBeenCalledWith('user-1');
-      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).toHaveBeenCalled();
+      expect(
+        (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
+          .interactionFinished,
+      ).toHaveBeenCalled();
     });
 
     it('should render error when CSRF token is invalid', async () => {
@@ -236,14 +245,23 @@ describe('two-factor routes', () => {
       await route!.stack[0](ctx as never, vi.fn());
 
       // Should render error page, not finish interaction
-      expect(renderPage).toHaveBeenCalledWith('two-factor-verify', expect.objectContaining({
-        flash: expect.objectContaining({ error: expect.any(String) }),
-      }));
-      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).not.toHaveBeenCalled();
+      expect(renderPage).toHaveBeenCalledWith(
+        'two-factor-verify',
+        expect.objectContaining({
+          flash: expect.objectContaining({ error: expect.any(String) }),
+        }),
+      );
+      expect(
+        (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
+          .interactionFinished,
+      ).not.toHaveBeenCalled();
     });
 
     it('should render error when rate limited', async () => {
-      (checkRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ allowed: false, retryAfter: 60 });
+      (checkRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        allowed: false,
+        retryAfter: 60,
+      });
       const provider = createMockProvider(PENDING_EMAIL);
       const router = createTwoFactorRouter(provider);
 
@@ -268,7 +286,10 @@ describe('two-factor routes', () => {
       const ctx = createMockCtx({ code: '' });
       await route!.stack[0](ctx as never, vi.fn());
 
-      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).not.toHaveBeenCalled();
+      expect(
+        (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
+          .interactionFinished,
+      ).not.toHaveBeenCalled();
     });
 
     it('should use verifyTotp for TOTP method', async () => {
@@ -283,6 +304,27 @@ describe('two-factor routes', () => {
       await route!.stack[0](ctx as never, vi.fn());
 
       expect(verifyTotp).toHaveBeenCalledWith('user-1', '123456');
+    });
+
+    it('should render the verification page with 503 for unsupported TOTP configuration', async () => {
+      (verifyTotp as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new UnsupportedTotpConfigurationError(),
+      );
+      const provider = createMockProvider(PENDING_TOTP);
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor',
+      );
+
+      const ctx = createMockCtx({ codeType: 'totp' });
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(503);
+      expect(renderPage).toHaveBeenCalledWith('two-factor-verify', expect.any(Object));
+      expect(
+        (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
+          .interactionFinished,
+      ).not.toHaveBeenCalled();
     });
   });
 
@@ -333,7 +375,10 @@ describe('two-factor routes', () => {
       await route!.stack[0](ctx as never, vi.fn());
 
       expect(confirmTotpSetup).toHaveBeenCalledWith('user-1', '123456');
-      expect((provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> }).interactionFinished).toHaveBeenCalled();
+      expect(
+        (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
+          .interactionFinished,
+      ).toHaveBeenCalled();
     });
 
     it('should redirect with error when TOTP code is invalid', async () => {
@@ -349,6 +394,57 @@ describe('two-factor routes', () => {
       await route!.stack[0](ctx as never, vi.fn());
 
       expect(ctx.redirect).toHaveBeenCalledWith(expect.stringContaining('error=invalid_code'));
+    });
+
+    it('should re-render pending TOTP setup when confirmation is rate limited', async () => {
+      (checkRateLimit as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        allowed: false,
+        retryAfter: 60,
+      });
+      (getPendingTotpSetupInfo as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        totpUri: 'otpauth://totp/Test?secret=ABC&issuer=Porta',
+        qrCodeDataUri: 'data:image/png;base64,abc',
+        totpSecret: 'ABC',
+      });
+      const provider = createMockProvider(PENDING_TOTP);
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor/setup',
+      );
+
+      const ctx = createMockCtx({ setupMethod: 'totp', code: '123456' });
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(429);
+      expect(ctx.set).toHaveBeenCalledWith('Retry-After', '60');
+      expect(renderPage).toHaveBeenCalledWith('two-factor-setup', expect.any(Object));
+      expect(confirmTotpSetup).not.toHaveBeenCalled();
+    });
+
+    it('should re-render pending TOTP setup with 503 for unsupported configuration', async () => {
+      (getPendingTotpSetupInfo as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        totpUri: 'otpauth://totp/Test?secret=ABC&issuer=Porta',
+        qrCodeDataUri: 'data:image/png;base64,abc',
+        totpSecret: 'ABC',
+      });
+      (confirmTotpSetup as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new UnsupportedTotpConfigurationError(),
+      );
+      const provider = createMockProvider(PENDING_TOTP);
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor/setup',
+      );
+
+      const ctx = createMockCtx({ setupMethod: 'totp', code: '123456' });
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(503);
+      expect(renderPage).toHaveBeenCalledWith('two-factor-setup', expect.any(Object));
+      expect(
+        (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
+          .interactionFinished,
+      ).not.toHaveBeenCalled();
     });
   });
 });
