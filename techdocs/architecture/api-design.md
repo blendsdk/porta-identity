@@ -393,7 +393,7 @@ Administrative data APIs use closed schemas and explicit authorization boundarie
 POST /api/admin/bulk/organizations/status
 POST /api/admin/bulk/users/status
 POST /api/admin/export/manifest
-POST /api/admin/import/manifest
+POST /api/admin/import
 GET  /api/admin/export/:entityType
 ```
 
@@ -410,9 +410,15 @@ including manifest data. The import route alone receives the dedicated 64 MiB JS
 Admin API requests retain the standard body limit. Both manifest routes set `Cache-Control:
 no-store`.
 
-The transaction-backed export and import engines are being introduced behind these fail-closed
-service boundaries. Until each engine is connected, an otherwise valid request returns its fixed
-`503` failure contract rather than executing a partial operation.
+Manifest export reads the selected graph through explicit, parameterized queries in one
+`REPEATABLE READ` transaction. It excludes the control-plane organization, the `porta-admin`
+application, credentials, sessions, and operational authentication state. The final strict
+manifest is limited to 64 MiB and is committed with one content-free `admin.export` audit record
+containing only the manifest version, SHA-256 digest, selection metadata, and record counts.
+
+The new import planner and apply engine remain disconnected while they are implemented. A valid
+import request therefore returns the fixed `503` failure contract instead of running the legacy
+importer or performing a partial operation.
 
 Bulk status changes validate the complete request before persistence. Each accepted item then owns
 one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
