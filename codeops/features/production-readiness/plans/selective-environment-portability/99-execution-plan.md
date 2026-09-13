@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 18:59
-> **Progress**: 8/60 tasks (13%)
+> **Last Updated**: 2026-09-13 19:33
+> **Progress**: 9/60 tasks (15%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -76,7 +76,7 @@ with immutable specification tests and a recorded red phase. (AR-1, AR-2, AR-6)
 
 **Reference**: [03-01 §Testing Requirements](03-01-server-contract.md) · AR-6
 
-- [ ] 1.3.1 Add schema and authorization implementation tests, then run `yarn verify` — `packages/server/tests/unit/portability/manifest.impl.test.ts`, `packages/server/tests/unit/portability/authorization.impl.test.ts`
+- [x] 1.3.1 Add schema and authorization implementation tests, then run `yarn verify` — `packages/server/tests/unit/portability/manifest.impl.test.ts`, `packages/server/tests/unit/portability/authorization.impl.test.ts` ✅ (completed: 2026-09-13 19:33; 12 focused tests and full repository verification passed)
 
 **Deliverables:** strict public schema, protected parser boundary, closed authorization, safe routes,
 and green Phase 1 tests.
