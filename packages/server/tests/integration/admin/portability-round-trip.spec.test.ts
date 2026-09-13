@@ -519,9 +519,13 @@ describe('selective portability export live specification', () => {
     );
     const branding = exported.manifest.organizations[0]?.branding;
     expect(branding?.logo_asset?.media_type).toBe('image/png');
-    expect(Buffer.from(branding?.logo_asset?.content_base64 ?? '', 'base64')).toEqual(logo);
+    expect(Buffer.from(branding?.logo_asset?.content_base64 ?? '', 'base64').equals(logo)).toBe(
+      true,
+    );
     expect(branding?.favicon_asset?.media_type).toBe('image/x-icon');
-    expect(Buffer.from(branding?.favicon_asset?.content_base64 ?? '', 'base64')).toEqual(favicon);
+    expect(
+      Buffer.from(branding?.favicon_asset?.content_base64 ?? '', 'base64').equals(favicon),
+    ).toBe(true);
 
     await getPool().query(
       "UPDATE branding_assets SET content_type = 'application/octet-stream' WHERE organization_id = $1 AND asset_type = 'logo'",

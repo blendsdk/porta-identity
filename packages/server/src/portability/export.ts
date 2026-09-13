@@ -2,9 +2,12 @@
 
 import { getPool } from '../lib/database.js';
 import {
+  attachOrganizationBrandingAssets,
   readApplicationExportSelection,
   readAuthorizationExportGraph,
+  readClientExportRecords,
   readOrganizationExportScope,
+  readUserExportGraph,
 } from './repository.js';
 import type { ExportManifestRequest, PortabilityActor, PortabilityManifest } from './types.js';
 
@@ -52,6 +55,27 @@ export async function exportPortabilityManifest(
           claimDefinitions: [],
           rolePermissionMappings: [],
         };
+    const organizations = request.categories.includes('organizations')
+      ? await attachOrganizationBrandingAssets(
+          client,
+          organizationScope.organizations,
+          organizationScope.organizationIds,
+        )
+      : [];
+    const userGraph = request.categories.includes('users_assignments')
+      ? await readUserExportGraph(
+          client,
+          organizationScope.organizationIds,
+          applicationSelection.applicationIds,
+        )
+      : { users: [], userRoleAssignments: [], userClaimValues: [] };
+    const clients = request.categories.includes('oidc_clients')
+      ? await readClientExportRecords(
+          client,
+          organizationScope.organizationIds,
+          applicationSelection.applicationIds,
+        )
+      : [];
     const exportedAt = new Date().toISOString();
     const manifest: PortabilityManifest = {
       version: '1.0',
@@ -59,19 +83,17 @@ export async function exportPortabilityManifest(
       scope: request.scope,
       categories: request.categories,
       application_selection: request.application_selection,
-      organizations: request.categories.includes('organizations')
-        ? organizationScope.organizations
-        : [],
+      organizations,
       applications: includesAuthorization ? applicationSelection.applications : [],
       application_modules: authorization.applicationModules,
       roles: authorization.roles,
       permissions: authorization.permissions,
       claim_definitions: authorization.claimDefinitions,
       role_permission_mappings: authorization.rolePermissionMappings,
-      users: [],
-      user_role_assignments: [],
-      user_claim_values: [],
-      clients: [],
+      users: userGraph.users,
+      user_role_assignments: userGraph.userRoleAssignments,
+      user_claim_values: userGraph.userClaimValues,
+      clients,
     };
     return {
       manifest,

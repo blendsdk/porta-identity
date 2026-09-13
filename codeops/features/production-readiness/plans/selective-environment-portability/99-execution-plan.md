@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 21:23
-> **Progress**: 13/60 tasks (22%)
+> **Last Updated**: 2026-09-13 21:32
+> **Progress**: 14/60 tasks (23%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -109,7 +109,7 @@ corrections verified and bounded re-review found no remaining Critical or Major 
 **Reference**: [03-02 §Export](03-02-portability-engine.md) · AR-1, AR-2, AR-5
 
 - [x] 2.2.1 Add explicit-column scope, organization, application, and authorization graph export queries — `packages/server/src/portability/repository.ts`, `packages/server/src/portability/export.ts` ✅ (completed: 2026-09-13 21:23; corrected Vitest static export linkage and invalid default fixtures without changing specification expectations)
-- [ ] 2.2.2 Add users/assignments, clients, branding assets, normalized ordering, and control-plane exclusions — `packages/server/src/portability/repository.ts`, `packages/server/src/portability/export.ts`
+- [x] 2.2.2 Add users/assignments, clients, branding assets, normalized ordering, and control-plane exclusions — `packages/server/src/portability/repository.ts`, `packages/server/src/portability/export.ts` ✅ (completed: 2026-09-13 21:32; exact-byte fixture comparison corrected to avoid structural Buffer timeout)
 - [ ] 2.2.3 Add repeatable-read audit/size/attachment completion and connect the manifest route — `packages/server/src/portability/export.ts`, `packages/server/src/routes/exports.ts`
 - [ ] 2.2.4 Run Phase 2 specification and integration selectors and make them pass (green phase)
 
