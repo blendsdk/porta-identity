@@ -21,11 +21,7 @@ import type {
   RecoveryCodeRow,
   InsertTotpData,
 } from './types.js';
-import {
-  mapRowToUserTotp,
-  mapRowToOtpCode,
-  mapRowToRecoveryCode,
-} from './types.js';
+import { mapRowToUserTotp, mapRowToOtpCode, mapRowToRecoveryCode } from './types.js';
 
 // ===========================================================================
 // TOTP operations
@@ -78,31 +74,12 @@ export async function insertTotp(data: InsertTotpData): Promise<UserTotp> {
 export async function findTotpByUserId(userId: string): Promise<UserTotp | null> {
   const pool = getPool();
 
-  const result = await pool.query<UserTotpRow>(
-    'SELECT * FROM user_totp WHERE user_id = $1',
-    [userId],
-  );
+  const result = await pool.query<UserTotpRow>('SELECT * FROM user_totp WHERE user_id = $1', [
+    userId,
+  ]);
 
   if (result.rows.length === 0) return null;
   return mapRowToUserTotp(result.rows[0]);
-}
-
-/**
- * Mark a user's TOTP configuration as verified.
- *
- * Called after the user successfully enters their first TOTP code
- * during setup. This confirms that the user's authenticator app
- * is correctly configured.
- *
- * @param userId - User UUID
- */
-export async function markTotpVerified(userId: string): Promise<void> {
-  const pool = getPool();
-
-  await pool.query(
-    'UPDATE user_totp SET verified = true WHERE user_id = $1',
-    [userId],
-  );
 }
 
 /**
@@ -173,10 +150,7 @@ export async function verifyTotpEnrollment(
 export async function deleteTotp(userId: string): Promise<void> {
   const pool = getPool();
 
-  await pool.query(
-    'DELETE FROM user_totp WHERE user_id = $1',
-    [userId],
-  );
+  await pool.query('DELETE FROM user_totp WHERE user_id = $1', [userId]);
 }
 
 // ===========================================================================
@@ -246,10 +220,7 @@ export async function findActiveOtpCodes(userId: string): Promise<OtpCode[]> {
 export async function markOtpCodeUsed(codeId: string): Promise<void> {
   const pool = getPool();
 
-  await pool.query(
-    'UPDATE two_factor_otp_codes SET used_at = NOW() WHERE id = $1',
-    [codeId],
-  );
+  await pool.query('UPDATE two_factor_otp_codes SET used_at = NOW() WHERE id = $1', [codeId]);
 }
 
 /**
@@ -307,10 +278,7 @@ export async function countActiveOtpCodes(userId: string): Promise<number> {
  * @param userId - User UUID
  * @param codeHashes - Array of Argon2id hashes of recovery codes
  */
-export async function insertRecoveryCodes(
-  userId: string,
-  codeHashes: string[],
-): Promise<void> {
+export async function insertRecoveryCodes(userId: string, codeHashes: string[]): Promise<void> {
   if (codeHashes.length === 0) return;
 
   const pool = getPool();
@@ -366,10 +334,7 @@ export async function findUnusedRecoveryCodes(userId: string): Promise<RecoveryC
 export async function markRecoveryCodeUsed(codeId: string): Promise<void> {
   const pool = getPool();
 
-  await pool.query(
-    'UPDATE two_factor_recovery_codes SET used_at = NOW() WHERE id = $1',
-    [codeId],
-  );
+  await pool.query('UPDATE two_factor_recovery_codes SET used_at = NOW() WHERE id = $1', [codeId]);
 }
 
 /**
@@ -383,10 +348,7 @@ export async function markRecoveryCodeUsed(codeId: string): Promise<void> {
 export async function deleteAllRecoveryCodes(userId: string): Promise<void> {
   const pool = getPool();
 
-  await pool.query(
-    'DELETE FROM two_factor_recovery_codes WHERE user_id = $1',
-    [userId],
-  );
+  await pool.query('DELETE FROM two_factor_recovery_codes WHERE user_id = $1', [userId]);
 }
 
 /**

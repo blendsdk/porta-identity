@@ -15,7 +15,7 @@ import { createTestOrganization, createTestUser } from '../helpers/factories.js'
 import {
   insertTotp,
   findTotpByUserId,
-  markTotpVerified,
+  verifyTotpEnrollment,
   deleteTotp,
   insertOtpCode,
   findActiveOtpCodes,
@@ -71,18 +71,19 @@ describe('Two-Factor Repository (Integration)', () => {
       expect(found).toBeNull();
     });
 
-    it('should mark TOTP as verified', async () => {
-      await insertTotp({
+    it('should confirm the exact pending TOTP row and store its first step', async () => {
+      const totp = await insertTotp({
         userId,
         encryptedSecret: 'enc',
         encryptionIv: 'iv',
         encryptionTag: 'tag',
       });
 
-      await markTotpVerified(userId);
+      await expect(verifyTotpEnrollment(totp.id, userId, 123)).resolves.toBe(true);
 
       const found = await findTotpByUserId(userId);
       expect(found!.verified).toBe(true);
+      expect(found!.lastAcceptedTimeStep).toBe(123);
     });
 
     it('should delete TOTP record', async () => {

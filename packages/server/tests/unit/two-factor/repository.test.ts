@@ -16,7 +16,8 @@ import { getPool } from '../../../src/lib/database.js';
 import {
   insertTotp,
   findTotpByUserId,
-  markTotpVerified,
+  consumeTotpTimeStep,
+  verifyTotpEnrollment,
   deleteTotp,
   insertOtpCode,
   findActiveOtpCodes,
@@ -57,6 +58,7 @@ function createTotpRow(overrides: Partial<UserTotpRow> = {}): UserTotpRow {
     digits: 6,
     period: 30,
     verified: false,
+    last_accepted_time_step: null,
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
@@ -141,9 +143,9 @@ describe('two-factor repository', () => {
       });
 
       const params = mockQuery.mock.calls[0][1] as unknown[];
-      expect(params[4]).toBe('SHA1');  // algorithm
-      expect(params[5]).toBe(6);       // digits
-      expect(params[6]).toBe(30);      // period
+      expect(params[4]).toBe('SHA1'); // algorithm
+      expect(params[5]).toBe(6); // digits
+      expect(params[6]).toBe(30); // period
     });
   });
 
@@ -164,16 +166,21 @@ describe('two-factor repository', () => {
     });
   });
 
-  describe('markTotpVerified', () => {
-    it('should execute UPDATE with correct userId', async () => {
-      const mockQuery = mockPool();
-      await markTotpVerified('user-uuid-1');
+  describe('consumeTotpTimeStep', () => {
+    it('should return true when the exact verified row advances', async () => {
+      const mockQuery = mockPool([], 1);
 
-      expect(mockQuery).toHaveBeenCalledTimes(1);
-      const sql = mockQuery.mock.calls[0][0] as string;
-      expect(sql).toContain('UPDATE user_totp');
-      expect(sql).toContain('verified = true');
-      expect(mockQuery.mock.calls[0][1]).toEqual(['user-uuid-1']);
+      await expect(consumeTotpTimeStep('totp-uuid-1', 'user-uuid-1', 123)).resolves.toBe(true);
+      expect(mockQuery.mock.calls[0][1]).toEqual(['totp-uuid-1', 'user-uuid-1', 123]);
+    });
+  });
+
+  describe('verifyTotpEnrollment', () => {
+    it('should return true when the exact pending row is confirmed', async () => {
+      const mockQuery = mockPool([], 1);
+
+      await expect(verifyTotpEnrollment('totp-uuid-1', 'user-uuid-1', 123)).resolves.toBe(true);
+      expect(mockQuery.mock.calls[0][1]).toEqual(['totp-uuid-1', 'user-uuid-1', 123]);
     });
   });
 
@@ -198,7 +205,11 @@ describe('two-factor repository', () => {
       const row = createOtpRow();
       const mockQuery = mockPool([row]);
 
-      const result = await insertOtpCode('user-uuid-1', 'hash123', new Date('2026-01-01T00:10:00Z'));
+      const result = await insertOtpCode(
+        'user-uuid-1',
+        'hash123',
+        new Date('2026-01-01T00:10:00Z'),
+      );
 
       expect(mockQuery).toHaveBeenCalledTimes(1);
       expect(result.userId).toBe('user-uuid-1');
@@ -208,10 +219,7 @@ describe('two-factor repository', () => {
 
   describe('findActiveOtpCodes', () => {
     it('should return mapped OtpCode array', async () => {
-      const rows = [
-        createOtpRow({ id: 'otp-1' }),
-        createOtpRow({ id: 'otp-2' }),
-      ];
+      const rows = [createOtpRow({ id: 'otp-1' }), createOtpRow({ id: 'otp-2' })];
       mockPool(rows);
 
       const result = await findActiveOtpCodes('user-uuid-1');
@@ -287,10 +295,7 @@ describe('two-factor repository', () => {
 
   describe('findUnusedRecoveryCodes', () => {
     it('should return mapped RecoveryCode array', async () => {
-      const rows = [
-        createRecoveryRow({ id: 'rc-1' }),
-        createRecoveryRow({ id: 'rc-2' }),
-      ];
+      const rows = [createRecoveryRow({ id: 'rc-1' }), createRecoveryRow({ id: 'rc-2' })];
       mockPool(rows);
 
       const result = await findUnusedRecoveryCodes('user-uuid-1');

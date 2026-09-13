@@ -60,7 +60,6 @@ export { generateRecoveryCodes, hashRecoveryCode, verifyRecoveryCode } from './r
 export {
   insertTotp,
   findTotpByUserId,
-  markTotpVerified,
   consumeTotpTimeStep,
   verifyTotpEnrollment,
   deleteTotp,
