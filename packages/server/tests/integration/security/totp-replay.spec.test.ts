@@ -3,6 +3,10 @@ import { TOTP, Secret } from 'otpauth';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getPool } from '../../../src/lib/database.js';
+import {
+  consumeTotpTimeStep,
+  verifyTotpEnrollment,
+} from '../../../src/two-factor/repository.js';
 import { confirmTotpSetup, setupTotp, verifyTotp } from '../../../src/two-factor/service.js';
 import { createTestOrganization, createTestUser } from '../helpers/factories.js';
 import { truncateAllTables } from '../helpers/database.js';
@@ -129,6 +133,59 @@ describe('TOTP replay protection', () => {
     expect((await storedState(enrollment.userId)).last_accepted_time_step).toBe(
       String(Math.floor(nextTime / 30_000)),
     );
+  });
+
+  it('consumes the first valid step from a verified row with no prior accepted step', async () => {
+    const enrollment = await createEnrollment();
+    const timeStep = Math.floor(BASE_TIME / 30_000);
+    await getPool().query('UPDATE user_totp SET verified = true WHERE id = $1', [
+      enrollment.totpId,
+    ]);
+
+    await expect(
+      consumeTotpTimeStep(enrollment.totpId, enrollment.userId, timeStep),
+    ).resolves.toBe(true);
+    expect(await storedState(enrollment.userId)).toMatchObject({
+      id: enrollment.totpId,
+      verified: true,
+      last_accepted_time_step: String(timeStep),
+      two_factor_enabled: false,
+      two_factor_method: null,
+    });
+  });
+
+  it('leaves the target row unchanged when exact row, user, or verification-state conditions fail', async () => {
+    const enrollment = await createEnrollment();
+    const otherOrganization = await createTestOrganization();
+    const otherUser = await createTestUser(otherOrganization.id);
+    const wrongTotpId = '30000000-0000-4000-8000-000000000001';
+    const timeStep = Math.floor(BASE_TIME / 30_000);
+    const pending = await storedState(enrollment.userId);
+
+    await expect(
+      consumeTotpTimeStep(enrollment.totpId, enrollment.userId, timeStep),
+    ).resolves.toBe(false);
+    await expect(
+      verifyTotpEnrollment(wrongTotpId, enrollment.userId, timeStep),
+    ).resolves.toBe(false);
+    await expect(
+      verifyTotpEnrollment(enrollment.totpId, otherUser.id, timeStep),
+    ).resolves.toBe(false);
+    expect(await storedState(enrollment.userId)).toEqual(pending);
+
+    await getPool().query('UPDATE user_totp SET verified = true WHERE id = $1', [
+      enrollment.totpId,
+    ]);
+    const verified = await storedState(enrollment.userId);
+
+    await expect(consumeTotpTimeStep(wrongTotpId, enrollment.userId, timeStep)).resolves.toBe(false);
+    await expect(
+      consumeTotpTimeStep(enrollment.totpId, otherUser.id, timeStep),
+    ).resolves.toBe(false);
+    await expect(
+      verifyTotpEnrollment(enrollment.totpId, enrollment.userId, timeStep),
+    ).resolves.toBe(false);
+    expect(await storedState(enrollment.userId)).toEqual(verified);
   });
 
   it('advances only for a greater matched step and changes nothing for malformed, mismatched, expired, equal, or older codes', async () => {

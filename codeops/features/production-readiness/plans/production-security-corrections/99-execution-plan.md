@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 02:51
-> **Progress**: 27/51 tasks (53%)
+> **Last Updated**: 2026-09-13 02:54
+> **Progress**: 28/51 tasks (55%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -113,7 +113,21 @@ The existing organization-scoped interaction boundary remains green. Log:
 **Phase verification evidence:** 331 focused unit and 40 focused integration tests passed; server
 lint, typecheck, and build passed; structure passed 100/100 with the retained server test count at
 300. Log: `/tmp/porta-rd01-exec.noLev5/verify-2.3.4.log`.
-- [ ] 2.3.5 Complete the risk-derived phase review and resolve every critical/major finding before checkpointing
+- [x] 2.3.5 Complete the risk-derived phase review and resolve every critical/major finding before checkpointing ✅ (completed: 2026-09-13 02:54)
+
+**Phase review finding:** RV-2-01 (MAJOR, accepted) — the independent reviewer found that
+the real PostgreSQL specifications do not directly exercise first consumption from a verified row
+whose replay step is null, or exact-row conditional failures for wrong row ID, wrong user ID, and
+wrong verification state. The security auditor reported no findings. Recommended remediation:
+add only these missing real-database assertions to the existing Phase 2 integration specification;
+no production code or supporting machinery is required. The user approved this test-only
+correction on 2026-09-13.
+
+**Phase review evidence:** the accepted remediation added real PostgreSQL assertions for initial
+null-step consumption and exact row/user/state conditional failures. The focused remediation gate
+passed 8 integration and 100 structure tests plus server typecheck/build. The independent reviewer
+and security auditor then reviewed the remediation diff once and both reported no findings. Log:
+`/tmp/porta-rd01-exec.noLev5/verify-rv-2-01.log`.
 
 ## Phase 3: TOTP Route Security and Public Outcomes
 
