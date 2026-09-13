@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-13 01:52
-> **Progress**: 14/51 tasks (27%)
+> **Last Updated**: 2026-09-13 02:09
+> **Progress**: 18/51 tasks (35%)
 > **Lifecycle**: Ready
 > **CodeOps Artifact Schema**: 1
 
@@ -75,12 +75,21 @@ scope expansion was required.
 **Reference:** [03-02](03-02-totp-replay.md), AR-1–AR-3, AR-6–AR-7, AR-9, ST-09–ST-19 and ST-23. **Scope:** migration 028,
 TOTP types/utility/repository/service, named tests, this plan, review evidence, and roadmap only.
 
+> **Phase baseline tree**: `dbf0922eee4e5427d09074d5df2f2d2fe80bf3f4`
+> **Expected modification set**: migration 028, TOTP types/utility/repository/service, named tests, the mechanical retained-test count, this plan, phase review evidence, and the feature roadmap
+> **Scope mode**: strict
+
 ### Step 2.1: Specification Tests
 
-- [ ] 2.1.1 [spec-author] Write migration SQL-shape and matched-step/parameter specifications from ST-09–ST-11 — `packages/server/tests/unit/two-factor/totp-replay.spec.test.ts`
-- [ ] 2.1.2 [spec-author] Write real migration Up/Down behavior from ST-09 — `packages/server/tests/integration/migrations/totp-replay.spec.test.ts`
-- [ ] 2.1.3 [spec-author] Write real PostgreSQL consume, concurrency, replacement, enrollment, rollback, and exact-row specifications from ST-12–ST-19 and ST-23 — `packages/server/tests/integration/security/totp-replay.spec.test.ts`
-- [ ] 2.1.4 Run all three Phase 2 specification files and record their expected red results before implementation
+- [x] 2.1.1 [spec-author] Write migration SQL-shape and matched-step/parameter specifications from ST-09–ST-11 — `packages/server/tests/unit/two-factor/totp-replay.spec.test.ts` ✅ (completed: 2026-09-13 02:07)
+- [x] 2.1.2 [spec-author] Write real migration Up/Down behavior from ST-09 — `packages/server/tests/integration/migrations/totp-replay.spec.test.ts` ✅ (completed: 2026-09-13 02:07)
+- [x] 2.1.3 [spec-author] Write real PostgreSQL consume, concurrency, replacement, enrollment, rollback, and exact-row specifications from ST-12–ST-19 and ST-23 — `packages/server/tests/integration/security/totp-replay.spec.test.ts` ✅ (completed: 2026-09-13 02:07)
+- [x] 2.1.4 Run all three Phase 2 specification files and record their expected red results before implementation ✅ (completed: 2026-09-13 02:09)
+
+**Red evidence:** unit 22 failed / 1 passed; integration 8 failed. The failures cover the planned
+migration, absolute-step validation, fixed stored parameters, safe BIGINT mapping, exact-row
+conditional writes, transactional enrollment, replay/concurrency, replacement-row, and
+tenant-context behavior. Log: `/tmp/porta-rd01-exec.noLev5/verify-2.1.4-red.log`.
 
 ### Step 2.2: Implementation
 
