@@ -21,11 +21,7 @@ export type {
   RecoveryCodeRow,
 } from './types.js';
 
-export {
-  mapRowToUserTotp,
-  mapRowToOtpCode,
-  mapRowToRecoveryCode,
-} from './types.js';
+export { mapRowToUserTotp, mapRowToOtpCode, mapRowToRecoveryCode } from './types.js';
 
 // Errors
 export {
@@ -39,6 +35,7 @@ export {
   TwoFactorRequiredError,
   TwoFactorAlreadyEnabledError,
   TwoFactorCryptoError,
+  UnsupportedTotpConfigurationError,
 } from './errors.js';
 
 // Crypto
@@ -54,13 +51,10 @@ export {
   generateQrCodeDataUri,
   verifyTotpCode,
 } from './totp.js';
+export type { TotpMatch } from './totp.js';
 
 // Recovery codes
-export {
-  generateRecoveryCodes,
-  hashRecoveryCode,
-  verifyRecoveryCode,
-} from './recovery.js';
+export { generateRecoveryCodes, hashRecoveryCode, verifyRecoveryCode } from './recovery.js';
 
 // Repository
 export {

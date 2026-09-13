@@ -13,10 +13,17 @@
 import { TOTP, Secret } from 'otpauth';
 import QRCode from 'qrcode';
 
+import { UnsupportedTotpConfigurationError } from './errors.js';
+
 /** Default TOTP parameters matching the user_totp table defaults. */
 const DEFAULT_ALGORITHM = 'SHA1';
 const DEFAULT_DIGITS = 6;
 const DEFAULT_PERIOD = 30;
+
+/** Identifies the absolute TOTP time step matched during validation. */
+export interface TotpMatch {
+  readonly timeStep: number;
+}
 
 /**
  * Generate a new TOTP secret.
@@ -45,11 +52,7 @@ export function generateTotpSecret(): string {
  * @param issuer - Service name (e.g., "Porta" or org slug)
  * @returns otpauth:// URI string
  */
-export function generateTotpUri(
-  secret: string,
-  userEmail: string,
-  issuer: string,
-): string {
+export function generateTotpUri(secret: string, userEmail: string, issuer: string): string {
   const totp = new TOTP({
     issuer,
     label: userEmail,
@@ -90,18 +93,38 @@ export async function generateQrCodeDataUri(uri: string): Promise<string> {
  *
  * @param code - The 6-digit TOTP code entered by the user
  * @param secret - Base32-encoded TOTP secret
- * @returns True if the code is valid within the time window
+ * @param parameters - Persisted algorithm, digit count, and time period
+ * @param validationTime - Exact Unix timestamp in milliseconds used for this attempt
+ * @returns The absolute matched time step, or null when the code does not match
+ * @throws UnsupportedTotpConfigurationError when persisted parameters are unsupported
  */
-export function verifyTotpCode(code: string, secret: string): boolean {
+export function verifyTotpCode(
+  code: string,
+  secret: string,
+  parameters: { algorithm: string; digits: number; period: number },
+  validationTime: number,
+): TotpMatch | null {
+  if (
+    parameters.algorithm !== DEFAULT_ALGORITHM ||
+    parameters.digits !== DEFAULT_DIGITS ||
+    parameters.period !== DEFAULT_PERIOD
+  ) {
+    throw new UnsupportedTotpConfigurationError();
+  }
+
   const totp = new TOTP({
-    algorithm: DEFAULT_ALGORITHM,
-    digits: DEFAULT_DIGITS,
-    period: DEFAULT_PERIOD,
+    algorithm: parameters.algorithm,
+    digits: parameters.digits,
+    period: parameters.period,
     secret: Secret.fromBase32(secret),
   });
 
   // validate() returns the time step delta (0 for exact match, ±1 for adjacent)
   // or null if invalid. A window of 1 allows ±1 step.
-  const delta = totp.validate({ token: code, window: 1 });
-  return delta !== null;
+  const delta = totp.validate({ token: code, timestamp: validationTime, window: 1 });
+  if (delta === null) return null;
+
+  return {
+    timeStep: Math.floor(validationTime / (DEFAULT_PERIOD * 1_000)) + delta,
+  };
 }

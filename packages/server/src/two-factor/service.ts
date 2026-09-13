@@ -22,7 +22,12 @@ import { config } from '../config/index.js';
 import { getPool } from '../lib/database.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
-import type { TwoFactorMethod, TwoFactorSetupResult, TwoFactorStatus, TwoFactorPolicy } from './types.js';
+import type {
+  TwoFactorMethod,
+  TwoFactorSetupResult,
+  TwoFactorStatus,
+  TwoFactorPolicy,
+} from './types.js';
 import {
   TwoFactorAlreadyEnabledError,
   TwoFactorNotEnabledError,
@@ -34,8 +39,17 @@ import {
 } from './errors.js';
 import { encryptTotpSecret, decryptTotpSecret } from './crypto.js';
 import { generateOtpCode, hashOtpCode, verifyOtpCode } from './otp.js';
-import { generateTotpSecret, generateTotpUri, generateQrCodeDataUri, verifyTotpCode } from './totp.js';
-import { generateRecoveryCodes, hashRecoveryCode, verifyRecoveryCode as verifyRecoveryCodeHash } from './recovery.js';
+import {
+  generateTotpSecret,
+  generateTotpUri,
+  generateQrCodeDataUri,
+  verifyTotpCode,
+} from './totp.js';
+import {
+  generateRecoveryCodes,
+  hashRecoveryCode,
+  verifyRecoveryCode as verifyRecoveryCodeHash,
+} from './recovery.js';
 import {
   insertTotp,
   findTotpByUserId,
@@ -101,9 +115,7 @@ async function generateAndHashRecoveryCodes(): Promise<{
   codeHashes: string[];
 }> {
   const plaintextCodes = generateRecoveryCodes();
-  const codeHashes = await Promise.all(
-    plaintextCodes.map((code) => hashRecoveryCode(code)),
-  );
+  const codeHashes = await Promise.all(plaintextCodes.map((code) => hashRecoveryCode(code)));
   return { plaintextCodes, codeHashes };
 }
 
@@ -123,10 +135,7 @@ async function generateAndHashRecoveryCodes(): Promise<{
  * @returns Setup result with recovery codes
  * @throws TwoFactorAlreadyEnabledError if 2FA is already enabled
  */
-export async function setupEmailOtp(
-  userId: string,
-  orgId: string,
-): Promise<TwoFactorSetupResult> {
+export async function setupEmailOtp(userId: string, orgId: string): Promise<TwoFactorSetupResult> {
   // Check preconditions — user must not already have 2FA enabled
   const user = await findUserById(userId);
   if (!user) {
@@ -291,10 +300,7 @@ export async function getPendingTotpSetupInfo(
  * @returns true if the code is valid and setup is confirmed
  * @throws TotpNotConfiguredError if no pending TOTP setup exists
  */
-export async function confirmTotpSetup(
-  userId: string,
-  code: string,
-): Promise<boolean> {
+export async function confirmTotpSetup(userId: string, code: string): Promise<boolean> {
   // Find the unverified TOTP config
   const totp = await findTotpByUserId(userId);
   if (!totp || totp.verified) {
@@ -311,8 +317,13 @@ export async function confirmTotpSetup(
   );
 
   // Verify the TOTP code
-  const isValid = verifyTotpCode(code, secret);
-  if (!isValid) {
+  const match = verifyTotpCode(
+    code,
+    secret,
+    { algorithm: totp.algorithm, digits: totp.digits, period: totp.period },
+    Date.now(),
+  );
+  if (match === null) {
     return false;
   }
 
@@ -364,11 +375,7 @@ export async function confirmTotpSetup(
  * @returns The plaintext OTP code (caller sends via email service)
  * @throws Error if too many active codes exist (rate limiting)
  */
-export async function sendOtpCode(
-  userId: string,
-  email: string,
-  orgId: string,
-): Promise<string> {
+export async function sendOtpCode(userId: string, email: string, orgId: string): Promise<string> {
   // Rate limiting — prevent generating too many codes
   const activeCount = await countActiveOtpCodes(userId);
   if (activeCount >= MAX_ACTIVE_OTP_CODES) {
@@ -421,10 +428,7 @@ export async function sendOtpCode(
  * @returns true if the code is valid
  * @throws OtpInvalidError if no matching code is found
  */
-export async function verifyOtp(
-  userId: string,
-  code: string,
-): Promise<boolean> {
+export async function verifyOtp(userId: string, code: string): Promise<boolean> {
   // Find all active (unused, unexpired) OTP codes for this user
   const activeCodes = await findActiveOtpCodes(userId);
 
@@ -462,10 +466,7 @@ export async function verifyOtp(
  * @returns true if the code is valid
  * @throws TotpNotConfiguredError if no verified TOTP config exists
  */
-export async function verifyTotp(
-  userId: string,
-  code: string,
-): Promise<boolean> {
+export async function verifyTotp(userId: string, code: string): Promise<boolean> {
   // Find the verified TOTP config
   const totp = await findTotpByUserId(userId);
   if (!totp || !totp.verified) {
@@ -482,7 +483,14 @@ export async function verifyTotp(
   );
 
   // Verify the code with ±1 step window
-  return verifyTotpCode(code, secret);
+  return (
+    verifyTotpCode(
+      code,
+      secret,
+      { algorithm: totp.algorithm, digits: totp.digits, period: totp.period },
+      Date.now(),
+    ) !== null
+  );
 }
 
 /**
@@ -498,10 +506,7 @@ export async function verifyTotp(
  * @throws RecoveryCodesExhaustedError if no unused codes remain
  * @throws RecoveryCodeInvalidError if the code doesn't match any hash
  */
-export async function verifyRecoveryCode(
-  userId: string,
-  code: string,
-): Promise<boolean> {
+export async function verifyRecoveryCode(userId: string, code: string): Promise<boolean> {
   // Find all unused recovery codes
   const unusedCodes = await findUnusedRecoveryCodes(userId);
 
@@ -804,9 +809,8 @@ export async function getTwoFactorSummary(orgId: string): Promise<TwoFactorSumma
   const emailCount = parseInt(row.email_count, 10);
 
   // Compliance rate: percentage of users with 2FA enabled.
-  const complianceRate = totalUsers > 0
-    ? Math.round((enabledCount / totalUsers) * 10000) / 10000
-    : 0;
+  const complianceRate =
+    totalUsers > 0 ? Math.round((enabledCount / totalUsers) * 10000) / 10000 : 0;
 
   return {
     totalUsers,

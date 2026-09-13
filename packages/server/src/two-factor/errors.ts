@@ -47,6 +47,19 @@ export class TotpNotConfiguredError extends TwoFactorError {
 }
 
 /**
+ * Reports persisted TOTP parameters that this Porta release cannot safely validate.
+ *
+ * The fixed message intentionally omits the stored values so callers can log or map
+ * the error without exposing configuration details.
+ */
+export class UnsupportedTotpConfigurationError extends TwoFactorError {
+  constructor() {
+    super('TOTP configuration is unsupported');
+    this.name = 'UnsupportedTotpConfigurationError';
+  }
+}
+
+/**
  * Thrown when an OTP code has expired (past its expires_at timestamp).
  */
 export class OtpExpiredError extends TwoFactorError {
