@@ -309,7 +309,9 @@ export async function observeLiveControlPlaneVariation(
       request.variation === 'target-organization'
         ? sourcePath.replace(context.entity('alpha'), context.entity('bravo'))
         : request.variation === 'target-slug'
-          ? `${sourcePath}-missing`
+          ? target.surface === 'session'
+            ? sourcePath.replace(/[^/]+$/u, missing)
+            : `${sourcePath}-missing`
           : sourcePath.replace(/[^/]+$/u, missing);
     response = await context.rawRequest(
       request.requestMethod,
