@@ -556,12 +556,27 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     returns: 'TwoFactorSummary',
   },
 
-  // Imports
+  // Portability
   {
-    name: 'imports.provision',
-    description: 'Import/provision data declaratively',
-    parameters: [OBJ('manifest', 'ImportManifest')],
-    returns: 'ImportResult',
+    name: 'exports.manifest',
+    description: 'Export a selective portability manifest',
+    parameters: [OBJ('request', 'ExportManifestRequest')],
+    returns: 'ExportManifestResponse',
+  },
+  {
+    name: 'imports.preview',
+    description: 'Preview a portability manifest without mutation',
+    parameters: [OBJ('manifest', 'PortabilityManifest')],
+    returns: 'PortabilityResult',
+  },
+  {
+    name: 'imports.apply',
+    description: 'Apply a portability manifest',
+    parameters: [
+      OBJ('manifest', 'PortabilityManifest'),
+      param('mode', 'string', 'Existing-record policy', true, ['keep-existing', 'update-existing']),
+    ],
+    returns: 'PortabilityResult',
   },
 ];
 

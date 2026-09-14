@@ -10,10 +10,25 @@ describe('createPortaClient', () => {
   it('returns an object with all 19 domain namespaces', () => {
     const client = createPortaClient({ transport: mockTransport() });
     const expectedDomains = [
-      'organizations', 'applications', 'clients', 'users',
-      'userRoles', 'userClaims', 'roles', 'permissions', 'customClaims',
-      'config', 'keys', 'audit', 'stats', 'sessions',
-      'bulk', 'branding', 'exports', 'twoFactor', 'imports',
+      'organizations',
+      'applications',
+      'clients',
+      'users',
+      'userRoles',
+      'userClaims',
+      'roles',
+      'permissions',
+      'customClaims',
+      'config',
+      'keys',
+      'audit',
+      'stats',
+      'sessions',
+      'bulk',
+      'branding',
+      'exports',
+      'twoFactor',
+      'imports',
     ];
     for (const domain of expectedDomains) {
       expect(client).toHaveProperty(domain);
@@ -38,7 +53,9 @@ describe('createPortaClient', () => {
     expect(typeof client.keys.rotate).toBe('function');
     expect(typeof client.audit.list).toBe('function');
     expect(typeof client.bulk.organizationStatus).toBe('function');
-    expect(typeof client.imports.provision).toBe('function');
+    expect(typeof client.exports.manifest).toBe('function');
+    expect(typeof client.imports.preview).toBe('function');
+    expect(typeof client.imports.apply).toBe('function');
   });
 
   it('all domains share the same transport instance', async () => {

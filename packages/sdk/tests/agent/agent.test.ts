@@ -38,6 +38,10 @@ describe('agent', () => {
       expect(names).toContain('config.list');
       expect(names).toContain('stats.get');
       expect(names).toContain('audit.list');
+      expect(names).toContain('exports.manifest');
+      expect(names).toContain('imports.preview');
+      expect(names).toContain('imports.apply');
+      expect(names).not.toContain('imports.provision');
     });
 
     it('describes the exact user list, lifecycle, invitation, and history contracts', () => {
