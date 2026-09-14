@@ -14,6 +14,7 @@
     "client-secret-expiry-contract.spec.test.ts",
     "rbac-contracts.spec.test.ts",
     "branding-rd06.spec.test.ts",
+    "portability.spec.test.ts",
     "../applications-rd04.spec.test.ts",
     "../clients-rd04.spec.test.ts"
   ]

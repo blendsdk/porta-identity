@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 14:14
-> **Progress**: 30/60 tasks (50%)
+> **Last Updated**: 2026-09-14 18:11
+> **Progress**: 31/60 tasks (52%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -180,11 +180,20 @@ and the bounded correctness and security re-review found no remaining issue.
 
 ## Phase 4: SDK, Conventional CLI, and Public Docs
 
+> **Phase baseline tree**: `77cc8f8e4f8c2903f386576e58e7dc28257c26ba`
+> **Scope mode**: strict
+> **Expected modification set**: Phase 4 SDK and conventional CLI specification and
+> implementation tests; SDK portability types, domains, client, and agent operations; conventional
+> export/import commands and prompt registration; retired provisioning source, examples, smoke
+> script, dependency, and structure inventory; compatibility assurance; public portability
+> documentation; this execution plan; phase review evidence; and directly affected technical
+> documentation.
+
 ### Step 4.1: Specification Tests
 
 **Reference**: [03-03](03-03-sdk-cli.md) · [ST-38–ST-51](07-testing-strategy.md) · AR-4, AR-7
 
-- [ ] 4.1.1 [spec-author] Write SDK wire/type specifications ST-38–ST-42 and register the type-contract file — `packages/sdk/tests/domains/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`
+- [x] 4.1.1 [spec-author] Write SDK wire/type specifications ST-38–ST-42, register the type-contract file, and mechanically refresh the physical-test inventory — `packages/sdk/tests/domains/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:11; 14 contract cases authored, scoped format/lint and 104 structure tests passed)
 - [ ] 4.1.2 [spec-author] Write conventional CLI workflow specifications ST-43–ST-51 — `packages/cli/tests/commands/portability.spec.test.ts`
 - [ ] 4.1.3 Run the SDK and CLI specification selectors and record expected missing-surface failures (red phase)
 
