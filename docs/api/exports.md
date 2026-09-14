@@ -6,13 +6,48 @@ private keys, raw audit metadata, and infrastructure details.
 
 ## Endpoints
 
-| Method | Path                              | Permission                                | Description                                               |
-| ------ | --------------------------------- | ----------------------------------------- | --------------------------------------------------------- |
-| `GET`  | `/api/admin/export/users`         | `admin:export:read` + `admin:user:read`   | Export tenant users                                       |
-| `GET`  | `/api/admin/export/organizations` | `admin:export:read` + `admin:org:read`    | Export organizations                                      |
-| `GET`  | `/api/admin/export/clients`       | `admin:export:read` + `admin:client:read` | Export tenant clients                                     |
-| `GET`  | `/api/admin/export/roles`         | `admin:export:read` + `admin:role:read`   | Export roles for an exact tenant/application relationship |
-| `GET`  | `/api/admin/export/audit`         | `admin:export:read` + `admin:audit:read`  | Export allowlisted audit details                          |
+| Method | Path                              | Permission                                          | Description                                               |
+| ------ | --------------------------------- | --------------------------------------------------- | --------------------------------------------------------- |
+| `GET`  | `/api/admin/export/users`         | `admin:export:read` + `admin:user:read`             | Export tenant users                                       |
+| `GET`  | `/api/admin/export/organizations` | `admin:export:read` + `admin:org:read`              | Export organizations                                      |
+| `GET`  | `/api/admin/export/clients`       | `admin:export:read` + `admin:client:read`           | Export tenant clients                                     |
+| `GET`  | `/api/admin/export/roles`         | `admin:export:read` + `admin:role:read`             | Export roles for an exact tenant/application relationship |
+| `GET`  | `/api/admin/export/audit`         | `admin:export:read` + `admin:audit:read`            | Export allowlisted audit details                          |
+| `POST` | `/api/admin/export/manifest`      | `admin:export:read` + selected category permissions | Export a selective portability manifest                   |
+
+## Selective Manifest Export
+
+Manifest export is the transfer format for moving selected Porta configuration and users between
+installations. It is separate from the CSV/JSON report endpoints above.
+
+```http
+POST /api/admin/export/manifest
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "scope": { "kind": "organization", "organization_slug": "acme" },
+  "categories": ["organizations", "applications_authorization", "users_assignments"],
+  "application_selection": {
+    "all_applications": false,
+    "application_slugs": ["customer-portal"]
+  }
+}
+```
+
+Choose one organization scope or the complete `environment` scope. Environment export requires a
+super-administrator. The supported categories are `organizations`, `applications_authorization`,
+`users_assignments`, and `oidc_clients`. Application-related categories require either explicit
+`application_slugs` or `all_applications: true`; organization-only exports require neither.
+
+The response body is the strict version `1.0` manifest. The attachment filename is returned in
+`Content-Disposition`. The manifest contains portable configuration but excludes passwords,
+password hashes, existing client secrets, signing keys, sessions, recovery material, audit logs,
+database identifiers, and control-plane records.
+
+Required permissions are the union of `admin:export:read` and the read permissions for every
+selected category. A manifest larger than 64 MiB is rejected with `413` and
+`export_manifest_too_large`.
 
 ## Query Parameters
 
@@ -74,7 +109,8 @@ Authorization: Bearer <token>
 
 ## Response Headers
 
-All export responses include:
+Report and manifest export responses include an attachment filename. The content type matches the
+selected report format or is `application/json` for a manifest:
 
 ```http
 Content-Type: text/csv

@@ -136,9 +136,29 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 | `sessions`      | 3       | Session listing and revocation                        |
 | `bulk`          | 1       | Bulk status operations                                |
 | `branding`      | 5       | Org branding settings and asset management            |
-| `exports`       | 1       | CSV/JSON data export                                  |
+| `exports`       | 2       | CSV/JSON reports and selective manifest export        |
 | `twoFactor`     | 3       | 2FA status, disable, reset                            |
-| `imports`       | 1       | Declarative provisioning                              |
+| `imports`       | 2       | Manifest preview and atomic import                    |
+
+## Environment Portability
+
+```typescript
+const exported = await client.exports.manifest({
+  scope: { kind: 'organization', organization_slug: 'acme' },
+  categories: ['organizations', 'applications_authorization'],
+  application_selection: { all_applications: true, application_slugs: [] },
+});
+
+const preview = await client.imports.preview(exported.manifest);
+if (preview.errors.length === 0) {
+  const applied = await client.imports.apply(exported.manifest, 'keep-existing');
+  // Store any applied.credentials secrets now; Porta returns them only once.
+}
+```
+
+The SDK returns parsed data and never writes files. Manifest export excludes existing credentials
+and other authentication material. Import callers should always preview first; apply repeats all
+server validation and commits atomically.
 
 ## Auth Providers
 

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 18:58
-> **Progress**: 44/60 tasks (73%)
+> **Last Updated**: 2026-09-14 19:03
+> **Progress**: 45/60 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -217,7 +217,7 @@ and the bounded correctness and security re-review found no remaining issue.
 **Reference**: [03-03 §Documentation Cleanup](03-03-sdk-cli.md) · AR-6
 
 - [x] 4.3.1 Add SDK/CLI implementation edge tests and migrate the existing packed `admin-data` compatibility probe, contract, adapters, requirements, tests, and live driver to the new contract — `packages/sdk/tests/domains/portability.impl.test.ts`, `packages/cli/tests/commands/portability.impl.test.ts`, `test-harness/consumers/admin-data-sdk-probe.mjs`, `test-harness/assurance/compat/admin-data-live.ts`, `test-harness/assurance/tests/packed-admin-data-*` ✅ (completed: 2026-09-14 18:58; SDK 527/527 and CLI 1,257/1,257 tests plus builds passed; packed assurance 7/7, root typecheck, focused harness lint, and structure 104/104 passed; clean-revision live compatibility remains assigned to task 4.3.6)
-- [ ] 4.3.2 Rewrite API, CLI, and public package portability references and remove stale provisioning claims — `docs/api/exports.md`, `docs/api/imports.md`, `docs/cli/provisioning.md`, `packages/cli/README.md`, `packages/sdk/README.md`
+- [x] 4.3.2 Rewrite API, CLI, and public package portability references and remove stale provisioning claims — `docs/api/exports.md`, `docs/api/imports.md`, `docs/cli/provisioning.md`, `packages/cli/README.md`, `packages/sdk/README.md` ✅ (completed: 2026-09-14 19:03; stale provisioning scan returned zero hits, public docs built, and 104 structure tests passed)
 - [ ] 4.3.3 Update conventional CLI overview and VitePress navigation — `docs/cli/overview.md`, `docs/.vitepress/config.ts`
 - [ ] 4.3.4 Replace stale quickstart and setup-alternative provisioning guidance — `docs/guide/quickstart.md`, `docs/guide/setup-alternatives.md`
 - [ ] 4.3.5 Replace stale SDK portability examples and domain tables — `docs/guide/sdk.md`, `docs/guide/sdk-node.md`, `docs/guide/sdk-agent.md`
