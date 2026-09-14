@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 18:45
-> **Progress**: 39/60 tasks (65%)
+> **Last Updated**: 2026-09-14 18:47
+> **Progress**: 40/60 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -207,7 +207,7 @@ and the bounded correctness and security re-review found no remaining issue.
 - [x] 4.2.4 Implement `porta import manifest` preview/confirm/apply and structured output — `packages/cli/src/commands/import.ts`, `packages/cli/src/index.ts`, `packages/cli/src/prompt.ts` ✅ (completed: 2026-09-14 18:41; existing prompt helper required no change; 23 portability CLI specifications, scoped CLI lint, and 104 structure tests passed; type probe contains only legacy provision errors assigned to task 4.2.5)
 - [x] 4.2.5 Remove legacy `provision` registration, transformer, focused tests, and the CLI `yaml` dependency; retain `yaml` at the root because repository tests still import it — `packages/cli/src/commands/provision.ts`, `packages/cli/tests/commands/provision.test.ts`, `packages/cli/src/index.ts`, `packages/cli/package.json`, `package.json`, `yarn.lock`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:44; CLI lint/typecheck/build and 1,254 tests, dependency check, and 104 structure tests passed)
 - [x] 4.2.6 Remove the obsolete simple and multi-organization provisioning examples — `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml` ✅ (completed: 2026-09-14 18:45; both files absent and 104 structure tests passed)
-- [ ] 4.2.7 Remove the obsolete enterprise and full provisioning examples — `examples/provision-enterprise.yaml`, `examples/provision-full.yaml`
+- [x] 4.2.7 Remove the obsolete enterprise and full provisioning examples — `examples/provision-enterprise.yaml`, `examples/provision-full.yaml` ✅ (completed: 2026-09-14 18:47; both files absent and 104 structure tests passed)
 - [ ] 4.2.8 Remove the obsolete provisioning smoke script and stale Docker command inventory — `scripts/provision-smoke-test.ts`, `docker/porta.sh`
 - [ ] 4.2.9 Update repository structure expectations for the removed surface — `repo-tests/monorepo/root-scripts.spec.test.mjs`, `repo-tests/monorepo/server-package.spec.test.mjs`
 - [ ] 4.2.10 Run Phase 4 SDK/CLI specifications and make them pass (green phase)
