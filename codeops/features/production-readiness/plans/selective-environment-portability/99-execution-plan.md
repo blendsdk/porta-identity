@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 20:12
-> **Progress**: 52/60 tasks (87%)
+> **Last Updated**: 2026-09-14 20:16
+> **Progress**: 53/60 tasks (88%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -256,7 +256,7 @@ clean-revision compatibility assurance, then `yarn verify` (AR-6)
 
 **Reference**: [03-04 §Menu and Workspace](03-04-admin-ui.md) · [03-04 §State and Cancellation](03-04-admin-ui.md) · AR-1, AR-3
 
-- [ ] 5.2.1 Add immutable portability state, intents, and UI-neutral SDK operations — `packages/cli/src/admin/portability-state.ts`, `packages/cli/src/admin/portability-service.ts`
+- [x] 5.2.1 Add immutable portability state, intents, and UI-neutral SDK operations — `packages/cli/src/admin/portability-state.ts`, `packages/cli/src/admin/portability-service.ts` ✅ (completed: 2026-09-14 20:16)
 - [ ] 5.2.2 Build the maximized two-tab Layout DSL workspace, selectable summaries, authorized initial tab, and fixed unauthorized-tab state while reusing the existing selectable input unchanged — `packages/cli/src/admin/portability-workspace.ts`
 - [ ] 5.2.3 Implement controller-owned open/save dialogs, file limits, preview invalidation, apply confirmation, and sequential reuse of the existing one-time-secret presenter — `packages/cli/src/admin/portability-controller.ts`, `packages/cli/src/admin/client-dialogs.ts`
 - [ ] 5.2.4 Derive exact super-admin capability and expose portability session operations — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts`
