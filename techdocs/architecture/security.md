@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-13
+> **Last Updated**: 2026-09-14
 
 ## Overview
 
@@ -411,6 +411,25 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 - **Live reference checks** — cached OIDC artifacts are rejected when their referenced client, account, grant, or Session authorization is no longer live in PostgreSQL
 - **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
+
+## Portability Import Authority
+
+The portability boundary accepts only the strict versioned manifest and closed category, scope,
+application-selection, and import-mode values. Category permissions are combined before any
+manifest data is read, and environment scope additionally requires the exact super-admin role.
+Organization-scoped imports must resolve one non-control-plane destination organization or create
+it in the same manifest.
+
+Planning is mutation-free. Destination reads are parameterized and limited to the requested
+organization, categories, selected applications, and imported client IDs. The narrow client-ID
+lookup preserves global collision detection without loading unrelated client records. Every
+application-qualified record is checked against the explicit application selection, and duplicate
+records are rejected without suppressing independent graph errors.
+
+Apply repeats planning and writes the complete accepted graph plus its content-free audit event in
+one PostgreSQL transaction. Missing audit ownership, any planner error, or any write failure aborts
+the transaction. Credential hashes, tokens, sessions, lock state, and other authentication state
+are not portable. Post-commit cleanup is limited to affected cache and OIDC authority entries.
 
 ## Permanent Deletion Authority
 

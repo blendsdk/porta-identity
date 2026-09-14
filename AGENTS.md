@@ -134,3 +134,11 @@ or assurance-remediation branches. Keep `main` off limits and preserve the verif
 assurance histories when integrating through the repository's designated integration flow.
 
 <!-- CODEOPS-PROJECT:END -->
+
+## Technical documentation automation
+
+- The `techdocs: true` frontmatter in `techdocs/index.md` is this repository's opt-in marker for
+  automatic CodeOps technical-documentation updates after completed requirements, plan phases, and
+  plans.
+- Keep maintainer architecture documentation under `techdocs/`. Do not add the marker to the public
+  `docs/index.md` or mix maintainer architecture content into the published documentation tree.

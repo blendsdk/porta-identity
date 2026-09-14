@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-13
+> **Last Updated**: 2026-09-14
 
 ## High-Level Architecture
 
@@ -124,6 +124,7 @@ Porta follows a **modular domain architecture** where each business domain is en
 | RBAC          | `packages/server/src/rbac/`          | Roles, permissions, user-role assignments               |
 | Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values                    |
 | Two-Factor    | `packages/server/src/two-factor/`    | TOTP, email OTP, recovery codes                         |
+| Portability   | `packages/server/src/portability/`   | Selective manifest export, preview, and atomic import   |
 | CLI           | `packages/server/src/cli/`           | Admin CLI with dual-mode bootstrap                      |
 
 Each domain module follows a consistent internal structure:

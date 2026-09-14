@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-13
+> **Last Updated**: 2026-09-14
 
 ## Overview
 
@@ -104,7 +104,7 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
 | `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
 | `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
-| `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports |
+| `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
 | `imports.ts`       | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
 
 ### Organization branding assets
@@ -416,22 +416,21 @@ application, credentials, sessions, and operational authentication state. The fi
 manifest is limited to 64 MiB and is committed with one content-free `admin.export` audit record
 containing only the manifest version, SHA-256 digest, selection metadata, and record counts.
 
-The new import planner and apply engine remain disconnected while they are implemented. A valid
-import request therefore returns the fixed `503` failure contract instead of running the legacy
-importer or performing a partial operation.
+Import preview builds a mutation-free ordered plan from natural keys and a destination snapshot
+limited to the selected categories, organization, and applications. It rejects duplicate keys,
+missing or ambiguous parents, control-plane records, cross-scope references, and incompatible
+existing records while still reporting all independent validation errors.
+
+Apply rebuilds the plan inside one PostgreSQL transaction and proceeds only when it contains no
+errors. All selected records and the content-free `admin.import` audit event commit together; any
+write or audit failure rolls back the whole manifest. Newly created confidential clients return
+their generated secret exactly once in the committed response. Targeted cache and OIDC authority
+cleanup runs only after commit.
 
 Bulk status changes validate the complete request before persistence. Each accepted item then owns
 one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
 rejections are returned in input order. A dependency failure preserves earlier commits, marks the
 current and remaining items `not_attempted`, and exposes only a correlation identifier.
-
-The retained legacy import accepts versioned manifests in `merge`, `overwrite`, or `dry-run` mode.
-The planner rejects
-unknown fields, duplicate natural keys, unresolved parents, cross-tenant relationships, and
-credential-equivalent input before mutation. Merge skips existing tenant-qualified keys; overwrite
-changes only the documented presentation and configuration fields; dry-run rolls back its snapshot
-and reports credential intent without identifiers or plaintext. Non-skip failures roll back the
-whole manifest.
 
 Exports support organizations, users, clients, roles, and audit records in CSV or JSON. Every
 request requires `admin:export:read` plus the entity-specific read permission. Users and clients
