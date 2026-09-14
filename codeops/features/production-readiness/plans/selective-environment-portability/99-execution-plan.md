@@ -164,7 +164,7 @@ correctness reviewer and tenant-isolation security auditor found no Critical, Ma
 **Reference**: [03-02 §Testing Requirements](03-02-portability-engine.md) · AR-6
 
 - [x] 3.3.1 Add planner/apply internal edge tests — `packages/server/tests/unit/portability/plan.impl.test.ts`, `packages/server/tests/unit/portability/apply.impl.test.ts` ✅ (completed: 2026-09-14 01:07; 4 focused implementation edge tests plus server lint, typecheck, build, and 104 structure tests passed)
-- [ ] 3.3.2 From the phase checkpoint, run focused suites, `yarn assurance:harness --project security --profile production-security`, `yarn test:structure`, and `yarn verify`; review the assurance exit taxonomy and artifact
+- [x] 3.3.2 From the phase checkpoint, run focused suites, `yarn assurance:harness --project security --profile production-security`, `yarn test:structure`, and `yarn verify`; review the assurance exit taxonomy and artifact ✅ (completed: 2026-09-14 11:34; focused timing security tests passed 5/5, production-security assurance completed with 36 product checks passing and 3 registered coverage-incomplete observations, 104 structure tests passed, and clean-root `yarn verify` passed with SDK 509, CLI 1,242, server unit 3,186, integration 464, E2E 127, and pentest 250 tests)
 
 **Deliverables:** mutation-free preview, atomic keep/update apply, one-time new-client credentials,
 safe results, targeted cleanup, and no legacy importer.
