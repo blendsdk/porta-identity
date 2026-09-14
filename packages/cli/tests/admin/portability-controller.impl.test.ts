@@ -76,6 +76,21 @@ async function settle(rounds = 12): Promise<void> {
   for (let index = 0; index < rounds; index += 1) await Promise.resolve();
 }
 
+/** Creates one externally controlled promise for lifecycle race coverage. */
+function deferred<T>(): { readonly promise: Promise<T>; resolve(value: T): void } {
+  let resolvePromise: ((value: T) => void) | undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return {
+    promise,
+    resolve(value) {
+      if (!resolvePromise) throw new Error('Deferred promise was not initialized.');
+      resolvePromise(value);
+    },
+  };
+}
+
 /** Creates a direct controller harness with observable external boundaries. */
 function harness(
   options: {
@@ -107,6 +122,7 @@ function harness(
   const states: unknown[] = [];
   const mounted: unknown[] = [];
   const requestAuthentication = vi.fn();
+  const onWorkspaceOpened = vi.fn();
   const operations: AdminPortabilityOperations = options.operations ?? {
     exportManifest: vi.fn().mockResolvedValue({ manifest, filename: 'porta-manifest.json' }),
     preview: vi.fn().mockResolvedValue(preview),
@@ -132,6 +148,7 @@ function harness(
       };
     },
     requestAuthentication,
+    onWorkspaceOpened,
     dialogs: {
       chooseManifest: options.chooseManifest ?? vi.fn().mockResolvedValue(undefined),
       saveManifest: vi.fn().mockResolvedValue(undefined),
@@ -149,6 +166,7 @@ function harness(
     getIntent: () => intent,
     getWorkspaceOptions: () => workspaceOptions,
     mounted,
+    onWorkspaceOpened,
     operations,
     requestAuthentication,
     setState: (state: AdminConnectionState) => {
@@ -186,6 +204,26 @@ describe('admin portability controller implementation', () => {
 
     expect(listAll).toHaveBeenCalledOnce();
     expect(mounted.getWorkspaceOptions()?.applications).toEqual([application]);
+    expect(mounted.mounted).toHaveLength(1);
+  });
+
+  it('should reserve workspace ownership while the application catalog is loading', async () => {
+    const pending = deferred<{
+      readonly kind: 'success';
+      readonly value: readonly [];
+    }>();
+    const listAll = vi.fn(() => pending.promise);
+    const mounted = harness({ readApplications: listAll });
+
+    mounted.controller.handleCommand(PORTABILITY_COMMAND);
+
+    expect(mounted.controller.isOpen()).toBe(true);
+    expect(mounted.onWorkspaceOpened).toHaveBeenCalledOnce();
+    mounted.controller.handleCommand(PORTABILITY_COMMAND);
+    expect(listAll).toHaveBeenCalledOnce();
+
+    pending.resolve({ kind: 'success', value: [] });
+    await settle();
     expect(mounted.mounted).toHaveLength(1);
   });
 
@@ -241,5 +279,42 @@ describe('admin portability controller implementation', () => {
 
     expect(apply).not.toHaveBeenCalled();
     expect(mounted.controller.isOpen()).toBe(true);
+  });
+
+  it('should ignore a confirmed apply after the authenticated session is replaced', async () => {
+    const confirmation = deferred<boolean>();
+    const apply = vi.fn();
+    const mounted = harness({
+      operations: {
+        exportManifest: vi.fn(),
+        preview: vi.fn().mockResolvedValue(preview),
+        apply,
+      },
+      chooseManifest: vi.fn().mockResolvedValue('/imports/porta-manifest.json'),
+      confirmApply: vi.fn(() => confirmation.promise),
+    });
+    mounted.controller.handleCommand(PORTABILITY_COMMAND);
+    await settle();
+    mounted.getIntent()?.({ kind: 'choose-manifest' });
+    await settle();
+    mounted.getIntent()?.({ kind: 'preview' });
+    await settle();
+    mounted.getIntent()?.({ kind: 'apply' });
+    await settle();
+
+    const replacement = authenticated([
+      'admin:export:read',
+      'admin:import:write',
+      'admin:app:read',
+    ]);
+    mounted.setState(replacement);
+    mounted.controller.syncContext(replacement, 2);
+    mounted.controller.handleCommand(PORTABILITY_COMMAND);
+    await settle();
+    confirmation.resolve(true);
+    await settle();
+
+    expect(mounted.controller.isOpen()).toBe(true);
+    expect(apply).not.toHaveBeenCalled();
   });
 });

@@ -287,6 +287,7 @@ export function createAdminPortabilityController(
       })
     | undefined;
   let operation: AbortController | undefined;
+  let opening = false;
   let disposed = false;
   let selectedManifest: SelectedManifest | undefined;
   let importMode: AdminPortabilityImportMode = 'keep-existing';
@@ -343,6 +344,7 @@ export function createAdminPortabilityController(
   /** Closes the workspace and aborts only local result ownership. */
   const close = (): void => {
     generation += 1;
+    opening = false;
     operation?.abort();
     operation = undefined;
     pending = undefined;
@@ -468,9 +470,20 @@ export function createAdminPortabilityController(
     const selected = selectedManifest;
     if (!operations || !selected || !preview || preview.errors.length > 0 || mode !== importMode)
       return;
-    if (!(await dialogs.confirmApply()) || !workspace) return;
     const owner = begin('apply');
     try {
+      const confirmed = await dialogs.confirmApply();
+      if (!owns(owner)) return;
+      if (
+        !confirmed ||
+        selectedManifest !== selected ||
+        !preview ||
+        preview.errors.length > 0 ||
+        mode !== importMode
+      ) {
+        finish(owner);
+        return;
+      }
       const result = await operations.apply(selected.value, mode, owner.signal);
       if (!owns(owner)) return;
       applied = reusableApplyResult(result);
@@ -529,7 +542,10 @@ export function createAdminPortabilityController(
     state: Extract<AdminConnectionState, { readonly kind: 'authenticated' }>,
     capabilities: AdminPortabilityCapabilities,
   ): Promise<void> => {
+    if (disposed || opening || workspace) return;
     const openGeneration = generation;
+    opening = true;
+    options.onWorkspaceOpened?.();
     let applications: readonly {
       readonly id: string;
       readonly name: string;
@@ -540,7 +556,7 @@ export function createAdminPortabilityController(
       const result = await applicationOperations.listAll();
       if (result.kind === 'success') applications = result.value;
     }
-    if (disposed || workspace || generation !== openGeneration) return;
+    if (disposed || !opening || workspace || generation !== openGeneration) return;
     exportSelection = initialExportSelection(state, capabilities);
     workspace = workspaceFactory({
       capabilities,
@@ -553,7 +569,7 @@ export function createAdminPortabilityController(
         options.onWorkspaceClosed?.();
       },
     });
-    options.onWorkspaceOpened?.();
+    opening = false;
     options.mountWorkspace(workspace.content);
     publish();
   };
@@ -574,6 +590,7 @@ export function createAdminPortabilityController(
       const capabilities = portabilityCapabilities(state);
       if (
         disposed ||
+        opening ||
         workspace ||
         state.kind !== 'authenticated' ||
         !capabilities ||
@@ -586,7 +603,7 @@ export function createAdminPortabilityController(
       return true;
     },
     handleIntent,
-    isOpen: () => workspace !== undefined,
+    isOpen: () => opening || workspace !== undefined,
     cancelActiveOperation: close,
     dispose() {
       if (disposed) return;

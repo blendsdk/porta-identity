@@ -423,6 +423,16 @@ export function createAdminPortabilityWorkspace(
       ready?.preview !== undefined && selectedMode() === ready.importSelection?.mode;
     const appliedIsCurrent = (): boolean =>
       ready?.applied !== undefined && selectedMode() === ready.importSelection?.mode;
+    let modeMounted = false;
+    modeControl.onMount(() => {
+      modeControl.bind(selectedMode, (selected) => {
+        if (!modeMounted) {
+          modeMounted = true;
+          return;
+        }
+        options.onIntent({ kind: 'set-import-mode', mode: selected });
+      });
+    });
     const choose = new Button('Choose manifest…', {
       disabled: ready?.pending !== undefined,
       onClick: () => options.onIntent({ kind: 'choose-manifest' }),

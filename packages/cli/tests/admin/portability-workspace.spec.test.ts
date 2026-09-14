@@ -534,6 +534,38 @@ describe('portability import workflow', () => {
     expect(invalidated).not.toMatch(/organizations.*created.*1/i);
   });
 
+  it('should dispatch preview invalidation when the import mode radio changes', async () => {
+    const mounted = await mount();
+    mounted.workspace.setState({
+      kind: 'ready',
+      importSelection: { filename: 'manifest.json', mode: 'keep-existing' },
+      preview,
+    });
+    const tabs = portabilityTabs(mounted.window);
+    tabs.select(1);
+    await settle();
+    const importTab = tabs.tabs.peek()[1]?.content;
+    const modeControl = importTab
+      ? descendants(importTab).find((view) => view instanceof RadioGroup)
+      : undefined;
+    if (!(modeControl instanceof RadioGroup)) throw new Error('Import mode control missing.');
+
+    mounted.host.loop.focusView(modeControl);
+    mounted.host.loop.dispatch({
+      type: 'key',
+      key: 'down',
+      ctrl: false,
+      alt: false,
+      shift: false,
+    });
+    await settle();
+
+    expect(mounted.intents).toContainEqual({
+      kind: 'set-import-mode',
+      mode: 'update-existing',
+    });
+  });
+
   // Rejections are grouped in dependency order and keyboard focus begins at the earliest dependency.
   it('should order rejected preview groups and focus the first invalid dependency', async () => {
     const mounted = await mount();
