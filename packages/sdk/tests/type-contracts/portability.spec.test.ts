@@ -224,7 +224,7 @@ type ExpectedResult =
         readonly client_id: string;
         readonly label: string;
         readonly secret: string;
-        readonly expires_at: string | null;
+        readonly expires_at: string;
       }[];
     });
 type ExpectedRequest = {
