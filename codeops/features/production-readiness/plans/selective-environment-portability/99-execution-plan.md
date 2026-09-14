@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 18:11
-> **Progress**: 31/60 tasks (52%)
+> **Last Updated**: 2026-09-14 18:16
+> **Progress**: 32/60 tasks (53%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -194,7 +194,7 @@ and the bounded correctness and security re-review found no remaining issue.
 **Reference**: [03-03](03-03-sdk-cli.md) · [ST-38–ST-51](07-testing-strategy.md) · AR-4, AR-7
 
 - [x] 4.1.1 [spec-author] Write SDK wire/type specifications ST-38–ST-42, register the type-contract file, and mechanically refresh the physical-test inventory — `packages/sdk/tests/domains/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:11; 14 contract cases authored, scoped format/lint and 104 structure tests passed)
-- [ ] 4.1.2 [spec-author] Write conventional CLI workflow specifications ST-43–ST-51 — `packages/cli/tests/commands/portability.spec.test.ts`
+- [x] 4.1.2 [spec-author] Write conventional CLI workflow specifications ST-43–ST-51 and mechanically refresh the physical-test inventory — `packages/cli/tests/commands/portability.spec.test.ts`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:16; 23 workflow cases authored, scoped format/lint and 104 structure tests passed)
 - [ ] 4.1.3 Run the SDK and CLI specification selectors and record expected missing-surface failures (red phase)
 
 ### Step 4.2: Implementation
