@@ -57,7 +57,7 @@ export type AdminPortabilityWorkspaceState =
   | {
       readonly kind: 'ready';
       /** Current explicit export choices. */
-      readonly exportSelection: AdminPortabilityExportSelection;
+      readonly exportSelection?: AdminPortabilityExportSelection;
       /** Chosen import file and mode, when a valid local manifest is loaded. */
       readonly importSelection?: AdminPortabilityImportSelection;
       /** Most recent successful or rejected preview. */

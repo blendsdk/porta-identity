@@ -279,6 +279,7 @@ export function createAdminPortabilityWorkspace(
   };
   let currentTabs: TabView | undefined;
   let tabFocus: readonly (View | null)[] = [null, null];
+  let readExportSelection = (): AdminPortabilityExportSelection => initialExportSelection(options);
 
   /** Builds the fixed permission state used by an unauthorized tab. */
   const permissionPage = (operation: 'Export' | 'Import'): Group =>
@@ -336,6 +337,7 @@ export function createAdminPortabilityWorkspace(
         applications: selectedApplications(),
       };
     };
+    readExportSelection = currentSelection;
     const exportAction = new Button('Export…', {
       disabled: () => ready?.pending !== undefined || !validExportSelection(currentSelection()),
       onClick: () => {
@@ -430,7 +432,8 @@ export function createAdminPortabilityWorkspace(
       onClick: () => options.onIntent({ kind: 'preview', mode: selectedMode() }),
     });
     const apply = new Button('Apply', {
-      disabled: () => !previewIsCurrent() || ready?.pending !== undefined,
+      disabled: () =>
+        !previewIsCurrent() || ready?.preview?.errors.length !== 0 || ready?.pending !== undefined,
       onClick: () => options.onIntent({ kind: 'apply', mode: selectedMode() }),
     });
     const close = new Button('Close', { onClick: () => options.onIntent({ kind: 'close' }) });
@@ -487,7 +490,7 @@ export function createAdminPortabilityWorkspace(
       }
       state =
         next.kind === 'ready' && !next.exportSelection
-          ? { ...next, exportSelection: initialExportSelection(options) }
+          ? { ...next, exportSelection: readExportSelection() }
           : next;
       render();
     },
