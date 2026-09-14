@@ -226,6 +226,9 @@ and the bounded correctness and security re-review found no remaining issue.
 **Deliverables:** exact SDK, two conventional commands, removed legacy provisioning surface, and
 accurate public documentation.
 
+**Quality review:** [Phase 4 review](08-phase-4-quality-review.md) complete; the independent
+reviewer found no Critical, Major, or Minor issue.
+
 **Verify**: SDK/CLI focused selectors, workspace verifies, `yarn docs:build`, `yarn test:structure`,
 clean-revision compatibility assurance, then `yarn verify` (AR-6)
 
