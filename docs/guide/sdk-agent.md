@@ -218,7 +218,13 @@ for (const toolCall of response.choices[0].message.tool_calls ?? []) {
 | `sessions`      | 3     | Session management                              |
 | `bulk`          | 2     | Bulk status operations                          |
 | `twoFactor`     | 7     | 2FA administration and policy                   |
-| `imports`       | 1     | Declarative provisioning                        |
+| `exports`       | 1     | Selective portability manifest export           |
+| `imports`       | 2     | Portability preview and atomic import           |
+
+Portability tools are `exports.manifest`, `imports.preview`, and `imports.apply`. An agent must
+preview the exact manifest and obtain operator approval before apply. A successful apply can return
+new confidential-client secrets once; do not include those values in model messages, logs, or
+retained tool history.
 
 ### RBAC Tool Examples
 

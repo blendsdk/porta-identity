@@ -116,9 +116,9 @@ The `PortaClient` provides 20 domain namespaces:
 | `sessions`      | Session management                                 | `list`, `revoke`, `revokeForUser`                                                                                                                                              |
 | `bulk`          | Bulk status operations                             | `execute`                                                                                                                                                                      |
 | `branding`      | Org branding & assets                              | `getSettings`, `updateSettings`, `uploadAsset`                                                                                                                                 |
-| `exports`       | CSV/JSON data export                               | `download`                                                                                                                                                                     |
+| `exports`       | Reports and selective portability export           | `download`, `manifest`                                                                                                                                                         |
 | `twoFactor`     | 2FA admin management (user + org)                  | `getStatus`, `disable`, `reset`, `regenerateRecoveryCodes`, `getPolicy`, `setPolicy`, `getSummary`                                                                             |
-| `imports`       | Declarative provisioning                           | `provision`                                                                                                                                                                    |
+| `imports`       | Portability preview and atomic import              | `preview`, `apply`                                                                                                                                                             |
 
 The `users` domain mirrors the org-scoped user routes; `usersById` mirrors the
 organization-independent user routes used by administrative clients. `stats.get()` returns

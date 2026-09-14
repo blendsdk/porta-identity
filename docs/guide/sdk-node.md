@@ -159,20 +159,28 @@ const csvBuffer = await porta.exports.download({
 await fs.promises.writeFile('users-export.csv', csvBuffer);
 ```
 
-### Declarative Provisioning
+### Environment Portability
 
 ```typescript
-import { readFileSync } from 'fs';
-import yaml from 'js-yaml';
+import { writeFile } from 'node:fs/promises';
 
-const manifest = yaml.load(readFileSync('provision.yaml', 'utf8'));
-const result = await porta.imports.provision(manifest);
+const exported = await porta.exports.manifest({
+  scope: { kind: 'organization', organization_slug: 'acme' },
+  categories: ['organizations', 'applications_authorization'],
+  application_selection: { all_applications: true, application_slugs: [] },
+});
+await writeFile('acme-porta.json', JSON.stringify(exported.manifest, null, 2), 'utf8');
 
-console.log(`Provisioned: ${result.created.length} created, ${result.updated.length} updated`);
-if (result.credentials.length > 0) {
-  console.log('New client credentials:', result.credentials);
+const preview = await porta.imports.preview(exported.manifest);
+
+if (preview.errors.length === 0) {
+  const result = await porta.imports.apply(exported.manifest, 'keep-existing');
+  // Store result.credentials securely now; generated secrets are returned only once.
 }
 ```
+
+The server is the strict manifest-validation authority. Applications should preview before apply
+and must not add automatic mutation retries.
 
 ### Iterate All Records
 
@@ -228,7 +236,7 @@ env:
   PORTA_CLIENT_SECRET: ${{ secrets.PORTA_CLIENT_SECRET }}
 
 steps:
-  - name: Provision test environment
+  - name: Configure test environment
     run: |
       npx tsx scripts/provision-test-env.ts
 ```
@@ -264,4 +272,4 @@ const porta = createPortaClient({
 - [SDK Overview](/guide/sdk) — Installation, quick start, full API reference
 - [SDK Browser Usage](/guide/sdk-browser) — Browser/SPA integration
 - [SDK AI Agent Guide](/guide/sdk-agent) — AI integration
-- [Provisioning](/cli/provisioning) — YAML-based declarative setup
+- [Environment Portability](/cli/provisioning) — Selective JSON manifest export and import
