@@ -273,77 +273,34 @@ curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker
 
 ---
 
-## Step 9: Set Up Your Environment with Provisioning
+## Step 9: Configure Your Environment
 
-Now that Porta is running, use **declarative provisioning** to create your organizations, applications, clients, roles, and permissions in one command.
-
-**1. Create a `setup.yaml` file:**
-
-```yaml
-version: '1.0'
-
-organizations:
-  - name: My Company
-    slug: my-company
-
-    applications:
-      - name: Web Portal
-        slug: web-portal
-
-        clients:
-          - client_name: Web App
-            client_type: confidential
-            application_type: web
-            grant_types:
-              - authorization_code
-              - refresh_token
-            redirect_uris:
-              - http://localhost:8080/callback
-            response_types:
-              - code
-            scope: openid profile email
-
-        roles:
-          - name: Admin
-            slug: admin
-            permissions:
-              - manage-users
-              - manage-settings
-          - name: Viewer
-            slug: viewer
-            permissions:
-              - read-data
-
-        permissions:
-          - name: Manage Users
-            slug: manage-users
-          - name: Manage Settings
-            slug: manage-settings
-          - name: Read Data
-            slug: read-data
-```
-
-**2. Preview what will be created:**
+Open the interactive administration shell:
 
 ```bash
-porta provision -f setup.yaml --dry-run
+porta admin --server https://porta.local:3443
 ```
 
-**3. Apply the configuration:**
+Create the organization, applications, roles, permissions, users, and OIDC clients needed by your
+project. Existing command-line CRUD commands are also available when you prefer scripts.
+
+::: tip Moving configuration from another Porta installation
+Export a selective JSON manifest from the source and import it into this installation. Import
+always previews before it applies changes.
 
 ```bash
-porta provision -f setup.yaml
+porta export manifest \
+  --organization my-company \
+  --category organizations \
+  --category applications_authorization \
+  --all-applications \
+  --output my-company-porta.json
+
+porta import manifest my-company-porta.json --mode keep-existing
 ```
 
-::: tip More examples
-The repository includes ready-to-use provisioning files at different complexity levels:
-
-- **`examples/provision-simple.yaml`** — Single org, one app, public + confidential client, basic RBAC
-- **`examples/provision-multi-org.yaml`** — Multi-tenant SaaS with two isolated organizations
-- **`examples/provision-enterprise.yaml`** — Enterprise setup with multiple apps, custom claims, and system config
-- **`examples/provision-full.yaml`** — **Complete feature showcase**: users with passwords, application modules, branding, 2FA policy, secret config, role/claim assignments
-
-Read the full [Provisioning Guide](../cli/provisioning.md) for the complete file format reference.
+Read [Environment Portability](../cli/provisioning.md) for category selection, import modes, and
+credential handling.
 :::
 
 ---
@@ -413,7 +370,7 @@ docker compose logs postgres  # Check database
 ## Next Steps
 
 - 📖 [Architecture Overview](./architecture.md) — How Porta is designed
-- 🔧 [Provisioning Guide](../cli/provisioning.md) — Full provisioning file format reference
+- 🔁 [Environment Portability](../cli/provisioning.md) — Selective manifest export and import
 - 💻 [CLI Reference](../cli/overview.md) — All CLI commands
 - 📋 [Admin API](../api/overview.md) — REST API reference
 - 🔑 [OIDC & Authentication](../concepts/oidc.md) — How OIDC works in Porta
