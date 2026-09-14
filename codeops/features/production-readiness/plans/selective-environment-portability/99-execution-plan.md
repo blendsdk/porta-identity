@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 20:11
-> **Progress**: 51/60 tasks (85%)
+> **Last Updated**: 2026-09-14 20:12
+> **Progress**: 52/60 tasks (87%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -250,7 +250,7 @@ clean-revision compatibility assurance, then `yarn verify` (AR-6)
 
 - [x] 5.1.1 [spec-author] Write workspace/layout specification tests ST-52–ST-62 and mechanically refresh the physical-test inventory — `packages/cli/tests/admin/portability-workspace.spec.test.ts`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 20:06)
 - [x] 5.1.2 [spec-author] Write application lifecycle, cancellation, and focus specification ST-63 and mechanically refresh the physical-test inventory — `packages/cli/tests/admin/portability-application.spec.test.ts`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 20:11)
-- [ ] 5.1.3 Run terminal Admin UI specification selectors and record expected missing-workspace failures (red phase)
+- [x] 5.1.3 Run terminal Admin UI specification selectors and record expected missing-workspace failures (red phase) ✅ (completed: 2026-09-14 20:12; expected red: 2 suites, 24 tests, planned portability command/workspace/controller absent)
 
 ### Step 5.2: Implementation
 
