@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 22:15
-> **Progress**: 57/60 tasks (95%)
+> **Last Updated**: 2026-09-14 22:16
+> **Progress**: 58/60 tasks (97%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -261,7 +261,7 @@ clean-revision compatibility assurance, then `yarn verify` (AR-6)
 - [x] 5.2.3 Implement controller-owned open/save dialogs, file limits, preview invalidation, apply confirmation, and sequential reuse of the existing one-time-secret presenter — `packages/cli/src/admin/portability-controller.ts`, `packages/cli/src/admin/client-dialogs.ts` ✅ (completed: 2026-09-14 20:33; existing secret presenter reused unchanged)
 - [x] 5.2.4 Derive exact super-admin capability and expose portability session operations — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/session-service.ts`, `packages/cli/src/commands/admin.ts` ✅ (completed: 2026-09-14 20:38; session selectors 65/65 and structure 104/104 green; the complete CLI selector's remaining 14 failures are confined to the deliberately red Task 5.2.5 portability integration suites)
 - [x] 5.2.5 Wire the menu, controller ownership cancellation, ignored late results, and focus without claiming server-side apply cancellation — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-14 22:15; CLI 1,283/1,283 and structure 104/104 green)
-- [ ] 5.2.6 Run Phase 5 Admin UI specification selectors and make them pass (green phase)
+- [x] 5.2.6 Run Phase 5 Admin UI specification selectors and make them pass (green phase) ✅ (completed: 2026-09-14 22:16; 24/24 portability specifications green)
 
 ### Step 5.3: Implementation Tests and Hardening
 
