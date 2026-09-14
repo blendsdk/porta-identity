@@ -87,6 +87,6 @@ export type AdminPortabilityIntent =
   | { readonly kind: 'export'; readonly request: ExportManifestRequest }
   | { readonly kind: 'choose-manifest' }
   | { readonly kind: 'set-import-mode'; readonly mode: AdminPortabilityImportMode }
-  | { readonly kind: 'preview' }
-  | { readonly kind: 'apply' }
+  | { readonly kind: 'preview'; readonly mode?: AdminPortabilityImportMode }
+  | { readonly kind: 'apply'; readonly mode?: AdminPortabilityImportMode }
   | { readonly kind: 'close' };

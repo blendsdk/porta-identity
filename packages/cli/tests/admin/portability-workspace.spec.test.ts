@@ -173,16 +173,17 @@ function portabilityCommand(): string {
 /** Mounts the planned workspace on a real headless terminal. */
 async function mount(
   capabilities: Record<string, boolean> = fullCapabilities,
-  selectedOrganization: typeof organization | undefined = organization,
+  selectedOrganization?: typeof organization,
   width = 80,
   height = 24,
 ) {
+  const effectiveOrganization = arguments.length < 2 ? organization : selectedOrganization;
   const intents: PortabilityIntent[] = [];
   const focused: View[] = [];
   const host = createApplication({ viewport: { width, height } });
   const workspace = (await workspaceExports()).createAdminPortabilityWorkspace({
     capabilities,
-    ...(selectedOrganization ? { organization: selectedOrganization } : {}),
+    ...(effectiveOrganization ? { organization: effectiveOrganization } : {}),
     applications,
     onIntent: (intent) => intents.push(intent),
     focusView: (view) => {
