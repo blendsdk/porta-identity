@@ -124,6 +124,8 @@ export async function runAdminCommand(
               branding: () => selectedClient(selectedServer).branding,
               twoFactor: () => selectedClient(selectedServer).twoFactor,
             },
+            () => selectedClient(selectedServer).exports,
+            () => selectedClient(selectedServer).imports,
           ),
       });
     };

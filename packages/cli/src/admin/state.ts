@@ -4,6 +4,18 @@ import type { VerifiedIdentity } from '../auth/types.js';
 
 /** Organization actions granted by a freshly verified administration session. */
 export interface AdminCapabilities {
+  /** Whether portability manifests may be exported. */
+  readonly canExportData: boolean;
+  /** Whether portability manifests may be previewed and imported. */
+  readonly canImportData: boolean;
+  /** Whether claim definitions and user claim values may be inspected. */
+  readonly canReadClaims: boolean;
+  /** Whether claim definitions and user claim values may be created. */
+  readonly canCreateClaims: boolean;
+  /** Whether claim definitions and user claim values may be updated. */
+  readonly canUpdateClaims: boolean;
+  /** Whether the live identity has the exact control-plane super-admin role. */
+  readonly isSuperAdmin: boolean;
   /** Whether organization listing and switching may be offered. */
   readonly canReadOrganizations: boolean;
   /** Whether organization creation may be offered. */

@@ -1,7 +1,7 @@
 /** Focused implementation tests for the admin session production wiring. */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UsersDomain } from '@portaidentity/sdk';
+import type { PortabilityManifest, UsersDomain } from '@portaidentity/sdk';
 import type { AdminOrganizationWorkspaceDomains } from '../../src/admin/organization-service.js';
 
 const credentialStore = vi.hoisted(() => ({
@@ -38,6 +38,25 @@ const interaction = {
   requestManualCallback: vi.fn(),
   confirmCredentialReplacement: vi.fn(),
 };
+
+const manifest = {
+  format: 'porta-portability',
+  version: 1,
+  scope: { kind: 'organization', organization_slug: 'example-organization' },
+  categories: ['organizations'],
+  application_selection: { all_applications: true, application_slugs: [] },
+  organizations: [],
+  applications: [],
+  application_modules: [],
+  roles: [],
+  permissions: [],
+  claim_definitions: [],
+  role_permission_mappings: [],
+  users: [],
+  user_role_assignments: [],
+  user_claim_values: [],
+  clients: [],
+} as const satisfies PortabilityManifest;
 
 describe('admin session production wiring', () => {
   beforeEach(() => {
@@ -213,5 +232,46 @@ describe('admin session production wiring', () => {
     expect(get).toHaveBeenCalledWith(organizationId);
     expect(branding).not.toHaveBeenCalled();
     expect(twoFactor).not.toHaveBeenCalled();
+  });
+
+  it('should retain portability SDK domains lazily and only when both are available', async () => {
+    const exportResponse = { manifest, filename: 'porta-manifest.json' };
+    const exportManifest = vi.fn().mockResolvedValue(exportResponse);
+    const previewResult = {
+      mode: 'dry-run' as const,
+      summary: {},
+      items: [],
+      errors: [],
+    };
+    const preview = vi.fn().mockResolvedValue(previewResult);
+    const apply = vi.fn();
+    const exportsDomain = vi.fn(() => ({ manifest: exportManifest }));
+    const importsDomain = vi.fn(() => ({ preview, apply }));
+    const prepared = prepareAdminSession(
+      server,
+      interaction,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      exportsDomain,
+      importsDomain,
+    );
+
+    expect(prepared.session.portability).toBeDefined();
+    expect(exportsDomain).not.toHaveBeenCalled();
+    expect(importsDomain).not.toHaveBeenCalled();
+    await expect(
+      prepared.session.portability?.exportManifest({
+        scope: manifest.scope,
+        categories: manifest.categories,
+        application_selection: manifest.application_selection,
+      }),
+    ).resolves.toEqual(exportResponse);
+    await expect(prepared.session.portability?.preview(manifest)).resolves.toEqual(previewResult);
+    expect(exportsDomain).toHaveBeenCalledOnce();
+    expect(importsDomain).toHaveBeenCalledOnce();
   });
 });

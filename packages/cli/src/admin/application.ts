@@ -30,6 +30,7 @@ import type { AdminUserOperations } from './user-service.js';
 import type { AdminApplicationOperations } from './application-service.js';
 import type { AdminClientOperations } from './client-service.js';
 import type { AdminRbacOperations } from './rbac-service.js';
+import type { AdminPortabilityOperations } from './portability-service.js';
 import { createAdminApplicationClientFeatures } from './application-client-features.js';
 import type { AdminApplicationClientFeatures } from './application-client-features.js';
 import { createAdminUserController } from './user-controller.js';
@@ -67,6 +68,8 @@ export interface AdminApplicationSession {
   readonly clients?: AdminClientOperations;
   /** Application and selected-user RBAC operations bound lazily to the verified server session. */
   readonly rbac?: AdminRbacOperations;
+  /** Environment portability operations bound lazily to the verified server session. */
+  readonly portability?: AdminPortabilityOperations;
 }
 
 /** State and operations prepared after the application has a selected server. */
