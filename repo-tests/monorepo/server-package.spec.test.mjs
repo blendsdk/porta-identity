@@ -402,27 +402,8 @@ test('should retain every behavioral and harness test file', () => {
   }
 });
 
-// Smoke and harness utilities import server source from its package instead of the retired root location.
-test('should point retained smoke and harness utilities at current package paths', () => {
-  const smokeTestPath = 'scripts/provision-smoke-test.ts';
-  assert.equal(isRepositoryFile(smokeTestPath), true, `${smokeTestPath} must remain available`);
-
-  const smokeTest = readFileSync(resolve(repositoryRoot, smokeTestPath), 'utf8');
-  const activeSourceImports = [
-    ...smokeTest.matchAll(/\bimport\s*\(\s*['"]([^'"]*src\/[^'"]+)['"]\s*\)/g),
-  ].map((match) => match[1]);
-  assert.ok(
-    activeSourceImports.length > 0,
-    `${smokeTestPath} must retain its server source imports`,
-  );
-  for (const importPath of activeSourceImports) {
-    assert.match(
-      importPath,
-      /packages\/server\/src\//,
-      `${smokeTestPath} import ${importPath} must point to packages/server/src`,
-    );
-  }
-
+// Harness utilities import server source from its package instead of the retired root location.
+test('should point retained harness utilities at current package paths', () => {
   const harnessFiles = [
     'test-harness/Dockerfile',
     ...findPhysicalFiles('test-harness/scripts', /\.(?:sh|ts)$/),

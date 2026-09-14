@@ -271,11 +271,11 @@ test('should delegate operational commands to current monorepo paths', () => {
 test('should keep Docker guidance within the server CLI command boundary', () => {
   const dockerWrapper = readRepositoryFile('docker/porta.sh');
   const invalidContainerAdminCommand =
-    /(?:docker exec[^\n]*porta|\.\/porta)\s+(?:login|org|provision)\b/i;
+    /(?:docker exec[^\n]*porta|\.\/porta)\s+(?:login|org|export|import)\b/i;
 
   assert.doesNotMatch(
     dockerWrapper,
-    /HOST_FILE|\/dev\/stdin|\b(?:login|org|provision)\b[^\n]*#.*(?:container|local file)/i,
+    /HOST_FILE|\/dev\/stdin|\b(?:login|org|export|import)\b[^\n]*#.*(?:container|local file)/i,
     'docker/porta.sh must not route standalone administrative commands through the server container',
   );
 
