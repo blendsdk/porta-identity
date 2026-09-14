@@ -149,19 +149,78 @@ export function addItem(
  * @param entityType - Rejected manifest collection
  * @param naturalKey - Safe public identity
  * @param code - Fixed non-reflective rejection code
+ * @param countRejected - Whether the error represents a manifest record in aggregate counts
  */
 export function addError(
   accumulator: PlanAccumulator,
   entityType: PortabilityEntityType,
   naturalKey: PortabilityNaturalKey,
   code: PortabilityResultErrorCode,
+  countRejected = true,
 ): void {
-  accumulator.summary[entityType] = {
-    ...accumulator.summary[entityType],
-    rejected: accumulator.summary[entityType].rejected + 1,
-  };
+  if (countRejected)
+    accumulator.summary[entityType] = {
+      ...accumulator.summary[entityType],
+      rejected: accumulator.summary[entityType].rejected + 1,
+    };
   if (accumulator.errors.length < 100)
     accumulator.errors.push({ entity_type: entityType, natural_key: naturalKey, code });
+}
+
+/**
+ * Check whether an application-qualified record belongs to the manifest selection.
+ *
+ * @param manifest - Strict normalized import manifest
+ * @param applicationSlug - Application owner named by one record
+ * @returns Whether the record is inside the declared application scope
+ */
+export function applicationIsSelected(
+  manifest: PortabilityManifest,
+  applicationSlug: string,
+): boolean {
+  return (
+    manifest.application_selection.all_applications ||
+    manifest.application_selection.application_slugs.some(
+      (selected) => normalizedSlug(selected) === normalizedSlug(applicationSlug),
+    )
+  );
+}
+
+/**
+ * Validate scope metadata that may have no corresponding manifest record.
+ *
+ * @param manifest - Strict normalized import manifest
+ * @param accumulator - Result being assembled
+ * @param organizations - Destination organizations grouped by normalized slug
+ * @param manifestOrganizations - Organization slugs created by this manifest
+ */
+export function validateRootScope(
+  manifest: PortabilityManifest,
+  accumulator: PlanAccumulator,
+  organizations: ReadonlyMap<string, readonly ImportOrganizationRow[]>,
+  manifestOrganizations: ReadonlySet<string>,
+): void {
+  if (manifest.scope.kind === 'organization') {
+    const selected = normalizedSlug(manifest.scope.organization_slug);
+    const matches = organizations.get(selected);
+    const code: PortabilityResultErrorCode | null =
+      selected === 'porta-admin' || matches?.[0]?.is_super_admin
+        ? 'control_plane_record'
+        : (matches?.length ?? 0) > 1
+          ? 'ambiguous_dependency'
+          : matches?.[0] === undefined && !manifestOrganizations.has(selected)
+            ? 'missing_dependency'
+            : null;
+    if (code !== null) addError(accumulator, 'organizations', { slug: selected }, code, false);
+  }
+
+  if (
+    manifest.application_selection.application_slugs.some(
+      (slug) => normalizedSlug(slug) === 'porta-admin',
+    )
+  ) {
+    addError(accumulator, 'applications', { slug: 'porta-admin' }, 'control_plane_record', false);
+  }
 }
 
 /**
@@ -243,13 +302,13 @@ function manifestNaturalKeys(
 /**
  * @param manifest - Strict normalized manifest
  * @param accumulator - Result being assembled
- * @returns Whether at least one duplicate was rejected
+ * @returns Stable identities for every record rejected as a duplicate
  */
 export function rejectDuplicates(
   manifest: PortabilityManifest,
   accumulator: PlanAccumulator,
-): boolean {
-  let foundDuplicate = false;
+): ReadonlySet<string> {
+  const duplicateRecords = new Set<string>();
   const keysByType = manifestNaturalKeys(manifest);
   for (const entityType of entityOrder) {
     const grouped = groupByKey(keysByType[entityType], (naturalKey) =>
@@ -257,12 +316,21 @@ export function rejectDuplicates(
     );
     for (const matches of grouped.values()) {
       if (matches.length < 2) continue;
-      foundDuplicate = true;
-      for (const naturalKey of matches)
+      for (const naturalKey of matches) {
+        duplicateRecords.add(recordIdentity(entityType, naturalKey));
         addError(accumulator, entityType, naturalKey, 'duplicate_natural_key');
+      }
     }
   }
-  return foundDuplicate;
+  return duplicateRecords;
+}
+
+/** Create the stable identity used to exclude a rejected duplicate from ordinary planning. */
+export function recordIdentity(
+  entityType: PortabilityEntityType,
+  naturalKey: PortabilityNaturalKey,
+): string {
+  return `${entityType}\u001e${Object.values(naturalKey).join('\u001f')}`;
 }
 
 /**

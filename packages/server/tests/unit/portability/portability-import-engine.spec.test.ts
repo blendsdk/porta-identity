@@ -98,7 +98,7 @@ describe('portability import planning specification', () => {
 
   // Permission slugs lose outer whitespace without changing arbitrary inner content.
   it('should trim only the outside of arbitrary permission slugs', async () => {
-    useRows({ applications: [alphaApplication] });
+    useRows({ organizations: [alphaOrganization], applications: [alphaApplication] });
     const result = await portability.buildPortabilityPlan(
       importManifest({
         categories: ['applications_authorization'],
@@ -406,6 +406,7 @@ describe('portability atomic apply specification', () => {
     ['updated', ['orders:read']],
   ] as const)('should report aggregate mapping action %s', async (action, existing) => {
     useRows({
+      organizations: [alphaOrganization],
       applications: [alphaApplication],
       roles: [{ id: 'role-id', application_slug: 'alpha-app', slug: 'operator' }],
       permissions: ['orders:read', 'orders:write'].map((slug) => ({

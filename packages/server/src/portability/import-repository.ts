@@ -7,7 +7,7 @@ import type {
   PortabilityApplicationModule,
   PortabilityClaimDefinition,
   PortabilityClient,
-  PortabilityCategory,
+  PortabilityManifest,
   PortabilityJsonValue,
   PortabilityOrganization,
   PortabilityPermission,
@@ -167,6 +167,55 @@ export interface PortabilityImportSnapshot {
   readonly clients: readonly ImportClientRow[];
 }
 
+/** Parameterized filter appended to one destination snapshot query. */
+interface SnapshotFilter {
+  /** SQL predicate including its leading `WHERE`. */
+  readonly sql: string;
+  /** Values bound to the predicate placeholders. */
+  readonly values: readonly (string | readonly string[])[];
+}
+
+/**
+ * Restrict organization-owned reads to the requested portability scope.
+ *
+ * @param column - Qualified organization slug column
+ * @param manifest - Normalized import manifest
+ * @returns Parameterized organization predicate
+ */
+function organizationFilter(column: string, manifest: PortabilityManifest): SnapshotFilter {
+  if (manifest.scope.kind === 'organization') {
+    return {
+      sql: `WHERE LOWER(BTRIM(${column})) = $1`,
+      values: [manifest.scope.organization_slug.trim().toLowerCase()],
+    };
+  }
+  return { sql: 'WHERE NOT o.is_super_admin', values: [] };
+}
+
+/**
+ * Restrict application-owned reads to the declared application selection.
+ *
+ * @param column - Qualified application slug column
+ * @param manifest - Normalized import manifest
+ * @param parameterIndex - First PostgreSQL placeholder available to this predicate
+ * @returns Parameterized application predicate
+ */
+function applicationFilter(
+  column: string,
+  manifest: PortabilityManifest,
+  parameterIndex = 1,
+): SnapshotFilter {
+  if (manifest.application_selection.all_applications) {
+    return { sql: `WHERE LOWER(BTRIM(${column})) <> 'porta-admin'`, values: [] };
+  }
+  return {
+    sql: `WHERE LOWER(BTRIM(${column})) = ANY($${parameterIndex}::text[])`,
+    values: [
+      manifest.application_selection.application_slugs.map((slug) => slug.trim().toLowerCase()),
+    ],
+  };
+}
+
 /**
  * Read the small destination catalog used to plan an import.
  *
@@ -174,68 +223,116 @@ export interface PortabilityImportSnapshot {
  * Explicit columns keep credentials, lock state, audit data, and other non-portable fields out of
  * planner memory. The surrounding request transaction provides the consistent snapshot.
  *
- * @param categories - Manifest categories whose destination state is required
- * @param includeClaimDefinitions - Whether claim definitions participate in this manifest
+ * @param manifest - Normalized scope, category, application selection, and imported client IDs
  * @returns Destination records with internal identifiers retained only for relationship matching
  */
 export async function readPortabilityImportSnapshot(
-  categories: readonly PortabilityCategory[],
-  includeClaimDefinitions: boolean,
+  manifest: PortabilityManifest,
 ): Promise<PortabilityImportSnapshot> {
   const pool = getPool();
+  const organizationScope = organizationFilter(
+    manifest.scope.kind === 'organization' ? 'slug' : 'o.slug',
+    manifest,
+  );
+  const ownedOrganizationScope = organizationFilter('o.slug', manifest);
+  const selectedApplications = applicationFilter('a.slug', manifest);
+  const applicationTableSelection = applicationFilter('slug', manifest);
+  const selectedApplicationsAfterOrganization = applicationFilter(
+    'a.slug',
+    manifest,
+    ownedOrganizationScope.values.length + 1,
+  );
+  const includesOrganizations = manifest.categories.includes('organizations');
+  const includesAuthorization = manifest.categories.includes('applications_authorization');
+  const includesUsers = manifest.categories.includes('users_assignments');
+  const includesClients = manifest.categories.includes('oidc_clients');
+  const includesApplicationData = includesAuthorization || includesUsers || includesClients;
   const organizations = await pool.query<ImportOrganizationRow>(
-    `SELECT id, slug, name, status, is_super_admin, default_locale, default_login_methods,
+    `SELECT o.id, o.slug, o.name, o.status, o.is_super_admin, o.default_locale,
+            o.default_login_methods,
             two_factor_policy, branding_logo_url, branding_favicon_url,
             branding_primary_color, branding_company_name, branding_custom_css
-       FROM organizations`,
+       FROM organizations o
+       ${organizationScope.sql}`,
+    [...organizationScope.values],
   );
-  const applications = await pool.query<ImportApplicationRow>(
-    'SELECT id, slug, name, description, status FROM applications',
-  );
-  const brandingAssets = await pool.query<ImportBrandingAssetRow>(
-    `SELECT o.slug AS organization_slug, b.asset_type, b.content_type, b.data
+  const applications: { readonly rows: readonly ImportApplicationRow[] } = includesApplicationData
+    ? await pool.query<ImportApplicationRow>(
+        `SELECT id, slug, name, description, status
+           FROM applications
+           ${applicationTableSelection.sql}`,
+        [...applicationTableSelection.values],
+      )
+    : { rows: [] };
+  const brandingAssets: { readonly rows: readonly ImportBrandingAssetRow[] } = includesOrganizations
+    ? await pool.query<ImportBrandingAssetRow>(
+        `SELECT o.slug AS organization_slug, b.asset_type, b.content_type, b.data
        FROM branding_assets b
-       JOIN organizations o ON o.id = b.organization_id`,
-  );
-  const modules = await pool.query<ImportModuleRow>(
-    `SELECT m.id, m.application_id, a.slug AS application_slug, m.slug, m.name,
+       JOIN organizations o ON o.id = b.organization_id
+       ${ownedOrganizationScope.sql}`,
+        [...ownedOrganizationScope.values],
+      )
+    : { rows: [] };
+  const modules: { readonly rows: readonly ImportModuleRow[] } = includesAuthorization
+    ? await pool.query<ImportModuleRow>(
+        `SELECT m.id, m.application_id, a.slug AS application_slug, m.slug, m.name,
             m.description, m.status
        FROM application_modules m
-       JOIN applications a ON a.id = m.application_id`,
-  );
-  const roles = await pool.query<ImportRoleRow>(
-    `SELECT r.id, r.application_id, a.slug AS application_slug, r.slug, r.name, r.description
+       JOIN applications a ON a.id = m.application_id
+       ${selectedApplications.sql}`,
+        [...selectedApplications.values],
+      )
+    : { rows: [] };
+  const roles: { readonly rows: readonly ImportRoleRow[] } =
+    includesAuthorization || includesUsers
+      ? await pool.query<ImportRoleRow>(
+          `SELECT r.id, r.application_id, a.slug AS application_slug, r.slug, r.name, r.description
        FROM roles r
-       JOIN applications a ON a.id = r.application_id`,
-  );
-  const permissions = await pool.query<ImportPermissionRow>(
-    `SELECT p.id, p.application_id, p.module_id, a.slug AS application_slug, p.slug,
+       JOIN applications a ON a.id = r.application_id
+       ${selectedApplications.sql}`,
+          [...selectedApplications.values],
+        )
+      : { rows: [] };
+  const permissions: { readonly rows: readonly ImportPermissionRow[] } = includesAuthorization
+    ? await pool.query<ImportPermissionRow>(
+        `SELECT p.id, p.application_id, p.module_id, a.slug AS application_slug, p.slug,
             m.slug AS module_slug, p.name, p.description
        FROM permissions p
        JOIN applications a ON a.id = p.application_id
-       LEFT JOIN application_modules m ON m.id = p.module_id`,
-  );
+       LEFT JOIN application_modules m ON m.id = p.module_id
+       ${selectedApplications.sql}`,
+        [...selectedApplications.values],
+      )
+    : { rows: [] };
+  const includeClaimDefinitions = includesAuthorization || manifest.user_claim_values.length > 0;
   const claims: { readonly rows: readonly ImportClaimDefinitionRow[] } = includeClaimDefinitions
     ? await pool.query<ImportClaimDefinitionRow>(
         `SELECT c.id, c.application_id, a.slug AS application_slug, c.claim_name, c.claim_type,
             c.description, c.include_in_id_token, c.include_in_access_token,
             c.include_in_userinfo
        FROM custom_claim_definitions c
-       JOIN applications a ON a.id = c.application_id`,
+       JOIN applications a ON a.id = c.application_id
+       ${selectedApplications.sql}`,
+        [...selectedApplications.values],
       )
     : { rows: [] };
-  const rolePermissions = await pool.query<ImportRolePermissionRow>(
-    `SELECT a.slug AS application_slug, r.slug AS role_slug,
+  const rolePermissions: { readonly rows: readonly ImportRolePermissionRow[] } =
+    includesAuthorization
+      ? await pool.query<ImportRolePermissionRow>(
+          `SELECT a.slug AS application_slug, r.slug AS role_slug,
             ARRAY_AGG(p.slug ORDER BY BTRIM(p.slug) COLLATE "C") AS permission_slugs
        FROM role_permissions rp
        JOIN roles r ON r.id = rp.role_id
        JOIN permissions p ON p.id = rp.permission_id
        JOIN applications a ON a.id = r.application_id
-      WHERE p.application_id = r.application_id
+      ${selectedApplications.sql} AND p.application_id = r.application_id
       GROUP BY a.slug, r.slug`,
-  );
-  const users = await pool.query<ImportUserRow>(
-    `SELECT u.id, u.organization_id, o.slug AS organization_slug, u.email::text AS email,
+          [...selectedApplications.values],
+        )
+      : { rows: [] };
+  const users: { readonly rows: readonly ImportUserRow[] } = includesUsers
+    ? await pool.query<ImportUserRow>(
+        `SELECT u.id, u.organization_id, o.slug AS organization_slug, u.email::text AS email,
             u.email_verified, u.given_name, u.family_name, u.middle_name, u.nickname,
             u.preferred_username, u.profile_url, u.picture_url, u.website_url, u.gender,
             u.birthdate::text AS birthdate, u.zoneinfo, u.locale, u.phone_number,
@@ -243,27 +340,38 @@ export async function readPortabilityImportSnapshot(
             u.address_postal_code, u.address_country,
             CASE WHEN u.status = 'inactive' THEN 'inactive' ELSE 'active' END AS status
        FROM users u
-       JOIN organizations o ON o.id = u.organization_id`,
-  );
-  const userRoles = await pool.query<ImportUserRoleRow>(
-    `SELECT o.slug AS organization_slug, u.email::text AS email, a.slug AS application_slug,
+       JOIN organizations o ON o.id = u.organization_id
+       ${ownedOrganizationScope.sql}`,
+        [...ownedOrganizationScope.values],
+      )
+    : { rows: [] };
+  const userRoles: { readonly rows: readonly ImportUserRoleRow[] } = includesUsers
+    ? await pool.query<ImportUserRoleRow>(
+        `SELECT o.slug AS organization_slug, u.email::text AS email, a.slug AS application_slug,
             r.slug AS role_slug
        FROM user_roles ur
        JOIN users u ON u.id = ur.user_id
        JOIN organizations o ON o.id = u.organization_id
        JOIN roles r ON r.id = ur.role_id
-       JOIN applications a ON a.id = r.application_id`,
-  );
-  const userClaimValues = await pool.query<ImportUserClaimValueRow>(
-    `SELECT o.slug AS organization_slug, u.email::text AS email, a.slug AS application_slug,
+       JOIN applications a ON a.id = r.application_id
+       ${ownedOrganizationScope.sql} AND ${selectedApplicationsAfterOrganization.sql.slice('WHERE '.length)}`,
+        [...ownedOrganizationScope.values, ...selectedApplicationsAfterOrganization.values],
+      )
+    : { rows: [] };
+  const userClaimValues: { readonly rows: readonly ImportUserClaimValueRow[] } = includesUsers
+    ? await pool.query<ImportUserClaimValueRow>(
+        `SELECT o.slug AS organization_slug, u.email::text AS email, a.slug AS application_slug,
             c.claim_name, v.value
        FROM custom_claim_values v
        JOIN users u ON u.id = v.user_id
        JOIN organizations o ON o.id = u.organization_id
        JOIN custom_claim_definitions c ON c.id = v.claim_id
-       JOIN applications a ON a.id = c.application_id`,
-  );
-  const clients: { readonly rows: readonly ImportClientRow[] } = categories.includes('oidc_clients')
+       JOIN applications a ON a.id = c.application_id
+       ${ownedOrganizationScope.sql} AND ${selectedApplicationsAfterOrganization.sql.slice('WHERE '.length)}`,
+        [...ownedOrganizationScope.values, ...selectedApplicationsAfterOrganization.values],
+      )
+    : { rows: [] };
+  const clients: { readonly rows: readonly ImportClientRow[] } = includesClients
     ? await pool.query<ImportClientRow>(
         `SELECT c.id, c.organization_id, c.application_id, c.client_id,
             o.slug AS organization_slug, a.slug AS application_slug,
@@ -274,7 +382,9 @@ export async function readPortabilityImportSnapshot(
             COALESCE(c.allowed_origins, '{}') AS allowed_origins, c.require_pkce
        FROM clients c
        JOIN organizations o ON o.id = c.organization_id
-       JOIN applications a ON a.id = c.application_id`,
+       JOIN applications a ON a.id = c.application_id
+      WHERE c.client_id = ANY($1::text[])`,
+        [manifest.clients.map((client) => client.client_id)],
       )
     : { rows: [] };
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { buildResolvedPortabilityPlan } from '../../../src/portability/plan.js';
 import {
   alphaOrganization,
+  confidentialClient,
   importManifest,
   installImportRows,
   portableOrganization,
@@ -57,5 +58,70 @@ describe('portability planner implementation', () => {
     expect(plan.result.errors).toHaveLength(100);
     expect(plan.result.summary.roles.rejected).toBe(101);
     expect(plan.result.items).toStrictEqual([]);
+  });
+
+  it('reads only organization tables for an organization-only manifest', async () => {
+    await buildResolvedPortabilityPlan(
+      importManifest({ organizations: [portableOrganization] }),
+      'keep-existing',
+    );
+
+    const calls = mocks.query.mock.calls.map(([sql, values]) => ({ sql: String(sql), values }));
+    expect(calls.map(({ sql }) => sql).join('\n')).not.toMatch(
+      /FROM (?:applications|application_modules|roles|permissions|users|clients)\b/i,
+    );
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sql: expect.stringMatching(/FROM organizations o\s+WHERE LOWER\(BTRIM\(slug\)\) = \$1/i),
+          values: ['alpha'],
+        }),
+        expect.objectContaining({
+          sql: expect.stringMatching(
+            /FROM branding_assets b[^]*WHERE LOWER\(BTRIM\(o\.slug\)\) = \$1/i,
+          ),
+          values: ['alpha'],
+        }),
+      ]),
+    );
+  });
+
+  it('binds organization, application, and client snapshot boundaries', async () => {
+    await buildResolvedPortabilityPlan(
+      importManifest({
+        categories: ['users_assignments', 'oidc_clients'],
+        application_selection: { all_applications: false, application_slugs: ['alpha-app'] },
+        clients: [
+          {
+            ...confidentialClient,
+            client_type: 'public',
+            token_endpoint_auth_method: 'none',
+          },
+        ],
+      }),
+      'keep-existing',
+    );
+
+    const calls = mocks.query.mock.calls.map(([sql, values]) => ({ sql: String(sql), values }));
+    expect(calls).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          sql: expect.stringMatching(/FROM users u[^]*WHERE LOWER\(BTRIM\(o\.slug\)\) = \$1/i),
+          values: ['alpha'],
+        }),
+        expect.objectContaining({
+          sql: expect.stringMatching(
+            /FROM user_roles ur[^]*LOWER\(BTRIM\(a\.slug\)\) = ANY\(\$2::text\[\]\)/i,
+          ),
+          values: ['alpha', ['alpha-app']],
+        }),
+        expect.objectContaining({
+          sql: expect.stringMatching(
+            /FROM clients c[^]*WHERE c\.client_id = ANY\(\$1::text\[\]\)/i,
+          ),
+          values: [['alpha-web']],
+        }),
+      ]),
+    );
   });
 });

@@ -340,11 +340,15 @@ export async function applyPortabilityManifest(
       const ids = await applyAuthorizationRecords(plan);
       const result = await applyUserAndClientRecords(plan, ids);
       await registerPortabilityCleanup(plan, ids);
+      const auditOrganizationId =
+        plan.manifest.scope.kind === 'organization'
+          ? ids.organizationIds.get(normalizedSlug(plan.manifest.scope.organization_slug))
+          : actor.controlPlaneOrganizationId;
+      if (auditOrganizationId === undefined) {
+        throw new Error('Resolved import organization is unavailable for audit ownership');
+      }
       await writeAuditLogInTransaction(getPool(), {
-        organizationId:
-          plan.manifest.scope.kind === 'organization'
-            ? ids.organizationIds.get(normalizedSlug(plan.manifest.scope.organization_slug))
-            : actor.controlPlaneOrganizationId,
+        organizationId: auditOrganizationId,
         actorId: actor.userId,
         eventType: 'admin.import',
         eventCategory: 'admin',

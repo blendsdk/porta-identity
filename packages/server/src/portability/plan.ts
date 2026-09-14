@@ -9,6 +9,7 @@ import {
 import {
   addError,
   addItem,
+  applicationIsSelected,
   clientMutableValuesMatch,
   compareOutcomes,
   dependencyState,
@@ -21,10 +22,12 @@ import {
   organizationMatches,
   parentError,
   recordAction,
+  recordIdentity,
   rejectDuplicates,
   sameValue,
   type PlanAccumulator,
   userMatches,
+  validateRootScope,
 } from './plan-support.js';
 import { portabilityManifestSchema, portabilityResultSchema } from './schema.js';
 import type {
@@ -60,21 +63,9 @@ export async function buildResolvedPortabilityPlan(
   mode: PortabilityImportMode,
 ): Promise<ResolvedPortabilityPlan> {
   const manifest = portabilityManifestSchema.parse(input);
-  const snapshot = await readPortabilityImportSnapshot(
-    manifest.categories,
-    manifest.claim_definitions.length > 0 || manifest.user_claim_values.length > 0,
-  );
+  const snapshot = await readPortabilityImportSnapshot(manifest);
   const accumulator: PlanAccumulator = { items: [], errors: [], summary: emptySummary() };
-
-  if (rejectDuplicates(manifest, accumulator)) {
-    const result = portabilityResultSchema.parse({
-      mode,
-      summary: accumulator.summary,
-      items: [],
-      errors: accumulator.errors.sort(compareOutcomes),
-    });
-    return { manifest, snapshot, result };
-  }
+  const duplicateRecords = rejectDuplicates(manifest, accumulator);
 
   const organizations = groupByKey(snapshot.organizations, (row) => normalizedSlug(row.slug));
   const brandingAssets = groupByKey(snapshot.brandingAssets, (row) =>
@@ -133,9 +124,11 @@ export async function buildResolvedPortabilityPlan(
     manifest.scope.kind === 'organization'
       ? normalizedSlug(manifest.scope.organization_slug)
       : null;
+  validateRootScope(manifest, accumulator, organizations, manifestOrganizations);
 
   for (const source of manifest.organizations) {
     const naturalKey = { slug: source.slug };
+    if (duplicateRecords.has(recordIdentity('organizations', naturalKey))) continue;
     if (selectedOrganization !== null && normalizedSlug(source.slug) !== selectedOrganization) {
       addError(accumulator, 'organizations', naturalKey, 'cross_scope_reference');
       continue;
@@ -178,6 +171,11 @@ export async function buildResolvedPortabilityPlan(
 
   for (const source of manifest.applications) {
     const naturalKey = { slug: source.slug };
+    if (duplicateRecords.has(recordIdentity('applications', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.slug)) {
+      addError(accumulator, 'applications', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     if (source.slug === 'porta-admin') {
       addError(accumulator, 'applications', naturalKey, 'control_plane_record');
       continue;
@@ -204,6 +202,11 @@ export async function buildResolvedPortabilityPlan(
   for (const source of manifest.application_modules) {
     const naturalKey = { application_slug: source.application_slug, slug: source.slug };
     const appKey = normalizedSlug(source.application_slug);
+    if (duplicateRecords.has(recordIdentity('application_modules', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.application_slug)) {
+      addError(accumulator, 'application_modules', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     const dependency = parentError(manifestApplications.has(appKey), applications.get(appKey));
     if (appKey === 'porta-admin')
       addError(accumulator, 'application_modules', naturalKey, 'control_plane_record');
@@ -233,6 +236,11 @@ export async function buildResolvedPortabilityPlan(
   for (const source of manifest.roles) {
     const naturalKey = { application_slug: source.application_slug, slug: source.slug };
     const appKey = normalizedSlug(source.application_slug);
+    if (duplicateRecords.has(recordIdentity('roles', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.application_slug)) {
+      addError(accumulator, 'roles', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     const dependency = parentError(manifestApplications.has(appKey), applications.get(appKey));
     if (appKey === 'porta-admin')
       addError(accumulator, 'roles', naturalKey, 'control_plane_record');
@@ -260,6 +268,11 @@ export async function buildResolvedPortabilityPlan(
   for (const source of manifest.permissions) {
     const naturalKey = { application_slug: source.application_slug, slug: source.slug };
     const appKey = normalizedSlug(source.application_slug);
+    if (duplicateRecords.has(recordIdentity('permissions', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.application_slug)) {
+      addError(accumulator, 'permissions', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     const dependency = parentError(manifestApplications.has(appKey), applications.get(appKey));
     if (appKey === 'porta-admin') {
       addError(accumulator, 'permissions', naturalKey, 'control_plane_record');
@@ -305,6 +318,11 @@ export async function buildResolvedPortabilityPlan(
   for (const source of manifest.claim_definitions) {
     const naturalKey = { application_slug: source.application_slug, claim_name: source.claim_name };
     const appKey = normalizedSlug(source.application_slug);
+    if (duplicateRecords.has(recordIdentity('claim_definitions', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.application_slug)) {
+      addError(accumulator, 'claim_definitions', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     const dependency = parentError(manifestApplications.has(appKey), applications.get(appKey));
     if (appKey === 'porta-admin')
       addError(accumulator, 'claim_definitions', naturalKey, 'control_plane_record');
@@ -351,6 +369,11 @@ export async function buildResolvedPortabilityPlan(
     const naturalKey = { application_slug: source.application_slug, role_slug: source.role_slug };
     const appKey = normalizedSlug(source.application_slug);
     const roleKey = key(appKey, normalizedRbac(source.role_slug));
+    if (duplicateRecords.has(recordIdentity('role_permission_mappings', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.application_slug)) {
+      addError(accumulator, 'role_permission_mappings', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     let error: PortabilityResultErrorCode | null =
       appKey === 'porta-admin'
         ? 'control_plane_record'
@@ -391,6 +414,7 @@ export async function buildResolvedPortabilityPlan(
   for (const source of manifest.users) {
     const naturalKey = { organization_slug: source.organization_slug, email: source.email };
     const orgKey = normalizedSlug(source.organization_slug);
+    if (duplicateRecords.has(recordIdentity('users', naturalKey))) continue;
     if (selectedOrganization !== null && orgKey !== selectedOrganization) {
       addError(
         accumulator,
@@ -445,8 +469,10 @@ export async function buildResolvedPortabilityPlan(
     const appKey = normalizedSlug(source.application_slug);
     const userKey = key(orgKey, normalizedEmail(source.email));
     const roleKey = key(appKey, normalizedRbac(source.role_slug));
+    if (duplicateRecords.has(recordIdentity('user_role_assignments', naturalKey))) continue;
     let error: PortabilityResultErrorCode | null = null;
-    if (selectedOrganization !== null && orgKey !== selectedOrganization)
+    if (!applicationIsSelected(manifest, source.application_slug)) error = 'cross_scope_reference';
+    else if (selectedOrganization !== null && orgKey !== selectedOrganization)
       error = 'cross_scope_reference';
     else if (orgKey === 'porta-admin' || appKey === 'porta-admin') error = 'control_plane_record';
     else if (!manifestUsers.has(userKey) && dependencyState(users.get(userKey)) !== 'resolved') {
@@ -510,8 +536,10 @@ export async function buildResolvedPortabilityPlan(
     const appKey = normalizedSlug(source.application_slug);
     const userKey = key(orgKey, normalizedEmail(source.email));
     const claimKey = key(appKey, source.claim_name);
+    if (duplicateRecords.has(recordIdentity('user_claim_values', naturalKey))) continue;
     let error: PortabilityResultErrorCode | null = null;
-    if (selectedOrganization !== null && orgKey !== selectedOrganization)
+    if (!applicationIsSelected(manifest, source.application_slug)) error = 'cross_scope_reference';
+    else if (selectedOrganization !== null && orgKey !== selectedOrganization)
       error = 'cross_scope_reference';
     else if (orgKey === 'porta-admin' || appKey === 'porta-admin') error = 'control_plane_record';
     else if (!manifestUsers.has(userKey) && dependencyState(users.get(userKey)) !== 'resolved')
@@ -577,6 +605,11 @@ export async function buildResolvedPortabilityPlan(
     const naturalKey = { client_id: source.client_id };
     const orgKey = normalizedSlug(source.organization_slug);
     const appKey = normalizedSlug(source.application_slug);
+    if (duplicateRecords.has(recordIdentity('clients', naturalKey))) continue;
+    if (!applicationIsSelected(manifest, source.application_slug)) {
+      addError(accumulator, 'clients', naturalKey, 'cross_scope_reference');
+      continue;
+    }
     if (selectedOrganization !== null && orgKey !== selectedOrganization) {
       addError(accumulator, 'clients', naturalKey, 'cross_scope_reference');
       continue;
