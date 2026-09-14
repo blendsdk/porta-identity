@@ -53,7 +53,9 @@ function canonicalize(value: unknown): unknown {
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, child]) => [
         key,
-        key === 'exportedAt' && typeof child === 'string' && !Number.isNaN(Date.parse(child))
+        (key === 'exportedAt' || key === 'exported_at') &&
+        typeof child === 'string' &&
+        !Number.isNaN(Date.parse(child))
           ? 'valid-iso8601-timestamp'
           : canonicalize(child),
       ]),
@@ -102,6 +104,7 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
   private readonly endpoints = activeEndpoints();
   private readonly apiPromise: Promise<APIRequestContext>;
   private readonly entities: ReadonlyMap<string, string>;
+  private previewManifestPromise: Promise<unknown> | undefined;
 
   /** Validates active fixture ownership before creating a raw observer. */
   public constructor(
@@ -156,18 +159,18 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
       });
       return normalizeResponse(response.status(), await response.json());
     }
-    if (requirement.surface === 'import-dry-run') {
+    if (requirement.surface === 'import-manifest-preview') {
       const response = await api.post(`${this.endpoints.porta}/api/admin/import`, {
         headers,
-        data: this.importRequest(),
+        data: { manifest: await this.previewManifest(), mode: 'dry-run' },
       });
       return normalizeResponse(response.status(), await response.json());
     }
-    const response = await api.get(
-      `${this.endpoints.porta}/api/admin/export/users?format=json&organizationId=${this.entity('alpha')}`,
-      { headers },
-    );
-    return normalizeResponse(response.status(), JSON.parse(await response.text()));
+    const response = await api.post(`${this.endpoints.porta}/api/admin/export/manifest`, {
+      headers,
+      data: this.exportRequest(),
+    });
+    return normalizeResponse(response.status(), await response.json());
   }
 
   /** Scans transient output against every protected runtime credential and foreign identity. */
@@ -216,20 +219,17 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
       resolve(process.cwd(), 'test-harness/consumers/admin-data-sdk-probe.mjs'),
       probePath,
     );
+    const request =
+      requirement.surface === 'bulk-duplicate-rejection'
+        ? this.bulkRequest()
+        : requirement.surface === 'import-manifest-preview'
+          ? await this.previewManifest()
+          : this.exportRequest();
     const input = {
       server: this.endpoints.porta,
       token: this.token(),
       surface: requirement.surface,
-      request:
-        requirement.surface === 'bulk-duplicate-rejection'
-          ? this.bulkRequest()
-          : requirement.surface === 'import-dry-run'
-            ? this.importRequest()
-            : {
-                entityType: 'users',
-                format: 'json',
-                organizationId: this.entity('alpha'),
-              },
+      request,
     };
     writeFileSync(inputPath, JSON.stringify(input), { flag: 'wx', mode: 0o600 });
     try {
@@ -263,7 +263,7 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
 
   /** Executes the packed CLI export under a fresh isolated home and output file. */
   private async executeCliExport(requirement: PackedAdminDataRequirement) {
-    if (requirement.surface !== 'export-users-json') {
+    if (requirement.surface !== 'export-manifest') {
       throw new Error('packed administrative-data CLI surface is unsupported');
     }
     const callerPath = resolve(homedir(), '.porta/credentials.json');
@@ -295,16 +295,15 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
         process.execPath,
         [
           this.surfaces.cliBinPath,
-          'exports',
-          'download',
-          '--entity-type',
-          'users',
-          '--format',
-          'json',
-          '--org-id',
-          this.entity('alpha'),
+          'export',
+          'manifest',
+          '--organization',
+          'alpha',
+          '--category',
+          'organizations',
           '--output',
           outputPath,
+          '--yes',
           '--server',
           this.endpoints.porta,
           '--insecure',
@@ -366,13 +365,32 @@ export class PackedAdminDataLiveDriver implements PackedAdminDataDriver {
     return { ids: [id, id], action: 'deactivate', organizationId: this.entity('alpha') };
   }
 
-  /** Returns a dry-run manifest whose tenant scope is independently owned by alpha. */
-  private importRequest() {
+  /** Returns the exact organization-only manifest export request used by packed clients. */
+  private exportRequest() {
     return {
-      mode: 'dry-run',
-      organizationId: this.entity('alpha'),
-      manifest: { version: '1.0', organizations: [{ slug: 'alpha', name: 'Alpha Assurance' }] },
+      scope: { kind: 'organization', organization_slug: 'alpha' },
+      categories: ['organizations'],
+      application_selection: { all_applications: false, application_slugs: [] },
     };
+  }
+
+  /** Exports and caches one valid source manifest for the mutation-free preview journey. */
+  private previewManifest(): Promise<unknown> {
+    this.previewManifestPromise ??= this.loadPreviewManifest();
+    return this.previewManifestPromise;
+  }
+
+  /** Loads one valid source manifest through the independently observed HTTP boundary. */
+  private async loadPreviewManifest(): Promise<unknown> {
+    const api = await this.apiPromise;
+    const response = await api.post(`${this.endpoints.porta}/api/admin/export/manifest`, {
+      headers: this.headers(),
+      data: this.exportRequest(),
+    });
+    if (response.status() !== 200) {
+      throw new Error('packed administrative-data preview manifest export failed');
+    }
+    return response.json();
   }
 
   /** Resolves a required public fixture alias. */

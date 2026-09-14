@@ -40,14 +40,14 @@ function completeEvidence() {
         outcome: requirement.expectedOutcome,
         status: requirement.expectedStatus,
         bodyDigest: digestA,
-        recordCount: requirement.surface === 'export-users-json' ? 2 : null,
+        recordCount: null,
         publicFieldDigest: digestB,
       },
       independentRawResult: {
         outcome: requirement.expectedOutcome,
         status: requirement.expectedStatus,
         bodyDigest: digestA,
-        recordCount: requirement.surface === 'export-users-json' ? 2 : null,
+        recordCount: null,
         publicFieldDigest: digestB,
       },
       outcome: 'passed',
@@ -86,9 +86,9 @@ test('should freeze the bounded non-destructive packed administrative-data matri
     ]),
     [
       ['sdk', 'bulk-duplicate-rejection', 'rejected', 400],
-      ['sdk', 'import-dry-run', 'allowed', 200],
-      ['sdk', 'export-users-json', 'allowed', 200],
-      ['cli', 'export-users-json', 'allowed', 200],
+      ['sdk', 'import-manifest-preview', 'allowed', 200],
+      ['sdk', 'export-manifest', 'allowed', 200],
+      ['cli', 'export-manifest', 'allowed', 200],
     ],
   );
   assert.equal(new Set(packedAdminDataRequirements.map(({ id }) => id)).size, 4);
