@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 18:58
-> **Progress**: 42/60 tasks (70%)
+> **Last Updated**: 2026-09-14 18:51
+> **Progress**: 43/60 tasks (72%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -210,7 +210,7 @@ and the bounded correctness and security re-review found no remaining issue.
 - [x] 4.2.7 Remove the obsolete enterprise and full provisioning examples — `examples/provision-enterprise.yaml`, `examples/provision-full.yaml` ✅ (completed: 2026-09-14 18:47; both files absent and 104 structure tests passed)
 - [x] 4.2.8 Remove the obsolete provisioning smoke script and stale Docker command inventory — `scripts/provision-smoke-test.ts`, `docker/porta.sh` ✅ (completed: 2026-09-14 18:53; script is absent, Docker wrapper syntax passed, and the sole expected structure failure is assigned to task 4.2.9)
 - [x] 4.2.9 Update repository structure expectations for the removed surface — `repo-tests/monorepo/root-scripts.spec.test.mjs`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:59; 104 structure tests passed)
-- [ ] 4.2.10 Run Phase 4 SDK/CLI specifications and make them pass (green phase)
+- [x] 4.2.10 Run Phase 4 SDK/CLI specifications and make them pass (green phase) ✅ (completed: 2026-09-14 18:51; SDK runtime 10/10, SDK type contracts, CLI 23/23, and structure 104/104 passed)
 
 ### Step 4.3: Implementation Tests and Hardening
 
