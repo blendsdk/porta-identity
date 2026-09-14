@@ -665,10 +665,6 @@ export class LiveTenantAdminContext {
 
   /** Returns the concrete target identifier only for in-memory disclosure comparison. */
   protected safeTargetIdentifier(target: LiveAdminTarget): string {
-    if (target.surface === 'session') {
-      const tenant = target.organization === 'alpha' ? 'alpha' : 'bravo';
-      return this.credential(`credential:${tenant}:cookie:baseline`);
-    }
     const match = /\/([^/]+)$/u.exec(target.readPath);
     return match?.[1] ?? '';
   }
@@ -702,7 +698,7 @@ export class LiveTenantAdminContext {
 
   /** Resolves one tenant-owned tracked session target. */
   protected sessionTarget(organization: 'alpha' | 'bravo'): Omit<LiveAdminTarget, 'updateBody'> {
-    const sessionId = this.credential(`credential:${organization}:cookie:baseline`);
+    const sessionId = this.entity(`${organization}-session-baseline`);
     const path = `/api/admin/sessions/${encodeURIComponent(sessionId)}`;
     return {
       catalogId: `admin-target-${organization}-session`,
