@@ -427,6 +427,14 @@ write or audit failure rolls back the whole manifest. Newly created confidential
 their generated secret exactly once in the committed response. Targeted cache and OIDC authority
 cleanup runs only after commit.
 
+The public SDK mirrors this wire contract through `exports.manifest()`, `imports.preview()`, and
+`imports.apply()`. It validates the exact bounded `409 import_plan_rejected` envelope before
+returning a rejected plan; every other HTTP failure remains in the normal SDK error hierarchy. The
+standalone CLI adds `porta export manifest` and `porta import manifest`. It performs local path and
+selection checks, limits input files to 64 MiB, always previews before confirmation and apply, and
+prints newly generated credentials only from the single committed response. Neither layer adds a
+second manifest schema, mutation retry, compatibility parser, or persistence mechanism.
+
 Bulk status changes validate the complete request before persistence. Each accepted item then owns
 one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
 rejections are returned in input order. A dependency failure preserves earlier commits, marks the
