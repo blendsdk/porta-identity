@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 19:14
+> **Last Updated**: 2026-09-14 19:19
 > **Progress**: 48/60 tasks (80%)
 > **CodeOps Artifact Schema**: 1
 
@@ -221,7 +221,7 @@ and the bounded correctness and security re-review found no remaining issue.
 - [x] 4.3.3 Update conventional CLI overview and VitePress navigation — `docs/cli/overview.md`, `docs/.vitepress/config.ts` ✅ (completed: 2026-09-14 19:06; public docs built through the 104-test structure gate)
 - [x] 4.3.4 Replace stale quickstart and setup-alternative provisioning guidance — `docs/guide/quickstart.md`, `docs/guide/setup-alternatives.md` ✅ (completed: 2026-09-14 19:10; stale provisioning scan returned zero hits and 104 structure tests passed)
 - [x] 4.3.5 Replace stale SDK portability examples and domain tables — `docs/guide/sdk.md`, `docs/guide/sdk-node.md`, `docs/guide/sdk-agent.md` ✅ (completed: 2026-09-14 19:14; stale SDK provisioning scan returned zero hits and 104 structure tests passed)
-- [ ] 4.3.6 Across active source, tests, assurance, public docs, and examples, run a zero-hit scan for `imports.provision`, `porta provision`, legacy import schema/mode symbols, and removed file paths; then run `yarn docs:build`, clean-revision `yarn assurance:compat --select admin-data`, and `yarn verify`; do not rewrite historical CodeOps artifacts
+- [~] 4.3.6 Across active source, tests, assurance, public docs, and examples, run a zero-hit scan for `imports.provision`, `porta provision`, legacy import schema/mode symbols, and removed file paths; then run `yarn docs:build`, clean-revision `yarn assurance:compat --select admin-data`, and `yarn verify`; do not rewrite historical CodeOps artifacts ⏳ (implemented: 2026-09-14 19:19)
 
 **Deliverables:** exact SDK, two conventional commands, removed legacy provisioning surface, and
 accurate public documentation.

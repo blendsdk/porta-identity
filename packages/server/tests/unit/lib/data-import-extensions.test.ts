@@ -1,4 +1,4 @@
-/** Focused regressions retained from the retired provisioning import schema. */
+/** Focused regressions retained from the retired import schema. */
 
 import { describe, expect, it } from 'vitest';
 import { portabilityManifestSchema } from '../../../src/portability/index.js';

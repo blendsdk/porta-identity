@@ -238,7 +238,7 @@ env:
 steps:
   - name: Configure test environment
     run: |
-      npx tsx scripts/provision-test-env.ts
+      npx tsx scripts/configure-test-env.ts
 ```
 
 ### Docker / Container
