@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 22:16
-> **Progress**: 58/60 tasks (97%)
+> **Last Updated**: 2026-09-14 22:19
+> **Progress**: 59/60 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -267,7 +267,7 @@ clean-revision compatibility assurance, then `yarn verify` (AR-6)
 
 **Reference**: [03-04 §Testing Requirements](03-04-admin-ui.md) · AR-6
 
-- [ ] 5.3.1 Add controller implementation tests — `packages/cli/tests/admin/portability-controller.impl.test.ts`
+- [x] 5.3.1 Add controller implementation tests — `packages/cli/tests/admin/portability-controller.impl.test.ts` ✅ (completed: 2026-09-14 22:19; 28/28 focused portability tests and structure 104/104 green; physical CLI test inventory refreshed to 93)
 - [ ] 5.3.2 From the final feature checkpoint, run focused server/SDK/CLI suites, `yarn test:structure`, `yarn docs:build`, applicable security and compatibility assurance, and final `yarn verify`; review every assurance artifact and exit taxonomy
 
 **Deliverables:** focused Import / Export workspace, correct scope/capability gating, safe file and
