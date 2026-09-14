@@ -121,3 +121,14 @@ test('should fail closed until the production-backed packed validator is connect
   }
   assert.deepEqual(capability.validate(completeEvidence()), completeEvidence());
 });
+
+test('should accept evidence produced by the active Node.js 24 development runtime', () => {
+  const capability = getPackedAdminDataCapability();
+  if (!capability.available) {
+    assert.throws(() => capability.validate({}), new RegExp(PACKED_ADMIN_DATA_CAPABILITY_MISSING));
+    throw new Error(PACKED_ADMIN_DATA_CAPABILITY_MISSING);
+  }
+  const evidence = completeEvidence();
+  evidence.provenance.nodeVersion = 'v24.20.0';
+  assert.deepEqual(capability.validate(evidence), evidence);
+});

@@ -43,7 +43,7 @@ const resultSchema = z
   .strict();
 const provenanceSchema = z
   .object({
-    nodeVersion: z.string().regex(/^v22\./u),
+    nodeVersion: z.string().regex(/^v(?:22|24)\./u),
     nodeExecutableSha256: z.string().regex(/^[a-f0-9]{64}$/u),
     sourceRevision: z.string().regex(/^[a-f0-9]{40}$/u),
     serverImageDigest: digestSchema,
