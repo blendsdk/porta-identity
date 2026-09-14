@@ -226,6 +226,32 @@ export type {
   AdminApplicationClientFeatures,
   AdminApplicationClientFeaturesOptions,
 } from './application-client-features.js';
+export { createAdminPortabilityController, PORTABILITY_COMMAND } from './portability-controller.js';
+export type {
+  AdminPortabilityController,
+  AdminPortabilityControllerHost,
+  AdminPortabilityControllerOptions,
+  AdminPortabilityDialogs,
+  AdminPortabilityFiles,
+} from './portability-controller.js';
+export { createAdminPortabilityOperations } from './portability-service.js';
+export type { AdminPortabilityOperations } from './portability-service.js';
+export { createAdminPortabilityWorkspace } from './portability-workspace.js';
+export type {
+  AdminPortabilityCapabilities,
+  AdminPortabilityWorkspace,
+  AdminPortabilityWorkspaceOptions,
+} from './portability-workspace.js';
+export type {
+  AdminPortabilityAppliedResult,
+  AdminPortabilityExportSelection,
+  AdminPortabilityFeedback,
+  AdminPortabilityImportMode,
+  AdminPortabilityImportSelection,
+  AdminPortabilityIntent,
+  AdminPortabilityPendingOperation,
+  AdminPortabilityWorkspaceState,
+} from './portability-state.js';
 export type {
   AdminAuthenticationUrlRow,
   AuthenticationUrlChoice,

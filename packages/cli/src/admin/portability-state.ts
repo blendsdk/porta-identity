@@ -39,7 +39,7 @@ export interface AdminPortabilityImportSelection {
 export type AdminPortabilityFeedback =
   | 'Could not read the manifest file.'
   | 'The manifest file is too large.'
-  | 'The selected file is not a valid manifest.'
+  | 'Invalid manifest.'
   | 'Could not save the export file.'
   | 'Export is unavailable.'
   | 'Preview is unavailable.'

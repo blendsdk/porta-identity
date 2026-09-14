@@ -15,6 +15,7 @@ import {
   Window,
 } from '@jsvision/ui';
 import type { AdminConnectionState } from './state.js';
+import { PORTABILITY_COMMAND } from './portability-controller.js';
 
 /** Command names handled by the administration application. */
 export const ADMIN_COMMANDS = {
@@ -34,6 +35,7 @@ export const ADMIN_COMMANDS = {
   browseClients: 'browse-clients',
   createClient: 'create-client',
   unavailableClient: 'client-action-unavailable',
+  portability: PORTABILITY_COMMAND,
   cancel: 'cancel',
 } as const;
 
@@ -125,6 +127,12 @@ export function createAdminPresentation(
             canUpdateClients: false,
             canDeleteClients: false,
             canRevokeClientSecrets: false,
+            canExportData: false,
+            canImportData: false,
+            canReadClaims: false,
+            canCreateClaims: false,
+            canUpdateClaims: false,
+            isSuperAdmin: false,
           })
         : {
             canReadOrganizations: false,
@@ -157,6 +165,12 @@ export function createAdminPresentation(
             canUpdateClients: false,
             canDeleteClients: false,
             canRevokeClientSecrets: false,
+            canExportData: false,
+            canImportData: false,
+            canReadClaims: false,
+            canCreateClaims: false,
+            canUpdateClaims: false,
+            isSuperAdmin: false,
           };
     const hasOrganization = currentState.kind === 'authenticated' && currentState.organization;
     const hasUserCapability =
@@ -248,6 +262,7 @@ export function createAdminPresentation(
       usersMenu,
       applicationsMenu,
       clientsMenu,
+      item('~I~mport / Export…', ADMIN_COMMANDS.portability),
     ];
   };
   const fullStatusItems = () => [

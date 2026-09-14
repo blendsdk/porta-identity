@@ -120,6 +120,8 @@ export interface AdminPortabilityControllerOptions {
   readonly requestAuthentication?: () => void;
   /** Refreshes command availability after direct workspace closure. */
   readonly onWorkspaceClosed?: () => void;
+  /** Refreshes command availability immediately before the workspace is mounted. */
+  readonly onWorkspaceOpened?: () => void;
   /** Injectable modal operations. */
   readonly dialogs?: Partial<AdminPortabilityDialogs>;
   /** Injectable local file operations. */
@@ -434,7 +436,7 @@ export function createAdminPortabilityController(
           error instanceof Error && error.message === MANIFEST_TOO_LARGE
             ? 'The manifest file is too large.'
             : error instanceof SyntaxError
-              ? 'The selected file is not a valid manifest.'
+              ? 'Invalid manifest.'
               : 'Could not read the manifest file.';
       }
       finish(owner);
@@ -551,6 +553,7 @@ export function createAdminPortabilityController(
         options.onWorkspaceClosed?.();
       },
     });
+    options.onWorkspaceOpened?.();
     options.mountWorkspace(workspace.content);
     publish();
   };
@@ -559,7 +562,7 @@ export function createAdminPortabilityController(
     syncContext(state, sessionEpoch) {
       const nextKey =
         state.kind === 'authenticated'
-          ? `${sessionEpoch}:${state.identity.sub}:${state.organization?.id ?? 'environment'}`
+          ? `${sessionEpoch}:${state.organization?.id ?? 'environment'}`
           : undefined;
       if (nextKey === contextKey) return;
       if (workspace || contextKey !== undefined) close();
