@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 18:38
-> **Progress**: 36/60 tasks (60%)
+> **Last Updated**: 2026-09-14 18:41
+> **Progress**: 37/60 tasks (62%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -204,7 +204,7 @@ and the bounded correctness and security re-review found no remaining issue.
 - [x] 4.2.1 Replace legacy SDK import types, add exact portability request/result exports, and migrate direct SDK contract consumers — `packages/sdk/src/types/imports.ts`, `packages/sdk/src/types/exports.ts`, `packages/sdk/src/types/index.ts`, `packages/server/tests/unit/contracts/sdk-imports-contract.test.ts`, `packages/server/tests/unit/contracts/sdk-domains-contract.test.ts` ✅ (completed: 2026-09-14 18:27; focused type compilation, SDK lint, 20 server contract tests, and 104 structure tests passed; only task 4.2.2 domain-method red remains)
 - [x] 4.2.2 Implement SDK manifest export, preview/apply handling for success and exact rejected-plan results, safe attachment handling, and the replacement agent operations; migrate direct SDK tests — `packages/sdk/src/domains/exports.ts`, `packages/sdk/src/domains/imports.ts`, `packages/sdk/src/client.ts`, `packages/sdk/src/agent.ts`, `packages/sdk/tests/client/client.test.ts`, `packages/sdk/tests/domains/imports.test.ts`, `packages/sdk/tests/agent/agent.test.ts` ✅ (completed: 2026-09-14 18:34; SDK lint/typecheck/build and 522 tests passed; 104 structure tests passed)
 - [x] 4.2.3 Implement `porta export manifest` and register it — `packages/cli/src/commands/export.ts`, `packages/cli/src/index.ts` ✅ (completed: 2026-09-14 18:38; 13 export specifications, scoped CLI lint, and 104 structure tests passed; CLI type probe contains only legacy provision errors assigned to task 4.2.5)
-- [ ] 4.2.4 Implement `porta import manifest` preview/confirm/apply and structured output — `packages/cli/src/commands/import.ts`, `packages/cli/src/index.ts`, `packages/cli/src/prompt.ts`
+- [x] 4.2.4 Implement `porta import manifest` preview/confirm/apply and structured output — `packages/cli/src/commands/import.ts`, `packages/cli/src/index.ts`, `packages/cli/src/prompt.ts` ✅ (completed: 2026-09-14 18:41; existing prompt helper required no change; 23 portability CLI specifications, scoped CLI lint, and 104 structure tests passed; type probe contains only legacy provision errors assigned to task 4.2.5)
 - [ ] 4.2.5 Remove legacy `provision` registration, transformer, focused tests, and the `yaml` dependency if the retirement scan confirms no remaining import — `packages/cli/src/commands/provision.ts`, `packages/cli/tests/commands/provision.test.ts`, `packages/cli/src/index.ts`, `packages/cli/package.json`, `yarn.lock`
 - [ ] 4.2.6 Remove the obsolete simple and multi-organization provisioning examples — `examples/provision-simple.yaml`, `examples/provision-multi-org.yaml`
 - [ ] 4.2.7 Remove the obsolete enterprise and full provisioning examples — `examples/provision-enterprise.yaml`, `examples/provision-full.yaml`

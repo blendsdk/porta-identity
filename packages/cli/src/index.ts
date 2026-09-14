@@ -49,6 +49,7 @@ import { bulkCommand } from './commands/bulk.js';
 import { statsCommand } from './commands/stats.js';
 import { exportsCommand } from './commands/exports.js';
 import { exportCommand } from './commands/export.js';
+import { importCommand } from './commands/import.js';
 import { adminCommand } from './commands/admin.js';
 
 /**
@@ -111,6 +112,7 @@ async function main(): Promise<void> {
     .command(bulkCommand)
     .command(exportsCommand)
     .command(exportCommand)
+    .command(importCommand)
     .command(provisionCommand)
     // Unauthenticated commands
     .command(healthCommand)
