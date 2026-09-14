@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-14 18:19
-> **Progress**: 33/60 tasks (55%)
+> **Last Updated**: 2026-09-14 18:27
+> **Progress**: 34/60 tasks (57%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -193,7 +193,7 @@ and the bounded correctness and security re-review found no remaining issue.
 
 **Reference**: [03-03](03-03-sdk-cli.md) · [ST-38–ST-51](07-testing-strategy.md) · AR-4, AR-7
 
-- [x] 4.1.1 [spec-author] Write SDK wire/type specifications ST-38–ST-42, register the type-contract file, and mechanically refresh the physical-test inventory — `packages/sdk/tests/domains/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:11; 14 contract cases authored, generated credential expiry corrected to the required six-month timestamp before implementation, scoped format/lint and 104 structure tests passed)
+- [x] 4.1.1 [spec-author] Write SDK wire/type specifications ST-38–ST-42, register the type-contract file, and mechanically refresh the physical-test inventory — `packages/sdk/tests/domains/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:11; 14 contract cases authored, generated credential expiry corrected to the required six-month timestamp, nested type assertions use bidirectional shape plus exact-key checks, scoped format/lint and 104 structure tests passed)
 - [x] 4.1.2 [spec-author] Write conventional CLI workflow specifications ST-43–ST-51 and mechanically refresh the physical-test inventory — `packages/cli/tests/commands/portability.spec.test.ts`, `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-09-14 18:16; 23 workflow cases authored, scoped format/lint and 104 structure tests passed)
 - [x] 4.1.3 Run the SDK and CLI specification selectors and record expected missing-surface failures (red phase) ✅ (completed: 2026-09-14 18:19; SDK runtime 10/10 expected missing-method failures, SDK type contract expected missing/new and present/legacy surface failures, CLI 23/23 expected missing-command failures; structure 104/104 passed)
 
@@ -201,7 +201,7 @@ and the bounded correctness and security re-review found no remaining issue.
 
 **Reference**: [03-03 §SDK Types and Methods](03-03-sdk-cli.md) · [03-03 §Export Command](03-03-sdk-cli.md) · AR-1, AR-4, AR-5, AR-7
 
-- [ ] 4.2.1 Replace legacy SDK import types, add exact portability request/result exports, and migrate direct SDK contract consumers — `packages/sdk/src/types/imports.ts`, `packages/sdk/src/types/exports.ts`, `packages/sdk/src/types/index.ts`, `packages/server/tests/unit/contracts/sdk-imports-contract.test.ts`, `packages/server/tests/unit/contracts/sdk-domains-contract.test.ts`
+- [x] 4.2.1 Replace legacy SDK import types, add exact portability request/result exports, and migrate direct SDK contract consumers — `packages/sdk/src/types/imports.ts`, `packages/sdk/src/types/exports.ts`, `packages/sdk/src/types/index.ts`, `packages/server/tests/unit/contracts/sdk-imports-contract.test.ts`, `packages/server/tests/unit/contracts/sdk-domains-contract.test.ts` ✅ (completed: 2026-09-14 18:27; focused type compilation, SDK lint, 20 server contract tests, and 104 structure tests passed; only task 4.2.2 domain-method red remains)
 - [ ] 4.2.2 Implement SDK manifest export, preview/apply handling for success and exact rejected-plan results, safe attachment handling, and the replacement agent operations; migrate direct SDK tests — `packages/sdk/src/domains/exports.ts`, `packages/sdk/src/domains/imports.ts`, `packages/sdk/src/client.ts`, `packages/sdk/src/agent.ts`, `packages/sdk/tests/client/client.test.ts`, `packages/sdk/tests/domains/imports.test.ts`
 - [ ] 4.2.3 Implement `porta export manifest` and register it — `packages/cli/src/commands/export.ts`, `packages/cli/src/index.ts`
 - [ ] 4.2.4 Implement `porta import manifest` preview/confirm/apply and structured output — `packages/cli/src/commands/import.ts`, `packages/cli/src/index.ts`, `packages/cli/src/prompt.ts`

@@ -1,92 +1,434 @@
-/**
- * Data import / provisioning types for the Porta SDK.
- *
- * Types mirror the server's public data-import response shapes exactly.
- *
- * @module types/imports
- */
+/** Public wire types for selective Porta manifest import and export. */
 
-/** Import mode — controls how existing entities are handled */
-export type ImportMode = 'merge' | 'overwrite' | 'dry-run';
+/** Closed manifest sections that an operator may select. */
+export type PortabilityCategory =
+  'organizations' | 'applications_authorization' | 'users_assignments' | 'oidc_clients';
 
-/** Request payload for the import endpoint */
-export interface ImportManifest {
-  /** Raw provisioning manifest (YAML/JSON parsed) */
-  manifest: Record<string, unknown>;
-  /** Import mode: merge existing, overwrite, or dry-run */
-  mode?: ImportMode;
-  /** Dry run — validate without applying (shorthand for mode='dry-run') */
-  dryRun?: boolean;
-  /** Optional tenant boundary which every tenant-qualified manifest entry must match. */
-  organizationId?: string;
+/** Organization-bound or complete-environment portability scope. */
+export type PortabilityScope =
+  | { readonly kind: 'organization'; readonly organization_slug: string }
+  | { readonly kind: 'environment' };
+
+/** Explicit application filter used by application-related categories. */
+export interface PortabilityApplicationSelection {
+  /** Select every eligible application when true. */
+  readonly all_applications: boolean;
+  /** Select these application slugs when all applications is false. */
+  readonly application_slugs: readonly string[];
 }
 
-/** A single entity operation result (created or updated) */
-export interface ImportEntityResult {
-  /** Entity type (e.g., "organization", "application", "client") */
-  type: string;
-  /** Entity slug identifier */
-  slug: string;
-  /** Entity display name */
-  name: string;
-  /** List of changes applied (for updates) */
-  changes?: string[];
-  /** Dry-run indication that a committed confidential-client create would issue a credential. */
-  credentialWillBeGenerated?: boolean;
+/** Embedded branding image with declared media type and base64 bytes. */
+export interface PortabilityBrandingAsset {
+  /** Image media type validated against the branding allowlist. */
+  readonly media_type: string;
+  /** Base64-encoded image bytes. */
+  readonly content_base64: string;
 }
 
-/** A skipped entity with reason */
-export interface ImportSkippedResult {
-  /** Entity type */
-  type: string;
-  /** Entity slug identifier */
-  slug: string;
-  /** Why the entity was skipped */
-  reason: string;
+/** Portable organization branding configuration. */
+export interface PortabilityBranding {
+  /** External logo URL, or null when absent. */
+  readonly logo_url: string | null;
+  /** External favicon URL, or null when absent. */
+  readonly favicon_url: string | null;
+  /** Six-digit HTML accent color, or null when absent. */
+  readonly primary_color: string | null;
+  /** Organization name displayed by hosted templates, or null when absent. */
+  readonly company_name: string | null;
+  /** Bounded custom template CSS, or null when absent. */
+  readonly custom_css: string | null;
+  /** Embedded logo bytes, or null when no logo is embedded. */
+  readonly logo_asset: PortabilityBrandingAsset | null;
+  /** Embedded favicon bytes, or null when no favicon is embedded. */
+  readonly favicon_asset: PortabilityBrandingAsset | null;
 }
 
-/** An import error for a specific entity */
-export interface ImportErrorResult {
-  /** Entity type that failed */
-  type: string;
-  /** Entity slug identifier */
-  slug: string;
-  /** Error message */
-  error: string;
+/** Portable organization record identified by its slug. */
+export interface PortabilityOrganization {
+  /** Public organization slug. */
+  readonly slug: string;
+  /** Organization display name. */
+  readonly name: string;
+  /** Organization lifecycle state. */
+  readonly status: 'active' | 'suspended';
+  /** Default locale identifier. */
+  readonly default_locale: string;
+  /** Default authentication methods. */
+  readonly default_login_methods: readonly ('password' | 'magic_link')[];
+  /** Organization two-factor policy. */
+  readonly two_factor_policy: 'optional' | 'required_email' | 'required_totp' | 'required_any';
+  /** Hosted-page branding configuration. */
+  readonly branding: PortabilityBranding;
 }
 
-/** Client credentials generated during import (shown once, never stored in plaintext) */
-export interface ImportClientCredentials {
-  /** Client display name */
-  clientName: string;
-  /** Generated client ID */
-  clientId?: string;
-  /** Client type */
-  clientType: 'confidential' | 'public';
-  /** Dry-run indication which never contains generated credential material. */
-  credentialWillBeGenerated?: boolean;
-  /** Raw secret — only present on create for confidential clients */
-  secretPlaintext?: string;
-  /** DB row ID of the generated secret */
-  secretId?: string;
-  /** Optional label for the secret */
-  secretLabel?: string;
-  /** Optional expiry for the secret (ISO 8601) */
-  secretExpiresAt?: string;
+/** Portable application record identified by its slug. */
+export interface PortabilityApplication {
+  /** Public application slug. */
+  readonly slug: string;
+  /** Application display name. */
+  readonly name: string;
+  /** Optional application description. */
+  readonly description: string | null;
+  /** Application lifecycle state. */
+  readonly status: 'active' | 'inactive';
 }
 
-/** Full import result — matches server ImportResult exactly */
-export interface ImportResult {
-  /** The import mode that was used */
-  mode: ImportMode;
-  /** Entities that were created */
-  created: ImportEntityResult[];
-  /** Entities that were updated (overwrite mode) */
-  updated: ImportEntityResult[];
-  /** Entities that were skipped (merge mode, already exists) */
-  skipped: ImportSkippedResult[];
-  /** Legacy rejected-response details; successful imports always omit this field. */
-  errors?: ImportErrorResult[];
-  /** Credentials generated by committed confidential-client creates. */
-  credentials: ImportClientCredentials[];
+/** Portable module record identified within an application. */
+export interface PortabilityApplicationModule {
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** Module slug. */
+  readonly slug: string;
+  /** Module display name. */
+  readonly name: string;
+  /** Optional module description. */
+  readonly description: string | null;
+  /** Module lifecycle state. */
+  readonly status: 'active' | 'inactive';
 }
+
+/** Portable role record identified within an application. */
+export interface PortabilityRole {
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** External role claim value. */
+  readonly slug: string;
+  /** Role display name. */
+  readonly name: string;
+  /** Optional role description. */
+  readonly description: string | null;
+}
+
+/** Portable permission record identified within an application. */
+export interface PortabilityPermission {
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** External permission claim value. */
+  readonly slug: string;
+  /** Optional owning module slug. */
+  readonly module_slug: string | null;
+  /** Permission display name. */
+  readonly name: string;
+  /** Optional permission description. */
+  readonly description: string | null;
+}
+
+/** Portable custom-claim definition. */
+export interface PortabilityClaimDefinition {
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** External claim name. */
+  readonly claim_name: string;
+  /** Value type enforced for this claim. */
+  readonly claim_type: 'string' | 'number' | 'boolean' | 'json';
+  /** Optional claim description. */
+  readonly description: string | null;
+  /** Whether the claim appears in ID tokens. */
+  readonly include_in_id_token: boolean;
+  /** Whether the claim appears in access tokens. */
+  readonly include_in_access_token: boolean;
+  /** Whether the claim appears in UserInfo responses. */
+  readonly include_in_userinfo: boolean;
+}
+
+/** Portable role-to-permission mapping for one application role. */
+export interface PortabilityRolePermissionMapping {
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** Role claim value. */
+  readonly role_slug: string;
+  /** Non-empty sorted permission claim values. */
+  readonly permission_slugs: readonly string[];
+}
+
+/** Portable user profile without credentials, lock state, or activity counters. */
+export interface PortabilityUser {
+  /** Owning organization slug. */
+  readonly organization_slug: string;
+  /** User email address. */
+  readonly email: string;
+  /** Whether the email address is verified. */
+  readonly email_verified: boolean;
+  /** OIDC given name. */
+  readonly given_name: string | null;
+  /** OIDC family name. */
+  readonly family_name: string | null;
+  /** OIDC middle name. */
+  readonly middle_name: string | null;
+  /** OIDC nickname. */
+  readonly nickname: string | null;
+  /** OIDC preferred username. */
+  readonly preferred_username: string | null;
+  /** OIDC profile URL. */
+  readonly profile_url: string | null;
+  /** OIDC picture URL. */
+  readonly picture_url: string | null;
+  /** OIDC website URL. */
+  readonly website_url: string | null;
+  /** OIDC gender value. */
+  readonly gender: string | null;
+  /** OIDC calendar birthdate. */
+  readonly birthdate: string | null;
+  /** OIDC time-zone identifier. */
+  readonly zoneinfo: string | null;
+  /** OIDC locale identifier. */
+  readonly locale: string | null;
+  /** OIDC phone number. */
+  readonly phone_number: string | null;
+  /** Whether the phone number is verified. */
+  readonly phone_number_verified: boolean;
+  /** Street address. */
+  readonly address_street: string | null;
+  /** Address locality. */
+  readonly address_locality: string | null;
+  /** Address region. */
+  readonly address_region: string | null;
+  /** Postal code. */
+  readonly address_postal_code: string | null;
+  /** Two-letter country code. */
+  readonly address_country: string | null;
+  /** Portable lifecycle state; automatic lock state is excluded. */
+  readonly status: 'active' | 'inactive';
+}
+
+/** Portable assignment of one application role to one user. */
+export interface PortabilityUserRoleAssignment {
+  /** Owning organization slug. */
+  readonly organization_slug: string;
+  /** Assigned user's email address. */
+  readonly email: string;
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** Assigned role claim value. */
+  readonly role_slug: string;
+}
+
+/** JSON values supported in custom claim assignments. */
+export type PortabilityJsonValue =
+  | string
+  | number
+  | boolean
+  | null
+  | readonly PortabilityJsonValue[]
+  | { readonly [key: string]: PortabilityJsonValue };
+
+/** Portable custom-claim value assigned to one user. */
+export interface PortabilityUserClaimValue {
+  /** Owning organization slug. */
+  readonly organization_slug: string;
+  /** Assigned user's email address. */
+  readonly email: string;
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** Claim definition name. */
+  readonly claim_name: string;
+  /** JSON-compatible claim value. */
+  readonly value: PortabilityJsonValue;
+}
+
+/** Portable OIDC client registration without secret material. */
+export interface PortabilityClient {
+  /** Public OIDC client identifier. */
+  readonly client_id: string;
+  /** Owning organization slug. */
+  readonly organization_slug: string;
+  /** Owning application slug. */
+  readonly application_slug: string;
+  /** Client display name. */
+  readonly name: string;
+  /** Client confidentiality mode. */
+  readonly client_type: 'public' | 'confidential';
+  /** Client deployment type. */
+  readonly application_type: 'web' | 'native' | 'spa';
+  /** Client lifecycle state. */
+  readonly status: 'active' | 'inactive';
+  /** Enabled OAuth grant types. */
+  readonly grant_types: readonly string[];
+  /** Enabled OIDC response types. */
+  readonly response_types: readonly string[];
+  /** Space-separated scope string. */
+  readonly scope: string;
+  /** Explicit login methods, or null to inherit organization defaults. */
+  readonly login_methods: readonly ('password' | 'magic_link')[] | null;
+  /** Token endpoint authentication method. */
+  readonly token_endpoint_auth_method: 'client_secret_basic' | 'client_secret_post' | 'none';
+  /** Exact authorization redirect URIs. */
+  readonly redirect_uris: readonly string[];
+  /** Exact post-logout redirect URIs. */
+  readonly post_logout_redirect_uris: readonly string[];
+  /** Exact browser origins allowed by the client. */
+  readonly allowed_origins: readonly string[];
+  /** Whether authorization-code requests require PKCE. */
+  readonly require_pkce: boolean;
+}
+
+/** Complete version 1.0 portability manifest. */
+export interface PortabilityManifest {
+  /** Manifest format version. */
+  readonly version: '1.0';
+  /** UTC instant at which the export snapshot was created. */
+  readonly exported_at: string;
+  /** Source data scope represented by the manifest. */
+  readonly scope: PortabilityScope;
+  /** Selected manifest categories. */
+  readonly categories: readonly PortabilityCategory[];
+  /** Application filter used by application-related categories. */
+  readonly application_selection: PortabilityApplicationSelection;
+  /** Portable organizations. */
+  readonly organizations: readonly PortabilityOrganization[];
+  /** Portable applications. */
+  readonly applications: readonly PortabilityApplication[];
+  /** Portable application modules. */
+  readonly application_modules: readonly PortabilityApplicationModule[];
+  /** Portable application roles. */
+  readonly roles: readonly PortabilityRole[];
+  /** Portable application permissions. */
+  readonly permissions: readonly PortabilityPermission[];
+  /** Portable custom-claim definitions. */
+  readonly claim_definitions: readonly PortabilityClaimDefinition[];
+  /** Portable role-to-permission mappings. */
+  readonly role_permission_mappings: readonly PortabilityRolePermissionMapping[];
+  /** Portable organization users. */
+  readonly users: readonly PortabilityUser[];
+  /** Portable user-to-role assignments. */
+  readonly user_role_assignments: readonly PortabilityUserRoleAssignment[];
+  /** Portable user custom-claim values. */
+  readonly user_claim_values: readonly PortabilityUserClaimValue[];
+  /** Portable OIDC clients. */
+  readonly clients: readonly PortabilityClient[];
+}
+
+/** Import operation mode. */
+export type PortabilityImportMode = 'dry-run' | 'keep-existing' | 'update-existing';
+
+/** Request body for previewing or applying one manifest. */
+export interface ImportManifestRequest {
+  /** Strict manifest to validate and process. */
+  readonly manifest: PortabilityManifest;
+  /** Preview, keep-existing, or update-existing behavior. */
+  readonly mode: PortabilityImportMode;
+}
+
+/** Portable entity groups in dependency order. */
+export type PortabilityEntityType =
+  | 'organizations'
+  | 'applications'
+  | 'application_modules'
+  | 'roles'
+  | 'permissions'
+  | 'claim_definitions'
+  | 'role_permission_mappings'
+  | 'users'
+  | 'user_role_assignments'
+  | 'user_claim_values'
+  | 'clients';
+
+/** Planned or completed action for one manifest record. */
+export type PortabilityAction = 'created' | 'updated' | 'skipped' | 'rejected';
+
+/** Counts for one entity group. */
+export interface PortabilityActionCounts {
+  /** Records created. */
+  readonly created: number;
+  /** Records updated. */
+  readonly updated: number;
+  /** Existing records left unchanged. */
+  readonly skipped: number;
+  /** Invalid or incompatible records rejected. */
+  readonly rejected: number;
+}
+
+/** Public natural-key fields identifying one portable entity. */
+export type PortabilityNaturalKey =
+  | { readonly slug: string }
+  | { readonly application_slug: string; readonly slug: string }
+  | { readonly application_slug: string; readonly claim_name: string }
+  | { readonly application_slug: string; readonly role_slug: string }
+  | { readonly organization_slug: string; readonly email: string }
+  | {
+      readonly organization_slug: string;
+      readonly email: string;
+      readonly application_slug: string;
+      readonly role_slug: string;
+    }
+  | {
+      readonly organization_slug: string;
+      readonly email: string;
+      readonly application_slug: string;
+      readonly claim_name: string;
+    }
+  | { readonly client_id: string };
+
+/** Ordered result item for one manifest record. */
+export interface PortabilityResultItem {
+  /** Entity group containing the record. */
+  readonly entity_type: PortabilityEntityType;
+  /** Planned or completed action. */
+  readonly action: PortabilityAction;
+  /** Public natural key without database identifiers. */
+  readonly natural_key: PortabilityNaturalKey;
+  /** Whether apply will create a confidential-client credential. */
+  readonly credential_will_be_generated?: boolean;
+}
+
+/** Closed safe validation codes returned for rejected records. */
+export type PortabilityResultErrorCode =
+  | 'invalid_record'
+  | 'duplicate_natural_key'
+  | 'missing_dependency'
+  | 'ambiguous_dependency'
+  | 'incompatible_record'
+  | 'cross_scope_reference'
+  | 'control_plane_record'
+  | 'client_id_collision';
+
+/** Safe bounded error for one rejected manifest record. */
+export interface PortabilityResultError {
+  /** Entity group containing the rejected record. */
+  readonly entity_type: PortabilityEntityType;
+  /** Public natural key without database identifiers. */
+  readonly natural_key: PortabilityNaturalKey;
+  /** Stable safe rejection code. */
+  readonly code: PortabilityResultErrorCode;
+}
+
+/** One-time credential returned only after a committed confidential-client creation. */
+export interface PortabilityCredential {
+  /** Public OIDC client identifier. */
+  readonly client_id: string;
+  /** Human-readable credential label. */
+  readonly label: string;
+  /** Plaintext secret shown only in this response. */
+  readonly secret: string;
+  /** UTC credential expiry instant. */
+  readonly expires_at: string;
+}
+
+/** Fields shared by preview and committed portability results. */
+export interface PortabilityResultBase {
+  /** Per-entity counts in the closed dependency groups. */
+  readonly summary: Readonly<Record<PortabilityEntityType, PortabilityActionCounts>>;
+  /** Ordered record outcomes. */
+  readonly items: readonly PortabilityResultItem[];
+  /** Bounded safe rejected-record details. */
+  readonly errors: readonly PortabilityResultError[];
+}
+
+/** Mutation-free import preview result. */
+export interface PortabilityPreviewResult extends PortabilityResultBase {
+  /** Preview discriminator. */
+  readonly mode: 'dry-run';
+  /** Preview never contains plaintext credential material. */
+  readonly credentials?: never;
+}
+
+/** Successfully committed portability result. */
+export interface PortabilityApplyResult extends PortabilityResultBase {
+  /** Conflict policy used by the committed import. */
+  readonly mode: 'keep-existing' | 'update-existing';
+  /** One-time credentials returned only for newly created confidential clients. */
+  readonly credentials?: readonly PortabilityCredential[];
+}
+
+/** Safe ordered result returned by preview and committed apply operations. */
+export type PortabilityResult = PortabilityPreviewResult | PortabilityApplyResult;

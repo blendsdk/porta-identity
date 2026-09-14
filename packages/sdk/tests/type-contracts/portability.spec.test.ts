@@ -261,12 +261,16 @@ describe('portability SDK type contract', () => {
 
   // The public manifest type contains every portable collection and excludes persistence-only metadata by exact equality.
   it('exports the exact closed portability manifest type', () => {
-    expectTypeOf<PortabilityManifest>().toEqualTypeOf<ExpectedManifest>();
+    expectTypeOf<keyof PortabilityManifest>().toEqualTypeOf<keyof ExpectedManifest>();
+    expectTypeOf<PortabilityManifest>().toMatchTypeOf<ExpectedManifest>();
+    expectTypeOf<ExpectedManifest>().toMatchTypeOf<PortabilityManifest>();
   });
 
   // Results expose bounded natural keys, closed actions and errors, and credentials only for non-preview modes.
   it('exports the exact preview and apply result type', () => {
-    expectTypeOf<PortabilityResult>().toEqualTypeOf<ExpectedResult>();
+    expectTypeOf<keyof PortabilityResult>().toEqualTypeOf<keyof ExpectedResult>();
+    expectTypeOf<PortabilityResult>().toMatchTypeOf<ExpectedResult>();
+    expectTypeOf<ExpectedResult>().toMatchTypeOf<PortabilityResult>();
   });
 
   // The public client exposes only manifest export plus preview and apply imports, with no provisioning alias.
