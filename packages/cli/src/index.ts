@@ -42,7 +42,6 @@ import { userCommand } from './commands/user.js';
 import { keysCommand } from './commands/keys.js';
 import { configCommand } from './commands/config.js';
 import { auditCommand } from './commands/audit.js';
-import { provisionCommand } from './commands/provision.js';
 import { healthCommand } from './commands/health.js';
 import { sessionsCommand } from './commands/sessions.js';
 import { bulkCommand } from './commands/bulk.js';
@@ -113,7 +112,6 @@ async function main(): Promise<void> {
     .command(exportsCommand)
     .command(exportCommand)
     .command(importCommand)
-    .command(provisionCommand)
     // Unauthenticated commands
     .command(healthCommand)
     // Embedded administration application (handles its own session)
