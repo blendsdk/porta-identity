@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-14
+> **Last Updated**: 2026-09-15
 
 ## Overview
 
@@ -430,6 +430,13 @@ Apply repeats planning and writes the complete accepted graph plus its content-f
 one PostgreSQL transaction. Missing audit ownership, any planner error, or any write failure aborts
 the transaction. Credential hashes, tokens, sessions, lock state, and other authentication state
 are not portable. Post-commit cleanup is limited to affected cache and OIDC authority entries.
+
+The terminal Admin UI derives portability availability from verified session capabilities but
+continues to rely on server authorization. It checks local manifest size before and after reading,
+shows fixed local error text without paths or response detail, and requires a current successful
+preview plus confirmation before Apply. Session replacement and workspace closure invalidate all
+local continuations. One-time client-secret plaintext is shown through the existing abortable
+presenter and is removed before the apply result enters reusable view state.
 
 ## Permanent Deletion Authority
 

@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-14
+> **Last Updated**: 2026-09-15
 
 ## High-Level Architecture
 
@@ -109,6 +109,14 @@ the same preset, custom-date, or warned Never expiry selector for generation. Cl
 mutations recheck the selected organization and retained parent immediately before dispatch.
 Generated plaintext is handed straight to one abortable, non-editable warning dialog and never
 enters retained application state.
+Data portability uses one maximized, two-tab JSVision workspace over the same authenticated SDK
+session. Export exposes the permitted scope, categories, and application selection before opening
+a local save dialog. Import reads one local JSON manifest, previews it before enabling Apply, and
+requires confirmation immediately before the mutation. Closing the workspace, replacing the
+session, or starting another operation releases result ownership so a late file, preview,
+confirmation, or apply continuation cannot repopulate a replacement view. Applied client secrets
+use the existing one-time-secret presenter and are removed before reusable workspace state is
+published.
 
 ### Domain Modules
 

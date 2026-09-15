@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-14
+> **Last Updated**: 2026-09-15
 
 ## Overview
 
@@ -434,6 +434,12 @@ standalone CLI adds `porta export manifest` and `porta import manifest`. It perf
 selection checks, limits input files to 64 MiB, always previews before confirmation and apply, and
 prints newly generated credentials only from the single committed response. Neither layer adds a
 second manifest schema, mutation retry, compatibility parser, or persistence mechanism.
+
+The embedded `porta admin` application calls the same SDK domains through a thin session-owned
+adapter. Its Data portability workspace offers the same explicit export selection and the two
+non-dry-run import modes. It keeps the parsed manifest in controller memory only, invalidates a
+preview when the selected mode changes, and never retries an import mutation. Local cancellation
+releases UI ownership but does not claim to cancel a request that may already have reached Porta.
 
 Bulk status changes validate the complete request before persistence. Each accepted item then owns
 one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain

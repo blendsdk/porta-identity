@@ -62,6 +62,13 @@ organization, open the client DataGrid, then use the detail actions to edit conf
 secret metadata. Newly generated secret plaintext is shown once and is not retained after the
 dialog closes. Switching organizations clears the client workspace.
 
+Use **Data portability** to exercise selective manifest export and import. Export selects an
+organization or the complete non-control-plane environment, the permitted categories, and all or
+specific applications before choosing a local JSON destination. Import chooses one JSON manifest,
+previews it with **Keep existing records** or **Update existing records**, and enables Apply only
+for the current successful preview. Apply asks for confirmation. Any newly created confidential
+client secret is shown once after the committed import.
+
 For deletion testing, use disposable records only. Each organization, user, application, module,
 and client surface presents a Keep/Delete confirmation before physical deletion. Application
 deletion is deployment-global, module deletion also removes its permissions, and deleting an
