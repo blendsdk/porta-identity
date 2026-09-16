@@ -81,7 +81,18 @@ export type {
 } from './custom-claims.js';
 
 // Config
-export type { ConfigEntry, SetConfigInput } from './config.js';
+export type {
+  ConfigKey,
+  ConfigValue,
+  ConfigGroup,
+  ConfigValueType,
+  ConfigUnit,
+  ConfigApplicationMode,
+  ConfigEntry,
+  SetConfigInput,
+  ConfigUpdateResult,
+  ConfigBatchUpdateResult,
+} from './config.js';
 
 // Keys
 export type { SigningKey } from './keys.js';

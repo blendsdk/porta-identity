@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-16 21:17
-> **Progress**: 27/59 tasks (46%)
+> **Last Updated**: 2026-09-16 21:43
+> **Progress**: 36/59 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -208,28 +208,36 @@ for only the exact three registered baseline limitations. No new harness machine
 
 ## Phase 3: SDK and Conventional CLI
 
+> **Phase baseline tree**: f5feca3a1e4a6dbe7b747ff83c7d2eb77e1843d9
+> **Scope mode**: strict. Expected changes: the SDK/CLI source and test paths listed below,
+> this plan's execution evidence, the isolated feature roadmap and incremental maintainer docs.
+> Mechanical enrollment also updates the existing exact test-file inventory in
+> `repo-tests/monorepo/server-package.spec.test.mjs` for the newly planned SDK/CLI test files.
+> Smallest design: reuse the existing domains, agent parameter representation and config commands;
+> no shared package, generator, new command family or settings framework.
+
 ### Step 3.1: Specification Tests
 
 **Reference**: [03-03](03-03-sdk-cli.md) · ST-32–ST-37 · AR-4, AR-13
 
-- [ ] 3.1.1 [spec-author] Write SDK read-string/closed-write and transport specs; register type oracle in explicit tsconfig includes; supersede retired domain and agent config contracts — `packages/sdk/tests/type-contracts/config.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`, `packages/sdk/tests/domains/config.spec.test.ts`, `packages/sdk/tests/domains/config.test.ts`, `packages/sdk/tests/agent/agent.test.ts` (PF-001, PF-004, PF-005)
-- [ ] 3.1.2 [spec-author] Write CLI specs ST-34–ST-37 and inventory/supersede intentionally retired CLI config contracts — `packages/cli/tests/commands/config.spec.test.ts`, `packages/cli/tests/commands/config.test.ts` (PF-005)
-- [ ] 3.1.3 Run Phase 3 specification selectors and SDK compiler typecheck; record red failures and justify any already-passing behavior
+- [x] 3.1.1 [spec-author] Write SDK read-string/closed-write and transport specs; register type oracle in explicit tsconfig includes; supersede retired domain and agent config contracts — `packages/sdk/tests/type-contracts/config.spec.test.ts`, `packages/sdk/tests/type-contracts/tsconfig.json`, `packages/sdk/tests/domains/config.spec.test.ts`, `packages/sdk/tests/domains/config.test.ts`, `packages/sdk/tests/agent/agent.test.ts` (PF-001, PF-004, PF-005) ✅ (completed: 2026-09-16 21:21; independent oracle/doc review and lint pass; focused RED 6 failed/20 passed, compiler RED confirms retired contracts; follow-up agent RED 1 failed/15 passed; no implementation edits; green checkpoint per AR-18)
+- [x] 3.1.2 [spec-author] Write CLI specs ST-34–ST-37 and inventory/supersede intentionally retired CLI config contracts — `packages/cli/tests/commands/config.spec.test.ts`, `packages/cli/tests/commands/config.test.ts` (PF-005) ✅ (completed: 2026-09-16 21:24; independent oracle/doc review, formatting/lint pass; expected RED 19 failed/9 passed; retained list/get/error and JSON behavior justify passes; green checkpoint per AR-18)
+- [x] 3.1.3 Run Phase 3 specification selectors and SDK compiler typecheck; record red failures and justify any already-passing behavior ✅ (completed: 2026-09-16 21:24; primary confirms SDK 6 failed/20 passed, CLI 19 failed/9 passed, compiler missing/native/closed-write contract errors; unchanged reads/JSON/HTTP errors/native locale/agent dispatch justify passes; logs `/tmp/porta-config-phase3-{sdk,cli}-primary-red.log` and `/tmp/porta-config-phase3-primary-compiler-red.log`)
 
 ### Step 3.2: Implementation
 
 **Reference**: [03-03 §SDK Contract](03-03-sdk-cli.md#sdk-contract), [§CLI Contract](03-03-sdk-cli.md#cli-contract) · AR-4, AR-13, AR-14
 
-- [ ] 3.2.1 Implement SDK closed keys, native metadata/value types, and result contracts — `packages/sdk/src/types/config.ts`, `packages/sdk/src/types/index.ts`
-- [ ] 3.2.2 Implement typed list/get/set/setMany, string-key read with encoded path and closed writes; update existing agent config.set native-value/result metadata — `packages/sdk/src/domains/config.ts`, `packages/sdk/src/agent.ts` (PF-001, PF-005)
-- [ ] 3.2.3 Implement metadata-rich list/get and metadata-driven native set parsing/output — `packages/cli/src/commands/config.ts`
-- [ ] 3.2.4 Run Phase 3 specification selectors and SDK compiler typecheck; make them green without changing oracle expectations
+- [x] 3.2.1 Implement SDK closed keys, native metadata/value types, and result contracts — `packages/sdk/src/types/config.ts`, `packages/sdk/src/types/index.ts` ✅ (completed: 2026-09-16 21:25; SDK source compiler/lint and two type-shape runtime cases pass; semantic docs/exact18 review pass; compiler domain call-site oracle remains required after 3.2.2)
+- [x] 3.2.2 Implement typed list/get/set/setMany, string-key read with encoded path and closed writes; update existing agent config.set native-value/result metadata — `packages/sdk/src/domains/config.ts`, `packages/sdk/src/agent.ts` (PF-001, PF-005) ✅ (completed: 2026-09-16 21:26; 26 focused cases, full SDK compiler oracle and lint pass; semantic docs self-check pass)
+- [x] 3.2.3 Implement metadata-rich list/get and metadata-driven native set parsing/output — `packages/cli/src/commands/config.ts` ✅ (completed: 2026-09-16 21:27; 28 focused CLI cases, typecheck/lint and semantic docs review pass; no copied key registry or new commands)
+- [x] 3.2.4 Run Phase 3 specification selectors and SDK compiler typecheck; make them green without changing oracle expectations ✅ (completed: 2026-09-16 21:28; SDK 26 and CLI 28 cases plus SDK compiler oracle pass; immutable expectations unchanged)
 
 ### Step 3.3: Implementation Tests and Hardening
 
-- [ ] 3.3.1 Add SDK transport/error and CLI formatting/parser implementation tests — `packages/sdk/tests/domains/config.impl.test.ts`, `packages/cli/tests/commands/config.impl.test.ts`
-- [ ] 3.3.2 Run SDK and CLI workspace verifies plus `yarn test:structure`
-- [ ] 3.3.3 From a clean committed checkpoint, run `yarn assurance:compat --select p1-admin` and review its artifact/exit taxonomy
+- [x] 3.3.1 Add SDK transport/error and CLI formatting/parser implementation tests — `packages/sdk/tests/domains/config.impl.test.ts`, `packages/cli/tests/commands/config.impl.test.ts` ✅ (completed: 2026-09-16 21:29; 5 SDK and 14 CLI cases plus lint/docs self-check pass; no retry or metadata registry introduced)
+- [x] 3.3.2 Run SDK and CLI workspace verifies plus `yarn test:structure` ✅ (completed: 2026-09-16 21:43; root verify PASS: structure 104, SDK 540, CLI 1,325, server unit 3,635/integration 476/E2E 127/pentest 260; all workspace lint/compiler/build gates pass; log `/tmp/porta-config-phase3-precommit-verify.log`)
+- [~] 3.3.3 From a clean committed checkpoint, run `yarn assurance:compat --select p1-admin` and review its artifact/exit taxonomy ⏳ (implemented: 2026-09-16 21:43; green root checkpoint ready; unpublished clean candidate required by provenance before compatibility assurance; publication waits for compatibility and phase review)
 
 **Verify**: SDK/CLI focused selectors and workspace verifies, structure tests, clean-revision compatibility assurance (AR-15)
 
