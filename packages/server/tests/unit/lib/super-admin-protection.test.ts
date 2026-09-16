@@ -2,10 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock the system-config module before importing the module under test
 vi.mock('../../../src/lib/system-config.js', () => ({
-  getSystemConfigString: vi.fn(),
+  getInternalSystemConfigString: vi.fn(),
 }));
 
-import { getSystemConfigString } from '../../../src/lib/system-config.js';
+import { getInternalSystemConfigString } from '../../../src/lib/system-config.js';
 import {
   SUPER_ADMIN_USER_ID_KEY,
   PROTECTED_OPERATIONS,
@@ -14,7 +14,7 @@ import {
   SuperAdminProtectionError,
 } from '../../../src/lib/super-admin-protection.js';
 
-const mockGetConfig = getSystemConfigString as ReturnType<typeof vi.fn>;
+const mockGetConfig = getInternalSystemConfigString as ReturnType<typeof vi.fn>;
 
 describe('super-admin-protection', () => {
   beforeEach(() => {

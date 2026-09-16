@@ -63,20 +63,25 @@ system, or multi-administrator conflict workflow. (AR-13, AR-14, AR-19)
       with range `1..3650` and application mode `runtime`. It shall remain the default used by the
       existing audit cleanup operation when no explicit retention value is supplied.
 - [ ] **AC-08 — Global locale (S):** `default_locale` shall be a string defaulting to `en`, limited
-      to locale identifiers for which the running Porta installation has a complete locale bundle.
-      It has application mode `runtime` and remains the final configured fallback after request,
-      user, and organization locale resolution.
+      to a small server-owned `SUPPORTED_LOCALES` allowlist. The current allowlist contains only
+      `en`. Tests shall verify that every allowlisted locale contains every namespace required by
+      the authentication UI. The allowed values shall be returned as catalog metadata so the CLI
+      and Admin UI use the same choices. It has application mode `runtime` and remains the final
+      configured fallback after request, user, and organization locale resolution.
 - [ ] **AC-09 — Internal and external settings hidden (M):** non-catalog database rows required by
       Porta internals, including `super_admin_user_id`, shall not appear in Admin list/get responses.
       Requests for internal, unknown, secret, or environment-owned keys shall return the same fixed
       `404` response. The API shall never expose database/Redis URLs, issuer/bootstrap values, TLS or
       SMTP credentials, `COOKIE_KEYS`, `SIGNING_KEY_ENCRYPTION_KEY`, or
-      `TWO_FACTOR_ENCRYPTION_KEY`.
+      `TWO_FACTOR_ENCRYPTION_KEY`. A single or batch update containing any non-catalog key shall
+      return the same fixed `404` with `code: "config_entry_not_found"` and shall not reveal which
+      category of key was requested.
 - [ ] **AC-10 — Typed validation (M):** update requests shall accept native JSON number or string
       values according to the catalog. Integer values must be finite integers inside their inclusive
-      ranges. Locale must match an installed locale exactly. Boolean, object, array, null,
-      string-number, unknown-key, and extra-field inputs shall be rejected with `400` and
-      `code: "config_value_invalid"` without changing any row.
+      ranges. Locale must match an allowlisted locale exactly. Boolean, object, array, null,
+      string-number, and extra-field inputs shall be rejected with `400` and
+      `code: "config_value_invalid"` without changing any row. Non-catalog keys use the fixed `404`
+      from AC-09.
 - [ ] **AC-11 — Single and batch updates (M):** `PUT /api/admin/config/:key` shall update one catalog
       value. `PUT /api/admin/config` shall accept a non-empty `values` object containing one or more
       distinct catalog entries, validate the complete request first, and update all values plus one
@@ -92,21 +97,31 @@ system, or multi-administrator conflict workflow. (AR-13, AR-14, AR-19)
       shall state that every Porta server instance must be restarted. Runtime-only updates return
       `restartRequired: false` unless included in a batch with a restart-required key.
 - [ ] **AC-14 — Reads and safe fallback (M):** catalog reads shall validate stored values before use.
-      A missing row may use the catalog's code-defined default. A database read failure may use a
-      still-valid cached value or the same safe default and emit a fixed warning without raw error or
-      stored content. An invalid stored value shall use the safe default and emit a fixed warning;
-      it shall never be coerced from a different JSON type.
+      Runtime typed getters shall use the catalog's code-defined default when a row is missing or
+      invalid. A runtime database read failure may use a still-valid cached value or the same safe
+      default and shall emit a fixed warning containing only the public key and reason. Runtime
+      warnings shall not contain raw errors or stored content, and values shall never be coerced from
+      a different JSON type. Admin operations are authoritative: database failure or a missing
+      targeted catalog row shall return fixed safe `503` with `code: "config_store_unavailable"`.
+      Admin list/get shall also return that response for invalid stored catalog content, not fallback
+      values. Updates validate submitted values and returned rows; a valid submitted value may
+      replace corrupt existing content without a preliminary old-value read. This simplified update
+      boundary was approved during plan preflight PF-002 on 2026-09-16.
 - [ ] **AC-15 — Catalog migration (M):** one ordered forward migration shall upsert the complete
-      catalog with native JSONB defaults, preserve valid values already stored under canonical keys,
-      and remove the obsolete public rows `login_rate_limit`, `lockout_duration`, `api_rate_limit`,
-      `cookie_secure`, `magic_link_length`, `require_pkce`, and `cors_max_age`. It shall not delete
-      internal rows such as `super_admin_user_id`. No legacy alias lookup or data compatibility layer
-      shall remain.
+      catalog with the exact native JSONB defaults from this RD, replacing any earlier value under a
+      canonical public key, and remove the obsolete public rows `login_rate_limit`,
+      `lockout_duration`, `api_rate_limit`, `cookie_secure`, `magic_link_length`, `require_pkce`, and
+      `cors_max_age`. It shall not delete internal rows such as `super_admin_user_id`. Porta has no
+      adopted production configuration, so no legacy-value inspection, conversion, preservation,
+      alias lookup, or data compatibility layer shall be added.
 - [ ] **AC-16 — Authorization and audit (M):** list/get operations retain
       `admin:config:read`; single/batch updates retain `admin:config:update`. Existing bearer
       authentication and Admin role resolution remain mandatory. Each committed request shall write
       one `admin.config.updated` audit event containing only sorted changed catalog keys and the
       restart-required boolean—not old/new values, internal rows, credentials, or raw errors.
+      Config mutations shall be excluded from the generic Admin mutation wrapper and shall own one
+      existing PostgreSQL transaction containing their updates and specialized audit row. Cache
+      clearing shall be registered through the existing post-commit callback.
 - [ ] **AC-17 — SDK and conventional CLI (M):** the SDK shall expose catalog metadata with typed
       values plus typed single/batch updates. `porta config list`, `get`, and `set` shall use the
       closed catalog, accept native CLI input converted according to catalog type, show validation
@@ -173,11 +188,13 @@ system, or multi-administrator conflict workflow. (AR-13, AR-14, AR-19)
 | Lockout | `max_failed_logins` | integer attempts | 5 | 1–100 | Runtime |
 | Lockout | `lockout_duration_seconds` | integer seconds | 900 | 60–604800 | Runtime |
 | General | `audit_retention_days` | integer days | 90 | 1–3650 | Runtime |
-| General | `default_locale` | installed locale | `en` | closed installed set | Runtime |
+| General | `default_locale` | supported locale | `en` | `SUPPORTED_LOCALES` (`en` initially) | Runtime |
 
-- One exported immutable catalog constant shall be the source for API metadata, validation,
-  defaults, service readers, SDK discriminators, CLI help, and Admin UI projection. This is a fixed
-  list, not a general registration framework.
+- One exported immutable server catalog shall be the runtime source for API metadata, validation,
+  defaults, and service readers. API metadata shall drive conventional CLI help and Admin UI
+  projection. The independently published SDK shall own its small public key/value types; immutable
+  server catalog specifications and SDK type-contract specifications shall assert the same exact
+  18-key contract. No shared package, generator, or server-to-SDK dependency shall be added.
 - `system_config.value` remains JSONB. Catalog integers are stored as JSON numbers and locale as a
   JSON string. Existing metadata columns may remain for schema compatibility, but code-defined
   catalog metadata is authoritative and raw rows are never serialized directly.
@@ -198,6 +215,7 @@ ConfigEntry = {
   unit,
   minimum?,
   maximum?,
+  allowedValues?,
   applicationMode,
   updatedAt
 }
@@ -207,28 +225,39 @@ ConfigEntry = {
 - `GET /api/admin/config/:key` returns one catalog entry or fixed `404`.
 - `PUT /api/admin/config/:key` accepts `{ "value": <native scalar> }` with no extra fields.
 - `PUT /api/admin/config` accepts `{ "values": { "catalog_key": <native scalar>, ... } }` with no
-  extra fields and returns the updated entries plus `restartRequired`.
-- All response objects derive metadata from the catalog and values from validated database content;
-  database descriptions, types, and sensitivity flags are not trusted as public schema.
+  extra fields.
+- A successful single update returns `{ data: ConfigEntry, restartRequired }`. A successful batch
+  returns `{ data: ConfigEntry[], restartRequired }`, with entries in catalog order.
+- All response objects derive metadata from the catalog and values from validated database content.
+  Database descriptions, types, and sensitivity flags are not trusted as public schema. Admin reads
+  never serialize runtime fallback values as authoritative stored configuration.
 
 ### Runtime Consumption
 
 - The current OIDC TTL loader reads the five restart-required values before constructing
   `oidc-provider`. Saving them affects the next process start only.
-- Magic-link/password-reset job creation, invitation creation, rate-limit loaders, lockout logic,
-  audit cleanup, and locale fallback shall use catalog-backed typed getters.
+- The recovery-job processor shall read the applicable magic-link or password-reset lifetime when it
+  creates the token artifact. Queued but unprocessed work uses the value current at processing time.
+  Invitation creation, rate-limit loaders, lockout logic, audit cleanup, and locale fallback shall
+  use catalog-backed typed getters.
 - Successful updates call `clearSystemConfigCache()` only after commit. Failed or rolled-back updates
   leave the existing cache unchanged.
 - Each process retains the current 60-second cache. No cross-process invalidation promise shorter
   than 60 seconds is made.
 - Warnings use fixed event names and key identifiers only. They exclude raw database errors and
   stored values.
+- Duration changes are prospective for records that store an absolute expiry. New tokens,
+  invitations, sessions, and rate-limit counters use the new duration after its documented runtime
+  or restart boundary; their existing absolute or Redis expiries are not rewritten. Automatic locks
+  store only `locked_at`, so an existing lock uses the current `lockout_duration_seconds` on its next
+  eligibility check and may therefore become shorter or longer. A changed rate-limit maximum applies
+  on the next decision, including for an existing counter. No database or Redis scan is performed.
 
 ### Migration and Cleanup
 
-- The forward migration shall upsert canonical keys with native JSONB defaults and delete obsolete
-  rows directly. Porta has no adopted production configuration requiring alias-value migration or
-  a compatibility reader.
+- The forward migration shall overwrite canonical public keys with the exact native JSONB defaults
+  and delete obsolete rows directly. Porta has no adopted production configuration requiring
+  preservation, validation, alias-value migration, or a compatibility reader.
 - The migration Down section is a documented no-op. Development and playground databases may be
   reset and initialized through their established commands.
 
@@ -236,13 +265,17 @@ ConfigEntry = {
 
 - Immutable specification tests shall be written and observed failing before implementation.
 - Catalog specifications shall assert the exact 18 keys, types, defaults, inclusive boundaries,
-  groups, and application modes listed above.
+  groups, allowed locale values, and application modes listed above. Locale resource tests shall
+  verify every supported locale has every required authentication namespace.
 - API specifications shall cover list/get allowlisting, native JSON typing, every minimum/maximum,
   extra fields, unknown/internal/secret keys, atomic batch rollback, permissions, audit content, and
   restart-required results.
-- Runtime specifications shall cover invitation TTL usage, every current rate-limit loader, lockout,
-  audit cleanup, locale fallback, local cache clear after commit only, and other-instance convergence
-  at the existing 60-second bound.
+- Runtime specifications shall cover recovery artifact and invitation TTL usage, every current
+  rate-limit loader, lockout, audit cleanup, locale fallback, prospective-only expiry behavior, and
+  local cache clear after commit only. A deterministic cache test shall prove that a cached old value
+  survives an external database update until the 60-second expiry and that the next read re-queries
+  and observes the new value. No second-process harness or cache abstraction shall be added solely
+  for this test; the operational other-instance boundary remains documented as 60 seconds.
 - UI specifications shall cover grouping, one-row DSL gaps, bounded inputs, validation messages,
   dirty/valid Save state, batch save, restart notice, discard confirmation, and fixed small-terminal
   behavior without a 48×12 assumption.
@@ -286,7 +319,7 @@ ConfigEntry = {
 - **Data sensitivity**: catalog values are operational policy, not credentials. Internal identifiers
   and all environment/root secrets remain undisclosed.
 - **Input validation**: strict Zod schemas enforce native types, exact keys, inclusive ranges,
-  installed locales, non-empty batches, and no extra fields on the server.
+  supported locales, non-empty batches, and no extra fields on the server.
 - **Authentication & authorization**: existing Admin bearer authentication plus exact config read or
   update permissions protect every operation. Unknown and secret keys share the same `404` result.
 - **Injection risks**: keys come only from the code allowlist and SQL values remain parameterized.
@@ -305,14 +338,19 @@ ConfigEntry = {
 1. [ ] A reset and initialized database contains exactly the 18 public catalog keys with the native
        JSONB types, defaults, groups, ranges, and application modes listed in this RD; obsolete rows
        are absent and `super_admin_user_id` remains internal.
-2. [ ] List/get responses return only the 18 catalog entries with code-defined metadata. Requests
+2. [ ] Healthy list/get responses return only the 18 persisted catalog entries with code-defined
+       metadata. A missing/invalid catalog row or database failure returns the fixed safe
+       `503 config_store_unavailable`. Requests
        for an unknown, obsolete, internal, environment-owned, or secret key all return the same fixed
-       `404` without revealing whether a database row exists.
+       `404 config_entry_not_found` without revealing whether a database row exists; the same rule
+       applies when any key in a batch is non-catalog.
 3. [ ] Each integer setting accepts both inclusive boundaries and rejects values below/above them,
        fractions, numeric strings, booleans, null, arrays, objects, `NaN`, infinity, and extra fields
        with `400 config_value_invalid` and no mutation.
-4. [ ] `default_locale` accepts `en` and every other installed complete locale, rejects a locale with
-       no complete bundle, and becomes the runtime fallback after at most the approved cache bound.
+4. [ ] `default_locale` accepts exactly the server `SUPPORTED_LOCALES` values, initially only `en`;
+       resource tests prove each supported value has every required namespace. The allowed values
+       appear in API metadata, and a saved value becomes the runtime fallback after at most the
+       approved cache bound.
 5. [ ] A valid single runtime update commits one native JSONB value, clears the local cache, affects
        the next local policy read, reports `restartRequired: false`, and writes one content-free audit
        event.
@@ -322,14 +360,20 @@ ConfigEntry = {
 7. [ ] A forced failure on the last row of a batch leaves every earlier value unchanged, writes no
        audit event, does not clear the cache, and returns a fixed safe failure without raw SQL or
        values.
-8. [ ] A second healthy Porta process observes a committed runtime update no later than 60 seconds
-       after its prior cached read, without Redis messaging, polling, or a process restart.
+8. [ ] Deterministic cache-expiry testing proves that an externally changed database value remains
+       hidden behind an existing cached value until its 60-second expiry and is observed on the next
+       re-query. Because each instance owns the same process-local cache contract, documentation
+       states that another healthy Porta instance converges within that bound without Redis
+       messaging, polling, or restart.
 9. [ ] New magic links, password resets, and invitations use their configured TTLs; login, magic-
        link, and password-reset rate limits use their configured maxima/windows; lockout and audit
-       cleanup use their configured values; already-issued artifacts are not retroactively changed.
-10. [ ] A missing or invalid catalog row uses its exact code default and emits only the fixed event
-        and public key. A database read failure emits no raw error, connection detail, or stored
-        value.
+       cleanup use their configured values. Already-issued artifacts, existing sessions, and active
+       Redis-window expiries are not retroactively changed. Because automatic locks store only their
+       start time, existing locks use the current configured duration on their next eligibility
+       check. A new maximum is used by the next rate-limit decision.
+10. [ ] A runtime typed getter uses its exact code default for a missing or invalid catalog row and
+        emits only a fixed event, public key, and reason. A runtime database read failure emits no raw
+        error, connection detail, or stored value. The Admin API instead returns the fixed safe `503`.
 11. [ ] The Admin UI shows four groups with complete labels, units, range help, one-row DSL gaps, and
         bounded input widths; Save is disabled when clean or invalid and one batch save displays the
         correct restart notice.

@@ -1,6 +1,6 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-09-16
 
 ## Overview
 
@@ -134,7 +134,18 @@ When `NODE_ENV=production`, Porta enforces additional validation rules via Zod's
 
 ## System Config (Runtime)
 
-In addition to environment variables, Porta reads runtime configuration from the `system_config` PostgreSQL table. These values are cached in-memory for 60 seconds (`packages/server/src/lib/system-config.ts`).
+Global operational policy lives in the `system_config` PostgreSQL table. The server-owned
+catalog in `packages/server/src/lib/system-config-catalog.ts` defines exactly 18 supported keys,
+native JSONB values, integer bounds, supported locales and application modes. Bootstrap settings,
+infrastructure addresses and root secrets remain environment-owned. Internal bootstrap identity
+rows use a separate native-string reader and are not operational policy.
+
+Runtime readers validate stored values without coercion. Missing, invalid or unavailable values
+use their exact catalog defaults and emit only a catalog key and fixed fallback reason. Found rows
+are cached process-locally for 60 seconds; missing rows and storage failures are not cached.
+Explicit clearing replaces the cache map so a read started before clearing cannot restore stale
+policy in the active cache. The administrative API is a separate authoritative boundary and must
+not present runtime fallbacks as stored values.
 
 System config is managed via:
 
@@ -143,17 +154,37 @@ System config is managed via:
 
 ### System Config Keys
 
-| Key                          | Type             | Description            |
-| ---------------------------- | ---------------- | ---------------------- |
-| `oidc.ttl.accessToken`       | Number (seconds) | Access token TTL       |
-| `oidc.ttl.refreshToken`      | Number (seconds) | Refresh token TTL      |
-| `oidc.ttl.idToken`           | Number (seconds) | ID token TTL           |
-| `oidc.ttl.session`           | Number (seconds) | OIDC session TTL       |
-| `oidc.ttl.interaction`       | Number (seconds) | Interaction TTL        |
-| `oidc.ttl.authorizationCode` | Number (seconds) | Authorization code TTL |
-| `oidc.ttl.grant`             | Number (seconds) | Grant TTL              |
+| Key                                | Type               | Description                                   |
+| ---------------------------------- | ------------------ | --------------------------------------------- |
+| `access_token_ttl`                 | Integer (seconds)  | Access token lifetime                         |
+| `id_token_ttl`                     | Integer (seconds)  | ID token lifetime                             |
+| `refresh_token_ttl`                | Integer (seconds)  | Refresh token lifetime                        |
+| `authorization_code_ttl`           | Integer (seconds)  | Authorization code lifetime                   |
+| `session_ttl`                      | Integer (seconds)  | OIDC session lifetime                         |
+| `magic_link_ttl`                   | Integer (seconds)  | New magic-link artifact lifetime              |
+| `password_reset_ttl`               | Integer (seconds)  | New password-reset artifact lifetime          |
+| `invitation_ttl`                   | Integer (seconds)  | New invitation lifetime                       |
+| `rate_limit_login_max`             | Integer (attempts) | Login request maximum                         |
+| `rate_limit_login_window`          | Integer (seconds)  | New login counter window                      |
+| `rate_limit_magic_link_max`        | Integer (attempts) | Magic-link request maximum                    |
+| `rate_limit_magic_link_window`     | Integer (seconds)  | New magic-link counter window                 |
+| `rate_limit_password_reset_max`    | Integer (attempts) | Password-reset request maximum                |
+| `rate_limit_password_reset_window` | Integer (seconds)  | New password-reset counter window             |
+| `max_failed_logins`                | Integer (attempts) | Lockout threshold                             |
+| `lockout_duration_seconds`         | Integer (seconds)  | Current lockout eligibility duration          |
+| `audit_retention_days`             | Integer (days)     | Default audit cleanup retention               |
+| `default_locale`                   | String (locale)    | Final authentication fallback, currently `en` |
 
-These TTLs are loaded at startup and passed to the OIDC provider configuration.
+The first five lifetimes are loaded at provider startup; changes require restarting every server
+instance. Interaction lifetime remains fixed at 3600 seconds and grant lifetime follows refresh
+token lifetime. Runtime policy is read at its existing decision point. Absolute artifact expiries
+and existing Redis counter expiries are not rewritten. Queued recovery work reads its current
+lifetime when creating the artifact; lockout eligibility uses the current duration with the
+existing lock timestamp.
+
+Migration `030_global_configuration_catalog.sql` overwrites the 18 canonical rows with native
+defaults, deletes seven obsolete public keys and preserves internal rows. Down is intentionally a
+no-op; development reset uses `yarn admin:env reset` rather than restoring retired public values.
 
 ## Example `.env` File
 

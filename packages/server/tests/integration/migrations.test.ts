@@ -13,7 +13,8 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { getPool } from '../../src/lib/database.js';
-import { seedBaseData } from './helpers/database.js';
+import { seedBaseData, truncateAllTables } from './helpers/database.js';
+import { SYSTEM_CONFIG_CATALOG } from '../../src/lib/system-config-catalog.js';
 
 // Restore seed data before tests run — other integration test files
 // may have truncated all tables before this file executes.
@@ -492,7 +493,9 @@ describe('Seed Data', () => {
 
   it('system config defaults are present', async () => {
     const pool = getPool();
-    const result = await pool.query(`SELECT key, value_type FROM system_config ORDER BY key`);
+    const result = await pool.query(
+      `SELECT key, value, value_type FROM system_config ORDER BY key`,
+    );
     const keys = result.rows.map((r: { key: string }) => r.key);
     expect(keys).toEqual(
       expect.arrayContaining([
@@ -501,18 +504,34 @@ describe('Seed Data', () => {
         'refresh_token_ttl',
         'authorization_code_ttl',
         'session_ttl',
-        'cookie_secure',
         'magic_link_ttl',
         'password_reset_ttl',
         'invitation_ttl',
-        'login_rate_limit',
-        'api_rate_limit',
+        'rate_limit_login_max',
+        'rate_limit_login_window',
+        'rate_limit_magic_link_max',
+        'rate_limit_magic_link_window',
+        'rate_limit_password_reset_max',
+        'rate_limit_password_reset_window',
         'max_failed_logins',
-        'lockout_duration',
-        'require_pkce',
-        'cors_max_age',
+        'lockout_duration_seconds',
+        'audit_retention_days',
+        'default_locale',
       ]),
     );
+  });
+
+  it('should seed native defaults for every catalog entry', async () => {
+    // Other suites update policy; establish this test's seed independently of file order.
+    await truncateAllTables();
+    await seedBaseData();
+    const result = await getPool().query('SELECT key, value FROM system_config');
+    for (const definition of SYSTEM_CONFIG_CATALOG) {
+      expect(result.rows.find((row) => row.key === definition.key)?.value).toBe(
+        definition.defaultValue,
+      );
+    }
+    expect(result.rows.filter((row) => !row.key.startsWith('super_admin_'))).toHaveLength(18);
   });
 
   it('all config values have correct value_type', async () => {

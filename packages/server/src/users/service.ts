@@ -478,7 +478,7 @@ export async function prepareUserForPasswordLogin(
   email: string,
 ): Promise<User | null> {
   const candidate = await getUserByEmail(organizationId, email);
-  const cooldownSeconds = await getSystemConfigNumber('lockout_duration_seconds', 900);
+  const cooldownSeconds = await getSystemConfigNumber('lockout_duration_seconds');
   const candidateId = candidate?.id ?? NON_ACCOUNT_USER_ID;
   const unlocked = await unlockEligiblePasswordAccount(
     candidateId,
@@ -589,7 +589,7 @@ export async function recordLogin(id: string): Promise<void> {
 export async function recordFailedLogin(
   user: User,
 ): Promise<{ locked: boolean; failedCount: number }> {
-  const maxAttempts = await getSystemConfigNumber('max_failed_logins', 5);
+  const maxAttempts = await getSystemConfigNumber('max_failed_logins');
 
   const result = await incrementFailedLoginCount(user.id, maxAttempts);
   await invalidateUserCache(user.id);
@@ -625,7 +625,7 @@ export async function recordPasswordFailure(
     recordEligibleFailure: recordEligiblePasswordFailure,
     invalidateCache: invalidateUserCache,
   };
-  const maxAttempts = await getSystemConfigNumber('max_failed_logins', 5);
+  const maxAttempts = await getSystemConfigNumber('max_failed_logins');
   const userId = user?.id ?? NON_ACCOUNT_USER_ID;
   const result = await boundaries.recordEligibleFailure(userId, maxAttempts);
   await boundaries.invalidateCache(userId);
@@ -664,7 +664,7 @@ export async function checkAutoUnlock(user: User): Promise<boolean> {
 
   if (!user.lockedAt) return false;
 
-  const cooldownSeconds = await getSystemConfigNumber('lockout_duration_seconds', 900);
+  const cooldownSeconds = await getSystemConfigNumber('lockout_duration_seconds');
   const elapsed = (Date.now() - user.lockedAt.getTime()) / 1000;
 
   if (elapsed < cooldownSeconds) {

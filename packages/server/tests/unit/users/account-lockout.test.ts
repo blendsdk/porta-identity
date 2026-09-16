@@ -282,7 +282,7 @@ describe('checkAutoUnlock', () => {
     const result = await checkAutoUnlock(user);
 
     expect(result).toBe(true);
-    expect(getSystemConfigNumber).toHaveBeenCalledWith('lockout_duration_seconds', 900);
+    expect(getSystemConfigNumber).toHaveBeenCalledWith('lockout_duration_seconds');
   });
 
   it('should return false when lockedAt is null (edge case)', async () => {

@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-09-09
+> **Last Updated**: 2026-09-16
 
 ## Overview
 
@@ -24,6 +24,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
 | ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
 | ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)         | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
+| ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)     | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
 
 ---
 
@@ -347,6 +348,38 @@ outputs and is redacted if it reaches structured logging.
   constructed.
 - ⚠️ Authority reduction removes artifacts visible to its transaction, but does not serialize with
   concurrent OIDC token issuance. A token published across that boundary can retain older claims.
+
+---
+
+## ADR-016: Closed Global Operational Catalog
+
+**Context**: Public seed values and runtime defaults previously disagreed, and arbitrary stored
+keys mixed operational settings with internal bootstrap identities. Infrastructure and root
+secrets must remain available before database startup. Distributed invalidation would add
+coordination that these infrequent administrative changes do not need.
+
+**Decision**: Keep one code-owned 18-key operational catalog backed by native PostgreSQL JSONB
+values, strengthen the existing runtime reader, and retain the existing 60-second process-local
+cache. Bootstrap settings and root secrets remain external; trusted internal identity rows use
+a separate native-string reader. Administrative projections use the closed catalog rather than
+arbitrary stored metadata or runtime defaults.
+
+**Rationale**: One catalog defines safe defaults and validation without adding a package,
+generator, worker or configuration framework. Local clearing after a successful administrative
+commit is sufficient; other instances refresh runtime policy on their next read after cache
+expiry. Provider-startup lifetimes require restarting every instance, not automatic restarts.
+
+**Consequences**:
+
+- Native integer values are bounded and never accepted by coercing text or booleans.
+- Runtime fallback keeps authentication available without logging stored content or raw errors;
+  authoritative administrative reads must instead report a fixed unavailable-store response.
+- Cache clearing replaces its map, preventing pre-clear read completions from restoring stale
+  policy to the active cache.
+- Changes do not rewrite existing absolute artifact expiries or Redis counter expiries.
+- The migration deliberately resets canonical public policy to native defaults and removes
+  obsolete public keys; it preserves internal rows and has a documented no-op Down section.
+- There is no watcher, pub/sub, Redis invalidation, automatic retry or concurrent-editor workflow.
 
 ---
 
