@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-16 21:43
+> **Last Updated**: 2026-09-16 21:55
 > **Progress**: 36/59 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
@@ -229,7 +229,7 @@ for only the exact three registered baseline limitations. No new harness machine
 **Reference**: [03-03 §SDK Contract](03-03-sdk-cli.md#sdk-contract), [§CLI Contract](03-03-sdk-cli.md#cli-contract) · AR-4, AR-13, AR-14
 
 - [x] 3.2.1 Implement SDK closed keys, native metadata/value types, and result contracts — `packages/sdk/src/types/config.ts`, `packages/sdk/src/types/index.ts` ✅ (completed: 2026-09-16 21:25; SDK source compiler/lint and two type-shape runtime cases pass; semantic docs/exact18 review pass; compiler domain call-site oracle remains required after 3.2.2)
-- [x] 3.2.2 Implement typed list/get/set/setMany, string-key read with encoded path and closed writes; update existing agent config.set native-value/result metadata — `packages/sdk/src/domains/config.ts`, `packages/sdk/src/agent.ts` (PF-001, PF-005) ✅ (completed: 2026-09-16 21:26; 26 focused cases, full SDK compiler oracle and lint pass; semantic docs self-check pass)
+- [~] 3.2.2 Implement typed list/get/set/setMany, string-key read with encoded path and closed writes; update existing agent config.set native-value/result metadata — `packages/sdk/src/domains/config.ts`, `packages/sdk/src/agent.ts` (PF-001, PF-005) ⏳ (implemented: 2026-09-16 21:54; AR-21 18 regressions RED then green; full SDK verify 558 tests and structure 104 pass, semantic docs self-check pass; clean compatibility and scoped re-review pending before publication)
 - [x] 3.2.3 Implement metadata-rich list/get and metadata-driven native set parsing/output — `packages/cli/src/commands/config.ts` ✅ (completed: 2026-09-16 21:27; 28 focused CLI cases, typecheck/lint and semantic docs review pass; no copied key registry or new commands)
 - [x] 3.2.4 Run Phase 3 specification selectors and SDK compiler typecheck; make them green without changing oracle expectations ✅ (completed: 2026-09-16 21:28; SDK 26 and CLI 28 cases plus SDK compiler oracle pass; immutable expectations unchanged)
 
@@ -237,7 +237,7 @@ for only the exact three registered baseline limitations. No new harness machine
 
 - [x] 3.3.1 Add SDK transport/error and CLI formatting/parser implementation tests — `packages/sdk/tests/domains/config.impl.test.ts`, `packages/cli/tests/commands/config.impl.test.ts` ✅ (completed: 2026-09-16 21:29; 5 SDK and 14 CLI cases plus lint/docs self-check pass; no retry or metadata registry introduced)
 - [x] 3.3.2 Run SDK and CLI workspace verifies plus `yarn test:structure` ✅ (completed: 2026-09-16 21:43; root verify PASS: structure 104, SDK 540, CLI 1,325, server unit 3,635/integration 476/E2E 127/pentest 260; all workspace lint/compiler/build gates pass; log `/tmp/porta-config-phase3-precommit-verify.log`)
-- [~] 3.3.3 From a clean committed checkpoint, run `yarn assurance:compat --select p1-admin` and review its artifact/exit taxonomy ⏳ (implemented: 2026-09-16 21:43; green root checkpoint ready; unpublished clean candidate required by provenance before compatibility assurance; publication waits for compatibility and phase review)
+- [x] 3.3.3 From a clean committed checkpoint, run `yarn assurance:compat --select p1-admin` and review its artifact/exit taxonomy ✅ (completed: 2026-09-16 21:44; exit 0, all six packed-client journeys passed on clean candidate `0c031ecbcfe151b96d790e7fcf575e59b18c3c68`; package/source provenance valid, primary tree unchanged, cleanup success/no residue; run `2afb5df4-7098-4613-83a6-d23638d5dc3f`; log `/tmp/porta-config-phase3-clean-compat.log`)
 
 **Verify**: SDK/CLI focused selectors and workspace verifies, structure tests, clean-revision compatibility assurance (AR-15)
 
@@ -247,7 +247,7 @@ for only the exact three registered baseline limitations. No new harness machine
 
 **Reference**: [03-04](03-04-admin-ui.md) · ST-38–ST-46 · AR-11, AR-14, AR-16, AR-17
 
-- [ ] 4.1.1 [spec-author] Write workspace layout, validation, save, restart, discard, duration, permission, and compact-geometry specifications for ST-39–ST-46 — `packages/cli/tests/admin/system-config-workspace.spec.test.ts`
+- [!] 4.1.1 [spec-author] Write workspace layout, validation, save, restart, discard, duration, permission, and compact-geometry specifications for ST-39–ST-46 — `packages/cli/tests/admin/system-config-workspace.spec.test.ts` Blocked: Phase 3 SA-001 / AR-21 ruling and verified remediation before publication or Phase 4.
 - [ ] 4.1.2 [spec-author] Write application menu, capability, mount, cancel, and teardown specifications for ST-38 and ST-44 — `packages/cli/tests/admin/system-config-application.spec.test.ts`
 - [ ] 4.1.3 Run the Phase 4 specification selectors; record red failures and justify any behavior already passing
 

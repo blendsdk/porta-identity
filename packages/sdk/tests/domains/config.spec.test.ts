@@ -2,6 +2,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { HttpTransport } from '../../src/transport/types.js';
 import { createConfigDomain } from '../../src/domains/config.js';
+import { createPortaClient } from '../../src/client.js';
+import { executeTool } from '../../src/agent.js';
 
 const ENTRY = {
   key: 'magic_link_ttl',
@@ -22,7 +24,7 @@ const ENTRY = {
 function fixture(body: unknown) {
   const request = vi.fn().mockResolvedValue({ status: 200, headers: {}, body });
   const transport: HttpTransport = { request };
-  return { request, config: createConfigDomain(transport) };
+  return { request, config: createConfigDomain(transport), transport };
 }
 
 describe('configuration SDK transport contract', () => {
@@ -79,4 +81,59 @@ describe('configuration SDK transport contract', () => {
       body: { values },
     });
   });
+});
+
+describe('configuration mutation endpoint confinement', () => {
+  const hostileKeys = [
+    '../applications/app/claims/claim/users/user',
+    '%2e%2e/applications/app/claims/claim/users/user',
+    '..%2Fapplications%2Fapp',
+    '..\\applications\\app',
+    'magic_link_ttl?value=forged',
+    'magic_link_ttl#fragment',
+    '%2e%2e',
+  ];
+
+  for (const mode of ['runtime domain', 'real agent'] as const) {
+    it.each(hostileKeys)(
+      `should confine ${mode} key %s to one configuration URL segment`,
+      async (key) => {
+        const { request, config, transport } = fixture({ data: ENTRY, restartRequired: false });
+        if (mode === 'runtime domain') {
+          // JavaScript callers and agent arguments are not protected by compile-time key unions.
+          await Reflect.apply(config.set, config, [key, 1200]);
+        } else {
+          await executeTool(createPortaClient({ transport }), 'config.set', { key, value: 1200 });
+        }
+        expect(request).toHaveBeenCalledExactlyOnceWith({
+          method: 'PUT',
+          path: `/config/${encodeURIComponent(key)}`,
+          body: { value: 1200 },
+        });
+        const call = request.mock.calls[0]?.[0];
+        if (typeof call?.path !== 'string') throw new Error('Expected one HTTP request path');
+        // Fetch uses URL normalization, so checking the unnormalized request string alone is insufficient.
+        const destination = new URL(`https://porta.example/api/admin${call.path}`);
+        expect(destination.pathname).toBe(`/api/admin/config/${encodeURIComponent(key)}`);
+        expect(destination.pathname).toMatch(/^\/api\/admin\/config\/[^/]+$/);
+        expect(destination.search).toBe('');
+        expect(destination.hash).toBe('');
+      },
+    );
+
+    it.each(['.', '..'])(
+      `should reject bare dot key %s from ${mode} before transport`,
+      async (key) => {
+        const { request, config, transport } = fixture({ data: ENTRY, restartRequired: false });
+        if (mode === 'runtime domain') {
+          await expect(Reflect.apply(config.set, config, [key, 1200])).rejects.toThrow();
+        } else {
+          expect(
+            await executeTool(createPortaClient({ transport }), 'config.set', { key, value: 1200 }),
+          ).toEqual(expect.objectContaining({ success: false }));
+        }
+        expect(request).not.toHaveBeenCalled();
+      },
+    );
+  }
 });

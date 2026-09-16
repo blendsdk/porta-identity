@@ -1,7 +1,7 @@
 # Ambiguity Register: PostgreSQL-Backed Global Configuration
 
-> **Status**: Phase 2 verified; AR-20 B accepted; Phase 3 execution authorized
-> **Last Updated**: 2026-09-16 21:17
+> **Status**: AR-21 approved; narrow SA-001 remediation in progress
+> **Last Updated**: 2026-09-16 21:53
 
 | #     | Category                     | Ambiguity / Gap                                                                                                              | Options Presented                                                                                                                                                                                                                                                                                                                                                             | User Decision                                                                                                                                                                                                     | Status      |
 | ----- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
@@ -26,8 +26,36 @@
 | AR-19 | Execution workflow (runtime) | How can mandatory production-security assurance run before commit when its provenance check requires a clean committed tree? | A: green root/workspace/structure/UI, unpublished local candidate commit, clean-revision security gate, push only after security passes / B: temporary clean verification worktree and candidate revision.                                                                                                                                                                    | User approved A: "i approve" on 2026-09-16. Timing exception only; all security gates remain mandatory before push.                                                                                               | ✅ Resolved |
 
 | AR-20 | Runtime verification | Existing session-expiry observer uses a retired string TTL; three forwarding observations remain registered incomplete. | A: align the existing observer to native 300 seconds after Phase 2, preserving natural-expiry assertions; B: separately accept only the exact registered observer gaps if all actual assertions and cleanup pass. | A verified. User accepted B: "i do, proceed with the rest" on 2026-09-16. Publish the qualified checkpoint and continue; retain incomplete classification. | ✅ Resolved |
+| AR-21 | Necessary security correction (runtime) | Runtime agent keys can escape the configuration mutation endpoint despite ConfigKey typing. | Encode the mutation key and reject bare dot segments before transport; add targeted domain/real-agent confinement regression. No registry, framework or backend change. | User: "i approve" on 2026-09-16. Apply the exact narrow correction, verify and re-review before publication, then continue. | ✅ Resolved |
 
 ## Resolution Notes
+
+### AR-21: Runtime Configuration Mutation Path Confinement (runtime)
+
+**Category:** Necessary security correction, not optional scope expansion.
+**Status:** User approved with "i approve" on 2026-09-16. The exact source/test/evidence set below
+is authorized. Phase 3 remains unpublished until verified remediation and scoped re-review pass.
+
+Security review SA-001 establishes that compile-time ConfigKey does not constrain unknown
+arguments forwarded by the existing agent executor. An unencoded `../applications/...` mutation
+key can normalize to an unrelated protected PUT route accepting the same `{ value }` body.
+Server RBAC still applies, but the configuration tool boundary is bypassed.
+
+Independent challenge confirms the demonstrated exploit and identifies the remaining bare-dot
+case: encodeURIComponent leaves `.` and `..` unchanged, so encoding alone cannot guarantee endpoint
+confinement. Recommend encoding the mutation key and rejecting those two bare segments before
+transport. Add traversal, supplied percent escapes, backslash and bare-dot regressions through the
+real domain/agent path. No registry, framework, backend change or broad agent refactor is needed.
+
+Exact proposed modification set: `packages/sdk/src/domains/config.ts`, added immutable regression
+cases in `packages/sdk/tests/domains/config.spec.test.ts`, this register, the Phase 3 review report,
+execution evidence and isolated feature roadmap; the existing opted-in incremental maintainer
+documentation hook remains applicable. Existing oracle assertions are not weakened. Verify SDK,
+structure and clean compatibility, then run one fix-scoped security/correctness re-review before
+publication. Phase 5 final gates remain mandatory.
+
+Confidence: High. Hardening: independent challenger confirms both the exploit and the smallest
+confining correction using read-only URL normalization checks. User approval is recorded above.
 
 ### AR-20: Existing Security-Gate Contract Alignment (runtime)
 
