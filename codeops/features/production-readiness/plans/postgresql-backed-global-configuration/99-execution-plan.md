@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-16 20:12
+> **Last Updated**: 2026-09-16 21:17
 > **Progress**: 27/59 tasks (46%)
 > **CodeOps Artifact Schema**: 1
 
@@ -195,6 +195,16 @@ Separate browser regression verification passes all 133 cases; log:
 `/tmp/porta-config-phase2-precommit-ui.log`. All three maintainer documentation-link checks pass;
 `git diff --check` is clean. Root verification is not repeated for documentation-only updates:
 no product source changed after the passing run, and the changed documentation is validated directly.
+
+Unpublished candidate `0b4a1f84` is committed. Corrected clean production-security run
+`3b457f9a-2b30-49c8-9b5f-4d1cd1b6bc1a` passes all 28 functional/security tests, with no failures
+or skips, including natural session expiry. The collector records eight passes and exactly
+three pre-existing registered forwarding observer limitations, with no product/execution failure.
+Owned-stack cleanup completed. Overall classification remains incomplete, exit 40; it is not
+a full security pass. Log: `/tmp/porta-config-phase2-clean-production-security.log`.
+AR-20 A is verified. The user explicitly accepted B with "i do, proceed with the rest" on
+2026-09-16. Publication and Phase 3 execution are authorized; retain the incomplete classification
+for only the exact three registered baseline limitations. No new harness machinery is proposed.
 
 ## Phase 3: SDK and Conventional CLI
 

@@ -1,7 +1,7 @@
 # Ambiguity Register: PostgreSQL-Backed Global Configuration
 
-> **Status**: Phase 2 execution authorized; AR-20 publication evidence remains pending
-> **Last Updated**: 2026-09-16 18:55
+> **Status**: Phase 2 verified; AR-20 B accepted; Phase 3 execution authorized
+> **Last Updated**: 2026-09-16 21:17
 
 | #     | Category                     | Ambiguity / Gap                                                                                                              | Options Presented                                                                                                                                                                                                                                                                                                                                                             | User Decision                                                                                                                                                                                                     | Status      |
 | ----- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
@@ -25,16 +25,30 @@
 | AR-18 | Execution workflow (runtime) | How can per-task automatic commits coexist with intentionally failing specification tests and green pre-commit gates?        | Defer automatic commit/push until the phase reaches a fully verified green checkpoint; keep specification-first ordering and per-task progress updates. Red-suite commits and weakened verification are rejected.                                                                                                                                                             | User approved: "you may, proceed" on 2026-09-16. Automatic commit/push at passing verification checkpoints; all gates and product scope unchanged.                                                                | ✅ Resolved |
 | AR-19 | Execution workflow (runtime) | How can mandatory production-security assurance run before commit when its provenance check requires a clean committed tree? | A: green root/workspace/structure/UI, unpublished local candidate commit, clean-revision security gate, push only after security passes / B: temporary clean verification worktree and candidate revision.                                                                                                                                                                    | User approved A: "i approve" on 2026-09-16. Timing exception only; all security gates remain mandatory before push.                                                                                               | ✅ Resolved |
 
-| AR-20 | Runtime verification | Existing session-expiry observer uses a retired string TTL; three forwarding observations remain registered incomplete. | A: align the existing observer to native 300 seconds after Phase 2, preserving natural-expiry assertions; B: separately accept only the exact registered observer gaps if all actual assertions and cleanup pass. | User delegated the choice. Select A; B not selected. Phase 2 may proceed; publication awaits corrected security evidence. | ⏳ Publication pending |
+| AR-20 | Runtime verification | Existing session-expiry observer uses a retired string TTL; three forwarding observations remain registered incomplete. | A: align the existing observer to native 300 seconds after Phase 2, preserving natural-expiry assertions; B: separately accept only the exact registered observer gaps if all actual assertions and cleanup pass. | A verified. User accepted B: "i do, proceed with the rest" on 2026-09-16. Publish the qualified checkpoint and continue; retain incomplete classification. | ✅ Resolved |
 
 ## Resolution Notes
 
 ### AR-20: Existing Security-Gate Contract Alignment (runtime)
 
-**Status:** User delegated the choice: "make the best possible choice for me without
-overcomplicating or overengineering". Select A: authorize the narrow observer alignment and
-Phase 2 execution. Do not select B now. Publication remains blocked pending corrected gate
-evidence. No incomplete security evidence is waived.
+**Status:** A is verified. The user explicitly accepted B with "i do, proceed with the rest"
+on 2026-09-16. Publish the checkpoint and continue the remaining phases. Acceptance covers only
+the exact three registered baseline observer limitations below. Keep the incomplete classification;
+unexpected gaps, actual assertion failures, execution failures and cleanup failures remain blocking.
+
+**Corrected evidence:** A is verified on unpublished candidate
+`0b4a1f84ad70c229f0370241dbfb5a4d0ebc3bb2`. Production-security run
+`3b457f9a-2b30-49c8-9b5f-4d1cd1b6bc1a` completed with all 28 functional/security assertions
+passing, no failures or skips, and successful owned-stack cleanup. The collector records eight
+passes, zero product/execution failures and exactly the three registered forwarding observer
+limitations. Overall classification remains incomplete, exit 40. No unexpected gap remains.
+Log: `/tmp/porta-config-phase2-clean-production-security.log`.
+
+**Checkpoint recommendation:** Accept only B's exact registered baseline limitations, clearly
+reported as incomplete, and continue without unrelated harness remediation. This does not waive
+any actual assertion or claim full production-security qualification. Independent challenge and
+Phase 2 security review support this bounded classification. The user's explicit acceptance now
+permits publication and Phase 3 execution without expanding assurance scope.
 **Category:** Necessary existing test-contract alignment and evidence classification.
 
 The clean Phase 1 candidate `cde6cd5a` passed root verification and all 133 browser tests.
@@ -68,8 +82,8 @@ new scenario, clock service, harness, worker or global policy rewrite is request
 
 Independent challenge supports A as the smallest oracle-preserving correction; independent
 audit classifies B's gaps as baseline observer limitations, not a new Phase 1 finding.
-Confidence: High. The delegated decision authorizes A only. Reassess the registered observer
-limitations after the corrected gate runs; do not expand assurance scope or publish meanwhile.
+Confidence: High. A is verified and B is explicitly accepted after the corrected gate. Do not
+expand assurance scope or describe the qualified evidence as a full production-security pass.
 
 ### AR-19: Clean-Revision Assurance Ordering (runtime)
 
