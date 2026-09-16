@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-16 21:55
-> **Progress**: 36/59 tasks (61%)
+> **Last Updated**: 2026-09-16 21:57
+> **Progress**: 37/59 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -229,7 +229,7 @@ for only the exact three registered baseline limitations. No new harness machine
 **Reference**: [03-03 §SDK Contract](03-03-sdk-cli.md#sdk-contract), [§CLI Contract](03-03-sdk-cli.md#cli-contract) · AR-4, AR-13, AR-14
 
 - [x] 3.2.1 Implement SDK closed keys, native metadata/value types, and result contracts — `packages/sdk/src/types/config.ts`, `packages/sdk/src/types/index.ts` ✅ (completed: 2026-09-16 21:25; SDK source compiler/lint and two type-shape runtime cases pass; semantic docs/exact18 review pass; compiler domain call-site oracle remains required after 3.2.2)
-- [~] 3.2.2 Implement typed list/get/set/setMany, string-key read with encoded path and closed writes; update existing agent config.set native-value/result metadata — `packages/sdk/src/domains/config.ts`, `packages/sdk/src/agent.ts` (PF-001, PF-005) ⏳ (implemented: 2026-09-16 21:54; AR-21 18 regressions RED then green; full SDK verify 558 tests and structure 104 pass, semantic docs self-check pass; clean compatibility and scoped re-review pending before publication)
+- [x] 3.2.2 Implement typed list/get/set/setMany, string-key read with encoded path and closed writes; update existing agent config.set native-value/result metadata — `packages/sdk/src/domains/config.ts`, `packages/sdk/src/agent.ts` (PF-001, PF-005) ✅ (completed: 2026-09-16 21:57; AR-21 18 regressions RED then green; SDK verify 558 and structure 104 pass; clean compatibility six journeys/provenance/cleanup pass at `73098270`; single correctness/security fix re-review reports no findings and SA-001 resolved; docs self-check pass)
 - [x] 3.2.3 Implement metadata-rich list/get and metadata-driven native set parsing/output — `packages/cli/src/commands/config.ts` ✅ (completed: 2026-09-16 21:27; 28 focused CLI cases, typecheck/lint and semantic docs review pass; no copied key registry or new commands)
 - [x] 3.2.4 Run Phase 3 specification selectors and SDK compiler typecheck; make them green without changing oracle expectations ✅ (completed: 2026-09-16 21:28; SDK 26 and CLI 28 cases plus SDK compiler oracle pass; immutable expectations unchanged)
 
@@ -247,7 +247,7 @@ for only the exact three registered baseline limitations. No new harness machine
 
 **Reference**: [03-04](03-04-admin-ui.md) · ST-38–ST-46 · AR-11, AR-14, AR-16, AR-17
 
-- [!] 4.1.1 [spec-author] Write workspace layout, validation, save, restart, discard, duration, permission, and compact-geometry specifications for ST-39–ST-46 — `packages/cli/tests/admin/system-config-workspace.spec.test.ts` Blocked: Phase 3 SA-001 / AR-21 ruling and verified remediation before publication or Phase 4.
+- [ ] 4.1.1 [spec-author] Write workspace layout, validation, save, restart, discard, duration, permission, and compact-geometry specifications for ST-39–ST-46 — `packages/cli/tests/admin/system-config-workspace.spec.test.ts`
 - [ ] 4.1.2 [spec-author] Write application menu, capability, mount, cancel, and teardown specifications for ST-38 and ST-44 — `packages/cli/tests/admin/system-config-application.spec.test.ts`
 - [ ] 4.1.3 Run the Phase 4 specification selectors; record red failures and justify any behavior already passing
 

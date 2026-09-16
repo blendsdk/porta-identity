@@ -1,7 +1,7 @@
 # Phase 3 Quality Review: SDK and Conventional CLI
 
-> **Status**: SA-001 fix implemented; clean compatibility and scoped re-review pending
-> **Last Updated**: 2026-09-16 21:55
+> **Status**: Complete; SA-001 resolved by verified, independently re-reviewed fix
+> **Last Updated**: 2026-09-16 21:57
 > **Fix baseline tree**: 370d53d9f4126b68ac106f793efcff70f25fa28a
 > **Baseline tree**: f5feca3a1e4a6dbe7b747ff83c7d2eb77e1843d9
 > **Candidate revision**: 0c031ecbcfe151b96d790e7fcf575e59b18c3c68 (unpublished)
@@ -30,3 +30,12 @@ Logs: `/tmp/porta-config-phase3-confinement-sdk-verify.log` and
 `/tmp/porta-config-phase3-confinement-structure.log`. Clean fix-candidate compatibility and the
 single scoped re-review remain required before publication. No server or CLI implementation changed;
 the prior passing root verification is retained, with affected SDK verification repeated.
+
+Clean compatibility run `c8301fdb-c0cc-494e-a7c8-49cc4804382b` exits 0 on revision
+`730982708fa82710e19145e3a7ec0ad81d334da4`: six of six packed-client journeys and fixture oracles
+pass, no forbidden output, valid source/package provenance, primary tree unchanged, successful
+cleanup and no residue. Log: `/tmp/porta-config-phase3-confinement-clean-compat.log`.
+The single fix-scoped correctness review reports no RV findings; the security auditor explicitly
+resolves SA-001 and reports no residual scoped findings. Publication and Phase 4 may proceed.
+The opted-in incremental documentation hook updates the existing API architecture page; ADR-016
+intent remains unchanged. Final full-plan gates remain required.

@@ -173,6 +173,19 @@ only the local runtime cache. Other instances retain their existing 60-second re
 Provider-startup lifetimes report `restartRequired: true`; they do not restart running instances.
 Valid updates may replace corrupt targeted content, but missing rows are not recreated.
 
+The SDK exposes small closed-key and native-scalar types without copying runtime policy metadata.
+`config.list()` and `config.get(key)` return authoritative entries; `set(key, value)` and
+`setMany(values)` retain the complete result envelope, including `restartRequired`. Arbitrary read
+names are encoded into one URL segment. Mutation names are also encoded because JavaScript and
+agent callers bypass TypeScript's key union; bare dot segments are rejected before transport so
+URL normalization cannot redirect a configuration mutation to another administrative operation.
+
+The conventional CLI keeps `config list|get|set`. List/get display native values, type, unit,
+accepted bounds or choices, application mode and update time. Set first reads live metadata,
+parses a base-ten safe integer within inclusive bounds or an exact supported string, and sends
+the returned typed key with its native scalar. JSON preserves SDK results. Human output reports
+that every Porta server instance must restart only when the confirmed result requires it.
+
 ## Authentication
 
 ### Admin API Authentication

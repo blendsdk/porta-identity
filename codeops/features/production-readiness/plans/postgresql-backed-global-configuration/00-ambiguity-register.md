@@ -1,7 +1,7 @@
 # Ambiguity Register: PostgreSQL-Backed Global Configuration
 
-> **Status**: AR-21 approved; narrow SA-001 remediation in progress
-> **Last Updated**: 2026-09-16 21:53
+> **Status**: No open material items; AR-21 fix verified and independently re-reviewed
+> **Last Updated**: 2026-09-16 21:57
 
 | #     | Category                     | Ambiguity / Gap                                                                                                              | Options Presented                                                                                                                                                                                                                                                                                                                                                             | User Decision                                                                                                                                                                                                     | Status      |
 | ----- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
@@ -56,6 +56,11 @@ publication. Phase 5 final gates remain mandatory.
 
 Confidence: High. Hardening: independent challenger confirms both the exploit and the smallest
 confining correction using read-only URL normalization checks. User approval is recorded above.
+
+**Resolution evidence:** Revision `73098270` passes all 558 SDK tests, 104 structure tests and six
+clean packed-client compatibility journeys with valid provenance, no forbidden output and complete
+cleanup. Both single fix-scoped reviews report no findings; the security auditor resolves SA-001.
+The Phase 3 review report owns exact logs/run identity. Publication and Phase 4 are authorized.
 
 ### AR-20: Existing Security-Gate Contract Alignment (runtime)
 
