@@ -8,6 +8,7 @@ const SELF_MANAGED_MUTATION_PREFIXES = [
   '/api/admin/bulk',
   '/api/admin/import',
   '/api/admin/export/manifest',
+  '/api/admin/config',
 ];
 
 /** Internal signal used to roll back a handled non-success response without replacing its body. */
@@ -32,7 +33,7 @@ function ownsAdministrativeMutation(method: string, path: string): boolean {
 /**
  * Atomically bind successful administrative mutations to one durable audit row.
  *
- * Bulk operations and portability requests own specialized transaction/result semantics and are
+ * Bulk operations, portability and configuration updates own specialized transaction semantics and are
  * excluded here. Every other state-changing admin request shares one request-local PostgreSQL
  * client across repository calls.
  */

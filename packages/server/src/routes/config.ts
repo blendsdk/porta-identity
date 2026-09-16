@@ -5,35 +5,161 @@
  * authorization with granular permissions.
  *
  * Route structure:
- *   GET    /                  — List all config entries
- *   GET    /:key              — Get a specific config value
- *   PUT    /:key              — Set (update) a config value
+ *   GET    /                  — List the closed public catalog
+ *   GET    /:key              — Read one authoritative catalog entry
+ *   PUT    /                  — Atomically update a non-empty catalog batch
+ *   PUT    /:key              — Update one native catalog value
  *
- * Sensitive values (is_sensitive=true) are masked in GET responses
- * with '***' to prevent accidental exposure in CLI output / logs.
+ * Internal rows and bootstrap secrets are never queried or projected. Public metadata comes
+ * from the application catalog, not editable database descriptions or sensitivity flags.
  *
  * @module routes/config
  */
 
 import Router from '@koa/router';
+import type { Context } from 'koa';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
-import { getPool } from '../lib/database.js';
+import {
+  afterDatabaseCommit,
+  getDatabaseTransactionClient,
+  getPool,
+  runDatabaseTransaction,
+} from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { clearSystemConfigCache } from '../lib/system-config.js';
+import {
+  SYSTEM_CONFIG_CATALOG,
+  findSystemConfigDefinition,
+  validateSystemConfigValue,
+} from '../lib/system-config-catalog.js';
+import type { SystemConfigDefinition, SystemConfigValue } from '../lib/system-config-catalog.js';
+
+/** Only stored content and its timestamp may contribute to public policy responses. */
+interface ConfigRow {
+  /** Exact identifier returned by the parameterized query. */
+  key: string;
+  /** JSONB content requiring validation against application-owned metadata. */
+  value: unknown;
+  /** PostgreSQL timestamp, accepted only when it describes a valid instant. */
+  updated_at: Date | string;
+}
+
+/** Project authoritative rows in catalog order; missing, duplicate or corrupt rows fail closed. */
+function projectConfigEntries(definitions: readonly SystemConfigDefinition[], rows: ConfigRow[]) {
+  if (rows.length !== definitions.length) throw new Error('Configuration rows are unavailable');
+  return definitions.map((definition) => {
+    const matches = rows.filter((row) => row.key === definition.key);
+    const row = matches[0];
+    if (matches.length !== 1 || !row) throw new Error('Configuration row is unavailable');
+    const value = validateSystemConfigValue(definition, row.value);
+    const timestamp = row.updated_at instanceof Date ? row.updated_at : new Date(row.updated_at);
+    if (value === undefined) throw new Error('Configuration value is invalid');
+    if (!Number.isFinite(timestamp.getTime())) throw new Error('Configuration timestamp is invalid');
+    return { ...definition, value, updatedAt: timestamp.toISOString() };
+  });
+}
+
+/** Non-catalog names share one response without inspecting internal database existence. */
+function configNotFound(ctx: Context): void {
+  ctx.status = 404;
+  ctx.body = { error: 'Configuration entry not found', code: 'config_entry_not_found' };
+}
+
+/** Storage failures never expose stored values, infrastructure or database diagnostics. */
+function configUnavailable(ctx: Context): void {
+  ctx.status = 503;
+  ctx.body = {
+    error: 'Configuration store is unavailable',
+    code: 'config_store_unavailable',
+    requestId: ctx.state.requestId,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Validation schemas
 // ---------------------------------------------------------------------------
 
-/** Schema for updating a config value */
-export const updateConfigSchema = z.object({
-  value: z.string().min(1, 'Value must not be empty'),
-});
+/**
+ * Exact single-value envelope; the selected catalog definition validates the unknown scalar.
+ * @example
+ * updateConfigSchema.safeParse({ value: 1200 });
+ */
+export const updateConfigSchema = z.object({ value: z.unknown() }).strict();
 
-/** Return the only public representation allowed for a stored configuration value. */
-export function publicConfigValue(value: string, isSensitive: boolean): string {
-  return isSensitive ? '***' : value;
+/** Exact batch envelope; native value and non-empty catalog validation follow before mutation. */
+const updateConfigBatchSchema = z.object({ values: z.record(z.string(), z.unknown()) }).strict();
+
+/** Fixed validation response independent of submitted content. */
+function configInvalid(ctx: Context): void {
+  ctx.status = 400;
+  ctx.body = { error: 'Configuration value is invalid', code: 'config_value_invalid' };
+}
+
+/** One completely validated native change, resolved before opening the transaction. */
+interface ConfigChange {
+  /** Application-owned metadata, never supplied by the caller. */
+  definition: SystemConfigDefinition;
+  /** Scalar satisfying that definition's exact type and inclusive bounds. */
+  value: SystemConfigValue;
+}
+
+/**
+ * Commit values and one minimal audit record together, then invalidate only the local cache.
+ * Missing targets and invalid readback roll back instead of silently repairing catalog rows.
+ */
+async function commitConfigChanges(ctx: Context, changes: ConfigChange[], single: boolean) {
+  try {
+    const restartRequired = changes.some(
+      ({ definition }) => definition.applicationMode === 'restart-required',
+    );
+    const data = await runDatabaseTransaction(async () => {
+      const rows: ConfigRow[] = [];
+      for (const { definition, value } of changes) {
+        const updated = await getPool().query<ConfigRow>(
+          `UPDATE system_config SET value = $1::jsonb, updated_at = NOW() WHERE key = $2
+           RETURNING key, value, updated_at`,
+          [JSON.stringify(value), definition.key],
+        );
+        if (updated.rowCount !== 1 || updated.rows.length !== 1)
+          throw new Error('Configuration update is unavailable');
+        // Validate each returned row against its target before it enters the response or commits.
+        projectConfigEntries([definition], updated.rows);
+        rows.push(...updated.rows);
+      }
+      const definitions = SYSTEM_CONFIG_CATALOG.filter((definition) =>
+        changes.some((change) => change.definition.key === definition.key),
+      );
+      const entries = projectConfigEntries(definitions, rows);
+      const client = getDatabaseTransactionClient();
+      const actor = ctx.state.adminUser;
+      if (!client || !actor) throw new Error('Configuration actor is unavailable');
+      const liveActor = await client.query<{ id: string; organization_id: string }>(
+        'SELECT id, organization_id FROM users WHERE id = $1',
+        [actor.id],
+      );
+      const storedActor = liveActor.rows[0];
+      if (liveActor.rows.length !== 1 || !storedActor)
+        throw new Error('Configuration actor is unavailable');
+      await writeAuditLogInTransaction(client, {
+        organizationId: storedActor.organization_id,
+        actorId: storedActor.id,
+        eventType: 'admin.config.updated',
+        eventCategory: 'admin',
+        metadata: {
+          keys: changes.map(({ definition }) => definition.key).sort(),
+          restartRequired,
+        },
+      });
+      await afterDatabaseCommit(async () => clearSystemConfigCache());
+      return entries;
+    });
+    ctx.body = { data: single ? data[0] : data, restartRequired };
+  } catch {
+    configUnavailable(ctx);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -44,10 +170,12 @@ export function publicConfigValue(value: string, isSensitive: boolean): string {
  * Create the system config admin API router.
  *
  * All routes require admin authorization with granular permissions.
- * Provides read and write access to the `system_config` table via
- * a RESTful interface.
+ * Reads are authoritative; updates own the existing transaction, specialized audit and local
+ * post-commit cache boundary. Bootstrap settings and internal identifiers stay outside this API.
  *
  * @returns Koa router mounted at /api/admin/config
+ * @example
+ * app.use(createConfigRouter().routes());
  */
 export function createConfigRouter(): Router {
   const router = new Router({ prefix: '/api/admin/config' });
@@ -57,107 +185,84 @@ export function createConfigRouter(): Router {
 
   // ── GET / — List all config entries ───────────────────────────────
   router.get('/', requirePermission(ADMIN_PERMISSIONS.CONFIG_READ), async (ctx) => {
-    const result = await getPool().query(
-      `SELECT key, value, value_type, description, is_sensitive, updated_at
-       FROM system_config ORDER BY key`,
-    );
-
-    // Mask sensitive values to prevent accidental exposure
-    const data = result.rows.map(
-      (r: {
-        key: string;
-        value: string;
-        value_type: string;
-        description: string | null;
-        is_sensitive: boolean;
-        updated_at: string;
-      }) => ({
-        key: r.key,
-        value: publicConfigValue(r.value, r.is_sensitive),
-        valueType: r.value_type,
-        description: r.description,
-        isSensitive: r.is_sensitive,
-        updatedAt: r.updated_at,
-      }),
-    );
-
-    ctx.body = { data };
+    try {
+      const result = await getPool().query<ConfigRow>(
+        'SELECT key, value, updated_at FROM system_config WHERE key = ANY($1::text[])',
+        [SYSTEM_CONFIG_CATALOG.map((definition) => definition.key)],
+      );
+      ctx.body = { data: projectConfigEntries(SYSTEM_CONFIG_CATALOG, result.rows) };
+    } catch {
+      configUnavailable(ctx);
+    }
   });
 
   // ── GET /:key — Get a specific config value ───────────────────────
   router.get('/:key', requirePermission(ADMIN_PERMISSIONS.CONFIG_READ), async (ctx) => {
-    const { key } = ctx.params;
-
-    const result = await getPool().query(
-      'SELECT key, value, value_type, description, is_sensitive, updated_at FROM system_config WHERE key = $1',
-      [key],
-    );
-
-    if (result.rows.length === 0) {
-      ctx.status = 404;
-      ctx.body = { error: 'Configuration entry not found' };
+    const definition = findSystemConfigDefinition(ctx.params.key);
+    if (!definition) {
+      configNotFound(ctx);
       return;
     }
-
-    const row = result.rows[0] as {
-      key: string;
-      value: string;
-      value_type: string;
-      description: string | null;
-      is_sensitive: boolean;
-      updated_at: string;
-    };
-
-    ctx.body = {
-      data: {
-        key: row.key,
-        value: publicConfigValue(row.value, row.is_sensitive),
-        valueType: row.value_type,
-        description: row.description,
-        isSensitive: row.is_sensitive,
-        updatedAt: row.updated_at,
-      },
-    };
+    try {
+      const result = await getPool().query<ConfigRow>(
+        'SELECT key, value, updated_at FROM system_config WHERE key = $1',
+        [definition.key],
+      );
+      ctx.body = { data: projectConfigEntries([definition], result.rows)[0] };
+    } catch {
+      configUnavailable(ctx);
+    }
   });
 
-  // ── PUT /:key — Update a config value ─────────────────────────────
+  router.put('/', requirePermission(ADMIN_PERMISSIONS.CONFIG_UPDATE), async (ctx) => {
+    const body: unknown = ctx.request.body;
+    // Resolve names before validating values so internal and unknown names cannot be enumerated.
+    if (typeof body === 'object' && body !== null && 'values' in body) {
+      const values = body.values;
+      if (typeof values === 'object' && values !== null && !Array.isArray(values)) {
+        if (Object.keys(values).some((key) => !findSystemConfigDefinition(key))) {
+          configNotFound(ctx);
+          return;
+        }
+      }
+    }
+    const parsed = updateConfigBatchSchema.safeParse(body);
+    if (!parsed.success || Object.keys(parsed.data.values).length === 0) {
+      configInvalid(ctx);
+      return;
+    }
+    const changes: ConfigChange[] = [];
+    for (const [key, candidate] of Object.entries(parsed.data.values)) {
+      const definition = findSystemConfigDefinition(key);
+      if (!definition) {
+        configNotFound(ctx);
+        return;
+      }
+      const value = validateSystemConfigValue(definition, candidate);
+      if (value === undefined) {
+        configInvalid(ctx);
+        return;
+      }
+      changes.push({ definition, value });
+    }
+    await commitConfigChanges(ctx, changes, false);
+  });
+
   router.put('/:key', requirePermission(ADMIN_PERMISSIONS.CONFIG_UPDATE), async (ctx) => {
-    const { key } = ctx.params;
-    const body = ctx.request.body as Record<string, unknown>;
-
-    // Validate request body with Zod
-    const parsed = updateConfigSchema.safeParse(body);
-    if (!parsed.success) {
-      ctx.status = 400;
-      ctx.body = { error: 'Configuration request is invalid' };
+    const definition = findSystemConfigDefinition(ctx.params.key);
+    if (!definition) {
+      configNotFound(ctx);
       return;
     }
-
-    const result = await getPool().query(
-      `UPDATE system_config SET value = $1, updated_at = NOW() WHERE key = $2
-       RETURNING key, value, value_type, is_sensitive`,
-      [parsed.data.value, key],
-    );
-
-    if (result.rows.length === 0) {
-      ctx.status = 404;
-      ctx.body = { error: 'Configuration entry not found' };
+    const parsed = updateConfigSchema.safeParse(ctx.request.body);
+    const value = parsed.success
+      ? validateSystemConfigValue(definition, parsed.data.value)
+      : undefined;
+    if (value === undefined) {
+      configInvalid(ctx);
       return;
     }
-
-    const row = result.rows[0] as {
-      key: string;
-      value: string;
-      value_type: string;
-      is_sensitive: boolean;
-    };
-    ctx.body = {
-      data: {
-        key: row.key,
-        value: publicConfigValue(row.value, row.is_sensitive),
-        valueType: row.value_type,
-      },
-    };
+    await commitConfigChanges(ctx, [{ definition, value }], true);
   });
 
   return router;

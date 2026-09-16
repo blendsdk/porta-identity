@@ -148,6 +148,15 @@ OIDC flow, and the authenticated Admin API transaction is more deterministically
 real-database integration specification. Existing `yarn test:ui`, production-security assurance,
 and final verification remain regression gates. No new harness is created. (AR-14, AR-15)
 
+AR-20 A additionally authorizes aligning only the existing session-expiry setup in
+`test-harness/assurance/tests/human-auth-functional-session.ts` with the native catalog:
+submit `{ value: 300 }`, keep the existing provider restart, and wait 301.5 seconds before
+the unchanged natural-expiry and active-session-list assertions. The existing suite budget
+supports this wait. No forced database/Redis expiry, fake clock, new scenario, or harness is added.
+Rerun the registered production-security gate from a clean Phase 2 candidate. Existing registered
+incomplete forwarding observations remain disclosed and are not waived; publication remains
+blocked pending corrected evidence review.
+
 ## Test Data
 
 ### Fixtures Needed

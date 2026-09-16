@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-16 18:48
-> **Progress**: 16/59 tasks (27%)
+> **Last Updated**: 2026-09-16 20:12
+> **Progress**: 27/59 tasks (46%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -129,14 +129,28 @@ unpublished until mandatory production-security assurance passes on that clean e
 The prior dirty-tree collector failure remains recorded; no assertion or provenance safeguard
 was weakened. No Phase 2 specifications or implementation are included in this checkpoint.
 
+Local candidate `cde6cd5a` remains unpublished. Clean-revision production-security returned
+exit 40: three pre-existing registered observer gaps, followed by a session-expiry assertion
+failure caused by its retired string/one-second setup. Remaining live security blocks did not
+run after that failure. Cleanup completed. AR-20 requires explicit approval for the smallest
+existing-observer correction and separate acceptance of the exact registered incomplete evidence.
+Log: `/tmp/porta-config-phase1-clean-production-security.log`.
+
+The user subsequently delegated the choice. AR-20 A is selected: Phase 2 may proceed and the
+existing observer may use native 300 seconds with a 301.5-second natural-expiry wait.
+No assertions change. B is not selected; publication stays blocked pending corrected evidence.
+
 ## Phase 2: Authoritative Admin API
 
-> **Phase baseline tree**: `7950aacb97903b98b5fbc262c29c5118d49ac116`
+> **Phase baseline tree**: `dcd1d939a5b9f91fb924274e07164004d04dbfa4`
 > **Scope mode**: strict
 > **Scope baseline**: direct closed catalog projection and native single/batch updates in the
 > existing config router, one existing transaction/audit/post-commit boundary, and fixed errors.
 > **Expected modification set**: Phase 2 target source/tests, direct superseded API-test alignment,
 > repository inventory count, execution/review evidence, and the isolated feature roadmap.
+> AR-20 A also authorizes only the existing human-auth session-expiry observer setup and
+> testing-strategy enrollment; assertions remain unchanged. Publication stays evidence-gated.
+> The opted-in phase documentation hook updates `techdocs/architecture/api-design.md` only.
 > The independent specification author may share inert fixed catalog test data via
 > `packages/server/tests/unit/routes/system-config-api-fixtures.ts`; no test framework is added.
 
@@ -144,27 +158,43 @@ was weakened. No Phase 2 specifications or implementation are included in this c
 
 **Reference**: [03-02](03-02-admin-api.md) · ST-20–ST-31 · AR-2, AR-6, AR-9, AR-10, AR-12
 
-- [ ] 2.1.1 [spec-author] Write list/get/update validation and fixed-error specifications for ST-20–ST-26 — `packages/server/tests/unit/routes/system-config-api.spec.test.ts`
-- [ ] 2.1.2 [spec-author] Write real-database transaction, permission, audit, restart, and cache specifications for ST-27–ST-31 — `packages/server/tests/integration/admin/system-config-api.spec.test.ts`
-- [ ] 2.1.3 [spec-author] Write non-enumeration, forged-value, authorization, and audit-exposure specifications — `packages/server/tests/pentest/admin-security/system-config.spec.test.ts`
-- [ ] 2.1.4 Run the Phase 2 specification selectors; record red failures and justify any behavior already passing
+- [x] 2.1.1 [spec-author] Write list/get/update validation and fixed-error specifications for ST-20–ST-26 — `packages/server/tests/unit/routes/system-config-api.spec.test.ts` ✅ (completed: 2026-09-16 19:48; independent oracle lint/typecheck pass; all 88 cases fail on approved old-API contract differences; documentation self-check clean)
+- [x] 2.1.2 [spec-author] Write real-database transaction, permission, audit, restart, and cache specifications for ST-27–ST-31 — `packages/server/tests/integration/admin/system-config-api.spec.test.ts` ✅ (completed: 2026-09-16 19:52; lint/typecheck pass; seven expected contract failures, one existing native-seed pass; documentation self-check clean)
+- [x] 2.1.3 [spec-author] Write non-enumeration, forged-value, authorization, and audit-exposure specifications — `packages/server/tests/pentest/admin-security/system-config.spec.test.ts` ✅ (completed: 2026-09-16 19:49; lint/typecheck pass; seven expected failures and three existing bearer-denial passes; documentation self-check clean)
+- [x] 2.1.4 Run the Phase 2 specification selectors; record red failures and justify any behavior already passing ✅ (completed: 2026-09-16 19:49; 106 cases: 102 expected contract failures, four existing passes—native defaults and three bearer denials; all authoring lint/typecheck checks pass; logs `/tmp/porta-config-phase2-{unit,integration,pentest}-red.log`)
 
 ### Step 2.2: Implementation
 
 **Reference**: [03-02 §Implementation Details](03-02-admin-api.md#implementation-details) · AR-6, AR-9, AR-10, AR-12, AR-14
 
-- [ ] 2.2.1 Add catalog-key projection and authoritative row validation for list/get responses — `packages/server/src/routes/config.ts`
-- [ ] 2.2.2 Add strict single/batch schemas, native validation, uniform 400/404/503 responses, and restart-result projection — `packages/server/src/routes/config.ts`
-- [ ] 2.2.3 Add self-managed update transactions with one specialized audit row and post-commit cache clear — `packages/server/src/routes/config.ts`, `packages/server/src/lib/audit-log.ts`
-- [ ] 2.2.4 Exclude the config prefix from the generic Admin mutation wrapper — `packages/server/src/middleware/admin-mutation-audit.ts`
-- [ ] 2.2.5 Run Phase 2 specification selectors and make them green without changing oracle expectations
+- [x] 2.2.1 Add catalog-key projection and authoritative row validation for list/get responses — `packages/server/src/routes/config.ts` ✅ (completed: 2026-09-16 19:52; all 20 read specifications and lint pass; independent author corrected SQL mock verb detection without changing oracle; documentation self-check clean)
+- [x] 2.2.2 Add strict single/batch schemas, native validation, uniform 400/404/503 responses, and restart-result projection — `packages/server/src/routes/config.ts` ✅ (completed: 2026-09-16 19:53; 88 API specifications and 18 legacy schema cases pass; lint/typecheck and documentation self-check pass)
+- [x] 2.2.3 Add self-managed update transactions with one specialized audit row and post-commit cache clear — `packages/server/src/routes/config.ts`, `packages/server/src/lib/audit-log.ts` ✅ (completed: 2026-09-16 19:54; eight real-database specifications pass, including rollback/readback/audit failure and post-commit cache behavior; existing audit writer unchanged; lint/documentation self-check pass)
+- [x] 2.2.4 Exclude the config prefix from the generic Admin mutation wrapper — `packages/server/src/middleware/admin-mutation-audit.ts` ✅ (completed: 2026-09-16 19:54; real-database tests assert one specialized audit and exact config errors through generic middleware; lint/documentation self-check pass)
+- [x] 2.2.5 Run Phase 2 specification selectors and make them green without changing oracle expectations ✅ (completed: 2026-09-16 19:55; all 106 specifications pass: 88 unit, eight real-database integration and ten live security; no oracle changes; lint/typecheck pass; logs `/tmp/porta-config-phase2-{unit,integration,pentest}-green.log`)
 
 ### Step 2.3: Implementation Tests and Hardening
 
-- [ ] 2.3.1 Add projection-helper and transaction/error-branch implementation tests — `packages/server/tests/unit/routes/system-config-api.impl.test.ts`
-- [ ] 2.3.2 Run focused Phase 2 unit/integration/pentest selectors, `yarn workspace @portaidentity/server verify`, and `yarn test:structure`
+- [x] 2.3.1 Add projection-helper and transaction/error-branch implementation tests — `packages/server/tests/unit/routes/system-config-api.impl.test.ts` ✅ (completed: 2026-09-16 19:57; 20 defensive implementation cases plus 106 API/schema cases pass; lint/typecheck and documentation self-check clean)
+- [x] 2.3.2 Run focused Phase 2 unit/integration/pentest selectors, `yarn workspace @portaidentity/server verify`, and `yarn test:structure` ✅ (completed: 2026-09-16 20:12; root verify passes affected server workspace verification and structure plus SDK/CLI regressions; server 3,635 unit, 476 integration, 127 E2E and 260 pentest; SDK 527, CLI 1,290 and structure 104; documentation self-check clean)
 
 **Verify**: focused server unit/integration/pentest selectors, server workspace verify, and structure tests (AR-15)
+
+### Phase 2 Review Evidence
+
+Independent correctness review (correctness, maintainability, standards and API surface) and
+security review (auth-protocol, owasp-web and tenant-isolation) report no findings against baseline
+`dcd1d939a5b9f91fb924274e07164004d04dbfa4`. No new service, retry, concurrency or harness machinery
+was introduced. All 106 immutable API specifications and 20 implementation cases pass.
+Root verification passes: server 3,635 unit, 476 integration, 127 E2E and 260 pentest; SDK 527,
+CLI 1,290 and structure 104. Log: `/tmp/porta-config-phase2-precommit-verify.log`.
+The existing observer correction passes assurance lint/typecheck; corrected clean security
+verification and publication remain pending. The opted-in maintainer documentation hook updates
+the existing API design page; public documentation remains scheduled for Phase 5.
+Separate browser regression verification passes all 133 cases; log:
+`/tmp/porta-config-phase2-precommit-ui.log`. All three maintainer documentation-link checks pass;
+`git diff --check` is clean. Root verification is not repeated for documentation-only updates:
+no product source changed after the passing run, and the changed documentation is validated directly.
 
 ## Phase 3: SDK and Conventional CLI
 

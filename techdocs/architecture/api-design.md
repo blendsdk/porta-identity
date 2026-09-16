@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-15
+> **Last Updated**: 2026-09-16
 
 ## Overview
 
@@ -141,6 +141,37 @@ Successful responses contain only the validated stored bytes and media type. The
 `Cache-Control: public, no-cache` plus an ETag for revalidation. SVG responses also receive a
 restrictive document CSP. Suspended organizations retain asset delivery so their authentication
 pages remain consistently branded while an administrator repairs or reactivates them.
+
+## Global Operational Configuration
+
+The configuration router exposes only the 18-key application-owned operational catalog.
+Infrastructure, root secrets and internal bootstrap rows cannot be read or changed through it.
+Metadata comes from code; only a validated native JSONB value and timestamp come from storage.
+See [configuration](../reference/configuration.md#system-config-runtime) and
+[the catalog decision](../decisions/index.md#adr-016-closed-global-operational-catalog).
+
+| Method/path | Permission | Success |
+|---|---|---|
+| `GET /api/admin/config` | `admin:config:read` | `{ data: ConfigEntry[] }` in catalog order |
+| `GET /api/admin/config/:key` | `admin:config:read` | `{ data: ConfigEntry }` |
+| `PUT /api/admin/config/:key` | `admin:config:update` | `{ data: ConfigEntry, restartRequired }` |
+| `PUT /api/admin/config` | `admin:config:update` | `{ data: ConfigEntry[], restartRequired }` |
+
+Single updates accept exactly `{ value: scalar }`; batches accept exactly a non-empty
+`{ values: { key: scalar } }`. Every name is resolved before value validation or mutation.
+Integer text, fractions, values outside inclusive catalog bounds, unsupported locales and extra
+fields are rejected without coercion. Non-catalog names share `404 config_entry_not_found`;
+invalid bodies or values share `400 config_value_invalid`. Authoritative reads and writes never
+substitute runtime defaults: unavailable, missing or invalid stored rows produce the fixed
+`503 config_store_unavailable` response with a request ID and no database diagnostics.
+
+Each mutation owns one existing PostgreSQL transaction. It validates new returned rows, resolves
+the live authenticated actor, and writes one `admin.config.updated` audit event containing only
+sorted public keys and `restartRequired`. It is excluded from the generic mutation audit wrapper.
+Update or audit failure rolls everything back without clearing the cache. Successful commit clears
+only the local runtime cache. Other instances retain their existing 60-second refresh behavior.
+Provider-startup lifetimes report `restartRequired: true`; they do not restart running instances.
+Valid updates may replace corrupt targeted content, but missing rows are not recreated.
 
 ## Authentication
 
