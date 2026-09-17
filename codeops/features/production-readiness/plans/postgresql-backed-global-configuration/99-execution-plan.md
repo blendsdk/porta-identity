@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-17 20:26
-> **Progress**: 51/59 tasks (86%)
+> **Last Updated**: 2026-09-17 21:00
+> **Progress**: 58/59 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -278,24 +278,36 @@ for only the exact three registered baseline limitations. No new harness machine
 
 ## Phase 5: Documentation and Final Gates
 
+> **Phase baseline tree**: f0d19d5437e34ef6d863a4bc32f7a9dfc5b0c546
+> **Scope mode**: strict
+> **Expected modification set**: `repo-tests/monorepo/global-configuration-docs.spec.test.mjs`;
+> `docs/api/config.md`, `docs/cli/infrastructure.md`, `docs/guide/environment.md`,
+> `docs/guide/deployment.md`, `docs/database/schema.md`, `docs/concepts/capabilities.md`,
+> `techdocs/reference/configuration.md`; existing opted-in maintainer architecture/reference
+> sections directly affected by this feature; this plan's progress/review/gate evidence and
+> isolated feature roadmap. No product code changes or new verification machinery planned.
+> **Scope baseline**: document exact native closed catalog, external bootstrap/secret boundary,
+> direct administrative contracts, local cache/60-second convergence and all-instance restart;
+> run existing registered gates and preserve AR-20's exact qualified observer taxonomy.
+
 ### Step 5.1: Specification Tests
 
 **Reference**: ST-47–ST-48 · RD-03 AC-20 · AR-3, AR-15
 
-- [ ] 5.1.1 [spec-author] Write exact public catalog/external-boundary and propagation documentation specifications — `repo-tests/monorepo/global-configuration-docs.spec.test.mjs`
-- [ ] 5.1.2 Run the documentation specification selector; record red failures and justify any behavior already passing
+- [x] 5.1.1 [spec-author] Write exact public catalog/external-boundary and propagation documentation specifications — `repo-tests/monorepo/global-configuration-docs.spec.test.mjs` ✅ (completed: 2026-09-17 20:31; independent contract-only author, syntax/documentation self-check and synthetic approved-contract oracle 18/18 pass; actual docs expected RED14fail/4pass; authoring defects corrected before lock, no implementation read; expectations now immutable)
+- [x] 5.1.2 Run the documentation specification selector; record red failures and justify any behavior already passing ✅ (completed: 2026-09-17 20:31; 14 expected failures expose absent public tables/closed-boundary/local-peer timing guidance; four pass because three guides do not promise automatic propagation and maintainer guide already states five-key all-instance restart; log `/tmp/porta-config-phase5-docs-red.log`; no doc implementation written before RED)
 
 ### Step 5.2: Implementation
 
-- [ ] 5.2.1 Document exact API and conventional CLI contracts, native values, errors, and restart results — `docs/api/config.md`, `docs/cli/infrastructure.md`
-- [ ] 5.2.2 Add the editable-catalog and external bootstrap/secret tables plus cache/restart guidance — `docs/guide/environment.md`, `docs/guide/deployment.md`
-- [ ] 5.2.3 Align public database/capability references and maintainer configuration architecture — `docs/database/schema.md`, `docs/concepts/capabilities.md`, `techdocs/reference/configuration.md`
-- [ ] 5.2.4 Run ST-47–ST-48 and make them green without changing oracle expectations
+- [x] 5.2.1 Document exact API and conventional CLI contracts, native values, errors, and restart results — `docs/api/config.md`, `docs/cli/infrastructure.md` ✅ (completed: 2026-09-17 20:34; formatting and three JSON example parses pass; manual source/API/SDK/CLI contract and junior-readable documentation check pass; native authoritative envelopes/permissions/safe errors, atomic batch, positional syntax, read-before-write authority and restart results documented; full docs/link gates follow after target sections exist)
+- [x] 5.2.2 Add the editable-catalog and external bootstrap/secret tables plus cache/restart guidance — `docs/guide/environment.md`, `docs/guide/deployment.md` ✅ (completed: 2026-09-17 20:36; all 14 public-guide immutable cases, formatting and documentation self-check pass; exact native18-key catalog/external tables, cache boundaries, five-key restart, existing expiries and migration behavior documented; log `/tmp/porta-config-phase5-public-guides-green.log`)
+- [x] 5.2.3 Align public database/capability references and maintainer configuration architecture — `docs/database/schema.md`, `docs/concepts/capabilities.md`, `techdocs/reference/configuration.md` ✅ (completed: 2026-09-17 20:41; 18 immutable documentation checks and three maintainer-link checks pass; JSONB/unique-key storage, code metadata authority, exact config permissions, full catalog/cache/atomic-audit/restart boundaries and directly affected architecture sections aligned; one new link anchor corrected without changing any oracle; log `/tmp/porta-config-phase5-references-green.log`)
+- [x] 5.2.4 Run ST-47–ST-48 and make them green without changing oracle expectations ✅ (completed: 2026-09-17 20:41; all 18 independent immutable documentation cases pass, no expectation changes after lock; log `/tmp/porta-config-phase5-docs-green.log`)
 
 ### Step 5.3: Implementation Tests and Final Hardening
 
-- [ ] 5.3.1 Run `yarn docs:build`, all focused RD-03 selectors, affected workspace verifies, `yarn test:structure`, and `yarn test:ui`
-- [ ] 5.3.2 Run `yarn assurance:harness --project security --profile production-security`, review its artifact/exit taxonomy, then run final `yarn verify`
+- [x] 5.3.1 Run `yarn docs:build`, all focused RD-03 selectors, affected workspace verifies, `yarn test:structure`, and `yarn test:ui` ✅ (completed: 2026-09-17 21:00; docs build, focused server479/SDK32/CLI131 and documentation18/link3 checks pass; root verifies server unit3,635/integration476/E2E127/pentest260, SDK558 and CLI1,419 with lint/compiler/build; structure122 and browser133 pass, cleanup successful; independent documentation review has no findings, auditor lens explicitly skipped for docs-only diff; logs `/tmp/porta-config-phase5-precommit-verify.log`, `/tmp/porta-config-phase5-final-ui.log`)
+- [~] 5.3.2 Run `yarn assurance:harness --project security --profile production-security`, review its artifact/exit taxonomy, then run final `yarn verify` (implemented: 2026-09-17 21:00; AR-19 precommit gates pass, clean unpublished candidate being prepared; registered assurance and final root validation pending, AR-20's exact three forwarding-observer gaps remain qualified rather than passed)
 
 **Verify**: documentation build, focused suites, server/SDK/CLI verifies, structure/UI gates, production-security assurance, and final root verify (AR-15)
 

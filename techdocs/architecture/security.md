@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-15
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -501,13 +501,15 @@ All security-relevant actions are logged to the `audit_log` table:
 | Account        | `user.created`, `user.deactivated`, `user.password_changed`       |
 | Security       | `security.login_method_disabled`, `security.rate_limited`         |
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
-| System         | `system.config_changed`, `system.key_rotated`                     |
+| System         | `admin.config.updated`, `system.key_rotated`                      |
 
 Compatibility audit writes remain best-effort and do not change the main request result. Every
 successful state-changing administrative request also writes a durable business audit row through
 the same PostgreSQL transaction as its database mutation. A failed audit insert therefore rolls
 back that request's database changes. Bulk operations preserve their documented per-item
 transactions, while imports retain one manifest-wide transaction.
+
+Global configuration updates validate every selected catalog value before changing existing rows in one transaction. The same transaction records `admin.config.updated` with changed keys and the restart result, never configuration values. An audit failure rolls back the updates. The local configuration cache is cleared only after a successful commit; other healthy instances converge on their next read after at most 60 seconds. The five provider-startup TTL settings still require an operator restart of every instance.
 
 The deletion events are `org.deleted`, `app.deleted`, `app.module.deleted`, `client.deleted`,
 `role.deleted`, `permission.deleted`, `claim.deleted`, and `user.deleted`. Audit foreign keys for

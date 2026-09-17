@@ -1,10 +1,13 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-09-16
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
-Porta's configuration is managed through environment variables, validated at startup using a **Zod schema** (`packages/server/src/config/schema.ts`). If any required variable is missing or invalid, the process exits immediately with a clear error message (fail-fast principle).
+Porta separates external startup configuration from a closed database-backed operational catalog.
+Environment variables are validated at startup using a **Zod schema** (`packages/server/src/config/schema.ts`).
+If any required variable is missing or invalid, the process exits immediately with a clear error
+message (fail-fast principle). PostgreSQL stores operational native values; code owns their metadata.
 
 Configuration is loaded via `packages/server/src/config/index.ts`, which reads from `process.env` (with `.env` file support via dotenv in development).
 
@@ -151,29 +154,44 @@ System config is managed via:
 
 - **CLI**: `porta config list/get/set`
 - **API**: `GET/PUT /api/admin/config`
+- **Embedded Admin UI**: **System Configuration…** with four maximized Layout DSL tabs and one
+  persistent Save/Cancel footer, using exact read/update capabilities and one changed-key batch.
+
+Keys cannot be created, renamed or deleted through these surfaces. The API returns authoritative
+entries only: missing/corrupt/unavailable storage uses fixed `503 config_store_unavailable` with a
+request ID, not runtime defaults. Unknown/internal/external names share `404 config_entry_not_found`;
+invalid native inputs share `400 config_value_invalid`. Single bodies are exactly `{ value }`, batch
+bodies exactly non-empty `{ values }`. One existing transaction updates targets and writes one
+`admin.config.updated` audit record containing keys and restart status, never values. No upsert or
+automatic mutation retry is added. See [the API design](../architecture/api-design.md#global-operational-configuration).
+
+After a successful save commits, the local process cache is cleared; subsequent runtime reads see
+the saved policy immediately. Other healthy server instances pick up runtime changes on their next
+read within the existing at-most-60-second cache lifetime. Cache expiration is read-driven, not a
+background task. There is no broadcast invalidation, polling worker or automatic server restart.
 
 ### System Config Keys
 
-| Key                                | Type               | Description                                   |
-| ---------------------------------- | ------------------ | --------------------------------------------- |
-| `access_token_ttl`                 | Integer (seconds)  | Access token lifetime                         |
-| `id_token_ttl`                     | Integer (seconds)  | ID token lifetime                             |
-| `refresh_token_ttl`                | Integer (seconds)  | Refresh token lifetime                        |
-| `authorization_code_ttl`           | Integer (seconds)  | Authorization code lifetime                   |
-| `session_ttl`                      | Integer (seconds)  | OIDC session lifetime                         |
-| `magic_link_ttl`                   | Integer (seconds)  | New magic-link artifact lifetime              |
-| `password_reset_ttl`               | Integer (seconds)  | New password-reset artifact lifetime          |
-| `invitation_ttl`                   | Integer (seconds)  | New invitation lifetime                       |
-| `rate_limit_login_max`             | Integer (attempts) | Login request maximum                         |
-| `rate_limit_login_window`          | Integer (seconds)  | New login counter window                      |
-| `rate_limit_magic_link_max`        | Integer (attempts) | Magic-link request maximum                    |
-| `rate_limit_magic_link_window`     | Integer (seconds)  | New magic-link counter window                 |
-| `rate_limit_password_reset_max`    | Integer (attempts) | Password-reset request maximum                |
-| `rate_limit_password_reset_window` | Integer (seconds)  | New password-reset counter window             |
-| `max_failed_logins`                | Integer (attempts) | Lockout threshold                             |
-| `lockout_duration_seconds`         | Integer (seconds)  | Current lockout eligibility duration          |
-| `audit_retention_days`             | Integer (days)     | Default audit cleanup retention               |
-| `default_locale`                   | String (locale)    | Final authentication fallback, currently `en` |
+| Key                                | Default   | Inclusive range / choices | Unit     | Application mode   |
+| ---------------------------------- | --------- | ------------------------- | -------- | ------------------ |
+| `access_token_ttl`                 | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `id_token_ttl`                     | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `refresh_token_ttl`                | `2592000` | `300..31536000`           | seconds  | `restart-required` |
+| `authorization_code_ttl`           | `600`     | `30..3600`                | seconds  | `restart-required` |
+| `session_ttl`                      | `86400`   | `300..2592000`            | seconds  | `restart-required` |
+| `magic_link_ttl`                   | `900`     | `60..3600`                | seconds  | `runtime`          |
+| `password_reset_ttl`               | `3600`    | `300..86400`              | seconds  | `runtime`          |
+| `invitation_ttl`                   | `604800`  | `300..2592000`            | seconds  | `runtime`          |
+| `rate_limit_login_max`             | `10`      | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_login_window`          | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_magic_link_max`        | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_magic_link_window`     | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_password_reset_max`    | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_password_reset_window` | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
+| `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
+| `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
+| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
 
 The first five lifetimes are loaded at provider startup; changes require restarting every server
 instance. Interaction lifetime remains fixed at 3600 seconds and grant lifetime follows refresh

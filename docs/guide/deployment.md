@@ -1,6 +1,73 @@
 # Production Deployment
 
+> **Last Updated**: 2026-09-17
+
 Guidance for deploying Porta to production environments using Docker.
+
+## Editable Global Configuration
+
+The closed database-backed catalog contains exactly 18 editable settings. PostgreSQL stores native
+JSONB integers or the locale string; code owns metadata, defaults and inclusive bounds. Administrators
+cannot create, rename or delete arbitrary keys. Internal `super_admin_user_id` is not editable or
+exposed through the configuration API.
+
+| Key                                | Default   | Inclusive range / choices | Unit     | Application mode   |
+| ---------------------------------- | --------- | ------------------------- | -------- | ------------------ |
+| `access_token_ttl`                 | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `id_token_ttl`                     | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `refresh_token_ttl`                | `2592000` | `300..31536000`           | seconds  | `restart-required` |
+| `authorization_code_ttl`           | `600`     | `30..3600`                | seconds  | `restart-required` |
+| `session_ttl`                      | `86400`   | `300..2592000`            | seconds  | `restart-required` |
+| `magic_link_ttl`                   | `900`     | `60..3600`                | seconds  | `runtime`          |
+| `password_reset_ttl`               | `3600`    | `300..86400`              | seconds  | `runtime`          |
+| `invitation_ttl`                   | `604800`  | `300..2592000`            | seconds  | `runtime`          |
+| `rate_limit_login_max`             | `10`      | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_login_window`          | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_magic_link_max`        | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_magic_link_window`     | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_password_reset_max`    | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_password_reset_window` | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
+| `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
+| `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
+| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
+
+Use [the Configuration API](../api/config.md), `porta config list|get|set`, or **System Configuration…**
+in `porta admin`; see [the environment reference](./environment.md#editable-global-configuration).
+After successful save/commit, the local process cache is cleared and subsequent runtime reads
+see the saved policy immediately. Other healthy server instances pick up runtime changes on their
+next read within the existing at-most-60-second cache lifetime. There is no broadcast invalidation.
+
+The five `restart-required` lifetime keys require restarting every Porta server instance after
+saving. Stored changes do not reconfigure an already running OIDC provider. API/SDK results return
+`restartRequired: true` for these keys or a batch containing one. Runtime-only batches return `false`.
+Porta does not automatically restart servers or instantly invalidate every instance's cache.
+Existing token/link absolute expiries and Redis counter expiries remain unchanged; current runtime
+policy applies at the established next read/decision or artifact creation point.
+
+## External Bootstrap Settings and Secrets
+
+The following remain external, in environment variables or a secret manager, outside the editable
+catalog/configuration API. Provide them before startup; never move root secrets into `system_config`.
+
+| External setting                        | Source and purpose                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                          | Environment/secret manager; PostgreSQL connection and credentials            |
+| `REDIS_URL`                             | Environment/secret manager; Redis connection and credentials                 |
+| `ISSUER_BASE_URL`                       | Environment; public issuer/bootstrap URL                                     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`   | Environment; SMTP connection and sender                                      |
+| `SMTP_USER`, `SMTP_PASS`                | Secret manager/environment; SMTP credentials                                 |
+| `COOKIE_KEYS`                           | Secret manager/environment; cookie signing key ring                          |
+| `SIGNING_KEY_ENCRYPTION_KEY`            | Secret manager/environment; signing-key encryption root                      |
+| `TWO_FACTOR_ENCRYPTION_KEY`             | Secret manager/environment; distinct TOTP encryption root                    |
+| `NODE_ENV`, `HOST`, `PORT`, `LOG_LEVEL` | Environment; process bootstrap and logging                                   |
+| `TRUST_PROXY`, `ADMIN_CORS_ORIGINS`     | Environment; trusted-proxy and authenticated CORS policy                     |
+| TLS certificate/private key             | Reverse-proxy files/secret manager; HTTPS termination outside the config API |
+
+Run migrations explicitly during deployment. Migration `030_global_configuration_catalog.sql`
+resets canonical operational values to these native defaults, removes obsolete public rows and
+preserves internal rows. Down is intentionally a no-op; database backup/restore remains the
+operator's separate PostgreSQL workflow, not a configuration API feature.
 
 ::: tip Docker Hub
 The Porta Docker image is available on [Docker Hub](https://hub.docker.com/r/blendsdk/porta):
@@ -851,14 +918,14 @@ Account lockout thresholds are managed via `system_config`:
 
 ```bash
 # View current settings
-porta config get --key account_lockout_threshold
-porta config get --key account_lockout_cooldown_minutes
+porta config get max_failed_logins
+porta config get lockout_duration_seconds
 
 # Change lockout threshold (default: 5)
-porta config set --key account_lockout_threshold --value 10
+porta config set max_failed_logins 10
 
-# Change cooldown period in minutes (default: 15)
-porta config set --key account_lockout_cooldown_minutes --value 30
+# Change cooldown period in seconds (default: 900); 1800 seconds is 30 minutes
+porta config set lockout_duration_seconds 1800
 ```
 
 ### Security Design
@@ -929,7 +996,7 @@ Configure automatic cleanup of old audit log entries:
 
 ```bash
 # Set retention period (in days)
-porta config set --key audit_retention_days --value 365
+porta config set audit_retention_days 365
 
 # Run cleanup (deletes entries older than retention period)
 porta audit cleanup
