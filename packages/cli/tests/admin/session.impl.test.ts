@@ -62,6 +62,8 @@ const noRbacCapabilities = {
 };
 
 const noPortabilityCapabilities = {
+  canReadConfig: false,
+  canUpdateConfig: false,
   canExportData: false,
   canImportData: false,
   canReadClaims: false,

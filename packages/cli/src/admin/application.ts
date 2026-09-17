@@ -33,6 +33,9 @@ import type { AdminRbacOperations } from './rbac-service.js';
 import type { AdminPortabilityOperations } from './portability-service.js';
 import { createAdminPortabilityController } from './portability-controller.js';
 import type { AdminPortabilityController } from './portability-controller.js';
+import type { AdminSystemConfigOperations } from './system-config-service.js';
+import { createAdminSystemConfigController } from './system-config-controller.js';
+import type { AdminSystemConfigController } from './system-config-controller.js';
 import { createAdminApplicationClientFeatures } from './application-client-features.js';
 import type { AdminApplicationClientFeatures } from './application-client-features.js';
 import { createAdminUserController } from './user-controller.js';
@@ -72,6 +75,8 @@ export interface AdminApplicationSession {
   readonly rbac?: AdminRbacOperations;
   /** Environment portability operations bound lazily to the verified server session. */
   readonly portability?: AdminPortabilityOperations;
+  /** Deployment-global operational configuration for the verified session. */
+  readonly systemConfig?: AdminSystemConfigOperations;
 }
 
 /** State and operations prepared after the application has a selected server. */
@@ -167,6 +172,7 @@ export async function runAdminApplication(
   let organizationController: AdminOrganizationController | undefined;
   let applicationClientFeatures: AdminApplicationClientFeatures | undefined;
   let portabilityController: AdminPortabilityController | undefined;
+  let systemConfigController: AdminSystemConfigController | undefined;
   let userRecoveryRequired = false;
   let featureDialogOpen = false;
   let sessionEpoch = initialState.kind === 'authenticated' ? 1 : 0;
@@ -187,14 +193,16 @@ export async function runAdminApplication(
         userDialogOpen ||
         featureDialogOpen ||
         organizationController?.isOpen() ||
-        portabilityController?.isOpen();
+        portabilityController?.isOpen() ||
+        systemConfigController?.isOpen();
       const cancellableWorkOpen =
         currentController !== undefined ||
         organizationDialogOpen ||
         userDialogOpen ||
         featureDialogOpen ||
         organizationController?.isOpen() ||
-        portabilityController?.isOpen();
+        portabilityController?.isOpen() ||
+        systemConfigController?.isOpen();
       if (command === Commands.quit && modalWorkOpen) {
         if (!deferredQuit) {
           deferredQuit = true;
@@ -245,8 +253,10 @@ export async function runAdminApplication(
     userController?.syncContext(state, sessionEpoch);
     applicationClientFeatures?.syncContext(state, sessionEpoch);
     portabilityController?.syncContext(state, sessionEpoch);
+    systemConfigController?.syncContext(state, sessionEpoch);
     const organizationWorkspaceOpen = organizationController?.isOpen() ?? false;
-    const portabilityWorkspaceOpen = portabilityController?.isOpen() ?? false;
+    const portabilityWorkspaceOpen =
+      (portabilityController?.isOpen() ?? false) || (systemConfigController?.isOpen() ?? false);
     application.loop.enableCommand(ADMIN_COMMANDS.authenticate, state.kind === 'unauthenticated');
     application.loop.enableCommand(ADMIN_COMMANDS.retry, canRetryAdminState(state));
     application.loop.enableCommand(
@@ -371,6 +381,13 @@ export async function runAdminApplication(
         Boolean(session?.portability) &&
         featureIdle,
     );
+    application.loop.enableCommand(
+      ADMIN_COMMANDS.systemConfig,
+      state.kind === 'authenticated' &&
+        state.capabilities.canReadConfig === true &&
+        Boolean(session?.systemConfig) &&
+        featureIdle,
+    );
     syncAuthenticationGate(state);
   };
 
@@ -434,7 +451,7 @@ export async function runAdminApplication(
   };
 
   /** Cancels whichever single modal or operation currently owns the application surface. */
-  const cancelModalWork = (): void => {
+  const cancelModalWork = (preserveConfigDrafts = false): void => {
     cancelAuthenticationGate();
     cancelIdentityDialog();
     cancelOrganizationWork();
@@ -443,6 +460,7 @@ export async function runAdminApplication(
     userController?.cancelActiveOperation();
     applicationClientFeatures?.cancelActiveOperation();
     portabilityController?.cancelActiveOperation();
+    if (!preserveConfigDrafts) systemConfigController?.cancelActiveOperation();
     dialogSurface.removeAll();
   };
 
@@ -858,11 +876,12 @@ export async function runAdminApplication(
     isApplicationBusy: () =>
       Boolean(
         currentController ||
-          authenticationGateOpen ||
-          organizationDialogOpen ||
-          identityDialogOpen ||
-          organizationController?.isOpen() ||
-          portabilityController?.isOpen(),
+        authenticationGateOpen ||
+        organizationDialogOpen ||
+        identityDialogOpen ||
+        organizationController?.isOpen() ||
+        portabilityController?.isOpen() ||
+        systemConfigController?.isOpen(),
       ),
     setDialogBusy: (busy) => {
       userDialogOpen = busy;
@@ -898,6 +917,23 @@ export async function runAdminApplication(
     onWorkspaceClosed: () => setState(presentation.getState()),
   });
   portabilityController.syncContext(presentation.getState(), sessionEpoch);
+  systemConfigController = createAdminSystemConfigController({
+    host: {
+      ...dialogHost,
+      loop: {
+        execView: (view) => dialogHost.loop.execView(view),
+        focusView: (view) => application.loop.focusView(view),
+        getFocused: () => application.loop.getFocused(),
+      },
+    },
+    readState: () => presentation.getState(),
+    readOperations: () => session?.systemConfig,
+    mountWorkspace: presentation.setWorkspace,
+    requestAuthentication: invalidateSession,
+    onWorkspaceOpened: () => setState(presentation.getState()),
+    onWorkspaceClosed: () => setState(presentation.getState()),
+  });
+  systemConfigController.syncContext(presentation.getState(), sessionEpoch);
   dialogSurface.setModalCommandHandler((command) => {
     if (command !== ADMIN_COMMANDS.reauthenticate) return false;
     cancelModalWork();
@@ -959,6 +995,9 @@ export async function runAdminApplication(
     application.onCommand(ADMIN_COMMANDS.portability, () => {
       portabilityController?.handleCommand(ADMIN_COMMANDS.portability);
     }),
+    application.onCommand(ADMIN_COMMANDS.systemConfig, () => {
+      systemConfigController?.handleCommand(ADMIN_COMMANDS.systemConfig);
+    }),
     application.onCommand(ADMIN_COMMANDS.cancel, () => {
       if (userDialogOpen) {
         userController?.cancelActiveOperation();
@@ -986,6 +1025,10 @@ export async function runAdminApplication(
         setState(presentation.getState());
         return;
       }
+      if (systemConfigController?.isOpen()) {
+        systemConfigController.close();
+        return;
+      }
       cancelSessionOperation();
     }),
     application.onCommand(Commands.quit, () => {
@@ -1001,7 +1044,7 @@ export async function runAdminApplication(
     userController?.handleRecoverableGeometry(recoverable);
     applicationClientFeatures?.handleRecoverableGeometry(recoverable);
     if (!recoverable) {
-      cancelModalWork();
+      cancelModalWork(true);
     } else {
       syncAuthenticationGate();
     }
@@ -1081,6 +1124,8 @@ export async function runAdminApplication(
     applicationClientFeatures = undefined;
     portabilityController?.dispose();
     portabilityController = undefined;
+    systemConfigController?.dispose();
+    systemConfigController = undefined;
     dialogSurface.setModalCommandHandler(undefined);
     for (const [signal, listener] of signalListeners) signalSource.off(signal, listener);
     for (const unregister of unregisterCommands) unregister();

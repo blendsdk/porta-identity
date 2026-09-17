@@ -1,7 +1,7 @@
 # Ambiguity Register: PostgreSQL-Backed Global Configuration
 
-> **Status**: No open material items; AR-21 fix verified and independently re-reviewed
-> **Last Updated**: 2026-09-16 21:57
+> **Status**: All decisions resolved; AR-23 and AR-24 corrections verified
+> **Last Updated**: 2026-09-17 20:26
 
 | #     | Category                     | Ambiguity / Gap                                                                                                              | Options Presented                                                                                                                                                                                                                                                                                                                                                             | User Decision                                                                                                                                                                                                     | Status      |
 | ----- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
@@ -28,7 +28,96 @@
 | AR-20 | Runtime verification | Existing session-expiry observer uses a retired string TTL; three forwarding observations remain registered incomplete. | A: align the existing observer to native 300 seconds after Phase 2, preserving natural-expiry assertions; B: separately accept only the exact registered observer gaps if all actual assertions and cleanup pass. | A verified. User accepted B: "i do, proceed with the rest" on 2026-09-16. Publish the qualified checkpoint and continue; retain incomplete classification. | ✅ Resolved |
 | AR-21 | Necessary security correction (runtime) | Runtime agent keys can escape the configuration mutation endpoint despite ConfigKey typing. | Encode the mutation key and reject bare dot segments before transport; add targeted domain/real-agent confinement regression. No registry, framework or backend change. | User: "i approve" on 2026-09-16. Apply the exact narrow correction, verify and re-review before publication, then continue. | ✅ Resolved |
 
+| AR-22 | Necessary specification correction (runtime) | Two application oracles confuse persistent menu text with editor visibility and omit a required portability capability fixture. | Check actual mounted configuration window instead of full-frame text absence; add `isSuperAdmin: false` to the other-workspace precondition. Keep production validation and original behavior/security assertions. | User: "i approve" on 2026-09-17. Exact two corrections authorized after independent challenge. | ✅ Resolved |
+| AR-23 | Necessary review correction and oracle enrollment (runtime) | Legal long duration / invalid help clips required startup guidance; old exact capability objects omit two approved fields. | Enlarge existing help column/derived minimum, add fitting-size implementation regressions, and mechanically enroll two config flags in existing session expected objects. No framework, permission change or weakened assertion. | User: "proceed until done" on 2026-09-17, responding to exact two-fix approval request. PTY failure remains separately blocking, not waived. | ✅ Resolved |
+| AR-24 | Necessary verification correction (runtime) | PTY collector snapshots output on child exit before streams necessarily close. | Collect on close, retaining all terminal-restoration and exit assertions; no production change or retry-away waiver. | User: "you may" on 2026-09-17. Exact one-line collector correction and required verification authorized. | ✅ Resolved |
+
 ## Resolution Notes
+
+### AR-24: Complete PTY Output Before Restoration Assertions (runtime)
+
+**Category:** Necessary verification correction outside the existing approved test paths.
+**Status:** User approved with "you may" on 2026-09-17. Exact one-line collector change verified: focused PTY six, full CLI 1,419, structure 104 and browser 133 pass. No assertion or production code changed; original failure retained in evidence.
+
+Recommend changing only `packages/cli/tests/admin/application.pty.impl.test.ts:40` from child
+`exit` to `close` for output collection. Node's exit event need not mean stdout/stderr have closed;
+the existing collector therefore snapshots potentially incomplete output. Waiting for close
+observes complete output and preserves every exact terminal-restoration/exit assertion. No
+production code or additional machinery is needed. Independent read-only reviewer confirms this
+defect, but cannot conclusively attribute the one original SIGTERM failure to it: enter-screen
+readiness also precedes signal listener installation in the upstream host. Do not alter that
+readiness or production cleanup without demonstrated necessity and a further ruling.
+
+The original CLI gate failed the SIGTERM restoration case. After AR-23's authorized corrections,
+full CLI verify passes 1,419 cases; this does not waive or retry away the proven capture defect.
+Retain both logs. Exact expanded modification set: the single existing PTY implementation-test
+collector, this register/review/execution evidence and isolated feature roadmap. Re-run the PTY
+selector, CLI verify, structure and browser gates. If restoration still fails with complete output,
+investigate that failure rather than weaken the assertion or repeatedly retry it.
+
+Confidence: High for collector defect; unproven attribution of the original failure.
+Hardening: independent read-only diagnosis and direct native-host cleanup verification.
+
+### AR-23: Inline Help Geometry and Existing Capability Expectations (runtime)
+
+**Category:** Necessary correctness correction and mechanical immutable-oracle enrollment.
+**Status:** User approved with "proceed until done" on 2026-09-17. Exact corrections verified by 152 focused and 1,419 full CLI cases, lint/compiler/build; ONE fix-scoped re-review resolves RV-001 with no residual finding. No production permissions or existing equality assertions changed.
+
+Recommend enlarging only the existing fixed help width and derived minimum to fit the longest
+legal duration and invalid-state text, then adding fitting-size implementation regressions. RV-001
+is independently confirmed MAJOR: `system-config-workspace.ts:36,231` allocates 52 cells, whereas
+legal refresh lifetime `31535999` renders 60 and an invalid draft 57. Required restart guidance
+clips at the advertised fitting geometry. No new framework, scroller or responsive infrastructure.
+
+The broader CLI gate also finds 17 existing exact capability expectations missing the newly
+approved `canReadConfig`/`canUpdateConfig` fields (`session-service.ts:322–323`). Authorize only
+mechanical expected-object additions in `tests/admin/session.spec.test.ts` and `session.impl.test.ts`:
+false for unrelated/malformed claims, true for valid legacy `porta-admin`. Preserve exact equality,
+all existing security assertions, and production authorization behavior; no partial-match replacement.
+This directly required enrollment extends the phase's expected test modification set by two files.
+
+Independent challenger confirms both recommendations and the smallest correction boundary.
+Confidence: High. Hardening: independent correctness review plus security auditor challenge.
+Exact source/test scope: `system-config-workspace.ts`, existing
+`system-config-state.impl.test.ts` for geometry regression, the two existing session test files,
+this register/review/execution evidence and isolated feature roadmap. Re-run focused selectors,
+CLI verify, structure and browser gates; obtain one scoped correction re-review before publication.
+
+An additional PTY SIGTERM restoration failure remains separately unresolved and blocking. No
+PTY assertion change or failure waiver is proposed or authorized by this ruling. Investigate it
+with the original failure retained; any new necessary correction outside scope requires a ruling.
+
+### AR-22: Application Specification Boundary and Fixture Corrections (runtime)
+
+**Category:** Necessary specification-authoring correction; no product scope expansion.
+**Status:** User approved with "i approve" on 2026-09-17. Exact two corrections applied; no production permission validation changed. The corrected selector exposed an omitted inherited focus method in the shell adapter; direct delegation fixes that implementation defect within the existing shell task.
+
+Phase 4's full selector currently passes 32 of 34 cases. CLI source typecheck and focused lint
+pass. The new quartet, native drafts, measured DSL geometry, single batch, busy guard, reload,
+restart notice, dirty confirmation, permissions and shell wiring are implemented. No commit or
+push is made while this selector fails. Log: `/tmp/porta-config-phase4-green.log`.
+
+The clean-close assertion in `system-config-application.spec.test.ts:251` searches the entire
+terminal frame for absence of `System Configuration`, but the persistent menu correctly contains
+`System Configuration…` (`presentation.ts:268`). Its opening assertion can likewise match the
+menu instead of the actual editor. The smallest correction checks a mounted `Dialog` with that
+title when opened, and its absence after close, retaining the original focus-restoration assertion.
+
+The other-workspace fixture at `system-config-application.spec.test.ts:287` omits `isSuperAdmin`.
+Existing `portabilityCapabilities` requires an explicit boolean before opening that workspace
+(`portability-controller.ts:160–170`). Add `isSuperAdmin: false` to satisfy the intended precondition;
+retain all existing slot-gating assertions and existing production validation unchanged.
+
+Independent read-only challenger confirms both are authoring defects and the two corrections
+above are the smallest viable fix. Hiding/renaming the persistent menu or relaxing capability
+validation would alter valid production behavior merely to accommodate invalid tests; rejected.
+Confidence: High. Hardening: independent challenger verified the exact test and source boundaries.
+
+Exact proposed correction set: only the application specification's opening/closing window
+assertion boundary and missing false capability fixture; this register, execution evidence and
+isolated feature roadmap. No security assertion is removed or relaxed, no backend or framework
+is added. After approval, rerun all 34 immutable UI cases, continue the remaining implementation
+tests and gates, and obtain the mandatory phase correctness/security reviews before publication.
 
 ### AR-21: Runtime Configuration Mutation Path Confinement (runtime)
 

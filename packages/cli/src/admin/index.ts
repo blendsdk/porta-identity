@@ -235,6 +235,49 @@ export type {
   AdminPortabilityFiles,
 } from './portability-controller.js';
 export { createAdminPortabilityOperations } from './portability-service.js';
+export {
+  createAdminSystemConfigController,
+  SYSTEM_CONFIG_COMMAND,
+} from './system-config-controller.js';
+export type {
+  AdminSystemConfigController,
+  AdminSystemConfigControllerHost,
+  AdminSystemConfigControllerOptions,
+} from './system-config-controller.js';
+export {
+  ADMIN_CONFIG_KEYS,
+  createAdminSystemConfigOperations,
+  isAdminConfigKey,
+  isAdminConfigValue,
+  validateAdminConfigEntries,
+} from './system-config-service.js';
+export type {
+  AdminConfigFailure,
+  AdminConfigReadResult,
+  AdminConfigMutationResult,
+  AdminSystemConfigOperations,
+} from './system-config-service.js';
+export {
+  formatAdminConfigDuration,
+  parseAdminConfigDraft,
+  projectAdminConfigDrafts,
+  setAdminConfigDraft,
+} from './system-config-state.js';
+export type {
+  AdminSystemConfigIntent,
+  AdminSystemConfigReadyState,
+  AdminSystemConfigWorkspaceState,
+  AdminSystemConfigDraftProjection,
+} from './system-config-state.js';
+export {
+  createAdminSystemConfigWorkspace,
+  SYSTEM_CONFIG_MINIMUM_SIZE,
+} from './system-config-workspace.js';
+export type {
+  AdminSystemConfigCapabilities,
+  AdminSystemConfigWorkspace,
+  AdminSystemConfigWorkspaceOptions,
+} from './system-config-workspace.js';
 export type { AdminPortabilityOperations } from './portability-service.js';
 export { createAdminPortabilityWorkspace } from './portability-workspace.js';
 export type {

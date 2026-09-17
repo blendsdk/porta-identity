@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-15
+> **Last Updated**: 2026-09-17
 
 ## High-Level Architecture
 
@@ -79,6 +79,12 @@ Global application definitions and organization-bound OIDC clients use separate 
 service and controller boundaries. They validate complete remote projections before publication,
 recheck selected-organization ownership immediately before client mutations, and keep one-time
 client secrets inside an abortable presenter continuation without persisting them.
+Deployment-global operational policy uses a direct service/state/workspace/controller family over
+the existing SDK configuration domain. API metadata drives four full-page DSL tabs; exact read/update
+capabilities guard the top-level command and single changed-key batch. The same application workspace
+slot and busy gates prevent one operator from replacing another open feature's drafts. No polling,
+concurrent-editor handling or mutation retry is introduced. See
+[global operational configuration](./api-design.md#global-operational-configuration).
 The global Applications workspace composes a JSVision `DataGrid` and movable Layout DSL dialogs
 directly over its application controller. List and detail states always retain their
 deployment-global label, module mutations carry the selected application UUID, and every successful

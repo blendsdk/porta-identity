@@ -75,6 +75,8 @@ const allRbacCapabilities = {
 };
 
 const noPortabilityCapabilities = {
+  canReadConfig: false,
+  canUpdateConfig: false,
   canExportData: false,
   canImportData: false,
   canReadClaims: false,
@@ -85,6 +87,8 @@ const noPortabilityCapabilities = {
 
 const legacyAdminPortabilityCapabilities = {
   ...noPortabilityCapabilities,
+  canReadConfig: true,
+  canUpdateConfig: true,
   canReadClaims: true,
   canCreateClaims: true,
   canUpdateClaims: true,

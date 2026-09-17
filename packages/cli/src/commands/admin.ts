@@ -126,6 +126,7 @@ export async function runAdminCommand(
             },
             () => selectedClient(selectedServer).exports,
             () => selectedClient(selectedServer).imports,
+            () => selectedClient(selectedServer).config,
           ),
       });
     };

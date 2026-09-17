@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-16
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -185,6 +185,17 @@ accepted bounds or choices, application mode and update time. Set first reads li
 parses a base-ten safe integer within inclusive bounds or an exact supported string, and sends
 the returned typed key with its native scalar. JSON preserves SDK results. Human output reports
 that every Porta server instance must restart only when the confirmed result requires it.
+
+The embedded Admin application's top-level `System Configuration…` command opens one maximized
+four-tab Layout DSL editor with a persistent Save/Cancel footer. Its session-bound service validates
+the complete closed catalog and terminal-safe metadata before rendering. Read and update permissions
+remain separate, and no selected organization is required for this deployment-global policy.
+Drafts retain native seconds while inline help shows exact whole-unit durations. One Save sends
+only valid changed keys in one batch. Confirmed success reloads authoritative values; an unknown
+outcome reads back once without replaying the mutation and retains drafts for review. Busy work
+blocks edits and closure; dirty closure uses one ordinary discard confirmation. Session replacement
+and shutdown release local ownership, so late results cannot repaint a cleared editor. Below the
+measured fitting minimum, resize guidance replaces editable controls without discarding drafts.
 
 ## Authentication
 

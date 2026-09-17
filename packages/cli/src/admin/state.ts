@@ -4,6 +4,10 @@ import type { VerifiedIdentity } from '../auth/types.js';
 
 /** Organization actions granted by a freshly verified administration session. */
 export interface AdminCapabilities {
+  /** Whether deployment-global operational policy may be inspected. */
+  readonly canReadConfig: boolean;
+  /** Whether deployment-global operational policy may be updated. */
+  readonly canUpdateConfig: boolean;
   /** Whether portability manifests may be exported. */
   readonly canExportData: boolean;
   /** Whether portability manifests may be previewed and imported. */
@@ -83,10 +87,7 @@ export type AdminOrganizationLoginMethod = 'password' | 'magic_link';
 
 /** Organization-wide second-factor policies supported after password authentication. */
 export type AdminOrganizationTwoFactorPolicy =
-  | 'optional'
-  | 'required_email'
-  | 'required_totp'
-  | 'required_any';
+  'optional' | 'required_email' | 'required_totp' | 'required_any';
 
 /** Branding image slots managed by the organization workspace. */
 export type AdminOrganizationAssetType = 'logo' | 'favicon';
@@ -172,10 +173,7 @@ export type AdminOrganizationIntent =
 
 /** Fixed workspace failure categories that are safe to render. */
 export type AdminOrganizationWorkspaceFailureKind =
-  | AdminOrganizationFailureKind
-  | 'file-type'
-  | 'file-size'
-  | 'file-read';
+  AdminOrganizationFailureKind | 'file-type' | 'file-size' | 'file-read';
 
 /** Sanitized read result returned by organization workspace operations. */
 export type AdminOrganizationWorkspaceReadResult<T> =
@@ -213,8 +211,10 @@ export type AdminOrganizationWorkspaceState =
       readonly failure?: AdminOrganizationWorkspaceFailureKind;
       readonly reloadedAfterFailure?: boolean;
     } & AdminOrganizationWorkspaceProjection)
-  | ({ readonly kind: 'failure'; readonly failure: AdminOrganizationWorkspaceFailureKind } &
-      Partial<AdminOrganizationWorkspaceProjection>);
+  | ({
+      readonly kind: 'failure';
+      readonly failure: AdminOrganizationWorkspaceFailureKind;
+    } & Partial<AdminOrganizationWorkspaceProjection>);
 
 /** The bounded organization projection retained by the terminal application. */
 export interface AdminOrganizationContext {

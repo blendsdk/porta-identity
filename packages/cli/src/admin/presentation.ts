@@ -16,6 +16,7 @@ import {
 } from '@jsvision/ui';
 import type { AdminConnectionState } from './state.js';
 import { PORTABILITY_COMMAND } from './portability-controller.js';
+import { SYSTEM_CONFIG_COMMAND } from './system-config-controller.js';
 
 /** Command names handled by the administration application. */
 export const ADMIN_COMMANDS = {
@@ -36,6 +37,7 @@ export const ADMIN_COMMANDS = {
   createClient: 'create-client',
   unavailableClient: 'client-action-unavailable',
   portability: PORTABILITY_COMMAND,
+  systemConfig: SYSTEM_CONFIG_COMMAND,
   cancel: 'cancel',
 } as const;
 
@@ -128,6 +130,8 @@ export function createAdminPresentation(
             canDeleteClients: false,
             canRevokeClientSecrets: false,
             canExportData: false,
+            canReadConfig: false,
+            canUpdateConfig: false,
             canImportData: false,
             canReadClaims: false,
             canCreateClaims: false,
@@ -166,6 +170,8 @@ export function createAdminPresentation(
             canDeleteClients: false,
             canRevokeClientSecrets: false,
             canExportData: false,
+            canReadConfig: false,
+            canUpdateConfig: false,
             canImportData: false,
             canReadClaims: false,
             canCreateClaims: false,
@@ -259,6 +265,7 @@ export function createAdminPresentation(
           ADMIN_COMMANDS.manageOrganization,
         ),
       ]),
+      item('System Configuration…', ADMIN_COMMANDS.systemConfig),
       usersMenu,
       applicationsMenu,
       clientsMenu,

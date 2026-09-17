@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-16 21:57
-> **Progress**: 37/59 tasks (63%)
+> **Last Updated**: 2026-09-17 20:26
+> **Progress**: 51/59 tasks (86%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -243,32 +243,36 @@ for only the exact three registered baseline limitations. No new harness machine
 
 ## Phase 4: Embedded Admin UI Workspace
 
+> **Phase baseline tree**: 2ec627e5b0f6709a6110ad5b537bf3979bc0992a
+> **Scope mode**: strict
+> **Expected modification set**: the four `packages/cli/src/admin/system-config-*.ts` modules; existing Admin `state.ts`, `session-service.ts`, `presentation.ts`, `application.ts`, `index.ts`; existing `packages/cli/src/commands/admin.ts` factory wiring; the four planned `packages/cli/tests/admin/system-config-*.test.ts` files; mechanical CLI test inventory enrollment in `repo-tests/monorepo/server-package.spec.test.mjs`; AR-23's exact capability enrollment in `session.spec.test.ts` and `session.impl.test.ts`; AR-24's one-line complete-output collector correction in `application.pty.impl.test.ts`; this plan's progress/review evidence, feature roadmap and existing opted-in architecture documentation. Mechanical path correction: the existing command owns the `prepareAdminSession` SDK factories and must pass the config factory for task 4.2.5; no additional behavior or abstraction.
+
 ### Step 4.1: Specification Tests
 
 **Reference**: [03-04](03-04-admin-ui.md) · ST-38–ST-46 · AR-11, AR-14, AR-16, AR-17
 
-- [ ] 4.1.1 [spec-author] Write workspace layout, validation, save, restart, discard, duration, permission, and compact-geometry specifications for ST-39–ST-46 — `packages/cli/tests/admin/system-config-workspace.spec.test.ts`
-- [ ] 4.1.2 [spec-author] Write application menu, capability, mount, cancel, and teardown specifications for ST-38 and ST-44 — `packages/cli/tests/admin/system-config-application.spec.test.ts`
-- [ ] 4.1.3 Run the Phase 4 specification selectors; record red failures and justify any behavior already passing
+- [x] 4.1.1 [spec-author] Write workspace layout, validation, save, restart, discard, duration, permission, and compact-geometry specifications for ST-39–ST-46 — `packages/cli/tests/admin/system-config-workspace.spec.test.ts` ✅ (completed: 2026-09-16 22:05; independent author formatting/lint/documentation self-check pass; 14 expected RED cases confirm absent planned workspace; log `/tmp/porta-config-phase4-workspace-red.log`; no implementation written)
+- [x] 4.1.2 [spec-author] Write application menu, capability, mount, cancel, and teardown specifications for ST-38 and ST-44 — `packages/cli/tests/admin/system-config-application.spec.test.ts` ✅ (completed: 2026-09-16 22:06; independent author ESLint/source typecheck/documentation self-check pass; 20 expected RED cases confirm absent command/capabilities/controller; log `/tmp/porta-config-phase4-application-red.log`; no implementation read or written)
+- [x] 4.1.3 Run the Phase 4 specification selectors; record red failures and justify any behavior already passing ✅ (completed: 2026-09-16 22:06; combined selector confirms all 34 expected RED cases: 14 workspace, 20 application; missing feature modules/command/capabilities, no already-passing new behavior; log `/tmp/porta-config-phase4-combined-red.log`; existing source typecheck and focused specification lint pass; AR-18 defers commits until green)
 
 ### Step 4.2: Implementation
 
 **Reference**: [03-04 §Implementation Details](03-04-admin-ui.md#implementation-details) · AR-11, AR-14, AR-16, AR-17
 
-- [ ] 4.2.1 Add validated Admin config operations and fixed service result mapping — `packages/cli/src/admin/system-config-service.ts`
-- [ ] 4.2.2 Add immutable loaded/draft/dirty/valid/busy/restart state and duration presentation — `packages/cli/src/admin/system-config-state.ts`
-- [ ] 4.2.3 Build the four-tab full-page Layout DSL workspace and persistent footer — `packages/cli/src/admin/system-config-workspace.ts`
-- [ ] 4.2.4 Add controller load/save/reload/discard/close lifecycle without retries — `packages/cli/src/admin/system-config-controller.ts`
-- [ ] 4.2.5 Add config read/update capabilities and session-bound operations — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/session-service.ts`
-- [ ] 4.2.6 Add the top-level command/menu, busy gating, workspace mount/cancel, and teardown — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application.ts`
-- [ ] 4.2.7 Export the new Admin UI surface through the existing barrel — `packages/cli/src/admin/index.ts`
-- [ ] 4.2.8 Run Phase 4 specification selectors and make them green without changing oracle expectations
+- [x] 4.2.1 Add validated Admin config operations and fixed service result mapping — `packages/cli/src/admin/system-config-service.ts` ✅ (completed: 2026-09-17 13:19; CLI source typecheck and focused lint pass; documentation and planning-reference self-check pass; full native response validation and single non-retrying batch adapter; immutable UI selector remains intentionally RED until remaining feature modules exist)
+- [x] 4.2.2 Add immutable loaded/draft/dirty/valid/busy/restart state and duration presentation — `packages/cli/src/admin/system-config-state.ts` ✅ (completed: 2026-09-17 13:20; CLI source typecheck/focused lint and semantic documentation self-check pass; invalid drafts retained, native equivalent numbers clean, dirty batch immutable; runtime workspace assertions remain pending on full family implementation)
+- [x] 4.2.3 Build the four-tab full-page Layout DSL workspace and persistent footer — `packages/cli/src/admin/system-config-workspace.ts` ✅ (completed: 2026-09-17 20:19; AR-23 fixed-width correction and two fitting-size regressions pass; focused 152 and full CLI 1,419 cases pass with lint/compiler/build; documentation self-check pass; ONE fix-scoped re-review explicitly resolves RV-001 with no residual finding)
+- [x] 4.2.4 Add controller load/save/reload/discard/close lifecycle without retries — `packages/cli/src/admin/system-config-controller.ts` ✅ (completed: 2026-09-17 13:25; CLI source typecheck/focused lint and documentation self-check pass; direct batch/reload/discard lifecycle and stale-result ownership release implemented; immutable full-family controller assertions run at 4.2.8 after command/capability enrollment)
+- [x] 4.2.5 Add config read/update capabilities and session-bound operations — `packages/cli/src/admin/state.ts`, `packages/cli/src/admin/session-service.ts` ✅ (completed: 2026-09-17 13:26; all eight immutable live-capability cases pass; CLI source typecheck/lint and documentation self-check pass; session-bound lazy domain wired through existing command factory)
+- [x] 4.2.6 Add the top-level command/menu, busy gating, workspace mount/cancel, and teardown — `packages/cli/src/admin/presentation.ts`, `packages/cli/src/admin/application.ts` ✅ (completed: 2026-09-17 15:36; AR-22 exact corrections applied; missing inherited focus method repaired with direct delegation; all 34 UI specifications, CLI source typecheck and focused lint pass; log `/tmp/porta-config-phase4-approved-green.log`)
+- [x] 4.2.7 Export the new Admin UI surface through the existing barrel — `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-17 15:36; CLI source typecheck and focused barrel lint pass; existing public entry point reused)
+- [x] 4.2.8 Run Phase 4 specification selectors and make them green without changing oracle expectations ✅ (completed: 2026-09-17 15:36; all 34 cases pass, no unhandled errors; AR-22 exact authoring corrections approved, intended behavior and security assertions unchanged; log `/tmp/porta-config-phase4-approved-green.log`)
 
 ### Step 4.3: Implementation Tests and Hardening
 
-- [ ] 4.3.1 Add response-validation, draft-state, duration, and busy-transition implementation tests — `packages/cli/tests/admin/system-config-state.impl.test.ts`
-- [ ] 4.3.2 Add controller load/save/failure/cancellation/cleanup implementation tests — `packages/cli/tests/admin/system-config-controller.impl.test.ts`
-- [ ] 4.3.3 Run focused Admin UI tests, `yarn workspace @portaidentity/cli verify`, `yarn test:structure`, and `yarn test:ui`
+- [x] 4.3.1 Add response-validation, draft-state, duration, and busy-transition implementation tests — `packages/cli/tests/admin/system-config-state.impl.test.ts` ✅ (completed: 2026-09-17 15:38; 49 granular cases and focused lint pass; malformed catalogs/native scalars, safe failures, no mutation replay, immutable raw drafts and busy guards covered; log `/tmp/porta-config-phase4-state-impl.log`)
+- [x] 4.3.2 Add controller load/save/failure/cancellation/cleanup implementation tests — `packages/cli/tests/admin/system-config-controller.impl.test.ts` ✅ (completed: 2026-09-17 15:39; nine real controller/host cases and focused lint pass; safe load/save failures, one unknown-outcome readback, dirty retention, session rejection, failed confirmation and late mutation cleanup covered; log `/tmp/porta-config-phase4-controller-impl.log`)
+- [x] 4.3.3 Run focused Admin UI tests, `yarn workspace @portaidentity/cli verify`, `yarn test:structure`, and `yarn test:ui` ✅ (completed: 2026-09-17 20:26; AR-24 collector corrected without assertion changes; focused PTY six, full CLI 1,419 across 99 files with lint/compiler/build, structure 104 and browser 133 all pass; original failure retained in review evidence; mandatory correctness/security review complete and ONE RV-001 fix re-review resolves finding)
 
 **Verify**: focused terminal Admin UI selectors, CLI workspace verify, structure tests, and UI regression gate (AR-15)
 
