@@ -4,7 +4,8 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { basename } from 'node:path';
 
 import { FileDialog, nodeFileSystem, openFile } from '@jsvision/files';
-import { Commands, confirm, signal } from '@jsvision/ui';
+import { filesEn } from '@jsvision/files/locales/en';
+import { Commands, confirm, createI18n, signal } from '@jsvision/ui';
 import type { EventLoop, ModalDialogHost, View } from '@jsvision/ui';
 import { PortaAuthenticationError } from '@portaidentity/sdk';
 import type {
@@ -45,6 +46,12 @@ const MAX_MANIFEST_BYTES = 64 * 1024 * 1024;
 
 /** Marker used only to distinguish the fixed local size failure. */
 const MANIFEST_TOO_LARGE = 'MAX_BYTES_EXCEEDED';
+
+/** Keep Clear and Cancel reachable without changing the application's translation service. */
+const manifestFileI18n = createI18n({
+  locale: 'en',
+  catalogs: [filesEn, { schema: 1, locale: 'en', messages: { 'files.action.clear': 'C~l~ear' } }],
+});
 
 /** Result groups in the dependency order used for first-error focus. */
 const ENTITY_ORDER: readonly PortabilityEntityType[] = [
@@ -202,7 +209,7 @@ function initialExportSelection(
     categories.push('users_assignments');
   }
   return {
-    ...(state.organization
+    ...(state.organization && !state.organization.isSuperAdmin
       ? { scope: { kind: 'organization' as const, organization_slug: state.organization.slug } }
       : capabilities.isSuperAdmin
         ? { scope: { kind: 'environment' as const } }
@@ -224,6 +231,7 @@ async function saveManifestPath(
     filename: signal(filename),
     save: true,
     title: 'Save manifest',
+    i18n: manifestFileI18n,
   });
   host.desktop.addWindow(dialog);
   try {
@@ -267,7 +275,11 @@ export function createAdminPortabilityController(
 ): AdminPortabilityController {
   const workspaceFactory = options.workspaceFactory ?? createAdminPortabilityWorkspace;
   const dialogs: AdminPortabilityDialogs = {
-    chooseManifest: () => openFile(options.host, { wildcard: '*.json', title: 'Choose manifest' }),
+    chooseManifest: () =>
+      openFile(
+        { ...options.host, i18n: manifestFileI18n },
+        { wildcard: '*.json', title: 'Choose manifest' },
+      ),
     saveManifest: (filename) => saveManifestPath(options.host, filename),
     confirmApply: () => confirm(options.host, 'Are you sure?'),
     showOneTimeClientSecret: (operationSignal, value) =>

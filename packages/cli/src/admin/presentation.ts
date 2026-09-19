@@ -265,7 +265,7 @@ export function createAdminPresentation(
           ADMIN_COMMANDS.manageOrganization,
         ),
       ]),
-      item('System Configuration…', ADMIN_COMMANDS.systemConfig),
+      item('~S~ystem Configuration…', ADMIN_COMMANDS.systemConfig),
       usersMenu,
       applicationsMenu,
       clientsMenu,

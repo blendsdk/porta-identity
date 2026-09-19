@@ -2,6 +2,7 @@
 import {
   Button,
   col,
+  ComboBox,
   cover,
   Dialog,
   fixed,
@@ -36,8 +37,8 @@ const INPUT_WIDTH = 12;
 const HELP_WIDTH = 'seconds · 300–31536000 · 31535999 seconds · Restart required'.length;
 /** Fitting viewport includes page padding, tab/window borders and menu/status chrome. */
 export const SYSTEM_CONFIG_MINIMUM_SIZE = Object.freeze({
-  width: LABEL_WIDTH + INPUT_WIDTH + HELP_WIDTH + 2 + 6,
-  height: 8 + 7 + 2 + 3 + 2 + 3 + 2,
+  width: LABEL_WIDTH + INPUT_WIDTH + HELP_WIDTH + 2 + 6 + 2,
+  height: 8 + 7 + 2 + 3 + 2 + 3 + 2 + 2,
 });
 
 /** Verified authority needed by this feature only. */
@@ -142,7 +143,12 @@ export function createAdminSystemConfigWorkspace(
   const active = signal(0);
   const inputs = new Map<
     ConfigKey,
-    { readonly input: Input; readonly value: Signal<string>; readonly help: Signal<string> }
+    {
+      readonly input: Input | ComboBox<string>;
+      readonly value: Signal<string>;
+      readonly selection?: Signal<string | null>;
+      readonly help: Signal<string>;
+    }
   >();
 
   /** Updates retained controls without rebuilding or stealing focus on every keystroke. */
@@ -157,8 +163,10 @@ export function createAdminSystemConfigWorkspace(
       if (!control) continue;
       const raw = state.drafts?.[entry.key] ?? String(entry.value);
       if (control.value.peek() !== raw) control.value.set(raw);
+      if (control.selection && control.selection.peek() !== raw) control.selection.set(raw);
       control.help.set(help(entry, raw));
       control.input.state.disabled = !!state.busy;
+      if (control.input instanceof ComboBox) control.input.input.state.disabled = !!state.busy;
       control.input.invalidate();
     }
     if (save) {
@@ -204,16 +212,26 @@ export function createAdminSystemConfigWorkspace(
                 ? (state.drafts?.[entry.key] ?? String(entry.value))
                 : String(entry.value),
             );
-            const input = new Input({ value, maxLength: 32 });
+            const selection =
+              entry.valueType === 'string' ? signal<string | null>(value.peek()) : undefined;
+            const input = selection
+              ? new ComboBox({
+                  items: signal([...(entry.allowedValues ?? [])]),
+                  value: selection,
+                  getText: (locale) => locale,
+                  editable: false,
+                })
+              : new Input({ value, maxLength: 32 });
             const hint = signal(help(entry, value.peek()));
-            inputs.set(entry.key, { input, value, help: hint });
+            inputs.set(entry.key, { input, value, selection, help: hint });
             input.onMount(() =>
               input.bind(
-                () => value(),
+                () => (selection ? selection() : value()),
                 (text) => {
                   if (
                     state.kind !== 'ready' ||
                     state.busy ||
+                    text === null ||
                     text === (state.drafts?.[entry.key] ?? String(entry.value))
                   )
                     return;
@@ -226,7 +244,10 @@ export function createAdminSystemConfigWorkspace(
             return fixed(
               row(
                 { gap: 1 },
-                fixed(new Label(entry.label, input), LABEL_WIDTH),
+                fixed(
+                  new Label(entry.label, input instanceof ComboBox ? input.input : input),
+                  LABEL_WIDTH,
+                ),
                 fixed(input, INPUT_WIDTH),
                 fixed(new Text(() => hint()), HELP_WIDTH),
                 spacer(),
@@ -242,6 +263,7 @@ export function createAdminSystemConfigWorkspace(
       save = new Button('Save', { onClick: () => options.onIntent({ kind: 'save' }) });
       cancel = new Button('Cancel', { onClick: () => options.onIntent({ kind: 'close' }) });
       body = col(
+        { padding: 1 },
         grow(pane),
         fixed(new Text(() => statusMessage()), 1),
         fixed(
@@ -298,7 +320,7 @@ export function createAdminSystemConfigWorkspace(
           ? state.entries.find((item) => inputs.get(item.key)?.input.parent?.parent === page)
           : undefined;
       const target = entry ? inputs.get(entry.key)?.input : pane?.strip;
-      if (target) options.focusView?.(target);
+      if (target) options.focusView?.(target instanceof ComboBox ? target.input : target);
     },
     clear() {
       state = { kind: 'closed' };

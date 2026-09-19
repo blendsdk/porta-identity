@@ -69,6 +69,8 @@ export interface AdminPortabilityOrganization {
   readonly slug: string;
   /** Current organization lifecycle state. */
   readonly status: 'active' | 'suspended';
+  /** The control-plane organization is excluded from portable tenant records. */
+  readonly isSuperAdmin?: boolean;
 }
 
 /** Safe global application choice shown by application-related exports. */
@@ -211,11 +213,12 @@ function canExportCategory(
 function initialExportSelection(
   options: AdminPortabilityWorkspaceOptions,
 ): AdminPortabilityExportSelection {
-  const scope: PortabilityScope | undefined = options.organization
-    ? { kind: 'organization', organization_slug: options.organization.slug }
-    : options.capabilities.isSuperAdmin
-      ? { kind: 'environment' }
-      : undefined;
+  const scope: PortabilityScope | undefined =
+    options.organization && !options.organization.isSuperAdmin
+      ? { kind: 'organization', organization_slug: options.organization.slug }
+      : options.capabilities.isSuperAdmin
+        ? { kind: 'environment' }
+        : undefined;
   return {
     ...(scope ? { scope } : {}),
     categories: CATEGORIES.filter(
@@ -328,7 +331,7 @@ export function createAdminPortabilityWorkspace(
       const selectedScope: PortabilityScope | undefined =
         scopeIndex === 1 && options.capabilities.isSuperAdmin
           ? { kind: 'environment' }
-          : options.organization
+          : options.organization && !options.organization.isSuperAdmin
             ? { kind: 'organization', organization_slug: options.organization.slug }
             : undefined;
       return {
@@ -353,10 +356,11 @@ export function createAdminPortabilityWorkspace(
     });
     const close = new Button('Close', { onClick: () => options.onIntent({ kind: 'close' }) });
     const scopeLabels = [
-      `Selected organization${options.organization ? `: ${options.organization.name}` : ' required'}`,
+      `Selected organization${options.organization ? `: ${options.organization.name}${options.organization.isSuperAdmin ? ' (not exportable)' : ''}` : ' required'}`,
       ...(options.capabilities.isSuperAdmin ? ['Entire environment'] : []),
     ];
     const scopeControl = new RadioGroup({ labels: scopeLabels, value: scope });
+    if (options.organization?.isSuperAdmin) scopeControl.setItemEnabled(0, false);
     const summary = new Text(() => {
       const current = currentSelection();
       return `${current.categories.length} categories · ${current.applications.kind === 'all' ? 'All applications' : `${current.applications.slugs.length} applications`}`;
@@ -382,6 +386,7 @@ export function createAdminPortabilityWorkspace(
           Math.max(2, options.applications.length),
         ),
         fixed(summary, 1),
+        ready?.feedback && fixed(new Text(ready.feedback), 1),
         spacer(),
         fixed(row({ gap: 1 }, exportAction, close, spacer()), 2),
       ),
@@ -505,7 +510,9 @@ export function createAdminPortabilityWorkspace(
       render();
     },
     focusCurrent() {
-      const focus = tabFocus[activeTab.peek()] ?? currentTabs?.strip;
+      // Pending operations disable actions; the tab header remains a valid focus target.
+      const preferred = tabFocus[activeTab.peek()];
+      const focus = preferred && !preferred.state.disabled ? preferred : currentTabs?.strip;
       if (focus) options.focusView?.(focus);
     },
     clear() {
