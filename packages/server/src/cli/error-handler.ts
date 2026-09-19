@@ -16,13 +16,15 @@
  */
 
 import { error } from './output.js';
+import { SigningKeyCryptoError } from '../lib/signing-key-crypto.js';
 
 /**
  * Wrap a command handler with error handling.
  *
  * Catches known domain errors and displays formatted messages.
- * Unknown errors show a generic message. Verbose mode (--verbose)
- * additionally prints the full stack trace to stderr.
+ * Unknown errors show a generic message. Verbose mode (`--verbose`) prints the full stack trace
+ * for ordinary errors. Signing-key storage failures always remain bounded because underlying
+ * cryptographic and database details are unsafe for operator output.
  *
  * Always calls process.exit() — exit(0) on success, exit(1) on error.
  * This ensures the CLI process terminates cleanly after each command.
@@ -39,6 +41,12 @@ export async function withErrorHandling(
     process.exit(0);
   } catch (err: unknown) {
     if (err instanceof Error) {
+      if (err instanceof SigningKeyCryptoError) {
+        error(`Error: ${err.message}`);
+        process.exit(1);
+        return;
+      }
+
       // ---------------------------------------------------------------
       // Domain errors (from direct-DB commands like init/migrate)
       // Detected by constructor name suffix to avoid importing every

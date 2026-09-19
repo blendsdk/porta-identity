@@ -68,10 +68,8 @@ describe('config schema — production safety rules', () => {
         from: 'noreply@porta.local',
       },
       logLevel: 'debug',
-      twoFactorEncryptionKey:
-        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      signingKeyEncryptionKey:
-        'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
+      twoFactorEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      signingKeyEncryptionKey: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
     };
     const result = configSchema.safeParse(devConfig);
     expect(result.success).toBe(true);
@@ -86,10 +84,8 @@ describe('config schema — production safety rules', () => {
       cookieKeys: ['dev-cookie-key-change-me-in-production'],
       smtp: { host: 'localhost', port: 1025, from: 'test@test.com' },
       logLevel: 'debug',
-      twoFactorEncryptionKey:
-        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-      signingKeyEncryptionKey:
-        'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
+      twoFactorEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      signingKeyEncryptionKey: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
     };
     const result = configSchema.safeParse(testConfig);
     expect(result.success).toBe(true);
@@ -103,9 +99,7 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['a-long-key-with-change-me-in-it-that-is-32-chars-plus'],
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev placeholder'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev placeholder'));
     });
 
     it('should reject cookie key with "change_me" variant', () => {
@@ -113,9 +107,7 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['this-key-has-change_me-inside-it-and-is-long-enough!!'],
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev placeholder'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev placeholder'));
     });
 
     it('should reject cookie key with "changeme" (no separator)', () => {
@@ -123,9 +115,7 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['a-production-key-with-changeme-that-is-32-chars-long!'],
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev placeholder'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev placeholder'));
     });
 
     it('should reject the exact .env.example default', () => {
@@ -133,9 +123,7 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['dev-cookie-key-change-me-in-production'],
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev placeholder'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev placeholder'));
     });
   });
 
@@ -147,9 +135,7 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['short-but-valid-16ch!'], // 20 chars, >16 (base) but <32 (prod)
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('shorter than 32 chars'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('shorter than 32 chars'));
     });
 
     it('should accept cookie key of exactly 32 chars', () => {
@@ -167,9 +153,7 @@ describe('config schema — production safety rules', () => {
       });
       expect(success).toBe(false);
       // Should mention COOKIE_KEYS[1] specifically
-      expect(messages).toContainEqual(
-        expect.stringContaining('COOKIE_KEYS[1]'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('COOKIE_KEYS[1]'));
     });
   });
 
@@ -192,19 +176,15 @@ describe('config schema — production safety rules', () => {
   describe('R4 — TWO_FACTOR_ENCRYPTION_KEY placeholder detection', () => {
     it('should reject the .env.example 2FA placeholder', () => {
       const { success, messages } = parseAndGetMessages({
-        twoFactorEncryptionKey:
-          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        twoFactorEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev placeholder'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev placeholder'));
     });
 
     it('should accept a non-placeholder 2FA key', () => {
       const { success } = parseAndGetMessages({
-        twoFactorEncryptionKey:
-          'aa11bb22cc33dd44ee55ff66aa11bb22cc33dd44ee55ff66aa11bb22cc33dd44',
+        twoFactorEncryptionKey: 'aa11bb22cc33dd44ee55ff66aa11bb22cc33dd44ee55ff66aa11bb22cc33dd44',
       });
       expect(success).toBe(true);
     });
@@ -215,8 +195,7 @@ describe('config schema — production safety rules', () => {
   describe('R5 — SIGNING_KEY_ENCRYPTION_KEY placeholder detection', () => {
     it('should reject the .env.example signing key placeholder', () => {
       const { success, messages } = parseAndGetMessages({
-        signingKeyEncryptionKey:
-          'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
+        signingKeyEncryptionKey: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
       });
       expect(success).toBe(false);
       expect(messages).toContainEqual(
@@ -226,8 +205,7 @@ describe('config schema — production safety rules', () => {
 
     it('should accept a non-placeholder signing key', () => {
       const { success } = parseAndGetMessages({
-        signingKeyEncryptionKey:
-          'ff11ee22dd33cc44bb55aa66ff11ee22dd33cc44bb55aa66ff11ee22dd33cc44',
+        signingKeyEncryptionKey: 'ff11ee22dd33cc44bb55aa66ff11ee22dd33cc44bb55aa66ff11ee22dd33cc44',
       });
       expect(success).toBe(true);
     });
@@ -241,9 +219,7 @@ describe('config schema — production safety rules', () => {
         databaseUrl: 'postgresql://porta:porta_dev@db.prod.internal:5432/porta',
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev password "porta_dev"'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev password "porta_dev"'));
     });
 
     it('should accept DATABASE_URL with a real password', () => {
@@ -262,9 +238,7 @@ describe('config schema — production safety rules', () => {
         issuerBaseUrl: 'http://auth.example.com',
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('must use HTTPS in production'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('must use HTTPS in production'));
     });
 
     it('should accept HTTP issuer on localhost (dev convenience)', () => {
@@ -297,9 +271,7 @@ describe('config schema — production safety rules', () => {
         logLevel: 'debug',
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('too verbose for production'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('too verbose for production'));
     });
 
     it('should accept info log level', () => {
@@ -326,9 +298,7 @@ describe('config schema — production safety rules', () => {
         smtp: { ...validProdConfig.smtp, host: 'localhost' },
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev inbox'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev inbox'));
     });
 
     it('should reject SMTP_HOST=127.0.0.1', () => {
@@ -336,9 +306,7 @@ describe('config schema — production safety rules', () => {
         smtp: { ...validProdConfig.smtp, host: '127.0.0.1' },
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev inbox'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev inbox'));
     });
 
     it('should reject SMTP_HOST=127.0.1.1', () => {
@@ -346,9 +314,7 @@ describe('config schema — production safety rules', () => {
         smtp: { ...validProdConfig.smtp, host: '127.0.1.1' },
       });
       expect(success).toBe(false);
-      expect(messages).toContainEqual(
-        expect.stringContaining('dev inbox'),
-      );
+      expect(messages).toContainEqual(expect.stringContaining('dev inbox'));
     });
 
     it('should accept a real SMTP relay host', () => {
@@ -384,10 +350,8 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['dev-cookie-key-change-me-in-production'],
         smtp: { host: 'localhost', port: 1025, from: 'noreply@porta.local' },
         logLevel: 'debug',
-        twoFactorEncryptionKey:
-          '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-        signingKeyEncryptionKey:
-          'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
+        twoFactorEncryptionKey: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+        signingKeyEncryptionKey: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
       };
       const result = configSchema.safeParse(insecureConfig);
       expect(result.success).toBe(true);
@@ -400,6 +364,21 @@ describe('config schema — production safety rules', () => {
         databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta',
       });
       expect(success).toBe(false);
+    });
+
+    it('should not bypass root encryption key separation', () => {
+      process.env.PORTA_SKIP_PROD_SAFETY = 'true';
+      const sharedKey = 'aa11bb22cc33dd44ee55ff66aa11bb22cc33dd44ee55ff66aa11bb22cc33dd44';
+
+      const { success, messages } = parseAndGetMessages({
+        signingKeyEncryptionKey: sharedKey,
+        twoFactorEncryptionKey: sharedKey.toUpperCase(),
+      });
+
+      expect(success).toBe(false);
+      expect(messages).toContainEqual(
+        'SIGNING_KEY_ENCRYPTION_KEY and TWO_FACTOR_ENCRYPTION_KEY must use different values',
+      );
     });
   });
 
@@ -415,8 +394,7 @@ describe('config schema — production safety rules', () => {
         cookieKeys: ['short-change-me!!'], // placeholder + too short
         smtp: { host: 'localhost', port: 1025, from: 'noreply@porta.local' },
         logLevel: 'debug',
-        signingKeyEncryptionKey:
-          'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
+        signingKeyEncryptionKey: 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210',
       });
 
       expect(result.success).toBe(false);
@@ -427,7 +405,9 @@ describe('config schema — production safety rules', () => {
         expect(messages.length).toBeGreaterThanOrEqual(7);
         expect(messages).toContainEqual(expect.stringContaining('dev placeholder'));
         expect(messages).toContainEqual(expect.stringContaining('shorter than 32'));
-        expect(messages).toContainEqual(expect.stringContaining('TWO_FACTOR_ENCRYPTION_KEY is required'));
+        expect(messages).toContainEqual(
+          expect.stringContaining('TWO_FACTOR_ENCRYPTION_KEY is required'),
+        );
         expect(messages).toContainEqual(expect.stringContaining('SIGNING_KEY_ENCRYPTION_KEY'));
         expect(messages).toContainEqual(expect.stringContaining('porta_dev'));
         expect(messages).toContainEqual(expect.stringContaining('HTTPS'));

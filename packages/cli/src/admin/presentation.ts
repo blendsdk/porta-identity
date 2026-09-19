@@ -15,6 +15,8 @@ import {
   Window,
 } from '@jsvision/ui';
 import type { AdminConnectionState } from './state.js';
+import { PORTABILITY_COMMAND } from './portability-controller.js';
+import { SYSTEM_CONFIG_COMMAND } from './system-config-controller.js';
 
 /** Command names handled by the administration application. */
 export const ADMIN_COMMANDS = {
@@ -34,6 +36,8 @@ export const ADMIN_COMMANDS = {
   browseClients: 'browse-clients',
   createClient: 'create-client',
   unavailableClient: 'client-action-unavailable',
+  portability: PORTABILITY_COMMAND,
+  systemConfig: SYSTEM_CONFIG_COMMAND,
   cancel: 'cancel',
 } as const;
 
@@ -125,6 +129,14 @@ export function createAdminPresentation(
             canUpdateClients: false,
             canDeleteClients: false,
             canRevokeClientSecrets: false,
+            canExportData: false,
+            canReadConfig: false,
+            canUpdateConfig: false,
+            canImportData: false,
+            canReadClaims: false,
+            canCreateClaims: false,
+            canUpdateClaims: false,
+            isSuperAdmin: false,
           })
         : {
             canReadOrganizations: false,
@@ -157,6 +169,14 @@ export function createAdminPresentation(
             canUpdateClients: false,
             canDeleteClients: false,
             canRevokeClientSecrets: false,
+            canExportData: false,
+            canReadConfig: false,
+            canUpdateConfig: false,
+            canImportData: false,
+            canReadClaims: false,
+            canCreateClaims: false,
+            canUpdateClaims: false,
+            isSuperAdmin: false,
           };
     const hasOrganization = currentState.kind === 'authenticated' && currentState.organization;
     const hasUserCapability =
@@ -245,9 +265,11 @@ export function createAdminPresentation(
           ADMIN_COMMANDS.manageOrganization,
         ),
       ]),
+      item('~S~ystem Configuration…', ADMIN_COMMANDS.systemConfig),
       usersMenu,
       applicationsMenu,
       clientsMenu,
+      item('~I~mport / Export…', ADMIN_COMMANDS.portability),
     ];
   };
   const fullStatusItems = () => [

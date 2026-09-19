@@ -38,6 +38,10 @@ describe('agent', () => {
       expect(names).toContain('config.list');
       expect(names).toContain('stats.get');
       expect(names).toContain('audit.list');
+      expect(names).toContain('exports.manifest');
+      expect(names).toContain('imports.preview');
+      expect(names).toContain('imports.apply');
+      expect(names).not.toContain('imports.provision');
     });
 
     it('describes the exact user list, lifecycle, invitation, and history contracts', () => {
@@ -77,9 +81,22 @@ describe('agent', () => {
           expect(param).toHaveProperty('type');
           expect(param).toHaveProperty('description');
           expect(param).toHaveProperty('required');
-          expect(['string', 'number', 'boolean', 'object', 'array']).toContain(param.type);
+          expect(['string', 'number', 'boolean', 'object', 'array', 'number|string']).toContain(
+            param.type,
+          );
         }
       }
+    });
+
+    it('should describe native numeric or string config updates and their restart result', () => {
+      const tool = getToolDefinitions().find((candidate) => candidate.name === 'config.set');
+      expect(tool?.returns).toBe('ConfigUpdateResult');
+      const value = tool?.parameters.find((parameter) => parameter.name === 'value');
+      expect(value).toEqual(
+        expect.objectContaining({ name: 'value', type: 'number|string', required: true }),
+      );
+      expect(value?.description).toMatch(/number|numeric|integer/i);
+      expect(value?.description).toMatch(/string/i);
     });
   });
 
@@ -94,7 +111,13 @@ describe('agent', () => {
           getHistory: vi.fn().mockResolvedValue({ data: [], hasMore: false, nextCursor: null }),
         },
         stats: { get: vi.fn().mockResolvedValue({ orgs: 5 }) },
-        config: { list: vi.fn().mockResolvedValue([]) },
+        config: {
+          list: vi.fn().mockResolvedValue([]),
+          set: vi.fn().mockResolvedValue({
+            data: { key: 'magic_link_ttl', value: 1200 },
+            restartRequired: false,
+          }),
+        },
         userRoles: {
           assign: vi.fn().mockResolvedValue(undefined),
           remove: vi.fn().mockResolvedValue({ reauthenticationRequired: false }),
@@ -107,6 +130,21 @@ describe('agent', () => {
       const result = await executeTool(client, 'stats.get', {});
       expect(result.success).toBe(true);
       expect(result.data).toEqual({ orgs: 5 });
+    });
+
+    it('should dispatch config values without coercing numbers or locale strings', async () => {
+      const client = mockClient();
+      const result = await executeTool(client, 'config.set', {
+        key: 'magic_link_ttl',
+        value: 1200,
+      });
+      expect(vi.mocked(client.config.set)).toHaveBeenCalledWith('magic_link_ttl', 1200);
+      expect(result).toEqual({
+        success: true,
+        data: { data: { key: 'magic_link_ttl', value: 1200 }, restartRequired: false },
+      });
+      await executeTool(client, 'config.set', { key: 'default_locale', value: 'en' });
+      expect(vi.mocked(client.config.set)).toHaveBeenCalledWith('default_locale', 'en');
     });
 
     it('passes arguments based on tool definition', async () => {

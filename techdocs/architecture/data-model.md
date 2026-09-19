@@ -1,10 +1,10 @@
 # Data Model
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
-Porta's data model is defined across 27 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
+Porta's data model is defined across 28 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
 
 ## Entity Relationship Diagram
 
@@ -22,7 +22,9 @@ erDiagram
 
     users ||--o{ user_roles : "assigned"
     users ||--o{ custom_claim_values : "has"
-    users ||--o{ two_factor_settings : "has"
+    users ||--o| user_totp : "configures"
+    users ||--o{ two_factor_otp_codes : "receives"
+    users ||--o{ two_factor_recovery_codes : "owns"
     users ||--o{ auth_tokens : "has"
 
     roles ||--o{ user_roles : "assigned to"
@@ -226,23 +228,29 @@ Composite unique constraint `(user_id, claim_id)`.
 
 ## Two-Factor Authentication
 
-### Two-Factor Settings
+### TOTP Configurations
 
-Per-user 2FA configuration, scoped to an organization.
+`user_totp` stores one encrypted authenticator configuration per user. Tenant ownership follows
+the mandatory `users.organization_id` relationship.
 
-| Column                   | Type        | Description                       |
-| ------------------------ | ----------- | --------------------------------- |
-| `id`                     | UUID        | Primary key                       |
-| `user_id`                | UUID        | FK → users                        |
-| `organization_id`        | UUID        | FK → organizations                |
-| `method`                 | VARCHAR(20) | `totp`, `email`                   |
-| `is_enabled`             | BOOLEAN     | Whether 2FA is active             |
-| `totp_secret`            | TEXT        | AES-256-GCM encrypted TOTP secret |
-| `totp_verified`          | BOOLEAN     | Whether TOTP setup is confirmed   |
-| `recovery_codes`         | TEXT[]      | Argon2id-hashed recovery codes    |
-| `email_otp_last_sent_at` | TIMESTAMPTZ | Rate limiting for email OTP       |
+| Column                      | Type             | Description                                                    |
+| --------------------------- | ---------------- | -------------------------------------------------------------- |
+| `id`                        | UUID             | Primary key                                                    |
+| `user_id`                   | UUID             | FK → users, unique and cascade-deleted                         |
+| `encrypted_secret`          | TEXT             | AES-256-GCM ciphertext                                         |
+| `encryption_iv`             | TEXT             | Per-record initialization vector                               |
+| `encryption_tag`            | TEXT             | Authentication tag                                             |
+| `algorithm`                 | VARCHAR(10)      | Fixed to `SHA1` by a database check                            |
+| `digits`                    | INTEGER          | Fixed to `6` by a database check                               |
+| `period`                    | INTEGER          | Fixed to `30` seconds by a database check                      |
+| `verified`                  | BOOLEAN          | Whether enrollment was confirmed                               |
+| `last_accepted_time_step`   | BIGINT, nullable | Absolute step of the most recently accepted authenticator code |
+| `created_at` / `updated_at` | TIMESTAMPTZ      | Auto-managed timestamps                                        |
 
-Composite unique index `(user_id, organization_id)`.
+Authentication advances `last_accepted_time_step` only when the candidate step is greater. The
+conditional update binds the loaded row ID, user ID, and verified state, so concurrent reuse or a
+configuration replacement produces no mutation. Enrollment stores its first accepted step and
+enables the user within the same PostgreSQL transaction.
 
 ## Authentication & Token Tables
 
@@ -291,26 +299,40 @@ Stores AccessToken, RefreshToken, and Grant data in PostgreSQL for durability.
 
 ### System Config
 
-Key-value configuration store with 60-second in-memory cache.
+Global configuration uses a 60-second, read-driven in-memory cache. Public administration exposes exactly 18 keys with native JSONB values. The code catalog owns their types, bounds, defaults and metadata; database rows do not define additional editable settings.
 
 | Column        | Type         | Description                |
 | ------------- | ------------ | -------------------------- |
-| `key`         | VARCHAR(255) | Config key (primary key)   |
-| `value`       | JSONB        | Config value               |
+| `id`          | UUID         | Primary key                |
+| `key`         | VARCHAR(255) | Unique config key          |
+| `value`       | JSONB        | Native config value        |
 | `description` | TEXT         | Human-readable description |
+
+The internal `super_admin_user_id` bootstrap row is not exposed by this catalog. Infrastructure settings and secrets remain external. See the [configuration reference](../reference/configuration.md) for the full catalog, cache boundaries and restart rules, and the [public schema reference](../../docs/database/schema.md) for all storage columns.
 
 ### Signing Keys
 
 ES256 (ECDSA P-256) signing key pairs for JWT tokens.
 
-| Column        | Type         | Description                                 |
-| ------------- | ------------ | ------------------------------------------- |
-| `id`          | UUID         | Primary key                                 |
-| `kid`         | VARCHAR(255) | Key ID (for JWKS)                           |
-| `public_key`  | TEXT         | PEM-encoded public key                      |
-| `private_key` | TEXT         | PEM-encoded private key (encrypted at rest) |
-| `status`      | VARCHAR(20)  | `active`, `rotated`, `revoked`              |
-| `created_at`  | TIMESTAMPTZ  | Key creation time                           |
+| Column            | Type         | Description                                          |
+| ----------------- | ------------ | ---------------------------------------------------- |
+| `id`              | UUID         | Primary key                                          |
+| `kid`             | VARCHAR(255) | Key ID published through JWKS                        |
+| `algorithm`       | VARCHAR(10)  | Signing algorithm; runtime generation uses `ES256`   |
+| `public_key`      | TEXT         | PEM-encoded public key                               |
+| `private_key`     | TEXT         | AES-256-GCM ciphertext containing the private PEM    |
+| `private_key_iv`  | VARCHAR(24)  | Hex-encoded per-record initialization vector         |
+| `private_key_tag` | VARCHAR(32)  | Hex-encoded authentication tag                       |
+| `encrypted`       | BOOLEAN      | Must be `true` for every row accepted by the runtime |
+| `status`          | VARCHAR(20)  | `active`, `retired`, or `revoked`                    |
+| `activated_at`    | TIMESTAMPTZ  | Activation time                                      |
+| `retired_at`      | TIMESTAMPTZ  | Retirement time, when applicable                     |
+| `expires_at`      | TIMESTAMPTZ  | Verification grace-period expiry, when applicable    |
+| `created_at`      | TIMESTAMPTZ  | Key creation time                                    |
+
+The schema retains nullable encryption metadata for migration compatibility, but the runtime
+fails closed on plaintext or incomplete rows. A fresh database bootstrap inserts one encrypted
+active key under a transaction-scoped table lock.
 
 ### Audit Log
 

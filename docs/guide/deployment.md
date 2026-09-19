@@ -1,6 +1,73 @@
 # Production Deployment
 
+> **Last Updated**: 2026-09-17
+
 Guidance for deploying Porta to production environments using Docker.
+
+## Editable Global Configuration
+
+The closed database-backed catalog contains exactly 18 editable settings. PostgreSQL stores native
+JSONB integers or the locale string; code owns metadata, defaults and inclusive bounds. Administrators
+cannot create, rename or delete arbitrary keys. Internal `super_admin_user_id` is not editable or
+exposed through the configuration API.
+
+| Key                                | Default   | Inclusive range / choices | Unit     | Application mode   |
+| ---------------------------------- | --------- | ------------------------- | -------- | ------------------ |
+| `access_token_ttl`                 | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `id_token_ttl`                     | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `refresh_token_ttl`                | `2592000` | `300..31536000`           | seconds  | `restart-required` |
+| `authorization_code_ttl`           | `600`     | `30..3600`                | seconds  | `restart-required` |
+| `session_ttl`                      | `86400`   | `300..2592000`            | seconds  | `restart-required` |
+| `magic_link_ttl`                   | `900`     | `60..3600`                | seconds  | `runtime`          |
+| `password_reset_ttl`               | `3600`    | `300..86400`              | seconds  | `runtime`          |
+| `invitation_ttl`                   | `604800`  | `300..2592000`            | seconds  | `runtime`          |
+| `rate_limit_login_max`             | `10`      | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_login_window`          | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_magic_link_max`        | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_magic_link_window`     | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_password_reset_max`    | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_password_reset_window` | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
+| `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
+| `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
+| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
+
+Use [the Configuration API](../api/config.md), `porta config list|get|set`, or **System Configuration…**
+in `porta admin`; see [the environment reference](./environment.md#editable-global-configuration).
+After successful save/commit, the local process cache is cleared and subsequent runtime reads
+see the saved policy immediately. Other healthy server instances pick up runtime changes on their
+next read within the existing at-most-60-second cache lifetime. There is no broadcast invalidation.
+
+The five `restart-required` lifetime keys require restarting every Porta server instance after
+saving. Stored changes do not reconfigure an already running OIDC provider. API/SDK results return
+`restartRequired: true` for these keys or a batch containing one. Runtime-only batches return `false`.
+Porta does not automatically restart servers or instantly invalidate every instance's cache.
+Existing token/link absolute expiries and Redis counter expiries remain unchanged; current runtime
+policy applies at the established next read/decision or artifact creation point.
+
+## External Bootstrap Settings and Secrets
+
+The following remain external, in environment variables or a secret manager, outside the editable
+catalog/configuration API. Provide them before startup; never move root secrets into `system_config`.
+
+| External setting                        | Source and purpose                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                          | Environment/secret manager; PostgreSQL connection and credentials            |
+| `REDIS_URL`                             | Environment/secret manager; Redis connection and credentials                 |
+| `ISSUER_BASE_URL`                       | Environment; public issuer/bootstrap URL                                     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`   | Environment; SMTP connection and sender                                      |
+| `SMTP_USER`, `SMTP_PASS`                | Secret manager/environment; SMTP credentials                                 |
+| `COOKIE_KEYS`                           | Secret manager/environment; cookie signing key ring                          |
+| `SIGNING_KEY_ENCRYPTION_KEY`            | Secret manager/environment; signing-key encryption root                      |
+| `TWO_FACTOR_ENCRYPTION_KEY`             | Secret manager/environment; distinct TOTP encryption root                    |
+| `NODE_ENV`, `HOST`, `PORT`, `LOG_LEVEL` | Environment; process bootstrap and logging                                   |
+| `TRUST_PROXY`, `ADMIN_CORS_ORIGINS`     | Environment; trusted-proxy and authenticated CORS policy                     |
+| TLS certificate/private key             | Reverse-proxy files/secret manager; HTTPS termination outside the config API |
+
+Run migrations explicitly during deployment. Migration `030_global_configuration_catalog.sql`
+resets canonical operational values to these native defaults, removes obsolete public rows and
+preserves internal rows. Down is intentionally a no-op; database backup/restore remains the
+operator's separate PostgreSQL workflow, not a configuration API feature.
 
 ::: tip Docker Hub
 The Porta Docker image is available on [Docker Hub](https://hub.docker.com/r/blendsdk/porta):
@@ -40,6 +107,7 @@ services:
       SMTP_FROM: noreply@example.com
       LOG_LEVEL: info
       TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
+      SIGNING_KEY_ENCRYPTION_KEY: ${SIGNING_KEY_ENCRYPTION_KEY}
       TRUST_PROXY: 'true'
       PORTA_AUTO_MIGRATE: 'false'
     depends_on:
@@ -83,36 +151,39 @@ volumes:
 ```
 
 ::: warning
-Never use default passwords in production. Generate strong, unique values for
-`POSTGRES_PASSWORD`, `COOKIE_KEYS`, and `TWO_FACTOR_ENCRYPTION_KEY`.
+Never use default passwords or reusable example secrets in production. Generate strong, unique
+values for `POSTGRES_PASSWORD` and `COOKIE_KEYS`. Generate
+`SIGNING_KEY_ENCRYPTION_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` separately: both are required,
+external secrets of exactly 64 hexadecimal characters, and they must contain different values.
 :::
 
 ## Environment Variables
 
 ### Required for Production
 
-| Variable                    | Description                                | Example                                         |
-| --------------------------- | ------------------------------------------ | ----------------------------------------------- |
-| `DATABASE_URL`              | PostgreSQL connection string               | `postgresql://porta:secret@postgres:5432/porta` |
-| `REDIS_URL`                 | Redis connection string                    | `redis://redis:6379`                            |
-| `ISSUER_BASE_URL`           | Public-facing URL (must match your domain) | `https://auth.example.com`                      |
-| `COOKIE_KEYS`               | Cookie signing key (≥32 random characters) | `a1b2c3d4e5f6...`                               |
-| `TWO_FACTOR_ENCRYPTION_KEY` | AES-256-GCM key (64 hex chars = 32 bytes)  | `0123456789abcdef...`                           |
-| `SMTP_HOST`                 | SMTP relay hostname                        | `smtp.sendgrid.net`                             |
-| `SMTP_PORT`                 | SMTP port                                  | `587`                                           |
-| `SMTP_FROM`                 | Sender email address                       | `noreply@example.com`                           |
+| Variable                     | Description                                | Example                                         |
+| ---------------------------- | ------------------------------------------ | ----------------------------------------------- |
+| `DATABASE_URL`               | PostgreSQL connection string               | `postgresql://porta:secret@postgres:5432/porta` |
+| `REDIS_URL`                  | Redis connection string                    | `redis://redis:6379`                            |
+| `ISSUER_BASE_URL`            | Public-facing URL (must match your domain) | `https://auth.example.com`                      |
+| `COOKIE_KEYS`                | Cookie signing key (≥32 random characters) | `a1b2c3d4e5f6...`                               |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | AES-256-GCM key (exactly 64 hex chars)     | `${TWO_FACTOR_ENCRYPTION_KEY}`                  |
+| `SIGNING_KEY_ENCRYPTION_KEY` | AES-256-GCM key (exactly 64 hex chars)     | `${SIGNING_KEY_ENCRYPTION_KEY}`                 |
+| `SMTP_HOST`                  | SMTP relay hostname                        | `smtp.sendgrid.net`                             |
+| `SMTP_PORT`                  | SMTP port                                  | `587`                                           |
+| `SMTP_FROM`                  | Sender email address                       | `noreply@example.com`                           |
 
 ### Optional
 
-| Variable             | Default      | Description                                               |
-| -------------------- | ------------ | --------------------------------------------------------- |
-| `NODE_ENV`           | `production` | Runtime mode                                              |
-| `PORT`               | `3000`       | HTTP listen port                                          |
-| `HOST`               | `0.0.0.0`    | HTTP listen address                                       |
-| `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)          |
-| `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy |
-| `PORTA_AUTO_MIGRATE` | `false`      | Auto-run migrations on startup                            |
-| `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                   |
+| Variable             | Default      | Description                                                 |
+| -------------------- | ------------ | ----------------------------------------------------------- |
+| `NODE_ENV`           | `production` | Runtime mode                                                |
+| `PORT`               | `3000`       | HTTP listen port                                            |
+| `HOST`               | `0.0.0.0`    | HTTP listen address                                         |
+| `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)            |
+| `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy   |
+| `PORTA_AUTO_MIGRATE` | `false`      | Initial-setup migration switch; keep disabled in production |
+| `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                     |
 
 ### Generating Secrets
 
@@ -121,6 +192,9 @@ Never use default passwords in production. Generate strong, unique values for
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 # Two-factor encryption key (64 hex chars)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Signing-key encryption key (64 hex chars); run separately and do not reuse the first result
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Database password
@@ -153,81 +227,57 @@ Ensure `.env` is listed in `.gitignore` (it is by default in Porta). Never commi
 environment files containing real credentials.
 :::
 
-### Docker Secrets
+### Secret Injection
 
-For Docker Swarm deployments, use [Docker Secrets](https://docs.docker.com/engine/swarm/secrets/)
-to inject sensitive values as files rather than environment variables:
+Porta reads sensitive configuration from its documented environment variables. Have the
+deployment platform or secret manager inject those values into the container environment before
+the process starts. For Docker Compose, reference values from the host environment or an
+uncommitted `.env` file:
 
 ```yaml
 services:
   porta:
     image: blendsdk/porta:latest
     environment:
-      # Non-secret configuration
       NODE_ENV: production
       ISSUER_BASE_URL: https://auth.example.com
-      # Read secrets from files mounted by Docker
-      DATABASE_URL_FILE: /run/secrets/database_url
-      COOKIE_KEYS_FILE: /run/secrets/cookie_keys
-      TWO_FACTOR_ENCRYPTION_KEY_FILE: /run/secrets/2fa_key
-    secrets:
-      - database_url
-      - cookie_keys
-      - 2fa_key
-
-secrets:
-  database_url:
-    external: true
-  cookie_keys:
-    external: true
-  2fa_key:
-    external: true
+      DATABASE_URL: ${DATABASE_URL}
+      COOKIE_KEYS: ${COOKIE_KEYS}
+      TWO_FACTOR_ENCRYPTION_KEY: ${TWO_FACTOR_ENCRYPTION_KEY}
+      SIGNING_KEY_ENCRYPTION_KEY: ${SIGNING_KEY_ENCRYPTION_KEY}
 ```
 
-Create the secrets before deploying:
-
-```bash
-# Create secrets in Docker Swarm
-echo "postgresql://porta:secret@postgres:5432/porta" | docker secret create database_url -
-echo "your-cookie-signing-key-here" | docker secret create cookie_keys -
-echo "0123456789abcdef..." | docker secret create 2fa_key -
-```
-
-::: tip
-Porta's Docker entrypoint supports the `_FILE` suffix convention — if `DATABASE_URL_FILE`
-is set, Porta reads the secret from that file path instead of the `DATABASE_URL` environment
-variable.
+::: warning
+Porta does not read `*_FILE` variables. A platform that mounts secrets as files must materialize
+their contents into the documented environment variables before starting Porta. The two
+encryption root keys must each contain exactly 64 hexadecimal characters and must have different
+values.
 :::
 
 ### Cloud Secret Managers
 
 For cloud deployments, use your provider's secret management service:
 
-| Provider  | Service                                                            | Inject Via                                                  |
-| --------- | ------------------------------------------------------------------ | ----------------------------------------------------------- |
-| **AWS**   | [Secrets Manager](https://aws.amazon.com/secrets-manager/)         | ECS task definition `secrets` block, or Lambda env from SSM |
-| **GCP**   | [Secret Manager](https://cloud.google.com/secret-manager)          | Cloud Run `--set-secrets`, or GKE volume mount              |
-| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault references, or AKS CSI driver         |
+| Provider  | Service                                                            | Inject Via                                   |
+| --------- | ------------------------------------------------------------------ | -------------------------------------------- |
+| **AWS**   | [Secrets Manager](https://aws.amazon.com/secrets-manager/)         | ECS task definition environment secrets      |
+| **GCP**   | [Secret Manager](https://cloud.google.com/secret-manager)          | Cloud Run or GKE Secret environment values   |
+| **Azure** | [Key Vault](https://azure.microsoft.com/en-us/products/key-vault/) | App Service Key Vault environment references |
 
-Each service supports automatic rotation and audit logging. Refer to your provider's
-documentation for integration details.
+Refer to your provider's documentation for environment injection and audit capabilities.
 
 ### HashiCorp Vault
 
 For self-hosted or multi-cloud setups, [HashiCorp Vault](https://www.vaultproject.io/)
 provides centralised secret management:
 
-**Agent sidecar pattern** (recommended for containers):
+Use `vault kv get` or [envconsul](https://github.com/hashicorp/envconsul) to populate Porta's
+documented environment variables before starting the process. This must include distinct
+`SIGNING_KEY_ENCRYPTION_KEY` and `TWO_FACTOR_ENCRYPTION_KEY` values. For example:
 
-1. Run a Vault Agent sidecar alongside Porta
-2. The agent authenticates to Vault, fetches secrets, and writes them to a shared volume
-3. Porta reads secrets from the file paths via the `_FILE` env var convention
-
-**Environment injection pattern** (simpler for VMs):
-
-1. Use `vault kv get` or [envconsul](https://github.com/hashicorp/envconsul) to inject
-   secrets as environment variables before starting Porta
-2. Example: `envconsul -prefix porta/config ./start.sh`
+```bash
+envconsul -prefix porta/config ./start.sh
+```
 
 ## Database
 
@@ -246,9 +296,8 @@ docker exec porta-app node dist/cli/index.js migrate up
 docker exec porta-app node dist/cli/index.js migrate status
 ```
 
-**Auto-migration:** Set `PORTA_AUTO_MIGRATE=true` for the entrypoint to run migrations
-automatically on startup. This is convenient for initial setup but should be disabled
-in production once the schema is stable — run migrations explicitly during deployments.
+`PORTA_AUTO_MIGRATE` is an initial-setup convenience. Keep it `false` in production and run
+`porta migrate up` explicitly as a controlled deployment step before starting the new release.
 
 ### Backup & Recovery
 
@@ -340,9 +389,9 @@ Adjust based on your compliance requirements and storage budget.
 
 ### Access Controls
 
-Porta stores signing keys as PEM-encoded private keys in the `signing_keys` database
-table. Until at-rest encryption (KEK) is implemented, restrict database-level access
-as an interim security measure.
+Porta stores signing public data and AES-256-GCM-encrypted private-key material in the
+`signing_keys` table. The external `SIGNING_KEY_ENCRYPTION_KEY` decrypts that material and must
+remain outside PostgreSQL. Restrict database-level access as an additional control.
 
 #### Principle of Least Privilege
 
@@ -379,11 +428,6 @@ If you cannot use separate roles, at minimum restrict direct `SELECT` on the
 REVOKE ALL ON TABLE signing_keys FROM PUBLIC;
 GRANT SELECT, INSERT, UPDATE ON TABLE signing_keys TO porta_app;
 ```
-
-::: tip
-This is an interim mitigation. A future release will add envelope encryption (KEK)
-so that signing keys are encrypted at rest in the database.
-:::
 
 ## Redis
 
@@ -504,37 +548,27 @@ rotation for all three secret types: signing keys, cookie keys, and client secre
 Porta uses ES256 (ECDSA P-256) keys for JWT signing. Multiple keys can be active
 simultaneously — the newest key signs new tokens while older keys verify existing ones.
 
-**Zero-downtime rotation procedure:**
+**Signing-key change procedure:**
 
 ```bash
 # 1. List current signing keys
 docker exec porta-app node dist/cli/index.js keys list
 
-# 2. Generate a new signing key (becomes the active signing key)
+# 2. Add another active signing key without retiring existing active keys
 docker exec porta-app node dist/cli/index.js keys generate
 
-# 3. Verify the new key is active
+# 3. Restart every running Porta instance so each provider reloads committed keys
+docker compose -f docker/docker-compose.prod.yml restart porta
+
+# 4. After restarting, verify the committed active signing key
 docker exec porta-app node dist/cli/index.js keys list
 ```
 
-After generating a new key, the old key remains in the database for token verification.
-Wait for all existing tokens to expire before deactivating the old key:
-
-| Token Type    | Default TTL | Wait Before Deactivation |
-| ------------- | ----------- | ------------------------ |
-| Access Token  | 1 hour      | 1 hour                   |
-| Refresh Token | 14 days     | 14 days                  |
-| ID Token      | 1 hour      | 1 hour                   |
-
-```bash
-# 4. After the longest TTL has elapsed, deactivate the old key
-docker exec porta-app node dist/cli/index.js keys rotate
-```
-
-::: warning
-Never deactivate the old key before its tokens expire — clients will receive
-`invalid_token` errors when presenting tokens signed with a deactivated key.
-:::
+`porta keys generate` leaves every existing active key active. By contrast, `porta keys rotate`
+atomically retires every active key and creates one new active key. Rotation is therefore a
+deliberate replacement operation, not a later deactivation step for one generated key. After a
+successful rotation, restart every running Porta instance and verify the committed active signing
+key with `porta keys list` after restarting.
 
 **Recommended rotation schedule:** Every 90 days, or immediately if a key is suspected
 to be compromised.
@@ -742,9 +776,10 @@ services:
 ```
 
 ::: warning
-When running multiple replicas, ensure `COOKIE_KEYS` and `TWO_FACTOR_ENCRYPTION_KEY`
-are identical across all instances. These are encryption keys — different values will
-cause decryption failures.
+When running multiple replicas, each instance must receive the same `COOKIE_KEYS`, the same
+`TWO_FACTOR_ENCRYPTION_KEY`, and the same `SIGNING_KEY_ENCRYPTION_KEY`. The signing-key and
+two-factor root keys must still be different from one another. Mismatched per-variable values
+across instances cause verification or decryption failures.
 :::
 
 ## Custom UI & Templates
@@ -883,14 +918,14 @@ Account lockout thresholds are managed via `system_config`:
 
 ```bash
 # View current settings
-porta config get --key account_lockout_threshold
-porta config get --key account_lockout_cooldown_minutes
+porta config get max_failed_logins
+porta config get lockout_duration_seconds
 
 # Change lockout threshold (default: 5)
-porta config set --key account_lockout_threshold --value 10
+porta config set max_failed_logins 10
 
-# Change cooldown period in minutes (default: 15)
-porta config set --key account_lockout_cooldown_minutes --value 30
+# Change cooldown period in seconds (default: 900); 1800 seconds is 30 minutes
+porta config set lockout_duration_seconds 1800
 ```
 
 ### Security Design
@@ -961,7 +996,7 @@ Configure automatic cleanup of old audit log entries:
 
 ```bash
 # Set retention period (in days)
-porta config set --key audit_retention_days --value 365
+porta config set audit_retention_days 365
 
 # Run cleanup (deletes entries older than retention period)
 porta audit cleanup

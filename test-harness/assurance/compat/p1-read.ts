@@ -281,6 +281,25 @@ export function validatePackedP1ReadEvidence(value: unknown): z.infer<typeof evi
   return evidence;
 }
 
+/**
+ * Map valid packed-client evidence to the shared assurance exit taxonomy.
+ *
+ * @param evidence - Validated evidence from the complete P1 journey matrix.
+ * @returns Zero for a clean run or 20 for a product failure.
+ * @throws When evidence contains an unsupported incomplete journey.
+ */
+export function packedP1ReadExitCode(evidence: {
+  readonly journeys: readonly {
+    readonly outcome: 'passed' | 'product-failure' | 'incomplete';
+  }[];
+}): 0 | 20 {
+  if (evidence.journeys.some((journey) => journey.outcome === 'incomplete')) {
+    throw new Error('packed P1 incomplete evidence has no registered observation condition');
+  }
+  if (evidence.journeys.some((journey) => journey.outcome === 'product-failure')) return 20;
+  return 0;
+}
+
 /** Validates one packed read against its independent result and protected state. */
 function validateJourney(
   journey: z.infer<typeof journeySchema>,

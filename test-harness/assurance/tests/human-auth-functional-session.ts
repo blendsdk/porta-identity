@@ -243,12 +243,14 @@ export async function observeFunctionalSessions(
   let expiredListed: boolean;
   try {
     const config = await context.rawRequest('PUT', '/api/admin/config/session_ttl', 'admin-full', {
-      value: '1',
+      value: 300,
     });
     assert.equal(config.status, 200);
     await context.lifecycle('restart-porta');
     expired = await createBrowserSession(context);
-    await new Promise((resolvePromise) => setTimeout(resolvePromise, 1_500));
+    // Exercise natural expiry at the supported minimum; forced store expiry would test a
+    // different property. Allow a small margin beyond the configured whole-second lifetime.
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, 301_500));
     expiredUse = await promptNone(context, expired.browserContext);
     assert.equal(expiredUse.codePresent, false);
     assert.equal(expiredUse.errorPresent, true);

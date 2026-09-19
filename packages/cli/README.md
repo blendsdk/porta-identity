@@ -4,9 +4,9 @@ The official command-line interface for the [Porta Identity Platform](https://gi
 
 ## Features
 
-- **26 command modules** — Full admin coverage: orgs, apps, clients, users, roles, permissions, claims, secrets, sessions, audit, and more
+- **28 command modules** — Full admin coverage: orgs, apps, clients, users, roles, permissions, claims, secrets, sessions, audit, and more
 - **OIDC authentication** — Secure login via Authorization Code + PKCE (opens your browser, no passwords stored)
-- **Declarative provisioning** — Set up entire environments from a single YAML/JSON file
+- **Selective portability** — Export and import strict JSON manifests with preview-first application
 - **Built on `@portaidentity/sdk`** — Type-safe API calls with automatic error handling
 - **JSON output mode** — Machine-readable output for scripting and CI/CD (`--json`)
 - **Shell completions** — Tab completion for Bash, Zsh, and Fish
@@ -202,15 +202,18 @@ plaintext is shown once and is never retained in the workspace.
 | `porta health`                                | Check server connectivity (no auth required)   |
 | `porta bulk <action>`                         | Bulk status operations on orgs/users           |
 | `porta exports download --entity-type <type>` | Export bounded allowlisted data as CSV or JSON |
+| `porta export manifest ...`                   | Export a selective portability manifest        |
+| `porta import manifest <path> --mode <mode>`  | Preview and import a portability manifest      |
 
-### Provisioning
+### Environment Portability
 
-| Command                         | Description                                    |
-| ------------------------------- | ---------------------------------------------- |
-| `porta provision --file <path>` | Apply a declarative YAML/JSON environment file |
+| Command                                      | Description                                      |
+| -------------------------------------------- | ------------------------------------------------ |
+| `porta export manifest`                      | Export selected categories to a strict JSON file |
+| `porta import manifest <path> --mode <mode>` | Preview, confirm, and apply a strict JSON file   |
 
-Supports `--mode merge|overwrite`, `--dry-run`, and `--json` flags. Provisioning files cannot
-contain passwords or other authentication material.
+Import modes are `keep-existing` and `update-existing`. Both flows support `--json`; `--yes`
+skips only the relevant file-replacement or apply confirmation.
 
 ### Utilities
 
@@ -271,45 +274,24 @@ replacing credentials for a different server requires explicit confirmation.
 Use `--insecure` only for deliberate local testing. The shell displays a persistent warning because
 that flag disables TLS certificate validation.
 
-## Declarative Provisioning
+## Environment Portability
 
-Set up entire environments from a single YAML file:
+Export selected data to a strict JSON manifest:
 
-```yaml
-# provision.yaml
-organizations:
-  - name: Acme Corp
-    slug: acme
-    status: active
-    applications:
-      - name: Web Portal
-        slug: web-portal
-        clients:
-          - name: web-app
-            grant_types: [authorization_code]
-            redirect_uris: [https://app.acme.com/callback]
-        roles:
-          - name: Admin
-            permissions: [read, write, delete]
-          - name: Viewer
-            permissions: [read]
-    users:
-      - email: admin@acme.com
-        given_name: Admin
-        family_name: User
-        roles: [Admin]
+```console
+porta export manifest \
+  --organization acme \
+  --category organizations \
+  --category applications_authorization \
+  --all-applications \
+  --output acme-porta.json
+
+porta import manifest acme-porta.json --mode keep-existing
 ```
 
-```bash
-# Preview changes without applying
-porta provision --file provision.yaml --dry-run
-
-# Apply with merge mode (default)
-porta provision --file provision.yaml
-
-# Full overwrite mode
-porta provision --file provision.yaml --mode overwrite
-```
+Import always previews and validates before confirmation and apply. Existing client secrets,
+passwords, signing keys, sessions, recovery material, and control-plane records are never carried
+by the manifest. Newly created confidential clients return a generated secret once after commit.
 
 ## JSON Output
 
@@ -343,7 +325,7 @@ porta completion > ~/.config/fish/completions/porta.fish
 
 - [CLI Overview](https://blendsdk.github.io/porta-identity/cli/overview) — Architecture, installation, and authentication
 - [CLI Commands Reference](https://blendsdk.github.io/porta-identity/cli/organizations) — Detailed command documentation
-- [Provisioning Guide](https://blendsdk.github.io/porta-identity/cli/provisioning) — Declarative environment setup
+- [Environment Portability](https://blendsdk.github.io/porta-identity/cli/provisioning) — Selective manifest export and import
 - [Bootstrap Guide](https://blendsdk.github.io/porta-identity/cli/bootstrap) — Initial server setup with `porta init`
 
 ## Related Packages

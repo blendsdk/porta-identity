@@ -65,6 +65,8 @@ export interface CursorPaginatedResult<T> {
   previousCursor: string | null;
   /** Whether there are more results after this page */
   hasMore: boolean;
+  /** Total matching rows when the selected endpoint provides that count. */
+  total?: number;
 }
 
 // ============================================================================
@@ -116,12 +118,7 @@ export function decodeCursor(cursor: string): CursorPayload | null {
     const parsed: unknown = JSON.parse(json);
 
     // Validate shape: must be an object with 's' and 'i' fields
-    if (
-      typeof parsed !== 'object' ||
-      parsed === null ||
-      !('s' in parsed) ||
-      !('i' in parsed)
-    ) {
+    if (typeof parsed !== 'object' || parsed === null || !('s' in parsed) || !('i' in parsed)) {
       return null;
     }
 
@@ -174,13 +171,13 @@ export function buildCursorResult<T>(
   const hasMore = rows.length > limit;
   const data = hasMore ? rows.slice(0, limit) : rows;
 
-  const nextCursor = hasMore && data.length > 0
-    ? encodeCursor(getSortValue(data[data.length - 1]), getId(data[data.length - 1]))
-    : null;
+  const nextCursor =
+    hasMore && data.length > 0
+      ? encodeCursor(getSortValue(data[data.length - 1]), getId(data[data.length - 1]))
+      : null;
 
-  const previousCursor = data.length > 0
-    ? encodeCursor(getSortValue(data[0]), getId(data[0]))
-    : null;
+  const previousCursor =
+    data.length > 0 ? encodeCursor(getSortValue(data[0]), getId(data[0])) : null;
 
   return { data, nextCursor, previousCursor, hasMore };
 }

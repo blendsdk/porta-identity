@@ -30,6 +30,7 @@ function createTotpRow(overrides: Partial<UserTotpRow> = {}): UserTotpRow {
     digits: 6,
     period: 30,
     verified: false,
+    last_accepted_time_step: null,
     created_at: new Date('2026-01-01T00:00:00Z'),
     updated_at: new Date('2026-01-01T12:00:00Z'),
     ...overrides,
@@ -81,6 +82,7 @@ describe('two-factor types', () => {
         digits: 6,
         period: 30,
         verified: false,
+        lastAcceptedTimeStep: null,
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T12:00:00Z'),
       });
@@ -90,6 +92,11 @@ describe('two-factor types', () => {
       const row = createTotpRow({ verified: true });
       const totp = mapRowToUserTotp(row);
       expect(totp.verified).toBe(true);
+    });
+
+    it('should map a persisted replay step to a number', () => {
+      const row = createTotpRow({ last_accepted_time_step: '187654321' });
+      expect(mapRowToUserTotp(row).lastAcceptedTimeStep).toBe(187654321);
     });
 
     it('should preserve Date objects for timestamp fields', () => {

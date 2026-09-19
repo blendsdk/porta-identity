@@ -61,6 +61,17 @@ const noRbacCapabilities = {
   canAssignRoles: false,
 };
 
+const noPortabilityCapabilities = {
+  canReadConfig: false,
+  canUpdateConfig: false,
+  canExportData: false,
+  canImportData: false,
+  canReadClaims: false,
+  canCreateClaims: false,
+  canUpdateClaims: false,
+  isSuperAdmin: false,
+};
+
 describe('admin session implementation edges', () => {
   it('treats malformed authorization arrays as least-privileged values', () => {
     expect(validateAdminCapabilities(['porta-admin', 'bad\u0000role'], undefined)).toEqual({
@@ -68,6 +79,7 @@ describe('admin session implementation edges', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
     expect(
       validateAdminCapabilities(['porta-user-admin'], ['admin:org:read', 'bad\u0085permission']),
@@ -76,6 +88,7 @@ describe('admin session implementation edges', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
   });
 
@@ -104,6 +117,7 @@ describe('admin session implementation edges', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
   });
 

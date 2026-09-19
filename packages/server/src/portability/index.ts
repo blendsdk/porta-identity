@@ -1,0 +1,54 @@
+/** Public server contract for selective environment portability. */
+
+export {
+  exportManifestRequestSchema,
+  importManifestRequestSchema,
+  portabilityApplicationSelectionSchema,
+  portabilityCategorySchema,
+  portabilityEntityTypeSchema,
+  portabilityManifestSchema,
+  portabilityResultSchema,
+  portabilityScopeSchema,
+} from './schema.js';
+export {
+  requiredPortabilityPermissions,
+  requirePortabilityAuthorization,
+} from './authorization.js';
+export { exportPortabilityManifest, type PortabilityExport } from './export.js';
+export { buildPortabilityPlan } from './plan.js';
+export { applyPortabilityManifest } from './apply.js';
+export {
+  PortabilityError,
+  type ExportManifestRequest,
+  type ImportManifestRequest,
+  type PortabilityAction,
+  type PortabilityActionCounts,
+  type PortabilityActor,
+  type PortabilityApplication,
+  type PortabilityApplicationModule,
+  type PortabilityApplicationSelection,
+  type PortabilityBranding,
+  type PortabilityBrandingAsset,
+  type PortabilityCategory,
+  type PortabilityClaimDefinition,
+  type PortabilityClient,
+  type PortabilityCredential,
+  type PortabilityEntityType,
+  type PortabilityErrorCode,
+  type PortabilityImportMode,
+  type PortabilityJsonValue,
+  type PortabilityManifest,
+  type PortabilityNaturalKey,
+  type PortabilityOrganization,
+  type PortabilityPermission,
+  type PortabilityResult,
+  type PortabilityResultError,
+  type PortabilityResultErrorCode,
+  type PortabilityResultItem,
+  type PortabilityRole,
+  type PortabilityRolePermissionMapping,
+  type PortabilityScope,
+  type PortabilityUser,
+  type PortabilityUserClaimValue,
+  type PortabilityUserRoleAssignment,
+} from './types.js';

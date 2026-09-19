@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { configSchema } from '../../src/config/schema.js';
-import { publicConfigValue } from '../../src/routes/config.js';
+import { findSystemConfigDefinition } from '../../src/lib/system-config-catalog.js';
 
 const validEnv = {
   nodeEnv: 'development',
@@ -22,9 +22,10 @@ const validEnv = {
 };
 
 describe('config schema', () => {
-  it('should mask sensitive administrative values in every public response', () => {
-    expect(publicConfigValue('redis://private-cache:6379', true)).toBe('***');
-    expect(publicConfigValue('public-value', false)).toBe('public-value');
+  it('should exclude sensitive bootstrap settings from the administrative catalog entirely', () => {
+    expect(findSystemConfigDefinition('REDIS_URL')).toBeUndefined();
+    expect(findSystemConfigDefinition('COOKIE_KEYS')).toBeUndefined();
+    expect(findSystemConfigDefinition('SIGNING_KEY_ENCRYPTION_KEY')).toBeUndefined();
   });
 
   it('accepts valid configuration', () => {

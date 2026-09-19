@@ -23,6 +23,8 @@ import { createAdminApplicationOperations } from './application-service.js';
 import { createAdminClientOperations } from './client-service.js';
 import { createAdminRbacOperations } from './rbac-service.js';
 import type { AdminRbacDomains } from './rbac-service.js';
+import { createAdminPortabilityOperations } from './portability-service.js';
+import { createAdminSystemConfigOperations } from './system-config-service.js';
 import type { AdminCapabilities, AdminConnectionState } from './state.js';
 
 /** Lazy SDK organization-domain input retained until verified UI work requests it. */
@@ -39,6 +41,15 @@ type AdminClientDomainFactory = Parameters<typeof createAdminClientOperations>[0
 
 /** Lazy SDK RBAC domains retained until verified UI work requests them. */
 type AdminRbacDomainFactory = () => AdminRbacDomains;
+
+/** Lazy SDK export-domain input retained until verified UI work requests it. */
+type AdminExportsDomainFactory = Parameters<typeof createAdminPortabilityOperations>[0];
+
+/** Lazy SDK import-domain input retained until verified UI work requests it. */
+type AdminImportsDomainFactory = Parameters<typeof createAdminPortabilityOperations>[1];
+
+/** Lazy SDK configuration domain retained until verified UI work requests it. */
+type AdminConfigDomainFactory = Parameters<typeof createAdminSystemConfigOperations>[0];
 
 /** Actions offered after authentication is unavailable. */
 const UNAUTHENTICATED_ACTIONS = ['authenticate', 'retry', 'quit'] as const;
@@ -151,6 +162,9 @@ function toApplicationState(server: URL, result: SessionVerificationResult): Adm
  * @param clientDomain - Optional selected-organization OIDC client operations.
  * @param rbacDomain - Optional application and user role/permission operations.
  * @param organizationWorkspaceDomains - Optional organization settings, branding, and 2FA domains.
+ * @param exportsDomain - Optional portability manifest export operations.
+ * @param importsDomain - Optional portability preview and apply operations.
+ * @param configDomain - Optional deployment-global configuration operations.
  * @returns Initial verification state and lazy server-bound operations.
  */
 export function prepareAdminSession(
@@ -162,6 +176,9 @@ export function prepareAdminSession(
   clientDomain?: AdminClientDomainFactory,
   rbacDomain?: AdminRbacDomainFactory,
   organizationWorkspaceDomains?: AdminOrganizationWorkspaceDomains,
+  exportsDomain?: AdminExportsDomainFactory,
+  importsDomain?: AdminImportsDomainFactory,
+  configDomain?: AdminConfigDomainFactory,
 ): PreparedAdminSession {
   const server = normalizeServerOrigin(serverInput);
 
@@ -258,6 +275,10 @@ export function prepareAdminSession(
             ),
           }
         : {}),
+      ...(exportsDomain && importsDomain
+        ? { portability: createAdminPortabilityOperations(exportsDomain, importsDomain) }
+        : {}),
+      ...(configDomain ? { systemConfig: createAdminSystemConfigOperations(configDomain) } : {}),
     },
   };
 }
@@ -298,6 +319,14 @@ export function validateAdminCapabilities(roles: unknown, permissions: unknown):
   const validPermissions = isValidAuthorizationArray(permissions, 150) ? permissions : [];
   const isLegacyAdministrator = validRoles.includes('porta-admin');
   return {
+    canReadConfig: isLegacyAdministrator || validPermissions.includes('admin:config:read'),
+    canUpdateConfig: isLegacyAdministrator || validPermissions.includes('admin:config:update'),
+    canExportData: validPermissions.includes('admin:export:read'),
+    canImportData: validPermissions.includes('admin:import:write'),
+    canReadClaims: isLegacyAdministrator || validPermissions.includes('admin:claim:read'),
+    canCreateClaims: isLegacyAdministrator || validPermissions.includes('admin:claim:create'),
+    canUpdateClaims: isLegacyAdministrator || validPermissions.includes('admin:claim:update'),
+    isSuperAdmin: validRoles.includes('porta-super-admin'),
     canReadOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:read'),
     canCreateOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:create'),
     canUpdateOrganizations: isLegacyAdministrator || validPermissions.includes('admin:org:update'),

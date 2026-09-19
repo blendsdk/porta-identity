@@ -4,16 +4,11 @@ export const ADMINISTRATIVE_DATA_CAPABILITY_MISSING = 'ADMINISTRATIVE_DATA_CAPAB
 /** Closed bulk targets exposed by the administration API. */
 export const BULK_ENTITY_TYPES = ['organization', 'user'] as const;
 
-/** Closed import execution modes. */
-export const IMPORT_MODES = ['merge', 'overwrite', 'dry-run'] as const;
-
 /** Closed export entity catalog. */
 export const EXPORT_ENTITY_TYPES = ['organizations', 'users', 'clients', 'roles', 'audit'] as const;
 
 /** Bulk entity accepted by the public boundary. */
 export type BulkEntityType = (typeof BULK_ENTITY_TYPES)[number];
-/** Import mode accepted by the public boundary. */
-export type ImportMode = (typeof IMPORT_MODES)[number];
 /** Export entity accepted by the public boundary. */
 export type ExportEntityType = (typeof EXPORT_ENTITY_TYPES)[number];
 /** Supported export serialization. */
@@ -35,8 +30,6 @@ export interface AdministrativeDataOracle {
     'bulk-validation',
     'bulk-results',
     'bulk-stop',
-    'import-modes',
-    'import-rejection',
     'export-scope',
     'export-bound',
     'export-safety',
@@ -60,19 +53,6 @@ export interface AdministrativeDataOracle {
     readonly concealedItemCode: 'not_found_or_not_authorized';
     /** Code assigned to every item not reached after an infrastructure stop. */
     readonly stoppedItemCode: 'not_attempted';
-  };
-  /** Import validation, planning, mutation, and disclosure rules. */
-  readonly import: {
-    /** Only manifest version accepted by the compatibility-preserving endpoint. */
-    readonly manifestVersion: '1.0';
-    /** Closed import modes. */
-    readonly modes: typeof IMPORT_MODES;
-    /** Secret-equivalent field names rejected anywhere in a manifest. */
-    readonly prohibitedFieldNames: readonly string[];
-    /** Presentation and configuration fields which overwrite may change. */
-    readonly mutableFields: Readonly<Record<string, readonly string[]>>;
-    /** Boolean-only dry-run indication used instead of generating a credential. */
-    readonly dryRunCredentialField: 'credentialWillBeGenerated';
   };
   /** Export authorization, scope, field, and serialization rules. */
   readonly export: {
@@ -101,8 +81,6 @@ export const ADMINISTRATIVE_DATA_ORACLE = Object.freeze({
     'bulk-validation',
     'bulk-results',
     'bulk-stop',
-    'import-modes',
-    'import-rejection',
     'export-scope',
     'export-bound',
     'export-safety',
@@ -117,46 +95,6 @@ export const ADMINISTRATIVE_DATA_ORACLE = Object.freeze({
     envelopeFields: ['total', 'succeeded', 'failed', 'results'],
     concealedItemCode: 'not_found_or_not_authorized',
     stoppedItemCode: 'not_attempted',
-  },
-  import: {
-    manifestVersion: '1.0',
-    modes: IMPORT_MODES,
-    prohibitedFieldNames: [
-      'password',
-      'password_plaintext',
-      'password_hash',
-      'client_secret',
-      'secret_plaintext',
-      'secret_hash',
-      'signing_key',
-      'private_key',
-      'session',
-      'token',
-      'recovery_code',
-      'totp_secret',
-      'audit',
-    ],
-    // Published manifests admit more input fields than overwrite may safely change. This catalog
-    // intentionally retains only presentation and non-authority configuration fields.
-    mutableFields: {
-      organization: [
-        'name',
-        'default_locale',
-        'branding_primary_color',
-        'branding_company_name',
-        'branding_custom_css',
-        'branding_logo_url',
-        'branding_favicon_url',
-      ],
-      application: ['name', 'description'],
-      client: ['client_name'],
-      role: ['name', 'description'],
-      permission: ['name', 'description'],
-      claim_definition: ['name', 'description'],
-      application_module: ['name', 'description'],
-      user: ['given_name', 'family_name', 'locale'],
-    },
-    dryRunCredentialField: 'credentialWillBeGenerated',
   },
   export: {
     entities: EXPORT_ENTITY_TYPES,
@@ -244,16 +182,10 @@ export interface AdministrativeDataFixture {
   readonly bravoUserId: string;
   /** Valid UUID which does not identify a user. */
   readonly missingUserId: string;
-  /** Existing tenant-qualified confidential-client key. */
-  readonly existingClientNaturalKey: string;
-  /** Missing tenant-qualified confidential-client key. */
-  readonly newClientNaturalKey: string;
   /** Actor recorded by durable administrative audits. */
   readonly actorId: string;
   /** Raw infrastructure message forbidden from public output. */
   readonly dependencyErrorCanary: string;
-  /** Secret-equivalent value forbidden from persistence and output. */
-  readonly secretCanary: string;
   /** Private raw audit value forbidden from every retained surface. */
   readonly auditPrivateCanary: string;
   /** Values beginning with each spreadsheet formula prefix after optional whitespace. */
@@ -285,38 +217,6 @@ export interface BulkActionOutcome {
   readonly publicError: string | null;
   /** Top-level response fields in serialization order. */
   readonly responseFields: readonly string[];
-}
-
-/** Planned or committed import entity reported by the public response. */
-export interface ImportEntityOutcome {
-  /** Closed entity category. */
-  readonly entityType: string;
-  /** Tenant-qualified natural key without a database-generated identifier. */
-  readonly naturalKey: string;
-  /** Mutable fields the planner intends or committed. */
-  readonly changedFields: readonly string[];
-  /** Boolean-only dry-run credential intent. */
-  readonly credentialWillBeGenerated?: boolean;
-  /** Real committed identifier, which must be absent from dry-run creates. */
-  readonly publicIdentifier?: string;
-}
-
-/** Public import result with optional errors so success can prove their absence. */
-export interface ImportActionOutcome {
-  /** Whether planning and execution completed successfully. */
-  readonly accepted: boolean;
-  /** Created or planned-create entities. */
-  readonly created: readonly ImportEntityOutcome[];
-  /** Updated or planned-update entities. */
-  readonly updated: readonly ImportEntityOutcome[];
-  /** Intentional existing-entity skips. */
-  readonly skipped: readonly ImportEntityOutcome[];
-  /** Once-only credentials returned after a successful commit. */
-  readonly credentials: readonly Readonly<Record<string, JsonValue>>[];
-  /** Sanitized failures, absent from every successful result. */
-  readonly errors?: readonly Readonly<Record<string, JsonValue>>[];
-  /** Minimal public request error. */
-  readonly publicError: string | null;
 }
 
 /** Public export result plus source scopes observed independently from serialized rows. */
@@ -381,16 +281,6 @@ export interface AdministrativeDataSpecDriver {
   submitBulk(entityType: BulkEntityType, request: JsonValue): Promise<BulkActionOutcome>;
   /** Fail the next bulk dependency access after the requested number of item commits. */
   failBulkDependencyAfter(committedItems: number): Promise<void>;
-  /** Submit an untrusted manifest through the public import boundary. */
-  submitImport(
-    mode: ImportMode,
-    manifest: JsonValue,
-    scope?: { readonly organizationId: string },
-  ): Promise<ImportActionOutcome>;
-  /** Fail import execution when the named natural key reaches the mutation boundary. */
-  failImportAt(naturalKey: string): Promise<void>;
-  /** Arrange a storage-level collision which whole-manifest planning must reject. */
-  arrangeImportCollision(naturalKey: string): Promise<void>;
   /** Submit an export request with explicitly arranged authority and scope. */
   submitExport(input: {
     readonly entityType: ExportEntityType;

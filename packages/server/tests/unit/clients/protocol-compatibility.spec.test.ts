@@ -42,7 +42,7 @@ vi.mock('../../../src/lib/entity-history.js', () => ({
 }));
 
 import * as clientService from '../../../src/clients/service.js';
-import { importManifestSchema } from '../../../src/lib/data-import.js';
+import { portabilityManifestSchema } from '../../../src/portability/index.js';
 import { createClientRouter } from '../../../src/routes/clients.js';
 
 const ORGANIZATION_ID = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11';
@@ -130,23 +130,40 @@ async function adminAccepts(input: ProtocolInput): Promise<boolean> {
 
 /** Exercise the data-import validation boundary with the same protocol values. */
 function importAccepts(input: ProtocolInput): boolean {
-  return importManifestSchema.safeParse({
+  return portabilityManifestSchema.safeParse({
     version: '1.0',
+    exported_at: '2026-09-14T00:00:00.000Z',
+    scope: { kind: 'organization', organization_slug: 'org' },
+    categories: ['oidc_clients'],
+    application_selection: { all_applications: true, application_slugs: [] },
+    organizations: [],
+    applications: [],
+    application_modules: [],
+    roles: [],
+    permissions: [],
+    claim_definitions: [],
+    role_permission_mappings: [],
+    users: [],
+    user_role_assignments: [],
+    user_claim_values: [],
     clients: [
       {
-        client_name: 'Protocol specification client',
+        client_id: 'porta_spec_client',
+        name: 'Protocol specification client',
         application_slug: 'app',
         organization_slug: 'org',
         application_type: 'spa',
         client_type: input.clientType,
+        status: 'active',
         redirect_uris: input.redirectUris,
-        post_logout_redirect_uris: input.postLogoutRedirectUris,
+        post_logout_redirect_uris: input.postLogoutRedirectUris ?? [],
         grant_types: input.grantTypes,
         response_types: ['code'],
         scope: 'openid',
+        login_methods: null,
         token_endpoint_auth_method: input.tokenEndpointAuthMethod,
         require_pkce: input.requirePkce,
-        allowed_origins: input.allowedOrigins,
+        allowed_origins: input.allowedOrigins ?? [],
       },
     ],
   }).success;

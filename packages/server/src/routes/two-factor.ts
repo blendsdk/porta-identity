@@ -44,6 +44,7 @@ import {
   setupEmailOtp,
   confirmTotpSetup,
 } from '../two-factor/service.js';
+import { UnsupportedTotpConfigurationError } from '../two-factor/errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
@@ -281,7 +282,11 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
 async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise<void> {
   const body = ctx.request.body as Record<string, string>;
   const code = (body.code ?? '').trim();
-  const codeType = body.codeType ?? 'otp'; // 'otp', 'totp', or 'recovery'
+  const submittedCodeType = body.codeType;
+  const codeType =
+    submittedCodeType === 'totp' || submittedCodeType === 'recovery' || submittedCodeType === 'otp'
+      ? submittedCodeType
+      : 'otp';
   const submittedCsrf = body._csrf ?? '';
   const storedCsrf = getCsrfFromCookie(ctx) ?? '';
 
@@ -375,7 +380,21 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
         // Email OTP
         verified = await verifyOtp(pending.pendingAccountId, code);
       }
-    } catch {
+    } catch (error) {
+      if (error instanceof UnsupportedTotpConfigurationError) {
+        logUnsupportedTotpConfiguration();
+        await renderTwoFactorWithError(
+          ctx,
+          interaction.uid,
+          pending,
+          locale,
+          t,
+          t('errors.two_factor_unavailable'),
+          503,
+        );
+        return;
+      }
+
       // Verification service threw an error (invalid code, expired, exhausted, etc.)
       logger.debug({ event: 'two-factor-code-rejected', codeType }, 'Two-factor code rejected');
       verified = false;
@@ -699,13 +718,60 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       return;
     }
 
+    // TOTP confirmation uses the same attempt budget as normal 2FA verification.
+    // Email setup returns above because it does not verify a user-entered code.
+    const rateLimitKey = buildRateLimitKey('2fa_verify', org.id, pending.pendingAccountId);
+    const rateLimitResult = await checkRateLimit(rateLimitKey, VERIFY_RATE_LIMIT);
+
+    if (!rateLimitResult.allowed) {
+      ctx.set('Retry-After', String(rateLimitResult.retryAfter));
+      writeAuditLog({
+        organizationId: org.id,
+        userId: pending.pendingAccountId,
+        eventType: 'rate_limit.2fa_verify',
+        eventCategory: 'security',
+        description: 'TOTP setup verification rate limit exceeded',
+        ipAddress: ctx.ip,
+      });
+      const t = getTranslationFunction(locale, org.slug);
+      await renderTotpSetupWithError(
+        ctx,
+        interaction.uid,
+        pending,
+        locale,
+        t,
+        t('errors.rate_limit_exceeded'),
+        429,
+      );
+      return;
+    }
+
     // TOTP setup confirmation — verify the code from authenticator app
     if (!code) {
       ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
       return;
     }
 
-    const confirmed = await confirmTotpSetup(pending.pendingAccountId, code);
+    let confirmed: boolean;
+    try {
+      confirmed = await confirmTotpSetup(pending.pendingAccountId, code);
+    } catch (error) {
+      if (error instanceof UnsupportedTotpConfigurationError) {
+        logUnsupportedTotpConfiguration();
+        const t = getTranslationFunction(locale, org.slug);
+        await renderTotpSetupWithError(
+          ctx,
+          interaction.uid,
+          pending,
+          locale,
+          t,
+          t('errors.two_factor_unavailable'),
+          503,
+        );
+        return;
+      }
+      throw error;
+    }
 
     if (!confirmed) {
       writeAuditLog({
@@ -746,6 +812,61 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
     ctx.status = 400;
     ctx.body = 'Interaction expired';
   }
+}
+
+/** Record the fixed diagnostic for unsupported persisted TOTP parameters. */
+function logUnsupportedTotpConfiguration(): void {
+  logger.error({ event: 'totp-configuration-unsupported' }, 'TOTP configuration is unsupported');
+}
+
+/**
+ * Render pending TOTP enrollment data with an error without creating new secrets.
+ *
+ * @param ctx - Koa context
+ * @param uid - Interaction UID
+ * @param pending - Pending two-factor state
+ * @param locale - Resolved locale
+ * @param t - Translation function
+ * @param errorMessage - Error to display
+ * @param statusCode - HTTP response status
+ * @throws Error when the pending enrollment record no longer exists
+ */
+async function renderTotpSetupWithError(
+  ctx: TwoFactorContext,
+  uid: string,
+  pending: PendingTwoFactor,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+  errorMessage: string,
+  statusCode: number,
+): Promise<void> {
+  const setup = await getPendingTotpSetupInfo(
+    pending.pendingAccountId,
+    pending.email,
+    ctx.state.organization.slug,
+  );
+  if (!setup) {
+    throw new Error('Pending TOTP setup is unavailable');
+  }
+
+  const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
+  const context: TemplateContext = {
+    ...(await buildBaseContext(ctx, locale, csrfToken, ctx.state.organization.slug)),
+    t,
+    interaction: {
+      uid,
+      prompt: 'two-factor-setup',
+      params: {} as Record<string, unknown>,
+      client: { clientName: '' },
+    },
+    method: 'totp',
+    qrCodeDataUri: setup.qrCodeDataUri,
+    totpSecret: setup.totpSecret,
+    flash: { error: errorMessage },
+  };
+
+  await renderAndRespond(ctx, 'two-factor-setup', context, statusCode);
 }
 
 // ---------------------------------------------------------------------------

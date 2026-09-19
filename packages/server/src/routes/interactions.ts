@@ -817,8 +817,9 @@ async function processLogin(
         { mergeWithLastSubmission: true },
       );
 
-      // If method is email, auto-send the first OTP code
-      if (twoFactorMethod === 'email' || (!user.twoFactorEnabled && !twoFactorMethod)) {
+      // Enrolled email users can receive their challenge immediately. Unenrolled users receive
+      // one only after choosing email during setup, so they are not sent duplicate or unwanted codes.
+      if (user.twoFactorEnabled && twoFactorMethod === 'email') {
         try {
           const otpCode = await sendOtpCode(user.id, user.email, org.id);
           // Send the OTP code via email (fire-and-forget)

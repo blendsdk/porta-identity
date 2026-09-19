@@ -74,6 +74,26 @@ const allRbacCapabilities = {
   canAssignRoles: true,
 };
 
+const noPortabilityCapabilities = {
+  canReadConfig: false,
+  canUpdateConfig: false,
+  canExportData: false,
+  canImportData: false,
+  canReadClaims: false,
+  canCreateClaims: false,
+  canUpdateClaims: false,
+  isSuperAdmin: false,
+};
+
+const legacyAdminPortabilityCapabilities = {
+  ...noPortabilityCapabilities,
+  canReadConfig: true,
+  canUpdateConfig: true,
+  canReadClaims: true,
+  canCreateClaims: true,
+  canUpdateClaims: true,
+};
+
 const credentials = {
   server: 'https://porta-a.example.test/',
   orgSlug: 'porta-admin',
@@ -202,6 +222,7 @@ describe('stored CLI session verification', () => {
         ...noUserCapabilities,
         ...noApplicationClientCapabilities,
         ...noRbacCapabilities,
+        ...noPortabilityCapabilities,
       },
     });
   });
@@ -300,6 +321,35 @@ describe('stored CLI session verification', () => {
 });
 
 describe('live administration capabilities', () => {
+  it('should derive portability permissions and exact super-admin role independently', async () => {
+    const { validateAdminCapabilities } = await import('../../src/admin/session-service.js');
+
+    expect(
+      validateAdminCapabilities(
+        ['porta-super-admin'],
+        [
+          'admin:export:read',
+          'admin:import:write',
+          'admin:claim:read',
+          'admin:claim:create',
+          'admin:claim:update',
+        ],
+      ),
+    ).toMatchObject({
+      canExportData: true,
+      canImportData: true,
+      canReadClaims: true,
+      canCreateClaims: true,
+      canUpdateClaims: true,
+      isSuperAdmin: true,
+    });
+    expect(validateAdminCapabilities(['porta-admin'], [])).toMatchObject({
+      canExportData: false,
+      canImportData: false,
+      isSuperAdmin: false,
+    });
+  });
+
   it.each([
     ['admin:role:read', 'canReadRoles'],
     ['admin:role:create', 'canCreateRoles'],
@@ -317,6 +367,7 @@ describe('live administration capabilities', () => {
 
       expect(validateAdminCapabilities([], [permission])).toMatchObject({
         ...noRbacCapabilities,
+        ...noPortabilityCapabilities,
         [enabledCapability]: true,
       });
     },
@@ -334,6 +385,7 @@ describe('live administration capabilities', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
   });
 
@@ -349,6 +401,7 @@ describe('live administration capabilities', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
   });
 
@@ -366,6 +419,7 @@ describe('live administration capabilities', () => {
         ...allUserCapabilities,
         ...allApplicationClientCapabilities,
         ...allRbacCapabilities,
+        ...legacyAdminPortabilityCapabilities,
       });
     },
   );
@@ -382,6 +436,7 @@ describe('live administration capabilities', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
   });
 
@@ -408,6 +463,7 @@ describe('live administration capabilities', () => {
       ...noUserCapabilities,
       ...noApplicationClientCapabilities,
       ...noRbacCapabilities,
+      ...noPortabilityCapabilities,
     });
     expect(JSON.stringify(capabilities)).not.toContain('admin:org');
     expect(JSON.stringify(capabilities)).not.toContain('porta-admin');
@@ -449,6 +505,7 @@ describe('live administration capabilities', () => {
         ...noUserCapabilities,
         ...noApplicationClientCapabilities,
         ...noRbacCapabilities,
+        ...noPortabilityCapabilities,
       },
     });
     expect(credentials).toEqual(storedBeforeVerification);

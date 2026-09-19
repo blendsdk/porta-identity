@@ -17,7 +17,7 @@ export interface ToolParameter {
   /** Argument name passed to the executor. */
   name: string;
   /** JSON-compatible argument category exposed to agent clients. */
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
+  type: 'string' | 'number' | 'number|string' | 'boolean' | 'object' | 'array';
   /** Human-readable explanation of the argument. */
   description: string;
   /** Whether callers must provide the argument. */
@@ -424,8 +424,11 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     name: 'config.set',
     description: 'Set a config entry value',
-    parameters: [ID('key', 'Configuration key'), ID('value', 'New value')],
-    returns: 'ConfigEntry',
+    parameters: [
+      ID('key', 'Configuration catalog key'),
+      param('value', 'number|string', 'Native integer number or supported locale string'),
+    ],
+    returns: 'ConfigUpdateResult',
   },
 
   // Keys
@@ -556,12 +559,27 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     returns: 'TwoFactorSummary',
   },
 
-  // Imports
+  // Portability
   {
-    name: 'imports.provision',
-    description: 'Import/provision data declaratively',
-    parameters: [OBJ('manifest', 'ImportManifest')],
-    returns: 'ImportResult',
+    name: 'exports.manifest',
+    description: 'Export a selective portability manifest',
+    parameters: [OBJ('request', 'ExportManifestRequest')],
+    returns: 'ExportManifestResponse',
+  },
+  {
+    name: 'imports.preview',
+    description: 'Preview a portability manifest without mutation',
+    parameters: [OBJ('manifest', 'PortabilityManifest')],
+    returns: 'PortabilityResult',
+  },
+  {
+    name: 'imports.apply',
+    description: 'Apply a portability manifest',
+    parameters: [
+      OBJ('manifest', 'PortabilityManifest'),
+      param('mode', 'string', 'Existing-record policy', true, ['keep-existing', 'update-existing']),
+    ],
+    returns: 'PortabilityResult',
   },
 ];
 

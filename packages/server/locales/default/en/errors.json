@@ -17,5 +17,6 @@
   "org_suspended": "This organization has been suspended.",
   "org_archived": "This organization is no longer active.",
   "login_method_disabled": "This authentication method is not available for this application.",
-  "no_login_methods_configured": "No authentication methods are configured for this application. Please contact your administrator."
+  "no_login_methods_configured": "No authentication methods are configured for this application. Please contact your administrator.",
+  "two_factor_unavailable": "Verification is temporarily unavailable. Please contact your administrator."
 }

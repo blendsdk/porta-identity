@@ -158,11 +158,13 @@ export function createApp(oidcProvider?: Provider): Koa {
     textLimit: '100kb',
   });
   app.use(async (ctx, next) => {
+    const isManifestImport = ctx.method === 'POST' && /^\/api\/admin\/import\/?$/i.test(ctx.path);
     if (
-      ctx.path.startsWith('/api/') ||
-      ctx.path.startsWith('/interaction/') ||
-      ctx.path.startsWith('/health') ||
-      ctx.path.includes('/auth/')
+      !isManifestImport &&
+      (ctx.path.startsWith('/api/') ||
+        ctx.path.startsWith('/interaction/') ||
+        ctx.path.startsWith('/health') ||
+        ctx.path.includes('/auth/'))
     ) {
       const isBrandingUpload =
         ctx.method === 'PUT' &&

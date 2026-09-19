@@ -240,7 +240,7 @@ describe('two-factor login boundary', () => {
       method: null,
       destination: 'setup',
       challengeMethod: 'email',
-      sendsEmailOtp: true,
+      sendsEmailOtp: false,
     },
     {
       policy: 'required_totp',
@@ -256,7 +256,7 @@ describe('two-factor login boundary', () => {
       method: null,
       destination: 'setup',
       challengeMethod: null,
-      sendsEmailOtp: true,
+      sendsEmailOtp: false,
     },
     {
       policy: 'required_any',

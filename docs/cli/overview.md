@@ -153,8 +153,9 @@ output.
 | `porta config`           | Manage system configuration                                |
 | `porta audit`            | View audit log entries                                     |
 | `porta health`           | Check server health (via API)                              |
-| `porta provision`        | Declarative environment setup from YAML/JSON               |
 | `porta exports download` | Bounded allowlisted CSV/JSON administrative export         |
+| `porta export manifest`  | Export a selective environment-transfer manifest           |
+| `porta import manifest`  | Preview and apply a strict portability manifest            |
 
 ### Server CLI (Infrastructure Only)
 
@@ -176,4 +177,4 @@ These commands are available inside the Porta Docker container or development en
 - [Clients](./clients.md) — `porta client` and secret management
 - [Users](./users.md) — `porta user` with status, password, roles, claims, 2FA
 - [Infrastructure](./infrastructure.md) — `porta migrate`, `porta seed`, `porta health`
-- [Provisioning](./provisioning.md) — `porta provision` declarative setup
+- [Environment Portability](./provisioning.md) — Selective manifest export and preview-first import

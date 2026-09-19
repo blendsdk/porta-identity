@@ -37,7 +37,7 @@ function collectProcess(child: ChildProcessWithoutNullStreams): Promise<PtyResul
     child.stdout.on('data', append);
     child.stderr.on('data', append);
     child.once('error', rejectProcess);
-    child.once('exit', (code) => resolveProcess({ code, output }));
+    child.once('close', (code) => resolveProcess({ code, output }));
   });
 }
 

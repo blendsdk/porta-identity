@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -104,7 +104,8 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
 | `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
 | `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
-| `exports.ts`       | `/api/admin/export/:entityType`                       | —         | CSV/JSON data export                           |
+| `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
+| `imports.ts`       | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
 
 ### Organization branding assets
 
@@ -140,6 +141,61 @@ Successful responses contain only the validated stored bytes and media type. The
 `Cache-Control: public, no-cache` plus an ETag for revalidation. SVG responses also receive a
 restrictive document CSP. Suspended organizations retain asset delivery so their authentication
 pages remain consistently branded while an administrator repairs or reactivates them.
+
+## Global Operational Configuration
+
+The configuration router exposes only the 18-key application-owned operational catalog.
+Infrastructure, root secrets and internal bootstrap rows cannot be read or changed through it.
+Metadata comes from code; only a validated native JSONB value and timestamp come from storage.
+See [configuration](../reference/configuration.md#system-config-runtime) and
+[the catalog decision](../decisions/index.md#adr-016-closed-global-operational-catalog).
+
+| Method/path | Permission | Success |
+|---|---|---|
+| `GET /api/admin/config` | `admin:config:read` | `{ data: ConfigEntry[] }` in catalog order |
+| `GET /api/admin/config/:key` | `admin:config:read` | `{ data: ConfigEntry }` |
+| `PUT /api/admin/config/:key` | `admin:config:update` | `{ data: ConfigEntry, restartRequired }` |
+| `PUT /api/admin/config` | `admin:config:update` | `{ data: ConfigEntry[], restartRequired }` |
+
+Single updates accept exactly `{ value: scalar }`; batches accept exactly a non-empty
+`{ values: { key: scalar } }`. Every name is resolved before value validation or mutation.
+Integer text, fractions, values outside inclusive catalog bounds, unsupported locales and extra
+fields are rejected without coercion. Non-catalog names share `404 config_entry_not_found`;
+invalid bodies or values share `400 config_value_invalid`. Authoritative reads and writes never
+substitute runtime defaults: unavailable, missing or invalid stored rows produce the fixed
+`503 config_store_unavailable` response with a request ID and no database diagnostics.
+
+Each mutation owns one existing PostgreSQL transaction. It validates new returned rows, resolves
+the live authenticated actor, and writes one `admin.config.updated` audit event containing only
+sorted public keys and `restartRequired`. It is excluded from the generic mutation audit wrapper.
+Update or audit failure rolls everything back without clearing the cache. Successful commit clears
+only the local runtime cache. Other instances retain their existing 60-second refresh behavior.
+Provider-startup lifetimes report `restartRequired: true`; they do not restart running instances.
+Valid updates may replace corrupt targeted content, but missing rows are not recreated.
+
+The SDK exposes small closed-key and native-scalar types without copying runtime policy metadata.
+`config.list()` and `config.get(key)` return authoritative entries; `set(key, value)` and
+`setMany(values)` retain the complete result envelope, including `restartRequired`. Arbitrary read
+names are encoded into one URL segment. Mutation names are also encoded because JavaScript and
+agent callers bypass TypeScript's key union; bare dot segments are rejected before transport so
+URL normalization cannot redirect a configuration mutation to another administrative operation.
+
+The conventional CLI keeps `config list|get|set`. List/get display native values, type, unit,
+accepted bounds or choices, application mode and update time. Set first reads live metadata,
+parses a base-ten safe integer within inclusive bounds or an exact supported string, and sends
+the returned typed key with its native scalar. JSON preserves SDK results. Human output reports
+that every Porta server instance must restart only when the confirmed result requires it.
+
+The embedded Admin application's top-level `System Configuration…` command opens one maximized
+four-tab Layout DSL editor with a persistent Save/Cancel footer. Its session-bound service validates
+the complete closed catalog and terminal-safe metadata before rendering. Read and update permissions
+remain separate, and no selected organization is required for this deployment-global policy.
+Drafts retain native seconds while inline help shows exact whole-unit durations. One Save sends
+only valid changed keys in one batch. Confirmed success reloads authoritative values; an unknown
+outcome reads back once without replaying the mutation and retains drafts for review. Busy work
+blocks edits and closure; dirty closure uses one ordinary discard confirmation. Session replacement
+and shutdown release local ownership, so late results cannot repaint a cleared editor. Below the
+measured fitting minimum, resize guidance replaces editable controls without discarding drafts.
 
 ## Authentication
 
@@ -391,21 +447,59 @@ Administrative data APIs use closed schemas and explicit authorization boundarie
 ```text
 POST /api/admin/bulk/organizations/status
 POST /api/admin/bulk/users/status
+POST /api/admin/export/manifest
 POST /api/admin/import
 GET  /api/admin/export/:entityType
 ```
+
+The portability endpoints accept one strict versioned JSON contract. Export requests select an
+organization or the non-control-plane environment, one or more closed data categories, and an
+explicit application filter. Import requests contain that same manifest and choose `dry-run`,
+`keep-existing`, or `update-existing`. Unknown fields and credential-equivalent fields are
+rejected at the request boundary.
+
+Each request requires the portability operation permission plus the complete permission union for
+its selected categories. Complete-environment operations additionally require the exact
+super-admin role. Responses and logs use fixed error codes and request-ID correlation without
+including manifest data. The import route alone receives the dedicated 64 MiB JSON parser; other
+Admin API requests retain the standard body limit. Both manifest routes set `Cache-Control:
+no-store`.
+
+Manifest export reads the selected graph through explicit, parameterized queries in one
+`REPEATABLE READ` transaction. It excludes the control-plane organization, the `porta-admin`
+application, credentials, sessions, and operational authentication state. The final strict
+manifest is limited to 64 MiB and is committed with one content-free `admin.export` audit record
+containing only the manifest version, SHA-256 digest, selection metadata, and record counts.
+
+Import preview builds a mutation-free ordered plan from natural keys and a destination snapshot
+limited to the selected categories, organization, and applications. It rejects duplicate keys,
+missing or ambiguous parents, control-plane records, cross-scope references, and incompatible
+existing records while still reporting all independent validation errors.
+
+Apply rebuilds the plan inside one PostgreSQL transaction and proceeds only when it contains no
+errors. All selected records and the content-free `admin.import` audit event commit together; any
+write or audit failure rolls back the whole manifest. Newly created confidential clients return
+their generated secret exactly once in the committed response. Targeted cache and OIDC authority
+cleanup runs only after commit.
+
+The public SDK mirrors this wire contract through `exports.manifest()`, `imports.preview()`, and
+`imports.apply()`. It validates the exact bounded `409 import_plan_rejected` envelope before
+returning a rejected plan; every other HTTP failure remains in the normal SDK error hierarchy. The
+standalone CLI adds `porta export manifest` and `porta import manifest`. It performs local path and
+selection checks, limits input files to 64 MiB, always previews before confirmation and apply, and
+prints newly generated credentials only from the single committed response. Neither layer adds a
+second manifest schema, mutation retry, compatibility parser, or persistence mechanism.
+
+The embedded `porta admin` application calls the same SDK domains through a thin session-owned
+adapter. Its Data portability workspace offers the same explicit export selection and the two
+non-dry-run import modes. It keeps the parsed manifest in controller memory only, invalidates a
+preview when the selected mode changes, and never retries an import mutation. Local cancellation
+releases UI ownership but does not claim to cancel a request that may already have reached Porta.
 
 Bulk status changes validate the complete request before persistence. Each accepted item then owns
 one transaction containing a tenant-qualified row lock, status mutation, and audit record. Domain
 rejections are returned in input order. A dependency failure preserves earlier commits, marks the
 current and remaining items `not_attempted`, and exposes only a correlation identifier.
-
-Imports accept versioned manifests in `merge`, `overwrite`, or `dry-run` mode. The planner rejects
-unknown fields, duplicate natural keys, unresolved parents, cross-tenant relationships, and
-credential-equivalent input before mutation. Merge skips existing tenant-qualified keys; overwrite
-changes only the documented presentation and configuration fields; dry-run rolls back its snapshot
-and reports credential intent without identifiers or plaintext. Non-skip failures roll back the
-whole manifest.
 
 Exports support organizations, users, clients, roles, and audit records in CSV or JSON. Every
 request requires `admin:export:read` plus the entity-specific read permission. Users and clients

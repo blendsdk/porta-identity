@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-17
 
 ## High-Level Architecture
 
@@ -79,6 +79,12 @@ Global application definitions and organization-bound OIDC clients use separate 
 service and controller boundaries. They validate complete remote projections before publication,
 recheck selected-organization ownership immediately before client mutations, and keep one-time
 client secrets inside an abortable presenter continuation without persisting them.
+Deployment-global operational policy uses a direct service/state/workspace/controller family over
+the existing SDK configuration domain. API metadata drives four full-page DSL tabs; exact read/update
+capabilities guard the top-level command and single changed-key batch. The same application workspace
+slot and busy gates prevent one operator from replacing another open feature's drafts. No polling,
+concurrent-editor handling or mutation retry is introduced. See
+[global operational configuration](./api-design.md#global-operational-configuration).
 The global Applications workspace composes a JSVision `DataGrid` and movable Layout DSL dialogs
 directly over its application controller. List and detail states always retain their
 deployment-global label, module mutations carry the selected application UUID, and every successful
@@ -109,6 +115,14 @@ the same preset, custom-date, or warned Never expiry selector for generation. Cl
 mutations recheck the selected organization and retained parent immediately before dispatch.
 Generated plaintext is handed straight to one abortable, non-editable warning dialog and never
 enters retained application state.
+Data portability uses one maximized, two-tab JSVision workspace over the same authenticated SDK
+session. Export exposes the permitted scope, categories, and application selection before opening
+a local save dialog. Import reads one local JSON manifest, previews it before enabling Apply, and
+requires confirmation immediately before the mutation. Closing the workspace, replacing the
+session, or starting another operation releases result ownership so a late file, preview,
+confirmation, or apply continuation cannot repopulate a replacement view. Applied client secrets
+use the existing one-time-secret presenter and are removed before reusable workspace state is
+published.
 
 ### Domain Modules
 
@@ -124,6 +138,7 @@ Porta follows a **modular domain architecture** where each business domain is en
 | RBAC          | `packages/server/src/rbac/`          | Roles, permissions, user-role assignments               |
 | Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values                    |
 | Two-Factor    | `packages/server/src/two-factor/`    | TOTP, email OTP, recovery codes                         |
+| Portability   | `packages/server/src/portability/`   | Selective manifest export, preview, and atomic import   |
 | CLI           | `packages/server/src/cli/`           | Admin CLI with dual-mode bootstrap                      |
 
 Each domain module follows a consistent internal structure:
@@ -158,7 +173,7 @@ sequenceDiagram
     Main->>Redis: 1. Connect Redis client
     Main->>Main: 2. Init i18n + template engine
     Main->>Keys: 3. Load signing keys (auto-generate if empty)
-    Keys->>DB: Read/write PEM keys
+    Keys->>DB: Read/write encrypted private keys
     Main->>Config: 4. Load OIDC TTLs from system_config
     Config->>DB: Read TTL configuration
     Main->>OIDC: 5. Create provider with config + keys

@@ -36,6 +36,11 @@ import * as applicationService from '../applications/service.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from '../applications/errors.js';
+import {
+  applicationDescriptionSchema,
+  applicationNameSchema,
+  applicationSlugSchema,
+} from '../applications/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -43,15 +48,15 @@ import { ApplicationNotFoundError, ApplicationValidationError } from '../applica
 
 /** Schema for creating a new application */
 const createApplicationSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(3).max(100).optional(),
-  description: z.string().max(2000).optional(),
+  name: applicationNameSchema,
+  slug: applicationSlugSchema.optional(),
+  description: applicationDescriptionSchema.optional(),
 });
 
 /** Schema for updating an application (all fields optional) */
 const updateApplicationSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  description: z.string().max(2000).nullable().optional(),
+  name: applicationNameSchema.optional(),
+  description: applicationDescriptionSchema.nullable().optional(),
 });
 
 /** Schema for listing applications with pagination and filters */
@@ -76,15 +81,15 @@ const listApplicationsCursorSchema = z.object({
 
 /** Schema for creating a module within an application */
 const createModuleSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(3).max(100).optional(),
-  description: z.string().max(2000).optional(),
+  name: applicationNameSchema,
+  slug: applicationSlugSchema.optional(),
+  description: applicationDescriptionSchema.optional(),
 });
 
 /** Schema for updating a module (all fields optional) */
 const updateModuleSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  description: z.string().max(2000).nullable().optional(),
+  name: applicationNameSchema.optional(),
+  description: applicationDescriptionSchema.nullable().optional(),
 });
 
 /** Parameters accepted by application deletion. */

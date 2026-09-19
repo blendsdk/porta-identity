@@ -28,7 +28,7 @@ function driver(events: string[]): PackedAdminDataDriver {
         outcome: requirement.expectedOutcome,
         status: requirement.expectedStatus,
         bodyDigest: digest,
-        recordCount: requirement.surface === 'export-users-json' ? 2 : null,
+        recordCount: null,
         publicFieldDigest: digest,
       } as const;
       return {
@@ -51,7 +51,7 @@ function driver(events: string[]): PackedAdminDataDriver {
         outcome: requirement.expectedOutcome,
         status: requirement.expectedStatus,
         bodyDigest: digest,
-        recordCount: requirement.surface === 'export-users-json' ? 2 : null,
+        recordCount: null,
         publicFieldDigest: digest,
       };
     },

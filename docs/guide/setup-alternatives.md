@@ -101,13 +101,18 @@ porta login --server https://porta.local:3443
 
 The standalone CLI opens your browser for OIDC authentication. See [porta login](../cli/bootstrap.md#porta-login) for details.
 
-**7. Set up your environment**
+**7. Configure your environment**
 
-Use [declarative provisioning](../cli/provisioning.md) to create organizations, applications, and clients.
+Use the interactive administration shell to create organizations, applications, roles,
+permissions, users, and clients:
 
 ```bash
-porta provision -f setup.yaml
+porta admin --server https://porta.local:3443
 ```
+
+If you are moving selected data from another Porta installation, use
+[Environment Portability](../cli/provisioning.md) to export a JSON manifest from the source and
+preview it before import.
 
 ### Stopping
 
@@ -202,6 +207,6 @@ yarn docker:down
 ## Next Steps
 
 - 📖 [Quick Start](./quickstart.md) — The primary setup guide
-- 🔧 [Provisioning Guide](../cli/provisioning.md) — Declarative environment setup
+- 🔁 [Environment Portability](../cli/provisioning.md) — Selective manifest export and import
 - ⚙️ [Environment Variables](./environment.md) — Complete configuration reference
 - 🚢 [Deployment Guide](./deployment.md) — Production deployment guidance

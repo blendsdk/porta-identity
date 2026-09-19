@@ -143,7 +143,7 @@ export function createAuditRouter(): Router {
 
     // Resolve retention days: explicit param → system_config → default 90
     const retentionDays = body.retentionDays
-      ?? await getSystemConfigNumber('audit_retention_days', 90);
+      ?? await getSystemConfigNumber('audit_retention_days');
 
     if (body.dryRun) {
       // Dry-run: count entries that would be deleted

@@ -23,6 +23,7 @@ import { createPackedP1ReadLiveDriver, type PackedP1ReadLiveDriver } from './p1-
 import {
   collectPackedP1ReadJourneys,
   createPackedP1ReadProvenance,
+  packedP1ReadExitCode,
   validatePackedP1ReadEvidence,
 } from './p1-read.js';
 import { createPackedProtocolLiveDriver, type PackedProtocolLiveDriver } from './protocol-live.js';
@@ -59,7 +60,7 @@ export interface PackedCompatibilityResult {
   /** Repository-relative result artifact path. */
   readonly artifactPath: string;
   /** Stable root assurance exit code after exact cleanup precedence. */
-  readonly exitCode: 0 | 30 | 60 | 70 | 130 | 143;
+  readonly exitCode: 0 | 20 | 30 | 60 | 70 | 130 | 143;
   /** Exact bounded cleanup command when automatic consumer removal failed. */
   readonly recoveryCommand?: string;
 }
@@ -352,7 +353,7 @@ export async function runPackedCompatibilityFoundation(
     p1ReadJourneys !== undefined
   ) {
     try {
-      evidence = validatePackedP1ReadEvidence({
+      const validatedEvidence = validatePackedP1ReadEvidence({
         version: 1,
         provenance: p1ReadProvenance,
         journeys: p1ReadJourneys,
@@ -378,13 +379,15 @@ export async function runPackedCompatibilityFoundation(
         },
         correlatedLogEvidenceCollected: false,
       });
+      evidence = validatedEvidence;
+      exitCode = packedP1ReadExitCode(validatedEvidence);
     } catch {
       exitCode = 30;
       stage = 'surfaces';
     }
   }
   const admittedEvidence =
-    exitCode === 0 && evidence !== undefined
+    (exitCode === 0 || exitCode === 20) && evidence !== undefined
       ? evidence
       : {
           version: 1,

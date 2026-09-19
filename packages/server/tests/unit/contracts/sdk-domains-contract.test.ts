@@ -23,7 +23,7 @@ import type { Permission } from '../../../../sdk/src/types/permissions.js';
 import type { AuditEntry } from '../../../../sdk/src/types/audit.js';
 import type { ConfigEntry } from '../../../../sdk/src/types/config.js';
 import type { AdminSession, RevokeUserSessionsResult } from '../../../../sdk/src/types/sessions.js';
-import type { ImportResult } from '../../../../sdk/src/types/imports.js';
+import type { PortabilityResult } from '../../../../sdk/src/types/imports.js';
 import type { BulkOperationResult } from '../../../../sdk/src/types/bulk.js';
 import type { HistoryEntry } from '../../../../sdk/src/types/common.js';
 import type { StatsOverview, OrgStats } from '../../../../sdk/src/types/stats.js';
@@ -384,21 +384,28 @@ describe('SDK↔Server contract: Domain Types', () => {
     expect(_sdk.revoked).toBe(3);
   });
 
-  it('ImportResult type covers server response', () => {
-    const server: ImportResult = {
-      mode: 'merge',
-      created: [],
-      updated: [],
-      skipped: [],
+  it('PortabilityResult type covers the server response', () => {
+    const counts = { created: 0, updated: 0, skipped: 0, rejected: 0 };
+    const server: PortabilityResult = {
+      mode: 'dry-run',
+      summary: {
+        organizations: counts,
+        applications: counts,
+        application_modules: counts,
+        roles: counts,
+        permissions: counts,
+        claim_definitions: counts,
+        role_permission_mappings: counts,
+        users: counts,
+        user_role_assignments: counts,
+        user_claim_values: counts,
+        clients: counts,
+      },
+      items: [],
       errors: [],
-      credentials: [],
     };
-    expectKeys(
-      server,
-      ['mode', 'created', 'updated', 'skipped', 'errors', 'credentials'],
-      'ImportResult',
-    );
-    expect(server.mode).toBe('merge');
+    expectKeys(server, ['mode', 'summary', 'items', 'errors'], 'PortabilityResult');
+    expect(server.mode).toBe('dry-run');
   });
 
   it('BulkOperationResult type covers server response', () => {

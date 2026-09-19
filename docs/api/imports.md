@@ -1,20 +1,17 @@
-# Data Import API
+# Portability Import API
 
-The data import API enables importing configuration from a JSON manifest, supporting migration between Porta servers. Supports three modes: merge, overwrite, and dry-run.
+The import API previews and applies strict JSON manifests produced by the selective
+[manifest export](./exports.md#selective-manifest-export). It does not accept the retired nested
+provisioning format, YAML, aliases, or secret material.
 
-## Endpoints
+## Endpoint
 
-| Method | Path                | Permission           | Description                   |
-| ------ | ------------------- | -------------------- | ----------------------------- |
-| `POST` | `/api/admin/import` | `admin:import:write` | Import configuration manifest |
+| Method | Path                | Base permission      | Description                          |
+| ------ | ------------------- | -------------------- | ------------------------------------ |
+| `POST` | `/api/admin/import` | `admin:import:write` | Preview or apply one strict manifest |
 
-## Import Modes
-
-| Mode        | Behavior                                                                                                                                                   |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `merge`     | Skip existing tenant-qualified natural keys unchanged and create missing entities                                                                          |
-| `overwrite` | Create missing entities and update only documented presentation/configuration fields; ownership, IDs, protocol authority, and credentials remain unchanged |
-| `dry-run`   | Run the same planner against a repeatable-read snapshot without writes, audit entries, identifiers, or generated secrets (default)                         |
+Selected categories also require their create, update, lifecycle, and assignment permissions.
+Environment-scoped imports require a super-administrator.
 
 ## Request
 
@@ -24,154 +21,102 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "mode": "dry-run",
-  "organizationId": "8b0ec59e-20d8-4f78-b0c5-c9b603af1c8b",
   "manifest": {
     "version": "1.0",
-    "organizations": [...],
-    "applications": [...],
-    "clients": [...],
-    "roles": [...],
-    "permissions": [...],
-    "claim_definitions": [...]
-  }
+    "exported_at": "2026-09-14T10:11:12.345Z",
+    "scope": { "kind": "organization", "organization_slug": "acme" },
+    "categories": ["organizations"],
+    "application_selection": {
+      "all_applications": false,
+      "application_slugs": []
+    },
+    "organizations": [],
+    "applications": [],
+    "application_modules": [],
+    "roles": [],
+    "permissions": [],
+    "claim_definitions": [],
+    "role_permission_mappings": [],
+    "users": [],
+    "user_role_assignments": [],
+    "user_claim_values": [],
+    "clients": []
+  },
+  "mode": "dry-run"
 }
 ```
 
-When `organizationId` is present, every tenant-qualified entry must resolve to that organization.
-This prevents a scoped provisioning job from importing data into a different tenant. Omitting the
-field preserves the global super-administrator import contract.
+Every collection is required, even when empty. Unknown fields, duplicate natural keys, invalid
+relationships, unsupported versions, cross-scope references, and credential-like input are
+rejected.
 
-## Manifest Format
+## Modes
 
-The manifest is a versioned JSON envelope containing entity arrays. All entity types are optional.
+| Mode              | Behavior                                                                            |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `dry-run`         | Validate and plan without writes, generated credentials, or audit mutation.         |
+| `keep-existing`   | Reuse compatible matching records unchanged and create missing records.             |
+| `update-existing` | Update documented portable fields on compatible matches and create missing records. |
 
-### Version
+Import never deletes destination records. Apply repeats validation and commits the complete
+manifest in one transaction. Any rejected record prevents every write.
 
-Currently only `"1.0"` is supported. Incompatible versions are rejected with `400 Bad Request`.
-
-### Entity Types
-
-Entities are processed in **dependency order** to satisfy foreign key constraints:
-
-1. **Organizations** — No dependencies
-2. **Applications** — Depend on organizations (via `organization_slug`)
-3. **Clients** — Depend on applications (via `application_slug` + `organization_slug`)
-4. **Roles** — Depend on applications
-5. **Permissions** — Depend on applications
-6. **Claim Definitions** — Depend on applications
-
-### Organization Schema
-
-```json
-{
-  "name": "Acme Corp",
-  "slug": "acme-corp",
-  "default_locale": "en",
-  "branding_company_name": "Acme Corporation"
-}
-```
-
-### Application Schema
-
-```json
-{
-  "name": "My App",
-  "slug": "my-app",
-  "organization_slug": "acme-corp",
-  "description": "Main application"
-}
-```
-
-### Client Schema
-
-```json
-{
-  "client_name": "Web Client",
-  "application_slug": "my-app",
-  "organization_slug": "acme-corp",
-  "client_type": "confidential",
-  "application_type": "web",
-  "grant_types": ["authorization_code"],
-  "redirect_uris": ["https://app.example.com/callback"],
-  "response_types": ["code"],
-  "scope": "openid profile email"
-}
-```
-
-### Role / Permission Schema
-
-```json
-{
-  "name": "Editor",
-  "slug": "editor",
-  "application_slug": "my-app",
-  "organization_slug": "acme-corp",
-  "description": "Can edit content"
-}
-```
-
-### Claim Definition Schema
-
-```json
-{
-  "name": "Department",
-  "slug": "department",
-  "application_slug": "my-app",
-  "organization_slug": "acme-corp",
-  "claim_type": "string",
-  "description": "User's department"
-}
-```
-
-## Response
+## Result
 
 ```json
 {
   "mode": "dry-run",
-  "created": [{ "type": "organization", "slug": "acme-corp", "name": "Acme Corp" }],
-  "updated": [
+  "summary": {
+    "organizations": { "created": 0, "updated": 0, "skipped": 1, "rejected": 0 },
+    "applications": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "application_modules": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "roles": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "permissions": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "claim_definitions": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "role_permission_mappings": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "users": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "user_role_assignments": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "user_claim_values": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 },
+    "clients": { "created": 0, "updated": 0, "skipped": 0, "rejected": 0 }
+  },
+  "items": [
     {
-      "type": "application",
-      "slug": "my-app",
-      "name": "My App",
-      "changes": ["name", "description"]
+      "entity_type": "organizations",
+      "action": "skipped",
+      "natural_key": { "slug": "acme" }
     }
   ],
-  "skipped": [{ "type": "role", "slug": "admin", "reason": "Already exists" }],
-  "credentials": [
-    {
-      "clientName": "api",
-      "clientType": "confidential",
-      "credentialWillBeGenerated": true
-    }
-  ]
+  "errors": []
 }
 ```
 
-Successful responses never contain an `errors` array. A committed confidential-client create
-returns its generated client ID and secret once, after the database commit. Dry-run responses use
-only `credentialWillBeGenerated`; they contain no generated identifier or secret.
+Items and errors remain in dependency order. A committed confidential-client creation may add
+`credentials`; each generated secret is
+returned once after commit with `client_id`, `label`, `secret`, and `expires_at`. Preview never
+contains credentials.
+
+## Rejected Plans
+
+A valid manifest whose records cannot form a safe plan returns `409` with code
+`import_plan_rejected` and the bounded result. Error codes are `invalid_record`,
+`duplicate_natural_key`, `missing_dependency`, `ambiguous_dependency`, `incompatible_record`,
+`cross_scope_reference`, `control_plane_record`, and `client_id_collision`.
+
+| Condition                   | Status | Code                      |
+| --------------------------- | ------ | ------------------------- |
+| Invalid request or manifest | `400`  | `import_manifest_invalid` |
+| Rejected plan               | `409`  | `import_plan_rejected`    |
+| Execution failure           | `503`  | `import_execution_failed` |
 
 ## Security
 
-- Import **never** processes: client secrets, user passwords, signing keys, session data, audit logs
-- All changes use one **repeatable-read PostgreSQL transaction** — all succeed or all roll back
-- Version, unknown fields, duplicate natural keys, parents, collisions, and secret-equivalent input
-  are rejected before mutation
-- Overwrite never moves ownership, changes security authority, or rotates existing credentials
-- The audit entry retains only actor, mode, version, manifest digest, and aggregate counts
-
-## Error Handling
-
-| Error                                                | Status | Description                                                                                    |
-| ---------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
-| Invalid manifest schema                              | `400`  | Manifest doesn't match expected format                                                         |
-| Unsupported manifest version                         | `400`  | Version is not `1.0`                                                                           |
-| Missing parent, collision, or immutable-field change | `409`  | Whole manifest rejected with no mutation                                                       |
-| Transaction failure                                  | `503`  | Whole manifest rolled back; response carries a correlation ID but no infrastructure diagnostic |
+- Manifests cannot carry passwords, hashes, existing client secrets, signing keys, sessions,
+  recovery material, audit logs, database identifiers, or control-plane records.
+- Organization scope and every natural-key relationship are checked on the server.
+- Failure responses contain fixed codes and, for `503`, a request ID without infrastructure detail.
+- The audit entry stores bounded operation metadata, not the manifest or generated credentials.
 
 ## Related
 
-- [Data Export API](./exports.md) — Export entity data as CSV/JSON
-- [Branding API](./branding.md) — Logo/favicon asset management
+- [Data Export API](./exports.md) — Report downloads and selective manifest export
+- [Environment Portability](/cli/provisioning) — CLI export, preview, and apply workflow

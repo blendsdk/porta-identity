@@ -1,8 +1,79 @@
 # Environment Variables
 
+> **Last Updated**: 2026-09-17
+
 Complete reference for all environment variables used to configure Porta.
 
 See also: [Quick Start](./quickstart.md) for minimal setup, [Deployment Guide](./deployment.md) for production guidance.
+
+## Editable Global Configuration
+
+Porta's closed catalog contains exactly 18 database-backed editable keys. Values are native JSONB
+integers, except the native locale string. Defaults and inclusive validation bounds come from code;
+administrators can update values but cannot create, rename or delete arbitrary keys. Internal
+`super_admin_user_id` is not editable or exposed through the configuration API.
+
+| Key                                | Default   | Inclusive range / choices | Unit     | Application mode   |
+| ---------------------------------- | --------- | ------------------------- | -------- | ------------------ |
+| `access_token_ttl`                 | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `id_token_ttl`                     | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `refresh_token_ttl`                | `2592000` | `300..31536000`           | seconds  | `restart-required` |
+| `authorization_code_ttl`           | `600`     | `30..3600`                | seconds  | `restart-required` |
+| `session_ttl`                      | `86400`   | `300..2592000`            | seconds  | `restart-required` |
+| `magic_link_ttl`                   | `900`     | `60..3600`                | seconds  | `runtime`          |
+| `password_reset_ttl`               | `3600`    | `300..86400`              | seconds  | `runtime`          |
+| `invitation_ttl`                   | `604800`  | `300..2592000`            | seconds  | `runtime`          |
+| `rate_limit_login_max`             | `10`      | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_login_window`          | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_magic_link_max`        | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_magic_link_window`     | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_password_reset_max`    | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_password_reset_window` | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
+| `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
+| `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
+| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
+
+Manage this policy with [the Configuration API](../api/config.md), `porta config list|get|set`,
+or **System Configuration…** in `porta admin`. Duration editors store exact seconds; inline help
+may show an equivalent whole number of minutes, hours or days.
+
+After a successful save commits, Porta clears the local process cache; subsequent runtime reads
+see the saved value immediately. Other healthy server instances pick up runtime changes on their
+next read within the existing at-most-60-second cache lifetime. Cache expiry is checked on reads;
+there is no broadcast, watcher or polling worker.
+
+The five `restart-required` lifetime keys above require restarting every Porta server instance.
+Saving them persists policy but does not reconfigure a running OIDC provider. Porta does not
+automatically restart servers or instantly invalidate every instance's cache. Existing absolute
+artifact expiries and Redis counter expiries are not rewritten. Recovery/invitation creation uses
+the current lifetime; current limits apply at the next decision, and lockout eligibility uses the
+current duration with the existing lock timestamp. Locale `en` is the final fallback after request,
+user and organization choices. Audit cleanup uses the current default unless explicitly overridden.
+
+## External Bootstrap Settings and Secrets
+
+These settings remain external, supplied through environment variables or a secret manager. They
+must be available before database startup and are outside the editable catalog/configuration API.
+The detailed environment sections below retain their existing startup validation rules.
+
+| External setting                        | Source and purpose                                                           |
+| --------------------------------------- | ---------------------------------------------------------------------------- |
+| `DATABASE_URL`                          | Environment/secret manager; PostgreSQL connection and credentials            |
+| `REDIS_URL`                             | Environment/secret manager; Redis connection and credentials                 |
+| `ISSUER_BASE_URL`                       | Environment; public issuer/bootstrap URL                                     |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM`   | Environment; SMTP connection and sender                                      |
+| `SMTP_USER`, `SMTP_PASS`                | Secret manager/environment; SMTP credentials                                 |
+| `COOKIE_KEYS`                           | Secret manager/environment; cookie signing key ring                          |
+| `SIGNING_KEY_ENCRYPTION_KEY`            | Secret manager/environment; separate signing-key encryption root             |
+| `TWO_FACTOR_ENCRYPTION_KEY`             | Secret manager/environment; separate TOTP encryption root                    |
+| `NODE_ENV`, `HOST`, `PORT`, `LOG_LEVEL` | Environment; process bootstrap and logging                                   |
+| `TRUST_PROXY`, `ADMIN_CORS_ORIGINS`     | Environment; trusted-proxy and authenticated CORS policy                     |
+| TLS certificate/private key             | Reverse-proxy files/secret manager; HTTPS termination outside the config API |
+
+Migration `030_global_configuration_catalog.sql` resets canonical operational values to these native
+defaults, removes obsolete public keys and preserves internal rows. Its Down is a no-op; use the
+development reset workflow (`yarn admin:env reset`) rather than restoring retired public values.
 
 ## Server
 
@@ -112,8 +183,8 @@ Enabling it without a proxy allows clients to spoof `X-Forwarded-*` headers.
 
 | Variable                     | Default | Required       | Description                                                                                                                                                                                                                                                                                                |
 | ---------------------------- | ------- | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `TWO_FACTOR_ENCRYPTION_KEY`  | —       | **Yes** (prod) | AES-256-GCM key for encrypting TOTP secrets. Must be exactly 64 hex characters (32 bytes). Optional in development/test.                                                                                                                                                                                   |
-| `SIGNING_KEY_ENCRYPTION_KEY` | —       | **Yes**        | AES-256-GCM key for encrypting ES256 signing key private keys at rest. Must be exactly 64 hex characters (32 bytes). **Always required** — Porta will not start without it.                                                                                                                                |
+| `TWO_FACTOR_ENCRYPTION_KEY`  | —       | **Yes** (prod) | AES-256-GCM key for encrypting TOTP secrets. Must be exactly 64 hexadecimal characters (32 bytes). Development/test installations may omit it.                                                                                                                                                             |
+| `SIGNING_KEY_ENCRYPTION_KEY` | —       | **Yes**        | AES-256-GCM key for encrypting ES256 signing key private keys at rest. Must be exactly 64 hexadecimal characters (32 bytes). **Always required** — Porta will not start without it.                                                                                                                        |
 | `PORTA_SKIP_PROD_SAFETY`     | `false` | No             | Emergency escape hatch to bypass production config safety checks. When `true`, Porta logs an **ERROR** instead of exiting on startup. **Do not use in normal production** — this is intended only for disaster recovery or migration scenarios. See [Production Safety Checks](#production-safety-checks). |
 
 ### Production Safety Checks
@@ -131,8 +202,11 @@ When `NODE_ENV=production`, Porta validates your configuration at startup and **
 | R7   | `ISSUER_BASE_URL` uses `https://` for non-localhost hosts                             |
 | R8   | `LOG_LEVEL` is not `debug` (prevents verbose logging in production)                   |
 | R9   | `SMTP_HOST` is not `localhost` / `127.x.x.x` (catches MailHog dev inbox)              |
+| R10  | The signing-key and two-factor encryption keys contain different values               |
 
-If you need to temporarily bypass these checks (e.g., during disaster recovery), set `PORTA_SKIP_PROD_SAFETY=true`. Porta will still log each violation as an **ERROR** but will not exit.
+If you need to temporarily bypass the operational checks (e.g., during disaster recovery), set
+`PORTA_SKIP_PROD_SAFETY=true`. Porta will still require different signing-key and two-factor root
+keys because the escape hatch cannot disable cryptographic domain separation.
 
 ::: danger
 `PORTA_SKIP_PROD_SAFETY=true` should never be used in normal production. It exists only for emergency situations where you need to start Porta with an incomplete configuration.
@@ -154,12 +228,15 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 node -e "console.log(require('crypto').randomBytes(24).toString('base64url'))"
 ```
 
+Run the two encryption-key commands separately and do not reuse either result. Production requires
+both external root keys to contain different values; Porta does not store them in PostgreSQL.
+
 ## Startup Behavior
 
-| Variable             | Default | Required | Description                                                                                                                                                                           |
-| -------------------- | ------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `PORTA_AUTO_MIGRATE` | `false` | No       | When `true`, the Docker entrypoint runs database migrations automatically before starting the server. Convenient for initial setup; disable in production after the schema is stable. |
-| `PORTA_WAIT_TIMEOUT` | `60`    | No       | Maximum seconds the Docker entrypoint waits for PostgreSQL and Redis to become available before exiting.                                                                              |
+| Variable             | Default | Required | Description                                                                                                                                         |
+| -------------------- | ------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `PORTA_AUTO_MIGRATE` | `false` | No       | Entrypoint migration switch for development or one-time initialization. Keep `false` in production and run migrations explicitly during deployment. |
+| `PORTA_WAIT_TIMEOUT` | `60`    | No       | Maximum seconds the Docker entrypoint waits for PostgreSQL and Redis to become available before exiting.                                            |
 
 ## Test Environment
 
@@ -175,7 +252,7 @@ These variables are used by the test suite and should not be set in production.
 Porta ships with two example files:
 
 - **`.env.example`** — Development defaults (local PostgreSQL, Redis, MailHog)
-- **`.env.docker`** — Docker Compose defaults (service hostnames, production mode)
+- **`.env.docker`** — Local Docker Compose defaults (service hostnames and development services)
 
 Copy the appropriate file and customize:
 

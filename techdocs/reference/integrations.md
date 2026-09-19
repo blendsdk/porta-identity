@@ -1,6 +1,6 @@
 # Integrations Reference
 
-> **Last Updated**: 2026-09-09
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -275,16 +275,16 @@ graph TB
 
 The OIDC provider is configured in `packages/server/src/oidc/configuration.ts`:
 
-| Feature               | Configuration                                               |
-| --------------------- | ----------------------------------------------------------- |
-| **Signing algorithm** | ES256 (ECDSA P-256) only                                    |
-| **PKCE**              | Enforced for public clients (S256 method)                   |
-| **Scopes**            | `openid`, `profile`, `email`, `offline_access` + custom     |
-| **Claims**            | Standard claims + application-scoped RBAC and custom claims |
-| **Grant types**       | `authorization_code`, `refresh_token`, `client_credentials` |
-| **Token format**      | ES256 JWT ID tokens; opaque access/client-credential tokens |
-| **Interactions**      | Custom login/consent pages                                  |
-| **TTLs**              | Loaded from `system_config` table at startup                |
+| Feature               | Configuration                                                                                                                       |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Signing algorithm** | ES256 (ECDSA P-256) only                                                                                                            |
+| **PKCE**              | Enforced for public clients (S256 method)                                                                                           |
+| **Scopes**            | `openid`, `profile`, `email`, `offline_access` + custom                                                                             |
+| **Claims**            | Standard claims + application-scoped RBAC and custom claims                                                                         |
+| **Grant types**       | `authorization_code`, `refresh_token`, `client_credentials`                                                                         |
+| **Token format**      | ES256 JWT ID tokens; opaque access/client-credential tokens                                                                         |
+| **Interactions**      | Custom login/consent pages                                                                                                          |
+| **TTLs**              | Five provider TTLs loaded from `system_config` at startup; grant TTL follows refresh TTL, interaction TTL is fixed at 3,600 seconds |
 
 ### Adapter Strategy
 

@@ -39,6 +39,19 @@ const listSessionsSchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
+/** Public UUID accepted by single-session administrative operations. */
+const publicSessionIdSchema = z.string().uuid();
+
+/** Validate a public session identifier without exposing parser details. */
+function publicSessionId(
+  ctx: { throw: (status: number, message: string) => never },
+  value: string,
+): string {
+  const result = publicSessionIdSchema.safeParse(value);
+  if (!result.success) ctx.throw(400, 'Session request is invalid');
+  return result.data;
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -72,7 +85,9 @@ export function createSessionRouter(): Router {
   // GET /:sessionId — Get session detail
   // -------------------------------------------------------------------------
   router.get('/:sessionId', requirePermission(ADMIN_PERMISSIONS.SESSION_READ), async (ctx) => {
-    const session = await sessionTracking.getSession(ctx.params.sessionId);
+    const session = await sessionTracking.getSessionByPublicId(
+      publicSessionId(ctx, ctx.params.sessionId),
+    );
     if (!session) {
       ctx.throw(404, 'Session not found');
       return;
@@ -89,20 +104,22 @@ export function createSessionRouter(): Router {
   //   3. Audit log entry for session revocation
   // -------------------------------------------------------------------------
   router.delete('/:sessionId', requirePermission(ADMIN_PERMISSIONS.SESSION_REVOKE), async (ctx) => {
-    const { sessionId } = ctx.params;
+    const requestedSessionId = publicSessionId(ctx, ctx.params.sessionId);
 
     // 1. Mark revoked in PG tracking table
-    await sessionTracking.revokeSession(sessionId);
+    const redisSessionId = await sessionTracking.revokeSessionByPublicId(requestedSessionId);
 
     // 2. Delete from Redis to kill the live session
-    await afterDatabaseCommit(async () => {
-      try {
-        const redis = getRedis();
-        await redis.del(`oidc:Session:${sessionId}`);
-      } catch {
-        // Redis deletion failure is non-fatal — session will expire naturally.
-      }
-    });
+    if (redisSessionId !== null) {
+      await afterDatabaseCommit(async () => {
+        try {
+          const redis = getRedis();
+          await redis.del(`oidc:Session:${redisSessionId}`);
+        } catch {
+          // Redis deletion failure is non-fatal — session will expire naturally.
+        }
+      });
+    }
 
     ctx.status = 204;
   });

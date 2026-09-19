@@ -14,7 +14,7 @@
 #   ./porta --help                  # See all commands
 #
 # For full admin CLI (org, app, client, user, keys, config,
-# audit, sessions, stats, bulk, exports, provision), install
+# audit, sessions, stats, bulk, export, import), install
 # the standalone @portaidentity/cli package:
 #
 #   npm install -g @portaidentity/cli

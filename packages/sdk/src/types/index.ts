@@ -81,7 +81,18 @@ export type {
 } from './custom-claims.js';
 
 // Config
-export type { ConfigEntry, SetConfigInput } from './config.js';
+export type {
+  ConfigKey,
+  ConfigValue,
+  ConfigGroup,
+  ConfigValueType,
+  ConfigUnit,
+  ConfigApplicationMode,
+  ConfigEntry,
+  SetConfigInput,
+  ConfigUpdateResult,
+  ConfigBatchUpdateResult,
+} from './config.js';
 
 // Keys
 export type { SigningKey } from './keys.js';
@@ -123,7 +134,13 @@ export type {
 } from './branding.js';
 
 // Exports
-export type { ExportEntityType, ExportFormat, ExportParams } from './exports.js';
+export type {
+  ExportEntityType,
+  ExportFormat,
+  ExportParams,
+  ExportManifestRequest,
+  ExportManifestResponse,
+} from './exports.js';
 
 // Two-Factor
 // Note: `TwoFactorPolicy` is exported from ./organizations.js (canonical) to
@@ -136,16 +153,8 @@ export type {
   RegenerateRecoveryCodesResult,
 } from './two-factor.js';
 
-// Imports
-export type {
-  ImportMode,
-  ImportManifest,
-  ImportEntityResult,
-  ImportSkippedResult,
-  ImportErrorResult,
-  ImportClientCredentials,
-  ImportResult,
-} from './imports.js';
+// Portability manifests and import results
+export type * from './imports.js';
 
 // User Roles
 export type { UserRoleRemovalResult } from './user-roles.js';

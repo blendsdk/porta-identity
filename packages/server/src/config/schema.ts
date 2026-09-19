@@ -82,6 +82,18 @@ export const configSchema = baseSchema.superRefine((data, ctx) => {
   // Only enforce in production
   if (data.nodeEnv !== 'production') return;
 
+  // These keys protect different classes of encrypted data. The emergency
+  // escape hatch may relax operational checks, but it must not merge the two
+  // cryptographic domains.
+  const tfe = data.twoFactorEncryptionKey;
+  if (tfe && data.signingKeyEncryptionKey.toLowerCase() === tfe.toLowerCase()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['twoFactorEncryptionKey'],
+      message: 'SIGNING_KEY_ENCRYPTION_KEY and TWO_FACTOR_ENCRYPTION_KEY must use different values',
+    });
+  }
+
   // Escape hatch for incident response — caller logs a loud error
   if (process.env.PORTA_SKIP_PROD_SAFETY === 'true') return;
 
@@ -108,7 +120,6 @@ export const configSchema = baseSchema.superRefine((data, ctx) => {
   // ── R3 + R4: 2FA encryption key ──────────────────────────────────
   // Any org that ever enables 2FA needs this key to decrypt existing
   // TOTP secrets, so it is unconditionally required in production.
-  const tfe = data.twoFactorEncryptionKey;
   if (!tfe) {
     ctx.addIssue({
       code: 'custom',
@@ -173,7 +184,8 @@ export const configSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: 'custom',
       path: ['smtp', 'host'],
-      message: 'SMTP_HOST points at a dev inbox (MailHog); configure a real SMTP relay for production',
+      message:
+        'SMTP_HOST points at a dev inbox (MailHog); configure a real SMTP relay for production',
     });
   }
 });

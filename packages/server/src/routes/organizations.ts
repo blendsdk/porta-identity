@@ -31,8 +31,16 @@ import * as organizationService from '../organizations/service.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
-import { LOGIN_METHODS } from '../clients/types.js';
-import { validateBrandingImageUrl } from '../organizations/branding-url.js';
+import {
+  brandingCompanyNameSchema,
+  brandingCustomCssSchema,
+  brandingImageUrlSchema,
+  brandingPrimaryColorSchema,
+  organizationLocaleSchema,
+  organizationLoginMethodsSchema,
+  organizationNameSchema,
+  organizationSlugSchema,
+} from '../organizations/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -43,41 +51,26 @@ import { validateBrandingImageUrl } from '../organizations/branding-url.js';
  * Uses the runtime `LOGIN_METHODS` const so adding a new method only requires
  * updating the union in `src/clients/types.ts`.
  */
-const loginMethodSchema = z.enum(LOGIN_METHODS);
-
-/**
- * Organization-level default login methods — a non-empty array (empty arrays
- * are rejected by the service layer and must be rejected at the HTTP boundary
- * too so the 400 carries a useful validation message).
- */
-const defaultLoginMethodsSchema = z.array(loginMethodSchema).min(1);
-
-const brandingImageUrlSchema = z.string().transform(validateBrandingImageUrl);
-
 const brandingSchema = z.object({
   logoUrl: brandingImageUrlSchema.nullable().optional(),
   faviconUrl: brandingImageUrlSchema.nullable().optional(),
-  primaryColor: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .nullable()
-    .optional(),
-  companyName: z.string().max(255).nullable().optional(),
-  customCss: z.string().max(10000).nullable().optional(),
+  primaryColor: brandingPrimaryColorSchema.nullable().optional(),
+  companyName: brandingCompanyNameSchema.nullable().optional(),
+  customCss: brandingCustomCssSchema.nullable().optional(),
 });
 
 const createOrganizationSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(3).max(100).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
+  name: organizationNameSchema,
+  slug: organizationSlugSchema.optional(),
+  defaultLocale: organizationLocaleSchema.optional(),
+  defaultLoginMethods: organizationLoginMethodsSchema.optional(),
   branding: brandingSchema.optional(),
 });
 
 const updateOrganizationSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
+  name: organizationNameSchema.optional(),
+  defaultLocale: organizationLocaleSchema.optional(),
+  defaultLoginMethods: organizationLoginMethodsSchema.optional(),
   branding: brandingSchema.optional(),
 });
 
@@ -103,7 +96,7 @@ const listOrganizationsCursorSchema = z.object({
 });
 
 const validateSlugSchema = z.object({
-  slug: z.string().min(1),
+  slug: organizationSlugSchema,
 });
 
 /** UUID or slug accepted by the organization deletion endpoint. */
@@ -255,8 +248,12 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   router.put('/:id/branding', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
     try {
-      const body = updateBrandingSchema.parse(ctx.request.body);
-      const org = await organizationService.updateOrganizationBranding(ctx.params.id, body);
+      const body = updateBrandingSchema.safeParse(ctx.request.body);
+      if (!body.success) {
+        ctx.throw(400, 'Organization request is invalid');
+        return;
+      }
+      const org = await organizationService.updateOrganizationBranding(ctx.params.id, body.data);
       ctx.body = { data: org };
     } catch (err) {
       handleError(ctx, err);

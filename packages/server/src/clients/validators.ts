@@ -11,7 +11,47 @@
  * of client type (confidential/public) and application type (web/spa/native).
  */
 
-import type { ClientType, ApplicationType } from './types.js';
+import { z } from 'zod';
+import { LOGIN_METHODS, type ClientType, type ApplicationType } from './types.js';
+
+/** Client display names are required and fit the database column. */
+export const clientNameSchema = z.string().min(1).max(255);
+
+/** Client confidentiality modes supported by the OIDC provider. */
+export const clientTypeSchema = z.enum(['confidential', 'public']);
+
+/** Deployment application types supported by the OIDC provider. */
+export const clientApplicationTypeSchema = z.enum(['web', 'native', 'spa']);
+
+/** Client lifecycle states persisted by the domain. */
+export const clientStatusSchema = z.enum(['active', 'inactive']);
+
+/** Per-client login methods may inherit from the organization through null. */
+export const clientLoginMethodsSchema = z.array(z.enum(LOGIN_METHODS)).min(1).nullable();
+
+/** Token endpoint authentication methods accepted by the OIDC provider. */
+export const tokenEndpointAuthMethodSchema = z.enum([
+  'client_secret_basic',
+  'client_secret_post',
+  'none',
+]);
+
+/** Redirect URI collections use the domain's bounded absolute-URL boundary. */
+export const redirectUrisSchema = z.array(z.string().url()).min(1).max(10);
+
+/** Optional redirect and origin collections share the domain's maximum count. */
+export const optionalClientUrisSchema = z.array(z.string().url()).max(10);
+
+/** OAuth grant types supported by Porta clients. */
+export const clientGrantTypesSchema = z
+  .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
+  .min(1);
+
+/** OIDC response types currently supported by Porta. */
+export const clientResponseTypesSchema = z.array(z.literal('code')).length(1);
+
+/** Client scopes retain the existing free-text wire contract. */
+export const clientScopeSchema = z.string();
 
 /** Closed token endpoint authentication methods supported by Porta clients. */
 export type TokenEndpointAuthMethod = 'client_secret_basic' | 'client_secret_post' | 'none';

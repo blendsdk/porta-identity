@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   assembleFunctionalCaseObservation,
+  assertCallbackNavigationOutcome,
   functionalBodyFingerprint,
   functionalHeaderFingerprint,
 } from './human-auth-functional-observations.js';
@@ -107,5 +108,16 @@ test('should preserve identity-revealing body and public-header differences', ()
       'set-cookie': 'secret-two',
       'content-type': 'text/html',
     }),
+  );
+});
+
+test('should accept only a completed callback after Chromium reports a network change', () => {
+  const networkChange = new Error('page.waitForNavigation: net::ERR_NETWORK_CHANGED');
+
+  assert.doesNotThrow(() => assertCallbackNavigationOutcome(networkChange, true));
+  assert.throws(() => assertCallbackNavigationOutcome(networkChange, false), networkChange);
+  assert.throws(
+    () => assertCallbackNavigationOutcome(new Error('page.waitForNavigation: timeout'), true),
+    /timeout/u,
   );
 });

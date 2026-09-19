@@ -4,7 +4,12 @@ import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/dat
 import { normalizedRouteTemplate, recordSecurityDecision } from '../security/decision-context.js';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const SELF_MANAGED_MUTATION_PREFIXES = ['/api/admin/bulk', '/api/admin/import'];
+const SELF_MANAGED_MUTATION_PREFIXES = [
+  '/api/admin/bulk',
+  '/api/admin/import',
+  '/api/admin/export/manifest',
+  '/api/admin/config',
+];
 
 /** Internal signal used to roll back a handled non-success response without replacing its body. */
 class HandledMutationRejection extends Error {}
@@ -28,8 +33,9 @@ function ownsAdministrativeMutation(method: string, path: string): boolean {
 /**
  * Atomically bind successful administrative mutations to one durable audit row.
  *
- * Bulk and import own specialized transaction/result semantics and are excluded here. Every other
- * state-changing admin request shares one request-local PostgreSQL client across repository calls.
+ * Bulk operations, portability and configuration updates own specialized transaction semantics and are
+ * excluded here. Every other state-changing admin request shares one request-local PostgreSQL
+ * client across repository calls.
  */
 export function adminMutationAudit(): Middleware {
   return async (ctx, next) => {

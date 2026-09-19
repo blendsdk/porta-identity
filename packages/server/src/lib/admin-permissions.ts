@@ -104,6 +104,9 @@ export type AdminPermission = (typeof ADMIN_PERMISSIONS)[keyof typeof ADMIN_PERM
 /** Array of all admin permission slug values (useful for iteration/validation) */
 export const ALL_ADMIN_PERMISSIONS: readonly AdminPermission[] = Object.values(ADMIN_PERMISSIONS);
 
+/** Exact role slug required for complete-environment administrative operations. */
+export const SUPER_ADMIN_ROLE_SLUG = 'porta-super-admin';
+
 // ============================================================================
 // Role Definitions
 // ============================================================================
@@ -137,7 +140,7 @@ export interface AdminRoleDefinition {
  */
 export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
   SUPER_ADMIN: {
-    slug: 'porta-super-admin',
+    slug: SUPER_ADMIN_ROLE_SLUG,
     name: 'Super Admin',
     description: 'Full system access, cannot be deleted',
     permissions: ALL_ADMIN_PERMISSIONS,

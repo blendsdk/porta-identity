@@ -4,9 +4,9 @@
 
 ## Project profile
 
-- Porta is a Node.js 22+ TypeScript ESM identity platform; active feature development uses the current Node.js 24 LTS release. The server is built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
+- Porta is a TypeScript ESM identity platform requiring Node.js 22.22.2+; active feature verification uses Node.js 24. The server is built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
 - Yarn Classic 1.x and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
-- `main` is the production branch and remains strictly off limits. `monorepo-migrate` is the verified migration checkpoint; conflict resolution for the pull request into `develop` runs on `monorepo-develop-integration` in the separate `v6` worktree.
+- `main` is the production branch and remains strictly off limits. Integrate feature work through `develop`; preserve the verified migration and assurance histories. Do not assume historical integration branches or worktrees are still active.
 - Commits use Conventional Commit prefixes such as `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
 
 ## Authoritative commands
@@ -16,19 +16,31 @@ Run commands from the repository root.
 | Purpose             | Command                                    | Validation                                                                                                               |
 | ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
 | Install             | `yarn install --frozen-lockfile`           | Passed on 2026-08-08 in the migration worktree                                                                           |
-| Full verification   | `yarn verify`                              | Passed on 2026-08-23: 70 structure; server unit 2,861, integration 363, E2E 129, and pentest 224; SDK 404; CLI 356 tests |
-| CLI verification    | `yarn workspace @portaidentity/cli verify` | Runs CLI lint, typecheck, tests, and build without server suites                                                         |
-| Structure tests     | `yarn test:structure`                      | Node repository-contract tests; no services required                                                                     |
+| Full verification   | `yarn verify`                              | Passed on 2026-09-17; counts below                                                                                      |
+| CLI verification    | `yarn workspace @portaidentity/cli verify` | Passed on 2026-09-17: lint, typecheck, 1,419 tests and build                                                             |
+| Structure tests     | `yarn test:structure`                      | Passed on 2026-09-17: 122 contracts; some spawn builds/CLI commands; no services required                                |
 | Unit tests          | `yarn test:unit`                           | Runs the server unit project                                                                                             |
 | Integration tests   | `yarn test:integration`                    | Requires PostgreSQL, Redis, and MailHog                                                                                  |
 | End-to-end tests    | `yarn test:e2e`                            | Requires PostgreSQL, Redis, and MailHog                                                                                  |
 | Penetration tests   | `yarn test:pentest`                        | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| Browser tests       | `yarn test:ui`                             | Requires Playwright Chromium and test infrastructure                                                                     |
+| Browser tests       | `yarn test:ui`                             | Passed on 2026-09-17: 133; requires Playwright Chromium and test infrastructure                                           |
 | OIDC harness        | `yarn harness:test`                        | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                                                 |
-| Documentation build | `yarn docs:build`                          | Declared by root package scripts                                                                                         |
+| Documentation build | `yarn docs:build`                          | Passed on 2026-09-17                                                                                                    |
 | Dependency check    | `yarn deps:check`                          | Checks root and active workspaces while excluding internal workspace packages                                            |
+| Release tooling     | `yarn release:prepare`, `yarn release:preflight`, `yarn release:publish` | Declared by root scripts; not executed during this guidance refresh                                  |
 
 `yarn verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
+
+Latest full verification (2026-09-17): structure 122; server unit 3,635, integration 476, E2E 127,
+pentest 260; SDK 558; CLI 1,419. Lint, typechecks and builds pass. These are dated evidence,
+not fixed test-count requirements.
+
+The registered `yarn assurance:harness --project security --profile production-security` run on
+2026-09-17 passed its 7 human-authentication, 4 second-factor and 17 tenant/admin tests; exposure
+checks recorded 8 passes and no product/execution failures. Exactly three previously accepted
+forwarding-context observer gaps remain incomplete, with exit 40 preserved. Cleanup passed. Do not
+call this fully passed or treat the acceptance as permission to ignore new gaps or failed assertions.
+Evidence: `codeops/features/production-readiness/plans/postgresql-backed-global-configuration/00-phase5-quality-review.md`.
 
 ## Feature verification workflow
 
@@ -64,6 +76,24 @@ Run commands from the repository root.
 - Existing server API concurrency safeguards may remain for other API or SDK consumers, but the
   Admin UI does not need to use or extend them.
 
+## Global configuration boundaries
+
+- The editable deployment-global catalog contains exactly 18 settings with native JSONB values.
+  `packages/server/src/lib/system-config-catalog.ts` owns types, bounds, defaults and metadata.
+  Preserve exact `admin:config:read`/`admin:config:update` authorization; global configuration does
+  not make tenant-owned data global. Internal bootstrap identities and infrastructure/root secrets
+  are not exposed or editable through this API.
+- Validate the complete single/batch update before changing existing rows in one transaction.
+  Record one `admin.config.updated` audit containing keys and restart status, never values. Clear
+  the local runtime cache only after commit; authoritative API reads must not substitute fallback
+  defaults for missing or corrupt storage.
+- Runtime reads use the existing 60-second, read-driven cache: local post-save visibility is
+  immediate, and healthy peers observe changes on their next read after cache expiry. The five
+  provider-startup TTL settings require restarting every server instance. Never rewrite existing
+  artifact or Redis-counter expiries when saving configuration.
+- SDK, CLI and Admin UI use API metadata. Do not add a shared catalog package, generator,
+  distributed invalidation, polling, worker or generalized settings framework.
+
 ## Repository structure
 
 - `packages/server/`: public identity-server package, including source, behavioral tests, migrations, templates, locales, and package-local tool configuration.
@@ -76,13 +106,13 @@ Run commands from the repository root.
 - `docs/`: public VitePress documentation for operators, users, API, SDK, and CLI consumers.
 - `techdocs/`: unpublished maintainer and architecture documentation.
 - `techdocs/reference/retired-playgrounds.md`: recovery record for the unsupported v5 playground applications removed from the active tree.
-- `codeops/`: nested CodeOps policy, roadmap, requirements, plans, and execution evidence.
+- `codeops/`: nested CodeOps artifacts; `codeops/codeops.json` owns layout and quality policy. Each feature has its own roadmap, requirements, plans and execution evidence.
 
 ## Generated and sensitive files
 
 - Do not edit or commit `dist/`, `coverage/`, `test-results/`, `playwright-report/`, VitePress caches, generated playground configuration, or generated TLS certificates.
 - `.env` is local and must never be committed. Treat connection strings, signing keys, cookie keys, npm tokens, and release-provider keys as secrets.
-- Release-derived version constants and changelogs must be changed through the repository's release tooling once that tooling exists; do not hand-edit them during ordinary feature work.
+- Lockstep owns coordinated manifest versions, internal dependency ranges and changelogs. Use `yarn release:prepare` and `scripts/sync-versions.js` for release-derived source constants; do not hand-edit them during ordinary feature work. Release preparation and publication require explicit authorization, not an ordinary verification run.
 
 ## CI-only loopback DNS
 
@@ -92,7 +122,7 @@ Run commands from the repository root.
 - Subdomains beneath `ci.portaidentity.com` are different origins but the same browser site. Tests that specifically require cross-site behavior must use different registrable domains instead.
 - Do not add an `AAAA` record unless every participating test service is intentionally bound to IPv6 loopback as well.
 
-The read-only `.github/workflows/build-and-test.yml` branch gate verifies the monorepo, UI, OIDC harness, public docs, production Docker build, and production dependency audit. Publishing and deployment workflow repair is deferred to a separate post-migration plan.
+The read-only `.github/workflows/build-and-test.yml` branch gate verifies the monorepo, UI, OIDC harness, public docs, production Docker build, and production dependency audit. Separate release workflows publish the tested `main` revision and release-tagged Docker images. Do not run release, publishing or deployment workflows as ordinary feature verification.
 
 ## Security invariants
 
@@ -134,3 +164,11 @@ or assurance-remediation branches. Keep `main` off limits and preserve the verif
 assurance histories when integrating through the repository's designated integration flow.
 
 <!-- CODEOPS-PROJECT:END -->
+
+## Technical documentation automation
+
+- The `techdocs: true` frontmatter in `techdocs/index.md` is this repository's opt-in marker for
+  automatic CodeOps technical-documentation updates after completed requirements, plan phases, and
+  plans.
+- Keep maintainer architecture documentation under `techdocs/`. Do not add the marker to the public
+  `docs/index.md` or mix maintainer architecture content into the published documentation tree.

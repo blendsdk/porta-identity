@@ -428,11 +428,27 @@ export async function listUsersCursor(
   const direction = options.sortOrder === 'asc' ? 'ASC' : 'DESC';
   const comparator = direction === 'ASC' ? '>' : '<';
 
-  // Organization scope is always required
-  const conditions: string[] = ['organization_id = $1'];
-  const params: unknown[] = [options.organizationId];
+  // Count all matching rows independently of the current cursor position.
+  const filterConditions: string[] = ['organization_id = $1'];
+  const filterParams: unknown[] = [options.organizationId];
   let paramIndex = 2;
 
+  if (options.status) {
+    filterConditions.push(`status = $${paramIndex}`);
+    filterParams.push(options.status);
+    paramIndex++;
+  }
+
+  if (options.search) {
+    filterConditions.push(
+      `(email ILIKE $${paramIndex} OR given_name ILIKE $${paramIndex} OR family_name ILIKE $${paramIndex})`,
+    );
+    filterParams.push(`%${options.search}%`);
+    paramIndex++;
+  }
+
+  const conditions = [...filterConditions];
+  const params = [...filterParams];
   if (options.cursor) {
     const decoded = decodeCursor(options.cursor);
     if (decoded) {
@@ -450,25 +466,18 @@ export async function listUsersCursor(
     }
   }
 
-  if (options.status) {
-    conditions.push(`status = $${paramIndex}`);
-    params.push(options.status);
-    paramIndex++;
-  }
-
-  if (options.search) {
-    conditions.push(
-      `(email ILIKE $${paramIndex} OR given_name ILIKE $${paramIndex} OR family_name ILIKE $${paramIndex})`,
-    );
-    params.push(`%${options.search}%`);
-    paramIndex++;
-  }
-
   const whereClause = `WHERE ${conditions.join(' AND ')}`;
   const sql = `SELECT * FROM users ${whereClause} ORDER BY ${sortColumn} ${direction}, id ${direction} LIMIT $${paramIndex}`;
   params.push(limit + 1);
 
-  const result = await pool.query<UserRow>(sql, params);
+  const countWhereClause = `WHERE ${filterConditions.join(' AND ')}`;
+  const [result, countResult] = await Promise.all([
+    pool.query<UserRow>(sql, params),
+    pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM users ${countWhereClause}`,
+      filterParams,
+    ),
+  ]);
   const rows = result.rows.map(mapRowToUser);
 
   // Resolve sort value getter based on sort column
@@ -487,7 +496,10 @@ export async function listUsersCursor(
     }
   };
 
-  return buildCursorResult(rows, limit, getSortValue, (u) => u.id);
+  return {
+    ...buildCursorResult(rows, limit, getSortValue, (u) => u.id),
+    total: parseInt(countResult.rows[0]?.count ?? '0', 10),
+  };
 }
 
 // ---------------------------------------------------------------------------

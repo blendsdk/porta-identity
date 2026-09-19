@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises';
+import process from 'node:process';
 
 import { createPortaClient, PortaHttpError } from '@portaidentity/sdk';
 import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
@@ -16,13 +17,11 @@ try {
   let body;
   if (input.surface === 'bulk-duplicate-rejection') {
     body = await client.bulk.userStatus(input.request);
-  } else if (input.surface === 'import-dry-run') {
-    body = await client.imports.provision(input.request);
-  } else if (input.surface === 'export-users-json') {
-    const response = await client.exports.download(input.request);
-    body = JSON.parse(await response.raw.text());
-    process.stdout.write(`${JSON.stringify({ status: response.status, body })}\n`);
-    process.exit(0);
+  } else if (input.surface === 'import-manifest-preview') {
+    body = await client.imports.preview(input.request);
+  } else if (input.surface === 'export-manifest') {
+    const response = await client.exports.manifest(input.request);
+    body = response.manifest;
   } else {
     throw new Error('unsupported packed administrative-data SDK surface');
   }

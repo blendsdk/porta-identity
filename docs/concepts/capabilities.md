@@ -182,22 +182,32 @@ Custom claims are injected into OIDC tokens alongside standard claims, giving yo
 
 A comprehensive command-line tool for managing every aspect of Porta:
 
-| Command                             | Description                                                    |
-| ----------------------------------- | -------------------------------------------------------------- |
-| `porta init`                        | Bootstrap the admin system (first-time setup)                  |
-| `porta login` / `logout` / `whoami` | OIDC-based CLI authentication                                  |
-| `porta org`                         | Create, list, update, suspend, delete organizations + branding |
-| `porta app`                         | Manage applications, modules, roles, permissions, claims       |
-| `porta client`                      | Create clients, manage secrets, configure login methods        |
-| `porta user`                        | Full user lifecycle, roles, claims, 2FA management             |
-| `porta keys`                        | ES256 signing key management (list, generate, rotate)          |
-| `porta config`                      | System configuration management                                |
-| `porta audit`                       | View audit logs with filtering                                 |
-| `porta migrate`                     | Database migration management                                  |
+| Command                             | Description                                                               |
+| ----------------------------------- | ------------------------------------------------------------------------- |
+| `porta init`                        | Bootstrap the admin system (first-time setup)                             |
+| `porta login` / `logout` / `whoami` | OIDC-based CLI authentication                                             |
+| `porta org`                         | Create, list, update, suspend, delete organizations + branding            |
+| `porta app`                         | Manage applications, modules, roles, permissions, claims                  |
+| `porta client`                      | Create clients, manage secrets, configure login methods                   |
+| `porta user`                        | Full user lifecycle, roles, claims, 2FA management                        |
+| `porta keys`                        | ES256 signing key management (list, generate, rotate)                     |
+| `porta config`                      | Closed global operational catalog with native values and restart guidance |
+| `porta audit`                       | View audit logs with filtering                                            |
+| `porta migrate`                     | Database migration management                                             |
 
 ### REST Admin API
 
-Every CLI operation is backed by a JWT-authenticated REST API at `/api/admin/*`:
+Deployment-global configuration exposes exactly 18 editable keys with server-owned defaults,
+inclusive bounds and modes; administrators cannot create, rename or delete keys. Bootstrap settings,
+internal identities and secrets remain outside this API. See [the editable catalog](../guide/environment.md#editable-global-configuration).
+Reads require `admin:config:read`, writes `admin:config:update`. The conventional CLI reads metadata
+before a write and therefore needs both. The embedded Admin UI offers **System Configuration…**
+with four full-page tabs and one changed-key atomic Save. Runtime values are visible immediately
+to local post-save reads and converge on other healthy instances within the existing 60-second
+cache lifetime. Changing the five provider-startup lifetime values requires restarting every server
+instance; Porta does not restart them automatically.
+
+Authenticated CLI operations use the Bearer-token-protected REST API at `/api/admin/*`. Bootstrap database commands such as `init` and `migrate` connect directly to PostgreSQL:
 
 - **10 Organization endpoints** — CRUD, status transitions, branding
 - **11 Application endpoints** — CRUD, modules
@@ -284,7 +294,7 @@ Porta uses a hybrid adapter strategy for optimal performance:
 | RBAC                   | ✅ Roles + permissions per application                    |
 | Custom claims          | ✅ Type-validated, injected into tokens                   |
 | Admin CLI              | ✅ 14+ commands                                           |
-| Admin REST API         | ✅ JWT-authenticated, 70+ endpoints                       |
+| Admin REST API         | ✅ Bearer-token-authenticated, 70+ endpoints              |
 | Audit logging          | ✅ All operations logged with configurable retention      |
 | Rate limiting          | ✅ Per-IP on token, admin API, introspection, login       |
 | Key rotation           | ✅ ES256 with lifecycle management                        |

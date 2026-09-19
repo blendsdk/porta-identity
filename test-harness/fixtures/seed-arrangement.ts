@@ -275,13 +275,18 @@ export async function arrangeFixtureBaseline(
     if (publicClient === undefined) throw new Error(`public fixture client missing: ${fixture.id}`);
     const sessionValue = randomCredential();
     const tokenValue = randomCredential();
-    await pool.query(
+    const sessionResult = await pool.query<{ public_id: string }>(
       `INSERT INTO admin_sessions
          (session_id, user_id, client_id, organization_id, grant_id, expires_at)
        VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '1 hour')
-       ON CONFLICT (session_id) DO NOTHING`,
+       ON CONFLICT (session_id) DO NOTHING
+       RETURNING public_id`,
       [sessionValue, activeUser.id, publicClient.id, organization.id, `${fixture.id}-grant`],
     );
+    const publicSessionId = sessionResult.rows[0]?.public_id;
+    if (publicSessionId === undefined) {
+      throw new Error(`baseline fixture session was not created: ${fixture.id}`);
+    }
     await pool.query(
       `INSERT INTO oidc_payloads (id, type, payload, grant_id, expires_at)
        VALUES ($1, 'AccessToken', $2::jsonb, $3, NOW() + INTERVAL '1 hour')
@@ -299,10 +304,12 @@ export async function arrangeFixtureBaseline(
     );
     credentials.set(`credential:${fixture.id}:cookie:baseline`, sessionValue);
     credentials.set(`credential:${fixture.id}:token:baseline`, tokenValue);
-    // Session and token identifiers are bearer credentials, so only their protected references
-    // appear in the public fixture definition. The public entity index keeps the non-secret
-    // resource association and never serializes those raw values.
-    entities.push({ alias: `${fixture.id}-resource-primary`, id: activeUser.id });
+    // Bearer credentials remain protected. The session's separate public UUID is safe to expose
+    // in the entity index for administrative resource routes.
+    entities.push(
+      { alias: `${fixture.id}-session-baseline`, id: publicSessionId },
+      { alias: `${fixture.id}-resource-primary`, id: activeUser.id },
+    );
   }
 
   const superAdminOrganization = await findSuperAdminOrganization();

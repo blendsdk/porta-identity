@@ -1,5 +1,7 @@
 # Database Schema
 
+> **Last Updated**: 2026-09-17
+
 Porta uses **PostgreSQL 16** as its primary data store. The schema is designed around multi-tenant isolation with organization-scoped data.
 
 ## Entity Relationship Diagram
@@ -271,24 +273,30 @@ Custom claim values assigned to users.
 
 ### `system_config`
 
-System configuration key-value store with 60s in-memory cache.
+Deployment-global operational values, with an existing 60-second process-local runtime cache.
 
-| Column        | Type          | Description            |
-| ------------- | ------------- | ---------------------- |
-| `key`         | `text`        | Configuration key (PK) |
-| `value`       | `text`        | Configuration value    |
-| `description` | `text`        | Description            |
-| `updated_at`  | `timestamptz` | Last update            |
+| Column         | Type           | Description                                                                                 |
+| -------------- | -------------- | ------------------------------------------------------------------------------------------- |
+| `id`           | `uuid`         | Primary key                                                                                 |
+| `key`          | `varchar(255)` | Unique configuration identifier                                                             |
+| `value`        | `jsonb`        | Native integer or locale string for the public catalog; separate internal values may remain |
+| `value_type`   | `varchar(20)`  | Legacy storage category; public type/validation comes from code                             |
+| `description`  | `text`         | Stored description; public metadata comes from code                                         |
+| `is_sensitive` | `boolean`      | Legacy storage flag; does not admit a row into the public catalog                           |
+| `created_at`   | `timestamptz`  | Creation timestamp                                                                          |
+| `updated_at`   | `timestamptz`  | Last update, maintained by the existing trigger                                             |
 
-**Notable configuration keys:**
+The [closed editable catalog](../guide/environment.md#editable-global-configuration) contains
+exactly 18 keys. All defaults, inclusive ranges, labels, descriptions, groups and application modes
+are defined in code; Admin list/get never enumerate arbitrary stored rows. Internal
+`super_admin_user_id` is not exposed. Bootstrap settings and secrets remain external.
 
-| Key                                | Default   | Description                                     |
-| ---------------------------------- | --------- | ----------------------------------------------- |
-| `access_token_ttl`                 | `3600`    | Access token TTL in seconds                     |
-| `refresh_token_ttl`                | `1209600` | Refresh token TTL in seconds (14 days)          |
-| `account_lockout_threshold`        | `5`       | Failed login attempts before auto-lock          |
-| `account_lockout_cooldown_minutes` | `15`      | Minutes before auto-unlock                      |
-| `audit_retention_days`             | `365`     | Days to retain audit log entries before cleanup |
+Migration `030_global_configuration_catalog.sql` writes the exact native defaults, overwrites
+canonical legacy values, deletes seven obsolete public keys and preserves internal rows. Its Down
+is intentionally a no-op. Configuration writes update existing rows only, atomically audit once,
+and clear the local runtime cache after commit. Other healthy instances refresh runtime policy
+on their next read within the 60-second cache lifetime; the five provider-startup lifetimes require
+restarting every instance. Existing artifact and counter expiries are not rewritten.
 
 ### `audit_log`
 

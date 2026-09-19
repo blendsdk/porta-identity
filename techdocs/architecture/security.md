@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-11
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -56,7 +56,13 @@ All JWTs are signed using ECDSA P-256 (ES256). This is a non-negotiable standard
 | Key Rotation  | Supported via `porta keys rotate` CLI command                    |
 | JWKS Endpoint | `/:orgSlug/.well-known/jwks` (auto-served by node-oidc-provider) |
 
-**Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `rotated`, or `revoked`. The OIDC provider loads active keys on startup and serves them via the JWKS endpoint.
+**Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `retired`, or
+`revoked`. Active and unexpired retired private keys are decrypted only in process for provider
+startup. Plaintext, incomplete, corrupt, or invalid-PEM rows stop startup with a bounded diagnostic.
+On a fresh database, a PostgreSQL table lock ensures simultaneous processes create only one
+encrypted active key. Admin generation and rotation invalidate each process's JWKS cache only
+after the database transaction commits; every Porta process must still restart after a key change
+because the OIDC provider receives its signing set at startup.
 
 ### Password Hashing: Argon2id
 
@@ -96,14 +102,32 @@ active row so concurrent requests cannot both report the same transition.
 
 TOTP secrets are encrypted at rest using AES-256-GCM:
 
-| Property       | Value                                   |
-| -------------- | --------------------------------------- |
-| Algorithm      | AES-256-GCM                             |
-| Key Derivation | From `COOKIE_KEYS` environment variable |
-| IV             | Random 12 bytes per encryption          |
-| Auth Tag       | 16 bytes, stored alongside ciphertext   |
+| Property   | Value                                           |
+| ---------- | ----------------------------------------------- |
+| Algorithm  | AES-256-GCM                                     |
+| Key Source | `TWO_FACTOR_ENCRYPTION_KEY` (32-byte hex value) |
+| IV         | Random 12 bytes per encryption                  |
+| Auth Tag   | 16 bytes, stored alongside ciphertext           |
 
 Recovery codes are hashed with Argon2id — never stored in plaintext.
+
+Accepted TOTP codes are single-use. Validation uses the stored fixed `SHA1`/6-digit/30-second
+parameters and one captured timestamp to identify the matched absolute time step. PostgreSQL then
+atomically advances the exact verified configuration row only when that step is newer than the
+stored value. The first enrollment step and the user's enabled state commit in one transaction;
+invalid, repeated, concurrent, replaced-row, or stale attempts do not advance replay state.
+
+The login and TOTP-enrollment routes present all invalid or replayed codes through the same
+localized invalid-code result and never retry a failed consume. Both routes share the resolved
+organization/user `2fa_verify` budget. An exhausted enrollment request returns `429` with
+`Retry-After` while reusing the pending secret and QR data; it does not generate replacement
+credentials or recovery codes. Email enrollment returns before this TOTP-specific check.
+
+Persisted TOTP parameters outside the supported contract produce the existing login or enrollment
+page with a generic localized `503` message. The only diagnostic is the fixed
+`totp-configuration-unsupported` event; stored parameters, codes, secrets, replay steps,
+cryptographic fields, and caught errors are not logged or returned. Submitted code-type values are
+limited to `otp`, `totp`, or `recovery` before they can enter diagnostics or audit descriptions.
 
 ## Authentication Flows
 
@@ -284,13 +308,13 @@ Cross-tenant requests are impossible because:
 
 Authentication endpoints are protected by sliding-window rate limiting:
 
-| Endpoint           | Rate Limit   | Window            |
-| ------------------ | ------------ | ----------------- |
-| Login (password)   | Configurable | Sliding window    |
-| Magic link request | Configurable | Sliding window    |
-| Password reset     | Configurable | Sliding window    |
-| 2FA verification   | Configurable | Sliding window    |
-| Email OTP          | Configurable | Per-user cooldown |
+| Endpoint                             | Rate Limit   | Window                                   |
+| ------------------------------------ | ------------ | ---------------------------------------- |
+| Login (password)                     | Configurable | Sliding window                           |
+| Magic link request                   | Configurable | Sliding window                           |
+| Password reset                       | Configurable | Sliding window                           |
+| 2FA verification and TOTP enrollment | 5 attempts   | 5 minutes per resolved organization/user |
+| Email OTP                            | Configurable | Per-user cooldown                        |
 
 **Implementation** (`packages/server/src/auth/rate-limiter.ts`):
 
@@ -388,6 +412,32 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 - **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
 
+## Portability Import Authority
+
+The portability boundary accepts only the strict versioned manifest and closed category, scope,
+application-selection, and import-mode values. Category permissions are combined before any
+manifest data is read, and environment scope additionally requires the exact super-admin role.
+Organization-scoped imports must resolve one non-control-plane destination organization or create
+it in the same manifest.
+
+Planning is mutation-free. Destination reads are parameterized and limited to the requested
+organization, categories, selected applications, and imported client IDs. The narrow client-ID
+lookup preserves global collision detection without loading unrelated client records. Every
+application-qualified record is checked against the explicit application selection, and duplicate
+records are rejected without suppressing independent graph errors.
+
+Apply repeats planning and writes the complete accepted graph plus its content-free audit event in
+one PostgreSQL transaction. Missing audit ownership, any planner error, or any write failure aborts
+the transaction. Credential hashes, tokens, sessions, lock state, and other authentication state
+are not portable. Post-commit cleanup is limited to affected cache and OIDC authority entries.
+
+The terminal Admin UI derives portability availability from verified session capabilities but
+continues to rely on server authorization. It checks local manifest size before and after reading,
+shows fixed local error text without paths or response detail, and requires a current successful
+preview plus confirmation before Apply. Session replacement and workspace closure invalidate all
+local continuations. One-time client-secret plaintext is shown through the existing abortable
+presenter and is removed before the apply result enters reusable view state.
+
 ## Permanent Deletion Authority
 
 Permanent deletion uses PostgreSQL as the synchronous authority boundary. Each of the eight domain
@@ -451,13 +501,15 @@ All security-relevant actions are logged to the `audit_log` table:
 | Account        | `user.created`, `user.deactivated`, `user.password_changed`       |
 | Security       | `security.login_method_disabled`, `security.rate_limited`         |
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
-| System         | `system.config_changed`, `system.key_rotated`                     |
+| System         | `admin.config.updated`, `system.key_rotated`                      |
 
 Compatibility audit writes remain best-effort and do not change the main request result. Every
 successful state-changing administrative request also writes a durable business audit row through
 the same PostgreSQL transaction as its database mutation. A failed audit insert therefore rolls
 back that request's database changes. Bulk operations preserve their documented per-item
 transactions, while imports retain one manifest-wide transaction.
+
+Global configuration updates validate every selected catalog value before changing existing rows in one transaction. The same transaction records `admin.config.updated` with changed keys and the restart result, never configuration values. An audit failure rolls back the updates. The local configuration cache is cleared only after a successful commit; other healthy instances converge on their next read after at most 60 seconds. The five provider-startup TTL settings still require an operator restart of every instance.
 
 The deletion events are `org.deleted`, `app.deleted`, `app.module.deleted`, `client.deleted`,
 `role.deleted`, `permission.deleted`, `claim.deleted`, and `user.deleted`. Audit foreign keys for
