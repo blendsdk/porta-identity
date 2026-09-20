@@ -126,6 +126,9 @@ server {
     listen 443 ssl http2;
     server_name auth.yourdomain.com;
 
+    # Hide the exact nginx version from public response headers.
+    server_tokens off;
+
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
 

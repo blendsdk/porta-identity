@@ -1,31 +1,39 @@
+/**
+ * Liveness probe handler — GET /health.
+ *
+ * Reports whether the server process can still reach its dependencies. Or
+ * container orchestration uses this as a liveness probe, so every dependency
+ * check is bounded: a hung database or cache must fail the probe quickly
+ * (503) instead of holding the response open.
+ *
+ * Returns 200 + { status: 'healthy', checks } when both backends respond, or
+ * 503 + { status: 'unhealthy', checks } when either is degraded or too slow.
+ */
+
 import type { Middleware } from 'koa';
 import { getPool } from '../lib/database.js';
 import { getRedis } from '../lib/redis.js';
+import { withTimeout } from '../lib/with-timeout.js';
 
+/**
+ * Create the liveness probe middleware.
+ *
+ * Both checks run concurrently under an individual timeout, so one slow
+ * dependency cannot delay the other and a hang cannot keep the probe pending.
+ */
 export function healthCheck(): Middleware {
   return async (ctx) => {
     const checks: Record<string, string> = { server: 'ok' };
-    let healthy = true;
 
-    // Check PostgreSQL
-    try {
-      const pool = getPool();
-      await pool.query('SELECT 1');
-      checks.database = 'ok';
-    } catch {
-      checks.database = 'error';
-      healthy = false;
-    }
+    const [dbResult, redisResult] = await Promise.allSettled([
+      withTimeout(getPool().query('SELECT 1'), 'database'),
+      withTimeout(getRedis().ping(), 'redis'),
+    ]);
 
-    // Check Redis
-    try {
-      const redis = getRedis();
-      await redis.ping();
-      checks.redis = 'ok';
-    } catch {
-      checks.redis = 'error';
-      healthy = false;
-    }
+    checks.database = dbResult.status === 'fulfilled' ? 'ok' : 'error';
+    checks.redis = redisResult.status === 'fulfilled' ? 'ok' : 'error';
+
+    const healthy = dbResult.status === 'fulfilled' && redisResult.status === 'fulfilled';
 
     ctx.status = healthy ? 200 : 503;
     ctx.body = {
