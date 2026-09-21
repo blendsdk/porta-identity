@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-09-21 12:45
-> **Progress**: 8/15 tasks (53%)
+> **Last Updated**: 2026-09-21 13:05
+> **Progress**: 10/15 tasks (67%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -54,12 +54,12 @@ The P1 oracle asserts `profile === 'operational'` for every raw case, so this la
 ## Phase 2: Raw validation/exposure lane
 
 - [x] 2.1 Add the raw HTTP/1.1 transport over `node:tls`/`node:net` that reuses `renderRawHttpRequest` for framing, follows no redirects, and bounds the response. (completed 2026-09-21 12:05; `test-harness/assurance/p1/raw-http-transport.ts`; 6/6 spec green, including exact CR/LF octets and timeout/byte bounds)
-- [ ] 2.2 Implement `observeValidationCase` for the 15 raw cases, reusing `LiveTenantAdminContext` for fixtures and state and correlating the decision-log window per request.
-- [ ] 2.3 Phase gate: the raw half of `p1-live-boundaries.spec.test.ts` passes.
+- [x] 2.2 Implement `observeValidationCase` for the 15 raw cases, reusing `LiveTenantAdminContext` for fixtures and state and correlating the decision-log window per request. (completed 2026-09-21 13:00; `test-harness/assurance/p1/live-adapter.ts`)
+- [x] 2.3 Phase gate: the raw half of `p1-live-boundaries.spec.test.ts` passes. (completed 2026-09-21 13:00; live oracle advanced past all 15 raw cases to the admin half)
 
 ## Phase 3: Administrative-data lane
 
-- [ ] 3.1 Implement `observeAdminDataCase` for the 18 admin cases with the full/limited/unprivileged identities, controls, state and audit observations, and recovery.
+- [~] 3.1 Implement `observeAdminDataCase` for the 18 admin cases with the full/limited/unprivileged identities, controls, state and audit observations, and recovery. (started 2026-09-21 13:05; adapter implemented; 16/18 cases match result, status, outcome, controls, and recovery; AR-7 opened)
 - [ ] 3.2 Phase gate: the admin half of `p1-live-boundaries.spec.test.ts` passes.
 
 ## Phase 4: Evidence and closeout

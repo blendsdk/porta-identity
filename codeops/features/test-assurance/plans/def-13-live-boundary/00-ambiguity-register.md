@@ -154,12 +154,12 @@ rather than by a client-supplied id (inbound ids are intentionally ignored).
 
 ## AR-6 — Raw-case control and probe mismatches with the live product
 
-| Field          | Value                                                                 |
-| -------------- | --------------------------------------------------------------------- |
-| Category       | Requirements / product (runtime)                                      |
-| Status         | **IN PROGRESS** — product fixes done; requirement corrections pending |
-| Decided by     | User, explicit, 2026-09-21                                            |
-| Affected tasks | 0.2 (done), 2.2, 2.3, 4.2                                             |
+| Field          | Value                              |
+| -------------- | ---------------------------------- |
+| Category       | Requirements / product (runtime)   |
+| Status         | **RESOLVED** — raw lane green live |
+| Decided by     | User, explicit, 2026-09-21         |
+| Affected tasks | 0.2, 2.2, 2.3 (done)               |
 
 **Question.** The live raw lane (evidence: `00-raw-lane-evidence.md`) shows the immutable oracle
 cannot pass as authored. Seven of fifteen cases use an authorized control body `{"name":"…"}` that
@@ -181,12 +181,42 @@ nginx with HTML 405 and never reaches Porta. A double-encoded tenant path return
 **Decision.** Approved: fix the two clear product defects and correct the requirement facts that do
 not match the API, then re-run. Progress:
 
-| Item                                     | Status                | Change                                                                                                                                                               |
-| ---------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| E1 status: ineffective update → 400      | **Done** (`8fad03ae`) | `updateUserSchema` now requires one known profile field                                                                                                              |
-| E5: malformed/unknown org → 404          | **Done** (`8fad03ae`) | `requireExistingOrganization` guard on the org user list route                                                                                                       |
-| E1 field, E2 route, E3 route, E4 ingress | Pending               | Requirement corrections still to make                                                                                                                                |
-| XSS/command/prototype expected outcomes  | Pending               | Needs security judgement: storing an escaped payload is not a validation error, so the correct claim may be "accepted and handled safely", not "validation-rejected" |
+| Item                                       | Status                            | Change                                                                                                                                                                            |
+| ------------------------------------------ | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1 status: ineffective update → 400        | **Done** (`8fad03ae`)             | `updateUserSchema` now requires one known profile field                                                                                                                           |
+| E5: malformed/unknown org → 404            | **Done** (`8fad03ae`)             | `requireExistingOrganization` guard on the org user list route                                                                                                                    |
+| E1 field, E2 route, E3 route, E4 ingress   | **Done** (`75568bc7`, `b0ed736a`) | Payloads target the validated `profileUrl`; branding control reads the collection; authorize uses `/alpha/auth`; TRACE keeps the ingress 405 without an Allow header or Porta log |
+| Security judgement on XSS/command outcomes | **Resolved**                      | A validated `profileUrl` rejects the payload with `400`, keeping the `validation-rejected` claim and unchanged state                                                              |
 
-**Consequence.** Tasks 2.2, 2.3, and 4.2 remain blocked until the requirement corrections are made
-with security review. No requirement change has been made yet.
+**Consequence.** The raw lane now passes all 15 immutable cases live. AR-6 is closed; the remaining
+admin-lane mismatch is tracked separately in AR-7.
+
+## AR-7 — Administrative log-field expectations vs the emitted decision
+
+| Field          | Value                            |
+| -------------- | -------------------------------- |
+| Category       | Requirements / product (runtime) |
+| Status         | **OPEN** — blocks 3.2, 4.2       |
+| Decided by     | Pending user ruling              |
+| Affected tasks | 3.1 (in progress), 3.2, 4.2      |
+
+**Question.** The admin oracle requires `synthetic-correlation-id`, `actor-id`, `action`,
+`target-id-digest`, `result` for all 18 cases. Live observation shows:
+
+1. `target-id-digest` is absent for every collection or list case (for example `/api/admin/audit`,
+   `/api/admin/keys`, `/api/admin/sessions`, `/api/admin/config`), because no single resource is
+   resolved, so no resource reference is recorded.
+2. `actor-id` is also absent for some permission denials on collection routes.
+3. `pagination-cross-tenant-cursor` expects `400` for a bravo-derived cursor, but the product
+   returns `200` (the fixture has no second bravo page, so the cursor is empty, and the query stays
+   alpha-scoped).
+
+**Options.**
+
+| Option                                                                           | Effect                                    | Trade-off                                                                     |
+| -------------------------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------------------------------- |
+| A — make `requiredLogFields` per case                                            | Fields reflect what the boundary can emit | Weakens the shared claim; honest                                              |
+| B — record actor/resource references for every admin route                       | Fields always present                     | Product instrumentation change; target digest is meaningless for a collection |
+| C — change `pagination-cross-tenant-cursor` to expect `200` with alpha-only data | Matches the real isolation claim          | Edits the immutable oracle                                                    |
+
+**Decision.** Pending. No requirement or product change is authorized yet for AR-7.
