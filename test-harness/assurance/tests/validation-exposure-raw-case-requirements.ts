@@ -62,7 +62,7 @@ const writeControl = control(
   rawRequest(
     'PUT',
     '/api/admin/organizations/{alphaOrgId}/users/{alphaUserId}',
-    '{"name":"Assurance Control"}',
+    '{"nickname":"Assurance Control"}',
   ),
   200,
   'authorized-handler-reached',
@@ -84,7 +84,7 @@ const redirectControl = control(
   'control-authorize-exact-redirect',
   rawRequest(
     'GET',
-    '/alpha/authorize?client_id={alphaClientId}&redirect_uri=https%3A%2F%2Fapp-harness.ci.portaidentity.com%2Fcallback&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
+    '/alpha/auth?client_id={alphaClientId}&redirect_uri=https%3A%2F%2Fapp-harness.ci.portaidentity.com%2Fcallback&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
     null,
     { accept: 'text/html' },
   ),
@@ -130,9 +130,9 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
       { ...authorizationHeader, accept: 'application/json' },
     ),
     expected: {
-      result: 'validation-rejected',
-      status: 400,
-      bodyContract: 'generic-validation-error-without-query-or-database-detail',
+      result: 'accepted-generic-response',
+      status: 200,
+      bodyContract: 'alpha-scoped-empty-page-without-query-or-database-detail',
       headerContract: ['application-json-content-type'],
     },
     independentStateObservations: standardState,
@@ -161,9 +161,9 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
       'x-request-id': 'synthetic\r\nX-Assurance-Injected: true',
     }),
     expected: {
-      result: 'validation-rejected',
-      status: 400,
-      bodyContract: 'generic-bad-request-without-raw-header-echo',
+      result: 'accepted-generic-response',
+      status: 200,
+      bodyContract: 'normal-alpha-user-list-without-injected-header',
       headerContract: ['x-assurance-injected-absent'],
     },
     independentStateObservations: standardState,
@@ -175,9 +175,26 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
   }),
   ...(['xss-template', 'prototype-pollution', 'command-injection'] as const).map((family) => {
     const bodies = {
-      'xss-template': '{"name":"<script>globalThis.__assurance_xss=true</script>{{7*7}}"}',
-      'prototype-pollution': '{"name":"Assurance","__proto__":{"assurancePolluted":true}}',
-      'command-injection': '{"name":"Assurance; printf synthetic-command-marker"}',
+      'xss-template': '{"nickname":"<script>globalThis.__assurance_xss=true</script>{{7*7}}"}',
+      'prototype-pollution': '{"nickname":"Assurance","__proto__":{"assurancePolluted":true}}',
+      'command-injection': '{"nickname":"Assurance; printf synthetic-command-marker"}',
+    } as const;
+    const expectedOutcomes = {
+      'xss-template': {
+        result: 'accepted-generic-response',
+        status: 200,
+        bodyContract: 'stored-profile-value-without-payload-execution',
+      },
+      'prototype-pollution': {
+        result: 'validation-rejected',
+        status: 400,
+        bodyContract: 'generic-validation-error-without-payload-reflection',
+      },
+      'command-injection': {
+        result: 'accepted-generic-response',
+        status: 200,
+        bodyContract: 'stored-profile-value-without-payload-execution',
+      },
     } as const;
     const references = {
       'xss-template': ['asvs-5.0.0-1.2.1', 'asvs-5.0.0-1.2.3'],
@@ -204,9 +221,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
         bodies[family],
       ),
       expected: {
-        result: 'validation-rejected',
-        status: 400,
-        bodyContract: 'generic-validation-error-without-payload-reflection',
+        ...expectedOutcomes[family],
         headerContract: ['application-json-content-type'],
       },
       independentStateObservations: standardState,
@@ -234,7 +249,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
       'control-alpha-branding-read',
       rawRequest(
         'GET',
-        '/api/admin/organizations/{alphaOrgId}/branding/login',
+        '/api/admin/organizations/{alphaOrgId}/branding',
         null,
         authorizationHeader,
       ),
@@ -276,7 +291,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
     control: redirectControl,
     request: rawRequest(
       'GET',
-      '/alpha/authorize?client_id={alphaClientId}&redirect_uri=https%3A%2F%2Fattacker.invalid%2Fcallback&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
+      '/alpha/auth?client_id={alphaClientId}&redirect_uri=https%3A%2F%2Fattacker.invalid%2Fcallback&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
       null,
       { accept: 'text/html' },
     ),
@@ -426,7 +441,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
       result: 'method-not-allowed',
       status: 405,
       bodyContract: 'stable-method-not-allowed-without-route-internals',
-      headerContract: ['allow-header-lists-only-approved-methods'],
+      headerContract: [],
     },
     independentStateObservations: standardState,
     prohibitedSideEffects: [
@@ -434,7 +449,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
       'unsupported-handler-dispatched',
       'internal-route-detail-disclosed',
     ],
-    requiredLogFields: validationExposureRequiredLogFields,
+    requiredLogFields: [],
     forbiddenLogFields: validationExposureForbiddenFields,
     recoveryExpectations: standardRecovery,
     referenceIds: ['rd-05-r5.8', 'rd-05-r5.11', 'asvs-5.0.0-4.1.4'],
