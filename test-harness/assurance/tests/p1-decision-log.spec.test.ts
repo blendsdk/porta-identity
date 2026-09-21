@@ -135,3 +135,52 @@ test('reports forbidden fields whose pattern matches retained text', () => {
   });
   assert.deepEqual(exposed, ['opaque-token', 'private-signing-key']);
 });
+
+test('parses a decision line that docker logs prefixes with a timestamp', () => {
+  const records = parseDecisionLog(`2026-09-21T12:00:00.123456789Z ${adminDenialLine}`);
+  assert.equal(records.length, 1);
+  assert.equal(records[0].kind, 'security-decision');
+  assert.equal(records[0].requestId, REQUEST_ID);
+});
+
+test('does not fabricate an outcome when a decision omits status and outcome', () => {
+  const partial = parseDecisionLog(
+    JSON.stringify({
+      securityDecision: {
+        eventName: 'security.decision.v1',
+        requestId: REQUEST_ID,
+        surface: 'admin-api',
+        method: 'GET',
+        routeTemplate: '/api/admin/audit',
+        reasonCode: 'permission-required',
+      },
+    }),
+  );
+  assert.equal(partial.length, 1);
+  assert.equal(readSymbolicField(partial[0], 'result'), undefined);
+  assert.equal(readSymbolicField(partial[0], 'public-outcome-class'), undefined);
+  assert.deepEqual(projectObservedFields(partial[0], GENERIC_FIELDS), [
+    'synthetic-correlation-id',
+    'event-class',
+    'public-method',
+    'public-route-class',
+  ]);
+});
+
+test('requires the closed decision event name before classifying a decision', () => {
+  const records = parseDecisionLog(
+    JSON.stringify({ securityDecision: { eventName: 'not.a.decision', requestId: REQUEST_ID } }),
+  );
+  assert.equal(records.length, 0);
+});
+
+test('rejects an unmapped symbolic field instead of silently dropping it', () => {
+  const [record] = parseDecisionLog(adminDenialLine);
+  assert.throws(() => projectObservedFields(record, ['not-a-real-field']), /symbolic field/u);
+});
+
+test('reports forbidden patterns deterministically across repeated calls', () => {
+  const patterns = { 'opaque-token': /token/gu };
+  assert.deepEqual(findExposedForbiddenFields('a token here', patterns), ['opaque-token']);
+  assert.deepEqual(findExposedForbiddenFields('a token here', patterns), ['opaque-token']);
+});

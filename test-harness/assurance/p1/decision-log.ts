@@ -8,6 +8,9 @@
  * request, and projects the requirement-owned field names that are actually present. It is
  * deliberately pure so it can be tested without Docker or a running server.
  *
+ * Captures are taken from `docker logs --timestamps`, so each line may begin with an RFC3339
+ * timestamp before the JSON payload. Parsing tolerates that prefix.
+ *
  * @module p1/decision-log
  */
 
@@ -26,18 +29,18 @@ export interface DecisionLogRecord {
   readonly kind: DecisionLogKind;
   /** Stable event or message name used to classify the record. */
   readonly eventName: string;
-  /** Server-created request correlation identifier. */
+  /** Server-created request correlation identifier, or an empty string when absent. */
   readonly requestId: string;
   /** Pino epoch-millisecond timestamp when present. */
   readonly time?: number;
   /** Closed public surface for a security decision. */
   readonly surface?: string;
-  /** Public HTTP method. */
-  readonly method: string;
-  /** Registered normalized route template. */
-  readonly routeTemplate: string;
-  /** Final public status code. */
-  readonly statusCode: number;
+  /** Public HTTP method when reported. */
+  readonly method?: string;
+  /** Registered normalized route template when reported. */
+  readonly routeTemplate?: string;
+  /** Final public status code when reported. */
+  readonly statusCode?: number;
   /** Final decision outcome when reported. */
   readonly outcome?: string;
   /** Closed reason code when reported. */
@@ -54,12 +57,15 @@ export interface DecisionLogRecord {
   readonly action?: string;
 }
 
+/** RFC3339 timestamp that `docker logs --timestamps` places before each payload. */
+const DOCKER_TIMESTAMP_PREFIX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z\s+/u;
+
 /** Returns true when a JSON value is a plain object. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** Returns a finite string value or undefined. */
+/** Returns a non-empty string value or undefined. */
 function readString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
 }
@@ -67,6 +73,11 @@ function readString(value: unknown): string | undefined {
 /** Returns a finite number value or undefined. */
 function readNumber(value: unknown): number | undefined {
   return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+/** Removes the leading `docker logs --timestamps` stamp so the JSON payload can be parsed. */
+function stripTimestampPrefix(line: string): string {
+  return line.replace(DOCKER_TIMESTAMP_PREFIX, '');
 }
 
 /** Classifies a status code into the closed outcome vocabulary. */
@@ -89,7 +100,7 @@ function readAction(detail: unknown, reasonCode: string | undefined): string | u
 
 /** Parses one pino JSON line into a decision record, or undefined for unrelated lines. */
 export function parseDecisionLogLine(line: string): DecisionLogRecord | undefined {
-  const trimmed = line.trim();
+  const trimmed = stripTimestampPrefix(line.trim()).trim();
   if (trimmed.length === 0 || !trimmed.startsWith('{')) return undefined;
   let parsed: unknown;
   try {
@@ -101,17 +112,17 @@ export function parseDecisionLogLine(line: string): DecisionLogRecord | undefine
 
   const time = readNumber(parsed.time);
   const decision = parsed.securityDecision;
-  if (isRecord(decision)) {
+  if (isRecord(decision) && readString(decision.eventName) === SECURITY_DECISION_EVENT_NAME) {
     const reasonCode = readString(decision.reasonCode);
     return {
       kind: 'security-decision',
-      eventName: readString(decision.eventName) ?? SECURITY_DECISION_EVENT_NAME,
+      eventName: SECURITY_DECISION_EVENT_NAME,
       requestId: readString(decision.requestId) ?? '',
       ...(time === undefined ? {} : { time }),
       surface: readString(decision.surface),
-      method: readString(decision.method) ?? 'UNKNOWN',
-      routeTemplate: readString(decision.routeTemplate) ?? '/unmatched',
-      statusCode: readNumber(decision.statusCode) ?? 0,
+      method: readString(decision.method),
+      routeTemplate: readString(decision.routeTemplate),
+      statusCode: readNumber(decision.statusCode),
       outcome: readString(decision.outcome),
       reasonCode,
       actorRef: readString(decision.actorRef),
@@ -122,18 +133,15 @@ export function parseDecisionLogLine(line: string): DecisionLogRecord | undefine
     };
   }
 
-  if (
-    parsed.msg === REQUEST_COMPLETION_MESSAGE ||
-    parsed.eventName === REQUEST_COMPLETION_MESSAGE
-  ) {
+  if (parsed.msg === REQUEST_COMPLETION_MESSAGE) {
     return {
       kind: 'request-completion',
       eventName: REQUEST_COMPLETION_MESSAGE,
       requestId: readString(parsed.requestId) ?? '',
       ...(time === undefined ? {} : { time }),
-      method: readString(parsed.method) ?? 'UNKNOWN',
-      routeTemplate: readString(parsed.routeTemplate) ?? '/unmatched',
-      statusCode: readNumber(parsed.status) ?? 0,
+      method: readString(parsed.method),
+      routeTemplate: readString(parsed.routeTemplate),
+      statusCode: readNumber(parsed.status),
     };
   }
 
@@ -167,6 +175,8 @@ export function correlateByRequestId(
  * @param record - Parsed decision or completion record.
  * @param required - Requirement-owned symbolic field names.
  * @returns The subset of `required` genuinely present on the record.
+ * @throws {Error} When a required name is not a known symbolic field, which marks an unmapped
+ * requirement field instead of silently dropping it.
  */
 export function projectObservedFields(
   record: DecisionLogRecord,
@@ -183,29 +193,38 @@ export function unprojectedFields(
   return required.filter((field) => readSymbolicField(record, field) === undefined);
 }
 
-/** Maps one requirement-owned symbolic field name onto a concrete record value. */
+/**
+ * Maps one requirement-owned symbolic field name onto a concrete record value.
+ *
+ * @param record - Parsed decision or completion record.
+ * @param field - Requirement-owned symbolic field name.
+ * @returns The concrete value, or undefined when the record does not carry it.
+ * @throws {Error} When `field` is not a known symbolic field.
+ */
 export function readSymbolicField(record: DecisionLogRecord, field: string): string | undefined {
+  const derivedOutcome =
+    record.outcome ??
+    (record.statusCode === undefined ? undefined : statusClass(record.statusCode));
   switch (field) {
     case 'synthetic-correlation-id':
       return record.requestId.length > 0 ? record.requestId : undefined;
     case 'event-class':
-      return record.eventName;
+      return record.eventName.length > 0 ? record.eventName : undefined;
     case 'public-method':
       return record.method;
     case 'public-route-class':
       return record.routeTemplate;
     case 'public-outcome-class':
-      return record.outcome ?? statusClass(record.statusCode);
+    case 'result':
+      return derivedOutcome;
     case 'actor-id':
       return record.actorRef;
     case 'action':
       return record.action;
     case 'target-id-digest':
       return record.resourceRef;
-    case 'result':
-      return record.outcome ?? statusClass(record.statusCode);
     default:
-      return undefined;
+      throw new Error(`support for the P1 symbolic field is missing: ${field}`);
   }
 }
 
@@ -215,7 +234,12 @@ export function findExposedForbiddenFields(
   patterns: Readonly<Record<string, RegExp>>,
 ): string[] {
   return Object.entries(patterns)
-    .filter(([, pattern]) => pattern.test(text))
+    .filter(([, pattern]) => {
+      pattern.lastIndex = 0;
+      const matched = pattern.test(text);
+      pattern.lastIndex = 0;
+      return matched;
+    })
     .map(([field]) => field)
     .sort();
 }
