@@ -38,3 +38,10 @@ fixed as necessary corrections and re-verified.
 | `npx tsx --test test-harness/assurance/tests/p1-porta-log-source.spec.test.ts` | 4/4 pass   |
 | assurance typecheck                                                            | pass       |
 | harness lint                                                                   | pass       |
+
+## Re-review (one pass, fix diff)
+
+Verdict: `FIXED`. The independent correctness re-review confirmed each finding was resolved with no
+regression, that the new tests assert real invariants, that the `readSymbolicField` switch has no
+unreachable branch, and that the timestamp regex matches Docker's RFC3339Nano output without
+stripping unrelated content. No CRITICAL or MAJOR findings remain. Fixed as commit `65f56008`.
