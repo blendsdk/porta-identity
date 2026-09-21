@@ -151,3 +151,31 @@ the oracle is untouched. B and C were rejected because they weaken or destabilis
 **Correlation note.** The server echoes its own request id in the `X-Request-Id` response header
 (`packages/server/src/middleware/request-logger.ts:58`), so the adapter correlates by that value
 rather than by a client-supplied id (inbound ids are intentionally ignored).
+
+## AR-6 — Raw-case control and probe mismatches with the live product
+
+| Field          | Value                            |
+| -------------- | -------------------------------- |
+| Category       | Requirements / product (runtime) |
+| Status         | **OPEN** — blocks 2.2, 2.3, 4.2  |
+| Decided by     | Pending user ruling              |
+| Affected tasks | 0.2 (done), 2.2, 2.3, 4.2        |
+
+**Question.** The live raw lane (evidence: `00-raw-lane-evidence.md`) shows the immutable oracle
+cannot pass as authored. Seven of fifteen cases use an authorized control body `{"name":"…"}` that
+the API rejects (`packages/server/src/routes/users.ts:97-122` accepts `nickname`, not `name`), which
+the mutation boundary reports as `503 admin_mutation_unavailable`
+(`packages/server/src/middleware/admin-mutation-audit.ts:71-85`). Two controls declare routes that
+behave differently (`GET branding/login` → 400; `/alpha/authorize` → 404). `TRACE` is answered by
+nginx with HTML 405 and never reaches Porta. A double-encoded tenant path returns 500.
+
+**Options.**
+
+| Option                                                                                                                             | Effect                          | Trade-off                                                 |
+| ---------------------------------------------------------------------------------------------------------------------------------- | ------------------------------- | --------------------------------------------------------- |
+| A — correct the requirement catalog to match the real API                                                                          | Oracle becomes executable       | Edits the immutable oracle; must stay security-equivalent |
+| B — fix the product where it is wrong (500→404; invalid body→400) and correct only the requirement fields that are factually wrong | Correct behavior, honest oracle | Larger scope; product changes need authorization          |
+| C — pause DEF-13 and file the mismatches as defects                                                                                | No change                       | Defect stays open                                         |
+| D — force the adapter to report observed values regardless                                                                         | Never appropriate               | Would weaken a security assertion                         |
+
+**Decision.** Pending. No requirement or product change is authorized yet.
