@@ -102,20 +102,91 @@ function rawResult(
 }
 
 /** Labels the observed body shape for one raw case without consulting product code. */
+/** Parses a response body as a JSON object, returning undefined when it is not one. */
+function parseJsonObject(text: string): Record<string, unknown> | undefined {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Labels the observed body shape for one raw case from real bytes.
+ *
+ * The label is chosen only when the observed status and body shape match the declared boundary; any
+ * other shape is labelled `unclassified-raw-body`, so the oracle fails instead of passing a value
+ * copied from the requirement.
+ */
 function rawBodyContract(
   requirement: ValidationExposureRawCase,
   response: RawHttpResponse,
 ): string {
-  if (INTERNAL_DETAIL_PATTERN.test(response.body.toString('utf8'))) {
-    return 'public-response-exposes-internal-detail';
+  const text = response.body.toString('utf8');
+  if (INTERNAL_DETAIL_PATTERN.test(text)) return 'public-response-exposes-internal-detail';
+  const contentType = response.headers['content-type'] ?? '';
+  const json = contentType.includes('application/json') ? parseJsonObject(text) : undefined;
+  const hasDataArray = json !== undefined && Array.isArray(json.data);
+  const hasError = json !== undefined && typeof json.error === 'string';
+  const healthy = json !== undefined && json.status === 'healthy';
+  switch (requirement.family) {
+    case 'sql-injection':
+      return response.status === 200 && hasDataArray
+        ? 'alpha-scoped-empty-page-without-query-or-database-detail'
+        : 'unclassified-raw-body';
+    case 'header-crlf':
+      return response.status === 200 && hasDataArray
+        ? 'normal-alpha-user-list-without-injected-header'
+        : 'unclassified-raw-body';
+    case 'xss-template':
+    case 'command-injection':
+    case 'prototype-pollution':
+      return response.status === 400 && hasError
+        ? 'generic-validation-error-without-payload-reflection'
+        : 'unclassified-raw-body';
+    case 'path-traversal':
+      return response.status === 400 && hasError
+        ? 'generic-validation-error-without-filesystem-path'
+        : 'unclassified-raw-body';
+    case 'redirect-manipulation':
+      return response.status === 400
+        ? 'generic-invalid-authorization-request'
+        : 'unclassified-raw-body';
+    case 'slug-tenant-substitution':
+      return response.status === 404 && hasError
+        ? 'generic-resource-not-found-without-tenant-existence-disclosure'
+        : 'unclassified-raw-body';
+    case 'forwarded-host':
+    case 'forwarded-proto':
+      return response.status === 200 && healthy
+        ? 'normal-health-body-with-approved-ingress-context'
+        : 'unclassified-raw-body';
+    case 'forwarded-client-ip':
+      return response.status === 200 && healthy
+        ? 'normal-health-body-with-direct-peer-rate-limit-identity'
+        : 'unclassified-raw-body';
+    case 'unsupported-method':
+      return response.status === 405
+        ? 'stable-method-not-allowed-without-route-internals'
+        : 'unclassified-raw-body';
+    case 'malformed-json':
+      return response.status === 400 && hasError
+        ? 'generic-invalid-json-without-parser-message-or-stack'
+        : 'unclassified-raw-body';
+    case 'oversized-input':
+      return response.status === 413 && hasError
+        ? 'generic-payload-too-large-without-config-or-parser-detail'
+        : 'unclassified-raw-body';
+    case 'encoding-casing':
+      return response.status === 404 && hasError
+        ? 'generic-resource-not-found-after-single-canonical-decoding'
+        : 'unclassified-raw-body';
+    default:
+      return 'unclassified-raw-body';
   }
-  if (requirement.family === 'forwarded-host' || requirement.family === 'forwarded-proto') {
-    return 'normal-health-body-with-approved-ingress-context';
-  }
-  if (requirement.family === 'forwarded-client-ip') {
-    return 'normal-health-body-with-direct-peer-rate-limit-identity';
-  }
-  return requirement.expected.bodyContract;
 }
 
 /**
@@ -130,6 +201,7 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
   private readonly protocol = new LiveProtocolContext();
   private readonly runner = new RuntimeCommandRunner();
   private readonly endpoints = activeEndpoints();
+  private protectedValuesCache?: readonly string[];
 
   /** Releases every request context owned by this observer. */
   public async close(): Promise<void> {
@@ -179,7 +251,14 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
       observedLogFields: Object.freeze(
         record === undefined ? [] : projectObservedFields(record, requirement.requiredLogFields),
       ),
-      exposedForbiddenFields: Object.freeze(this.forbiddenFields(probe, record)),
+      exposedForbiddenFields: Object.freeze(
+        this.forbiddenFields(
+          requirement.forbiddenLogFields,
+          `${probe.body.toString('utf8')}\n${Object.values(probe.headers).join('\n')}`,
+          record,
+          true,
+        ),
+      ),
       recoveryPassed: recovery.status === requirement.control.expectedStatus,
     });
   }
@@ -203,7 +282,7 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
       caseId: requirement.id,
       result: adminResult(probe.status),
       status: probe.status,
-      exactPublicOutcome: adminExactPublicOutcome(requirement, probe.status),
+      exactPublicOutcome: adminExactPublicOutcome(requirement, probe.status, probe.body),
       authorizedControlPassed: control.status === requirement.control.expectedStatus,
       independentObservations: Object.freeze(
         Object.fromEntries(
@@ -230,7 +309,7 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
         record === undefined ? [] : projectObservedFields(record, requirement.requiredLogFields),
       ),
       exposedForbiddenFields: Object.freeze(
-        internalDetail || ATTACKER_VALUES.test(material) ? ['internal-detail'] : [],
+        this.forbiddenFields(requirement.forbiddenLogFields, material, record),
       ),
       recoveryPassed: recovery.status === requirement.control.expectedStatus,
     });
@@ -267,6 +346,9 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
     return template.replace(/\{([a-zA-Z]+)\}/gu, (_match, name: string) => {
       const value = placeholders[name];
       if (value === undefined) throw new Error(`unsupported P1 admin placeholder: ${name}`);
+      if (value.length === 0) {
+        throw new Error(`P1 admin placeholder resolved to an empty value: ${name}`);
+      }
       return encodeValue ? encodeURIComponent(value) : value;
     });
   }
@@ -407,18 +489,57 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
     );
   }
 
-  /** Reports the symbolic forbidden fields actually exposed by the response or its log record. */
+  /**
+   * Reports the declared forbidden fields actually exposed by a response and its log record.
+   *
+   * Only concrete secret or internal-detail matches are reported, so a legitimate authorised
+   * response (for example an alpha user list) is not mislabelled as a disclosure. Every reported
+   * name comes from the case's own forbidden set.
+   */
   private forbiddenFields(
-    response: RawHttpResponse,
+    forbidden: readonly string[],
+    material: string,
     record: DecisionLogRecord | undefined,
+    attackerValue = false,
   ): string[] {
-    const material = `${response.body.toString('utf8')}\n${Object.values(response.headers).join('\n')}`;
-    const exposed: string[] = [];
-    if (INTERNAL_DETAIL_PATTERN.test(material)) exposed.push('internal-detail');
-    if (ATTACKER_VALUES.test(material)) exposed.push('attacker-forwarded-value');
-    const logText = record === undefined ? '' : JSON.stringify(record);
-    if (INTERNAL_DETAIL_PATTERN.test(logText)) exposed.push('internal-detail-in-log');
-    return exposed.sort();
+    const combined = `${material}\n${record === undefined ? '' : JSON.stringify(record)}`;
+    const exposed = new Set<string>();
+    if (INTERNAL_DETAIL_PATTERN.test(combined)) {
+      for (const name of forbidden) {
+        if (/stack|sql|filesystem|infrastructure|version|connection/i.test(name)) exposed.add(name);
+      }
+    }
+    if (this.protectedValues().some((value) => value.length > 0 && combined.includes(value))) {
+      for (const name of forbidden) {
+        if (/password|secret|token|cookie|personal|audit-sensitive/i.test(name)) exposed.add(name);
+      }
+    }
+    if (attackerValue && ATTACKER_VALUES.test(combined)) {
+      if (forbidden.includes('attacker-forwarded-value')) exposed.add('attacker-forwarded-value');
+    }
+    return [...exposed].sort();
+  }
+
+  /** Resolves the protected runtime values used only for an in-memory disclosure comparison. */
+  private protectedValues(): readonly string[] {
+    this.protectedValuesCache ??= (() => {
+      const manifest = this.admin.manifest;
+      const references = [
+        ...manifest.superAdmin.actors.map((actor) => actor.tokenCredentialRef),
+        ...(['alpha', 'bravo'] as const).flatMap((tenant) => [
+          `credential:${tenant}:token:baseline`,
+          `credential:${tenant}:cookie:baseline`,
+          ...manifest[tenant].users.map((user) => user.passwordCredentialRef),
+          ...manifest[tenant].clients.flatMap((client) =>
+            client.clientSecretCredentialRef === undefined
+              ? []
+              : [client.clientSecretCredentialRef],
+          ),
+        ]),
+      ];
+      return references.map((reference) => this.admin.credential(reference));
+    })();
+    return this.protectedValuesCache;
   }
 }
 
@@ -439,8 +560,6 @@ function rawStateObservation(
       return stateUnchanged;
     case 'authorization-code-count-after-equals-before':
       return probe.status !== 303 && probe.headers.location === undefined;
-    case 'configured-public-origin-unchanged':
-      return true;
     default:
       throw new Error(`unsupported P1 raw independent observation: ${name}`);
   }
@@ -479,10 +598,6 @@ function rawProhibitedEffect(
     case 'attacker-origin-used':
     case 'attacker-redirect-followed':
       return ATTACKER_VALUES.test(material);
-    case 'secure-cookie-policy-weakened':
-      return false;
-    case 'rate-limit-budget-split-by-spoofed-ip':
-      return false;
     case 'authorization-code-issued':
       return probe.status === 303 && (probe.headers.location ?? '').includes('code=');
     case 'partial-body-retained':
@@ -525,10 +640,36 @@ function adminResult(status: number): AdminDataResult {
 }
 
 /** Returns the declared outcome label when reality matches, otherwise an honest non-matching label. */
-function adminExactPublicOutcome(requirement: AdminDataCaseRequirement, status: number): string {
-  return status === requirement.expectedStatus
+/** Returns whether the observed status and body shape match the declared result class. */
+function adminOutcomeMatches(
+  requirement: AdminDataCaseRequirement,
+  status: number,
+  body: unknown,
+): boolean {
+  if (status !== requirement.expectedStatus) return false;
+  const isObject = typeof body === 'object' && body !== null;
+  const isError = isObject && typeof (body as Record<string, unknown>).error === 'string';
+  switch (requirement.expectedResult) {
+    case 'allowed':
+      return isObject;
+    case 'forbidden':
+    case 'validation-rejected':
+    case 'not-found':
+      return isError;
+    default:
+      return true;
+  }
+}
+
+/** Returns the declared outcome label only when the observed shape matches, otherwise an honest label. */
+function adminExactPublicOutcome(
+  requirement: AdminDataCaseRequirement,
+  status: number,
+  body: unknown,
+): string {
+  return adminOutcomeMatches(requirement, status, body)
     ? requirement.exactPublicOutcome
-    : `unexpected-status-${status}`;
+    : `unexpected-outcome-${status}`;
 }
 
 /** Reads the records array from a list envelope. */

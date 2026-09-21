@@ -298,6 +298,9 @@ export function requireAdminAuth(): Middleware {
       )
       .map((role) => role.slug);
 
+    recordSecurityReference(ctx, 'actor', userId);
+    recordSecurityReference(ctx, 'tenant', user.organizationId);
+
     if (adminRoleSlugs.length === 0) {
       recordSecurityDecision(ctx, {
         decisionPoint: 'membership',
@@ -324,8 +327,6 @@ export function requireAdminAuth(): Middleware {
       roles: adminRoleSlugs,
       permissions,
     } satisfies AdminUser;
-    recordSecurityReference(ctx, 'actor', userId);
-    recordSecurityReference(ctx, 'tenant', user.organizationId);
 
     await next();
   };

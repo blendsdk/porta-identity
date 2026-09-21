@@ -48,5 +48,20 @@ PASS overstates what was verified. DEF-13 is reopened pending a ruling.
 
 ## Consequence
 
-DEF-13 is reopened. The adapter's PASS now depends on fixes for C1–C3 and rulings on M3/M4. No fix
-has been applied yet.
+DEF-13 was reopened by this review. The findings below were then resolved and the live oracle passes
+again.
+
+## Resolution
+
+| ID  | Resolution                                                                                                                                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | Removed the three unobservable forwarded assertions; the ST-53 cases now assert only the reflected-value fact, which is observed                                                                                                                    |
+| C2  | `forbiddenFields` now consumes the case's `forbiddenLogFields` and scans the response and correlated log for internal detail and the protected runtime credential values; it is conservative so a legitimate authorised response is not mislabelled |
+| C3  | Admin placeholder substitution now fails on an empty value, so the cross-tenant cursor case cannot pass on an empty cursor; the fixture provides a real bravo cursor (four users per tenant)                                                        |
+| M1  | `rawBodyContract` now classifies from observed status and body shape (JSON `data` array, `error`, healthy status) instead of echoing the requirement; `adminExactPublicOutcome` additionally requires the declared result shape                     |
+| M2  | Not fixed at the adapter: the oracle asserts only `control.status`; asserting `control.requiredObservations` requires an oracle change. Recorded as an oracle-level gap.                                                                            |
+| M3  | Not fixable at this boundary: nginx answers `TRACE` and never reaches Porta, so no Porta decision log or `Allow` header can exist. The requirement keeps the ingress 405.                                                                           |
+| M4  | `admin-auth` now records the actor and tenant references before the membership denial, so denials are attributable; `adminDataDenialLogFields` requires `actor-id` again                                                                            |
+
+Verified: `yarn test:structure` and the server `admin-auth` unit suite (13/13) pass; the live P1
+oracle passes all 15 raw and 18 admin cases after a harness reset.

@@ -129,7 +129,12 @@ export const adminDataTargetLogFields = [
   'result',
 ] as const;
 /** Fields required for a permission denial that is decided before a target is resolved. */
-export const adminDataDenialLogFields = ['synthetic-correlation-id', 'action', 'result'] as const;
+export const adminDataDenialLogFields = [
+  'synthetic-correlation-id',
+  'actor-id',
+  'action',
+  'result',
+] as const;
 /** Sensitive fields forbidden from administrative security events and evidence. */
 export const adminDataForbiddenLogFields = [
   'opaque-token',
