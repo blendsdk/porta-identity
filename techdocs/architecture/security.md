@@ -322,6 +322,12 @@ Authentication endpoints are protected by sliding-window rate limiting:
 - Keys include IP address and/or email for targeted limiting
 - Rate limit headers returned in responses (X-RateLimit-*)
 
+The client IP used in these keys is Koa's `ctx.ip`. When `TRUST_PROXY=true`, Porta sets
+`app.maxIpsCount` from `TRUST_PROXY_HOPS` (default `1`), so the resolved address is the
+proxy-appended `X-Forwarded-For` entry rather than the client-supplied leftmost value. A
+value that does not match the real proxy chain either collapses distinct clients onto one
+budget or lets a client control its own address.
+
 ### Failed Login Tracking
 
 The `failed_login_count` column on users tracks consecutive failed attempts. After a configurable threshold, the account is automatically locked (`status → locked`).

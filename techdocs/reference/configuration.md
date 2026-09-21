@@ -15,13 +15,14 @@ Configuration is loaded via `packages/server/src/config/index.ts`, which reads f
 
 ### Server
 
-| Variable      | Type                                              | Default       | Required | Description                                      |
-| ------------- | ------------------------------------------------- | ------------- | -------- | ------------------------------------------------ |
-| `NODE_ENV`    | `development` \| `test` \| `production`           | `development` | No       | Runtime environment mode                         |
-| `PORT`        | Integer                                           | `3000`        | No       | HTTP server listen port                          |
-| `HOST`        | String                                            | `0.0.0.0`     | No       | HTTP server bind address                         |
-| `TRUST_PROXY` | Boolean                                           | `false`       | No       | Trust `X-Forwarded-*` headers from reverse proxy |
-| `LOG_LEVEL`   | `debug` \| `info` \| `warn` \| `error` \| `fatal` | `info`        | No       | Pino log level                                   |
+| Variable           | Type                                              | Default       | Required | Description                                                                                                        |
+| ------------------ | ------------------------------------------------- | ------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`         | `development` \| `test` \| `production`           | `development` | No       | Runtime environment mode                                                                                           |
+| `PORT`             | Integer                                           | `3000`        | No       | HTTP server listen port                                                                                            |
+| `HOST`             | String                                            | `0.0.0.0`     | No       | HTTP server bind address                                                                                           |
+| `TRUST_PROXY`      | Boolean                                           | `false`       | No       | Trust `X-Forwarded-*` headers from reverse proxy                                                                   |
+| `TRUST_PROXY_HOPS` | Integer                                           | `1`           | No       | Trusted proxy hops that append to `X-Forwarded-For`; the resolved client IP used for rate-limit and audit identity |
+| `LOG_LEVEL`        | `debug` \| `info` \| `warn` \| `error` \| `fatal` | `info`        | No       | Pino log level                                                                                                     |
 
 ### Database
 
@@ -234,6 +235,8 @@ LOG_LEVEL=debug
 
 # Reverse proxy
 TRUST_PROXY=false
+# Set to the exact number of trusted proxies when TRUST_PROXY=true.
+TRUST_PROXY_HOPS=1
 
 # Encryption keys (dev placeholders — replace in production!)
 TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
