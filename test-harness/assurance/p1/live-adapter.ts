@@ -234,15 +234,14 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
       ),
       independentStateObservations: Object.freeze(
         Object.fromEntries(
-          requirement.independentStateObservations.map((name) => [
-            name,
-            rawStateObservation(name, probe, stateUnchanged),
-          ]),
+          (
+            requirement.p1IndependentStateObservations ?? requirement.independentStateObservations
+          ).map((name) => [name, rawStateObservation(name, probe, stateUnchanged)]),
         ),
       ),
       prohibitedSideEffects: Object.freeze(
         Object.fromEntries(
-          requirement.prohibitedSideEffects.map((name) => [
+          (requirement.p1ProhibitedSideEffects ?? requirement.prohibitedSideEffects).map((name) => [
             name,
             rawProhibitedEffect(name, probe, stateUnchanged),
           ]),
