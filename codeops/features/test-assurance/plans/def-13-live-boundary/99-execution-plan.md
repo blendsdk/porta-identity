@@ -2,9 +2,9 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Status**: In Progress — Phase 4 review findings open
-> **Last Updated**: 2026-09-21 13:40
-> **Progress**: 15/15 tasks; review gate open (see [phase-4-review](phase-4-review.md))
+> **Status**: Complete — M2 recorded as an oracle-level gap
+> **Last Updated**: 2026-09-21 14:10
+> **Progress**: 15/15 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -65,7 +65,7 @@ The P1 oracle asserts `profile === 'operational'` for every raw case, so this la
 ## Phase 4: Evidence and closeout
 
 - [x] 4.1 Register the P1 live suite in the harness selector under the operational lane. (completed 2026-09-21 13:22; `p1LiveSpecificationFiles` runs after the production-exposure collector with `PORTA_ASSURANCE_P1_ADAPTER=live`)
-- [x] 4.2 Run the operational evidence once and record provenance. (completed 2026-09-21 13:30; run `f84c62c8-7a29-4416-a945-ed53b74db650`: production-exposure passed=3, incomplete=3, exit 40 preserved; P1 live suite 1/1 pass)
+- [x] 4.2 Run the operational evidence once and record provenance. (completed 2026-09-21 14:05; run `729dfdb8-88b5-48c2-808b-b7da6ebfcc67`: production-exposure passed=3, incomplete=3, exit 40 preserved; P1 live suite 1/1 pass; the Phase 4 review findings C1–C3, M1 and M4 were fixed first, see [phase-4-review](phase-4-review.md))
 - [x] 4.3 Update the roadmap and remaining-work backlog and mark DEF-13 closed. (completed 2026-09-21 13:32)
 
 **Phase gate:** the adapter observes every declared case through a real boundary, the oracle passes,
