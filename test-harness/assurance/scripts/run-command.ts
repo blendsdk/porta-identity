@@ -743,15 +743,13 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
           knownIncompleteAdmitted = false;
         }
       }
-      if (!shouldContinueAfterProductionExposure(productionExposureExit, knownIncompleteAdmitted)) {
-        return productionExposureExit;
-      }
-      retainedProductExit = productionExposureExit;
-
+      let p1LiveExit = 0;
       if (project === 'security' && profile === 'operational') {
         const p1Reset = await runLifecycleAction('reset');
         const p1ResetExit = managedChildExit(p1Reset, setupFailureExit);
-        if (p1ResetExit !== 0) return selectAssuranceExitCode([retainedProductExit, p1ResetExit]);
+        if (p1ResetExit !== 0) {
+          return selectAssuranceExitCode([productionExposureExit, p1ResetExit]);
+        }
         const p1Active = readActiveCoverageRun(process.cwd());
         const p1Result = await runNodeSuite(
           p1LiveSpecificationFiles,
@@ -762,10 +760,16 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
             PORTA_ASSURANCE_P1_ADAPTER: 'live',
           }),
         );
-        return selectAssuranceExitCode([
-          retainedProductExit,
-          managedChildExit(p1Result, testFailureExit),
-        ]);
+        p1LiveExit = managedChildExit(p1Result, testFailureExit);
+      }
+
+      if (!shouldContinueAfterProductionExposure(productionExposureExit, knownIncompleteAdmitted)) {
+        return selectAssuranceExitCode([productionExposureExit, p1LiveExit]);
+      }
+      retainedProductExit = productionExposureExit;
+
+      if (project === 'security' && profile === 'operational') {
+        return selectAssuranceExitCode([retainedProductExit, p1LiveExit]);
       }
 
       if (!shouldRunProductionSecurityBlocks(project, profile)) return productionExposureExit;
