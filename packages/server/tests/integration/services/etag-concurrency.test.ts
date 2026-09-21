@@ -16,17 +16,27 @@ import {
   createTestClient,
   createTestUser,
 } from '../helpers/factories.js';
-import {
-  updateOrganization,
-  findOrganizationById,
-} from '../../../src/organizations/repository.js';
-import {
-  updateApplication,
-  findApplicationById,
-} from '../../../src/applications/repository.js';
+import { updateOrganization, findOrganizationById } from '../../../src/organizations/repository.js';
+import { updateApplication, findApplicationById } from '../../../src/applications/repository.js';
 import { updateClient, findClientById } from '../../../src/clients/repository.js';
 import { updateUser, findUserById } from '../../../src/users/repository.js';
 import { generateETag, matchesETag } from '../../../src/lib/etag.js';
+
+/**
+ * Wait until the wall clock is at least one millisecond past `reference`.
+ *
+ * Entity `updated_at` values arrive as JavaScript Dates with millisecond
+ * precision, while the database stores microseconds and sets them from the
+ * transaction clock. An update issued in the same millisecond as the original
+ * read therefore hashes to the same ETag even though the row changed. Crossing
+ * a millisecond boundary before the update keeps the assertion deterministic.
+ */
+async function waitPastMillisecond(reference: Date): Promise<void> {
+  const deadline = reference.getTime() + 1;
+  while (Date.now() <= deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 1));
+  }
+}
 
 describe('ETag Concurrency (Integration)', () => {
   beforeEach(async () => {
@@ -52,6 +62,7 @@ describe('ETag Concurrency (Integration)', () => {
       const org = await createTestOrganization({ name: 'ETag Change Org' });
       const etagBefore = generateETag('organization', org.id, org.updatedAt);
 
+      await waitPastMillisecond(org.updatedAt);
       await updateOrganization(org.id, { name: 'Updated Display Name' });
       const updated = await findOrganizationById(org.id);
 
@@ -87,6 +98,7 @@ describe('ETag Concurrency (Integration)', () => {
       const app = await createTestApplication({ organizationId: org.id, name: 'ETag App' });
       const etagBefore = generateETag('application', app.id, app.updatedAt);
 
+      await waitPastMillisecond(app.updatedAt);
       await updateApplication(app.id, { name: 'Updated App Name' });
       const updated = await findApplicationById(app.id);
 
@@ -115,6 +127,7 @@ describe('ETag Concurrency (Integration)', () => {
       const client = await createTestClient(org.id, app.id);
       const etagBefore = generateETag('client', client.id, client.updatedAt);
 
+      await waitPastMillisecond(client.updatedAt);
       await updateClient(client.id, { clientName: 'Updated Client' });
       const updated = await findClientById(client.id);
 
@@ -141,6 +154,7 @@ describe('ETag Concurrency (Integration)', () => {
       const user = await createTestUser(org.id);
       const etagBefore = generateETag('user', user.id, user.updatedAt);
 
+      await waitPastMillisecond(user.updatedAt);
       await updateUser(user.id, { givenName: 'Updated' });
       const updated = await findUserById(user.id);
 

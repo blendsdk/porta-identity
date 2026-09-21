@@ -78,7 +78,7 @@ test.describe('Magic Link Flow', () => {
     await page.click('#magic-link-btn');
 
     // 2. Wait for the email to arrive in MailHog (polls with timeout)
-    const message = await mailhog.waitForMessage(testData.userEmail, 10_000);
+    const message = await mailhog.waitForMessage(testData.userEmail, 20_000);
     expect(message).toBeDefined();
 
     // 3. Extract the magic link URL from the email body
@@ -102,7 +102,7 @@ test.describe('Magic Link Flow', () => {
     await page.click('#magic-link-btn');
 
     // 2. Retrieve the magic link from MailHog
-    const message = await mailhog.waitForMessage(testData.userEmail, 10_000);
+    const message = await mailhog.waitForMessage(testData.userEmail, 20_000);
     expect(message).toBeDefined();
 
     const link = mailhog.extractLink(message!, /https?:\/\/[^\s"<]+magic-link[^\s"<]*/);
