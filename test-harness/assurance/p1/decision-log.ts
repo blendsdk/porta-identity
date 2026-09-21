@@ -2,7 +2,8 @@
  * Parsing and correlation for Porta's structured security logs.
  *
  * The P1 live boundary must prove that a rejected request produced one privacy-safe correlated
- * event. Porta writes those events through pino as JSON lines: covered admin and auth requests use
+ * event. Porta writes those events through pino as JSON lines when it runs in production or when
+ * the owner-owned runtime requests JSON logging: covered admin and auth requests use
  * `security.decision.v1`, while every completed request also writes an operational completion
  * record. This module turns a bounded log capture into typed records, correlates a record to one
  * request, and projects the requirement-owned field names that are actually present. It is

@@ -115,3 +115,39 @@ each.
 `production-exposure` evidence field (`production-exposure/evidence.ts:39,167`). Flipping it does
 not advance the P1 oracle. The plan's Phase 4 is corrected; the production-exposure credit change is
 out of scope for this plan.
+
+## AR-5 — Operational log format for correlated decision capture
+
+| Field          | Value                         |
+| -------------- | ----------------------------- |
+| Category       | Technical (runtime) — product |
+| Status         | APPROVED                      |
+| Decided by     | User, explicit, 2026-09-21    |
+| Affected tasks | 0.2, 2.2, 3.1, 4.2            |
+
+**Question.** The P1 lane runs as `operational` (AR-2), and the operational harness sets
+`NODE_ENV=development` (`test-harness/docker-compose.yml`). Porta selects the `pino-pretty`
+transport whenever `NODE_ENV !== 'production'` (`packages/server/src/lib/logger.ts:41`), so the
+container emits human-readable (ANSI-coloured) lines and the Phase 1 JSON parser finds no records.
+The oracle requires the five symbolic log fields for all 15 raw and 18 admin cases
+(`validation-exposure-raw-case-requirements.ts`; `admin-data-case-requirements.ts:117-123`), so the
+lane fails regardless of adapter correctness. No log-format override existed.
+
+**Options presented.**
+
+| Option                               | Effect                                   | Trade-off                          |
+| ------------------------------------ | ---------------------------------------- | ---------------------------------- |
+| A — explicit `PORTA_LOG_FORMAT=json` | Structured logs in the operational stack | Small product surface (env var)    |
+| B — parse pino-pretty output         | No product change                        | Fragile, ANSI-coloured, unreliable |
+| C — relax the oracle log-field rule  | No product change                        | Weakens the assurance claim        |
+| D — stop and leave DEF-13 open       | No change                                | Defect stays open                  |
+
+**Decision.** User approved **A**. Added `resolveJsonLogFormat`
+(`packages/server/src/lib/log-format.ts`), which returns true when `NODE_ENV=production` or when
+`PORTA_LOG_FORMAT=json`, and wired it into the logger transport. The harness porta service now sets
+`PORTA_LOG_FORMAT: json` (`test-harness/docker-compose.yml`). Production behavior is unchanged and
+the oracle is untouched. B and C were rejected because they weaken or destabilise a security claim.
+
+**Correlation note.** The server echoes its own request id in the `X-Request-Id` response header
+(`packages/server/src/middleware/request-logger.ts:58`), so the adapter correlates by that value
+rather than by a client-supplied id (inbound ids are intentionally ignored).
