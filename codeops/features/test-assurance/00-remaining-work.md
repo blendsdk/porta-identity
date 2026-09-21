@@ -2,7 +2,7 @@
 
 > **Feature**: Test Assurance
 > **Status**: Active backlog
-> **Last Updated**: 2026-09-21 20:55
+> **Last Updated**: 2026-09-22 00:10
 > **CodeOps Artifact Schema**: 1
 
 ## Purpose
@@ -31,7 +31,7 @@ work lives. It is a backlog, not an evidence artifact: nothing here grants assur
 | DEF-15 | Public product-version disclosure (live refresh)     | Code-fixed, refresh pending | Run the production-exposure selector and admit clean evidence for the absent `Server` version token                                                                                              | None                                     | `test-harness/assurance/production-exposure/`; `yarn assurance:harness --project security --profile production-security` |
 | DEF-16 | Dependency failure and reconnection (live refresh)   | Code-fixed, refresh pending | Re-run the dependency-interruption cases to confirm bounded responses and no restart requirement                                                                                                 | None                                     | `production-exposure/live-adapter.ts`; same selector                                                                     |
 | DEF-13 | Correlated P1 rejection events                       | Partial (product fixed)     | Build the administrative-data live adapter that observes the denial event and award external correlated-log credit; the transport/parser correlation and protected target digest are now emitted | None (harness)                           | `test-harness/assurance/tests/p1-live-adapter.ts`; `p1-specs`                                                            |
-| DEF-14 | Forwarding-context observation completeness          | Open (harness)              | Implement the cookie-policy and rate-limit direct-peer identity observers                                                                                                                        | None                                     | `test-harness/assurance/production-exposure/live-adapter.ts:632`; `p1-production-exposure`                               |
+| DEF-14 | Forwarding-context observation completeness          | Partial (observer)          | The origin and cookie observers are complete and attack-driven; the rate-limit identity observer is implemented but reports `unobserved` until the token limiter is mounted correctly (DEF-25)                                                                    | None (harness)                           | `test-harness/assurance/production-exposure/forwarded-context-observers.ts`; `production-exposure`                       |
 | DEF-8  | Delivered-artifact sequential public evidence        | Open (harness)              | Build the ST-46 live adapter for magic-link, password-reset, and invitation sequential-use journeys                                                                                              | None                                     | `test-harness/assurance/tests/human-auth-*`; `human-auth-live`                                                           |
 | DEF-3  | Advanced protocol consistency campaign               | Open (harness)              | Implement the live concurrency, response-loss, restart, and commit-boundary adapter                                                                                                              | None                                     | `test-harness/assurance/tests/protocol-consistency-adapter.ts`; `protocol-specs`                                         |
 | DEF-6  | Protocol observation completeness                    | Open (harness)              | Independently establish the consent/session, JWKS-key, side-effect/recovery, and correlated-log subclaims                                                                                        | None                                     | `test-harness/assurance/tests/oidc-token-cases-live.ts`; `protocol` project                                              |
@@ -62,7 +62,7 @@ work lives. It is a backlog, not an evidence artifact: nothing here grants assur
 1. **Live refresh first** (DEF-15, DEF-16) — the product fixes are already in place; these close
    existing claims with one selector run.
 2. **DEF-13 residual** — a small bounded product change with audit evidence.
-3. **DEF-14 then DEF-8** — both reuse the existing human-auth and production-exposure scaffolding.
+3. **DEF-25 then DEF-14 residual** — mount the token limiter correctly, then the rate-limit identity fact closes; **DEF-8** reuses the same production-exposure scaffolding.
 4. **DEF-3, DEF-6, DEF-22** — protocol and command-signal campaigns.
 5. **DEF-5, DEF-11, DEF-17** — source-variation sensitivity registries.
 6. **DEF-21 and DEF-23** — product and security-authority rulings that gate "fully production

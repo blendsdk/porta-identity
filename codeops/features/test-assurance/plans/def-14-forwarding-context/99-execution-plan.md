@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Ready
-> **Last Updated**: 2026-09-21 23:58
-> **Progress**: 11/13 tasks (85%)
+> **Last Updated**: 2026-09-22 00:10
+> **Progress**: 12/13 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -85,7 +85,7 @@ The aggregate no longer admits a forwarding continuation.
 
 - [x] 3.1 Run `yarn assurance:harness --project security --profile operational` and `--profile production-security`; require that each `st53-*` case reports the origin and cookie facts as observed, no observed forwarding prohibited effect, and only the rate-limit identity fact unobserved (blocked by DEF-25) with exit 40; record the run identifiers. ✅ (completed: 2026-09-21 23:55; production-security run `ec140d4f`: passed=8 incomplete=3; operational run `3a97e953`: passed=3 incomplete=3; each st53 unobserves only `rate-limit-key-uses-direct-peer-not-spoofed-value` and `rate-limit-budget-split-by-spoofed-ip`)
 - [x] 3.2 Document `TRUST_PROXY_HOPS` in `docs/guide/environment.md`, `docs/guide/deployment.md`, and `.env.example`, stating that the value is the number of trusted proxy hops and defaults to `1`. ✅ (completed: 2026-09-21 23:58; docs build passed)
-- [ ] 3.3 Update `codeops/features/test-assurance/00-remaining-work.md` and `00-roadmap.md` to record DEF-14 as resolved with the live run identifiers.
+- [x] 3.3 Update `codeops/features/test-assurance/00-remaining-work.md` and `00-roadmap.md` to record DEF-14 as resolved with the live run identifiers. ✅ (completed: 2026-09-22 00:10; DEF-14 recorded partial with run `ec140d4f`/`3a97e953`; DEF-24 and DEF-25 recorded)
 - [ ] 3.4 Full verification: `yarn verify` passes and the roadmap and remaining-work backlog record DEF-14 as done.
 
 **Phase gate:** the forwarding-context claim is observed end-to-end with concrete evidence, the
