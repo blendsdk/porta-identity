@@ -21,22 +21,7 @@ import { updateApplication, findApplicationById } from '../../../src/application
 import { updateClient, findClientById } from '../../../src/clients/repository.js';
 import { updateUser, findUserById } from '../../../src/users/repository.js';
 import { generateETag, matchesETag } from '../../../src/lib/etag.js';
-
-/**
- * Wait until the wall clock is at least one millisecond past `reference`.
- *
- * Entity `updated_at` values arrive as JavaScript Dates with millisecond
- * precision, while the database stores microseconds and sets them from the
- * transaction clock. An update issued in the same millisecond as the original
- * read therefore hashes to the same ETag even though the row changed. Crossing
- * a millisecond boundary before the update keeps the assertion deterministic.
- */
-async function waitPastMillisecond(reference: Date): Promise<void> {
-  const deadline = reference.getTime() + 1;
-  while (Date.now() <= deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 1));
-  }
-}
+import { runDatabaseTransaction } from '../../../src/lib/database.js';
 
 describe('ETag Concurrency (Integration)', () => {
   beforeEach(async () => {
@@ -62,13 +47,33 @@ describe('ETag Concurrency (Integration)', () => {
       const org = await createTestOrganization({ name: 'ETag Change Org' });
       const etagBefore = generateETag('organization', org.id, org.updatedAt);
 
-      await waitPastMillisecond(org.updatedAt);
       await updateOrganization(org.id, { name: 'Updated Display Name' });
       const updated = await findOrganizationById(org.id);
 
       const etagAfter = generateETag('organization', updated!.id, updated!.updatedAt);
 
       expect(etagBefore).not.toBe(etagAfter);
+    });
+
+    it('should strictly advance updated_at across updates in one transaction', async () => {
+      // Two updates inside one transaction share the database transaction clock,
+      // so a plain NOW() trigger would stamp them with the same timestamp and the
+      // millisecond-precision ETag would not change. The trigger must guarantee a
+      // strictly later value on every row update.
+      const org = await createTestOrganization({ name: 'Monotonic Org' });
+      const etagBefore = generateETag('organization', org.id, org.updatedAt);
+
+      const [second, third] = await runDatabaseTransaction(async () => {
+        await updateOrganization(org.id, { name: 'Monotonic Org 2' });
+        const secondUpdate = await findOrganizationById(org.id);
+        await updateOrganization(org.id, { name: 'Monotonic Org 3' });
+        const thirdUpdate = await findOrganizationById(org.id);
+        return [secondUpdate, thirdUpdate] as const;
+      });
+
+      expect(second!.updatedAt.getTime()).toBeGreaterThan(org.updatedAt.getTime());
+      expect(third!.updatedAt.getTime()).toBeGreaterThan(second!.updatedAt.getTime());
+      expect(generateETag('organization', third!.id, third!.updatedAt)).not.toBe(etagBefore);
     });
 
     it('should match ETag correctly with matchesETag', async () => {
@@ -98,7 +103,6 @@ describe('ETag Concurrency (Integration)', () => {
       const app = await createTestApplication({ organizationId: org.id, name: 'ETag App' });
       const etagBefore = generateETag('application', app.id, app.updatedAt);
 
-      await waitPastMillisecond(app.updatedAt);
       await updateApplication(app.id, { name: 'Updated App Name' });
       const updated = await findApplicationById(app.id);
 
@@ -127,7 +131,6 @@ describe('ETag Concurrency (Integration)', () => {
       const client = await createTestClient(org.id, app.id);
       const etagBefore = generateETag('client', client.id, client.updatedAt);
 
-      await waitPastMillisecond(client.updatedAt);
       await updateClient(client.id, { clientName: 'Updated Client' });
       const updated = await findClientById(client.id);
 
@@ -154,7 +157,6 @@ describe('ETag Concurrency (Integration)', () => {
       const user = await createTestUser(org.id);
       const etagBefore = generateETag('user', user.id, user.updatedAt);
 
-      await waitPastMillisecond(user.updatedAt);
       await updateUser(user.id, { givenName: 'Updated' });
       const updated = await findUserById(user.id);
 

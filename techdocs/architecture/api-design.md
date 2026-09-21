@@ -150,12 +150,12 @@ Metadata comes from code; only a validated native JSONB value and timestamp come
 See [configuration](../reference/configuration.md#system-config-runtime) and
 [the catalog decision](../decisions/index.md#adr-016-closed-global-operational-catalog).
 
-| Method/path | Permission | Success |
-|---|---|---|
-| `GET /api/admin/config` | `admin:config:read` | `{ data: ConfigEntry[] }` in catalog order |
-| `GET /api/admin/config/:key` | `admin:config:read` | `{ data: ConfigEntry }` |
-| `PUT /api/admin/config/:key` | `admin:config:update` | `{ data: ConfigEntry, restartRequired }` |
-| `PUT /api/admin/config` | `admin:config:update` | `{ data: ConfigEntry[], restartRequired }` |
+| Method/path                  | Permission            | Success                                    |
+| ---------------------------- | --------------------- | ------------------------------------------ |
+| `GET /api/admin/config`      | `admin:config:read`   | `{ data: ConfigEntry[] }` in catalog order |
+| `GET /api/admin/config/:key` | `admin:config:read`   | `{ data: ConfigEntry }`                    |
+| `PUT /api/admin/config/:key` | `admin:config:update` | `{ data: ConfigEntry, restartRequired }`   |
+| `PUT /api/admin/config`      | `admin:config:update` | `{ data: ConfigEntry[], restartRequired }` |
 
 Single updates accept exactly `{ value: scalar }`; batches accept exactly a non-empty
 `{ values: { key: scalar } }`. Every name is resolved before value validation or mutation.
@@ -350,7 +350,9 @@ If-Match: "abc123"
 → 412 Precondition Failed (if modified by another client)
 ```
 
-ETags are computed from the entity's `updated_at` timestamp.
+ETags are computed from the entity's `updated_at` timestamp. The stored value strictly advances
+by at least one millisecond on every update, so two updates can never share a millisecond-precision
+ETag even when they run inside the same database transaction.
 
 ## Error Handling
 
