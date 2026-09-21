@@ -17,25 +17,7 @@ import type { Middleware } from 'koa';
 import { getPool } from '../lib/database.js';
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
-
-/** Maximum time (ms) to wait for each backend check before failing. */
-const TIMEOUT_MS = 2000;
-
-/**
- * Race a promise against a timeout. Rejects with a descriptive error
- * if the promise doesn't resolve within `TIMEOUT_MS`.
- */
-function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(
-        () => reject(new Error(`${label} timeout after ${TIMEOUT_MS}ms`)),
-        TIMEOUT_MS,
-      ),
-    ),
-  ]);
-}
+import { withTimeout } from '../lib/with-timeout.js';
 
 /**
  * Create the readiness probe middleware.

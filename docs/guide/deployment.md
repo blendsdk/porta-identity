@@ -501,6 +501,9 @@ server {
     listen 443 ssl http2;
     server_name auth.example.com;
 
+    # Hide the exact nginx version from public response headers.
+    server_tokens off;
+
     ssl_certificate     /etc/ssl/certs/auth.example.com.pem;
     ssl_certificate_key /etc/ssl/private/auth.example.com-key.pem;
 
