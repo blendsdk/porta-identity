@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-09-21 11:30
-> **Progress**: 3/14 tasks (21%)
+> **Last Updated**: 2026-09-21 11:45
+> **Progress**: 5/14 tasks (36%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -42,8 +42,8 @@ test:structure` before each commit; the full production-security evidence run on
 
 - [x] 1.1 Add the pure decision-log parser, correlation, symbolic-field projection, and forbidden-field scan. (completed 2026-09-21 11:28; `test-harness/assurance/p1/decision-log.ts`)
 - [x] 1.2 Add the immutable specification for parsing, honest projection, correlation, and forbidden scans. (completed 2026-09-21 11:30; 6/6 green)
-- [ ] 1.3 Add the bounded Porta container log source (`docker logs` with fixed arguments) behind the owned-run container resolution.
-- [ ] 1.4 Phase gate: assurance typecheck, harness lint, and the decision-log spec all pass.
+- [x] 1.3 Add the bounded Porta container log source (`docker logs` with fixed arguments) behind the owned-run container resolution. (completed 2026-09-21 11:45; `test-harness/assurance/p1/porta-log-source.ts` resolves the single owned container by labels and reads a timestamped window with an injected runner)
+- [x] 1.4 Phase gate: assurance typecheck, harness lint, and the decision-log spec all pass. (completed 2026-09-21 11:45; decision-log 6/6 and log-source 4/4 green; assurance typecheck and harness lint clean)
 
 ## Phase 2: Raw validation/exposure lane
 
