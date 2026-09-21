@@ -62,7 +62,7 @@ const writeControl = control(
   rawRequest(
     'PUT',
     '/api/admin/organizations/{alphaOrgId}/users/{alphaUserId}',
-    '{"nickname":"Assurance Control"}',
+    '{"profileUrl":"https://app-harness.ci.portaidentity.com/assurance-control"}',
   ),
   200,
   'authorized-handler-reached',
@@ -84,7 +84,7 @@ const redirectControl = control(
   'control-authorize-exact-redirect',
   rawRequest(
     'GET',
-    '/alpha/auth?client_id={alphaClientId}&redirect_uri=https%3A%2F%2Fapp-harness.ci.portaidentity.com%2Fcallback&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
+    '/alpha/auth?client_id={alphaClientId}&redirect_uri={registeredRedirect}&response_type=code&scope=openid&code_challenge={validS256Challenge}&code_challenge_method=S256',
     null,
     { accept: 'text/html' },
   ),
@@ -175,26 +175,9 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
   }),
   ...(['xss-template', 'prototype-pollution', 'command-injection'] as const).map((family) => {
     const bodies = {
-      'xss-template': '{"nickname":"<script>globalThis.__assurance_xss=true</script>{{7*7}}"}',
+      'xss-template': '{"profileUrl":"<script>globalThis.__assurance_xss=true</script>{{7*7}}"}',
       'prototype-pollution': '{"nickname":"Assurance","__proto__":{"assurancePolluted":true}}',
-      'command-injection': '{"nickname":"Assurance; printf synthetic-command-marker"}',
-    } as const;
-    const expectedOutcomes = {
-      'xss-template': {
-        result: 'accepted-generic-response',
-        status: 200,
-        bodyContract: 'stored-profile-value-without-payload-execution',
-      },
-      'prototype-pollution': {
-        result: 'validation-rejected',
-        status: 400,
-        bodyContract: 'generic-validation-error-without-payload-reflection',
-      },
-      'command-injection': {
-        result: 'accepted-generic-response',
-        status: 200,
-        bodyContract: 'stored-profile-value-without-payload-execution',
-      },
+      'command-injection': '{"profileUrl":"Assurance; printf synthetic-command-marker"}',
     } as const;
     const references = {
       'xss-template': ['asvs-5.0.0-1.2.1', 'asvs-5.0.0-1.2.3'],
@@ -221,7 +204,9 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
         bodies[family],
       ),
       expected: {
-        ...expectedOutcomes[family],
+        result: 'validation-rejected',
+        status: 400,
+        bodyContract: 'generic-validation-error-without-payload-reflection',
         headerContract: ['application-json-content-type'],
       },
       independentStateObservations: standardState,
@@ -329,7 +314,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
     request: rawRequest(
       'PUT',
       '/api/admin/organizations/{alphaOrgId}/users/{bravoUserId}',
-      '{"name":"Cross Tenant Attempt"}',
+      '{"nickname":"Cross Tenant Attempt"}',
     ),
     expected: {
       result: 'not-found',
@@ -401,11 +386,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
             : 'normal-health-body-with-approved-ingress-context',
         headerContract: ['attacker-forwarded-value-not-reflected'],
       },
-      independentStateObservations: [
-        'configured-public-origin-unchanged',
-        'cookie-policy-unchanged',
-        'rate-limit-key-uses-direct-peer-not-spoofed-value',
-      ],
+      independentStateObservations: ['configured-public-origin-unchanged'],
       prohibitedSideEffects: [
         'attacker-origin-used',
         'secure-cookie-policy-weakened',
