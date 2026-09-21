@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Ready
-> **Last Updated**: 2026-09-21 20:52
-> **Progress**: 5/13 tasks (38%)
+> **Last Updated**: 2026-09-21 23:48
+> **Progress**: 9/13 tasks (69%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -60,14 +60,17 @@ existing assertion is weakened.
 
 **Reference**: RD-05, ST-53; DEF-14; decisions D5–D8.
 
-- [ ] 2.1 [spec-author] Update the immutable aggregate oracle first: `assurance-all-aggregate.spec.test.ts` and `assurance-all-aggregate-requirements.ts` must expect an empty known-incomplete collector registry and no `forwarding-context-observer-incomplete` gap. (RED expected: the registry still registers the forwarding continuation.)
-- [ ] 2.2 Implement `observeForwardedContext` in `test-harness/assurance/production-exposure/live-adapter.ts` and route the `forwarded-host`, `forwarded-proto`, and `forwarded-client-ip` families through it. Observations: `configured-public-origin-unchanged` (tenant discovery `issuer` equal before and after and equal to the configured origin), `cookie-policy-unchanged` (`_csrf` cookie still `Secure; HttpOnly; SameSite=Lax` with no `Domain`), `rate-limit-key-uses-direct-peer-not-spoofed-value` (two token requests that each send a single spoofed `X-Forwarded-For` value share one `X-RateLimit-Remaining` counter, because nginx appends the peer and the hop count keeps the last entry), and derive `rate-limit-budget-split-by-spoofed-ip` as its negation.
-- [ ] 2.3 Remove the forwarding registration from `test-harness/assurance/aggregate/registry.ts` (empty `aggregateKnownIncompleteCollectors`, drop the `forwarding-context-observer-incomplete` gap and the now-unused constant) and update `test-harness/assurance/aggregate/index.ts` exports accordingly.
-- [ ] 2.4 Update `assurance-all-aggregate.impl.test.ts` (and any other fixture) to the empty-registry expectation and run the focused harness suites.
+- [x] 2.1 [spec-author] Update the immutable aggregate oracle first: `assurance-all-aggregate.spec.test.ts` and `assurance-all-aggregate-requirements.ts` must expect an empty known-incomplete collector registry and no `forwarding-context-observer-incomplete` gap. (RED expected: the registry still registers the forwarding continuation.) ✅ (completed: 2026-09-21 22:30; RED: impl test `expected [] but got 2 entries` at registry assertion, and the aggregate spec fails `ASSURANCE_ALL_ITEMS_INVALID` because the executable registry still lists 7 known gaps vs the frozen 6)
+- [x] 2.2 Implement `observeForwardedContext` in `test-harness/assurance/production-exposure/live-adapter.ts` and route the `forwarded-host`, `forwarded-proto`, and `forwarded-client-ip` families through it. Observations: `configured-public-origin-unchanged` (tenant discovery `issuer` equal before and after and equal to the configured origin), `cookie-policy-unchanged` (`_csrf` cookie still `Secure; HttpOnly; SameSite=Lax` with no `Domain`), `rate-limit-key-uses-direct-peer-not-spoofed-value` (two token requests that each send a single spoofed `X-Forwarded-For` value share one `X-RateLimit-Remaining` counter, because nginx appends the peer and the hop count keeps the last entry), and derive `rate-limit-budget-split-by-spoofed-ip` as its negation. ✅ (completed: 2026-09-21 22:34; added `forwarded-context-observers.ts` and split low-level helpers into `live-request-primitives.ts`; adapter back to 668 lines)
+- [x] 2.3 Remove the forwarding registration from `test-harness/assurance/aggregate/registry.ts` (empty `aggregateKnownIncompleteCollectors`, drop the `forwarding-context-observer-incomplete` gap and the now-unused constant) and update `test-harness/assurance/aggregate/index.ts` exports accordingly. ✅ (completed: 2026-09-21 22:34; `index.ts` already re-exports the now-empty list; the admission gate is kept and now denies by default)
+- [x] 2.4 Update `assurance-all-aggregate.impl.test.ts` (and any other fixture) to the empty-registry expectation and run the focused harness suites. ✅ (completed: 2026-09-21 22:34; updated the registry digest binding, repurposed the stale continuation test to fail-closed, focused suites 43/43, typecheck and lint clean)
 
-**Phase gate:** all three `st53-*` cases observe every independent state fact as concrete, the
-prohibited rate-limit split is refuted, and the aggregate no longer admits a forwarding
-continuation.
+**Review**: [phase-2-review.md](phase-2-review.md) — 1 critical, 2 major, and 4 minor findings; all remediated. The fix re-review confirmed the six original findings resolved and raised SA-007: the general token/introspection rate limiter is mounted on the wrong path, so the real token endpoint is not throttled. That product defect is recorded as DEF-25 and blocks only the ST-53 rate-limit identity fact.
+
+**Phase gate:** the ST-53 origin and cookie facts are observed as concrete through attack-driven
+probes; the rate-limit identity fact reports `unobserved` honestly because the real token endpoint
+has no active limiter (DEF-25), so the case stays incomplete and does not manufacture assurance.
+The aggregate no longer admits a forwarding continuation.
 
 ---
 
@@ -77,7 +80,7 @@ continuation.
 
 **Reference**: RD-05; DEF-14; decisions D1–D8.
 
-- [ ] 3.1 Run `yarn assurance:harness --project security --profile operational` and `--profile production-security`; require no `st53-*` incomplete case, no observed forwarding prohibited effect, and record the clean run identifiers.
+- [ ] 3.1 Run `yarn assurance:harness --project security --profile operational` and `--profile production-security`; require that each `st53-*` case reports the origin and cookie facts as observed, no observed forwarding prohibited effect, and only the rate-limit identity fact unobserved (blocked by DEF-25) with exit 40; record the run identifiers.
 - [ ] 3.2 Document `TRUST_PROXY_HOPS` in `docs/guide/environment.md`, `docs/guide/deployment.md`, and `.env.example`, stating that the value is the number of trusted proxy hops and defaults to `1`.
 - [ ] 3.3 Update `codeops/features/test-assurance/00-remaining-work.md` and `00-roadmap.md` to record DEF-14 as resolved with the live run identifiers.
 - [ ] 3.4 Full verification: `yarn verify` passes and the roadmap and remaining-work backlog record DEF-14 as done.
