@@ -327,6 +327,21 @@ describe('user routes', () => {
 
       await expect(exec(layer!, ctx)).rejects.toThrow('User not found');
     });
+
+    it.each([
+      ['empty body', {}],
+      ['unknown field only', { name: 'Assurance Control' }],
+    ])('should return 400 for an %s without calling the service', async (_label, body) => {
+      const router = createUserRouter();
+      const layer = findLayer(router, 'PUT', '/:userId');
+      const ctx = createMockCtx({ params: { userId: 'user-uuid-1' }, body });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(400);
+      expect(ctx.body).toEqual({ error: 'User request is invalid' });
+      expect(userService.updateUser).not.toHaveBeenCalled();
+    });
   });
 
   // -------------------------------------------------------------------------

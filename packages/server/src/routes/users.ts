@@ -43,6 +43,7 @@ import { getSystemConfigNumber } from '../lib/system-config.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
+import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData } from '../users/gdpr.js';
@@ -94,32 +95,36 @@ const createUserSchema = z.object({
 });
 
 /** Schema for updating a user (all fields optional, nullable for clearing) */
-const updateUserSchema = z.object({
-  givenName: userProfileNameSchema.nullable().optional(),
-  familyName: userProfileNameSchema.nullable().optional(),
-  middleName: userProfileNameSchema.nullable().optional(),
-  nickname: userProfileNameSchema.nullable().optional(),
-  preferredUsername: userProfileNameSchema.nullable().optional(),
-  profileUrl: userProfileUrlSchema.nullable().optional(),
-  pictureUrl: userProfileUrlSchema.nullable().optional(),
-  websiteUrl: userProfileUrlSchema.nullable().optional(),
-  gender: userGenderSchema.nullable().optional(),
-  birthdate: userBirthdateSchema.nullable().optional(),
-  zoneinfo: userZoneinfoSchema.nullable().optional(),
-  locale: userLocaleSchema.nullable().optional(),
-  phoneNumber: userPhoneNumberSchema.nullable().optional(),
-  phoneNumberVerified: z.boolean().optional(),
-  address: z
-    .object({
-      street: z.string().nullable().optional(),
-      locality: userProfileNameSchema.nullable().optional(),
-      region: userProfileNameSchema.nullable().optional(),
-      postalCode: userPostalCodeSchema.nullable().optional(),
-      country: userCountrySchema.nullable().optional(),
-    })
-    .nullable()
-    .optional(),
-});
+const updateUserSchema = z
+  .object({
+    givenName: userProfileNameSchema.nullable().optional(),
+    familyName: userProfileNameSchema.nullable().optional(),
+    middleName: userProfileNameSchema.nullable().optional(),
+    nickname: userProfileNameSchema.nullable().optional(),
+    preferredUsername: userProfileNameSchema.nullable().optional(),
+    profileUrl: userProfileUrlSchema.nullable().optional(),
+    pictureUrl: userProfileUrlSchema.nullable().optional(),
+    websiteUrl: userProfileUrlSchema.nullable().optional(),
+    gender: userGenderSchema.nullable().optional(),
+    birthdate: userBirthdateSchema.nullable().optional(),
+    zoneinfo: userZoneinfoSchema.nullable().optional(),
+    locale: userLocaleSchema.nullable().optional(),
+    phoneNumber: userPhoneNumberSchema.nullable().optional(),
+    phoneNumberVerified: z.boolean().optional(),
+    address: z
+      .object({
+        street: z.string().nullable().optional(),
+        locality: userProfileNameSchema.nullable().optional(),
+        region: userProfileNameSchema.nullable().optional(),
+        postalCode: userPostalCodeSchema.nullable().optional(),
+        country: userCountrySchema.nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one profile field must be provided',
+  });
 
 /** Schema for listing users with pagination */
 const listUsersSchema = z.object({
@@ -229,29 +234,34 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List users (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
-    try {
-      // Cursor-based pagination when `cursor` or `limit` param is present
-      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
-        const query = listUsersCursorSchema.parse(ctx.query);
-        const result = await userService.listUsersCursor({
+  router.get(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.USER_READ),
+    requireExistingOrganization(),
+    async (ctx) => {
+      try {
+        // Cursor-based pagination when `cursor` or `limit` param is present
+        if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+          const query = listUsersCursorSchema.parse(ctx.query);
+          const result = await userService.listUsersCursor({
+            organizationId: ctx.params.orgId,
+            ...query,
+          });
+          ctx.body = result;
+          return;
+        }
+        // Default: offset-based pagination (backward compatible)
+        const query = listUsersSchema.parse(ctx.query);
+        const result = await userService.listUsersByOrganization({
           organizationId: ctx.params.orgId,
           ...query,
         });
         ctx.body = result;
-        return;
+      } catch (err) {
+        handleError(ctx, err);
       }
-      // Default: offset-based pagination (backward compatible)
-      const query = listUsersSchema.parse(ctx.query);
-      const result = await userService.listUsersByOrganization({
-        organizationId: ctx.params.orgId,
-        ...query,
-      });
-      ctx.body = result;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:userId — Get user by ID
