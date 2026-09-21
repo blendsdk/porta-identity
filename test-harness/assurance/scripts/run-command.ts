@@ -230,6 +230,11 @@ const p1PackedReadSpecificationFiles = [
   'test-harness/assurance/tests/p1-packed-read.spec.test.ts',
 ] as const;
 
+/** Immutable P1 live-boundary specifications requiring the operational profile. */
+const p1LiveSpecificationFiles = [
+  'test-harness/assurance/tests/p1-live-boundaries.spec.test.ts',
+] as const;
+
 /** Internal governance files referenced by ordinary and aggregate selectors without duplication. */
 const governanceTestFiles = [
   'test-harness/assurance/tests/assurance.spec.test.ts',
@@ -742,6 +747,26 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
         return productionExposureExit;
       }
       retainedProductExit = productionExposureExit;
+
+      if (project === 'security' && profile === 'operational') {
+        const p1Reset = await runLifecycleAction('reset');
+        const p1ResetExit = managedChildExit(p1Reset, setupFailureExit);
+        if (p1ResetExit !== 0) return selectAssuranceExitCode([retainedProductExit, p1ResetExit]);
+        const p1Active = readActiveCoverageRun(process.cwd());
+        const p1Result = await runNodeSuite(
+          p1LiveSpecificationFiles,
+          undefined,
+          Object.freeze({
+            ...environmentForManifest(p1Active.lease.manifest),
+            PORTA_ASSURANCE_PROJECT: 'security',
+            PORTA_ASSURANCE_P1_ADAPTER: 'live',
+          }),
+        );
+        return selectAssuranceExitCode([
+          retainedProductExit,
+          managedChildExit(p1Result, testFailureExit),
+        ]);
+      }
 
       if (!shouldRunProductionSecurityBlocks(project, profile)) return productionExposureExit;
     }
