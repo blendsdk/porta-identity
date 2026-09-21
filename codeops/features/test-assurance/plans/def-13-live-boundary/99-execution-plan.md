@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: In Progress
-> **Last Updated**: 2026-09-21 11:50
-> **Progress**: 6/15 tasks (40%)
+> **Last Updated**: 2026-09-21 12:05
+> **Progress**: 7/15 tasks (47%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -29,7 +29,7 @@ must be resolved before task 2.2 can pass.
 | ----- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | 0     | none (read-only audit and design challenge)                                                                                              |
 | 1     | `npx tsx --test test-harness/assurance/tests/p1-decision-log.spec.test.ts`; assurance typecheck; harness lint                            |
-| 2     | `npx tsx --test test-harness/assurance/tests/p1-raw-http-transport.spec.test.ts`; then the raw half of `p1-live-boundaries.spec.test.ts` |
+| 2     | `npx tsx --test test-harness/assurance/tests/p1-raw-http-transport.impl.test.ts`; then the raw half of `p1-live-boundaries.spec.test.ts` |
 | 3     | the admin half of `p1-live-boundaries.spec.test.ts` under the operational lane                                                           |
 | 4     | `yarn assurance:harness --project security --profile operational` once; `yarn test:structure`                                            |
 
@@ -53,7 +53,7 @@ The P1 oracle asserts `profile === 'operational'` for every raw case, so this la
 
 ## Phase 2: Raw validation/exposure lane
 
-- [ ] 2.1 Add the raw HTTP/1.1 transport over `node:tls`/`node:net` that reuses `renderRawHttpRequest` for framing, follows no redirects, and bounds the response.
+- [x] 2.1 Add the raw HTTP/1.1 transport over `node:tls`/`node:net` that reuses `renderRawHttpRequest` for framing, follows no redirects, and bounds the response. (completed 2026-09-21 12:05; `test-harness/assurance/p1/raw-http-transport.ts`; 6/6 spec green, including exact CR/LF octets and timeout/byte bounds)
 - [ ] 2.2 Implement `observeValidationCase` for the 15 raw cases, reusing `LiveTenantAdminContext` for fixtures and state and correlating the decision-log window per request.
 - [ ] 2.3 Phase gate: the raw half of `p1-live-boundaries.spec.test.ts` passes.
 
