@@ -258,6 +258,19 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
     };
   }
 
+  /** Replaces every declared administrative placeholder, encoding path values only. */
+  private substitutePlaceholders(
+    template: string,
+    placeholders: Readonly<Record<string, string>>,
+    encodeValue: boolean,
+  ): string {
+    return template.replace(/\{([a-zA-Z]+)\}/gu, (_match, name: string) => {
+      const value = placeholders[name];
+      if (value === undefined) throw new Error(`unsupported P1 admin placeholder: ${name}`);
+      return encodeValue ? encodeURIComponent(value) : value;
+    });
+  }
+
   /** Executes one administrative request with one exact actor and no redirects. */
   private async executeAdmin(
     request: AdminDataCaseRequirement['probe'],
@@ -269,12 +282,11 @@ export class LiveP1BoundaryContract implements P1LiveBoundaryContract {
     readonly requestId: string;
   }> {
     const api = await this.admin.api();
-    const path = request.path.replace(/\{([a-zA-Z]+)\}/gu, (_match, name: string) => {
-      const value = placeholders[name];
-      if (value === undefined) throw new Error(`unsupported P1 admin placeholder: ${name}`);
-      return encodeURIComponent(value);
-    });
-    const data = request.body === null ? undefined : (JSON.parse(request.body) as unknown);
+    const path = this.substitutePlaceholders(request.path, placeholders, true);
+    const data =
+      request.body === null
+        ? undefined
+        : (JSON.parse(this.substitutePlaceholders(request.body, placeholders, false)) as unknown);
     const response = await api.fetch(`${this.endpoints.porta}${path}`, {
       method: request.method,
       headers: this.admin.adminHeaders(request.actor),
