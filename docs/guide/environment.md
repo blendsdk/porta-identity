@@ -136,9 +136,10 @@ digests rather than raw identifiers.
 
 ## Reverse Proxy
 
-| Variable      | Default | Required               | Description                                                                                                              |
-| ------------- | ------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `TRUST_PROXY` | `false` | **Yes** (behind proxy) | Set to `true` when Porta runs behind a TLS-terminating reverse proxy (nginx, Traefik, Caddy, cloud load balancer, etc.). |
+| Variable           | Default | Required               | Description                                                                                                              |
+| ------------------ | ------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `TRUST_PROXY`      | `false` | **Yes** (behind proxy) | Set to `true` when Porta runs behind a TLS-terminating reverse proxy (nginx, Traefik, Caddy, cloud load balancer, etc.). |
+| `TRUST_PROXY_HOPS` | `1`     | No                     | Number of trusted reverse-proxy hops in front of Porta. Set it to the exact number of proxies that append to `X-Forwarded-For`. |
 
 ### Why `TRUST_PROXY` Matters
 
@@ -178,6 +179,29 @@ Enabling it without a proxy allows clients to spoof `X-Forwarded-*` headers.
 | Behind nginx/Traefik/Caddy with TLS            | `true`        | Proxy must send `X-Forwarded-Proto: https`        |
 | Behind a cloud load balancer (AWS ALB, GCP LB) | `true`        | Cloud LBs typically set `X-Forwarded-Proto`       |
 | Direct HTTPS (TLS on Porta itself)             | `false`       | Porta sees TLS directly — no proxy headers needed |
+
+### Trusted Proxy Hops
+
+`TRUST_PROXY_HOPS` tells Porta how many trusted proxies sit in front of it. Koa reads the
+client IP from the trusted end of the `X-Forwarded-For` list instead of the leftmost value
+that a client can supply.
+
+The default of `1` matches the common deployment of exactly one TLS-terminating proxy. Set
+it to `0` only when you deliberately trust the whole header, or to the exact number of
+chained trusted proxies.
+
+::: warning Set the Exact Hop Count
+The value must equal the real number of trusted proxies that append to `X-Forwarded-For`.
+
+- **Too low**: every client behind the nearest proxy shares one rate-limit budget and one
+  audit address. One client can exhaust the budget for everyone.
+- **Too high**: the client-controlled leftmost value is used again, so a client can rotate
+  `X-Forwarded-For` and evade IP-based rate limiting.
+
+This setting assumes a trusted proxy always appends to the header and that Porta itself is
+not reachable directly. If Porta can be reached without the proxy, a client can still
+control the resolved address.
+:::
 
 ## Security
 

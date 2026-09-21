@@ -182,6 +182,7 @@ external secrets of exactly 64 hexadecimal characters, and they must contain dif
 | `HOST`               | `0.0.0.0`    | HTTP listen address                                         |
 | `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)            |
 | `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy   |
+| `TRUST_PROXY_HOPS`   | `1`          | Number of trusted proxies that append to `X-Forwarded-For`  |
 | `PORTA_AUTO_MIGRATE` | `false`      | Initial-setup migration switch; keep disabled in production |
 | `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                     |
 
@@ -534,6 +535,11 @@ drop insecure cookies on HTTPS pages.
 `TRUST_PROXY` tells Koa to trust `X-Forwarded-Proto` and `X-Forwarded-For` headers
 from the proxy, so `ctx.secure`, `ctx.protocol`, and `ctx.ip` reflect the real client
 connection rather than the internal HTTP hop.
+
+With `TRUST_PROXY=true`, also set `TRUST_PROXY_HOPS` to the exact number of trusted proxies
+that append to `X-Forwarded-For` (default `1`). It keeps the client IP used for rate
+limiting and audit logging on the proxy-appended value instead of the client-supplied
+leftmost value. See [Environment Variables → Trusted Proxy Hops](./environment.md#trusted-proxy-hops).
 :::
 
 ::: tip
