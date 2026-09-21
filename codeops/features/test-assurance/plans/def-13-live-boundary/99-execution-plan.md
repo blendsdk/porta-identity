@@ -41,7 +41,7 @@ The P1 oracle asserts `profile === 'operational'` for every raw case, so this la
 ## Phase 0: Case observability audit (complete)
 
 - [x] 0.1 Enumerate the raw and admin cases with paths, profiles, and required fields; classify the emitting surface. (completed 2026-09-21 11:25; 33 cases: 29 admin-api, 3 /health, 1 /alpha/authorize)
-- [!] 0.2 Confirm the live outcome of each raw case whose expectation may not match the product (`st52-header-crlf`, `st52-path-traversal`, `st54-unsupported-method`). Blocked: AR-3 pending the user's decision on changing the requirement or the product.
+- [ ] 0.2 Collect the live outcome of every raw case and compare it with the oracle (`st52-header-crlf`, `st52-path-traversal`, `st54-unsupported-method` are the expected mismatches). AR-3 resolved evidence-first; escalate each mismatch per case.
 - [x] 0.3 Independent design challenge of the transport approach. (completed 2026-09-21 11:50; verdict REVISE — reuse `renderRawHttpRequest`, run the lane as operational, keep `correlatedLogCredit` out of scope; corrections applied to this plan and the ambiguity register)
 
 ## Phase 1: Decision-log foundation

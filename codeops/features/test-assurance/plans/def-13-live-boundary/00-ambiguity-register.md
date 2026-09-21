@@ -68,38 +68,36 @@ oracle asserts `observed.profile === 'operational'` for every raw case
 **Resolution.** Mechanical: the oracle is authoritative, so the P1 live spec runs under
 `--profile operational`. The plan's Phase 4 is corrected.
 
-## AR-3 — Raw-case expected outcomes that the product may not meet (OPEN)
+## AR-3 — Raw-case expected outcomes that the product may not meet
 
 | Field          | Value                          |
 | -------------- | ------------------------------ |
 | Category       | Technical (runtime) — reserved |
-| Status         | OPEN — blocks 2.2              |
-| Decided by     | Pending user decision          |
-| Affected tasks | 2.2, 4.3                       |
+| Status         | RESOLVED (evidence-first)      |
+| Decided by     | User, explicit, 2026-09-21     |
+| Affected tasks | 0.2, 2.2, 4.3                  |
 
 **Question.** The `design-challenger` flagged that `st52-header-crlf` expects status `400`
 (`validation-exposure-raw-case-requirements.ts:166`), but the request it describes is well-formed
 HTTP: the CR/LF octets split the injected value into two legal header lines, and Porta neither
 reflects inbound `x-request-id` nor rejects the request. Source confirmation:
 `packages/server/src/middleware/request-logger.ts:55-58` creates its own UUID and ignores inbound
-values. The live outcome is therefore expected to be `200` with the injected header absent — which
-satisfies the security intent (no response-header injection) but not the oracle's `400` assertion.
+values. nginx validates header names only and forwards the injected name; there is no raw-header
+guard in `packages/server/src`. The live outcome is therefore expected to be `200` with the injected
+header absent — which satisfies the security intent (no response-header injection) but not the
+oracle's `400` assertion.
 
-**Why it blocks.** A failing immutable spec test means the implementation is wrong, never the test.
-If the product honestly returns `200`, the adapter cannot report `400`, so the case cannot pass
-without changing either the product or the requirement/oracle — both outside this plan's authority.
+**Decision.** User chose **evidence-first**: build the adapter, run the live lane, and collect the
+real outcome of every raw case; then decide each mismatch individually. No requirement or product
+change is authorized yet.
 
-**Options (for the user).**
-
-| Option                                                      | Effect                                                                                                | Trade-off                                                                     |
-| ----------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| A — correct the requirement/oracle for this case            | Expected outcome becomes the true accepted response; the injection-defense property is still asserted | Requires an RD-05 / requirements change                                       |
-| B — make the product reject CR/LF-smuggled header sequences | Product returns `400`                                                                                 | Adds product behavior for an already-parsed legal request; questionable value |
-| C — confirm on the live stack first                         | Evidence before deciding                                                                              | Requires a live run                                                           |
+**Consequence.** Task 0.2 becomes the evidence-collection step and is unblocked. Task 2.2 may report
+honest outcomes; any case whose real outcome differs from the oracle is escalated per case with the
+captured status, body contract, and headers rather than being forced to pass.
 
 **Related concern.** The same class of mismatch may affect other cases (`st52-path-traversal`
-expects `400`; `st54-unsupported-method` expects `405` with an `Allow` header). Only a live run can
-settle each. This is why task 0.2 exists.
+expects `400`; `st54-unsupported-method` expects `405` with an `Allow` header). The live run settles
+each.
 
 ## AR-4 — Correlated-log credit scope
 
