@@ -196,9 +196,9 @@ admin-lane mismatch is tracked separately in AR-7.
 | Field          | Value                            |
 | -------------- | -------------------------------- |
 | Category       | Requirements / product (runtime) |
-| Status         | **OPEN** — blocks 3.2, 4.2       |
-| Decided by     | Pending user ruling              |
-| Affected tasks | 3.1 (in progress), 3.2, 4.2      |
+| Status         | **RESOLVED**                     |
+| Decided by     | User, explicit, 2026-09-21       |
+| Affected tasks | 3.1, 3.2 (done)                  |
 
 **Question.** The admin oracle requires `synthetic-correlation-id`, `actor-id`, `action`,
 `target-id-digest`, `result` for all 18 cases. Live observation shows:
@@ -219,4 +219,7 @@ admin-lane mismatch is tracked separately in AR-7.
 | B — record actor/resource references for every admin route                       | Fields always present                     | Product instrumentation change; target digest is meaningless for a collection |
 | C — change `pagination-cross-tenant-cursor` to expect `200` with alpha-only data | Matches the real isolation claim          | Edits the immutable oracle                                                    |
 
-**Decision.** Pending. No requirement or product change is authorized yet for AR-7.
+**Decision.** Resolved: `requiredLogFields` is per case — target digest only where the boundary
+resolves one resource, and the denial set drops the fields a pre-resource denial cannot emit; the
+cross-tenant cursor case now expects the alpha-scoped `200` page. The full live oracle passes all 15
+raw and 18 admin cases.

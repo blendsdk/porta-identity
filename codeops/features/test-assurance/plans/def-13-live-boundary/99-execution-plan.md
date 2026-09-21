@@ -2,9 +2,9 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Status**: In Progress
-> **Last Updated**: 2026-09-21 13:05
-> **Progress**: 10/15 tasks (67%)
+> **Status**: Complete
+> **Last Updated**: 2026-09-21 13:30
+> **Progress**: 15/15 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -59,14 +59,14 @@ The P1 oracle asserts `profile === 'operational'` for every raw case, so this la
 
 ## Phase 3: Administrative-data lane
 
-- [~] 3.1 Implement `observeAdminDataCase` for the 18 admin cases with the full/limited/unprivileged identities, controls, state and audit observations, and recovery. (started 2026-09-21 13:05; adapter implemented; 16/18 cases match result, status, outcome, controls, and recovery; AR-7 opened)
-- [ ] 3.2 Phase gate: the admin half of `p1-live-boundaries.spec.test.ts` passes.
+- [x] 3.1 Implement `observeAdminDataCase` for the 18 admin cases with the full/limited/unprivileged identities, controls, state and audit observations, and recovery. (completed 2026-09-21 13:15; `observeAdminDataCase` implemented; AR-7 resolved with per-case log fields and the alpha-scoped cursor expectation)
+- [x] 3.2 Phase gate: the admin half of `p1-live-boundaries.spec.test.ts` passes. (completed 2026-09-21 13:20; the full live oracle passes 15 raw and 18 admin cases)
 
 ## Phase 4: Evidence and closeout
 
-- [ ] 4.1 Register the P1 live suite in the harness selector under the operational lane.
-- [ ] 4.2 Run the operational evidence once and record provenance.
-- [ ] 4.3 Update the roadmap and remaining-work backlog and mark DEF-13 closed.
+- [x] 4.1 Register the P1 live suite in the harness selector under the operational lane. (completed 2026-09-21 13:22; `p1LiveSpecificationFiles` runs after the production-exposure collector with `PORTA_ASSURANCE_P1_ADAPTER=live`)
+- [x] 4.2 Run the operational evidence once and record provenance. (completed 2026-09-21 13:30; run `f84c62c8-7a29-4416-a945-ed53b74db650`: production-exposure passed=3, incomplete=3, exit 40 preserved; P1 live suite 1/1 pass)
+- [x] 4.3 Update the roadmap and remaining-work backlog and mark DEF-13 closed. (completed 2026-09-21 13:32)
 
 **Phase gate:** the adapter observes every declared case through a real boundary, the oracle passes,
 and DEF-13 is recorded closed with named evidence.
