@@ -154,12 +154,12 @@ rather than by a client-supplied id (inbound ids are intentionally ignored).
 
 ## AR-6 — Raw-case control and probe mismatches with the live product
 
-| Field          | Value                            |
-| -------------- | -------------------------------- |
-| Category       | Requirements / product (runtime) |
-| Status         | **OPEN** — blocks 2.2, 2.3, 4.2  |
-| Decided by     | Pending user ruling              |
-| Affected tasks | 0.2 (done), 2.2, 2.3, 4.2        |
+| Field          | Value                                                                 |
+| -------------- | --------------------------------------------------------------------- |
+| Category       | Requirements / product (runtime)                                      |
+| Status         | **IN PROGRESS** — product fixes done; requirement corrections pending |
+| Decided by     | User, explicit, 2026-09-21                                            |
+| Affected tasks | 0.2 (done), 2.2, 2.3, 4.2                                             |
 
 **Question.** The live raw lane (evidence: `00-raw-lane-evidence.md`) shows the immutable oracle
 cannot pass as authored. Seven of fifteen cases use an authorized control body `{"name":"…"}` that
@@ -178,4 +178,15 @@ nginx with HTML 405 and never reaches Porta. A double-encoded tenant path return
 | C — pause DEF-13 and file the mismatches as defects                                                                                | No change                       | Defect stays open                                         |
 | D — force the adapter to report observed values regardless                                                                         | Never appropriate               | Would weaken a security assertion                         |
 
-**Decision.** Pending. No requirement or product change is authorized yet.
+**Decision.** Approved: fix the two clear product defects and correct the requirement facts that do
+not match the API, then re-run. Progress:
+
+| Item                                     | Status                | Change                                                                                                                                                               |
+| ---------------------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| E1 status: ineffective update → 400      | **Done** (`8fad03ae`) | `updateUserSchema` now requires one known profile field                                                                                                              |
+| E5: malformed/unknown org → 404          | **Done** (`8fad03ae`) | `requireExistingOrganization` guard on the org user list route                                                                                                       |
+| E1 field, E2 route, E3 route, E4 ingress | Pending               | Requirement corrections still to make                                                                                                                                |
+| XSS/command/prototype expected outcomes  | Pending               | Needs security judgement: storing an escaped payload is not a validation error, so the correct claim may be "accepted and handled safely", not "validation-rejected" |
+
+**Consequence.** Tasks 2.2, 2.3, and 4.2 remain blocked until the requirement corrections are made
+with security review. No requirement change has been made yet.
