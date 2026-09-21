@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Complete
-> **Last Updated**: 2026-09-21 01:45
+> **Last Updated**: 2026-09-21 02:15
 > **Progress**: 8/8 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
@@ -47,7 +47,7 @@ DEF-15, DEF-16, DEF-18 residuals; DEF-4, DEF-9, DEF-19 evidence refresh.
 - [x] 1.5 DEF-18: add `nextCursor`/`previousCursor` to the SDK pagination response types and make the `listAll` cursor loop advance on `nextCursor` with `cursor` retained as a compatibility alias. (completed 2026-09-21 01:29; SDK pagination 15/15 green)
 - [x] 1.6 Evidence refresh: run the detecting tests for DEF-4, DEF-9 and DEF-19 and record a named passing revision. (completed 2026-09-21 01:29; unit TOTP replay + session public identifiers 27/27, integration Redis atomic consume + TOTP replay 18/18)
 - [x] 1.7 Reconcile: update `codeops/features/test-assurance/00-roadmap.md` rows with the verified states and create `codeops/features/test-assurance/00-remaining-work.md` for every open defect. (completed 2026-09-21 01:31; four defects marked resolved, two marked code-resolved with live refresh pending, DEF-13 partial, and every open item recorded in the backlog)
-- [x] 1.8 Full verification: `yarn verify` and `yarn test:structure` pass for the affected workspaces. (completed 2026-09-21 01:45; structure 126/126; server verify pass — unit, integration 476, e2e 127, pentest 260, build; SDK verify pass 560. Root `yarn verify` cannot complete because the CLI workspace lacks the installed `@jsvision/*` and `fs-ext-extra-prebuilt` packages — a pre-existing environment gap unrelated to this change; no CLI file was touched.)
+- [x] 1.8 Full verification: `yarn verify` and `yarn test:structure` pass for the affected workspaces. (completed 2026-09-21 02:15; structure 126/126; server verify pass — unit, integration 476, e2e 127, pentest 260, build; SDK verify 560; CLI verify 1430; root `yarn verify` 4/4 tasks successful after installing the declared `@jsvision/*` and `fs-ext-extra-prebuilt` dependencies the environment was missing.)
 
 **Phase gate:** the three residuals are implemented behind green immutable specifications, the three
 fixed defects carry named passing evidence, the roadmap no longer misreports verified defects as
