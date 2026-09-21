@@ -2,7 +2,7 @@
 
 > **Feature**: Test Assurance
 > **Status**: Active backlog
-> **Last Updated**: 2026-09-21 01:30
+> **Last Updated**: 2026-09-21 20:55
 > **CodeOps Artifact Schema**: 1
 
 ## Purpose
@@ -42,6 +42,7 @@ work lives. It is a backlog, not an evidence artifact: nothing here grants assur
 | DEF-21 | Manual consent flow incompatible with tenant binding | Open (design)               | Decide whether a manual consent path must exist for same-organization or cross-organization clients; if yes, design a tenant-safe path and reopen the five UI cases                              | Product ruling                           | `packages/server/src/routes/interactions.ts:1113`; `packages/server/src/middleware/oidc-client-tenant.ts:152`            |
 | DEF-23 | Statistical enumeration timing authority             | Policy-blocked              | Approve an enumeration hypothesis, effect-size bound, sample-size/power rule, and noise contract before any timing measurement                                                                   | Security authority (previously declined) | `test-harness/assurance/tests/human-auth-slice-profile-model.ts:81`                                                      |
 | DEF-20 | Mutation pilot and CI promotion                      | Done (no-go)                | Revisit only if a compatible mutation runner is adopted and DEF-22 is closed; promotion stays withheld                                                                                           | Product decision                         | `test-harness/assurance/mutation/`; `21-ci-promotion-proposal.md`                                                        |
+| DEF-24 | Trust-proxy default contradicts published docs       | Open (docs)                 | Reconcile the `TRUST_PROXY` code default (`true`) with the documented default (`false`) and state the direct-exposure precondition; found while fixing forwarding-context identity              | None (docs)                              | `packages/server/src/config/schema.ts:31`; `docs/guide/environment.md:141`                                              |
 
 ## Resolved by the fast cleanup
 

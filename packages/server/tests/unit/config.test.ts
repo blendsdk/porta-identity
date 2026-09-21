@@ -198,4 +198,66 @@ describe('config schema', () => {
       }
     });
   });
+
+  describe('trustProxyHops validation', () => {
+    it('defaults to 1 when not provided', () => {
+      const result = configSchema.safeParse(validEnv);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(1);
+      }
+    });
+
+    it('treats a blank value as unset and uses the default', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(1);
+      }
+    });
+
+    it('treats a whitespace value as unset and uses the default', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '   ' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(1);
+      }
+    });
+
+    it('accepts a numeric string and coerces it to a number', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '2' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(2);
+      }
+    });
+
+    it('rejects a hop count above the supported ceiling', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '11' });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts the 0 lower bound', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '0' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(0);
+      }
+    });
+
+    it('rejects a negative hop count', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '-1' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a fractional hop count', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '1.5' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a non-numeric hop count', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: 'many' });
+      expect(result.success).toBe(false);
+    });
+  });
 });
