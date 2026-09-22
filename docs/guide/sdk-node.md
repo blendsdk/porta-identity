@@ -49,7 +49,7 @@ Use OIDC client credentials grant for server-to-server communication. Best for l
 import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
-  tokenEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+  tokenEndpoint: 'https://porta.local:3443/super-admin/token',
   clientId: 'my-service-client-id',
   clientSecret: 'my-service-client-secret',
 });
@@ -71,7 +71,7 @@ import { createCliAuth } from '@portaidentity/sdk/node';
 
 const auth = createCliAuth({
   credentialsPath: '~/.porta/credentials.json',
-  refreshEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+  refreshEndpoint: 'https://porta.local:3443/super-admin/token',
   clientId: 'porta-admin-cli',
 });
 ```
@@ -104,7 +104,7 @@ const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: 'https://porta.example.com/api/admin',
     auth: createClientCredentialsAuth({
-      tokenEndpoint: 'https://porta.example.com/super-admin/oidc/token',
+      tokenEndpoint: 'https://porta.example.com/super-admin/token',
       clientId: process.env.PORTA_CLIENT_ID!,
       clientSecret: process.env.PORTA_CLIENT_SECRET!,
     }),

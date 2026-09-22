@@ -130,6 +130,16 @@ async function invokeMiddleware(
   return { nextCalled };
 }
 
+/**
+ * Client-scoped rate-limit keys recorded by the mock, excluding the per-IP
+ * aggregate counter that runs before every client check.
+ */
+function clientKeys(): string[] {
+  return mockCheckRateLimit.mock.calls
+    .map((call) => call[0] as string)
+    .filter((key) => !key.startsWith('ratelimit:token:ip:'));
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -203,9 +213,13 @@ describe('token-rate-limiter middleware', () => {
   });
 
   it('T4b: should set X-RateLimit headers even when rate limit is exceeded', async () => {
-    mockCheckRateLimit.mockResolvedValue(
-      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
-    );
+    // The per-IP aggregate allows, then the client bucket denies, so the
+    // client-scoped informational headers are still set.
+    mockCheckRateLimit
+      .mockResolvedValueOnce(createRateLimitResult({ allowed: true, remaining: 30 }))
+      .mockResolvedValueOnce(
+        createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
+      );
     const ctx = createMockContext('/acme/token', 'POST');
     await invokeMiddleware(ctx);
 
@@ -227,12 +241,12 @@ describe('token-rate-limiter middleware', () => {
     await invokeMiddleware(ctx1);
     await invokeMiddleware(ctx2);
 
-    // Verify checkRateLimit was called with different keys
-    const key1 = mockCheckRateLimit.mock.calls[0][0] as string;
-    const key2 = mockCheckRateLimit.mock.calls[1][0] as string;
-    expect(key1).not.toBe(key2);
-    expect(key1).toContain('10.0.0.1');
-    expect(key2).toContain('10.0.0.2');
+    // Verify the client checks were called with different keys
+    const keys = clientKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(keys[0]).toContain('10.0.0.1');
+    expect(keys[1]).toContain('10.0.0.2');
   });
 
   // -------------------------------------------------------------------------
@@ -249,11 +263,11 @@ describe('token-rate-limiter middleware', () => {
     await invokeMiddleware(ctx1);
     await invokeMiddleware(ctx2);
 
-    const key1 = mockCheckRateLimit.mock.calls[0][0] as string;
-    const key2 = mockCheckRateLimit.mock.calls[1][0] as string;
-    expect(key1).not.toBe(key2);
-    expect(key1).toContain('client-a');
-    expect(key2).toContain('client-b');
+    const keys = clientKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(keys[0]).toContain('client-a');
+    expect(keys[1]).toContain('client-b');
   });
 
   // -------------------------------------------------------------------------
@@ -302,7 +316,7 @@ describe('token-rate-limiter middleware', () => {
     const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {});
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
   });
 
@@ -310,7 +324,7 @@ describe('token-rate-limiter middleware', () => {
     const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1');
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
   });
 
@@ -320,7 +334,7 @@ describe('token-rate-limiter middleware', () => {
     });
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
   });
 
@@ -329,7 +343,7 @@ describe('token-rate-limiter middleware', () => {
     ctx.headers.authorization = `Basic ${Buffer.from('basic-client:secret').toString('base64')}`;
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('basic-client');
   });
 
@@ -340,7 +354,7 @@ describe('token-rate-limiter middleware', () => {
     ctx.headers.authorization = `Basic ${Buffer.from('basic-client:secret').toString('base64')}`;
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('body-client');
     expect(key).not.toContain('basic-client');
   });
@@ -350,8 +364,24 @@ describe('token-rate-limiter middleware', () => {
     ctx.headers.authorization = `Basic ${Buffer.from('no-colon').toString('base64')}`;
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
+  });
+
+  it('T9g: should deny on the per-IP aggregate before the client bucket', async () => {
+    // The aggregate check denies first; the client bucket must not be consulted,
+    // so a caller cannot vary the client id to escape the per-IP limit.
+    mockCheckRateLimit.mockResolvedValueOnce(
+      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 42 }),
+    );
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
+      client_id: 'rotating-client',
+    });
+    await invokeMiddleware(ctx);
+
+    expect(ctx.status).toBe(429);
+    expect(mockCheckRateLimit).toHaveBeenCalledTimes(1);
+    expect(mockCheckRateLimit.mock.calls[0][0]).toBe('ratelimit:token:ip:10.0.0.1');
   });
 
   // -------------------------------------------------------------------------
@@ -390,9 +420,11 @@ describe('token-rate-limiter middleware', () => {
   });
 
   it('T11b: should log a warning when rate limit is exceeded', async () => {
-    mockCheckRateLimit.mockResolvedValue(
-      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
-    );
+    mockCheckRateLimit
+      .mockResolvedValueOnce(createRateLimitResult({ allowed: true, remaining: 30 }))
+      .mockResolvedValueOnce(
+        createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
+      );
     const ctx = createMockContext('/acme/token', 'POST', '10.0.0.5', {
       client_id: 'spam-client',
     });

@@ -9,7 +9,9 @@
  * Rate limiting is per-IP + per-client_id composite key. The client
  * identifier is read from the parsed body or from HTTP Basic credentials;
  * when neither is present (unauthenticated spam) the key falls back to
- * `unknown`, so all such requests from the same IP share one counter.
+ * `unknown`. Because that identifier is unauthenticated and caller-controlled,
+ * an aggregate per-IP counter runs alongside it, so one address cannot flood
+ * the endpoint by varying the client identifier.
  *
  * Reuses the existing `checkRateLimit()` infrastructure from
  * `src/auth/rate-limiter.ts` which provides Redis INCR+EXPIRE sliding
@@ -44,36 +46,49 @@ import { logger } from '../lib/logger.js';
  */
 export const TOKEN_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/token$/;
 
+/** Maximum length of a client identifier accepted for rate-limit bucketing. */
+const MAX_CLIENT_KEY_LENGTH = 255;
+
 /**
  * Extract the presented OAuth client identifier for rate-limit bucketing.
  *
  * The identifier is read from the parsed form body (`client_secret_post`) or
  * from HTTP Basic credentials (`client_secret_basic`). It is a public value
  * used only to give each client its own counter, so reading it before the
- * provider authenticates the client is safe. When neither form is present the
- * key falls back to `unknown`, so unauthenticated spam from one address shares
- * a single budget.
+ * provider authenticates the client is safe. Values longer than
+ * `MAX_CLIENT_KEY_LENGTH` are treated as absent. When neither form is present
+ * the key falls back to `unknown`, so unauthenticated spam from one address
+ * shares a single budget.
  *
  * @param ctx - Koa context whose parsed body and Authorization header are read
  * @returns The presented client identifier, or `unknown` when none is present
  */
-export function presentedClientId(ctx: Context): string {
+function presentedClientId(ctx: Context): string {
   const body = ctx.request.body as Record<string, unknown> | undefined;
   const bodyClientId = body?.['client_id'];
-  if (typeof bodyClientId === 'string' && bodyClientId.length > 0) {
+  if (
+    typeof bodyClientId === 'string' &&
+    bodyClientId.length > 0 &&
+    bodyClientId.length <= MAX_CLIENT_KEY_LENGTH
+  ) {
     return bodyClientId;
   }
   const authorization = ctx.headers.authorization;
-  if (authorization !== undefined && authorization.startsWith('Basic ')) {
+  if (
+    authorization !== undefined &&
+    authorization.length > 6 &&
+    authorization.slice(0, 6).toLowerCase() === 'basic '
+  ) {
     const decoded = Buffer.from(authorization.slice(6), 'base64').toString('utf8');
     const separator = decoded.indexOf(':');
-    if (separator > 0) return decoded.slice(0, separator);
+    const clientId = separator > 0 ? decoded.slice(0, separator) : '';
+    if (clientId.length > 0 && clientId.length <= MAX_CLIENT_KEY_LENGTH) return clientId;
   }
   return 'unknown';
 }
 
 /**
- * Rate limit configuration for the token endpoint.
+ * Rate limit configuration for the token endpoint, per client.
  *
  * 30 requests per 5-minute window — generous enough for legitimate
  * applications (SPAs refreshing tokens, server-side token exchanges)
@@ -83,6 +98,37 @@ export const TOKEN_RATE_LIMIT: RateLimitConfig = {
   max: 30,
   windowSeconds: 300,
 };
+
+/**
+ * Aggregate token limit for one client address.
+ *
+ * The per-client key comes from an unauthenticated value, so a caller can vary
+ * the client identifier to open a fresh counter for every request. This
+ * aggregate bounds the total token traffic from one address, so the endpoint
+ * cannot be flooded with junk requests, while many legitimate clients behind
+ * one address still receive their own per-client budgets.
+ */
+export const TOKEN_IP_RATE_LIMIT: RateLimitConfig = {
+  max: 300,
+  windowSeconds: 300,
+};
+
+/**
+ * Emit the OAuth-format 429 response for a limiter denial.
+ *
+ * @param ctx - Koa context to mutate
+ * @param retryAfter - Seconds until the caller may retry
+ * @param description - Client-safe error description
+ */
+function denyRateLimited(ctx: Context, retryAfter: number, description: string): void {
+  ctx.status = 429;
+  ctx.set('Retry-After', String(retryAfter));
+  ctx.body = {
+    error: 'rate_limit_exceeded',
+    error_description: description,
+    retry_after: retryAfter,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Middleware factory
@@ -104,6 +150,22 @@ export function tokenRateLimiter(): Middleware {
     // and all non-token paths pass through immediately.
     if (ctx.method !== 'POST' || !TOKEN_PATH_REGEX.test(ctx.path)) {
       return next();
+    }
+
+    // An unauthenticated client identifier can be varied per request, so an
+    // aggregate per-IP counter bounds total token traffic independently of it.
+    const aggregate = await checkRateLimit(`ratelimit:token:ip:${ctx.ip}`, TOKEN_IP_RATE_LIMIT);
+    if (!aggregate.allowed) {
+      logger.warn(
+        { action: 'token_ip_rate_limit_exceeded', ip: ctx.ip, path: ctx.path },
+        'Token endpoint per-IP rate limit exceeded',
+      );
+      denyRateLimited(
+        ctx,
+        aggregate.retryAfter,
+        'Too many token requests. Please try again later.',
+      );
+      return;
     }
 
     const clientKey = presentedClientId(ctx);
@@ -128,17 +190,7 @@ export function tokenRateLimiter(): Middleware {
         },
         'Token endpoint rate limit exceeded',
       );
-
-      ctx.status = 429;
-      ctx.set('Retry-After', String(result.retryAfter));
-      // OAuth 2.0 error format — clients that parse token endpoint
-      // errors can handle this structured response.
-      ctx.body = {
-        error: 'rate_limit_exceeded',
-        error_description:
-          'Too many token requests. Please try again later.',
-        retry_after: result.retryAfter,
-      };
+      denyRateLimited(ctx, result.retryAfter, 'Too many token requests. Please try again later.');
       return;
     }
 
@@ -175,6 +227,18 @@ export const INTROSPECTION_RATE_LIMIT: RateLimitConfig = {
 };
 
 /**
+ * Aggregate introspection limit for one client address.
+ *
+ * As on the token endpoint, the per-client key comes from an unauthenticated
+ * value and can be varied per request, so this aggregate bounds the total
+ * introspection traffic from one address independently of the client value.
+ */
+export const INTROSPECTION_IP_RATE_LIMIT: RateLimitConfig = {
+  max: 600,
+  windowSeconds: 60,
+};
+
+/**
  * Create the introspection endpoint rate limiter middleware.
  *
  * Only intercepts `POST` requests to paths matching
@@ -192,6 +256,25 @@ export function introspectionRateLimiter(): Middleware {
     // Only rate-limit POST to the introspection endpoint.
     if (ctx.method !== 'POST' || !INTROSPECTION_PATH_REGEX.test(ctx.path)) {
       return next();
+    }
+
+    // An unauthenticated client identifier can be varied per request, so an
+    // aggregate per-IP counter bounds total introspection traffic.
+    const aggregate = await checkRateLimit(
+      `ratelimit:introspect:ip:${ctx.ip}`,
+      INTROSPECTION_IP_RATE_LIMIT,
+    );
+    if (!aggregate.allowed) {
+      logger.warn(
+        { action: 'introspection_ip_rate_limit_exceeded', ip: ctx.ip, path: ctx.path },
+        'Introspection endpoint per-IP rate limit exceeded',
+      );
+      denyRateLimited(
+        ctx,
+        aggregate.retryAfter,
+        'Too many introspection requests. Please try again later.',
+      );
+      return;
     }
 
     const clientKey = presentedClientId(ctx);
@@ -216,17 +299,11 @@ export function introspectionRateLimiter(): Middleware {
         },
         'Introspection endpoint rate limit exceeded',
       );
-
-      ctx.status = 429;
-      ctx.set('Retry-After', String(result.retryAfter));
-      // OAuth 2.0 error format — resource servers parsing introspection
-      // errors can handle this structured response.
-      ctx.body = {
-        error: 'rate_limit_exceeded',
-        error_description:
-          'Too many introspection requests. Please try again later.',
-        retry_after: result.retryAfter,
-      };
+      denyRateLimited(
+        ctx,
+        result.retryAfter,
+        'Too many introspection requests. Please try again later.',
+      );
       return;
     }
 
