@@ -431,18 +431,6 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(publicBrandingRouter.routes());
   app.use(publicBrandingRouter.allowedMethods());
 
-  // Token endpoint rate limiter — protects POST /:orgSlug/oidc/token against
-  // flooding and brute-force.  Uses per-IP + per-client_id composite key,
-  // 30 req / 5 min.  Returns 429 with Retry-After when exceeded.
-  // Mounted before the OIDC provider so it fires before token processing.
-  app.use(tokenRateLimiter());
-
-  // Introspection endpoint rate limiter — protects POST
-  // /:orgSlug/oidc/token/introspection against token enumeration.
-  // Per-IP + per-client_id key, 100 req / 60s (higher than token endpoint
-  // since resource servers introspect on every API call).
-  app.use(introspectionRateLimiter());
-
   // OIDC provider routes — mounted under /:orgSlug prefix
   // This is the catch-all for OIDC protocol endpoints (auth, token, jwks, etc.)
   // MUST be last because /:orgSlug/* matches everything.
@@ -483,6 +471,13 @@ export function createApp(oidcProvider?: Provider): Koa {
       }
       await next();
     });
+
+    // Token and introspection rate limiters run after the body parser so the
+    // client identifier is available, and before the provider callback so
+    // flooding is rejected before any provider work. They match the real
+    // provider endpoints (/:orgSlug/token and /:orgSlug/token/introspection).
+    oidcRouter.use(tokenRateLimiter());
+    oidcRouter.use(introspectionRateLimiter());
 
     // A client is valid only beneath the issuer owned by its organization. This check runs before
     // CORS, secret transformation, and oidc-provider so a foreign client cannot create an

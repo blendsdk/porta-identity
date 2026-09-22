@@ -1,7 +1,7 @@
 /**
  * Unit tests for the introspection endpoint rate limiter middleware.
  *
- * The middleware rate-limits `POST /:orgSlug/oidc/token/introspection`
+ * The middleware rate-limits `POST /:orgSlug/token/introspection`
  * using a per-IP + per-client_id composite key.  It reuses
  * `checkRateLimit()` from the auth rate limiter, which is mocked here.
  *
@@ -60,6 +60,7 @@ interface MockContext {
   status: number;
   body: unknown;
   request: { body: Record<string, unknown> | undefined };
+  headers: Record<string, string>;
   _headers: Record<string, string>;
   set(name: string, value: string): void;
 }
@@ -67,7 +68,7 @@ interface MockContext {
 /**
  * Build a mock Koa context for the introspection rate limiter.
  *
- * @param path - Request path (e.g., '/acme/oidc/token/introspection')
+ * @param path - Request path (e.g., '/acme/token/introspection')
  * @param method - HTTP method (e.g., 'POST')
  * @param ip - Client IP address
  * @param requestBody - Parsed request body (may contain client_id)
@@ -86,6 +87,7 @@ function createMockContext(
     status: 200,
     body: null,
     request: { body: requestBody },
+    headers: {},
     _headers: responseHeaders,
     set(name: string, value: string) {
       responseHeaders[name] = value;
@@ -146,7 +148,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 30 }),
       );
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+      const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
         client_id: 'resource-server',
       });
       const { nextCalled } = await invokeMiddleware(ctx);
@@ -159,7 +161,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 45 }),
       );
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST');
+      const ctx = createMockContext('/acme/token/introspection', 'POST');
       await invokeMiddleware(ctx);
 
       const body = ctx.body as Record<string, unknown>;
@@ -174,7 +176,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 25 }),
       );
-      const ctx = createMockContext('/my-org/oidc/token/introspection', 'POST');
+      const ctx = createMockContext('/my-org/token/introspection', 'POST');
       await invokeMiddleware(ctx);
 
       expect(ctx._headers['Retry-After']).toBe('25');
@@ -184,7 +186,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
       );
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.5', {
+      const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.5', {
         client_id: 'spam-rs',
       });
       await invokeMiddleware(ctx);
@@ -207,7 +209,7 @@ describe('introspection-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: true, remaining: 80 }),
     );
-    const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+    const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
       client_id: 'my-rs',
     });
     const { nextCalled } = await invokeMiddleware(ctx);
@@ -221,10 +223,10 @@ describe('introspection-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('G5: different IPs have independent counters', () => {
     it('should use different rate limit keys for different IPs', async () => {
-      const ctx1 = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+      const ctx1 = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
         client_id: 'rs-a',
       });
-      const ctx2 = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.2', {
+      const ctx2 = createMockContext('/acme/token/introspection', 'POST', '10.0.0.2', {
         client_id: 'rs-a',
       });
 
@@ -239,10 +241,10 @@ describe('introspection-rate-limiter middleware', () => {
     });
 
     it('should use different rate limit keys for different client_ids', async () => {
-      const ctx1 = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+      const ctx1 = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
         client_id: 'rs-a',
       });
-      const ctx2 = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+      const ctx2 = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
         client_id: 'rs-b',
       });
 
@@ -265,7 +267,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: true, remaining: 100 }),
       );
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST');
+      const ctx = createMockContext('/acme/token/introspection', 'POST');
       const { nextCalled } = await invokeMiddleware(ctx);
 
       expect(nextCalled).toBe(true);
@@ -278,7 +280,7 @@ describe('introspection-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('non-POST methods pass through', () => {
     it('should pass through GET requests without rate limiting', async () => {
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'GET');
+      const ctx = createMockContext('/acme/token/introspection', 'GET');
       const { nextCalled } = await invokeMiddleware(ctx);
 
       expect(nextCalled).toBe(true);
@@ -286,7 +288,7 @@ describe('introspection-rate-limiter middleware', () => {
     });
 
     it('should pass through OPTIONS requests without rate limiting', async () => {
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'OPTIONS');
+      const ctx = createMockContext('/acme/token/introspection', 'OPTIONS');
       const { nextCalled } = await invokeMiddleware(ctx);
 
       expect(nextCalled).toBe(true);
@@ -299,7 +301,7 @@ describe('introspection-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('non-introspection paths pass through', () => {
     it('should not rate-limit the token endpoint', async () => {
-      const ctx = createMockContext('/acme/oidc/token', 'POST');
+      const ctx = createMockContext('/acme/token', 'POST');
       const { nextCalled } = await invokeMiddleware(ctx);
 
       expect(nextCalled).toBe(true);
@@ -320,7 +322,7 @@ describe('introspection-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('missing client_id handling', () => {
     it('should use "unknown" when client_id is missing from body', async () => {
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {});
+      const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {});
       await invokeMiddleware(ctx);
 
       const key = mockCheckRateLimit.mock.calls[0][0] as string;
@@ -328,7 +330,7 @@ describe('introspection-rate-limiter middleware', () => {
     });
 
     it('should use "unknown" when request body is undefined', async () => {
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1');
+      const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1');
       await invokeMiddleware(ctx);
 
       const key = mockCheckRateLimit.mock.calls[0][0] as string;
@@ -336,7 +338,7 @@ describe('introspection-rate-limiter middleware', () => {
     });
 
     it('should use "unknown" when client_id is empty string', async () => {
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+      const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
         client_id: '',
       });
       await invokeMiddleware(ctx);
@@ -350,7 +352,7 @@ describe('introspection-rate-limiter middleware', () => {
   // Key namespace isolation — introspection keys use 'introspect:' not 'token:'
   // -------------------------------------------------------------------------
   it('should use "ratelimit:introspect:" namespace for keys', async () => {
-    const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+    const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
       client_id: 'my-rs',
     });
     await invokeMiddleware(ctx);
@@ -368,7 +370,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: true, remaining: 75 }),
       );
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST', '10.0.0.1', {
+      const ctx = createMockContext('/acme/token/introspection', 'POST', '10.0.0.1', {
         client_id: 'my-rs',
       });
       await invokeMiddleware(ctx);
@@ -381,7 +383,7 @@ describe('introspection-rate-limiter middleware', () => {
       mockCheckRateLimit.mockResolvedValue(
         createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 30 }),
       );
-      const ctx = createMockContext('/acme/oidc/token/introspection', 'POST');
+      const ctx = createMockContext('/acme/token/introspection', 'POST');
       await invokeMiddleware(ctx);
 
       expect(ctx._headers['X-RateLimit-Limit']).toBe(String(INTROSPECTION_RATE_LIMIT.max));
@@ -394,28 +396,28 @@ describe('introspection-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('INTROSPECTION_PATH_REGEX', () => {
     it('should match valid org slug introspection paths', () => {
-      expect(INTROSPECTION_PATH_REGEX.test('/acme/oidc/token/introspection')).toBe(true);
-      expect(INTROSPECTION_PATH_REGEX.test('/my-org/oidc/token/introspection')).toBe(true);
-      expect(INTROSPECTION_PATH_REGEX.test('/a/oidc/token/introspection')).toBe(true);
-      expect(INTROSPECTION_PATH_REGEX.test('/org123/oidc/token/introspection')).toBe(true);
-      expect(INTROSPECTION_PATH_REGEX.test('/test-org-1/oidc/token/introspection')).toBe(true);
+      expect(INTROSPECTION_PATH_REGEX.test('/acme/token/introspection')).toBe(true);
+      expect(INTROSPECTION_PATH_REGEX.test('/my-org/token/introspection')).toBe(true);
+      expect(INTROSPECTION_PATH_REGEX.test('/a/token/introspection')).toBe(true);
+      expect(INTROSPECTION_PATH_REGEX.test('/org123/token/introspection')).toBe(true);
+      expect(INTROSPECTION_PATH_REGEX.test('/test-org-1/token/introspection')).toBe(true);
     });
 
     it('should reject paths that do not match the introspection endpoint pattern', () => {
       // Token endpoint (not introspection)
-      expect(INTROSPECTION_PATH_REGEX.test('/acme/oidc/token')).toBe(false);
+      expect(INTROSPECTION_PATH_REGEX.test('/acme/token')).toBe(false);
       // Uppercase slug
-      expect(INTROSPECTION_PATH_REGEX.test('/ACME/oidc/token/introspection')).toBe(false);
+      expect(INTROSPECTION_PATH_REGEX.test('/ACME/token/introspection')).toBe(false);
       // Slug starting with hyphen
-      expect(INTROSPECTION_PATH_REGEX.test('/-invalid/oidc/token/introspection')).toBe(false);
+      expect(INTROSPECTION_PATH_REGEX.test('/-invalid/token/introspection')).toBe(false);
       // No slug
-      expect(INTROSPECTION_PATH_REGEX.test('/oidc/token/introspection')).toBe(false);
+      expect(INTROSPECTION_PATH_REGEX.test('/token/introspection')).toBe(false);
       // Extra path segments
-      expect(INTROSPECTION_PATH_REGEX.test('/acme/oidc/token/introspection/extra')).toBe(false);
+      expect(INTROSPECTION_PATH_REGEX.test('/acme/token/introspection/extra')).toBe(false);
       // Admin path
       expect(INTROSPECTION_PATH_REGEX.test('/api/admin/introspection')).toBe(false);
       // Trailing slash
-      expect(INTROSPECTION_PATH_REGEX.test('/acme/oidc/token/introspection/')).toBe(false);
+      expect(INTROSPECTION_PATH_REGEX.test('/acme/token/introspection/')).toBe(false);
     });
   });
 

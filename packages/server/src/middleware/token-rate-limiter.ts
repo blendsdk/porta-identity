@@ -1,28 +1,29 @@
 /**
  * Token and introspection endpoint rate limiter middleware.
  *
- * Protects the OAuth token endpoint (`POST /:orgSlug/oidc/token`) and
- * token introspection endpoint (`POST /:orgSlug/oidc/token/introspection`)
+ * Protects the OAuth token endpoint (`POST /:orgSlug/token`) and
+ * token introspection endpoint (`POST /:orgSlug/token/introspection`)
  * against abuse: client-credentials flooding, authorization-code
  * brute-forcing, token enumeration, and general endpoint spam.
  *
- * Rate limiting is per-IP + per-client_id composite key.  If `client_id`
- * is not present in the request body (e.g. `client_secret_basic` auth
- * sends credentials in the `Authorization` header), the key falls back
- * to `unknown` — all such requests from the same IP share one counter.
+ * Rate limiting is per-IP + per-client_id composite key. The client
+ * identifier is read from the parsed body or from HTTP Basic credentials;
+ * when neither is present (unauthenticated spam) the key falls back to
+ * `unknown`, so all such requests from the same IP share one counter.
  *
  * Reuses the existing `checkRateLimit()` infrastructure from
  * `src/auth/rate-limiter.ts` which provides Redis INCR+EXPIRE sliding
  * window and graceful degradation on Redis failure.
  *
- * Placement: mount as global middleware **before** the OIDC provider
- * router in `src/server.ts`.  The path regex ensures only matching
- * requests are rate-limited — all other paths pass through untouched.
+ * Placement: mounted on the OIDC router **after** the request body parser so
+ * the client identifier is available, and before the provider callback. The
+ * path regex ensures only the token and introspection endpoints are limited —
+ * every other path passes through untouched.
  *
  * @module middleware/token-rate-limiter
  */
 
-import type { Middleware } from 'koa';
+import type { Context, Middleware } from 'koa';
 import { checkRateLimit } from '../auth/rate-limiter.js';
 import type { RateLimitConfig } from '../auth/rate-limiter.js';
 import { logger } from '../lib/logger.js';
@@ -34,14 +35,42 @@ import { logger } from '../lib/logger.js';
 /**
  * Regex matching the OIDC token endpoint path.
  *
- * Pattern: `/<orgSlug>/oidc/token` where orgSlug starts with a
+ * Pattern: `/<orgSlug>/token` where orgSlug starts with a
  * lowercase alphanumeric character followed by zero or more lowercase
  * alphanumeric or hyphen characters.
  *
- * Matches:  `/acme/oidc/token`, `/my-org/oidc/token`
- * Rejects:  `/api/admin/something`, `/acme/oidc/token/extra`
+ * Matches:  `/acme/token`, `/my-org/token`
+ * Rejects:  `/api/admin/something`, `/acme/token/extra`
  */
-export const TOKEN_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/oidc\/token$/;
+export const TOKEN_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/token$/;
+
+/**
+ * Extract the presented OAuth client identifier for rate-limit bucketing.
+ *
+ * The identifier is read from the parsed form body (`client_secret_post`) or
+ * from HTTP Basic credentials (`client_secret_basic`). It is a public value
+ * used only to give each client its own counter, so reading it before the
+ * provider authenticates the client is safe. When neither form is present the
+ * key falls back to `unknown`, so unauthenticated spam from one address shares
+ * a single budget.
+ *
+ * @param ctx - Koa context whose parsed body and Authorization header are read
+ * @returns The presented client identifier, or `unknown` when none is present
+ */
+export function presentedClientId(ctx: Context): string {
+  const body = ctx.request.body as Record<string, unknown> | undefined;
+  const bodyClientId = body?.['client_id'];
+  if (typeof bodyClientId === 'string' && bodyClientId.length > 0) {
+    return bodyClientId;
+  }
+  const authorization = ctx.headers.authorization;
+  if (authorization !== undefined && authorization.startsWith('Basic ')) {
+    const decoded = Buffer.from(authorization.slice(6), 'base64').toString('utf8');
+    const separator = decoded.indexOf(':');
+    if (separator > 0) return decoded.slice(0, separator);
+  }
+  return 'unknown';
+}
 
 /**
  * Rate limit configuration for the token endpoint.
@@ -77,17 +106,7 @@ export function tokenRateLimiter(): Middleware {
       return next();
     }
 
-    // Extract client_id from the parsed request body if available.
-    // The selective bodyParser in server.ts excludes OIDC routes, so
-    // ctx.request.body may be empty when this middleware runs.
-    // Fall back to 'unknown' — all unidentified clients from the same
-    // IP share a single rate limit counter, which is acceptable.
-    const body = ctx.request.body as Record<string, unknown> | undefined;
-    const clientId = body?.client_id;
-    const clientKey =
-      typeof clientId === 'string' && clientId.length > 0
-        ? clientId
-        : 'unknown';
+    const clientKey = presentedClientId(ctx);
 
     // Composite key: per-IP + per-client_id for granular rate limiting
     const key = `ratelimit:token:${ctx.ip}:${clientKey}`;
@@ -134,13 +153,13 @@ export function tokenRateLimiter(): Middleware {
 /**
  * Regex matching the OIDC token introspection endpoint path.
  *
- * Pattern: `/<orgSlug>/oidc/token/introspection` where orgSlug uses
+ * Pattern: `/<orgSlug>/token/introspection` where orgSlug uses
  * the same slug format as TOKEN_PATH_REGEX.
  *
- * Matches:  `/acme/oidc/token/introspection`, `/my-org/oidc/token/introspection`
- * Rejects:  `/acme/oidc/token`, `/api/admin/introspection`
+ * Matches:  `/acme/token/introspection`, `/my-org/token/introspection`
+ * Rejects:  `/acme/token`, `/api/admin/introspection`
  */
-export const INTROSPECTION_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/oidc\/token\/introspection$/;
+export const INTROSPECTION_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/token\/introspection$/;
 
 /**
  * Rate limit configuration for the introspection endpoint.
@@ -175,15 +194,7 @@ export function introspectionRateLimiter(): Middleware {
       return next();
     }
 
-    // Extract client_id from the parsed request body if available.
-    // Introspection requests carry client credentials — client_id may
-    // be in the body (client_secret_post) or absent (client_secret_basic).
-    const body = ctx.request.body as Record<string, unknown> | undefined;
-    const clientId = body?.client_id;
-    const clientKey =
-      typeof clientId === 'string' && clientId.length > 0
-        ? clientId
-        : 'unknown';
+    const clientKey = presentedClientId(ctx);
 
     // Composite key: per-IP + per-client_id — separate namespace from
     // the token endpoint to keep counters independent.
