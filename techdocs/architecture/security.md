@@ -308,19 +308,25 @@ Cross-tenant requests are impossible because:
 
 Authentication endpoints are protected by sliding-window rate limiting:
 
-| Endpoint                             | Rate Limit   | Window                                   |
-| ------------------------------------ | ------------ | ---------------------------------------- |
-| Login (password)                     | Configurable | Sliding window                           |
-| Magic link request                   | Configurable | Sliding window                           |
-| Password reset                       | Configurable | Sliding window                           |
-| 2FA verification and TOTP enrollment | 5 attempts   | 5 minutes per resolved organization/user |
-| Email OTP                            | Configurable | Per-user cooldown                        |
+| Endpoint                                       | Rate Limit                   | Window                                   |
+| ---------------------------------------------- | ---------------------------- | ---------------------------------------- |
+| Login (password)                               | Configurable                 | Sliding window                           |
+| Magic link request                             | Configurable                 | Sliding window                           |
+| Password reset                                 | Configurable                 | Sliding window                           |
+| 2FA verification and TOTP enrollment           | 5 attempts                   | 5 minutes per resolved organization/user |
+| Email OTP                                      | Configurable                 | Per-user cooldown                        |
+| Token `/{orgSlug}/token`                       | 30 per client, 300 per peer  | 5 minutes                                |
+| Introspection `/{orgSlug}/token/introspection` | 100 per client, 600 per peer | 1 minute                                 |
 
 **Implementation** (`packages/server/src/auth/rate-limiter.ts`):
 
 - Redis `INCR` + `EXPIRE` for sliding window counters
 - Keys include IP address and/or email for targeted limiting
 - Rate limit headers returned in responses (X-RateLimit-*)
+
+The token and introspection limiters run after OIDC body parsing and before the provider
+callback. Each applies a per-client counter plus an aggregate per-peer counter, because the
+client identifier is read before authentication and cannot be trusted on its own.
 
 The client IP used in these keys is Koa's `ctx.ip`. When `TRUST_PROXY=true`, Porta sets
 `app.maxIpsCount` from `TRUST_PROXY_HOPS` (default `1`), so the resolved address is the
