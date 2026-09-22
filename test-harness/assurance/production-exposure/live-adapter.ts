@@ -1,11 +1,9 @@
-import { createHash, randomBytes } from 'node:crypto';
-import { request as plainHttpRequest } from 'node:http';
+import { randomBytes } from 'node:crypto';
 
 import {
   chromium,
   request,
   type APIRequestContext,
-  type APIResponse,
   type Browser,
   type BrowserContext,
 } from '@playwright/test';
@@ -28,56 +26,24 @@ import {
   htmlPolicyRetainedAcrossResponses,
   type BoundedPublicResponse,
 } from './response-classifier.js';
-import { OwnedDependencyController, type InterruptibleService } from './service-controller.js';
+import { OwnedDependencyController } from './service-controller.js';
 import { createdSessionIds, logoutInvalidatedCreatedSession } from './session-observer.js';
-
-/** Observation state that is explicitly not available from the selected public boundary. */
-const unobserved = 'unobserved' as const;
-
-/** Converts a Playwright response into one bounded, non-secret in-process response. */
-async function boundedResponse(response: APIResponse): Promise<BoundedPublicResponse> {
-  return boundedPublicResponse(response.status(), response.headers(), await response.text());
-}
-
-/** Creates a stable digest for independent before/after response-state comparisons. */
-function responseDigest(response: BoundedPublicResponse): string {
-  return `sha256:${createHash('sha256')
-    .update(JSON.stringify({ status: response.status, body: response.body }))
-    .digest('hex')}`;
-}
-
-/** Replaces only the closed placeholders used by the production-exposure requirement catalog. */
-function replacePathPlaceholders(
-  value: string,
-  context: LiveTenantAdminContext,
-  protocol: LiveProtocolContext,
-): string {
-  const client = protocol.client('alpha', 'public');
-  const verifier = randomBytes(48).toString('base64url');
-  return value
-    .replaceAll('{alphaOrgId}', context.entity('alpha'))
-    .replaceAll('{alphaClientId}', encodeURIComponent(client.clientId))
-    .replaceAll('{registeredRedirect}', encodeURIComponent(client.redirectUri))
-    .replaceAll('{validS256Challenge}', livePkceChallenge(verifier));
-}
-
-/** Maps a requirement request into concrete headers without retaining bearer material. */
-function concreteHeaders(
-  requirementHeaders: Readonly<Record<string, string>>,
-  context: LiveTenantAdminContext,
-): Readonly<Record<string, string>> {
-  const headers: Record<string, string> = {};
-  for (const [name, value] of Object.entries(requirementHeaders)) {
-    if (value.includes('{synthetic-full-authority-token}')) {
-      headers[name] = context.adminHeaders('admin-full').Authorization ?? '';
-    } else if (value === 'https://app-harness.ci.portaidentity.com') {
-      headers[name] = new URL(context.endpoints.app).origin;
-    } else {
-      headers[name] = value;
-    }
-  }
-  return Object.freeze(headers);
-}
+import {
+  FORWARDED_CONTEXT_TENANT,
+  expectedPublicCookiePolicy,
+  rateLimitKeyUsesDirectPeer,
+  readConfiguredOrigin,
+  readPublicCookiePolicy,
+} from './forwarded-context-observers.js';
+import {
+  boundedResponse,
+  concreteHeaders,
+  dependencyService,
+  plaintextTlsRejected,
+  replacePathPlaceholders,
+  responseDigest,
+  unobserved,
+} from './live-observation-primitives.js';
 
 /** Converts concrete response facts into the stable public observation shape. */
 function publicObservation(
@@ -97,41 +63,6 @@ function publicObservation(
         ]),
       ),
     ),
-  });
-}
-
-/** Returns the dependency service selected by one immutable arrangement. */
-function dependencyService(requirement: ValidationExposureRawCase): InterruptibleService {
-  switch (requirement.harnessArrangement) {
-    case 'owned-database-unavailable':
-      return 'postgres';
-    case 'owned-cache-unavailable':
-      return 'redis';
-    case 'owned-mail-unavailable-with-acquired-csrf-browser':
-      return 'mailhog';
-    default:
-      throw new Error('production exposure case does not select an interruptible dependency');
-  }
-}
-
-/** Proves that cleartext HTTP cannot complete on the run-owned TLS listener. */
-function plaintextTlsRejected(port: number): Promise<boolean> {
-  return new Promise((resolveProbe) => {
-    const request = plainHttpRequest(
-      { host: '127.0.0.1', port, path: '/health', method: 'GET', timeout: 5_000 },
-      (response) => {
-        const rejectedWithoutCookie =
-          (response.statusCode ?? 0) >= 400 && response.headers['set-cookie'] === undefined;
-        response.resume();
-        resolveProbe(rejectedWithoutCookie);
-      },
-    );
-    request.once('error', () => resolveProbe(true));
-    request.once('timeout', () => {
-      request.destroy();
-      resolveProbe(true);
-    });
-    request.end();
   });
 }
 
@@ -168,6 +99,13 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
   ): Promise<ProductionExposureObservation> {
     if (!requirement.executionProfiles.includes(this.profile)) {
       throw new Error('production exposure case does not belong to the active profile');
+    }
+    if (
+      requirement.family === 'forwarded-host' ||
+      requirement.family === 'forwarded-proto' ||
+      requirement.family === 'forwarded-client-ip'
+    ) {
+      return this.observeForwardedContext(requirement);
     }
     if (requirement.id === 'st55-production-html-csp-policy') {
       return this.observeHtmlPolicy(requirement);
@@ -220,6 +158,62 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
       this.controlPassed(requirement, recovery),
       undefined,
       provenAbsentEffects,
+    );
+  }
+
+  /** Observes the forwarding-context state facts for one untrusted-header case. */
+  protected async observeForwardedContext(
+    requirement: ValidationExposureRawCase,
+  ): Promise<ProductionExposureObservation> {
+    const api = await this.api();
+    const portaUrl = this.admin.endpoints.porta;
+    const attackerHeaders = requirement.request.headers;
+    const originBefore = await readConfiguredOrigin(
+      api,
+      portaUrl,
+      FORWARDED_CONTEXT_TENANT,
+      attackerHeaders,
+    );
+    const cookiePolicyBefore = await readPublicCookiePolicy(
+      api,
+      portaUrl,
+      FORWARDED_CONTEXT_TENANT,
+      attackerHeaders,
+    );
+    const controlResponse = await this.executeRequest(requirement.control.request, requirement);
+    const probeResponse = await this.executeRequest(requirement.request, requirement);
+    const originAfter = await readConfiguredOrigin(
+      api,
+      portaUrl,
+      FORWARDED_CONTEXT_TENANT,
+      attackerHeaders,
+    );
+    const cookiePolicyAfter = await readPublicCookiePolicy(
+      api,
+      portaUrl,
+      FORWARDED_CONTEXT_TENANT,
+      attackerHeaders,
+    );
+    const directPeerIdentity = await rateLimitKeyUsesDirectPeer(
+      api,
+      portaUrl,
+      FORWARDED_CONTEXT_TENANT,
+    );
+    const recovery = await this.executeRequest(requirement.control.request, requirement);
+    const expectedOrigin = `${portaUrl.replace(/\/+$/u, '')}/${FORWARDED_CONTEXT_TENANT}`;
+    return this.buildObservation(
+      requirement,
+      controlResponse,
+      probeResponse,
+      this.namedStateObservations(requirement, {
+        'configured-public-origin-unchanged':
+          originBefore === originAfter && originBefore === expectedOrigin,
+        'cookie-policy-unchanged':
+          cookiePolicyBefore === cookiePolicyAfter &&
+          cookiePolicyBefore === expectedPublicCookiePolicy,
+        'rate-limit-key-uses-direct-peer-not-spoofed-value': directPeerIdentity ?? unobserved,
+      }),
+      this.controlPassed(requirement, recovery),
     );
   }
 
@@ -564,16 +558,31 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     const prohibited = Object.fromEntries(
       requirement.prohibitedSideEffects.map((name) => {
         if (provenAbsentEffects.has(name)) return [name, false];
-        if (/rate-limit-budget/u.test(name)) return [name, unobserved];
+        if (/rate-limit-budget/u.test(name)) {
+          // The budget is only split when a client-supplied forwarding value,
+          // and not the direct peer, drives the rate-limit identity.
+          const directPeer =
+            independentStateObservations['rate-limit-key-uses-direct-peer-not-spoofed-value'];
+          if (directPeer === true) return [name, false];
+          if (directPeer === false) return [name, true];
+          return [name, unobserved];
+        }
         if (/version/u.test(name)) return [name, versionMaterial];
         if (/secret|token/u.test(name)) return [name, secretMaterial];
         if (/stack|sql|filesystem|infrastructure|dependency-error/u.test(name)) {
           return [name, bodyInternalDetail];
         }
         if (/policy-weakened|insecure-cookie|domain-cookie/u.test(name)) {
+          const cookieObservation = independentStateObservations['cookie-policy-unchanged'];
+          if (cookieObservation === true) return [name, false];
+          if (cookieObservation === false) return [name, true];
           return [name, !expectedHeadersPassed];
         }
         if (/origin|credentials-authorized|method-admitted|header-admitted/u.test(name)) {
+          const originObservation =
+            independentStateObservations['configured-public-origin-unchanged'];
+          if (originObservation === true) return [name, false];
+          if (originObservation === false) return [name, true];
           return [name, !expectedHeadersPassed];
         }
         if (/mutated|partial-durable/u.test(name)) {
@@ -630,11 +639,6 @@ export class LiveProductionExposureContract implements ProductionExposureContrac
     const observations: Record<string, boolean | typeof unobserved> = {};
     for (const name of requirement.independentStateObservations) {
       switch (name) {
-        case 'configured-public-origin-unchanged':
-        case 'cookie-policy-unchanged':
-        case 'rate-limit-key-uses-direct-peer-not-spoofed-value':
-          observations[name] = unobserved;
-          break;
         case 'request-completed-on-https-origin':
           observations[name] = this.admin.endpoints.porta.startsWith('https://');
           break;

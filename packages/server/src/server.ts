@@ -108,6 +108,10 @@ export function createApp(oidcProvider?: Provider): Koa {
   // required for secure cookie flags and correct IP-based rate limiting.
   if (config.trustProxy) {
     app.proxy = true;
+    // Read the client IP from the trusted end of X-Forwarded-For. A client that
+    // can reach the server or append its own value must not control the resolved
+    // IP, because every rate-limit key is derived from ctx.ip.
+    app.maxIpsCount = config.trustProxyHops;
   }
 
   // Global middleware stack (order matters):
