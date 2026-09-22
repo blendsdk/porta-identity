@@ -34,6 +34,8 @@ services:
     environment:
       NODE_ENV: development
       LOG_LEVEL: debug
+      # Emit structured JSON so the P1 live observers can parse correlated decision events.
+      PORTA_LOG_FORMAT: json
       PORT: 3000
       DATABASE_URL: postgres://porta:harness_pr0d_s3cret@postgres:5432/porta
       REDIS_URL: redis://redis:6379

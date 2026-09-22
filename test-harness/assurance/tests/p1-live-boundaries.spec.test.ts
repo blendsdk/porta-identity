@@ -46,13 +46,13 @@ async function assertOperationalRawCases(
       requirement.id,
     );
     assertExactBooleanMap(
-      requirement.independentStateObservations,
+      requirement.p1IndependentStateObservations ?? requirement.independentStateObservations,
       observed.independentStateObservations,
       true,
       requirement.id,
     );
     assertExactBooleanMap(
-      requirement.prohibitedSideEffects,
+      requirement.p1ProhibitedSideEffects ?? requirement.prohibitedSideEffects,
       observed.prohibitedSideEffects,
       false,
       requirement.id,
