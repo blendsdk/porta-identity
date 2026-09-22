@@ -96,6 +96,12 @@ export interface ValidationExposureRawCase {
   readonly family: ValidationExposureFamily;
   readonly executionProfiles: readonly ValidationExposureExecutionProfile[];
   readonly proxyTrust: 'not-applicable' | 'trusted' | 'untrusted';
+  /**
+   * Boundary that produces the externally visible rejection. `approved-ingress` marks a request the
+   * reverse proxy answers before it reaches Porta, so the case legitimately has no Porta response
+   * header contract and no Porta decision log. Omitted cases are answered by Porta.
+   */
+  readonly answeredBy?: 'porta' | 'approved-ingress';
   readonly harnessArrangement:
     | 'none'
     | 'real-oidc-interaction'

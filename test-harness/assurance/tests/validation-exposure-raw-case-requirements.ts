@@ -411,6 +411,7 @@ export const validationExposureRawCases: readonly ValidationExposureRawCase[] = 
     family: 'unsupported-method',
     executionProfiles: ['operational'],
     proxyTrust: 'not-applicable',
+    answeredBy: 'approved-ingress',
     harnessArrangement: 'none',
     actor: 'authenticated-alpha-principal',
     asset: 'route-method-and-alpha-user-state',
