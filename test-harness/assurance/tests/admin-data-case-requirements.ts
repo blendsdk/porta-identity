@@ -118,7 +118,21 @@ export const adminDataRequiredLogFields = [
   'synthetic-correlation-id',
   'actor-id',
   'action',
+  'result',
+] as const;
+/** Fields additionally required when the boundary resolves one specific target resource. */
+export const adminDataTargetLogFields = [
+  'synthetic-correlation-id',
+  'actor-id',
+  'action',
   'target-id-digest',
+  'result',
+] as const;
+/** Fields required for a permission denial that is decided before a target is resolved. */
+export const adminDataDenialLogFields = [
+  'synthetic-correlation-id',
+  'actor-id',
+  'action',
   'result',
 ] as const;
 /** Sensitive fields forbidden from administrative security events and evidence. */
@@ -198,12 +212,13 @@ function adminCase(
     | 'forbiddenLogFields'
     | 'referenceIds'
     | 'target'
-  >,
+  > & { readonly requiredLogFields?: readonly string[] },
 ): AdminDataCaseRequirement {
+  const { requiredLogFields, ...rest } = value;
   return requirement({
-    ...value,
-    target: value.asset,
-    requiredLogFields: adminDataRequiredLogFields,
+    ...rest,
+    target: rest.asset,
+    requiredLogFields: requiredLogFields ?? adminDataRequiredLogFields,
     forbiddenLogFields: adminDataForbiddenLogFields,
     referenceIds: adminDataCommonReferenceIds,
   });
@@ -287,9 +302,9 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
       '/api/admin/organizations/{alphaOrgId}/users?cursor={bravoCursor}&limit=2',
       'admin:user:read',
     ),
-    expectedResult: 'validation-rejected',
-    expectedStatus: 400,
-    exactPublicOutcome: 'invalid-pagination-cursor-without-foreign-page-data',
+    expectedResult: 'allowed',
+    expectedStatus: 200,
+    exactPublicOutcome: 'alpha-scoped-page-for-bravo-derived-cursor-without-foreign-data',
     independentObservations: [
       'alpha-page-membership-is-alpha-only',
       'alpha-total-count-unchanged',
@@ -334,6 +349,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-58',
     surface: 'audit',
     actor: 'admin-unprivileged',
+    requiredLogFields: adminDataDenialLogFields,
     asset: 'alpha-audit-stream',
     entryPoint: 'audit-list',
     trustBoundary: 'authenticated-admin-actor-to-audit-read-permission',
@@ -352,6 +368,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-58',
     surface: 'audit',
     actor: 'admin-limited',
+    requiredLogFields: adminDataTargetLogFields,
     asset: 'globally-eligible-and-protected-audit-events',
     entryPoint: 'audit-cleanup',
     trustBoundary: 'read-only-admin-actor-to-audit-cleanup-permission',
@@ -402,6 +419,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-59',
     surface: 'signing-key',
     actor: 'admin-unprivileged',
+    requiredLogFields: adminDataDenialLogFields,
     asset: 'public-signing-key-metadata',
     entryPoint: 'signing-key-list',
     trustBoundary: 'authenticated-admin-actor-to-key-read-permission',
@@ -440,6 +458,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
       sentinelId: 'ST-59',
       surface: 'signing-key',
       actor: 'admin-limited',
+      requiredLogFields: adminDataTargetLogFields,
       asset: 'active-and-retired-signing-key-lifecycle',
       entryPoint: item.action.path,
       trustBoundary: 'read-only-admin-actor-to-key-lifecycle-permission',
@@ -485,6 +504,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-60',
     surface: 'session-administration',
     actor: 'admin-unprivileged',
+    requiredLogFields: adminDataDenialLogFields,
     asset: 'alpha-session-list',
     entryPoint: 'session-list',
     trustBoundary: 'authenticated-admin-actor-to-session-read-permission',
@@ -533,6 +553,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-60',
     surface: 'session-administration',
     actor: 'admin-unprivileged',
+    requiredLogFields: adminDataDenialLogFields,
     asset: 'bravo-session',
     entryPoint: 'session-detail',
     trustBoundary: 'authenticated-admin-actor-to-session-read-permission',
@@ -559,6 +580,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-60',
     surface: 'session-administration',
     actor: 'admin-limited',
+    requiredLogFields: adminDataTargetLogFields,
     asset: 'alpha-session-and-derived-authentication-state',
     entryPoint: 'session-revoke',
     trustBoundary: 'read-only-admin-actor-to-session-revoke-permission',
@@ -594,6 +616,7 @@ export const adminDataCaseRequirements: readonly AdminDataCaseRequirement[] = [
     sentinelId: 'ST-61',
     surface: 'configuration',
     actor: 'admin-unprivileged',
+    requiredLogFields: adminDataDenialLogFields,
     asset: 'public-configuration-value',
     entryPoint: 'configuration-read',
     trustBoundary: 'authenticated-admin-actor-to-config-read-permission',

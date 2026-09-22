@@ -112,6 +112,14 @@ export interface ValidationExposureRawCase {
   readonly expected: ValidationExposureExpectedOutcome;
   readonly independentStateObservations: readonly string[];
   readonly prohibitedSideEffects: readonly string[];
+  /**
+   * P1-only state observations when the live boundary cannot observe the full production-exposure
+   * set (for example cookie and rate-limit identity at `/health`). Absent means the shared list is
+   * authoritative for every lane.
+   */
+  readonly p1IndependentStateObservations?: readonly string[];
+  /** P1-only prohibited effects, when the P1 boundary cannot observe the full set. */
+  readonly p1ProhibitedSideEffects?: readonly string[];
   readonly requiredLogFields: readonly string[];
   readonly forbiddenLogFields: readonly string[];
   readonly recoveryExpectations: readonly string[];
