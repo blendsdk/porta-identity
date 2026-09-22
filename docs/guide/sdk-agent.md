@@ -29,7 +29,7 @@ const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: 'https://porta.local:3443/api/admin',
     auth: createClientCredentialsAuth({
-      tokenEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+      tokenEndpoint: 'https://porta.local:3443/super-admin/token',
       clientId: process.env.PORTA_CLIENT_ID!,
       clientSecret: process.env.PORTA_CLIENT_SECRET!,
     }),

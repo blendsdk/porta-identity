@@ -84,7 +84,7 @@ import {
 } from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
-  tokenUrl: 'https://porta.local:3443/super-admin/oidc/token',
+  tokenUrl: 'https://porta.local:3443/super-admin/token',
   clientId: 'my-service',
   clientSecret: 'my-secret',
   scope: 'openid',

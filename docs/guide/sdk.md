@@ -76,7 +76,7 @@ const auth = createTokenAuth('your-token');
 ```typescript
 import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 const auth = createClientCredentialsAuth({
-  tokenEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+  tokenEndpoint: 'https://porta.local:3443/super-admin/token',
   clientId: 'my-client-id',
   clientSecret: 'my-client-secret',
 });
@@ -88,7 +88,7 @@ const auth = createClientCredentialsAuth({
 import { createCliAuth } from '@portaidentity/sdk/node';
 const auth = createCliAuth({
   credentialsPath: '~/.porta/credentials.json',
-  refreshEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+  refreshEndpoint: 'https://porta.local:3443/super-admin/token',
   clientId: 'porta-admin-cli',
 });
 ```
