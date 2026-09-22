@@ -121,7 +121,17 @@ test('keeps every malicious input as raw request data behind a reachable control
     assert.ok(entry.entryPoint.length > 0, `${entry.id}: semantic handler`);
     assert.ok(entry.expected.status >= 200 && entry.expected.status <= 599, entry.id);
     assert.ok(entry.expected.bodyContract.length > 0, `${entry.id}: body contract`);
-    assert.ok(entry.expected.headerContract.length > 0, `${entry.id}: header contract`);
+    if (entry.answeredBy === 'approved-ingress') {
+      // The reverse proxy answers this request before Porta, so no Porta
+      // response header contract can exist; the case must not claim one.
+      assert.equal(
+        entry.expected.headerContract.length,
+        0,
+        `${entry.id}: ingress rejection must not claim a Porta header contract`,
+      );
+    } else {
+      assert.ok(entry.expected.headerContract.length > 0, `${entry.id}: header contract`);
+    }
   }
 });
 
@@ -130,10 +140,21 @@ test('requires independent non-effects, privacy-safe logs, and recovery for ever
     assert.ok(entry.independentStateObservations.length > 0, `${entry.id}: independent state`);
     assert.ok(entry.prohibitedSideEffects.length > 0, `${entry.id}: prohibited effects`);
     assert.ok(entry.recoveryExpectations.length > 0, `${entry.id}: recovery`);
-    assert.ok(
-      validationExposureRequiredLogFields.every((field) => entry.requiredLogFields.includes(field)),
-      `${entry.id}: required log fields`,
-    );
+    if (entry.answeredBy === 'approved-ingress') {
+      // The reverse proxy answers this request, so Porta emits no decision log.
+      assert.equal(
+        entry.requiredLogFields.length,
+        0,
+        `${entry.id}: ingress rejection emits no Porta decision log`,
+      );
+    } else {
+      assert.ok(
+        validationExposureRequiredLogFields.every((field) =>
+          entry.requiredLogFields.includes(field),
+        ),
+        `${entry.id}: required log fields`,
+      );
+    }
     assert.ok(
       validationExposureForbiddenFields.every((field) => entry.forbiddenLogFields.includes(field)),
       `${entry.id}: forbidden log fields`,
