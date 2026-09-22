@@ -384,6 +384,19 @@ describe('token-rate-limiter middleware', () => {
     expect(mockCheckRateLimit.mock.calls[0][0]).toBe('ratelimit:token:ip:10.0.0.1');
   });
 
+  it('T9h: should reflect the request origin on a 429 so a browser can read it', async () => {
+    mockCheckRateLimit.mockResolvedValueOnce(
+      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 10 }),
+    );
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {});
+    ctx.headers.origin = 'https://app.example.com';
+    await invokeMiddleware(ctx);
+
+    expect(ctx.status).toBe(429);
+    expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://app.example.com');
+    expect(ctx._headers['Vary']).toBe('Origin');
+  });
+
   // -------------------------------------------------------------------------
   // T10: Redis failure → passes through (graceful degradation)
   // -------------------------------------------------------------------------

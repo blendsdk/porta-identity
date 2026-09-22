@@ -121,6 +121,15 @@ export const TOKEN_IP_RATE_LIMIT: RateLimitConfig = {
  * @param description - Client-safe error description
  */
 function denyRateLimited(ctx: Context, retryAfter: number, description: string): void {
+  // The limiter runs before the OIDC CORS middleware so it can reject before
+  // any client lookup. Re-emit the request origin here so a browser client can
+  // read the 429 and its Retry-After. A 429 exposes no data, so reflecting the
+  // origin is safe; credentialed access is not granted.
+  const origin = ctx.headers.origin;
+  if (origin !== undefined) {
+    ctx.set('Access-Control-Allow-Origin', origin);
+    ctx.set('Vary', 'Origin');
+  }
   ctx.status = 429;
   ctx.set('Retry-After', String(retryAfter));
   ctx.body = {

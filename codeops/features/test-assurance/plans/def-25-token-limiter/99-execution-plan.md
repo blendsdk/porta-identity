@@ -35,6 +35,7 @@ the existing required lanes stay green.
 
 **Reference**: RD-05, ST-53; DEF-25; decisions D1–D4.
 **Scope mode**: strict
+**Review**: [phase-1-review.md](phase-1-review.md) — 1 major and 6 minor findings, all resolved; fix re-review clean, integration 477 and e2e 127 verified.
 
 **Phase baseline tree**: 6d889b7743353f50d5440a3a309f2ba48fd36c96
 - [x] 1.1 [spec-author] Update the penetration specification `packages/server/tests/pentest/infrastructure/forwarded-client-ip-identity.spec.test.ts` to target the real endpoint `/{orgSlug}/token`, keep the shared-budget assertion for spoofed `X-Forwarded-For`, and add an enforcement case that exceeds the limit and requires a `429`. (RED expected: the real path carries no limiter headers today.) ✅ (completed: 2026-09-23 00:05; RED: all 3 cases fail with no `X-RateLimit-*` headers on the real path)

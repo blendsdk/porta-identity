@@ -476,6 +476,14 @@ export function createApp(oidcProvider?: Provider): Koa {
       await next();
     });
 
+    // Token and introspection rate limiters run after the body parser so the
+    // client identifier is available, and before the OIDC CORS client lookup,
+    // the client-tenant binding, and the provider callback so flooding is
+    // rejected before that work. They match the real provider endpoints
+    // (/:orgSlug/token and /:orgSlug/token/introspection).
+    oidcRouter.use(tokenRateLimiter());
+    oidcRouter.use(introspectionRateLimiter());
+
     // OIDC CORS — pre-sets Access-Control-Allow-Origin and related headers
     // BEFORE the request enters oidc-provider's internal Koa context.
     //
@@ -487,17 +495,8 @@ export function createApp(oidcProvider?: Provider): Koa {
     // survive both success and error responses.
     //
     // Mounted after the body parser so client_id is available for production
-    // origin checks, and before the rate limiters so a limiter rejection still
-    // carries CORS headers. OPTIONS preflights are short-circuited here with 204.
+    // origin checks. OPTIONS preflights are short-circuited here with 204.
     oidcRouter.use(oidcPreflightCors());
-
-    // Token and introspection rate limiters run after the body parser so the
-    // client identifier is available, and before the client-tenant binding and
-    // provider callback so flooding is rejected before that work. They match
-    // the real provider endpoints (/:orgSlug/token and
-    // /:orgSlug/token/introspection).
-    oidcRouter.use(tokenRateLimiter());
-    oidcRouter.use(introspectionRateLimiter());
 
     // A client is valid only beneath the issuer owned by its organization. This check runs after
     // CORS and before secret transformation and oidc-provider so a foreign client cannot create an
