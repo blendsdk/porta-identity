@@ -1,5 +1,7 @@
 import { pino, stdSerializers } from 'pino';
 
+import { resolveJsonLogFormat } from './log-format.js';
+
 /** Observer for ephemeral, in-process validation of actual structured logger calls. */
 export type OperationalLogObserver = (serializedArguments: string) => void;
 
@@ -33,12 +35,13 @@ export function observeOperationalLogOutput(observer: OperationalLogObserver): (
   };
 }
 
-const isProduction = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test';
 
 export const logger = pino({
   level: process.env.LOG_LEVEL || (isTest ? 'silent' : 'info'),
-  transport: !isProduction ? { target: 'pino-pretty', options: { colorize: true } } : undefined,
+  transport: resolveJsonLogFormat()
+    ? undefined
+    : { target: 'pino-pretty', options: { colorize: true } },
   serializers: {
     err: stdSerializers.err,
     req: stdSerializers.req,
