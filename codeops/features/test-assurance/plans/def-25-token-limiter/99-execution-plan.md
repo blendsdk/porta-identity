@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Status**: Ready
 > **Last Updated**: 2026-09-23 00:20
-> **Progress**: 4/7 tasks (57%)
+> **Progress**: 6/7 tasks (86%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -56,9 +56,9 @@ is affected.
 **Reference**: RD-05, ST-53; DEF-25, DEF-14; decision D5.
 **Scope mode**: strict
 
-- [ ] 2.1 Run `yarn assurance:harness --project security --profile production-security`; require every `st53-*` case to pass with no incomplete case and exit 0, and record the run identifier.
-- [ ] 2.2 Update `00-remaining-work.md` and `00-roadmap.md`: resolve DEF-25, fully close DEF-14 with the live run, and refresh the sequencing.
-- [ ] 2.3 Full verification: `yarn verify` passes.
+- [x] 2.1 Run `yarn assurance:harness --project security --profile production-security`; require every `st53-*` case to pass with no incomplete case and exit 0, and record the run identifier. ✅ (completed: 2026-09-23 00:55; production-security run `bb4eb111` passed=11 incomplete=0; operational run `197fb0f4` passed=6 incomplete=0; every st53 case passed with no unobserved facts)
+- [x] 2.2 Update `00-remaining-work.md` and `00-roadmap.md`: resolve DEF-25, fully close DEF-14 with the live run, and refresh the sequencing. ✅ (completed: 2026-09-23 00:52; DEF-25 and DEF-14 moved to resolved; DEF-14/DEF-25 roadmap rows set to Done)
+- [~] 2.3 Full verification: `yarn verify` passes.
 
 **Phase gate:** the live production-security run observes the rate-limit identity fact as concrete
 and exits clean, and the backlog records DEF-25 and DEF-14 as done.
