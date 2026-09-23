@@ -216,7 +216,7 @@ Porta is running at [http://localhost:3000](http://localhost:3000). The OIDC dis
 | `COOKIE_KEYS`                | —            | **Required.** Cookie signing key (≥32 random chars)                      |
 | `TWO_FACTOR_ENCRYPTION_KEY`  | —            | **Required.** AES-256-GCM root key (exactly 64 hex characters)           |
 | `SIGNING_KEY_ENCRYPTION_KEY` | —            | **Required.** Different AES-256-GCM root key (exactly 64 hex characters) |
-| `TRUST_PROXY`                | `false`      | Set `true` behind a TLS-terminating reverse proxy                        |
+| `TRUST_PROXY`                | `true`       | Set `false` when Porta is directly exposed without a reverse proxy       |
 | `SMTP_HOST`                  | —            | SMTP relay hostname                                                      |
 | `SMTP_PORT`                  | `587`        | SMTP port                                                                |
 | `SMTP_USER`                  | —            | SMTP username                                                            |
