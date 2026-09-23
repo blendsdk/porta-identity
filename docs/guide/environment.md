@@ -136,10 +136,10 @@ digests rather than raw identifiers.
 
 ## Reverse Proxy
 
-| Variable           | Default | Required               | Description                                                                                                              |
-| ------------------ | ------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `TRUST_PROXY`      | `false` | **Yes** (behind proxy) | Set to `true` when Porta runs behind a TLS-terminating reverse proxy (nginx, Traefik, Caddy, cloud load balancer, etc.). |
-| `TRUST_PROXY_HOPS` | `1`     | No                     | Number of trusted reverse-proxy hops in front of Porta. Set it to the exact number of proxies that append to `X-Forwarded-For`. |
+| Variable           | Default | Required | Description                                                                                                                                                                        |
+| ------------------ | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `TRUST_PROXY`      | `true`  | No       | `true` for the shipped proxy deployment. Set to `false` when Porta is directly exposed without a TLS-terminating reverse proxy (nginx, Traefik, Caddy, cloud load balancer, etc.). |
+| `TRUST_PROXY_HOPS` | `1`     | No       | Number of trusted reverse-proxy hops in front of Porta. Set it to the exact number of proxies that append to `X-Forwarded-For`.                                                    |
 
 ### Why `TRUST_PROXY` Matters
 
@@ -166,16 +166,18 @@ connected via HTTPS, so cookies are correctly flagged as `Secure`.
 - OIDC interaction sessions (login/consent)
 - Magic link sessions
 
-::: danger Do Not Enable Without a Proxy
-Only set `TRUST_PROXY=true` when Porta is actually behind a trusted reverse proxy.
-Enabling it without a proxy allows clients to spoof `X-Forwarded-*` headers.
+::: danger Direct Exposure Requires TRUST_PROXY=false
+`TRUST_PROXY` defaults to `true` because Porta ships behind a TLS-terminating reverse proxy.
+If you expose Porta directly, without such a proxy, you **must** set `TRUST_PROXY=false`;
+otherwise a client can spoof `X-Forwarded-*` headers and control the resolved protocol and
+client address.
 :::
 
 ### Common Scenarios
 
 | Setup                                          | `TRUST_PROXY` | Notes                                             |
 | ---------------------------------------------- | ------------- | ------------------------------------------------- |
-| Direct HTTP (dev/eval)                         | `false`       | Default — cookies use `Secure: false`             |
+| Direct HTTP (dev/eval)                         | `false`       | Set explicitly — required when directly exposed   |
 | Behind nginx/Traefik/Caddy with TLS            | `true`        | Proxy must send `X-Forwarded-Proto: https`        |
 | Behind a cloud load balancer (AWS ALB, GCP LB) | `true`        | Cloud LBs typically set `X-Forwarded-Proto`       |
 | Direct HTTPS (TLS on Porta itself)             | `false`       | Porta sees TLS directly — no proxy headers needed |

@@ -20,7 +20,7 @@ Configuration is loaded via `packages/server/src/config/index.ts`, which reads f
 | `NODE_ENV`         | `development` \| `test` \| `production`           | `development` | No       | Runtime environment mode                                                                                           |
 | `PORT`             | Integer                                           | `3000`        | No       | HTTP server listen port                                                                                            |
 | `HOST`             | String                                            | `0.0.0.0`     | No       | HTTP server bind address                                                                                           |
-| `TRUST_PROXY`      | Boolean                                           | `false`       | No       | Trust `X-Forwarded-*` headers from reverse proxy                                                                   |
+| `TRUST_PROXY`      | Boolean                                           | `true`        | No       | Trust `X-Forwarded-*` headers from reverse proxy; set `false` for direct exposure                                  |
 | `TRUST_PROXY_HOPS` | Integer                                           | `1`           | No       | Trusted proxy hops that append to `X-Forwarded-For`; the resolved client IP used for rate-limit and audit identity |
 | `LOG_LEVEL`        | `debug` \| `info` \| `warn` \| `error` \| `fatal` | `info`        | No       | Pino log level                                                                                                     |
 
@@ -234,7 +234,7 @@ SMTP_FROM=noreply@porta.local
 LOG_LEVEL=debug
 
 # Reverse proxy
-TRUST_PROXY=false
+TRUST_PROXY=true
 # Set to the exact number of trusted proxies when TRUST_PROXY=true.
 TRUST_PROXY_HOPS=1
 

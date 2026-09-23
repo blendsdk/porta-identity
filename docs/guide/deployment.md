@@ -181,7 +181,7 @@ external secrets of exactly 64 hexadecimal characters, and they must contain dif
 | `PORT`               | `3000`       | HTTP listen port                                            |
 | `HOST`               | `0.0.0.0`    | HTTP listen address                                         |
 | `LOG_LEVEL`          | `info`       | Log verbosity (`debug`, `info`, `warn`, `error`)            |
-| `TRUST_PROXY`        | `false`      | Set to `true` when behind a TLS-terminating reverse proxy   |
+| `TRUST_PROXY`        | `true`       | Set to `false` when Porta is directly exposed (no proxy)    |
 | `TRUST_PROXY_HOPS`   | `1`          | Number of trusted proxies that append to `X-Forwarded-For`  |
 | `PORTA_AUTO_MIGRATE` | `false`      | Initial-setup migration switch; keep disabled in production |
 | `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                     |
@@ -526,15 +526,18 @@ auth.example.com {
 }
 ```
 
-::: warning TRUST_PROXY Required
-When running behind a TLS-terminating reverse proxy, you **must** set `TRUST_PROXY=true`.
-Without it, Porta cannot detect that the original connection was HTTPS — cookies will be
-set without the `Secure` flag, and OIDC login flows will fail because browsers silently
-drop insecure cookies on HTTPS pages.
+::: warning TRUST_PROXY
+`TRUST_PROXY` defaults to `true` because Porta ships behind a TLS-terminating reverse proxy.
+Keep it `true` behind a proxy so Porta can detect that the original connection was HTTPS —
+otherwise cookies are set without the `Secure` flag and OIDC login flows fail because
+browsers silently drop insecure cookies on HTTPS pages.
 
 `TRUST_PROXY` tells Koa to trust `X-Forwarded-Proto` and `X-Forwarded-For` headers
 from the proxy, so `ctx.secure`, `ctx.protocol`, and `ctx.ip` reflect the real client
 connection rather than the internal HTTP hop.
+
+If Porta is directly exposed without a proxy, you **must** set `TRUST_PROXY=false`;
+otherwise a client can spoof those headers.
 
 With `TRUST_PROXY=true`, also set `TRUST_PROXY_HOPS` to the exact number of trusted proxies
 that append to `X-Forwarded-For` (default `1`). It keeps the client IP used for rate
