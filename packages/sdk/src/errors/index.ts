@@ -140,10 +140,14 @@ export class PortaRateLimitError extends PortaHttpError {
  * The specific status code is preserved for debugging.
  */
 export class PortaServerError extends PortaHttpError {
+  /** Safe server-created request identifier for operator support, when supplied. */
+  readonly requestId: string | null;
+
   constructor(status: number, body?: unknown) {
     const message = extractMessage(body, 'Server error');
     super(status, message, body);
     this.name = 'PortaServerError';
+    this.requestId = extractRequestId(body);
   }
 }
 
@@ -212,6 +216,16 @@ function extractMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
+/** Extract only a UUID-shaped server request identifier from an error body. */
+function extractRequestId(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const requestId = Reflect.get(body, 'request_id');
+  return typeof requestId === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId)
+    ? requestId
+    : null;
+}
+
 /**
  * Extracts validation details from a 400 response body.
  * Looks for { details: [{ path, message, code? }] } or
@@ -221,7 +235,11 @@ function extractDetails(body: unknown): ValidationDetail[] {
   if (!body || typeof body !== 'object') return [];
 
   const obj = body as Record<string, unknown>;
-  const raw = Array.isArray(obj.details) ? obj.details : Array.isArray(obj.errors) ? obj.errors : [];
+  const raw = Array.isArray(obj.details)
+    ? obj.details
+    : Array.isArray(obj.errors)
+      ? obj.errors
+      : [];
 
   return raw
     .filter((item): item is Record<string, unknown> => item && typeof item === 'object')

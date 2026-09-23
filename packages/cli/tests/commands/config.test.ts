@@ -34,7 +34,7 @@ vi.mock('../../src/output.js', () => ({
 }));
 
 import { handleError } from '../../src/error-handler.js';
-import { printTable, printJson, success } from '../../src/output.js';
+import { printTable, printJson } from '../../src/output.js';
 
 // ---------------------------------------------------------------------------
 // Test data
@@ -42,15 +42,20 @@ import { printTable, printJson, success } from '../../src/output.js';
 
 const sampleEntry = {
   key: 'session_ttl',
-  value: '3600',
+  value: 3600,
+  defaultValue: 86400,
+  group: 'lifetimes',
+  label: 'Session lifetime',
+  valueType: 'integer',
+  unit: 'seconds',
+  minimum: 300,
+  maximum: 2592000,
+  applicationMode: 'restart-required',
   description: 'Session time-to-live in seconds',
   updatedAt: '2024-01-01T00:00:00Z',
 };
 
-const sampleEntries = [
-  sampleEntry,
-  { key: 'max_login_attempts', value: '5', description: null, updatedAt: '2024-01-02T00:00:00Z' },
-];
+const sampleEntries = [sampleEntry, { ...sampleEntry, key: 'max_failed_logins', value: 5 }];
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -140,26 +145,6 @@ describe('config command', () => {
       await invokeSubcommand('get', { _pos_: 'session_ttl', json: true });
 
       expect(printJson).toHaveBeenCalledWith(sampleEntry);
-    });
-  });
-
-  describe('set', () => {
-    it('sets a config value and shows success', async () => {
-      mockConfig.set.mockResolvedValue({ ...sampleEntry, value: '7200' });
-
-      await invokeSubcommand('set', { _pos_: 'session_ttl', _pos2_: '7200' });
-
-      expect(mockConfig.set).toHaveBeenCalledWith('session_ttl', '7200');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('session_ttl'));
-    });
-
-    it('outputs JSON when --json', async () => {
-      const updated = { ...sampleEntry, value: '7200' };
-      mockConfig.set.mockResolvedValue(updated);
-
-      await invokeSubcommand('set', { _pos_: 'session_ttl', _pos2_: '7200', json: true });
-
-      expect(printJson).toHaveBeenCalledWith(updated);
     });
   });
 });

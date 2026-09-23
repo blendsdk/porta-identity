@@ -1,7 +1,7 @@
 /**
  * Unit tests for the token endpoint rate limiter middleware.
  *
- * The middleware rate-limits `POST /:orgSlug/oidc/token` using a per-IP +
+ * The middleware rate-limits `POST /:orgSlug/token` using a per-IP +
  * per-client_id composite key.  It reuses `checkRateLimit()` from the
  * auth rate limiter, which is mocked here to control test outcomes.
  *
@@ -61,6 +61,7 @@ interface MockContext {
   status: number;
   body: unknown;
   request: { body: Record<string, unknown> | undefined };
+  headers: Record<string, string>;
   _headers: Record<string, string>;
   set(name: string, value: string): void;
 }
@@ -68,7 +69,7 @@ interface MockContext {
 /**
  * Build a mock Koa context for the token rate limiter.
  *
- * @param path - Request path (e.g., '/acme/oidc/token')
+ * @param path - Request path (e.g., '/acme/token')
  * @param method - HTTP method (e.g., 'POST')
  * @param ip - Client IP address
  * @param requestBody - Parsed request body (may contain client_id)
@@ -87,6 +88,7 @@ function createMockContext(
     status: 200,
     body: null,
     request: { body: requestBody },
+    headers: {},
     _headers: responseHeaders,
     set(name: string, value: string) {
       responseHeaders[name] = value;
@@ -128,6 +130,16 @@ async function invokeMiddleware(
   return { nextCalled };
 }
 
+/**
+ * Client-scoped rate-limit keys recorded by the mock, excluding the per-IP
+ * aggregate counter that runs before every client check.
+ */
+function clientKeys(): string[] {
+  return mockCheckRateLimit.mock.calls
+    .map((call) => call[0] as string)
+    .filter((key) => !key.startsWith('ratelimit:token:ip:'));
+}
+
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
@@ -146,7 +158,7 @@ describe('token-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: true, remaining: 25 }),
     );
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: 'my-client',
     });
     const { nextCalled } = await invokeMiddleware(ctx);
@@ -162,7 +174,7 @@ describe('token-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 120 }),
     );
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: 'my-client',
     });
     const { nextCalled } = await invokeMiddleware(ctx);
@@ -178,7 +190,7 @@ describe('token-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 180 }),
     );
-    const ctx = createMockContext('/my-org/oidc/token', 'POST');
+    const ctx = createMockContext('/my-org/token', 'POST');
     await invokeMiddleware(ctx);
 
     expect(ctx._headers['Retry-After']).toBe('180');
@@ -191,7 +203,7 @@ describe('token-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: true, remaining: 22 }),
     );
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: 'my-client',
     });
     await invokeMiddleware(ctx);
@@ -201,10 +213,14 @@ describe('token-rate-limiter middleware', () => {
   });
 
   it('T4b: should set X-RateLimit headers even when rate limit is exceeded', async () => {
-    mockCheckRateLimit.mockResolvedValue(
-      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
-    );
-    const ctx = createMockContext('/acme/oidc/token', 'POST');
+    // The per-IP aggregate allows, then the client bucket denies, so the
+    // client-scoped informational headers are still set.
+    mockCheckRateLimit
+      .mockResolvedValueOnce(createRateLimitResult({ allowed: true, remaining: 30 }))
+      .mockResolvedValueOnce(
+        createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
+      );
+    const ctx = createMockContext('/acme/token', 'POST');
     await invokeMiddleware(ctx);
 
     expect(ctx._headers['X-RateLimit-Limit']).toBe(String(TOKEN_RATE_LIMIT.max));
@@ -215,50 +231,50 @@ describe('token-rate-limiter middleware', () => {
   // T5: Different IPs → independent counters
   // -------------------------------------------------------------------------
   it('T5: should use different rate limit keys for different IPs', async () => {
-    const ctx1 = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx1 = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: 'my-client',
     });
-    const ctx2 = createMockContext('/acme/oidc/token', 'POST', '10.0.0.2', {
+    const ctx2 = createMockContext('/acme/token', 'POST', '10.0.0.2', {
       client_id: 'my-client',
     });
 
     await invokeMiddleware(ctx1);
     await invokeMiddleware(ctx2);
 
-    // Verify checkRateLimit was called with different keys
-    const key1 = mockCheckRateLimit.mock.calls[0][0] as string;
-    const key2 = mockCheckRateLimit.mock.calls[1][0] as string;
-    expect(key1).not.toBe(key2);
-    expect(key1).toContain('10.0.0.1');
-    expect(key2).toContain('10.0.0.2');
+    // Verify the client checks were called with different keys
+    const keys = clientKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(keys[0]).toContain('10.0.0.1');
+    expect(keys[1]).toContain('10.0.0.2');
   });
 
   // -------------------------------------------------------------------------
   // T6: Different client_ids → independent counters
   // -------------------------------------------------------------------------
   it('T6: should use different rate limit keys for different client_ids', async () => {
-    const ctx1 = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx1 = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: 'client-a',
     });
-    const ctx2 = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx2 = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: 'client-b',
     });
 
     await invokeMiddleware(ctx1);
     await invokeMiddleware(ctx2);
 
-    const key1 = mockCheckRateLimit.mock.calls[0][0] as string;
-    const key2 = mockCheckRateLimit.mock.calls[1][0] as string;
-    expect(key1).not.toBe(key2);
-    expect(key1).toContain('client-a');
-    expect(key2).toContain('client-b');
+    const keys = clientKeys();
+    expect(keys).toHaveLength(2);
+    expect(keys[0]).not.toBe(keys[1]);
+    expect(keys[0]).toContain('client-a');
+    expect(keys[1]).toContain('client-b');
   });
 
   // -------------------------------------------------------------------------
   // T7: Non-POST method → passes through
   // -------------------------------------------------------------------------
   it('T7: should pass through without rate limiting for non-POST methods', async () => {
-    const ctx = createMockContext('/acme/oidc/token', 'GET');
+    const ctx = createMockContext('/acme/token', 'GET');
     const { nextCalled } = await invokeMiddleware(ctx);
 
     expect(nextCalled).toBe(true);
@@ -267,7 +283,7 @@ describe('token-rate-limiter middleware', () => {
   });
 
   it('T7b: should pass through for OPTIONS requests to token endpoint', async () => {
-    const ctx = createMockContext('/acme/oidc/token', 'OPTIONS');
+    const ctx = createMockContext('/acme/token', 'OPTIONS');
     const { nextCalled } = await invokeMiddleware(ctx);
 
     expect(nextCalled).toBe(true);
@@ -297,29 +313,88 @@ describe('token-rate-limiter middleware', () => {
   // T9: Missing client_id → uses 'unknown' key
   // -------------------------------------------------------------------------
   it('T9: should use "unknown" as client key when client_id is missing from body', async () => {
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {});
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {});
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
   });
 
   it('T9b: should use "unknown" when request body is undefined', async () => {
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1');
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1');
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
   });
 
   it('T9c: should use "unknown" when client_id is empty string', async () => {
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.1', {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
       client_id: '',
     });
     await invokeMiddleware(ctx);
 
-    const key = mockCheckRateLimit.mock.calls[0][0] as string;
+    const key = clientKeys()[0] ?? '';
     expect(key).toContain('unknown');
+  });
+
+  it('T9d: should use the client_id from HTTP Basic credentials when the body has none', async () => {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {});
+    ctx.headers.authorization = `Basic ${Buffer.from('basic-client:secret').toString('base64')}`;
+    await invokeMiddleware(ctx);
+
+    const key = clientKeys()[0] ?? '';
+    expect(key).toContain('basic-client');
+  });
+
+  it('T9e: should prefer the body client_id over HTTP Basic credentials', async () => {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
+      client_id: 'body-client',
+    });
+    ctx.headers.authorization = `Basic ${Buffer.from('basic-client:secret').toString('base64')}`;
+    await invokeMiddleware(ctx);
+
+    const key = clientKeys()[0] ?? '';
+    expect(key).toContain('body-client');
+    expect(key).not.toContain('basic-client');
+  });
+
+  it('T9f: should use "unknown" for a Basic credential without a separator', async () => {
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {});
+    ctx.headers.authorization = `Basic ${Buffer.from('no-colon').toString('base64')}`;
+    await invokeMiddleware(ctx);
+
+    const key = clientKeys()[0] ?? '';
+    expect(key).toContain('unknown');
+  });
+
+  it('T9g: should deny on the per-IP aggregate before the client bucket', async () => {
+    // The aggregate check denies first; the client bucket must not be consulted,
+    // so a caller cannot vary the client id to escape the per-IP limit.
+    mockCheckRateLimit.mockResolvedValueOnce(
+      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 42 }),
+    );
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {
+      client_id: 'rotating-client',
+    });
+    await invokeMiddleware(ctx);
+
+    expect(ctx.status).toBe(429);
+    expect(mockCheckRateLimit).toHaveBeenCalledTimes(1);
+    expect(mockCheckRateLimit.mock.calls[0][0]).toBe('ratelimit:token:ip:10.0.0.1');
+  });
+
+  it('T9h: should reflect the request origin on a 429 so a browser can read it', async () => {
+    mockCheckRateLimit.mockResolvedValueOnce(
+      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 10 }),
+    );
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.1', {});
+    ctx.headers.origin = 'https://app.example.com';
+    await invokeMiddleware(ctx);
+
+    expect(ctx.status).toBe(429);
+    expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://app.example.com');
+    expect(ctx._headers['Vary']).toBe('Origin');
   });
 
   // -------------------------------------------------------------------------
@@ -332,7 +407,7 @@ describe('token-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: true, remaining: 30 }),
     );
-    const ctx = createMockContext('/acme/oidc/token', 'POST');
+    const ctx = createMockContext('/acme/token', 'POST');
     const { nextCalled } = await invokeMiddleware(ctx);
 
     expect(nextCalled).toBe(true);
@@ -346,7 +421,7 @@ describe('token-rate-limiter middleware', () => {
     mockCheckRateLimit.mockResolvedValue(
       createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 90 }),
     );
-    const ctx = createMockContext('/acme/oidc/token', 'POST');
+    const ctx = createMockContext('/acme/token', 'POST');
     await invokeMiddleware(ctx);
 
     const body = ctx.body as Record<string, unknown>;
@@ -358,10 +433,12 @@ describe('token-rate-limiter middleware', () => {
   });
 
   it('T11b: should log a warning when rate limit is exceeded', async () => {
-    mockCheckRateLimit.mockResolvedValue(
-      createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
-    );
-    const ctx = createMockContext('/acme/oidc/token', 'POST', '10.0.0.5', {
+    mockCheckRateLimit
+      .mockResolvedValueOnce(createRateLimitResult({ allowed: true, remaining: 30 }))
+      .mockResolvedValueOnce(
+        createRateLimitResult({ allowed: false, remaining: 0, retryAfter: 60 }),
+      );
+    const ctx = createMockContext('/acme/token', 'POST', '10.0.0.5', {
       client_id: 'spam-client',
     });
     await invokeMiddleware(ctx);
@@ -381,28 +458,28 @@ describe('token-rate-limiter middleware', () => {
   // -------------------------------------------------------------------------
   describe('TOKEN_PATH_REGEX', () => {
     it('should match valid org slug token paths', () => {
-      expect(TOKEN_PATH_REGEX.test('/acme/oidc/token')).toBe(true);
-      expect(TOKEN_PATH_REGEX.test('/my-org/oidc/token')).toBe(true);
-      expect(TOKEN_PATH_REGEX.test('/a/oidc/token')).toBe(true);
-      expect(TOKEN_PATH_REGEX.test('/org123/oidc/token')).toBe(true);
-      expect(TOKEN_PATH_REGEX.test('/test-org-1/oidc/token')).toBe(true);
+      expect(TOKEN_PATH_REGEX.test('/acme/token')).toBe(true);
+      expect(TOKEN_PATH_REGEX.test('/my-org/token')).toBe(true);
+      expect(TOKEN_PATH_REGEX.test('/a/token')).toBe(true);
+      expect(TOKEN_PATH_REGEX.test('/org123/token')).toBe(true);
+      expect(TOKEN_PATH_REGEX.test('/test-org-1/token')).toBe(true);
     });
 
     it('should reject paths that do not match the token endpoint pattern', () => {
       // Uppercase slug
-      expect(TOKEN_PATH_REGEX.test('/ACME/oidc/token')).toBe(false);
+      expect(TOKEN_PATH_REGEX.test('/ACME/token')).toBe(false);
       // Slug starting with hyphen
-      expect(TOKEN_PATH_REGEX.test('/-invalid/oidc/token')).toBe(false);
+      expect(TOKEN_PATH_REGEX.test('/-invalid/token')).toBe(false);
       // No slug
-      expect(TOKEN_PATH_REGEX.test('/oidc/token')).toBe(false);
+      expect(TOKEN_PATH_REGEX.test('/token')).toBe(false);
       // Extra path segments
-      expect(TOKEN_PATH_REGEX.test('/acme/oidc/token/extra')).toBe(false);
+      expect(TOKEN_PATH_REGEX.test('/acme/token/extra')).toBe(false);
       // Admin path
       expect(TOKEN_PATH_REGEX.test('/api/admin/token')).toBe(false);
       // Different OIDC endpoint
       expect(TOKEN_PATH_REGEX.test('/acme/oidc/auth')).toBe(false);
       // Trailing slash
-      expect(TOKEN_PATH_REGEX.test('/acme/oidc/token/')).toBe(false);
+      expect(TOKEN_PATH_REGEX.test('/acme/token/')).toBe(false);
     });
   });
 

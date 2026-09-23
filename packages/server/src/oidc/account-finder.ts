@@ -11,13 +11,13 @@
  *
  * Claims flow:
  * 1. buildUserClaims(user, scopes) → standard OIDC claims (sub, name, email...)
- * 2. buildRoleClaims(userId) → role slugs array (cache-first)
- * 3. buildPermissionClaims(userId) → permission slugs array (cache-first)
+ * 2. buildRoleClaims(userId, appId) → application-owned role slugs
+ * 3. buildPermissionClaims(userId, appId) → application-owned permission slugs
  * 4. buildCustomClaims(userId, appId, tokenType) → custom per-app claims
  *
- * The applicationId for custom claims is resolved from the OIDC client
- * context. If unavailable (e.g., no client context), custom claims are
- * skipped gracefully.
+ * The applicationId for RBAC and custom claims is resolved from private OIDC
+ * client metadata. If it is unavailable or malformed, authority fails closed:
+ * RBAC arrays are empty and custom claims are skipped while standard claims remain.
  *
  * @see users/service.ts — User lookup for OIDC
  * @see users/claims.ts — Standard OIDC claims builder
@@ -25,12 +25,18 @@
  * @see custom-claims/service.ts — Custom claims builder
  */
 
+import { z } from 'zod';
 import { findUserForOidc } from '../users/service.js';
 import { buildUserClaims } from '../users/claims.js';
 import { buildRoleClaims, buildPermissionClaims } from '../rbac/user-role-service.js';
 import { buildCustomClaims } from '../custom-claims/service.js';
 import { logger } from '../lib/logger.js';
 import type { TokenType } from '../custom-claims/types.js';
+/** Accepts only database-style UUIDs at the provider metadata trust boundary. */
+const applicationIdSchema = z.string().uuid();
+
+/** Private provider metadata key carrying the client application's database identity. */
+const INTERNAL_APPLICATION_ID = 'urn:porta:internal_application_id';
 
 /** OIDC Account object — returned by findAccount, used by the provider */
 export interface OidcAccount {
@@ -57,10 +63,7 @@ export interface OidcAccount {
  * @param sub - The subject identifier (user UUID)
  * @returns Account object with claims() method, or undefined if not found
  */
-export async function findAccount(
-  ctx: unknown,
-  sub: string,
-): Promise<OidcAccount | undefined> {
+export async function findAccount(ctx: unknown, sub: string): Promise<OidcAccount | undefined> {
   try {
     const user = await findUserForOidc(sub);
     if (!user) return undefined;
@@ -82,15 +85,18 @@ export async function findAccount(
         // 1. Standard OIDC claims (scope-filtered)
         const standardClaims = buildUserClaims(user, scopes);
 
-        // 2. RBAC claims (always included — cache-first resolution)
-        const [roles, permissions] = await Promise.all([
-          buildRoleClaims(user.id),
-          buildPermissionClaims(user.id),
-        ]);
+        // Resolve the application once so every application-owned claim uses the same boundary.
+        const applicationId = resolveApplicationId(ctx);
+
+        // Missing client context must not fall back to a union of authority from every application.
+        const [roles, permissions] = applicationId
+          ? await Promise.all([
+              buildRoleClaims(user.id, applicationId),
+              buildPermissionClaims(user.id, applicationId),
+            ])
+          : [[], []];
 
         // 3. Custom claims (per-application, filtered by token type)
-        // Resolve applicationId from the OIDC client context if available
-        const applicationId = resolveApplicationId(ctx);
         let customClaims: Record<string, unknown> = {};
         if (applicationId) {
           // Map OIDC 'use' parameter to our TokenType
@@ -116,22 +122,22 @@ export async function findAccount(
 /**
  * Resolve the applicationId from the OIDC context.
  *
- * The OIDC provider passes the Koa context which includes the client
- * object at ctx.oidc.client. The client has an applicationId stored
- * in its metadata. Returns null if the context doesn't have the
- * expected structure (graceful fallback).
+ * The OIDC provider passes the Koa context which includes the client object at
+ * `ctx.oidc.client`. Only a valid UUID from Porta's internal metadata is accepted.
+ * Missing or malformed metadata returns null so authority fails closed.
  *
  * @param ctx - Koa context with OIDC extensions
  * @returns Application UUID or null if not resolvable
  */
 function resolveApplicationId(ctx: unknown): string | null {
-  try {
-    // Navigate the OIDC context structure: ctx.oidc.client.applicationId
-    const oidcCtx = ctx as { oidc?: { client?: { applicationId?: string } } };
-    return oidcCtx?.oidc?.client?.applicationId ?? null;
-  } catch {
-    return null;
-  }
+  if (typeof ctx !== 'object' || ctx === null) return null;
+  const oidc = Reflect.get(ctx, 'oidc');
+  if (typeof oidc !== 'object' || oidc === null) return null;
+  const client = Reflect.get(oidc, 'client');
+  if (typeof client !== 'object' || client === null) return null;
+
+  const parsed = applicationIdSchema.safeParse(Reflect.get(client, INTERNAL_APPLICATION_ID));
+  return parsed.success ? parsed.data : null;
 }
 
 /**

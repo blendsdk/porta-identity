@@ -12,16 +12,12 @@
  *   GET    /:userId              — Get user by ID
  *   PUT    /:userId              — Update user profile
  *   POST   /:userId/deactivate   — Deactivate (active → inactive)
- *   POST   /:userId/reactivate   — Reactivate (inactive → active)
- *   POST   /:userId/suspend      — Suspend (active → suspended)
- *   POST   /:userId/unsuspend    — Unsuspend (suspended → active)
- *   POST   /:userId/lock         — Lock (active → locked)
- *   POST   /:userId/unlock       — Unlock (locked → active)
+ *   POST   /:userId/activate     — Activate (inactive → active)
  *   POST   /:userId/password     — Set/change password
  *   DELETE /:userId/password     — Clear password (passwordless)
  *   POST   /:userId/verify-email — Mark email as verified
  *   GET    /:userId/export       — GDPR data export (Article 20)
- *   POST   /:userId/purge        — GDPR data purge (Article 17)
+ *   DELETE /:userId              — Delete user
  *
  * Error mapping:
  *   UserNotFoundError → 404
@@ -34,7 +30,7 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import type { InvitationEmailOptions } from '../auth/email-service.js';
 import { renderInvitationEmail, sendInvitationEmail } from '../auth/email-service.js';
-import { insertInvitationToken, invalidateUserTokens } from '../auth/token-repository.js';
+import { insertInvitationToken } from '../auth/token-repository.js';
 import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
@@ -43,13 +39,27 @@ import { afterDatabaseCommit, getPool } from '../lib/database.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
 import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-protection.js';
+import { getSystemConfigNumber } from '../lib/system-config.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
+import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
-import { exportUserData, purgeUserData } from '../users/gdpr.js';
+import { exportUserData } from '../users/gdpr.js';
 import * as userService from '../users/service.js';
+import {
+  userBirthdateSchema,
+  userCountrySchema,
+  userEmailSchema,
+  userGenderSchema,
+  userLocaleSchema,
+  userPhoneNumberSchema,
+  userPostalCodeSchema,
+  userProfileNameSchema,
+  userProfileUrlSchema,
+  userZoneinfoSchema,
+} from '../users/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -57,73 +67,70 @@ import * as userService from '../users/service.js';
 
 /** Schema for creating a new user */
 const createUserSchema = z.object({
-  email: z.string().email().max(255),
+  email: userEmailSchema,
   password: z.string().min(8).max(128).optional(),
-  givenName: z.string().max(255).optional(),
-  familyName: z.string().max(255).optional(),
-  middleName: z.string().max(255).optional(),
-  nickname: z.string().max(255).optional(),
-  preferredUsername: z.string().max(255).optional(),
-  profileUrl: z.string().url().optional(),
-  pictureUrl: z.string().url().optional(),
-  websiteUrl: z.string().url().optional(),
-  gender: z.string().max(50).optional(),
-  birthdate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .optional(),
-  zoneinfo: z.string().max(50).optional(),
-  locale: z.string().max(10).optional(),
-  phoneNumber: z.string().max(50).optional(),
+  givenName: userProfileNameSchema.optional(),
+  familyName: userProfileNameSchema.optional(),
+  middleName: userProfileNameSchema.optional(),
+  nickname: userProfileNameSchema.optional(),
+  preferredUsername: userProfileNameSchema.optional(),
+  profileUrl: userProfileUrlSchema.optional(),
+  pictureUrl: userProfileUrlSchema.optional(),
+  websiteUrl: userProfileUrlSchema.optional(),
+  gender: userGenderSchema.optional(),
+  birthdate: userBirthdateSchema.optional(),
+  zoneinfo: userZoneinfoSchema.optional(),
+  locale: userLocaleSchema.optional(),
+  phoneNumber: userPhoneNumberSchema.optional(),
   phoneNumberVerified: z.boolean().optional(),
   address: z
     .object({
       street: z.string().nullable().optional(),
-      locality: z.string().max(255).nullable().optional(),
-      region: z.string().max(255).nullable().optional(),
-      postalCode: z.string().max(20).nullable().optional(),
-      country: z.string().length(2).nullable().optional(),
+      locality: userProfileNameSchema.nullable().optional(),
+      region: userProfileNameSchema.nullable().optional(),
+      postalCode: userPostalCodeSchema.nullable().optional(),
+      country: userCountrySchema.nullable().optional(),
     })
     .optional(),
 });
 
 /** Schema for updating a user (all fields optional, nullable for clearing) */
-const updateUserSchema = z.object({
-  givenName: z.string().max(255).nullable().optional(),
-  familyName: z.string().max(255).nullable().optional(),
-  middleName: z.string().max(255).nullable().optional(),
-  nickname: z.string().max(255).nullable().optional(),
-  preferredUsername: z.string().max(255).nullable().optional(),
-  profileUrl: z.string().url().nullable().optional(),
-  pictureUrl: z.string().url().nullable().optional(),
-  websiteUrl: z.string().url().nullable().optional(),
-  gender: z.string().max(50).nullable().optional(),
-  birthdate: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .nullable()
-    .optional(),
-  zoneinfo: z.string().max(50).nullable().optional(),
-  locale: z.string().max(10).nullable().optional(),
-  phoneNumber: z.string().max(50).nullable().optional(),
-  phoneNumberVerified: z.boolean().optional(),
-  address: z
-    .object({
-      street: z.string().nullable().optional(),
-      locality: z.string().max(255).nullable().optional(),
-      region: z.string().max(255).nullable().optional(),
-      postalCode: z.string().max(20).nullable().optional(),
-      country: z.string().length(2).nullable().optional(),
-    })
-    .nullable()
-    .optional(),
-});
+const updateUserSchema = z
+  .object({
+    givenName: userProfileNameSchema.nullable().optional(),
+    familyName: userProfileNameSchema.nullable().optional(),
+    middleName: userProfileNameSchema.nullable().optional(),
+    nickname: userProfileNameSchema.nullable().optional(),
+    preferredUsername: userProfileNameSchema.nullable().optional(),
+    profileUrl: userProfileUrlSchema.nullable().optional(),
+    pictureUrl: userProfileUrlSchema.nullable().optional(),
+    websiteUrl: userProfileUrlSchema.nullable().optional(),
+    gender: userGenderSchema.nullable().optional(),
+    birthdate: userBirthdateSchema.nullable().optional(),
+    zoneinfo: userZoneinfoSchema.nullable().optional(),
+    locale: userLocaleSchema.nullable().optional(),
+    phoneNumber: userPhoneNumberSchema.nullable().optional(),
+    phoneNumberVerified: z.boolean().optional(),
+    address: z
+      .object({
+        street: z.string().nullable().optional(),
+        locality: userProfileNameSchema.nullable().optional(),
+        region: userProfileNameSchema.nullable().optional(),
+        postalCode: userPostalCodeSchema.nullable().optional(),
+        country: userCountrySchema.nullable().optional(),
+      })
+      .nullable()
+      .optional(),
+  })
+  .refine((value) => Object.keys(value).length > 0, {
+    message: 'At least one profile field must be provided',
+  });
 
 /** Schema for listing users with pagination */
 const listUsersSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['active', 'inactive', 'suspended', 'locked']).optional(),
+  status: z.enum(['active', 'inactive', 'locked']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z
     .enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at'])
@@ -135,7 +142,7 @@ const listUsersSchema = z.object({
 const listUsersCursorSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.enum(['active', 'inactive', 'suspended', 'locked']).optional(),
+  status: z.enum(['active', 'inactive', 'locked']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z
     .enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at'])
@@ -148,14 +155,10 @@ const setPasswordSchema = z.object({
   password: z.string().min(8).max(128),
 });
 
-/** Schema for locking a user (reason required) */
-const lockUserSchema = z.object({
-  reason: z.string().min(1).max(500),
-});
-
-/** Schema for suspending a user (reason optional) */
-const suspendUserSchema = z.object({
-  reason: z.string().max(500).optional(),
+/** Organization-qualified parameters accepted by user deletion. */
+const identifierSchema = z.object({
+  orgId: z.string().uuid(),
+  userId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -198,8 +201,8 @@ function handleError(
  *
  * All routes require admin authorization with granular permissions.
  * Users are always scoped to an organization via the :orgId URL parameter.
- * Destructive operations on the super-admin user are blocked by
- * guardSuperAdmin() checks.
+ * Operations that cannot preserve bootstrap-administrator availability are rejected at their
+ * owning service or repository boundary.
  *
  * Prefix: /api/admin/organizations/:orgId/users
  *
@@ -231,29 +234,34 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   // GET / — List users (paginated)
   // -------------------------------------------------------------------------
-  router.get('/', requirePermission(ADMIN_PERMISSIONS.USER_READ), async (ctx) => {
-    try {
-      // Cursor-based pagination when `cursor` or `limit` param is present
-      if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
-        const query = listUsersCursorSchema.parse(ctx.query);
-        const result = await userService.listUsersCursor({
+  router.get(
+    '/',
+    requirePermission(ADMIN_PERMISSIONS.USER_READ),
+    requireExistingOrganization(),
+    async (ctx) => {
+      try {
+        // Cursor-based pagination when `cursor` or `limit` param is present
+        if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+          const query = listUsersCursorSchema.parse(ctx.query);
+          const result = await userService.listUsersCursor({
+            organizationId: ctx.params.orgId,
+            ...query,
+          });
+          ctx.body = result;
+          return;
+        }
+        // Default: offset-based pagination (backward compatible)
+        const query = listUsersSchema.parse(ctx.query);
+        const result = await userService.listUsersByOrganization({
           organizationId: ctx.params.orgId,
           ...query,
         });
         ctx.body = result;
-        return;
+      } catch (err) {
+        handleError(ctx, err);
       }
-      // Default: offset-based pagination (backward compatible)
-      const query = listUsersSchema.parse(ctx.query);
-      const result = await userService.listUsersByOrganization({
-        organizationId: ctx.params.orgId,
-        ...query,
-      });
-      ctx.body = result;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+    },
+  );
 
   // -------------------------------------------------------------------------
   // GET /:userId — Get user by ID
@@ -304,7 +312,7 @@ export function createUserRouter(): Router {
   // -------------------------------------------------------------------------
   router.post(
     '/:userId/deactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     requireUserOrganization(),
     async (ctx) => {
       try {
@@ -318,89 +326,15 @@ export function createUserRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
-  // POST /:userId/reactivate — Reactivate user
+  // POST /:userId/activate — Activate user
   // -------------------------------------------------------------------------
   router.post(
-    '/:userId/reactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    '/:userId/activate',
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     requireUserOrganization(),
     async (ctx) => {
       try {
-        await userService.reactivateUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/suspend — Suspend user
-  // Protected: super-admin user cannot be suspended
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/suspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await guardSuperAdmin(ctx.params.userId, 'suspend');
-        const body = suspendUserSchema.parse(ctx.request.body ?? {});
-        await userService.suspendUser(ctx.params.userId, body.reason);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/unsuspend — Unsuspend user
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/unsuspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await userService.unsuspendUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/lock — Lock user
-  // Protected: super-admin user cannot be locked
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/lock',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await guardSuperAdmin(ctx.params.userId, 'lock');
-        const body = lockUserSchema.parse(ctx.request.body);
-        await userService.lockUser(ctx.params.userId, body.reason);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // -------------------------------------------------------------------------
-  // POST /:userId/unlock — Unlock user
-  // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/unlock',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    requireUserOrganization(),
-    async (ctx) => {
-      try {
-        await userService.unlockUser(ctx.params.userId);
+        await userService.activateUser(ctx.params.userId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -478,54 +412,19 @@ export function createUserRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
-  // POST /:userId/purge — GDPR data purge (Article 17)
-  //
-  // Requires X-Confirm-Purge: true header for safety.
-  // Irreversibly anonymizes user data and deletes related records.
-  // Protected: super-admin user cannot be purged
+  // DELETE /:userId — Delete user
   // -------------------------------------------------------------------------
-  router.post(
-    '/:userId/purge',
-    requirePermission(ADMIN_PERMISSIONS.USER_ARCHIVE),
+  router.delete(
+    '/:userId',
+    requirePermission(ADMIN_PERMISSIONS.USER_DELETE),
     requireUserOrganization(),
     async (ctx) => {
-      // Require explicit confirmation via header OR request body
-      const confirmHeader = ctx.get('X-Confirm-Purge');
-      const confirmBody = (ctx.request.body as Record<string, unknown> | undefined)?.confirmPurge;
-      if (confirmHeader !== 'true' && confirmBody !== true) {
-        ctx.status = 400;
-        ctx.body = {
-          error: 'Purge requires confirmation',
-          message: 'Set X-Confirm-Purge: true header or send { "confirmPurge": true } in body',
-        };
-        return;
-      }
-
-      const user = await userService.getUserById(ctx.params.userId);
-      if (!user) {
-        return ctx.throw(404, 'User not found');
-      }
-
       try {
-        // Guard: super-admin user cannot be purged
-        await guardSuperAdmin(ctx.params.userId, 'delete');
-
-        // Use the admin user's ID as the actor for the audit trail
-        const actorId = ctx.state.adminUser?.id ?? 'system';
-        const result = await purgeUserData(user, actorId);
-        ctx.body = { data: result };
+        identifierSchema.parse(ctx.params);
+        await userService.deleteUser(ctx.params.orgId, ctx.params.userId, ctx.state.adminUser?.id);
+        ctx.status = 204;
       } catch (err) {
-        if (err instanceof SuperAdminProtectionError) {
-          ctx.status = 403;
-          ctx.body = { error: 'The requested operation is not permitted' };
-          return;
-        }
-        if (err instanceof Error && err.message.includes('super-admin')) {
-          ctx.status = 403;
-          ctx.body = { error: 'The requested operation is not permitted' };
-          return;
-        }
-        throw err;
+        handleError(ctx, err);
       }
     },
   );
@@ -549,12 +448,13 @@ export function createUserRouter(): Router {
   );
 
   // -------------------------------------------------------------------------
-  // POST /invite — Send invitation to a new or existing user
+  // POST /invite — Invite a new user
   //
   // Enhanced invitation with optional personal message, role/claim
   // pre-assignment, and inviter tracking. Creates the user if they
   // don't exist, generates an invitation token with pre-assignment
-  // details, and sends the invitation email.
+  // details, and sends the invitation email. Existing organization email
+  // addresses are rejected instead of silently resending an invitation.
   // -------------------------------------------------------------------------
   router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
     try {
@@ -576,28 +476,33 @@ export function createUserRouter(): Router {
 
       // Validate referenced applicationIds, roleIds, claimDefinitionIds exist
       if (body.roles?.length || body.claims?.length) {
-        await validatePreAssignments(orgId, body.roles, body.claims);
+        const preAssignmentErrors = await validatePreAssignments(body.roles, body.claims);
+        if (preAssignmentErrors.length > 0) {
+          ctx.status = 400;
+          ctx.body = { error: 'User request is invalid' };
+          return;
+        }
       }
 
-      // Find or create the user
-      let user = await userService.getUserByEmail(orgId, body.email);
-      let created = false;
-      if (!user) {
-        user = await userService.createUser({
-          organizationId: orgId,
-          email: body.email,
-          givenName: body.givenName,
-          familyName: body.familyName,
-        });
-        created = true;
+      const existingUser = await userService.getUserByEmail(orgId, body.email);
+      if (existingUser) {
+        ctx.status = 409;
+        ctx.body = { error: 'User already exists in this organization' };
+        return;
       }
 
-      // Invalidate any previous pending invitation tokens for this user
-      await invalidateUserTokens('invitation_tokens', user.id);
+      const user = await userService.createUser({
+        organizationId: orgId,
+        email: body.email,
+        givenName: body.givenName,
+        familyName: body.familyName,
+      });
 
       // Generate a new invitation token
       const { plaintext, hash } = generateToken();
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      // Existing invitations keep their absolute expiry; this policy applies to the new token only.
+      const invitationTtl = await getSystemConfigNumber('invitation_ttl');
+      const expiresAt = new Date(Date.now() + invitationTtl * 1000);
 
       // Build inviter display name
       const inviterName = adminUser.givenName
@@ -639,13 +544,7 @@ export function createUserRouter(): Router {
             givenName: user.givenName,
             familyName: user.familyName,
           },
-          {
-            id: org.id,
-            slug: org.slug,
-            brandingLogoUrl: org.brandingLogoUrl,
-            brandingPrimaryColor: org.brandingPrimaryColor,
-            brandingCompanyName: org.brandingCompanyName,
-          },
+          org,
           inviteUrl,
           body.locale ?? org.defaultLocale ?? 'en',
           emailOptions,
@@ -667,12 +566,12 @@ export function createUserRouter(): Router {
         },
       });
 
-      ctx.status = created ? 201 : 200;
+      ctx.status = 201;
       ctx.body = {
         data: {
           userId: user.id,
           email: user.email,
-          created,
+          created: true,
           invitationSent: true,
           expiresAt: expiresAt.toISOString(),
         },
@@ -728,13 +627,7 @@ export function createUserRouter(): Router {
 
       const result = await renderInvitationEmail(
         previewUser,
-        {
-          id: org.id,
-          slug: org.slug,
-          brandingLogoUrl: org.brandingLogoUrl,
-          brandingPrimaryColor: org.brandingPrimaryColor,
-          brandingCompanyName: org.brandingCompanyName,
-        },
+        org,
         // Absolute preview URL — same trusted issuerBaseUrl prefix as the real invite.
         `${config.issuerBaseUrl}/${org.slug}/auth/accept-invite/PREVIEW_TOKEN`,
 
@@ -797,21 +690,18 @@ const invitePreviewSchema = z.object({
 /**
  * Validate that referenced roles and claims exist in the database.
  *
- * Checks that all applicationIds are valid within the org, all roleIds
+ * Checks that all deployment-global applicationIds exist, all roleIds
  * belong to their specified application, and all claimDefinitionIds
- * belong to their specified application. Throws a ZodError-like 400
- * on validation failure.
+ * belong to their specified application.
  *
- * @param orgId - Organization ID for scoping
  * @param roles - Array of role pre-assignments to validate
  * @param claims - Array of claim pre-assignments to validate
- * @throws Error with 400 status if any reference is invalid
+ * @returns Validation errors; an empty array means every reference is valid
  */
 async function validatePreAssignments(
-  orgId: string,
   roles?: Array<{ applicationId: string; roleId: string }>,
   claims?: Array<{ applicationId: string; claimDefinitionId: string; value: unknown }>,
-): Promise<void> {
+): Promise<string[]> {
   const pool = getPool();
   const errors: string[] = [];
 
@@ -820,16 +710,15 @@ async function validatePreAssignments(
   roles?.forEach((r) => appIds.add(r.applicationId));
   claims?.forEach((c) => appIds.add(c.applicationId));
 
-  // Verify all applications exist within the org
+  // Applications are deployment-global definitions and are not organization-scoped.
   if (appIds.size > 0) {
-    const appResult = await pool.query(
-      `SELECT id FROM applications WHERE id = ANY($1) AND organization_id = $2`,
-      [Array.from(appIds), orgId],
-    );
+    const appResult = await pool.query(`SELECT id FROM applications WHERE id = ANY($1::uuid[])`, [
+      Array.from(appIds),
+    ]);
     const foundIds = new Set(appResult.rows.map((r: { id: string }) => r.id));
     for (const appId of appIds) {
       if (!foundIds.has(appId)) {
-        errors.push(`Application ${appId} not found in this organization`);
+        errors.push(`Application ${appId} not found`);
       }
     }
   }
@@ -851,7 +740,7 @@ async function validatePreAssignments(
   if (claims?.length) {
     for (const claim of claims) {
       const result = await pool.query(
-        `SELECT id FROM claim_definitions WHERE id = $1 AND application_id = $2`,
+        `SELECT id FROM custom_claim_definitions WHERE id = $1 AND application_id = $2`,
         [claim.claimDefinitionId, claim.applicationId],
       );
       if (result.rows.length === 0) {
@@ -862,11 +751,7 @@ async function validatePreAssignments(
     }
   }
 
-  if (errors.length > 0) {
-    const err = new Error(`Pre-assignment validation failed: ${errors.join('; ')}`);
-    (err as Error & { status: number }).status = 400;
-    throw err;
-  }
+  return errors;
 }
 
 // ---------------------------------------------------------------------------
@@ -921,7 +806,7 @@ export function createStandaloneUserRouter(): Router {
   // POST /:userId/deactivate — Deactivate user
   router.post(
     '/:userId/deactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     async (ctx) => {
       try {
         await guardSuperAdmin(ctx.params.userId, 'deactivate');
@@ -933,85 +818,19 @@ export function createStandaloneUserRouter(): Router {
     },
   );
 
-  // POST /:userId/reactivate — Reactivate user (inactive → active)
-  router.post(
-    '/:userId/reactivate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    async (ctx) => {
-      try {
-        await userService.reactivateUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // POST /:userId/activate — Alias for reactivate (SPA compatibility)
+  // POST /:userId/activate — Activate user (inactive → active)
   router.post(
     '/:userId/activate',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
+    requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     async (ctx) => {
       try {
-        await userService.reactivateUser(ctx.params.userId);
+        await userService.activateUser(ctx.params.userId);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
       }
     },
   );
-
-  // POST /:userId/suspend — Suspend user
-  router.post(
-    '/:userId/suspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    async (ctx) => {
-      try {
-        await guardSuperAdmin(ctx.params.userId, 'suspend');
-        const body = suspendUserSchema.parse(ctx.request.body ?? {});
-        await userService.suspendUser(ctx.params.userId, body.reason);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // POST /:userId/unsuspend — Unsuspend user
-  router.post(
-    '/:userId/unsuspend',
-    requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND),
-    async (ctx) => {
-      try {
-        await userService.unsuspendUser(ctx.params.userId);
-        ctx.status = 204;
-      } catch (err) {
-        handleError(ctx, err);
-      }
-    },
-  );
-
-  // POST /:userId/lock — Lock user
-  router.post('/:userId/lock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    try {
-      await guardSuperAdmin(ctx.params.userId, 'lock');
-      const body = lockUserSchema.parse(ctx.request.body);
-      await userService.lockUser(ctx.params.userId, body.reason);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
-
-  // POST /:userId/unlock — Unlock user
-  router.post('/:userId/unlock', requirePermission(ADMIN_PERMISSIONS.USER_SUSPEND), async (ctx) => {
-    try {
-      await userService.unlockUser(ctx.params.userId);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
 
   // POST /:userId/password — Set password
   router.post(

@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-09-17
 
 ## High-Level Architecture
 
@@ -51,32 +51,95 @@ graph TB
 
 ### Core Runtime
 
-| Component | Technology | Purpose |
-|-----------|-----------|---------|
-| HTTP Server | Koa 3.x | Request handling, middleware pipeline |
-| OIDC Engine | node-oidc-provider 9.x | OpenID Connect protocol implementation |
-| Database | PostgreSQL 16 (pg) | Persistent storage, long-lived OIDC artifacts |
-| Cache/Sessions | Redis 7 (ioredis) | Short-lived OIDC artifacts, tenant cache, rate limits |
-| Logger | pino | Structured logging (JSON in prod, pretty in dev) |
-| Config | zod | Environment validation with fail-fast semantics |
-| Signing | jose + crypto | ES256 (ECDSA P-256) token signing |
-| CLI | yargs | Admin command-line interface |
+| Component      | Technology             | Purpose                                               |
+| -------------- | ---------------------- | ----------------------------------------------------- |
+| HTTP Server    | Koa 3.x                | Request handling, middleware pipeline                 |
+| OIDC Engine    | node-oidc-provider 9.x | OpenID Connect protocol implementation                |
+| Database       | PostgreSQL 16 (pg)     | Persistent storage, long-lived OIDC artifacts         |
+| Cache/Sessions | Redis 7 (ioredis)      | Short-lived OIDC artifacts, tenant cache, rate limits |
+| Logger         | pino                   | Structured logging (JSON in prod, pretty in dev)      |
+| Config         | zod                    | Environment validation with fail-fast semantics       |
+| Signing        | jose + crypto          | ES256 (ECDSA P-256) token signing                     |
+| CLI            | yargs + JSVision       | Admin commands and embedded terminal application      |
+
+### Embedded Admin Application
+
+`porta admin` runs inside the existing CLI process from `packages/cli/src/admin/`. Live UserInfo
+is reduced to identity fields and fixed organization capability booleans; those capabilities
+control terminal affordances but never replace server authorization. Organization SDK responses
+cross a narrow service boundary that retains only validated `id`, `name`, `slug`, and `status`
+fields and maps remote failures to fixed local categories. The selected organization remains
+in-memory application context and does not change the authenticated server or credential profile.
+The application owns modal lifecycle and command routing, while focused JSVision dialogs render
+trusted identity details and bounded organization choice/create inputs using the default theme.
+Organization SDK access is constructed lazily only when verified organization work begins. Logical
+operation generations quarantine late list/create results, and reauthentication retains a selected
+organization after transient reconciliation failure only when the verified subject is unchanged.
+Global application definitions and organization-bound OIDC clients use separate feature-specific
+service and controller boundaries. They validate complete remote projections before publication,
+recheck selected-organization ownership immediately before client mutations, and keep one-time
+client secrets inside an abortable presenter continuation without persisting them.
+Deployment-global operational policy uses a direct service/state/workspace/controller family over
+the existing SDK configuration domain. API metadata drives four full-page DSL tabs; exact read/update
+capabilities guard the top-level command and single changed-key batch. The same application workspace
+slot and busy gates prevent one operator from replacing another open feature's drafts. No polling,
+concurrent-editor handling or mutation retry is introduced. See
+[global operational configuration](./api-design.md#global-operational-configuration).
+The global Applications workspace composes a JSVision `DataGrid` and movable Layout DSL dialogs
+directly over its application controller. List and detail states always retain their
+deployment-global label, module mutations carry the selected application UUID, and every successful
+mutation reloads authoritative application or same-parent module data. Dialog cancellation,
+authentication replacement, and resize recovery release operation ownership so late results cannot
+repopulate a cleared view.
+Application details append direct Roles and Permissions tabs through one Application-specific RBAC
+coordinator. A lazy session adapter validates complete application-owned SDK responses before the
+controller publishes them. Role, permission, and direct mapping mutations use the current
+application and verified-session generation; definite self-revocation returns to authentication,
+while an unknown transport outcome blocks further mutations until an explicit read-only Reload.
+The workspace retains only previously validated rows during recovery, labels them as stale, clears
+positional selection when sorting changes, and restores focus when an active RBAC grid is rebuilt.
+User details open one focused User Roles dialog over the same validated RBAC adapter. Available
+role choices remain bound to the application that produced them. An uncertain role mutation owns
+its recovery gate independently from ordinary User reads, so only a successful same-user,
+same-organization, same-session role reload permits further protected mutations.
+The organization OIDC Clients workspace follows the same direct pattern with a full-height client
+`DataGrid`, a sectioned detail surface, and metadata-only secret projection. Registration uses one
+ordinary centered Client details dialog; it does not collect initial-secret or advanced settings.
+The dialog derives its height from its fixed component heights and DSL gaps without a scroller.
+Authentication, Protocol, and Login experience open as focused fixed dialogs. Their complete forms
+scroll while naturally sized action rows stay fixed, including on a 48×12 terminal. Authentication
+stages redirect URIs, post-logout redirect URIs, and allowed origins in one reused local `DataGrid`;
+Protocol retains the server compatibility rules; Login experience exposes organization inheritance
+or explicit Password and Magic link choices. Credentials always retains its metadata grid and uses
+the same preset, custom-date, or warned Never expiry selector for generation. Client and nested-secret
+mutations recheck the selected organization and retained parent immediately before dispatch.
+Generated plaintext is handed straight to one abortable, non-editable warning dialog and never
+enters retained application state.
+Data portability uses one maximized, two-tab JSVision workspace over the same authenticated SDK
+session. Export exposes the permitted scope, categories, and application selection before opening
+a local save dialog. Import reads one local JSON manifest, previews it before enabling Apply, and
+requires confirmation immediately before the mutation. Closing the workspace, replacing the
+session, or starting another operation releases result ownership so a late file, preview,
+confirmation, or apply continuation cannot repopulate a replacement view. Applied client secrets
+use the existing one-time-secret presenter and are removed before reusable workspace state is
+published.
 
 ### Domain Modules
 
 Porta follows a **modular domain architecture** where each business domain is encapsulated in its own directory under `packages/server/src/`:
 
-| Module | Directory | Responsibility |
-|--------|-----------|---------------|
-| Organizations | `packages/server/src/organizations/` | Tenant management, status lifecycle, branding |
-| Applications | `packages/server/src/applications/` | SaaS product definitions, module grouping |
-| Clients | `packages/server/src/clients/` | OIDC client registration, secret management |
-| Users | `packages/server/src/users/` | User accounts, passwords, status lifecycle |
-| Auth | `packages/server/src/auth/` | Authentication workflows, magic links, email, templates |
-| RBAC | `packages/server/src/rbac/` | Roles, permissions, user-role assignments |
-| Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values |
-| Two-Factor | `packages/server/src/two-factor/` | TOTP, email OTP, recovery codes |
-| CLI | `packages/server/src/cli/` | Admin CLI with dual-mode bootstrap |
+| Module        | Directory                            | Responsibility                                          |
+| ------------- | ------------------------------------ | ------------------------------------------------------- |
+| Organizations | `packages/server/src/organizations/` | Tenant management, status lifecycle, branding           |
+| Applications  | `packages/server/src/applications/`  | SaaS product definitions, module grouping               |
+| Clients       | `packages/server/src/clients/`       | OIDC client registration, secret management             |
+| Users         | `packages/server/src/users/`         | User accounts, passwords, status lifecycle              |
+| Auth          | `packages/server/src/auth/`          | Authentication workflows, magic links, email, templates |
+| RBAC          | `packages/server/src/rbac/`          | Roles, permissions, user-role assignments               |
+| Custom Claims | `packages/server/src/custom-claims/` | Claim definitions, user claim values                    |
+| Two-Factor    | `packages/server/src/two-factor/`    | TOTP, email OTP, recovery codes                         |
+| Portability   | `packages/server/src/portability/`   | Selective manifest export, preview, and atomic import   |
+| CLI           | `packages/server/src/cli/`           | Admin CLI with dual-mode bootstrap                      |
 
 Each domain module follows a consistent internal structure:
 
@@ -110,7 +173,7 @@ sequenceDiagram
     Main->>Redis: 1. Connect Redis client
     Main->>Main: 2. Init i18n + template engine
     Main->>Keys: 3. Load signing keys (auto-generate if empty)
-    Keys->>DB: Read/write PEM keys
+    Keys->>DB: Read/write encrypted private keys
     Main->>Config: 4. Load OIDC TTLs from system_config
     Config->>DB: Read TTL configuration
     Main->>OIDC: 5. Create provider with config + keys
@@ -135,7 +198,8 @@ graph TB
     ADMIN --> ML[Magic Link Routes]
     ML --> PR[Password Reset Routes]
     PR --> INV[Invitation Routes]
-    INV --> TR[Tenant Resolver<br/>/:orgSlug/*]
+    INV --> BRAND[Public Branding<br/>/:orgSlug/branding/*]
+    BRAND --> TR[Tenant Resolver<br/>/:orgSlug/*]
     TR --> CSH[Client Secret Hash<br/>SHA-256 pre-hash]
     CSH --> CORS[OIDC CORS Handler]
     CORS --> OIDC[OIDC Provider Mount<br/>/:orgSlug/*]
@@ -143,23 +207,24 @@ graph TB
 
 ### Key Middleware Details
 
-| Middleware | File | Purpose |
-|-----------|------|---------|
-| Error Handler | `error-handler.ts` | Global try/catch, hides internal details for 5xx |
-| Request Logger | `request-logger.ts` | UUID request ID, logs method/url/status/duration |
-| Security Headers | `security-headers.ts` | CSP `default-src 'none'`, X-Frame-Options, HSTS, etc. |
-| Metrics | `metrics.ts` | Prometheus metrics at `GET /metrics` (optional) |
-| Root Page | `root-page.ts` | Neutral `/`, `/robots.txt`, `/favicon.ico` (no product leakage) |
-| Health Check | `health.ts` | DB + Redis connectivity check at `/health` |
-| Readiness | `ready.ts` | Readiness probe for container orchestration |
-| Admin Auth | `admin-auth.ts` | JWT Bearer validation for `/api/admin/*` routes |
-| Admin CORS | `admin-cors.ts` | CORS handling for `/api/admin/*` (configurable origins) |
-| Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints |
-| Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes |
-| Token Rate Limiter | `token-rate-limiter.ts` | Rate limiting for token endpoints |
-| Tenant Resolver | `tenant-resolver.ts` | Cache-first org lookup from URL slug |
-| Client Secret Hash | `client-secret-hash.ts` | SHA-256 pre-hash for `client_secret_post` |
-| OIDC CORS | `oidc-cors.ts` | CORS handling for OIDC endpoints |
+| Middleware         | File                    | Purpose                                                         |
+| ------------------ | ----------------------- | --------------------------------------------------------------- |
+| Error Handler      | `error-handler.ts`      | Global try/catch, hides internal details for 5xx                |
+| Request Logger     | `request-logger.ts`     | UUID request ID, logs method/url/status/duration                |
+| Security Headers   | `security-headers.ts`   | CSP `default-src 'none'`, X-Frame-Options, HSTS, etc.           |
+| Metrics            | `metrics.ts`            | Prometheus metrics at `GET /metrics` (optional)                 |
+| Root Page          | `root-page.ts`          | Neutral `/`, `/robots.txt`, `/favicon.ico` (no product leakage) |
+| Health Check       | `health.ts`             | DB + Redis connectivity check at `/health`                      |
+| Readiness          | `ready.ts`              | Readiness probe for container orchestration                     |
+| Admin Auth         | `admin-auth.ts`         | Opaque Bearer lookup and canonical Admin authority validation   |
+| Admin CORS         | `admin-cors.ts`         | CORS handling for `/api/admin/*` (configurable origins)         |
+| Admin Rate Limiter | `admin-rate-limiter.ts` | Rate limiting for admin API endpoints                           |
+| Require Permission | `require-permission.ts` | Granular RBAC permission checks for admin routes                |
+| Public Branding    | `public-branding.ts`    | Anonymous validated logo and favicon delivery                   |
+| Token Rate Limiter | `token-rate-limiter.ts` | Rate limiting for token endpoints                               |
+| Tenant Resolver    | `tenant-resolver.ts`    | Cache-first org lookup from URL slug                            |
+| Client Secret Hash | `client-secret-hash.ts` | SHA-256 pre-hash for `client_secret_post`                       |
+| OIDC CORS          | `oidc-cors.ts`          | CORS handling for OIDC endpoints                                |
 
 ## Multi-Tenancy Model
 
@@ -180,7 +245,6 @@ The tenant resolver middleware (`packages/server/src/middleware/tenant-resolver.
 5. Return appropriate HTTP status based on org status:
    - `active` → proceed
    - `suspended` → 403
-   - `archived` → 410
    - Not found → pass through (no match)
 
 ## Graceful Shutdown

@@ -67,9 +67,11 @@ const sampleUser: User = {
   updatedAt: new Date('2025-01-01'),
 };
 
-/** Helper to create a context with applicationId in OIDC client metadata */
+const APPLICATION_ID = '11111111-1111-4111-8111-111111111111';
+
+/** Create an OIDC context carrying Porta's private application identifier. */
 function createCtxWithApp(applicationId: string) {
-  return { oidc: { client: { applicationId } } };
+  return { oidc: { client: { 'urn:porta:internal_application_id': applicationId } } };
 }
 
 // ---------------------------------------------------------------------------
@@ -132,7 +134,7 @@ describe('claims() — standard claims', () => {
       phone_number: '+31612345678',
     });
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createCtxWithApp(APPLICATION_ID), 'user-uuid-123');
     const claims = await account!.claims('id_token', 'openid profile email');
 
     expect(claims.sub).toBe('user-uuid-123');
@@ -144,19 +146,21 @@ describe('claims() — standard claims', () => {
   it('should parse space-separated scope string', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createCtxWithApp(APPLICATION_ID), 'user-uuid-123');
     await account!.claims('id_token', 'openid profile email phone');
 
-    expect(buildUserClaims).toHaveBeenCalledWith(
-      sampleUser,
-      ['openid', 'profile', 'email', 'phone'],
-    );
+    expect(buildUserClaims).toHaveBeenCalledWith(sampleUser, [
+      'openid',
+      'profile',
+      'email',
+      'phone',
+    ]);
   });
 
   it('should handle empty scope string', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createCtxWithApp(APPLICATION_ID), 'user-uuid-123');
     await account!.claims('id_token', '');
 
     expect(buildUserClaims).toHaveBeenCalledWith(sampleUser, []);
@@ -171,21 +175,21 @@ describe('claims() — RBAC claims', () => {
   it('should include roles and permissions arrays', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createCtxWithApp(APPLICATION_ID), 'user-uuid-123');
     const claims = await account!.claims('id_token', 'openid');
 
     expect(claims.roles).toEqual(['admin', 'editor']);
     expect(claims.permissions).toEqual(['docs:articles:read', 'docs:articles:write']);
   });
 
-  it('should call RBAC builders with user ID', async () => {
+  it('should call RBAC builders with the user and application IDs', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createCtxWithApp(APPLICATION_ID), 'user-uuid-123');
     await account!.claims('id_token', 'openid');
 
-    expect(buildRoleClaims).toHaveBeenCalledWith('user-uuid-123');
-    expect(buildPermissionClaims).toHaveBeenCalledWith('user-uuid-123');
+    expect(buildRoleClaims).toHaveBeenCalledWith('user-uuid-123', APPLICATION_ID);
+    expect(buildPermissionClaims).toHaveBeenCalledWith('user-uuid-123', APPLICATION_ID);
   });
 
   it('should include empty arrays when user has no roles/permissions', async () => {
@@ -193,7 +197,7 @@ describe('claims() — RBAC claims', () => {
     vi.mocked(buildRoleClaims).mockResolvedValue([]);
     vi.mocked(buildPermissionClaims).mockResolvedValue([]);
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createCtxWithApp(APPLICATION_ID), 'user-uuid-123');
     const claims = await account!.claims('id_token', 'openid');
 
     expect(claims.roles).toEqual([]);
@@ -210,13 +214,13 @@ describe('claims() — custom claims', () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
     vi.mocked(buildCustomClaims).mockResolvedValue({ department: 'Engineering', level: 5 });
 
-    const ctx = createCtxWithApp('app-uuid-1');
+    const ctx = createCtxWithApp(APPLICATION_ID);
     const account = await findAccount(ctx, 'user-uuid-123');
     const claims = await account!.claims('id_token', 'openid');
 
     expect(claims.department).toBe('Engineering');
     expect(claims.level).toBe(5);
-    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', 'app-uuid-1', 'id_token');
+    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', APPLICATION_ID, 'id_token');
   });
 
   it('should skip custom claims when no applicationId in context', async () => {
@@ -226,8 +230,10 @@ describe('claims() — custom claims', () => {
     const claims = await account!.claims('id_token', 'openid');
 
     expect(buildCustomClaims).not.toHaveBeenCalled();
-    // Should still have standard + RBAC claims
-    expect(claims.roles).toBeDefined();
+    expect(claims.roles).toEqual([]);
+    expect(claims.permissions).toEqual([]);
+    expect(buildRoleClaims).not.toHaveBeenCalled();
+    expect(buildPermissionClaims).not.toHaveBeenCalled();
   });
 
   it('should skip custom claims when ctx has no oidc property', async () => {
@@ -239,37 +245,50 @@ describe('claims() — custom claims', () => {
     expect(buildCustomClaims).not.toHaveBeenCalled();
   });
 
+  it('should fail closed when internal application metadata is malformed', async () => {
+    vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
+
+    const account = await findAccount(createCtxWithApp('not-a-uuid'), 'user-uuid-123');
+    const claims = await account!.claims('id_token', 'openid');
+
+    expect(claims.roles).toEqual([]);
+    expect(claims.permissions).toEqual([]);
+    expect(buildRoleClaims).not.toHaveBeenCalled();
+    expect(buildPermissionClaims).not.toHaveBeenCalled();
+    expect(buildCustomClaims).not.toHaveBeenCalled();
+  });
+
   it('should map "id_token" use to id_token token type', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
     vi.mocked(buildCustomClaims).mockResolvedValue({});
 
-    const ctx = createCtxWithApp('app-uuid-1');
+    const ctx = createCtxWithApp(APPLICATION_ID);
     const account = await findAccount(ctx, 'user-uuid-123');
     await account!.claims('id_token', 'openid');
 
-    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', 'app-uuid-1', 'id_token');
+    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', APPLICATION_ID, 'id_token');
   });
 
   it('should map "userinfo" use to userinfo token type', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
     vi.mocked(buildCustomClaims).mockResolvedValue({});
 
-    const ctx = createCtxWithApp('app-uuid-1');
+    const ctx = createCtxWithApp(APPLICATION_ID);
     const account = await findAccount(ctx, 'user-uuid-123');
     await account!.claims('userinfo', 'openid profile');
 
-    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', 'app-uuid-1', 'userinfo');
+    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', APPLICATION_ID, 'userinfo');
   });
 
   it('should default to access_token for unknown use values', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
     vi.mocked(buildCustomClaims).mockResolvedValue({});
 
-    const ctx = createCtxWithApp('app-uuid-1');
+    const ctx = createCtxWithApp(APPLICATION_ID);
     const account = await findAccount(ctx, 'user-uuid-123');
     await account!.claims('introspection', 'openid');
 
-    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', 'app-uuid-1', 'access_token');
+    expect(buildCustomClaims).toHaveBeenCalledWith('user-uuid-123', APPLICATION_ID, 'access_token');
   });
 });
 
@@ -288,7 +307,7 @@ describe('claims() — merged output', () => {
     vi.mocked(buildPermissionClaims).mockResolvedValue(['docs:read']);
     vi.mocked(buildCustomClaims).mockResolvedValue({ department: 'Engineering' });
 
-    const ctx = createCtxWithApp('app-uuid-1');
+    const ctx = createCtxWithApp(APPLICATION_ID);
     const account = await findAccount(ctx, 'user-uuid-123');
     const claims = await account!.claims('id_token', 'openid email');
 

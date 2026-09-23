@@ -1,6 +1,6 @@
 # Infrastructure
 
-> **Last Updated**: 2026-08-26
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -218,6 +218,8 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 | Redis        | Vertical (single instance), Redis Cluster for high availability |
 
 **Stateless server**: Porta stores no in-memory state between requests (except the 60-second system config cache). Multiple instances can run behind a load balancer.
+
+A committed configuration save clears the saving instance's cache immediately. Other healthy instances read the new runtime values after their cached entry expires, on their next read, within the 60-second cache bound. There is no broadcast invalidation or automatic restart. Changes to the five provider-startup TTLs require restarting every instance; existing artifact and Redis counter expiries are not rewritten. See the [configuration reference](../reference/configuration.md).
 
 **Session affinity**: Not required. OIDC sessions are stored in Redis, accessible from any Porta instance.
 

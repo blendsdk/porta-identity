@@ -3,11 +3,6 @@ import { z } from 'zod';
 import { bulkUserStatusSchema } from '../../../src/routes/bulk.js';
 import { bulkStatusChange } from '../../../src/lib/bulk-operations.js';
 import {
-  importData,
-  importManifestSchema,
-  ImportOperationError,
-} from '../../../src/lib/data-import.js';
-import {
   exportData,
   ExportOperationError,
   type ExportOptions,
@@ -34,17 +29,12 @@ import type {
   BulkEntityType,
   ExportActionOutcome,
   ExportEntityType,
-  ImportActionOutcome,
-  ImportEntityOutcome,
-  ImportMode,
   JsonObject,
   JsonValue,
 } from './administrative-data-contract.js';
 
 /** Stable dependency text used only inside test-owned database triggers. */
 const DEPENDENCY_ERROR_CANARY = 'postgresql://private-host/assurance_dependency_failure';
-/** Protected value which must never survive manifest validation. */
-const SECRET_CANARY = 'assurance-secret-value';
 /** Private audit value which must not cross the export boundary. */
 const AUDIT_PRIVATE_CANARY = 'assurance-private-audit-value';
 
@@ -96,24 +86,6 @@ function parseCsvCells(source: string): string[] {
   return cells;
 }
 
-/** Map a production import row to the immutable public observation shape. */
-function importEntity(value: Readonly<Record<string, unknown>>): ImportEntityOutcome {
-  const naturalKey = typeof value.slug === 'string' ? value.slug : '';
-  const entityType = typeof value.type === 'string' ? value.type : '';
-  const changedFields = Array.isArray(value.changes)
-    ? value.changes.filter((item): item is string => typeof item === 'string')
-    : [];
-  return {
-    entityType,
-    naturalKey,
-    changedFields,
-    ...(typeof value.credentialWillBeGenerated === 'boolean'
-      ? { credentialWillBeGenerated: value.credentialWillBeGenerated }
-      : {}),
-    ...(typeof value.id === 'string' ? { publicIdentifier: value.id } : {}),
-  };
-}
-
 /** Ensure each export request carries both required permission classes. */
 function exportAuthorized(entityType: ExportEntityType, permissions: readonly string[]): boolean {
   const entityPermission = {
@@ -130,7 +102,6 @@ function exportAuthorized(entityType: ExportEntityType, permissions: readonly st
 export class ProductionAdministrativeDataDriver implements AdministrativeDataSpecDriver {
   private fixture: AdministrativeDataFixture | null = null;
   private bulkFailureAfter: number | null = null;
-  private importFailureKey: string | null = null;
   private triggerNames: string[] = [];
 
   /** Remove test-owned triggers and leave the shared integration database reusable. */
@@ -145,7 +116,6 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
     await seedBaseData();
     await flushTestRedis();
     this.bulkFailureAfter = null;
-    this.importFailureKey = null;
 
     const alpha = await createTestOrganization({
       name: 'Administrative Alpha',
@@ -167,7 +137,7 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
     await createTestClientWithSecret(alpha.id, alphaApplication.id, {
       clientName: existingClientName,
       grantTypes: ['authorization_code'],
-      redirectUris: [],
+      redirectUris: ['https://client.example.test/callback'],
       responseTypes: ['code'],
       scope: 'openid',
       tokenEndpointAuthMethod: 'client_secret_post',
@@ -203,11 +173,8 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
       alphaUserIds: [firstUser.id, secondUser.id],
       bravoUserId: bravoUser.id,
       missingUserId: randomUUID(),
-      existingClientNaturalKey: existingClientName,
-      newClientNaturalKey: `new-client-${randomUUID()}`,
       actorId: actor.id,
       dependencyErrorCanary: DEPENDENCY_ERROR_CANARY,
-      secretCanary: SECRET_CANARY,
       auditPrivateCanary: AUDIT_PRIVATE_CANARY,
       formulaCanaries: ['=SUM(1,1)', ' +cmd', '-10+20', ' @payload'],
     });
@@ -257,51 +224,6 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
   /** Arrange a database failure at the next uncommitted bulk item. */
   public async failBulkDependencyAfter(committedItems: number): Promise<void> {
     this.bulkFailureAfter = committedItems;
-  }
-
-  /** Submit a manifest through strict parsing, tenant scope, and the production transaction. */
-  public async submitImport(
-    mode: ImportMode,
-    manifest: JsonValue,
-    scope?: { readonly organizationId: string },
-  ): Promise<ImportActionOutcome> {
-    const fixture = this.requireFixture();
-    const parsed = importManifestSchema.safeParse(manifest);
-    if (!parsed.success) return this.rejectedImport('import_manifest_invalid');
-    if (this.importFailureKey !== null) {
-      await this.installFailureTrigger('clients', 'client_name', this.importFailureKey, 'import');
-      this.importFailureKey = null;
-    }
-    try {
-      const result = await importData(parsed.data, mode, fixture.actorId, scope?.organizationId);
-      return {
-        accepted: true,
-        created: result.created.map((item) => importEntity(item)),
-        updated: result.updated.map((item) => importEntity(item)),
-        skipped: result.skipped.map((item) => importEntity(item)),
-        credentials: result.credentials.map((item) => jsonObject(item)),
-        publicError: null,
-      };
-    } catch (error) {
-      const code = error instanceof ImportOperationError ? error.code : 'import_execution_failed';
-      return this.rejectedImport(code);
-    }
-  }
-
-  /** Arrange a transaction failure at one client natural key. */
-  public async failImportAt(naturalKey: string): Promise<void> {
-    this.importFailureKey = naturalKey;
-  }
-
-  /** Create an ambiguous persisted natural key which the planner must reject. */
-  public async arrangeImportCollision(naturalKey: string): Promise<void> {
-    const fixture = this.requireFixture();
-    await createTestClient(fixture.alphaOrganizationId, fixture.alphaApplicationId, {
-      clientName: naturalKey,
-    });
-    await createTestClient(fixture.alphaOrganizationId, fixture.alphaApplicationId, {
-      clientName: naturalKey,
-    });
   }
 
   /** Submit an authorized export and independently retain its source scope. */
@@ -429,19 +351,6 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
     };
   }
 
-  /** Return a minimal rejected import envelope. */
-  private rejectedImport(code: string): ImportActionOutcome {
-    return {
-      accepted: false,
-      created: [],
-      updated: [],
-      skipped: [],
-      credentials: [],
-      errors: [{ code }],
-      publicError: code,
-    };
-  }
-
   /** Return a content-free export rejection. */
   private rejectedExport(code: string | null): ExportActionOutcome {
     return {
@@ -546,7 +455,7 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
       metadata: Record<string, unknown>;
     }>(
       `SELECT event_type, actor_id, metadata FROM audit_log
-       WHERE event_type LIKE 'admin.bulk.%' OR event_type = 'admin.import'
+       WHERE event_type LIKE 'admin.bulk.%'
        ORDER BY created_at, id`,
     );
     return result.rows.map((row) => {
@@ -572,7 +481,7 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
 
   /** Install one test-owned trigger which fails at a precise durable mutation boundary. */
   private async installFailureTrigger(
-    table: 'clients' | 'users',
+    table: 'users',
     column: 'client_name' | 'id',
     value: string,
     label: string,

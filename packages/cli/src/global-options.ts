@@ -61,19 +61,19 @@ export interface GlobalOptions {
 export function resolveServerUrl(options: GlobalOptions): string {
   // Priority 1: --server flag
   if (options.server) {
-    return normalizeUrl(options.server);
+    return normalizeServerOrigin(options.server).origin;
   }
 
   // Priority 2: PORTA_SERVER environment variable
   const envUrl = process.env.PORTA_SERVER;
   if (envUrl) {
-    return normalizeUrl(envUrl);
+    return normalizeServerOrigin(envUrl).origin;
   }
 
   // Priority 3: Credentials file
   const credentials = loadCredentials();
   if (credentials?.server) {
-    return normalizeUrl(credentials.server);
+    return normalizeServerOrigin(credentials.server).origin;
   }
 
   // Priority 4: No server configured
@@ -83,11 +83,24 @@ export function resolveServerUrl(options: GlobalOptions): string {
 }
 
 /**
- * Normalizes a URL by removing trailing slashes.
+ * Validates and canonicalizes an HTTPS server origin.
  *
- * @param url - The URL to normalize
- * @returns URL without trailing slash
+ * @param value - Candidate URL from CLI, environment, or credentials.
+ * @returns Canonical URL containing only scheme, host, and optional port.
+ * @throws Error when the value is not an HTTPS origin.
  */
-function normalizeUrl(url: string): string {
-  return url.replace(/\/+$/, '');
+export function normalizeServerOrigin(value: string | URL): URL {
+  const url = new URL(value);
+  if (
+    url.protocol !== 'https:' ||
+    url.username ||
+    url.password ||
+    !/^\/*$/.test(url.pathname) ||
+    url.search ||
+    url.hash
+  ) {
+    throw new Error('Porta server must be an HTTPS origin without credentials or a path.');
+  }
+  url.pathname = '/';
+  return url;
 }

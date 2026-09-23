@@ -16,11 +16,38 @@
  */
 
 import Router from '@koa/router';
+import { config } from '../config/index.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
-import { getPool } from '../lib/database.js';
-import { generateES256KeyPair } from '../lib/signing-keys.js';
+import { afterDatabaseCommit, getPool } from '../lib/database.js';
+import { encryptPrivateKey } from '../lib/signing-key-crypto.js';
+import { clearJwksCache, generateES256KeyPair } from '../lib/signing-keys.js';
+
+/**
+ * Generates and stores one encrypted active signing key in the current request transaction.
+ *
+ * Cache invalidation is registered only after the insert succeeds and therefore runs only after
+ * the surrounding Admin mutation commits.
+ *
+ * @returns Public identifiers used by the Admin response.
+ */
+async function createActiveSigningKey(): Promise<{ readonly id: string; readonly kid: string }> {
+  const keyPair = generateES256KeyPair();
+  const encrypted = encryptPrivateKey(keyPair.privateKeyPem, config.signingKeyEncryptionKey);
+
+  const result = await getPool().query<{ id: string; kid: string }>(
+    `INSERT INTO signing_keys
+       (kid, algorithm, public_key, private_key, private_key_iv, private_key_tag,
+        encrypted, status)
+     VALUES ($1, 'ES256', $2, $3, $4, $5, true, 'active')
+     RETURNING id, kid`,
+    [keyPair.kid, keyPair.publicKeyPem, encrypted.encrypted, encrypted.iv, encrypted.tag],
+  );
+  await afterDatabaseCommit(async () => clearJwksCache());
+
+  return result.rows[0]!;
+}
 
 // ---------------------------------------------------------------------------
 // Router factory
@@ -68,16 +95,7 @@ export function createKeysRouter(): Router {
 
   // ── POST /generate — Generate a new ES256 key pair ────────────────
   router.post('/generate', requirePermission(ADMIN_PERMISSIONS.KEY_GENERATE), async (ctx) => {
-    const keyPair = generateES256KeyPair();
-
-    const result = await getPool().query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status)
-       VALUES ($1, 'ES256', $2, $3, 'active')
-       RETURNING id, kid`,
-      [keyPair.kid, keyPair.publicKeyPem, keyPair.privateKeyPem],
-    );
-
-    const row = result.rows[0] as { id: string; kid: string };
+    const row = await createActiveSigningKey();
     ctx.status = 201;
     ctx.body = {
       data: {
@@ -97,16 +115,8 @@ export function createKeysRouter(): Router {
       `UPDATE signing_keys SET status = 'retired', retired_at = NOW() WHERE status = 'active'`,
     );
 
-    // Generate and insert new active key
-    const keyPair = generateES256KeyPair();
-    const result = await pool.query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status)
-       VALUES ($1, 'ES256', $2, $3, 'active')
-       RETURNING id, kid`,
-      [keyPair.kid, keyPair.publicKeyPem, keyPair.privateKeyPem],
-    );
-
-    const row = result.rows[0] as { id: string; kid: string };
+    // Generate and insert the replacement through the same request transaction.
+    const row = await createActiveSigningKey();
     ctx.status = 201;
     ctx.body = {
       data: {

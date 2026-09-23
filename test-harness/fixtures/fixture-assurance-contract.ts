@@ -9,7 +9,7 @@
 export type FixtureOrganizationId = 'alpha' | 'bravo' | 'super-admin';
 
 /** Ordinary account states needed by authentication and enumeration risk slices. */
-export type FixtureUserState = 'active' | 'locked' | 'suspended';
+export type FixtureUserState = 'active' | 'locked';
 
 /** Administrative permission sets represented by distinct actors. */
 export type AdministrativePermissionSet = 'full' | 'limited' | 'unprivileged';
@@ -277,7 +277,8 @@ export interface TenantResourceObservation {
 /** One independently observed organization-scoped user-route result. */
 export interface TenantUserRouteCheck {
   /** Stable route family exercised without recording concrete identifiers. */
-  readonly operation: 'read' | 'update' | 'suspend' | 'roles' | 'two-factor' | 'export' | 'history';
+  readonly operation:
+    'read' | 'update' | 'deactivate' | 'roles' | 'two-factor' | 'export' | 'history';
   /** Foreign tenant targets must be indistinguishable from absent users. */
   readonly status: 'not-found';
 }

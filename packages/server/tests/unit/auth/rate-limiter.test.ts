@@ -315,8 +315,8 @@ describe('rate-limiter', () => {
       const config = await loadLoginRateLimitConfig();
 
       expect(config).toEqual({ max: 15, windowSeconds: 600 });
-      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_login_max', 10);
-      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_login_window', 900);
+      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_login_max');
+      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_login_window');
     });
 
     it('should use default values when system_config returns defaults', async () => {
@@ -339,8 +339,8 @@ describe('rate-limiter', () => {
       const config = await loadMagicLinkRateLimitConfig();
 
       expect(config).toEqual({ max: 5, windowSeconds: 900 });
-      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_magic_link_max', 5);
-      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_magic_link_window', 900);
+      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_magic_link_max');
+      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_magic_link_window');
     });
   });
 
@@ -353,8 +353,8 @@ describe('rate-limiter', () => {
       const config = await loadPasswordResetRateLimitConfig();
 
       expect(config).toEqual({ max: 5, windowSeconds: 900 });
-      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_password_reset_max', 5);
-      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_password_reset_window', 900);
+      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_password_reset_max');
+      expect(getSystemConfigNumber).toHaveBeenCalledWith('rate_limit_password_reset_window');
     });
   });
 });

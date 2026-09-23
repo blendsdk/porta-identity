@@ -32,6 +32,21 @@ const baseSchema = z.object({
     .union([z.boolean(), z.string()])
     .default(true)
     .transform((val) => (typeof val === 'string' ? val === 'true' || val === '1' : val)),
+  // Number of trusted reverse-proxy hops in front of the server. When the server
+  // trusts proxy headers, Koa uses this to read the client IP from the right side
+  // of X-Forwarded-For: a directly connected client can otherwise supply the
+  // leftmost value and rotate its rate-limit identity on every request. Set this
+  // to the exact number of trusted proxies that append to X-Forwarded-For. The
+  // default of 1 matches the standard single TLS-terminating proxy deployment.
+  // A value that is too low collapses the rate-limit budget and audit address of
+  // every client behind the nearest proxy; a value that is too high lets a client
+  // control the resolved IP again. 0 trusts the entire header. The mitigation
+  // assumes a trusted proxy always appends and that the server itself is not
+  // directly reachable. Blank or whitespace input falls back to the default.
+  trustProxyHops: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.coerce.number().int().min(0).max(10).default(1),
+  ),
   twoFactorEncryptionKey: z
     .string()
     .length(64, 'TWO_FACTOR_ENCRYPTION_KEY must be 64 hex characters (32 bytes)')
@@ -82,6 +97,18 @@ export const configSchema = baseSchema.superRefine((data, ctx) => {
   // Only enforce in production
   if (data.nodeEnv !== 'production') return;
 
+  // These keys protect different classes of encrypted data. The emergency
+  // escape hatch may relax operational checks, but it must not merge the two
+  // cryptographic domains.
+  const tfe = data.twoFactorEncryptionKey;
+  if (tfe && data.signingKeyEncryptionKey.toLowerCase() === tfe.toLowerCase()) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['twoFactorEncryptionKey'],
+      message: 'SIGNING_KEY_ENCRYPTION_KEY and TWO_FACTOR_ENCRYPTION_KEY must use different values',
+    });
+  }
+
   // Escape hatch for incident response — caller logs a loud error
   if (process.env.PORTA_SKIP_PROD_SAFETY === 'true') return;
 
@@ -108,7 +135,6 @@ export const configSchema = baseSchema.superRefine((data, ctx) => {
   // ── R3 + R4: 2FA encryption key ──────────────────────────────────
   // Any org that ever enables 2FA needs this key to decrypt existing
   // TOTP secrets, so it is unconditionally required in production.
-  const tfe = data.twoFactorEncryptionKey;
   if (!tfe) {
     ctx.addIssue({
       code: 'custom',
@@ -173,7 +199,8 @@ export const configSchema = baseSchema.superRefine((data, ctx) => {
     ctx.addIssue({
       code: 'custom',
       path: ['smtp', 'host'],
-      message: 'SMTP_HOST points at a dev inbox (MailHog); configure a real SMTP relay for production',
+      message:
+        'SMTP_HOST points at a dev inbox (MailHog); configure a real SMTP relay for production',
     });
   }
 });

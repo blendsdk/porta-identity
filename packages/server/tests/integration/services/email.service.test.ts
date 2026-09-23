@@ -46,13 +46,7 @@ describe('Email Service (Integration)', () => {
       familyName: 'Tester',
     });
 
-    testOrg = {
-      id: org.id,
-      slug: org.slug,
-      brandingCompanyName: org.brandingCompanyName,
-      brandingLogoUrl: org.brandingLogoUrl,
-      brandingPrimaryColor: org.brandingPrimaryColor,
-    };
+    testOrg = org;
     testUser = {
       id: user.id,
       email: user.email,

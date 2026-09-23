@@ -2,7 +2,7 @@
 # Sole writer: the setup-codeops skill. Schema: _shared/layout-convention.md
 codeopsLayout: nested
 layoutVersion: "3.0.0"
-integrationBranch: main
+integrationBranch: develop
 conventions:
   rdIdScope: per-feature
   taskIdPrefix: "T"

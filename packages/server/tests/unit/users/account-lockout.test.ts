@@ -213,7 +213,7 @@ describe('checkAutoUnlock', () => {
     expect(mockResetFailedLoginCount).not.toHaveBeenCalled();
   });
 
-  it('should return false for manually locked users', async () => {
+  it('should return false for a locked row not created by automatic lockout', async () => {
     const user = makeUser({
       status: 'locked',
       lockedReason: 'admin_action',
@@ -282,7 +282,7 @@ describe('checkAutoUnlock', () => {
     const result = await checkAutoUnlock(user);
 
     expect(result).toBe(true);
-    expect(getSystemConfigNumber).toHaveBeenCalledWith('lockout_duration_seconds', 900);
+    expect(getSystemConfigNumber).toHaveBeenCalledWith('lockout_duration_seconds');
   });
 
   it('should return false when lockedAt is null (edge case)', async () => {

@@ -37,6 +37,7 @@ function loadConfig(): AppConfig {
     },
     logLevel: process.env.LOG_LEVEL,
     trustProxy: process.env.TRUST_PROXY,
+    trustProxyHops: process.env.TRUST_PROXY_HOPS,
     twoFactorEncryptionKey: process.env.TWO_FACTOR_ENCRYPTION_KEY,
     signingKeyEncryptionKey: process.env.SIGNING_KEY_ENCRYPTION_KEY,
     // ADMIN_CORS_ORIGINS is a comma-separated list of allowed origins for the admin API.

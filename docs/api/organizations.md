@@ -12,18 +12,19 @@ POST /api/admin/organizations
 
 **Request body:**
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | Organization display name |
-| `slug` | string | | URL slug (auto-generated from name if omitted) |
-| `default_locale` | string | | Default locale (e.g., `en`) |
-| `default_login_methods` | string[] | | Login methods: `["password", "magic_link"]` |
+| Field                 | Type     | Required | Description                                        |
+| --------------------- | -------- | -------- | -------------------------------------------------- |
+| `name`                | string   | ✅       | Organization display name                          |
+| `slug`                | string   |          | URL slug (auto-generated from name if omitted)     |
+| `defaultLocale`       | string   |          | Default locale (e.g., `en`)                        |
+| `defaultLoginMethods` | string[] |          | Non-empty selection of `password` and `magic_link` |
+| `branding`            | object   |          | Optional initial branding settings                 |
 
 ```json
 {
   "name": "Acme Corp",
-  "default_locale": "en",
-  "default_login_methods": ["password", "magic_link"]
+  "defaultLocale": "en",
+  "defaultLoginMethods": ["password", "magic_link"]
 }
 ```
 
@@ -51,14 +52,14 @@ GET /api/admin/organizations
 
 **Query parameters:**
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `page` | integer | Page number (default: 1) |
-| `pageSize` | integer | Items per page (default: 20) |
-| `search` | string | Search by name or slug |
-| `status` | string | Filter by status |
-| `sort` | string | Sort field (`name`, `createdAt`) |
-| `order` | string | Sort direction (`asc`, `desc`) |
+| Parameter   | Type    | Description                       |
+| ----------- | ------- | --------------------------------- |
+| `page`      | integer | Page number (default: 1)          |
+| `pageSize`  | integer | Items per page (default: 20)      |
+| `search`    | string  | Search by name or slug            |
+| `status`    | string  | Filter by status                  |
+| `sortBy`    | string  | Sort field (`name`, `created_at`) |
+| `sortOrder` | string  | Sort direction (`asc`, `desc`)    |
 
 **Response:** `200 OK`
 
@@ -99,13 +100,19 @@ PUT /api/admin/organizations/:id
 
 **Request body:** Any subset of mutable fields:
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Display name |
-| `default_locale` | string | Default locale |
-| `default_login_methods` | string[] | Default login methods |
+| Field                 | Type     | Description                                                   |
+| --------------------- | -------- | ------------------------------------------------------------- |
+| `name`                | string   | Display name                                                  |
+| `defaultLocale`       | string   | Default locale                                                |
+| `defaultLoginMethods` | string[] | Non-empty selection of `password` and `magic_link`            |
+| `branding`            | object   | Nested branding fields; use `null` to clear an optional field |
 
-**Response:** `200 OK` — Updated organization object.
+The optional `branding` object accepts `logoUrl`, `faviconUrl`, `primaryColor`, `companyName`, and
+`customCss`. Image URLs are fallbacks for organizations without an uploaded asset. Porta accepts
+HTTPS URLs. In non-production environments it also accepts HTTP URLs for exact loopback hosts only.
+Credentials in image URLs and other URL schemes are rejected.
+
+**Response:** `200 OK` — `{ "data": <updated organization> }`.
 
 ## Suspend Organization
 
@@ -115,7 +122,7 @@ POST /api/admin/organizations/:id/suspend
 
 Suspends the organization. All authentication requests will be rejected.
 
-**Response:** `200 OK`
+**Response:** `204 No Content`
 
 ## Activate Organization
 
@@ -125,21 +132,7 @@ POST /api/admin/organizations/:id/activate
 
 Reactivates a suspended organization.
 
-**Response:** `200 OK`
-
-## Archive Organization
-
-```http
-POST /api/admin/organizations/:id/archive
-```
-
-Permanently archives the organization. **This action is irreversible.**
-
-**Response:** `200 OK`
-
-::: danger
-Archiving is permanent. An archived organization cannot be reactivated.
-:::
+**Response:** `204 No Content`
 
 ## Update Branding
 
@@ -149,88 +142,47 @@ PUT /api/admin/organizations/:id/branding
 
 **Request body:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `logo_url` | string | Logo URL |
-| `favicon_url` | string | Favicon URL |
-| `primary_color` | string | Primary color (hex, e.g., `#0078d4`) |
-| `company_name` | string | Company display name |
-| `custom_css` | string | Custom CSS for login pages |
+| Field          | Type           | Description                                                  |
+| -------------- | -------------- | ------------------------------------------------------------ |
+| `logoUrl`      | string or null | External fallback logo URL, or `null` to clear it            |
+| `faviconUrl`   | string or null | External fallback favicon URL, or `null` to clear it         |
+| `primaryColor` | string or null | Six-digit hex color such as `#0078d4`, or `null`             |
+| `companyName`  | string or null | Company display name, or `null` to use the organization name |
+| `customCss`    | string or null | Existing custom template CSS, up to 10 KB                    |
 
-**Response:** `200 OK` — Updated organization with branding fields.
+Uploaded logo and favicon assets take precedence over `logoUrl` and `faviconUrl`. The URLs remain
+configured fallbacks and are used again if the matching uploaded asset is deleted.
 
-## Get Branding
+**Permission:** `admin:org:update`
 
-```http
-GET /api/admin/organizations/:id/branding
-```
+**Response:** `200 OK` — `{ "data": <updated organization> }`.
 
-**Response:** `200 OK` — Branding fields for the organization.
+The SDK exposes the same operation as
+`porta.branding.updateSettings(organizationId, input)` and returns the complete updated
+`Organization`. Branding settings are otherwise read from the organization resource; there is no
+separate branding-settings read endpoint. `GET /:id/branding` belongs to the branding-assets API
+and returns asset metadata.
 
-## Destroy Organization
+## Delete Organization
 
 ```http
 DELETE /api/admin/organizations/:idOrSlug
 ```
 
-Permanently hard-deletes an organization and all child entities via PostgreSQL CASCADE. The super-admin organization is protected and cannot be deleted.
+Permanently deletes an organization and its owned users, clients, assignments, credentials, and
+security data in one database transaction. Affected sessions are revoked. The super-admin
+organization is protected and cannot be deleted.
 
-**Permission:** `ORG_ARCHIVE`
+**Permission:** `admin:org:delete`
 
-**Query parameters:**
+**Response:** `204 No Content`
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `dry-run` | boolean | If `true`, return cascade counts without deleting |
-
-### Dry Run Response
-
-```http
-DELETE /api/admin/organizations/acme?dry-run=true
-```
-
-**Response:** `200 OK`
-
-```json
-{
-  "dryRun": true,
-  "organization": { "id": "...", "name": "Acme Corp", "slug": "acme", "..." },
-  "cascadeCounts": {
-    "applications": 3,
-    "clients": 5,
-    "users": 42,
-    "roles": 8,
-    "permissions": 16,
-    "claim_definitions": 4
-  }
-}
-```
-
-### Destroy Response
-
-```http
-DELETE /api/admin/organizations/acme
-```
-
-**Response:** `200 OK`
-
-```json
-{
-  "organization": { "id": "...", "name": "Acme Corp", "slug": "acme", "..." },
-  "cascadeCounts": {
-    "applications": 3,
-    "clients": 5,
-    "users": 42,
-    "roles": 8,
-    "permissions": 16,
-    "claim_definitions": 4
-  }
-}
-```
+The retained audit event follows the configured audit retention policy. It is not a surviving
+organization record.
 
 **Error responses:**
 
-| Status | Condition |
-|--------|-----------|
-| `400` | Attempting to destroy the super-admin organization |
-| `404` | Organization not found |
+| Status | Condition                                         |
+| ------ | ------------------------------------------------- |
+| `400`  | Attempting to delete the super-admin organization |
+| `404`  | Organization not found                            |

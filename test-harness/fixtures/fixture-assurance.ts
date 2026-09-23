@@ -99,7 +99,7 @@ async function observeTenantResource(
     const probes = [
       ['read', 'GET', foreignBase, undefined],
       ['update', 'PUT', foreignBase, { nickname: 'cross-tenant-write-must-not-persist' }],
-      ['suspend', 'POST', `${foreignBase}/suspend`, { reason: 'cross-tenant-status-probe' }],
+      ['deactivate', 'POST', `${foreignBase}/deactivate`, undefined],
       ['roles', 'GET', `${foreignBase}/roles`, undefined],
       ['two-factor', 'GET', `${foreignBase}/two-factor/status`, undefined],
       ['export', 'GET', `${foreignBase}/export`, undefined],
@@ -827,8 +827,7 @@ export async function observeFixtureState(): Promise<ObservedFixtureState> {
          JOIN clients c ON c.id = s.client_id
        UNION ALL
        SELECT 'token:' || COALESCE(p.grant_id, '') || ':' || p.type || ':' ||
-              COALESCE(c.client_name, CASE WHEN p.payload->>'clientId' = 'porta-admin-assurance'
-                                           THEN 'porta-admin-assurance' ELSE 'unmapped-client' END)
+              COALESCE(c.client_name, 'unmapped-client')
          FROM oidc_payloads p
          LEFT JOIN clients c ON c.client_id = p.payload->>'clientId'
      ) identity_rows ORDER BY identity`,

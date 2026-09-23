@@ -77,6 +77,13 @@ export async function createOidcProvider(params: {
   // in the Koa router (server.ts strips the /:orgSlug prefix).
   const provider = new Provider(config.issuerBaseUrl, configuration);
   registerProtocolSecurityObservers(provider);
+  provider.on('server_error', (context) => {
+    // oidc-provider owns its internal error response. When a Redis command fails during that
+    // request, expose only the correct availability status and retain its generic response body.
+    if (getRedis().status !== 'ready') {
+      context.status = 503;
+    }
+  });
 
   // Enable proxy mode — required for path-based multi-tenancy so the
   // provider trusts forwarded headers and handles URL rewriting correctly.

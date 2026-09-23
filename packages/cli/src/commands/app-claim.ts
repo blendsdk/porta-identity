@@ -11,6 +11,7 @@ import type { ClaimValueType } from '@portaidentity/sdk';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -35,7 +36,7 @@ interface ClaimShowArgs extends GlobalOptions {
   'claim-id': string;
 }
 
-interface ClaimArchiveArgs extends GlobalOptions {
+interface ClaimDeleteArgs extends GlobalOptions {
   'app-id': string;
   'claim-id': string;
 }
@@ -188,9 +189,9 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         },
       )
 
-      .command<ClaimArchiveArgs>(
-        'archive <app-id> <claim-id>',
-        'Archive a claim definition',
+      .command<ClaimDeleteArgs>(
+        'delete <app-id> <claim-id>',
+        'Permanently delete a claim definition and its values',
         (y) =>
           y
             .positional('app-id', {
@@ -204,16 +205,24 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               description: 'Claim definition ID',
             }),
         async (argv) => {
-          try {
-            const client = createClient(argv);
-            await client.customClaims.archive(argv['app-id'], argv['claim-id']);
-            success('Claim definition archived');
+            try {
+              const client = createClient(argv);
+              const claim = await client.customClaims.get(argv['app-id'], argv['claim-id']);
+              const confirmed = await confirm(
+                `Keep claim "${claim.name}" (${claim.slug}), or Delete ${claim.name}? This permanently deletes its user values.`,
+              );
+              if (!confirmed) {
+                warn('Operation cancelled');
+                return;
+              }
+              await client.customClaims.delete(argv['app-id'], argv['claim-id']);
+              success(`Claim definition deleted: ${claim.name} (${claim.slug})`);
           } catch (err) {
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Specify a claim subcommand: create, list, show, archive');
+      .demandCommand(1, 'Specify a claim subcommand: create, list, show, delete');
   },
   handler: () => {},
 };

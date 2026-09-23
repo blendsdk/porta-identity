@@ -11,7 +11,6 @@ import {
   findDefinitionById,
   findDefinitionByName,
   updateDefinition,
-  deleteDefinition,
   listDefinitionsByApplication,
   claimNameExists,
   upsertValue,
@@ -125,9 +124,9 @@ describe('insertDefinition', () => {
 
     const callArgs = mockPool.query.mock.calls[0][1];
     // Defaults: id_token=false, access_token=true, userinfo=true
-    expect(callArgs[4]).toBe(false);   // includeInIdToken
-    expect(callArgs[5]).toBe(true);    // includeInAccessToken
-    expect(callArgs[6]).toBe(true);    // includeInUserinfo
+    expect(callArgs[4]).toBe(false); // includeInIdToken
+    expect(callArgs[5]).toBe(true); // includeInAccessToken
+    expect(callArgs[6]).toBe(true); // includeInUserinfo
   });
 
   it('should pass null for optional description when not provided', async () => {
@@ -153,10 +152,9 @@ describe('findDefinitionById', () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe('def-uuid-1');
     expect(result!.claimName).toBe('department');
-    expect(mockPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('WHERE id = $1'),
-      ['def-uuid-1'],
-    );
+    expect(mockPool.query).toHaveBeenCalledWith(expect.stringContaining('WHERE id = $1'), [
+      'def-uuid-1',
+    ]);
   });
 
   it('should return null when not found', async () => {
@@ -237,36 +235,9 @@ describe('updateDefinition', () => {
   it('should throw when definition not found', async () => {
     mockPool.query.mockResolvedValue({ rows: [] });
 
-    await expect(
-      updateDefinition('nonexistent', { description: 'test' }),
-    ).rejects.toThrow('Claim definition not found');
-  });
-});
-
-describe('deleteDefinition', () => {
-  it('should return true when definition is deleted', async () => {
-    mockPool.query.mockResolvedValue({ rowCount: 1 });
-
-    const result = await deleteDefinition('def-uuid-1');
-    expect(result).toBe(true);
-    expect(mockPool.query).toHaveBeenCalledWith(
-      expect.stringContaining('DELETE FROM custom_claim_definitions'),
-      ['def-uuid-1'],
+    await expect(updateDefinition('nonexistent', { description: 'test' })).rejects.toThrow(
+      'Claim definition not found',
     );
-  });
-
-  it('should return false when definition not found', async () => {
-    mockPool.query.mockResolvedValue({ rowCount: 0 });
-
-    const result = await deleteDefinition('nonexistent');
-    expect(result).toBe(false);
-  });
-
-  it('should handle null rowCount gracefully', async () => {
-    mockPool.query.mockResolvedValue({ rowCount: null });
-
-    const result = await deleteDefinition('def-uuid-1');
-    expect(result).toBe(false);
   });
 });
 

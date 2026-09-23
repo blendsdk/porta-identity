@@ -15,7 +15,8 @@ export interface CustomClaimsDomain {
   get(appId: string, claimId: string): Promise<ClaimDefinition>;
   create(appId: string, input: CreateClaimDefinitionInput): Promise<ClaimDefinition>;
   update(appId: string, claimId: string, input: UpdateClaimDefinitionInput): Promise<ClaimDefinition>;
-  archive(appId: string, claimId: string): Promise<void>;
+  /** Permanently delete a claim definition through its parent-qualified route. */
+  delete(appId: string, claimId: string): Promise<void>;
 }
 
 export function createCustomClaimsDomain(transport: HttpTransport): CustomClaimsDomain {
@@ -41,8 +42,8 @@ export function createCustomClaimsDomain(transport: HttpTransport): CustomClaims
       const res = await transport.request({ method: 'PUT', path: `${base(appId)}/${claimId}`, body: input });
       return unwrapData<ClaimDefinition>(res.body);
     },
-    async archive(appId, claimId) {
-      await transport.request({ method: 'POST', path: `${base(appId)}/${claimId}/archive` });
+    async delete(appId, claimId) {
+      await transport.request({ method: 'DELETE', path: `${base(appId)}/${claimId}` });
     },
   };
 }

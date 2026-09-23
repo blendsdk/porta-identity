@@ -1,180 +1,110 @@
-# RBAC & Permissions
+# Role-based access control
 
-Porta provides a full **Role-Based Access Control (RBAC)** system that is scoped to applications. Roles and permissions are defined per application, and users are assigned roles within their organization context.
+Porta uses role-based access control (RBAC) in two related contexts:
 
-## Data Model
+- Application RBAC describes authority inside an application that uses Porta for sign-in.
+- Porta Admin RBAC controls who may operate Porta itself.
+
+Both use roles and permissions, but application ownership prevents an external application's role
+from becoming Porta Admin authority.
+
+## Data model
 
 ```mermaid
 erDiagram
-    APPLICATION ||--o{ ROLE : "has"
-    APPLICATION ||--o{ PERMISSION : "has"
-    ROLE ||--o{ ROLE_PERMISSION : "maps to"
-    PERMISSION ||--o{ ROLE_PERMISSION : "maps to"
-    USER ||--o{ USER_ROLE : "assigned"
-    ROLE ||--o{ USER_ROLE : "assigned to"
-
-    ROLE {
-        uuid id
-        uuid application_id
-        string name
-        string slug
-        string description
-        boolean is_system
-    }
-
-    PERMISSION {
-        uuid id
-        uuid application_id
-        string name
-        string slug
-        string description
-    }
-
-    ROLE_PERMISSION {
-        uuid role_id
-        uuid permission_id
-    }
-
-    USER_ROLE {
-        uuid user_id
-        uuid role_id
-    }
+    APPLICATION ||--o{ ROLE : owns
+    APPLICATION ||--o{ PERMISSION : owns
+    APPLICATION_MODULE o|--o{ PERMISSION : scopes
+    ROLE ||--o{ ROLE_PERMISSION : maps
+    PERMISSION ||--o{ ROLE_PERMISSION : maps
+    USER ||--o{ USER_ROLE : receives
+    ROLE ||--o{ USER_ROLE : assigns
 ```
 
-## Key Concepts
+A role and a permission each belong to exactly one application. A permission may additionally
+belong to one module of that same application. Role-permission mappings cannot cross the
+application boundary. User-role assignments are made for a user in one organization, while the
+assigned role keeps its application owner.
 
-### Applications Scope Roles
+This means two applications may both define `admin`, `viewer`, or any other role slug. Those values
+remain independent.
 
-Roles and permissions are defined **per application**, not globally. This means:
+## Roles, permissions, and assignments
 
-- An ERP application can have roles like `erp-admin`, `accountant`, `viewer`
-- A CRM application can have roles like `sales-manager`, `support-agent`
-- Role names don't conflict across applications
+A role groups authority under an application-defined claim value such as `GROUP_BILLING_ADMIN`. A
+permission describes one operation using the exact value the application expects, such as
+`CAN_READ_INVOICE`, `billing:invoice:read`, or `access-that-resource`. Porta trims surrounding
+whitespace but preserves case and internal characters. Values must be unique within their
+application; deciding their naming convention is the application developer's responsibility.
 
-### Organization Scope Assignments
+The common setup flow is:
 
-User-role assignments are checked within the **organization context**. A user in Organization A with the `admin` role has no authority in Organization B.
+1. Create roles and permissions beneath an application.
+2. Map the required permissions to each role.
+3. Assign roles directly to users in an organization.
 
-### System Roles
+Assignments and mappings are direct. Porta does not add role inheritance, nested groups, deny
+rules, policy expressions, or a delegation engine.
 
-Some roles are marked as **system roles** (`is_system = true`). These are created during bootstrap and cannot be deleted. The most important system role is `porta-admin`, which grants access to the Admin API.
+## OIDC claims
 
-## How Roles Appear in Tokens
-
-When a user authenticates, their roles are included in the access token and ID token under the `roles` claim:
+An OIDC client belongs to one application. During token and UserInfo claim generation, Porta uses
+that trusted ownership to include only role and permission slugs from the client's application.
 
 ```json
 {
   "sub": "user-uuid",
   "email": "alice@example.com",
-  "roles": [
-    {
-      "application": "erp",
-      "roles": ["admin", "accountant"]
-    },
-    {
-      "application": "crm",
-      "roles": ["viewer"]
-    }
-  ]
+  "roles": ["GROUP_BILLING_ADMIN"],
+  "permissions": ["CAN_READ_INVOICE", "CAN_WRITE_INVOICE"]
 }
 ```
 
-Roles are included when the `roles` scope is requested during the authorization flow.
+Porta never combines authority from all applications into one OIDC response. If the internal client
+application context is absent or malformed, `roles` and `permissions` are empty arrays. The
+internal application identifier itself is not exposed in tokens, UserInfo, introspection,
+discovery, rendered authentication output, errors, or logs.
 
-## Permission Resolution
+Claim arrays contain unique values. Your application should authorize against these
+application-scoped permission slugs. It does not
+need to fetch a second global permission graph for every request.
 
-Permissions are attached to roles through **role-permission mappings**. When checking authorization in your application:
+## Porta Admin authority
 
-1. Get the user's roles from the token
-2. Look up the permissions for those roles (via Porta's API or cache them)
-3. Check if the required permission is present
+Porta's own control plane is the canonical `porta-admin` application. Its built-in roles are:
 
-```mermaid
-flowchart LR
-    A[User authenticates] --> B[Token includes roles]
-    B --> C[Your app receives token]
-    C --> D{Check permission}
-    D -->|Has permission| E[Allow access]
-    D -->|Missing permission| F[Deny access]
-```
+| Role               | Slug                | Purpose                                       |
+| ------------------ | ------------------- | --------------------------------------------- |
+| Super Admin        | `porta-super-admin` | All Porta Admin capabilities                  |
+| Organization Admin | `porta-org-admin`   | Organization lifecycle and statistics         |
+| User Admin         | `porta-user-admin`  | Users, invitations, assignments, and sessions |
+| Application Admin  | `porta-app-admin`   | Applications, clients, RBAC, and claims       |
+| Auditor            | `porta-auditor`     | Read-only administration and audit access     |
 
-## Managing RBAC
+The legacy canonical `porta-admin` role retains super-admin behavior. A role with the same slug in
+another application does not grant Admin access.
 
-### Via Admin API
+Admin authorization uses the canonical application identity, static built-in capability sets, and
+an assignment ceiling: an administrator cannot assign a canonical Admin role that grants
+capabilities they do not have. Generic CRUD cannot alter the canonical built-in definitions;
+initialization and reset own them.
 
-```bash
-# Create a role
-POST /api/admin/applications/{appId}/roles
-{ "name": "Sales Manager", "description": "Can manage sales pipeline" }
+## Authority changes
 
-# Create a permission
-POST /api/admin/applications/{appId}/permissions
-{ "name": "deals:write", "description": "Create and edit deals" }
+Adding a role or permission mapping invalidates the affected caches. Removing a user role,
+role-permission mapping, role, or permission is an authority reduction. Porta commits the database
+change in a short transaction, revokes affected database grants, and performs targeted Redis
+cleanup for affected users. Unrelated users are not logged out.
 
-# Assign permission to role
-POST /api/admin/applications/{appId}/roles/{roleId}/permissions
-{ "permissionId": "..." }
+Mutation responses report `reauthenticationRequired` when the authenticated administrator removed
+authority from their own active session. The Admin UI then clears protected state and asks that
+administrator to sign in again. If a client cannot determine whether a mutation completed, it must
+reload authoritative state and must not replay the mutation automatically.
 
-# Assign role to user
-POST /api/admin/organizations/{orgId}/users/{userId}/roles
-{ "roleId": "..." }
-```
+## Administration surfaces
 
-### Via CLI
+The embedded `porta admin` application exposes Roles and Permissions tabs beneath Application
+details. User details exposes one Roles dialog for direct assignment and removal. The conventional
+CLI and SDK provide the same direct operations for scripts and agents.
 
-```bash
-# Create role and permission
-porta app role create --app-id <id> --name "Sales Manager"
-porta app permission create --app-id <id> --name "deals:write"
-
-# Assign permission to role
-porta app role assign-perm --app-id <id> --role-id <id> --permission-id <id>
-
-# Assign role to user
-porta user roles assign --org-id <id> --user-id <id> --role-id <id>
-```
-
-## Granular Admin Roles
-
-Porta's admin API uses a **granular role-based permission system** for fine-grained access control. The system ships with 5 built-in admin roles and 17+ permissions across 6 domains.
-
-### Built-in Admin Roles
-
-| Role | Slug | Description |
-| --- | --- | --- |
-| **Super Admin** | `porta-super-admin` | Full access to all admin operations. Automatically assigned to the initial admin user during `porta init`. |
-| **Organization Manager** | `porta-org-manager` | Manages organizations, users, and their assignments. Cannot modify system config or signing keys. |
-| **Application Manager** | `porta-app-manager` | Manages applications, clients, roles, permissions, and claims. Cannot modify users or organizations. |
-| **Auditor** | `porta-auditor` | Read-only access to all resources plus audit logs and stats. Cannot modify any data. |
-| **Support** | `porta-support` | Can view users and organizations, manage sessions. Limited write access for user support tasks. |
-
-### Permission Domains
-
-Permissions are organized by domain with standard CRUD-style operations:
-
-| Domain | Permissions | Description |
-| --- | --- | --- |
-| **Organizations** | `org:create`, `org:read`, `org:update`, `org:suspend`, `org:archive` | Organization lifecycle management |
-| **Users** | `user:create`, `user:read`, `user:update`, `user:suspend`, `user:invite` | User account management |
-| **Applications** | `app:create`, `app:read`, `app:update`, `app:archive` | Application configuration |
-| **Clients** | `client:create`, `client:read`, `client:update`, `client:revoke` | OIDC client management |
-| **System** | `config:read`, `config:write`, `key:read`, `key:rotate`, `audit:read` | System configuration and operations |
-| **Sessions** | `session:read`, `session:revoke` | Active session management |
-
-### Legacy Compatibility
-
-The original `porta-admin` role is automatically mapped to `porta-super-admin` permissions for backward compatibility. Existing deployments that used the `porta-admin` role will continue to work with full admin access after upgrading.
-
-### Super-Admin Protection
-
-The super-admin user (first user created via `porta init`) is protected from destructive operations:
-
-- Cannot be suspended, locked, or deactivated
-- Cannot be deleted
-- Cannot have their admin role removed
-- The super-admin user ID is stored in `system_config` as `super_admin_user_id`
-
-## Caching
-
-Role and permission lookups are cached in Redis with automatic invalidation when assignments change. This ensures that token generation remains fast even with complex RBAC hierarchies.
+See [Roles and Permissions API](/api/rbac) for endpoint shapes and result contracts.

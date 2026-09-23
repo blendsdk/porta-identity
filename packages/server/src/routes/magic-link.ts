@@ -30,6 +30,7 @@ import { consumeAuthorizedMagicLink } from '../auth/token-repository.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
+import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { generateCsrfToken } from '../auth/csrf.js';
 import { invalidateUserCache } from '../users/cache.js';
 import { createMagicLinkSession } from '../auth/magic-link-session.js';
@@ -81,22 +82,6 @@ const DEFAULT_MAGIC_LINK_ROUTE_DEPENDENCIES: MagicLinkRouteDependencies = {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-/**
- * Build branding context from organization data.
- *
- * @param org - Organization with branding fields
- * @returns Branding context for templates
- */
-function buildBrandingFromOrg(org: Organization) {
-  return {
-    logoUrl: org.brandingLogoUrl,
-    faviconUrl: org.brandingFaviconUrl,
-    primaryColor: org.brandingPrimaryColor ?? '#3B82F6',
-    companyName: org.brandingCompanyName ?? org.name,
-    customCss: org.brandingCustomCss,
-  };
-}
 
 /**
  * Parse the optional interaction query without normalizing malformed input into standalone use.
@@ -298,13 +283,14 @@ async function renderSuccessPageForAuth(
   try {
     const csrfToken = generateCsrfToken();
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
       orgSlug: org.slug,
     };
 
+    ctx.state.brandingImageSources = context.branding.imageSources;
     const html = await renderPage('magic-link-success', context);
     ctx.status = 200;
     ctx.type = 'text/html';
@@ -339,7 +325,7 @@ async function renderErrorPageForAuth(
   try {
     const csrfToken = generateCsrfToken();
     const context: TemplateContext = {
-      branding: buildBrandingFromOrg(org),
+      branding: await resolveEffectiveBranding(org),
       locale,
       t,
       csrfToken,
@@ -347,6 +333,7 @@ async function renderErrorPageForAuth(
       errorMessage,
     };
 
+    ctx.state.brandingImageSources = context.branding.imageSources;
     const html = await renderPage('error', context);
     ctx.status = 400;
     ctx.type = 'text/html';

@@ -96,6 +96,12 @@ export interface ValidationExposureRawCase {
   readonly family: ValidationExposureFamily;
   readonly executionProfiles: readonly ValidationExposureExecutionProfile[];
   readonly proxyTrust: 'not-applicable' | 'trusted' | 'untrusted';
+  /**
+   * Boundary that produces the externally visible rejection. `approved-ingress` marks a request the
+   * reverse proxy answers before it reaches Porta, so the case legitimately has no Porta response
+   * header contract and no Porta decision log. Omitted cases are answered by Porta.
+   */
+  readonly answeredBy?: 'porta' | 'approved-ingress';
   readonly harnessArrangement:
     | 'none'
     | 'real-oidc-interaction'
@@ -112,6 +118,14 @@ export interface ValidationExposureRawCase {
   readonly expected: ValidationExposureExpectedOutcome;
   readonly independentStateObservations: readonly string[];
   readonly prohibitedSideEffects: readonly string[];
+  /**
+   * P1-only state observations when the live boundary cannot observe the full production-exposure
+   * set (for example cookie and rate-limit identity at `/health`). Absent means the shared list is
+   * authoritative for every lane.
+   */
+  readonly p1IndependentStateObservations?: readonly string[];
+  /** P1-only prohibited effects, when the P1 boundary cannot observe the full set. */
+  readonly p1ProhibitedSideEffects?: readonly string[];
   readonly requiredLogFields: readonly string[];
   readonly forbiddenLogFields: readonly string[];
   readonly recoveryExpectations: readonly string[];

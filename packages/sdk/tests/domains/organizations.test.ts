@@ -125,41 +125,11 @@ describe('domains/organizations', () => {
       });
     });
 
-    it('archive calls POST /organizations/:id/archive', async () => {
+    it('delete calls DELETE /organizations/:id', async () => {
       const orgs = createOrganizationsDomain(transport);
-      await orgs.archive('org-1');
+      await orgs.delete('org-1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/archive',
-      });
-    });
-
-    it('restore calls POST /organizations/:id/restore', async () => {
-      const orgs = createOrganizationsDomain(transport);
-      await orgs.restore('org-1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/restore',
-      });
-    });
-  });
-
-  // ── destroy ─────────────────────────────────────────────────
-  describe('destroy', () => {
-    it('calls DELETE /organizations/:id', async () => {
-      transport = mockTransport({ body: { deleted: true, counts: { users: 5 } } });
-      const orgs = createOrganizationsDomain(transport);
-      const result = await orgs.destroy('org-1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/organizations/org-1', params: undefined,
-      });
-      expect(result).toEqual({ deleted: true, counts: { users: 5 } });
-    });
-
-    it('passes dryRun param', async () => {
-      transport = mockTransport({ body: { deleted: false, counts: { users: 5 } } });
-      const orgs = createOrganizationsDomain(transport);
-      await orgs.destroy('org-1', { dryRun: true });
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/organizations/org-1', params: { dryRun: true },
+        method: 'DELETE', path: '/organizations/org-1',
       });
     });
   });

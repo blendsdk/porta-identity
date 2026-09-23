@@ -710,8 +710,8 @@ describe('interaction routes', () => {
       );
     });
 
-    it('should show error when user is suspended', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'suspended' };
+    it('should show error when user is inactive', async () => {
+      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'inactive' };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
 
       const provider = createMockProvider();
@@ -940,7 +940,7 @@ describe('interaction routes', () => {
     });
 
     it('should not send email for non-active user (enumeration prevention)', async () => {
-      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'suspended' };
+      const mockUser = { id: 'user-uuid-1', email: 'user@test.com', status: 'inactive' };
       vi.mocked(userService.getUserByEmail).mockResolvedValue(mockUser as never);
 
       const provider = createMockProvider();

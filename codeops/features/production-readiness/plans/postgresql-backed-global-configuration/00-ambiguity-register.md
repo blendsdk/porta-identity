@@ -1,0 +1,306 @@
+# Ambiguity Register: PostgreSQL-Backed Global Configuration
+
+> **Status**: All decisions resolved; AR-23 and AR-24 corrections verified
+> **Last Updated**: 2026-09-17 20:26
+
+| #     | Category                     | Ambiguity / Gap                                                                                                              | Options Presented                                                                                                                                                                                                                                                                                                                                                             | User Decision                                                                                                                                                                                                     | Status      |
+| ----- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
+| AR-1  | Scope                        | What is the planning target and modification boundary?                                                                       | Implement all RD-03 Must/Should criteria within `production-readiness`; read related code/docs for context; modify only this plan set and the feature roadmap during planning.                                                                                                                                                                                                | Imported from approved RD-03 and the user's instruction to proceed.                                                                                                                                               | ✅ Resolved |
+| AR-2  | Scope & security             | Which values are editable, and what stays external or internal?                                                              | Closed 18-key catalog / arbitrary keys; keep bootstrap, infrastructure, root secrets, and internal rows outside the public surface.                                                                                                                                                                                                                                           | Imported from requirements AR-13–AR-14 and approved RD-03 AC-01–AC-10. Use the closed catalog and uniform non-enumerating errors.                                                                                 | ✅ Resolved |
+| AR-3  | Technical                    | How do runtime changes propagate?                                                                                            | Existing process-local cache with local post-commit clear / distributed invalidation machinery.                                                                                                                                                                                                                                                                               | Imported from requirements AR-14/AR-19 and PF-010. Keep the existing 60-second cache, clear locally after commit, and require restart for provider-startup lifetimes.                                             | ✅ Resolved |
+| AR-4  | Technical                    | How is the catalog shared across workspaces and SQL?                                                                         | Server runtime catalog plus API-driven clients and contract tests / new shared package or generator.                                                                                                                                                                                                                                                                          | Imported from PF-007. Keep one server runtime catalog; SDK owns small public types; API metadata drives CLI/Admin UI; SQL parity is verified by tests.                                                            | ✅ Resolved |
+| AR-5  | Data & migration             | What happens to existing public configuration values?                                                                        | Overwrite all canonical keys with exact native JSONB defaults and delete obsolete public rows / inspect and preserve legacy values.                                                                                                                                                                                                                                           | Imported from PF-006 and approved RD-03 AC-15. Overwrite directly; keep internal rows; document Down as a no-op.                                                                                                  | ✅ Resolved |
+| AR-6  | Integration & audit          | Which transaction and audit boundary owns updates?                                                                           | Config routes own one existing transaction, one specialized audit row, and a post-commit cache clear / generic mutation wrapper or generalized audit framework.                                                                                                                                                                                                               | Imported from PF-004. Exclude config mutations from the generic wrapper and reuse existing transaction/audit/post-commit facilities.                                                                              | ✅ Resolved |
+| AR-7  | Data & integration           | How are supported locales defined and exposed?                                                                               | Small tested server allowlist with API `allowedValues` / runtime filesystem discovery.                                                                                                                                                                                                                                                                                        | Imported from PF-005. Use `SUPPORTED_LOCALES`, initially `en`, and verify every required namespace.                                                                                                               | ✅ Resolved |
+| AR-8  | Behavioral & edge cases      | When do changed duration and limit values affect existing state?                                                             | Apply the approved per-storage timing rules / rewrite database or Redis state.                                                                                                                                                                                                                                                                                                | Imported from PF-008–PF-009. Preserve absolute and Redis expiries; read recovery TTL at artifact creation; use current lockout duration on the next eligibility check; apply changed maxima on the next decision. | ✅ Resolved |
+| AR-9  | Behavioral                   | How do runtime fallback and authoritative Admin reads differ?                                                                | Runtime typed getters use catalog defaults with fixed safe warnings; Admin reads/updates fail with fixed safe `503` / return fallback values through Admin APIs.                                                                                                                                                                                                              | Imported from PF-002–PF-003. Keep runtime resilience separate from authoritative Admin responses.                                                                                                                 | ✅ Resolved |
+| AR-10 | API                          | What are successful single and batch response shapes?                                                                        | Single entry plus `restartRequired`; batch entries plus `restartRequired` / force both to arrays.                                                                                                                                                                                                                                                                             | Imported from PF-011. Use the natural single-resource and collection envelopes in RD-03.                                                                                                                          | ✅ Resolved |
+| AR-11 | UX                           | How is the global workspace reached and how are its four groups edited?                                                      | A: top-level `System Configuration…` menu command opening one full-page four-tab workspace with one workspace-wide Save/Cancel footer / B: one long form surface with the same footer.                                                                                                                                                                                        | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-12 | Behavioral & security        | What exact fixed public errors and runtime warning fields are planned?                                                       | A: safe `error` + required `code` (+ `requestId` on `503`), and warning `{ event: 'system-config-fallback', key, reason }` with `missing\|invalid\|unavailable` / B: codes only and one undifferentiated warning reason.                                                                                                                                                      | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-13 | CLI & UX                     | How does conventional `porta config` convert and explain values?                                                             | A: fetch catalog metadata, reject non-catalog keys, parse the positional string to the declared native scalar, and show type/range/mode in list/get output / B: add per-key generated subcommands.                                                                                                                                                                            | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-14 | Technical & naming           | What is the smallest implementation partition?                                                                               | A: one server catalog module plus focused edits to existing runtime/routes; extend existing SDK/CLI modules; add the established Admin UI service/state/workspace/controller quartet; migration `030`; no new package/framework / B: add a shared config subsystem or generator.                                                                                              | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-15 | Non-functional               | Which verification and coverage contract governs execution?                                                                  | A: RD-03 focused specs, affected workspace verifies, `yarn test:structure`, `yarn test:ui`, `yarn docs:build`, `yarn assurance:harness --project security --profile production-security`, clean-revision `yarn assurance:compat --select p1-admin`, and final `yarn verify`; use project coverage defaults / B: omit the separate UI, docs, security, or compatibility gates. | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-16 | UX                           | What exact derived duration text satisfies AC-21?                                                                            | A: show one largest exact whole unit (`60 seconds` → `1 minute`, `3600` → `1 hour`, `604800` → `7 days`); otherwise show exact seconds / B: build compound text such as `1 hour, 1 minute`.                                                                                                                                                                                   | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-17 | UX & naming                  | How are catalog labels and descriptions named?                                                                               | A: use concise human labels derived directly from the approved keys and one-sentence operational descriptions; keep exact key/type/unit/range/mode visible in metadata / B: expose technical key names as labels.                                                                                                                                                             | User accepted A.                                                                                                                                                                                                  | ✅ Resolved |
+| AR-18 | Execution workflow (runtime) | How can per-task automatic commits coexist with intentionally failing specification tests and green pre-commit gates?        | Defer automatic commit/push until the phase reaches a fully verified green checkpoint; keep specification-first ordering and per-task progress updates. Red-suite commits and weakened verification are rejected.                                                                                                                                                             | User approved: "you may, proceed" on 2026-09-16. Automatic commit/push at passing verification checkpoints; all gates and product scope unchanged.                                                                | ✅ Resolved |
+| AR-19 | Execution workflow (runtime) | How can mandatory production-security assurance run before commit when its provenance check requires a clean committed tree? | A: green root/workspace/structure/UI, unpublished local candidate commit, clean-revision security gate, push only after security passes / B: temporary clean verification worktree and candidate revision.                                                                                                                                                                    | User approved A: "i approve" on 2026-09-16. Timing exception only; all security gates remain mandatory before push.                                                                                               | ✅ Resolved |
+
+| AR-20 | Runtime verification | Existing session-expiry observer uses a retired string TTL; three forwarding observations remain registered incomplete. | A: align the existing observer to native 300 seconds after Phase 2, preserving natural-expiry assertions; B: separately accept only the exact registered observer gaps if all actual assertions and cleanup pass. | A verified. User accepted B: "i do, proceed with the rest" on 2026-09-16. Publish the qualified checkpoint and continue; retain incomplete classification. | ✅ Resolved |
+| AR-21 | Necessary security correction (runtime) | Runtime agent keys can escape the configuration mutation endpoint despite ConfigKey typing. | Encode the mutation key and reject bare dot segments before transport; add targeted domain/real-agent confinement regression. No registry, framework or backend change. | User: "i approve" on 2026-09-16. Apply the exact narrow correction, verify and re-review before publication, then continue. | ✅ Resolved |
+
+| AR-22 | Necessary specification correction (runtime) | Two application oracles confuse persistent menu text with editor visibility and omit a required portability capability fixture. | Check actual mounted configuration window instead of full-frame text absence; add `isSuperAdmin: false` to the other-workspace precondition. Keep production validation and original behavior/security assertions. | User: "i approve" on 2026-09-17. Exact two corrections authorized after independent challenge. | ✅ Resolved |
+| AR-23 | Necessary review correction and oracle enrollment (runtime) | Legal long duration / invalid help clips required startup guidance; old exact capability objects omit two approved fields. | Enlarge existing help column/derived minimum, add fitting-size implementation regressions, and mechanically enroll two config flags in existing session expected objects. No framework, permission change or weakened assertion. | User: "proceed until done" on 2026-09-17, responding to exact two-fix approval request. PTY failure remains separately blocking, not waived. | ✅ Resolved |
+| AR-24 | Necessary verification correction (runtime) | PTY collector snapshots output on child exit before streams necessarily close. | Collect on close, retaining all terminal-restoration and exit assertions; no production change or retry-away waiver. | User: "you may" on 2026-09-17. Exact one-line collector correction and required verification authorized. | ✅ Resolved |
+
+## Resolution Notes
+
+### AR-24: Complete PTY Output Before Restoration Assertions (runtime)
+
+**Category:** Necessary verification correction outside the existing approved test paths.
+**Status:** User approved with "you may" on 2026-09-17. Exact one-line collector change verified: focused PTY six, full CLI 1,419, structure 104 and browser 133 pass. No assertion or production code changed; original failure retained in evidence.
+
+Recommend changing only `packages/cli/tests/admin/application.pty.impl.test.ts:40` from child
+`exit` to `close` for output collection. Node's exit event need not mean stdout/stderr have closed;
+the existing collector therefore snapshots potentially incomplete output. Waiting for close
+observes complete output and preserves every exact terminal-restoration/exit assertion. No
+production code or additional machinery is needed. Independent read-only reviewer confirms this
+defect, but cannot conclusively attribute the one original SIGTERM failure to it: enter-screen
+readiness also precedes signal listener installation in the upstream host. Do not alter that
+readiness or production cleanup without demonstrated necessity and a further ruling.
+
+The original CLI gate failed the SIGTERM restoration case. After AR-23's authorized corrections,
+full CLI verify passes 1,419 cases; this does not waive or retry away the proven capture defect.
+Retain both logs. Exact expanded modification set: the single existing PTY implementation-test
+collector, this register/review/execution evidence and isolated feature roadmap. Re-run the PTY
+selector, CLI verify, structure and browser gates. If restoration still fails with complete output,
+investigate that failure rather than weaken the assertion or repeatedly retry it.
+
+Confidence: High for collector defect; unproven attribution of the original failure.
+Hardening: independent read-only diagnosis and direct native-host cleanup verification.
+
+### AR-23: Inline Help Geometry and Existing Capability Expectations (runtime)
+
+**Category:** Necessary correctness correction and mechanical immutable-oracle enrollment.
+**Status:** User approved with "proceed until done" on 2026-09-17. Exact corrections verified by 152 focused and 1,419 full CLI cases, lint/compiler/build; ONE fix-scoped re-review resolves RV-001 with no residual finding. No production permissions or existing equality assertions changed.
+
+Recommend enlarging only the existing fixed help width and derived minimum to fit the longest
+legal duration and invalid-state text, then adding fitting-size implementation regressions. RV-001
+is independently confirmed MAJOR: `system-config-workspace.ts:36,231` allocates 52 cells, whereas
+legal refresh lifetime `31535999` renders 60 and an invalid draft 57. Required restart guidance
+clips at the advertised fitting geometry. No new framework, scroller or responsive infrastructure.
+
+The broader CLI gate also finds 17 existing exact capability expectations missing the newly
+approved `canReadConfig`/`canUpdateConfig` fields (`session-service.ts:322–323`). Authorize only
+mechanical expected-object additions in `tests/admin/session.spec.test.ts` and `session.impl.test.ts`:
+false for unrelated/malformed claims, true for valid legacy `porta-admin`. Preserve exact equality,
+all existing security assertions, and production authorization behavior; no partial-match replacement.
+This directly required enrollment extends the phase's expected test modification set by two files.
+
+Independent challenger confirms both recommendations and the smallest correction boundary.
+Confidence: High. Hardening: independent correctness review plus security auditor challenge.
+Exact source/test scope: `system-config-workspace.ts`, existing
+`system-config-state.impl.test.ts` for geometry regression, the two existing session test files,
+this register/review/execution evidence and isolated feature roadmap. Re-run focused selectors,
+CLI verify, structure and browser gates; obtain one scoped correction re-review before publication.
+
+An additional PTY SIGTERM restoration failure remains separately unresolved and blocking. No
+PTY assertion change or failure waiver is proposed or authorized by this ruling. Investigate it
+with the original failure retained; any new necessary correction outside scope requires a ruling.
+
+### AR-22: Application Specification Boundary and Fixture Corrections (runtime)
+
+**Category:** Necessary specification-authoring correction; no product scope expansion.
+**Status:** User approved with "i approve" on 2026-09-17. Exact two corrections applied; no production permission validation changed. The corrected selector exposed an omitted inherited focus method in the shell adapter; direct delegation fixes that implementation defect within the existing shell task.
+
+Phase 4's full selector currently passes 32 of 34 cases. CLI source typecheck and focused lint
+pass. The new quartet, native drafts, measured DSL geometry, single batch, busy guard, reload,
+restart notice, dirty confirmation, permissions and shell wiring are implemented. No commit or
+push is made while this selector fails. Log: `/tmp/porta-config-phase4-green.log`.
+
+The clean-close assertion in `system-config-application.spec.test.ts:251` searches the entire
+terminal frame for absence of `System Configuration`, but the persistent menu correctly contains
+`System Configuration…` (`presentation.ts:268`). Its opening assertion can likewise match the
+menu instead of the actual editor. The smallest correction checks a mounted `Dialog` with that
+title when opened, and its absence after close, retaining the original focus-restoration assertion.
+
+The other-workspace fixture at `system-config-application.spec.test.ts:287` omits `isSuperAdmin`.
+Existing `portabilityCapabilities` requires an explicit boolean before opening that workspace
+(`portability-controller.ts:160–170`). Add `isSuperAdmin: false` to satisfy the intended precondition;
+retain all existing slot-gating assertions and existing production validation unchanged.
+
+Independent read-only challenger confirms both are authoring defects and the two corrections
+above are the smallest viable fix. Hiding/renaming the persistent menu or relaxing capability
+validation would alter valid production behavior merely to accommodate invalid tests; rejected.
+Confidence: High. Hardening: independent challenger verified the exact test and source boundaries.
+
+Exact proposed correction set: only the application specification's opening/closing window
+assertion boundary and missing false capability fixture; this register, execution evidence and
+isolated feature roadmap. No security assertion is removed or relaxed, no backend or framework
+is added. After approval, rerun all 34 immutable UI cases, continue the remaining implementation
+tests and gates, and obtain the mandatory phase correctness/security reviews before publication.
+
+### AR-21: Runtime Configuration Mutation Path Confinement (runtime)
+
+**Category:** Necessary security correction, not optional scope expansion.
+**Status:** User approved with "i approve" on 2026-09-16. The exact source/test/evidence set below
+is authorized. Phase 3 remains unpublished until verified remediation and scoped re-review pass.
+
+Security review SA-001 establishes that compile-time ConfigKey does not constrain unknown
+arguments forwarded by the existing agent executor. An unencoded `../applications/...` mutation
+key can normalize to an unrelated protected PUT route accepting the same `{ value }` body.
+Server RBAC still applies, but the configuration tool boundary is bypassed.
+
+Independent challenge confirms the demonstrated exploit and identifies the remaining bare-dot
+case: encodeURIComponent leaves `.` and `..` unchanged, so encoding alone cannot guarantee endpoint
+confinement. Recommend encoding the mutation key and rejecting those two bare segments before
+transport. Add traversal, supplied percent escapes, backslash and bare-dot regressions through the
+real domain/agent path. No registry, framework, backend change or broad agent refactor is needed.
+
+Exact proposed modification set: `packages/sdk/src/domains/config.ts`, added immutable regression
+cases in `packages/sdk/tests/domains/config.spec.test.ts`, this register, the Phase 3 review report,
+execution evidence and isolated feature roadmap; the existing opted-in incremental maintainer
+documentation hook remains applicable. Existing oracle assertions are not weakened. Verify SDK,
+structure and clean compatibility, then run one fix-scoped security/correctness re-review before
+publication. Phase 5 final gates remain mandatory.
+
+Confidence: High. Hardening: independent challenger confirms both the exploit and the smallest
+confining correction using read-only URL normalization checks. User approval is recorded above.
+
+**Resolution evidence:** Revision `73098270` passes all 558 SDK tests, 104 structure tests and six
+clean packed-client compatibility journeys with valid provenance, no forbidden output and complete
+cleanup. Both single fix-scoped reviews report no findings; the security auditor resolves SA-001.
+The Phase 3 review report owns exact logs/run identity. Publication and Phase 4 are authorized.
+
+### AR-20: Existing Security-Gate Contract Alignment (runtime)
+
+**Status:** A is verified. The user explicitly accepted B with "i do, proceed with the rest"
+on 2026-09-16. Publish the checkpoint and continue the remaining phases. Acceptance covers only
+the exact three registered baseline observer limitations below. Keep the incomplete classification;
+unexpected gaps, actual assertion failures, execution failures and cleanup failures remain blocking.
+
+**Corrected evidence:** A is verified on unpublished candidate
+`0b4a1f84ad70c229f0370241dbfb5a4d0ebc3bb2`. Production-security run
+`3b457f9a-2b30-49c8-9b5f-4d1cd1b6bc1a` completed with all 28 functional/security assertions
+passing, no failures or skips, and successful owned-stack cleanup. The collector records eight
+passes, zero product/execution failures and exactly the three registered forwarding observer
+limitations. Overall classification remains incomplete, exit 40. No unexpected gap remains.
+Log: `/tmp/porta-config-phase2-clean-production-security.log`.
+
+**Checkpoint recommendation:** Accept only B's exact registered baseline limitations, clearly
+reported as incomplete, and continue without unrelated harness remediation. This does not waive
+any actual assertion or claim full production-security qualification. Independent challenge and
+Phase 2 security review support this bounded classification. The user's explicit acceptance now
+permits publication and Phase 3 execution without expanding assurance scope.
+**Category:** Necessary existing test-contract alignment and evidence classification.
+
+The clean Phase 1 candidate `cde6cd5a` passed root verification and all 133 browser tests.
+Production-security returned exit 40. Its collector recorded eight passes, no product failures,
+three registered forwarding-observer gaps and no execution failures. A later session-expiry
+assertion failed at `human-auth-functional-session.ts:253`: its setup submits `{ value: '1' }`
+and waits 1.5 seconds. The approved catalog requires native integer session TTL at least 300.
+Runtime correctly rejects that legacy string and uses its safe default. Phase 1's legacy API
+accepts only strings; valid native updates require the already-planned Phase 2 API. This stale
+setup does not establish a product session-expiry vulnerability. Failed evidence remains in
+`/tmp/porta-config-phase1-clean-production-security.log`; cleanup completed, no push occurred.
+
+**Recommendation A:** Keep Phase 1 unpublished, continue approved Phase 2 specification-first
+work, and align only the existing observer setup to native `{ value: 300 }` plus its existing
+restart and a 301.5-second natural-expiry wait. Preserve every expiry/list assertion. The existing
+900-second suite budget accommodates the wait. Forced database/Redis expiry would change the
+natural configured-lifetime oracle and add machinery; it is rejected. Run root/UI and clean
+production-security verification at the complete Phase 2 checkpoint before publication.
+
+**Separate recommendation B:** If every actual assertion and cleanup passes, accept only the
+exact three pre-existing forwarding-observer gaps registered in `aggregate/registry.ts:10–49`
+for this feature checkpoint. Retain and disclose `incomplete`, never claim a full security pass.
+Unexpected gaps, assertion/execution/cleanup failures remain blocking. If not accepted, keep
+publication blocked pending separately authorized assurance remediation.
+
+**Exact scope amendment:** Existing
+`test-harness/assurance/tests/human-auth-functional-session.ts` setup only; this register,
+execution scope/checkpoint/evidence, testing-strategy enrollment and isolated feature roadmap.
+Phase 2 product/test targets are already approved. No security-bound relaxation, assertion change,
+new scenario, clock service, harness, worker or global policy rewrite is requested.
+
+Independent challenge supports A as the smallest oracle-preserving correction; independent
+audit classifies B's gaps as baseline observer limitations, not a new Phase 1 finding.
+Confidence: High. A is verified and B is explicitly accepted after the corrected gate. Do not
+expand assurance scope or describe the qualified evidence as a full production-security pass.
+
+### AR-19: Clean-Revision Assurance Ordering (runtime)
+
+**Category:** Execution workflow; narrow verification/commit timing exception.
+**Status:** Resolved. User explicitly approved the recommended timing exception on 2026-09-16.
+
+The production-security collector returned exit 30, `stage=collector`, with no observation artifact.
+The evidence writer calls `inspectFoundationProvenance()` in
+`test-harness/assurance/production-exposure/evidence.ts:157`; the provenance check in
+`test-harness/assurance/scripts/source-provenance.ts:59–65` rejects any dirty source tree.
+A read-only probe confirmed this exact rejection. Independent admission and constructor probes
+passed; no product-security assertion failure was identified. Failed gate evidence remains in
+`/tmp/porta-config-phase1-production-security.log`. The temporary diagnostic stack was stopped
+successfully; no test assertion or provenance check changed.
+
+**Recommendation:** After root/affected-workspace, structure and applicable UI gates pass, permit
+one unpublished local candidate commit. Run production-security against that clean exact commit;
+push only after security passes. On failure keep the candidate unpublished, preserve evidence,
+fix and verify without weakening assertions. This changes gate ordering only, not product scope
+or the requirement to pass every gate before publishing.
+
+**Alternative considered:** A temporary clean verification worktree/commit can preserve literal
+security-before-branch-commit ordering, but adds worktree/service/revision-transfer coordination
+without useful additional protection over an unpublished candidate.
+
+The independent challenger confirmed the recommendation as the smallest secure workflow.
+Confidence: High. Exact proposed modification set: this register and the execution plan's
+checkpoint timing policy/status/evidence. No global policy rewrite or security waiver is requested.
+
+**AR-1:** Planning target: `production-readiness/RD-03`. Context artifacts include the approved RD,
+its preflight report, requirements ambiguity register, existing plans, relevant source/tests, and
+operator/developer documentation. The planning modification set is this plan folder plus the
+feature roadmap. Upstream requirements remain read-only unless a necessary correction is proven
+and separately authorized.
+
+**AR-11:** Recommendation A follows the existing full-page workspace and tab patterns while keeping
+all dirty values in one state model. Save sends one batch containing every changed value; Cancel or
+workspace close uses the one approved discard confirmation. The footer remains visible while tabs
+change.
+
+**AR-12:** Recommendation A preserves the fixed public codes from RD-03 while giving operators a
+safe request correlation only for an unavailable store. The warning fields are bounded and contain
+neither stored content nor raw exceptions.
+
+**AR-13:** Recommendation A preserves the current `config set <key> <value>` command and uses the
+server-owned metadata already required by RD-03. Generated commands would duplicate the catalog and
+add machinery.
+
+**AR-14:** Recommendation A is the minimum-sufficient design grounded in the current direct config
+route/runtime modules and the Admin UI's existing focused-workspace pattern. Option B is outside the
+approved no-framework/no-generator boundary.
+
+**AR-15:** Recommendation A is the approved RD-03 verification contract plus the repository's
+documented docs and SDK/CLI compatibility gates. Specialized aggregate, coverage, mutation, fault,
+or stability tooling is not part of routine execution.
+
+**Gate confirmation:** On 2026-09-16, the user confirmed the complete register and accepted Option
+A for AR-11–AR-15. All earlier entries retain their imported approved authority.
+
+**AR-16:** Recommendation A is deterministic, keeps the exact stored seconds visible, and needs no
+duration parser or localization subsystem. Compound formatting adds presentation logic without
+improving configuration accuracy.
+
+**AR-17:** Recommendation A keeps the UI readable while preserving every exact technical field in
+API metadata and CLI output. The descriptions explain operational effect only; they do not create
+new behavior.
+
+**Final gate confirmation:** On 2026-09-16, the user accepted Option A for AR-16 and AR-17. The
+register is complete and the plan-authoring gate is open.
+
+## Approved Preflight Refinements
+
+On 2026-09-16 the user approved all nine simplified preflight corrections. PF-001 refines the SDK
+read signature to accept untrusted string keys while mutation keys remain closed. PF-002 refines
+AR-9 and RD-03 AC-14: a valid update may replace corrupt targeted content without reading the old
+value; missing rows and invalid readback still fail atomically. The exact upstream AC-14 amendment
+was explicitly approved. PF-003–PF-009 add direct cache completion protection, existing test
+enrollment/contract alignment, specification-first real migration coverage, a measured UI minimum
+with existing resize guidance, raw-text/native-value equality and the correct criterion count.
+No new architecture, framework, worker, compatibility or concurrent-editor behavior was approved.
+
+## Runtime Execution Checkpoint
+
+**AR-18:** The execution protocol requires commit/push after each verified task in auto-commit
+mode, while the approved phase first authors missing-feature specifications and records red.
+The commit skill and AGENTS.md prohibit committing failed workspace verification. The first new
+catalog specification imports a module deliberately absent until task 1.2.1; its red collection
+failure therefore cannot coexist with a green workspace test gate before that implementation.
+The smallest correction is commit timing only: retain separate specification/red/implementation/
+green tasks and automatic pushes, but checkpoint only after all applicable pre-commit gates pass.
+No task is represented as product-verified before its required verification succeeds.
+The exact modification set is this register, the execution plan's checkpoint policy and task
+states, and the feature roadmap. No new machinery, security waiver or product change is proposed.
+The independent specification author confirmed the conflict and recommended green checkpoints.
+The user explicitly approved this commit-timing correction. Specification-authoring tasks are
+verified by independent oracle review, formatting/lint and expected-red evidence, not represented
+as passing product behavior. Implementation tasks retain focused checks; automatic checkpoints
+wait for green specifications and every applicable pre-commit workspace/structure gate.

@@ -56,7 +56,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             .option('action', {
               type: 'string',
               describe: 'Status action',
-              choices: ['suspend', 'activate', 'deactivate', 'lock', 'unlock', 'archive'] as const,
+              choices: ['suspend', 'activate', 'deactivate'] as const,
               demandOption: true,
             })
             .option('ids', {
@@ -84,6 +84,15 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               return;
             }
 
+            if (argv['entity-type'] === 'users' && argv.action === 'suspend') {
+              printError('User bulk actions are activate or deactivate');
+              return;
+            }
+            if (argv['entity-type'] === 'organizations' && argv.action === 'deactivate') {
+              printError('Organization bulk actions are activate or suspend');
+              return;
+            }
+
             if (!argv.force) {
               const ok = await confirm(`${argv.action} ${ids.length} ${argv['entity-type']}?`);
               if (!ok) {
@@ -99,7 +108,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               // Route to organization bulk endpoint
               result = await client.bulk.organizationStatus({
                 ids,
-                action: argv.action as 'activate' | 'suspend' | 'archive',
+                action: argv.action as 'activate' | 'suspend',
                 reason: argv.reason,
               });
             } else {
@@ -110,9 +119,8 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
               result = await client.bulk.userStatus({
                 ids,
-                action: argv.action as 'activate' | 'deactivate' | 'suspend' | 'lock' | 'unlock',
+                action: argv.action as 'activate' | 'deactivate',
                 organizationId: argv['organization-id'],
-                reason: argv.reason,
               });
             }
 

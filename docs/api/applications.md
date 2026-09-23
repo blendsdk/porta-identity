@@ -56,10 +56,9 @@ PUT /api/admin/applications/:id
 
 **Response:** `200 OK`
 
-## Archive / Activate / Deactivate
+## Activate / Deactivate
 
 ```http
-POST /api/admin/applications/:id/archive
 POST /api/admin/applications/:id/activate
 POST /api/admin/applications/:id/deactivate
 ```
@@ -99,3 +98,29 @@ PUT /api/admin/applications/:id/modules/:moduleId
 ```http
 POST /api/admin/applications/:id/modules/:moduleId/deactivate
 ```
+
+### Delete Module
+
+```http
+DELETE /api/admin/applications/:appId/modules/:moduleId
+```
+
+Permanently deletes the module and cascades to its permissions and dependent links.
+
+**Permission:** `admin:module:delete`
+
+**Response:** `204 No Content`
+
+## Delete Application
+
+```http
+DELETE /api/admin/applications/:id
+```
+
+Permanently deletes the deployment-global application and its modules, clients, roles,
+permissions, claim definitions, and dependent security data. Affected sessions and protocol
+authority are revoked.
+
+**Permission:** `admin:app:delete`
+
+**Response:** `204 No Content`

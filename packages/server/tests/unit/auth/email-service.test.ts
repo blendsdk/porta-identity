@@ -14,6 +14,10 @@ vi.mock('../../../src/auth/email-transport.js', () => ({
   createSmtpTransport: vi.fn(),
 }));
 
+vi.mock('../../../src/auth/effective-branding.js', () => ({
+  resolveEffectiveBranding: vi.fn(),
+}));
+
 // Mock audit log — verify fire-and-forget audit entries
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
@@ -30,6 +34,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 }));
 
 import { renderEmail } from '../../../src/auth/email-renderer.js';
+import { resolveEffectiveBranding } from '../../../src/auth/effective-branding.js';
 import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import { logger } from '../../../src/lib/logger.js';
 import {
@@ -69,10 +74,20 @@ const TEST_USER: EmailUser = {
 /** Standard test organization with branding */
 const TEST_ORG: EmailOrganization = {
   id: 'org-456',
+  name: 'Acme Organization',
   slug: 'acme-corp',
+  status: 'active',
+  isSuperAdmin: false,
   brandingLogoUrl: 'https://acme.com/logo.png',
+  brandingFaviconUrl: null,
   brandingPrimaryColor: '#FF5733',
   brandingCompanyName: 'Acme Corp',
+  brandingCustomCss: null,
+  defaultLocale: 'en',
+  twoFactorPolicy: 'optional',
+  defaultLoginMethods: ['password'],
+  createdAt: new Date('2026-01-01T00:00:00.000Z'),
+  updatedAt: new Date('2026-01-01T00:00:00.000Z'),
 };
 
 /** Set up renderEmail to return predictable HTML/text */
@@ -93,6 +108,14 @@ describe('email-service', () => {
     // Inject mock transport to avoid SMTP initialization
     setEmailTransport(mockTransport);
     mockRender();
+    vi.mocked(resolveEffectiveBranding).mockImplementation(async (organization) => ({
+      companyName: organization.brandingCompanyName?.trim() || organization.name,
+      primaryColor: organization.brandingPrimaryColor?.trim() || '#3B82F6',
+      logoUrl: organization.brandingLogoUrl,
+      faviconUrl: organization.brandingFaviconUrl,
+      customCss: organization.brandingCustomCss,
+      imageSources: [],
+    }));
   });
 
   afterEach(() => {
@@ -221,7 +244,7 @@ describe('email-service', () => {
       );
     });
 
-    it('should fall back to org slug when brandingCompanyName is null', async () => {
+    it('should fall back to organization name when brandingCompanyName is null', async () => {
       const orgNoBranding: EmailOrganization = {
         ...TEST_ORG,
         brandingCompanyName: null,
@@ -231,7 +254,7 @@ describe('email-service', () => {
 
       expect(mockTransport.send).toHaveBeenCalledWith(
         expect.objectContaining({
-          subject: "You've been invited to acme-corp",
+          subject: "You've been invited to Acme Organization",
         }),
       );
     });
@@ -394,6 +417,35 @@ describe('email-service', () => {
   // -------------------------------------------------------------------------
 
   describe('branding context', () => {
+    it('should render and address email from the shared effective branding result', async () => {
+      vi.mocked(resolveEffectiveBranding).mockResolvedValueOnce({
+        companyName: 'Uploaded Brand',
+        primaryColor: '#102030',
+        logoUrl: 'https://porta.local/acme-corp/branding/logo',
+        faviconUrl: 'https://porta.local/acme-corp/branding/favicon',
+        customCss: null,
+        imageSources: ["'self'"],
+      });
+
+      await sendWelcomeEmail(TEST_USER, TEST_ORG, 'en');
+
+      expect(resolveEffectiveBranding).toHaveBeenCalledWith(TEST_ORG);
+      expect(renderEmail).toHaveBeenCalledWith(
+        'welcome',
+        'acme-corp',
+        expect.objectContaining({
+          orgName: 'Uploaded Brand',
+          branding: expect.objectContaining({
+            logoUrl: 'https://porta.local/acme-corp/branding/logo',
+            faviconUrl: 'https://porta.local/acme-corp/branding/favicon',
+          }),
+        }),
+      );
+      expect(mockTransport.send).toHaveBeenCalledWith(
+        expect.objectContaining({ subject: 'Welcome to Uploaded Brand' }),
+      );
+    });
+
     it('should use default primary color when org has none', async () => {
       const orgNoBranding: EmailOrganization = {
         ...TEST_ORG,
@@ -410,8 +462,8 @@ describe('email-service', () => {
         expect.objectContaining({
           branding: expect.objectContaining({
             primaryColor: '#3B82F6', // Default blue
-            logoUrl: '',
-            companyName: 'acme-corp', // Falls back to slug
+            logoUrl: null,
+            companyName: 'Acme Organization',
           }),
         }),
       );

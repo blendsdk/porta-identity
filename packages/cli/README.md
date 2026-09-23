@@ -4,9 +4,9 @@ The official command-line interface for the [Porta Identity Platform](https://gi
 
 ## Features
 
-- **26 command modules** — Full admin coverage: orgs, apps, clients, users, roles, permissions, claims, secrets, sessions, audit, and more
+- **28 command modules** — Full admin coverage: orgs, apps, clients, users, roles, permissions, claims, secrets, sessions, audit, and more
 - **OIDC authentication** — Secure login via Authorization Code + PKCE (opens your browser, no passwords stored)
-- **Declarative provisioning** — Set up entire environments from a single YAML/JSON file
+- **Selective portability** — Export and import strict JSON manifests with preview-first application
 - **Built on `@portaidentity/sdk`** — Type-safe API calls with automatic error handling
 - **JSON output mode** — Machine-readable output for scripting and CI/CD (`--json`)
 - **Shell completions** — Tab completion for Bash, Zsh, and Fish
@@ -60,36 +60,36 @@ Every command supports these flags:
 
 ### Authentication
 
-| Command        | Description                                              |
-| -------------- | -------------------------------------------------------- |
-| `porta login`  | Authenticate via OIDC (Auth Code + PKCE) — opens browser |
-| `porta logout` | Clear stored credentials                                 |
-| `porta whoami` | Display current identity (no network call)               |
+| Command        | Description                                                     |
+| -------------- | --------------------------------------------------------------- |
+| `porta login`  | Authenticate via OIDC (Auth Code + PKCE) — opens browser        |
+| `porta logout` | Clear stored credentials                                        |
+| `porta whoami` | Display current identity (no network call)                      |
+| `porta admin`  | Open the interactive organization and user administration shell |
 
 ### Organizations
 
-| Command                    | Description                                               |
-| -------------------------- | --------------------------------------------------------- |
-| `porta org list`           | List all organizations                                    |
-| `porta org create`         | Create a new organization                                 |
-| `porta org show <id>`      | Show organization details                                 |
-| `porta org update <id>`    | Update organization properties                            |
-| `porta org activate <id>`  | Activate an organization                                  |
-| `porta org suspend <id>`   | Suspend an organization                                   |
-| `porta org archive <id>`   | Archive an organization                                   |
-| `porta org destroy <slug>` | Permanently delete an organization and all child entities |
+| Command                   | Description                                           |
+| ------------------------- | ----------------------------------------------------- |
+| `porta org list`          | List all organizations                                |
+| `porta org create`        | Create a new organization                             |
+| `porta org show <id>`     | Show organization details                             |
+| `porta org update <id>`   | Update organization properties                        |
+| `porta org activate <id>` | Activate an organization                              |
+| `porta org suspend <id>`  | Suspend an organization                               |
+| `porta org delete <id>`   | Permanently delete an organization and its owned data |
 
 ### Applications
 
-| Command                   | Description                   |
-| ------------------------- | ----------------------------- |
-| `porta app list`          | List applications             |
-| `porta app create`        | Create a new application      |
-| `porta app show <id>`     | Show application details      |
-| `porta app update <id>`   | Update application properties |
-| `porta app activate <id>` | Activate an application       |
-| `porta app suspend <id>`  | Suspend an application        |
-| `porta app archive <id>`  | Archive an application        |
+| Command                   | Description                                          |
+| ------------------------- | ---------------------------------------------------- |
+| `porta app list`          | List applications                                    |
+| `porta app create`        | Create a new application                             |
+| `porta app show <id>`     | Show application details                             |
+| `porta app update <id>`   | Update application properties                        |
+| `porta app activate <id>` | Activate an application                              |
+| `porta app suspend <id>`  | Suspend an application                               |
+| `porta app delete <id>`   | Permanently delete an application and its owned data |
 
 **Nested: Roles** (`porta app role ...`)
 
@@ -99,50 +99,56 @@ Every command supports these flags:
 | `porta app role list <app-id>`                            | List roles                  |
 | `porta app role show <app-id> <role-id>`                  | Show role details           |
 | `porta app role update <app-id> <role-id>`                | Update a role               |
-| `porta app role archive <app-id> <role-id>`               | Archive a role              |
+| `porta app role delete <app-id> <role-id>`                | Permanently delete a role   |
 | `porta app role assign-perm <app-id> <role-id> <perm-id>` | Assign permission to role   |
 | `porta app role remove-perm <app-id> <role-id> <perm-id>` | Remove permission from role |
 
 **Nested: Permissions** (`porta app permission ...`)
 
-| Command                                           | Description             |
-| ------------------------------------------------- | ----------------------- |
-| `porta app permission create <app-id>`            | Create a permission     |
-| `porta app permission list <app-id>`              | List permissions        |
-| `porta app permission show <app-id> <perm-id>`    | Show permission details |
-| `porta app permission archive <app-id> <perm-id>` | Archive a permission    |
+| Command                                          | Description                     |
+| ------------------------------------------------ | ------------------------------- |
+| `porta app permission create <app-id>`           | Create a permission             |
+| `porta app permission list <app-id>`             | List permissions                |
+| `porta app permission show <app-id> <perm-id>`   | Show permission details         |
+| `porta app permission delete <app-id> <perm-id>` | Permanently delete a permission |
 
 **Nested: Claims** (`porta app claim ...`)
 
-| Command                                       | Description                |
-| --------------------------------------------- | -------------------------- |
-| `porta app claim create <app-id>`             | Create a claim definition  |
-| `porta app claim list <app-id>`               | List claim definitions     |
-| `porta app claim show <app-id> <claim-id>`    | Show claim details         |
-| `porta app claim update <app-id> <claim-id>`  | Update a claim definition  |
-| `porta app claim archive <app-id> <claim-id>` | Archive a claim definition |
+| Command                                      | Description                           |
+| -------------------------------------------- | ------------------------------------- |
+| `porta app claim create <app-id>`            | Create a claim definition             |
+| `porta app claim list <app-id>`              | List claim definitions                |
+| `porta app claim show <app-id> <claim-id>`   | Show claim details                    |
+| `porta app claim update <app-id> <claim-id>` | Update a claim definition             |
+| `porta app claim delete <app-id> <claim-id>` | Permanently delete a claim definition |
 
 **Nested: Modules** (`porta app module ...`)
 
-| Command                             | Description              |
-| ----------------------------------- | ------------------------ |
-| `porta app module list <app-id>`    | List application modules |
-| `porta app module enable <app-id>`  | Enable a module          |
-| `porta app module disable <app-id>` | Disable a module         |
+| Command                                        | Description                                     |
+| ---------------------------------------------- | ----------------------------------------------- |
+| `porta app module list <app-id>`               | List application modules                        |
+| `porta app module enable <app-id>`             | Enable a module                                 |
+| `porta app module disable <app-id>`            | Disable a module                                |
+| `porta app module delete <app-id> <module-id>` | Permanently delete a module and its permissions |
 
 ### Clients
 
-| Command                      | Description              |
-| ---------------------------- | ------------------------ |
-| `porta client list`          | List clients             |
-| `porta client create`        | Create a new client      |
-| `porta client show <id>`     | Show client details      |
-| `porta client update <id>`   | Update client properties |
-| `porta client activate <id>` | Activate a client        |
-| `porta client suspend <id>`  | Suspend a client         |
-| `porta client archive <id>`  | Archive a client         |
+| Command                        | Description                     |
+| ------------------------------ | ------------------------------- |
+| `porta client list`            | List clients                    |
+| `porta client create`          | Create a new client             |
+| `porta client show <id>`       | Show client details             |
+| `porta client update <id>`     | Update client properties        |
+| `porta client activate <id>`   | Activate a client               |
+| `porta client deactivate <id>` | Temporarily deactivate a client |
+| `porta client delete <id>`     | Permanently delete a client     |
 
 **Nested: Secrets** (`porta client secret ...`)
+
+The interactive `porta admin` client workspace uses focused Overview, Authentication, Protocol,
+Login experience, Credentials, and Lifecycle sections. Multi-field editors fill the Admin surface;
+secret generation supports 3, 6, 12, and 24 month presets, a custom calendar date, or Never. Secret
+plaintext is shown once and is never retained in the workspace.
 
 | Command                                              | Description                  |
 | ---------------------------------------------------- | ---------------------------- |
@@ -152,16 +158,16 @@ Every command supports these flags:
 
 ### Users
 
-| Command                                  | Description                   |
-| ---------------------------------------- | ----------------------------- |
-| `porta user list <org-id>`               | List users in an organization |
-| `porta user create <org-id>`             | Create a new user             |
-| `porta user show <org-id> <user-id>`     | Show user details             |
-| `porta user update <org-id> <user-id>`   | Update user properties        |
-| `porta user invite <org-id>`             | Send a user invitation        |
-| `porta user activate <org-id> <user-id>` | Activate a user               |
-| `porta user suspend <org-id> <user-id>`  | Suspend a user                |
-| `porta user archive <org-id> <user-id>`  | Archive a user                |
+| Command                                    | Description                   |
+| ------------------------------------------ | ----------------------------- |
+| `porta user list <org-id>`                 | List users in an organization |
+| `porta user create <org-id>`               | Create a new user             |
+| `porta user show <org-id> <user-id>`       | Show user details             |
+| `porta user update <org-id> <user-id>`     | Update user properties        |
+| `porta user invite <org-id>`               | Send a user invitation        |
+| `porta user deactivate <org-id> <user-id>` | Deactivate a user             |
+| `porta user activate <org-id> <user-id>`   | Activate a user               |
+| `porta user delete <org-id> <user-id>`     | Permanently delete a user     |
 
 **Nested: Roles** (`porta user role ...`)
 
@@ -196,15 +202,18 @@ Every command supports these flags:
 | `porta health`                                | Check server connectivity (no auth required)   |
 | `porta bulk <action>`                         | Bulk status operations on orgs/users           |
 | `porta exports download --entity-type <type>` | Export bounded allowlisted data as CSV or JSON |
+| `porta export manifest ...`                   | Export a selective portability manifest        |
+| `porta import manifest <path> --mode <mode>`  | Preview and import a portability manifest      |
 
-### Provisioning
+### Environment Portability
 
-| Command                         | Description                                    |
-| ------------------------------- | ---------------------------------------------- |
-| `porta provision --file <path>` | Apply a declarative YAML/JSON environment file |
+| Command                                      | Description                                      |
+| -------------------------------------------- | ------------------------------------------------ |
+| `porta export manifest`                      | Export selected categories to a strict JSON file |
+| `porta import manifest <path> --mode <mode>` | Preview, confirm, and apply a strict JSON file   |
 
-Supports `--mode merge|overwrite`, `--dry-run`, and `--json` flags. Provisioning files cannot
-contain passwords or other authentication material.
+Import modes are `keep-existing` and `update-existing`. Both flows support `--json`; `--yes`
+skips only the relevant file-replacement or apply confirmation.
 
 ### Utilities
 
@@ -233,45 +242,56 @@ porta login --server https://porta.example.com
 porta login --server https://porta.example.com --no-browser
 ```
 
-## Declarative Provisioning
+## Interactive Administration Shell
 
-Set up entire environments from a single YAML file:
-
-```yaml
-# provision.yaml
-organizations:
-  - name: Acme Corp
-    slug: acme
-    status: active
-    applications:
-      - name: Web Portal
-        slug: web-portal
-        clients:
-          - name: web-app
-            grant_types: [authorization_code]
-            redirect_uris: [https://app.acme.com/callback]
-        roles:
-          - name: Admin
-            permissions: [read, write, delete]
-          - name: Viewer
-            permissions: [read]
-    users:
-      - email: admin@acme.com
-        given_name: Admin
-        family_name: User
-        roles: [Admin]
-```
+`porta admin` opens the terminal administration shell for a Porta server.
 
 ```bash
-# Preview changes without applying
-porta provision --file provision.yaml --dry-run
-
-# Apply with merge mode (default)
-porta provision --file provision.yaml
-
-# Full overwrite mode
-porta provision --file provision.yaml --mode overwrite
+porta admin --server https://identity.example.com
 ```
+
+The command requires interactive stdin and stdout. It rejects `--json` and `--force`. Login uses
+the same OIDC Authorization Code with PKCE flow as `porta login`: the CLI opens a browser when
+available and offers the manual authorization URL/callback flow when it cannot.
+
+After verification, the organization chooser opens automatically without selecting an organization
+for you. Use the Organizations menu to switch context or create an organization from its name,
+optional slug, and optional default locale. Creation selects the returned organization immediately.
+The selected context is held only for the running shell and does not change authentication or grant
+permissions.
+
+When no verified session is available, the admin UI immediately opens an **Authentication
+required** dialog. Choose **Authenticate** (focused by default, so Enter works) to start the existing
+browser/manual OIDC flow, or choose **Quit**. The dialog returns after cancellation or a failed
+attempt, so the shell never leaves you on an unusable disabled screen.
+
+Press `F10` to open the hamburger menu containing `Who am I…`, `Reauthenticate`, and `Quit`.
+`Who am I…` shows the server-bound verified identity. After selecting an organization, the Users
+menu supports browse, search, status filters, create, invite, detail, history, profile, credentials,
+and lifecycle actions according to the verified permissions. Use `Ctrl-R` to reauthenticate;
+replacing credentials for a different server requires explicit confirmation.
+
+Use `--insecure` only for deliberate local testing. The shell displays a persistent warning because
+that flag disables TLS certificate validation.
+
+## Environment Portability
+
+Export selected data to a strict JSON manifest:
+
+```console
+porta export manifest \
+  --organization acme \
+  --category organizations \
+  --category applications_authorization \
+  --all-applications \
+  --output acme-porta.json
+
+porta import manifest acme-porta.json --mode keep-existing
+```
+
+Import always previews and validates before confirmation and apply. Existing client secrets,
+passwords, signing keys, sessions, recovery material, and control-plane records are never carried
+by the manifest. Newly created confidential clients return a generated secret once after commit.
 
 ## JSON Output
 
@@ -305,7 +325,7 @@ porta completion > ~/.config/fish/completions/porta.fish
 
 - [CLI Overview](https://blendsdk.github.io/porta-identity/cli/overview) — Architecture, installation, and authentication
 - [CLI Commands Reference](https://blendsdk.github.io/porta-identity/cli/organizations) — Detailed command documentation
-- [Provisioning Guide](https://blendsdk.github.io/porta-identity/cli/provisioning) — Declarative environment setup
+- [Environment Portability](https://blendsdk.github.io/porta-identity/cli/provisioning) — Selective manifest export and import
 - [Bootstrap Guide](https://blendsdk.github.io/porta-identity/cli/bootstrap) — Initial server setup with `porta init`
 
 ## Related Packages

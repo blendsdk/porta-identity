@@ -14,8 +14,6 @@
  * Status lifecycle rules:
  *   - suspend: active → suspended (super-admin blocked)
  *   - activate: suspended → active
- *   - archive: active|suspended → archived (super-admin blocked)
- *   - restore: archived → active
  */
 
 import type {
@@ -25,8 +23,6 @@ import type {
   BrandingInput,
   ListOrganizationsOptions,
   PaginatedResult,
-  CascadeCounts,
-  DestroyResult,
 } from './types.js';
 import {
   insertOrganization,
@@ -36,9 +32,13 @@ import {
   listOrganizations as repoList,
   listOrganizationsCursor as repoListCursor,
   slugExists,
-  hardDeleteOrganization,
-  getCascadeCounts as repoGetCascadeCounts,
+  captureOrganizationForDeletion,
+  deleteOrganizationCaptured,
 } from './repository.js';
+import type { OrganizationDeletionCapture } from './repository.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 import type { ListOrganizationsCursorOptions } from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
@@ -55,6 +55,7 @@ import { OrganizationNotFoundError, OrganizationValidationError } from './errors
 // clients service surface into the organizations module.
 import { LOGIN_METHODS, type LoginMethod } from '../clients/types.js';
 import { normalizeLoginMethods } from '../clients/resolve-login-methods.js';
+import { validateBrandingImageUrl } from './branding-url.js';
 
 // ---------------------------------------------------------------------------
 // Validation helpers (private)
@@ -75,18 +76,19 @@ function validateDefaultLoginMethods(
 ): LoginMethod[] | undefined {
   if (methods === undefined) return undefined;
   if (!Array.isArray(methods) || methods.length === 0) {
-    throw new OrganizationValidationError(
-      'defaultLoginMethods: must be a non-empty array',
-    );
+    throw new OrganizationValidationError('defaultLoginMethods: must be a non-empty array');
   }
   for (const m of methods) {
     if (!LOGIN_METHODS.includes(m)) {
-      throw new OrganizationValidationError(
-        `defaultLoginMethods: invalid method "${String(m)}"`,
-      );
+      throw new OrganizationValidationError(`defaultLoginMethods: invalid method "${String(m)}"`);
     }
   }
   return normalizeLoginMethods(methods);
+}
+
+/** Preserve absent or cleared URL fields while validating supplied strings. */
+function normalizeBrandingImageUrl(value: string | null | undefined): string | null | undefined {
+  return typeof value === 'string' ? validateBrandingImageUrl(value) : value;
 }
 
 // ---------------------------------------------------------------------------
@@ -129,17 +131,15 @@ export async function createOrganization(
 
   // Validate + normalize defaultLoginMethods (throws on invalid input).
   // Undefined → fall back to DB DEFAULT in the repository INSERT.
-  const defaultLoginMethods = validateDefaultLoginMethods(
-    input.defaultLoginMethods,
-  );
+  const defaultLoginMethods = validateDefaultLoginMethods(input.defaultLoginMethods);
 
   // Insert into database
   const org = await insertOrganization({
     name: input.name,
     slug,
     defaultLocale: input.defaultLocale ?? 'en',
-    brandingLogoUrl: input.branding?.logoUrl,
-    brandingFaviconUrl: input.branding?.faviconUrl,
+    brandingLogoUrl: normalizeBrandingImageUrl(input.branding?.logoUrl),
+    brandingFaviconUrl: normalizeBrandingImageUrl(input.branding?.faviconUrl),
     brandingPrimaryColor: input.branding?.primaryColor,
     brandingCompanyName: input.branding?.companyName,
     brandingCustomCss: input.branding?.customCss,
@@ -254,11 +254,16 @@ export async function updateOrganization(
 
   // Include branding fields if provided
   if (input.branding) {
-    if (input.branding.logoUrl !== undefined) updateData.brandingLogoUrl = input.branding.logoUrl;
-    if (input.branding.faviconUrl !== undefined) updateData.brandingFaviconUrl = input.branding.faviconUrl;
-    if (input.branding.primaryColor !== undefined) updateData.brandingPrimaryColor = input.branding.primaryColor;
-    if (input.branding.companyName !== undefined) updateData.brandingCompanyName = input.branding.companyName;
-    if (input.branding.customCss !== undefined) updateData.brandingCustomCss = input.branding.customCss;
+    if (input.branding.logoUrl !== undefined)
+      updateData.brandingLogoUrl = normalizeBrandingImageUrl(input.branding.logoUrl);
+    if (input.branding.faviconUrl !== undefined)
+      updateData.brandingFaviconUrl = normalizeBrandingImageUrl(input.branding.faviconUrl);
+    if (input.branding.primaryColor !== undefined)
+      updateData.brandingPrimaryColor = input.branding.primaryColor;
+    if (input.branding.companyName !== undefined)
+      updateData.brandingCompanyName = input.branding.companyName;
+    if (input.branding.customCss !== undefined)
+      updateData.brandingCustomCss = input.branding.customCss;
   }
 
   let org: Organization;
@@ -310,8 +315,10 @@ export async function updateOrganizationBranding(
   actorId?: string,
 ): Promise<Organization> {
   const updateData: Record<string, unknown> = {};
-  if (branding.logoUrl !== undefined) updateData.brandingLogoUrl = branding.logoUrl;
-  if (branding.faviconUrl !== undefined) updateData.brandingFaviconUrl = branding.faviconUrl;
+  if (branding.logoUrl !== undefined)
+    updateData.brandingLogoUrl = normalizeBrandingImageUrl(branding.logoUrl);
+  if (branding.faviconUrl !== undefined)
+    updateData.brandingFaviconUrl = normalizeBrandingImageUrl(branding.faviconUrl);
   if (branding.primaryColor !== undefined) updateData.brandingPrimaryColor = branding.primaryColor;
   if (branding.companyName !== undefined) updateData.brandingCompanyName = branding.companyName;
   if (branding.customCss !== undefined) updateData.brandingCustomCss = branding.customCss;
@@ -363,7 +370,7 @@ async function loadOrgForStatusChange(id: string): Promise<Organization> {
  * @param reason - Optional reason for suspension
  * @param actorId - UUID of the user performing the action
  * @throws OrganizationNotFoundError if not found
- * @throws OrganizationValidationError if super-admin, already suspended, or archived
+ * @throws OrganizationValidationError if super-admin or not active
  */
 export async function suspendOrganization(
   id: string,
@@ -402,14 +409,13 @@ export async function suspendOrganization(
  * @throws OrganizationNotFoundError if not found
  * @throws OrganizationValidationError if not currently suspended
  */
-export async function activateOrganization(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function activateOrganization(id: string, actorId?: string): Promise<void> {
   const org = await loadOrgForStatusChange(id);
 
   if (org.status !== 'suspended') {
-    throw new OrganizationValidationError(`Cannot activate organization from status: ${org.status}`);
+    throw new OrganizationValidationError(
+      `Cannot activate organization from status: ${org.status}`,
+    );
   }
 
   await repoUpdate(id, { status: 'active' });
@@ -419,68 +425,6 @@ export async function activateOrganization(
     organizationId: org.id,
     actorId,
     eventType: 'org.activated',
-    eventCategory: 'admin',
-  });
-}
-
-/**
- * Archive an organization (soft-delete).
- * Super-admin organization cannot be archived.
- *
- * @param id - Organization UUID
- * @param actorId - UUID of the user performing the action
- * @throws OrganizationNotFoundError if not found
- * @throws OrganizationValidationError if super-admin or already archived
- */
-export async function archiveOrganization(
-  id: string,
-  actorId?: string,
-): Promise<void> {
-  const org = await loadOrgForStatusChange(id);
-
-  if (org.isSuperAdmin) {
-    throw new OrganizationValidationError('Super-admin organization cannot be archived');
-  }
-  if (org.status === 'archived') {
-    throw new OrganizationValidationError('Organization is already archived');
-  }
-
-  await repoUpdate(id, { status: 'archived' });
-  await invalidateOrganizationCache(org.slug, org.id);
-
-  await writeAuditLog({
-    organizationId: org.id,
-    actorId,
-    eventType: 'org.archived',
-    eventCategory: 'admin',
-  });
-}
-
-/**
- * Restore an archived organization (archived → active).
- *
- * @param id - Organization UUID
- * @param actorId - UUID of the user performing the action
- * @throws OrganizationNotFoundError if not found
- * @throws OrganizationValidationError if not currently archived
- */
-export async function restoreOrganization(
-  id: string,
-  actorId?: string,
-): Promise<void> {
-  const org = await loadOrgForStatusChange(id);
-
-  if (org.status !== 'archived') {
-    throw new OrganizationValidationError(`Cannot restore organization from status: ${org.status}`);
-  }
-
-  await repoUpdate(id, { status: 'active' });
-  await invalidateOrganizationCache(org.slug, org.id);
-
-  await writeAuditLog({
-    organizationId: org.id,
-    actorId,
-    eventType: 'org.restored',
     eventCategory: 'admin',
   });
 }
@@ -547,83 +491,65 @@ export async function validateSlugAvailability(
   return { isValid: true };
 }
 
-// ---------------------------------------------------------------------------
-// Destroy (hard delete)
-// ---------------------------------------------------------------------------
-
 /**
- * Get cascade counts for an organization (preview of what will be deleted).
+ * Physically delete an organization after capturing its affected authority.
+ * Audit, session revocation, protocol cleanup, and cache cleanup are composed
+ * around this operation by the administrative mutation flow. Cleanup registration
+ * delegates to the transaction's `afterDatabaseCommit` boundary.
  *
- * @param orgId - Organization UUID
- * @returns Counts of each child entity type
+ * @param idOrSlug - Organization UUID or slug.
+ * @param actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured immediately before the database cascade.
+ * @throws OrganizationNotFoundError when the target does not exist.
+ * @throws OrganizationValidationError when the target is the control plane.
  */
-export async function getCascadeCounts(orgId: string): Promise<CascadeCounts> {
-  return repoGetCascadeCounts(orgId);
-}
-
-/**
- * Destroy an organization and all its child entities via CASCADE.
- *
- * Safety checks:
- * 1. Organization must exist
- * 2. Organization must NOT be the super-admin org (application-level check)
- * 3. Cascade counts are calculated before deletion (for audit trail)
- * 4. Audit log is written BEFORE deletion (org_id becomes NULL after DELETE)
- * 5. Hard-delete with SQL-level super-admin guard (defense in depth)
- * 6. Cache invalidated after successful deletion
- *
- * @param idOrSlug - Organization ID or slug
- * @param actorId - ID of the admin performing the destruction (for audit log)
- * @returns Object with the deleted org and cascade counts
- * @throws OrganizationNotFoundError if org doesn't exist
- * @throws OrganizationValidationError if org is super-admin
- */
-export async function destroyOrganization(
+export async function deleteOrganization(
   idOrSlug: string,
   actorId?: string,
-): Promise<DestroyResult> {
-  // 1. Resolve org (try by ID first, then by slug)
-  let org = await findOrganizationById(idOrSlug);
-  if (!org) {
-    org = await findOrganizationBySlug(idOrSlug);
+): Promise<OrganizationDeletionCapture> {
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('Organization deletion requires an active database transaction');
+  const capture = await captureOrganizationForDeletion(idOrSlug);
+  if (!capture) throw new OrganizationNotFoundError(idOrSlug);
+  if (capture.organization.isSuperAdmin) {
+    throw new OrganizationValidationError('The control-plane organization cannot be deleted');
   }
-  if (!org) {
-    throw new OrganizationNotFoundError(idOrSlug);
-  }
-
-  // 2. Super-admin protection (application-level check)
-  if (org.isSuperAdmin) {
-    throw new OrganizationValidationError(
-      'Cannot destroy the super-admin organization',
-    );
-  }
-
-  // 3. Count cascade targets (for audit trail and response)
-  const cascadeCounts = await repoGetCascadeCounts(org.id);
-
-  // 4. Write audit log BEFORE deletion (org_id will be SET NULL after delete)
-  await writeAuditLog({
-    organizationId: org.id,
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'clientId' = ANY($2::text[])
+       OR payload->>'accountId' = ANY($3::text[])`,
+    [capture.grantIds, capture.publicClientIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    organizationId: capture.organization.id,
     actorId,
-    eventType: 'org.destroyed',
+    eventType: 'org.deleted',
     eventCategory: 'admin',
     metadata: {
-      name: org.name,
-      slug: org.slug,
-      cascadeCounts,
+      organizationId: capture.organization.id,
+      slug: capture.organization.slug,
+      status: capture.organization.status,
     },
   });
-
-  // 5. Hard-delete (CASCADE handles children)
-  const deleted = await hardDeleteOrganization(org.id);
-  if (!deleted) {
-    throw new OrganizationValidationError(
-      'Failed to delete organization — it may be the super-admin org',
-    );
-  }
-
-  // 6. Invalidate cache
-  await invalidateOrganizationCache(org.slug, org.id);
-
-  return { organization: org, cascadeCounts };
+  await deleteOrganizationCaptured(capture.organization.id);
+  await registerDeletionCleanup({
+    resource: 'organization',
+    targetId: capture.organization.id,
+    targetSlug: capture.organization.slug,
+    userIds: capture.userIds,
+    clientIds: capture.clientIds,
+    publicClientIds: capture.publicClientIds,
+    grantIds: capture.grantIds,
+    roleIds: [],
+    permissionIds: [],
+    claimIds: [],
+    applicationIds: [],
+  });
+  return capture;
 }

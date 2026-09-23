@@ -42,12 +42,7 @@ export async function insertRole(input: CreateRoleInput): Promise<Role> {
     `INSERT INTO roles (application_id, name, slug, description)
      VALUES ($1, $2, $3, $4)
      RETURNING *`,
-    [
-      input.applicationId,
-      input.name,
-      input.slug ?? null,
-      input.description ?? null,
-    ],
+    [input.applicationId, input.name, input.slug ?? null, input.description ?? null],
   );
 
   return mapRowToRole(result.rows[0]);
@@ -58,21 +53,39 @@ export async function insertRole(input: CreateRoleInput): Promise<Role> {
 // ---------------------------------------------------------------------------
 
 /**
- * Find a role by its UUID.
+ * Find a role through its authoritative application parent.
  *
+ * @param applicationId - Parent application UUID
  * @param id - Role UUID
  * @returns Role or null if not found
  */
-export async function findRoleById(id: string): Promise<Role | null> {
+export async function findRoleById(applicationId: string, id: string): Promise<Role | null> {
   const pool = getPool();
 
   const result = await pool.query<RoleRow>(
-    'SELECT * FROM roles WHERE id = $1',
-    [id],
+    'SELECT * FROM roles WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
   );
 
   if (result.rows.length === 0) return null;
   return mapRowToRole(result.rows[0]);
+}
+
+/**
+ * Lock and return a role through its authoritative application parent.
+ *
+ * @param applicationId - Parent application UUID
+ * @param id - Role UUID
+ * @returns Locked role or null when the parent-child pair does not exist
+ */
+export async function lockRoleById(applicationId: string, id: string): Promise<Role | null> {
+  const result = await getPool().query<RoleRow>(
+    `SELECT * FROM roles
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, id],
+  );
+  return result.rows[0] ? mapRowToRole(result.rows[0]) : null;
 }
 
 /**
@@ -116,18 +129,23 @@ const FIELD_TO_COLUMN: Record<string, string> = {
  * fields that weren't specified. Null is a valid value for description
  * (clears it).
  *
+ * @param applicationId - Parent application UUID
  * @param id - Role UUID
  * @param input - Fields to update (only non-undefined fields are applied)
  * @returns Updated role
  * @throws Error if role not found or no fields provided
  */
-export async function updateRole(id: string, input: UpdateRoleInput): Promise<Role> {
+export async function updateRole(
+  applicationId: string,
+  id: string,
+  input: UpdateRoleInput,
+): Promise<Role> {
   const pool = getPool();
 
   // Build dynamic SET clause from provided fields
   const setClauses: string[] = [];
-  const values: unknown[] = [id]; // $1 is always the ID
-  let paramIndex = 2;
+  const values: unknown[] = [applicationId, id];
+  let paramIndex = 3;
 
   for (const [field, column] of Object.entries(FIELD_TO_COLUMN)) {
     const value = input[field as keyof UpdateRoleInput];
@@ -143,7 +161,8 @@ export async function updateRole(id: string, input: UpdateRoleInput): Promise<Ro
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE roles SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`;
+  const sql = `UPDATE roles SET ${setClauses.join(', ')}
+    WHERE application_id = $1 AND id = $2 RETURNING *`;
   const result = await pool.query<RoleRow>(sql, values);
 
   if (result.rows.length === 0) {
@@ -157,25 +176,75 @@ export async function updateRole(id: string, input: UpdateRoleInput): Promise<Ro
 // Delete
 // ---------------------------------------------------------------------------
 
-/**
- * Delete a role by ID.
- *
- * Returns true if a row was deleted, false if the role didn't exist.
- * CASCADE constraints will automatically remove related role_permissions
- * and user_roles entries.
- *
- * @param id - Role UUID
- * @returns true if deleted, false if not found
- */
-export async function deleteRole(id: string): Promise<boolean> {
+/** Lock, capture, and delete a role through its authoritative application parent. */
+export async function deleteRole(
+  applicationId: string,
+  roleId: string,
+): Promise<{
+  role: Role;
+  userIds: string[];
+  permissionIds: string[];
+  grantIds: string[];
+} | null> {
+  const capture = await captureRoleForDeletion(applicationId, roleId);
+  if (!capture) return null;
+  await deleteCapturedRole(applicationId, roleId);
+  return capture;
+}
+
+/** Lock and capture a role without deleting it. */
+export async function captureRoleForDeletion(
+  applicationId: string,
+  roleId: string,
+): Promise<{
+  role: Role;
+  userIds: string[];
+  permissionIds: string[];
+  grantIds: string[];
+} | null> {
   const pool = getPool();
-
-  const result = await pool.query(
-    'DELETE FROM roles WHERE id = $1',
-    [id],
+  const target = await pool.query<RoleRow>(
+    `SELECT * FROM roles WHERE application_id = $1 AND id = $2 FOR UPDATE`,
+    [applicationId, roleId],
   );
+  if (!target.rows[0]) return null;
+  const graph = await pool.query<{
+    user_ids: string[];
+    permission_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH affected_users AS (
+       SELECT user_id FROM user_roles WHERE role_id = $1
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(SELECT permission_id FROM role_permissions WHERE role_id = $1 ORDER BY permission_id)
+         AS permission_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(SELECT user_id::text FROM affected_users))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $2
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [roleId, applicationId],
+  );
+  return {
+    role: mapRowToRole(target.rows[0]),
+    userIds: graph.rows[0]!.user_ids,
+    permissionIds: graph.rows[0]!.permission_ids,
+    grantIds: graph.rows[0]!.grant_ids,
+  };
+}
 
-  return (result.rowCount ?? 0) > 0;
+/** Physically delete a role previously locked through its parent. */
+export async function deleteCapturedRole(applicationId: string, roleId: string): Promise<void> {
+  await getPool().query('DELETE FROM roles WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    roleId,
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -238,28 +307,4 @@ export async function roleSlugExists(
     [applicationId, slug],
   );
   return result.rows[0].exists;
-}
-
-// ---------------------------------------------------------------------------
-// User count (deletion guard)
-// ---------------------------------------------------------------------------
-
-/**
- * Count users assigned to a role.
- *
- * Used by the service layer as a deletion guard: if users are assigned,
- * the role cannot be deleted without force=true.
- *
- * @param roleId - Role UUID
- * @returns Number of users with this role
- */
-export async function countUsersWithRole(roleId: string): Promise<number> {
-  const pool = getPool();
-
-  const result = await pool.query<{ count: string }>(
-    'SELECT COUNT(*)::int as count FROM user_roles WHERE role_id = $1',
-    [roleId],
-  );
-
-  return parseInt(result.rows[0].count, 10);
 }

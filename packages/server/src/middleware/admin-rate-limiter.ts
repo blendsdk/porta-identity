@@ -5,11 +5,10 @@
  * `/api/admin/*`) against brute-force attacks and automated abuse.
  * GET requests are read-only and pass through without rate limiting.
  *
- * Key format: `ratelimit:admin:{ip}` — per-IP only since admin-auth
- * already restricts access to authenticated super-admin users.  There
- * is no per-user key because the IP-based counter is sufficient:
- * legitimate admins won't make 60 write requests per minute, and
- * attackers from the same IP are blocked regardless of identity.
+ * Key format: `ratelimit:admin:{ip}`. The limiter intentionally runs before
+ * body parsing and authentication so rejected large requests consume minimal
+ * resources. A per-IP counter covers both unauthenticated abuse and legitimate
+ * administrators without requiring an authenticated user identifier.
  *
  * Limit: 60 requests / 60 seconds (sliding window).
  *
@@ -17,9 +16,9 @@
  * provides Redis INCR+EXPIRE sliding window and graceful degradation
  * on Redis failure (allows request + logs warning).
  *
- * Placement: mount as global middleware in `src/server.ts` before the
- * admin route routers.  The path + method check ensures only write
- * requests to `/api/admin/*` are counted.
+ * Placement: mount after Admin CORS and before body parsing, authentication,
+ * and Admin route routers. The path + method check ensures only write requests
+ * to `/api/admin/*` are counted.
  *
  * @module middleware/admin-rate-limiter
  */

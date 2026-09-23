@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-08-22
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
@@ -17,12 +17,12 @@ graph TB
 
     subgraph "Authentication Layer"
         OIDC[OIDC Protocol<br/>node-oidc-provider]
-        ADMIN_AUTH[Admin JWT Auth<br/>ES256 Bearer]
+        ADMIN_AUTH[Admin Opaque Token Auth<br/>Provider Lookup]
         PKCE[PKCE Enforcement<br/>Public Clients]
     end
 
     subgraph "Authorization Layer"
-        RBAC[RBAC Middleware<br/>porta-admin role]
+        RBAC[RBAC Middleware<br/>Canonical Admin Roles]
         TENANT[Tenant Isolation<br/>org-scoped queries]
     end
 
@@ -56,7 +56,13 @@ All JWTs are signed using ECDSA P-256 (ES256). This is a non-negotiable standard
 | Key Rotation  | Supported via `porta keys rotate` CLI command                    |
 | JWKS Endpoint | `/:orgSlug/.well-known/jwks` (auto-served by node-oidc-provider) |
 
-**Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `rotated`, or `revoked`. The OIDC provider loads active keys on startup and serves them via the JWKS endpoint.
+**Key lifecycle**: Keys are stored in the `signing_keys` table with status `active`, `retired`, or
+`revoked`. Active and unexpired retired private keys are decrypted only in process for provider
+startup. Plaintext, incomplete, corrupt, or invalid-PEM rows stop startup with a bounded diagnostic.
+On a fresh database, a PostgreSQL table lock ensures simultaneous processes create only one
+encrypted active key. Admin generation and rotation invalidate each process's JWKS cache only
+after the database transaction commits; every Porta process must still restart after a key change
+because the OIDC provider receives its signing set at startup.
 
 ### Password Hashing: Argon2id
 
@@ -82,18 +88,46 @@ Client secrets use a two-layer hashing strategy:
 1. **SHA-256 pre-hash** — Computed at registration, stored in `secret_sha256` column for `client_secret_post` authentication (node-oidc-provider uses SHA-256 for comparison)
 2. **Argon2id full hash** — Stored in `secret_hash` column for offline verification
 
+Modern rows use the SHA-256 index to select one Argon2id candidate. Legacy rows without that index
+are checked sequentially with a maximum of 10 candidates, one admitted verification batch per
+process, and the existing issuer/client Redis rate limit. Admission ends before control returns to
+`node-oidc-provider`. This bounds expensive hashing while keeping the provider responsible for the
+actual protocol authentication result.
+
+Rotation supports at most 10 active secrets for an eligible confidential client. The bound and the
+client lifecycle check are enforced atomically under the parent row lock; revocation updates only an
+active row so concurrent requests cannot both report the same transition.
+
 ### 2FA Secret Encryption: AES-256-GCM
 
 TOTP secrets are encrypted at rest using AES-256-GCM:
 
-| Property       | Value                                   |
-| -------------- | --------------------------------------- |
-| Algorithm      | AES-256-GCM                             |
-| Key Derivation | From `COOKIE_KEYS` environment variable |
-| IV             | Random 12 bytes per encryption          |
-| Auth Tag       | 16 bytes, stored alongside ciphertext   |
+| Property   | Value                                           |
+| ---------- | ----------------------------------------------- |
+| Algorithm  | AES-256-GCM                                     |
+| Key Source | `TWO_FACTOR_ENCRYPTION_KEY` (32-byte hex value) |
+| IV         | Random 12 bytes per encryption                  |
+| Auth Tag   | 16 bytes, stored alongside ciphertext           |
 
 Recovery codes are hashed with Argon2id — never stored in plaintext.
+
+Accepted TOTP codes are single-use. Validation uses the stored fixed `SHA1`/6-digit/30-second
+parameters and one captured timestamp to identify the matched absolute time step. PostgreSQL then
+atomically advances the exact verified configuration row only when that step is newer than the
+stored value. The first enrollment step and the user's enabled state commit in one transaction;
+invalid, repeated, concurrent, replaced-row, or stale attempts do not advance replay state.
+
+The login and TOTP-enrollment routes present all invalid or replayed codes through the same
+localized invalid-code result and never retry a failed consume. Both routes share the resolved
+organization/user `2fa_verify` budget. An exhausted enrollment request returns `429` with
+`Retry-After` while reusing the pending secret and QR data; it does not generate replacement
+credentials or recovery codes. Email enrollment returns before this TOTP-specific check.
+
+Persisted TOTP parameters outside the supported contract produce the existing login or enrollment
+page with a generic localized `503` message. The only diagnostic is the fixed
+`totp-configuration-unsupported` event; stored parameters, codes, secrets, replay steps,
+cryptographic fields, and caught errors are not logged or returned. Submitted code-type values are
+limited to `otp`, `totp`, or `recovery` before they can enter diagnostics or audit descriptions.
 
 ## Authentication Flows
 
@@ -127,12 +161,42 @@ sequenceDiagram
 The admin API authenticates against Porta's own OIDC tokens:
 
 1. Admin user logs in via OIDC to the **super-admin organization**
-2. Token is signed with Porta's own ES256 keys
-3. Admin auth middleware validates the token against those same keys
-4. Middleware verifies issuer matches the super-admin org URL
-5. Middleware checks user has `porta-admin` RBAC role
+2. Admin auth middleware resolves the opaque Bearer token through the provider's authoritative
+   `AccessToken` model
+3. Middleware loads the active user and verifies membership in the super-admin organization
+4. Middleware resolves the canonical `porta-admin` application
+5. Only recognized built-in roles assigned from that application contribute code-defined Admin
+   capabilities; a matching role slug from another application grants nothing
 
 This self-authentication pattern means Porta has **no external auth dependency** for its admin API.
+Missing, expired, revoked, or rejected tokens receive a fixed authentication failure without
+revealing lookup details.
+
+### Admin mutation request admission
+
+Admin CORS and the existing per-IP mutation rate limiter run before request-body parsing and Admin
+authentication. This order lets browser preflight requests complete without credentials and rejects
+rate-limited uploads before allocating their JSON bodies. Ordinary parsed routes retain the 100 KiB
+limit. Only exact logo/favicon `PUT` routes receive the 3 MiB encoded-body allowance needed for a
+2 MiB logo represented as base64.
+
+Authentication and operation-specific permission checks still run before resource lookup. Branding
+asset routes then validate and resolve the organization, so callers without the required capability
+cannot use response differences to discover organization existence.
+
+### Public branding isolation
+
+The anonymous `GET /:orgSlug/branding/:type` route exposes only validated image bytes. It performs
+one exact organization lookup and one exact asset lookup; missing organizations, invalid asset
+types, and empty slots share the same `404` response. It returns no organization identifiers,
+filenames, storage metadata, or cookies. SVG responses receive a sandboxed CSP with no script or
+external network access.
+
+Authentication pages and emails use one effective-branding resolver. Uploaded assets take
+precedence over validated configured URLs, followed by the existing text and color defaults.
+HTML routes copy the resolver's unique image origins into request state, and the security-header
+middleware adds only those validated origins to `img-src`. The base policy continues to allow
+same-origin and `data:` images for uploaded assets and TOTP QR codes.
 
 ### Magic Link Authentication
 
@@ -207,6 +271,10 @@ SELECT * FROM users WHERE id = $1;
 - Organization-prefixed user and role routes validate that the target user belongs to the
   `:orgId` path organization after permission checks and before the handler runs. Foreign and
   missing targets both return `404`, avoiding cross-tenant existence disclosure.
+- OIDC role and permission claims are filtered by the requesting client's application UUID. The
+  provider carries this UUID in private client metadata, validates it before querying RBAC, and
+  returns empty RBAC arrays when it is missing or malformed. The private identifier is not emitted
+  in tokens, UserInfo, introspection, discovery, rendered authentication output, errors, or logs.
 
 ### Cache Isolation
 
@@ -225,7 +293,7 @@ The tenant resolver middleware validates the organization from the URL path:
 
 1. Extract `orgSlug` from `/:orgSlug/*` route parameter
 2. Lookup organization (cache-first, DB fallback)
-3. Verify organization status: `active` → proceed, `suspended` → 403, `archived` → 410
+3. Verify organization status: `active` → proceed, `suspended` → 403
 4. Set `ctx.state.organization` for downstream handlers
 
 Cross-tenant requests are impossible because:
@@ -240,19 +308,31 @@ Cross-tenant requests are impossible because:
 
 Authentication endpoints are protected by sliding-window rate limiting:
 
-| Endpoint           | Rate Limit   | Window            |
-| ------------------ | ------------ | ----------------- |
-| Login (password)   | Configurable | Sliding window    |
-| Magic link request | Configurable | Sliding window    |
-| Password reset     | Configurable | Sliding window    |
-| 2FA verification   | Configurable | Sliding window    |
-| Email OTP          | Configurable | Per-user cooldown |
+| Endpoint                                       | Rate Limit                   | Window                                   |
+| ---------------------------------------------- | ---------------------------- | ---------------------------------------- |
+| Login (password)                               | Configurable                 | Sliding window                           |
+| Magic link request                             | Configurable                 | Sliding window                           |
+| Password reset                                 | Configurable                 | Sliding window                           |
+| 2FA verification and TOTP enrollment           | 5 attempts                   | 5 minutes per resolved organization/user |
+| Email OTP                                      | Configurable                 | Per-user cooldown                        |
+| Token `/{orgSlug}/token`                       | 30 per client, 300 per peer  | 5 minutes                                |
+| Introspection `/{orgSlug}/token/introspection` | 100 per client, 600 per peer | 1 minute                                 |
 
 **Implementation** (`packages/server/src/auth/rate-limiter.ts`):
 
 - Redis `INCR` + `EXPIRE` for sliding window counters
 - Keys include IP address and/or email for targeted limiting
 - Rate limit headers returned in responses (X-RateLimit-*)
+
+The token and introspection limiters run after OIDC body parsing and before the provider
+callback. Each applies a per-client counter plus an aggregate per-peer counter, because the
+client identifier is read before authentication and cannot be trusted on its own.
+
+The client IP used in these keys is Koa's `ctx.ip`. When `TRUST_PROXY=true`, Porta sets
+`app.maxIpsCount` from `TRUST_PROXY_HOPS` (default `1`), so the resolved address is the
+proxy-appended `X-Forwarded-For` entry rather than the client-supplied leftmost value. A
+value that does not match the real proxy chain either collapses distinct clients onto one
+budget or lets a client control its own address.
 
 ### Failed Login Tracking
 
@@ -339,8 +419,89 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 
 - **New session on authentication** — prevents session fixation
 - **Configurable TTLs** — stored in `system_config` table
+- **Database-backed authority** — PostgreSQL tracking is persisted before Redis publication; missing, expired, or revoked tracking invalidates the cached Session
+- **Live reference checks** — cached OIDC artifacts are rejected when their referenced client, account, grant, or Session authorization is no longer live in PostgreSQL
 - **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
+
+## Portability Import Authority
+
+The portability boundary accepts only the strict versioned manifest and closed category, scope,
+application-selection, and import-mode values. Category permissions are combined before any
+manifest data is read, and environment scope additionally requires the exact super-admin role.
+Organization-scoped imports must resolve one non-control-plane destination organization or create
+it in the same manifest.
+
+Planning is mutation-free. Destination reads are parameterized and limited to the requested
+organization, categories, selected applications, and imported client IDs. The narrow client-ID
+lookup preserves global collision detection without loading unrelated client records. Every
+application-qualified record is checked against the explicit application selection, and duplicate
+records are rejected without suppressing independent graph errors.
+
+Apply repeats planning and writes the complete accepted graph plus its content-free audit event in
+one PostgreSQL transaction. Missing audit ownership, any planner error, or any write failure aborts
+the transaction. Credential hashes, tokens, sessions, lock state, and other authentication state
+are not portable. Post-commit cleanup is limited to affected cache and OIDC authority entries.
+
+The terminal Admin UI derives portability availability from verified session capabilities but
+continues to rely on server authorization. It checks local manifest size before and after reading,
+shows fixed local error text without paths or response detail, and requires a current successful
+preview plus confirmation before Apply. Session replacement and workspace closure invalidate all
+local continuations. One-time client-secret plaintext is shown through the existing abortable
+presenter and is removed before the apply result enters reusable view state.
+
+## Permanent Deletion Authority
+
+Permanent deletion uses PostgreSQL as the synchronous authority boundary. Each of the eight domain
+services operates inside the request-owned transaction and follows this order:
+
+1. Lock the target and capture its bounded affected graph with parameterized, set-based queries.
+2. Revoke `admin_sessions` for exactly the affected users.
+3. Delete identifiable PostgreSQL `oidc_payloads` using captured users, public clients, and grants.
+4. Insert exactly one resource deletion audit event with safe target identity, state, and parent
+   metadata.
+5. Physically delete the target and let declared foreign-key cascades remove owned rows.
+6. Register one immutable cleanup descriptor that becomes runnable only after commit.
+
+Any failure through target deletion or audit insertion rolls back the transaction. Because the
+cleanup callback is registered on the transaction's post-commit boundary, rollback schedules no
+Redis work. Application deletion is deployment-global, so its affected-user and protocol capture
+can legitimately span organizations; organization and user deletion remain organization-qualified,
+and module, role, permission, and claim deletion remain application-qualified.
+
+The detached cleanup callback schedules one `setImmediate` Redis-only pass and returns without
+waiting for it. That pass deletes exact captured cache and grant keys, compares reusable
+organization/application slug entries with the deleted UUID before removing them, and performs one
+terminating scan of the closed `oidc:*` namespace for short-lived artifacts that reference captured
+users, public clients, grants, or Session authorization pairs. Malformed or unrelated entries are
+ignored. Cleanup failure is absorbed with one fixed identifier-free warning; there is no retry,
+worker, queue, or open PostgreSQL transaction. Live PostgreSQL validation remains authoritative if
+Redis cleanup is delayed or fails.
+
+Role and permission reductions reuse the same short transaction boundary. Permission and
+role-permission operations lock requested permission rows in stable UUID order before locking role
+rows. Permission deletion then rechecks only roles owned by the permission's application before it
+captures users and revokes their stored authority. User-role assignment locks the affected role,
+so it cannot cross that capture unnoticed. Authority additions do not log users out; they schedule
+only the affected users' RBAC cache keys for post-commit invalidation.
+
+When a role is removed from a user in the control-plane organization, the service locks that
+organization before locking the user and role targets. User deletion uses the same organization-
+first order, preventing the two rare administrative operations from deadlocking each other.
+
+Canonical `porta-admin` roles, permissions, and their mappings reject generic create, update,
+delete, and mapping operations. The direct initialization workflow writes those fixed definitions
+through repository functions before normal Admin authorization exists.
+
+Two control-plane guards prevent deletion from removing the ability to administer Porta:
+
+- The organization marked `is_super_admin` cannot be deleted through either the service or
+  repository boundary.
+- Deleting a user from that organization locks its single organization row before target/survivor
+  evaluation and requires another active user assigned the exact built-in `porta-super-admin` role
+  for the `porta-admin` application. Concurrent attempts therefore cannot both remove the last
+  qualifying administrator. A current administrator may delete their own account when a survivor
+  exists.
 
 ## Audit Trail
 
@@ -349,16 +510,24 @@ All security-relevant actions are logged to the `audit_log` table:
 | Event Category | Examples                                                          |
 | -------------- | ----------------------------------------------------------------- |
 | Authentication | `user.login_success`, `user.login_failed`, `user.magic_link_used` |
-| Account        | `user.created`, `user.suspended`, `user.password_changed`         |
+| Account        | `user.created`, `user.deactivated`, `user.password_changed`       |
 | Security       | `security.login_method_disabled`, `security.rate_limited`         |
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
-| System         | `system.config_changed`, `system.key_rotated`                     |
+| System         | `admin.config.updated`, `system.key_rotated`                      |
 
 Compatibility audit writes remain best-effort and do not change the main request result. Every
 successful state-changing administrative request also writes a durable business audit row through
 the same PostgreSQL transaction as its database mutation. A failed audit insert therefore rolls
 back that request's database changes. Bulk operations preserve their documented per-item
 transactions, while imports retain one manifest-wide transaction.
+
+Global configuration updates validate every selected catalog value before changing existing rows in one transaction. The same transaction records `admin.config.updated` with changed keys and the restart result, never configuration values. An audit failure rolls back the updates. The local configuration cache is cleared only after a successful commit; other healthy instances converge on their next read after at most 60 seconds. The five provider-startup TTL settings still require an operator restart of every instance.
+
+The deletion events are `org.deleted`, `app.deleted`, `app.module.deleted`, `client.deleted`,
+`role.deleted`, `permission.deleted`, `claim.deleted`, and `user.deleted`. Audit foreign keys for
+the organization, subject user, and actor use `ON DELETE SET NULL`, so deletion preserves historical
+evidence. Generic mutation audit resolves its actor through the live user table and permits a null
+result, allowing self-deletion to commit without retaining a live account solely for attribution.
 
 Covered administrative and public-authentication requests emit one strict
 `security.decision.v1` terminal event after the final response status is known. Correlation starts

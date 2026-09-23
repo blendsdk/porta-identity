@@ -45,12 +45,13 @@ import {
   updateOrganizationBranding,
   suspendOrganization,
   activateOrganization,
-  archiveOrganization,
-  restoreOrganization,
   listOrganizations,
   validateSlugAvailability,
 } from '../../../src/organizations/service.js';
-import { OrganizationNotFoundError, OrganizationValidationError } from '../../../src/organizations/errors.js';
+import {
+  OrganizationNotFoundError,
+  OrganizationValidationError,
+} from '../../../src/organizations/errors.js';
 
 /** Standard test organization */
 function createTestOrg(overrides: Partial<Organization> = {}): Organization {
@@ -73,7 +74,6 @@ function createTestOrg(overrides: Partial<Organization> = {}): Organization {
     ...overrides,
   };
 }
-
 
 describe('organization service', () => {
   beforeEach(() => vi.clearAllMocks());
@@ -114,9 +114,7 @@ describe('organization service', () => {
     it('should throw validation error when slug is taken', async () => {
       (slugExists as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 
-      await expect(
-        createOrganization({ name: 'Acme' }),
-      ).rejects.toThrow('Slug already in use');
+      await expect(createOrganization({ name: 'Acme' })).rejects.toThrow('Slug already in use');
     });
 
     it('should cache the created organization', async () => {
@@ -303,11 +301,13 @@ describe('organization service', () => {
     });
 
     it('should throw OrganizationNotFoundError when not found', async () => {
-      (repoUpdate as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Organization not found'));
+      (repoUpdate as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Organization not found'),
+      );
 
-      await expect(
-        updateOrganization('nonexistent', { name: 'Test' }),
-      ).rejects.toThrow(OrganizationNotFoundError);
+      await expect(updateOrganization('nonexistent', { name: 'Test' })).rejects.toThrow(
+        OrganizationNotFoundError,
+      );
     });
 
     it('should write audit log on update', async () => {
@@ -354,9 +354,9 @@ describe('organization service', () => {
     });
 
     it('should reject empty defaultLoginMethods on update', async () => {
-      await expect(
-        updateOrganization('org-uuid-1', { defaultLoginMethods: [] }),
-      ).rejects.toThrow(OrganizationValidationError);
+      await expect(updateOrganization('org-uuid-1', { defaultLoginMethods: [] })).rejects.toThrow(
+        OrganizationValidationError,
+      );
 
       // Validation must short-circuit before any DB write.
       expect(repoUpdate).not.toHaveBeenCalled();
@@ -418,18 +418,16 @@ describe('organization service', () => {
       const org = createTestOrg({ isSuperAdmin: true });
       (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
 
-      await expect(
-        suspendOrganization('org-uuid-1'),
-      ).rejects.toThrow('Super-admin organization cannot be suspended');
+      await expect(suspendOrganization('org-uuid-1')).rejects.toThrow(
+        'Super-admin organization cannot be suspended',
+      );
     });
 
     it('should reject if already suspended', async () => {
       const org = createTestOrg({ status: 'suspended' });
       (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
 
-      await expect(
-        suspendOrganization('org-uuid-1'),
-      ).rejects.toThrow('already suspended');
+      await expect(suspendOrganization('org-uuid-1')).rejects.toThrow('already suspended');
     });
   });
 
@@ -452,59 +450,7 @@ describe('organization service', () => {
       const org = createTestOrg({ status: 'active' });
       (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
 
-      await expect(
-        activateOrganization('org-uuid-1'),
-      ).rejects.toThrow('Cannot activate');
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // archiveOrganization
-  // -------------------------------------------------------------------------
-
-  describe('archiveOrganization', () => {
-    it('should archive an active organization', async () => {
-      const org = createTestOrg({ status: 'active' });
-      (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
-      (repoUpdate as ReturnType<typeof vi.fn>).mockResolvedValue({ ...org, status: 'archived' });
-
-      await archiveOrganization('org-uuid-1');
-
-      expect(repoUpdate).toHaveBeenCalledWith('org-uuid-1', { status: 'archived' });
-    });
-
-    it('should reject archiving super-admin org', async () => {
-      const org = createTestOrg({ isSuperAdmin: true });
-      (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
-
-      await expect(
-        archiveOrganization('org-uuid-1'),
-      ).rejects.toThrow('Super-admin organization cannot be archived');
-    });
-  });
-
-  // -------------------------------------------------------------------------
-  // restoreOrganization
-  // -------------------------------------------------------------------------
-
-  describe('restoreOrganization', () => {
-    it('should restore an archived organization', async () => {
-      const org = createTestOrg({ status: 'archived' });
-      (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
-      (repoUpdate as ReturnType<typeof vi.fn>).mockResolvedValue({ ...org, status: 'active' });
-
-      await restoreOrganization('org-uuid-1');
-
-      expect(repoUpdate).toHaveBeenCalledWith('org-uuid-1', { status: 'active' });
-    });
-
-    it('should reject if not archived', async () => {
-      const org = createTestOrg({ status: 'active' });
-      (findOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(org);
-
-      await expect(
-        restoreOrganization('org-uuid-1'),
-      ).rejects.toThrow('Cannot restore');
+      await expect(activateOrganization('org-uuid-1')).rejects.toThrow('Cannot activate');
     });
   });
 

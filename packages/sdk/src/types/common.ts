@@ -42,8 +42,17 @@ export interface PaginatedResponse<T> {
   pageSize?: number;
   /** Total pages (offset pagination) */
   totalPages?: number;
-  /** Next cursor value (keyset pagination) */
-  cursor?: string;
+  /**
+   * Opaque cursor for the next page (keyset pagination).
+   *
+   * The Porta API returns this field as `nextCursor`. `cursor` is retained as a
+   * legacy alias and is only read when `nextCursor` is absent.
+   */
+  nextCursor?: string | null;
+  /** Opaque cursor for the previous page (keyset pagination). */
+  previousCursor?: string | null;
+  /** Legacy alias for {@link PaginatedResponse.nextCursor}. */
+  cursor?: string | null;
   /** Whether more items exist after this page */
   hasMore?: boolean;
 }
@@ -72,7 +81,7 @@ export interface ETagResponse<T> {
  * Mirrors the server `HistoryEntry` (src/lib/entity-history.ts) — entries are
  * audit-log rows projected to `{ id, eventType, actorId, metadata, createdAt }`.
  * The server has no `entityType`/`entityId`/`action`/`changes`/`performedBy`
- * fields; those were SDK drift (AR-18).
+ * fields.
  */
 export interface HistoryEntry {
   /** History entry (audit-log) ID */
@@ -87,3 +96,17 @@ export interface HistoryEntry {
   createdAt: string;
 }
 
+/**
+ * A page of entity history returned by history endpoints.
+ *
+ * The cursor is opaque and should only be passed back to the API when
+ * requesting the next page.
+ */
+export interface HistoryResult {
+  /** History entries in newest-first order. */
+  data: HistoryEntry[];
+  /** Whether another page is available. */
+  hasMore: boolean;
+  /** Opaque cursor for the next page, or null when this is the last page. */
+  nextCursor: string | null;
+}

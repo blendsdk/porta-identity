@@ -4,8 +4,12 @@ import { logger } from './logger.js';
 
 let redis: Redis | null = null;
 
+/** Maximum time one Redis command may hold a public request while Redis is unavailable. */
+const REDIS_COMMAND_TIMEOUT_MS = 1000;
+
 export async function connectRedis(): Promise<Redis> {
   redis = new Redis(config.redisUrl, {
+    commandTimeout: REDIS_COMMAND_TIMEOUT_MS,
     maxRetriesPerRequest: 3,
     lazyConnect: true,
   });

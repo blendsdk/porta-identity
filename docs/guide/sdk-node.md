@@ -49,13 +49,14 @@ Use OIDC client credentials grant for server-to-server communication. Best for l
 import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
-  tokenEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+  tokenEndpoint: 'https://porta.local:3443/super-admin/token',
   clientId: 'my-service-client-id',
   clientSecret: 'my-service-client-secret',
 });
 ```
 
 Features:
+
 - ✅ Automatic token fetching and caching
 - ✅ Automatic refresh when token expires
 - ✅ Concurrent request deduplication (avoids thundering herd)
@@ -70,12 +71,13 @@ import { createCliAuth } from '@portaidentity/sdk/node';
 
 const auth = createCliAuth({
   credentialsPath: '~/.porta/credentials.json',
-  refreshEndpoint: 'https://porta.local:3443/super-admin/oidc/token',
+  refreshEndpoint: 'https://porta.local:3443/super-admin/token',
   clientId: 'porta-admin-cli',
 });
 ```
 
 Features:
+
 - ✅ Reads from `porta login` credential file
 - ✅ Automatic token refresh via refresh_token grant
 - ✅ No manual credential handling
@@ -102,7 +104,7 @@ const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: 'https://porta.example.com/api/admin',
     auth: createClientCredentialsAuth({
-      tokenEndpoint: 'https://porta.example.com/super-admin/oidc/token',
+      tokenEndpoint: 'https://porta.example.com/super-admin/token',
       clientId: process.env.PORTA_CLIENT_ID!,
       clientSecret: process.env.PORTA_CLIENT_SECRET!,
     }),
@@ -135,10 +137,10 @@ console.log('Setup complete:', { orgId: org.id, appId: app.id, clientId: client.
 ### Bulk Operations
 
 ```typescript
-// Suspend multiple users at once
+// Deactivate multiple users at once
 const result = await porta.bulk.userStatus({
   ids: ['user-1', 'user-2', 'user-3'],
-  action: 'suspend',
+  action: 'deactivate',
   organizationId: 'org-uuid',
 });
 
@@ -157,20 +159,28 @@ const csvBuffer = await porta.exports.download({
 await fs.promises.writeFile('users-export.csv', csvBuffer);
 ```
 
-### Declarative Provisioning
+### Environment Portability
 
 ```typescript
-import { readFileSync } from 'fs';
-import yaml from 'js-yaml';
+import { writeFile } from 'node:fs/promises';
 
-const manifest = yaml.load(readFileSync('provision.yaml', 'utf8'));
-const result = await porta.imports.provision(manifest);
+const exported = await porta.exports.manifest({
+  scope: { kind: 'organization', organization_slug: 'acme' },
+  categories: ['organizations', 'applications_authorization'],
+  application_selection: { all_applications: true, application_slugs: [] },
+});
+await writeFile('acme-porta.json', JSON.stringify(exported.manifest, null, 2), 'utf8');
 
-console.log(`Provisioned: ${result.created.length} created, ${result.updated.length} updated`);
-if (result.credentials.length > 0) {
-  console.log('New client credentials:', result.credentials);
+const preview = await porta.imports.preview(exported.manifest);
+
+if (preview.errors.length === 0) {
+  const result = await porta.imports.apply(exported.manifest, 'keep-existing');
+  // Store result.credentials securely now; generated secrets are returned only once.
 }
 ```
+
+The server is the strict manifest-validation authority. Applications should preview before apply
+and must not add automatic mutation retries.
 
 ### Iterate All Records
 
@@ -226,9 +236,9 @@ env:
   PORTA_CLIENT_SECRET: ${{ secrets.PORTA_CLIENT_SECRET }}
 
 steps:
-  - name: Provision test environment
+  - name: Configure test environment
     run: |
-      npx tsx scripts/provision-test-env.ts
+      npx tsx scripts/configure-test-env.ts
 ```
 
 ### Docker / Container
@@ -262,4 +272,4 @@ const porta = createPortaClient({
 - [SDK Overview](/guide/sdk) — Installation, quick start, full API reference
 - [SDK Browser Usage](/guide/sdk-browser) — Browser/SPA integration
 - [SDK AI Agent Guide](/guide/sdk-agent) — AI integration
-- [Provisioning](/cli/provisioning) — YAML-based declarative setup
+- [Environment Portability](/cli/provisioning) — Selective JSON manifest export and import

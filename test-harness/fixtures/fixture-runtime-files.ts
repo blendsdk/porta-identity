@@ -13,7 +13,7 @@ export const fixtureDefinitionVersion = 'porta-assurance-fixture-v1' as const;
 /** Exact deterministic fixture counts independent from generated database identifiers. */
 export const expectedFixtureCounts = Object.freeze({
   organizations: 3,
-  ordinaryUsers: 10,
+  ordinaryUsers: 8,
   administrativeActors: 3,
   validClients: 4,
   sessions: 2,

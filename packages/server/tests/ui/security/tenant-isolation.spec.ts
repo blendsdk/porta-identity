@@ -98,18 +98,18 @@ test.describe('Multi-Tenant UI Isolation', () => {
     expect(bodyText!.toLowerCase()).toMatch(/suspend|unavailable|forbidden|403|error/);
   });
 
-  // ── 11.4: Archived org shows 404 error ───────────────────────────────
+  // A deleted tenant must be indistinguishable from one that never existed.
 
-  test('archived org shows proper error not login page', async ({
+  test('deleted org shows proper error not login page', async ({
     page,
     testData,
   }) => {
     const response = await page.goto(
-      `${testData.baseUrl}/${testData.archivedOrgSlug}/auth/forgot-password`,
+      `${testData.baseUrl}/${testData.deletedOrgSlug}/auth/forgot-password`,
       { waitUntil: 'networkidle' },
     );
 
-    // Archived orgs are treated as non-existent → 404
+    // Deleted orgs are treated as non-existent → 404
     expect(response?.status()).toBe(404);
 
     // Should NOT render the forgot-password form

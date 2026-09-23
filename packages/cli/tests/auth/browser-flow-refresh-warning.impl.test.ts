@@ -25,8 +25,9 @@ vi.mock('../../src/auth/callback-server.js', () => ({
 vi.mock('../../src/prompt.js', () => ({
   question: vi.fn(),
 }));
-vi.mock('jose', () => ({
-  decodeJwt: vi.fn().mockReturnValue({ sub: 'u', email: 'a@b.c' }),
+vi.mock('../../src/auth/id-token-verifier.js', () => ({
+  fetchIssuerJwks: vi.fn().mockResolvedValue({ keys: [] }),
+  verifyCliIdToken: vi.fn().mockResolvedValue({ sub: 'u', email: 'a@b.c' }),
 }));
 
 import { executeBrowserFlow } from '../../src/auth/browser-flow.js';
@@ -73,9 +74,8 @@ describe('browser-flow no-refresh-token warning (impl)', () => {
 
   it('logs the EXACT approved warning text via the log callback', async () => {
     const logs: string[] = [];
-    await executeBrowserFlow(
-      { server: 'https://porta.local:3443', noBrowser: true },
-      (msg) => logs.push(msg),
+    await executeBrowserFlow({ server: 'https://porta.local:3443', noBrowser: true }, (msg) =>
+      logs.push(msg),
     );
 
     expect(logs).toContain(EXPECTED_WARNING);

@@ -26,6 +26,8 @@ const mockResolveLocale = vi.hoisted(() => vi.fn());
 const mockGetTranslationFunction = vi.hoisted(() => vi.fn());
 const mockGetUserById = vi.hoisted(() => vi.fn());
 const mockGetOrganizationById = vi.hoisted(() => vi.fn());
+const mockResolveEffectiveBranding = vi.hoisted(() => vi.fn());
+const mockBuildHtmlCsp = vi.hoisted(() => vi.fn());
 const mockLogger = vi.hoisted(() => ({
   warn: vi.fn(),
   error: vi.fn(),
@@ -67,13 +69,20 @@ vi.mock('../../../src/organizations/service.js', () => ({
   getOrganizationById: mockGetOrganizationById,
 }));
 
+vi.mock('../../../src/auth/effective-branding.js', () => ({
+  DEFAULT_BRANDING_PRIMARY_COLOR: '#3B82F6',
+  resolveEffectiveBranding: mockResolveEffectiveBranding,
+}));
+
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: mockLogger,
 }));
 
 // Re-export HTML_CSP so tests can assert the exact value
 vi.mock('../../../src/middleware/security-headers.js', () => ({
-  HTML_CSP: "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+  HTML_CSP:
+    "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'",
+  buildHtmlCsp: mockBuildHtmlCsp,
 }));
 
 // Import after mocks are set up
@@ -90,7 +99,8 @@ import {
 // ---------------------------------------------------------------------------
 
 /** Sample provider form HTML (mimics what node-oidc-provider passes to logoutSource) */
-const SAMPLE_FORM = '<form id="op.logoutForm" method="post" action="/session/end/confirm"><input type="hidden" name="xsrf" value="test-xsrf-token"/></form>';
+const SAMPLE_FORM =
+  '<form id="op.logoutForm" method="post" action="/session/end/confirm"><input type="hidden" name="xsrf" value="test-xsrf-token"/></form>';
 
 /** Sample organization for branding tests */
 const SAMPLE_ORG = {
@@ -120,24 +130,20 @@ const SAMPLE_USER = {
 };
 
 /** The expected HTML CSP value set by rendering hooks */
-const EXPECTED_HTML_CSP = "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
+const EXPECTED_HTML_CSP =
+  "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
+const EXPECTED_BRANDED_HTML_CSP = `${EXPECTED_HTML_CSP}; img-src 'self' data:`;
+const EXPECTED_EXTERNAL_BRANDING_HTML_CSP = `${EXPECTED_BRANDED_HTML_CSP} https://acme.com`;
 
 /** Creates a mock ctx that mimics oidc-provider's KoaContextWithOIDC */
-function createMockCtx(overrides?: {
-  sessionAccountId?: string;
-  clientOrgId?: string;
-}) {
+function createMockCtx(overrides?: { sessionAccountId?: string; clientOrgId?: string }) {
   return {
     type: '',
     body: '' as unknown,
     set: vi.fn(),
     oidc: {
-      session: overrides?.sessionAccountId
-        ? { accountId: overrides.sessionAccountId }
-        : undefined,
-      client: overrides?.clientOrgId
-        ? { organizationId: overrides.clientOrgId }
-        : undefined,
+      session: overrides?.sessionAccountId ? { accountId: overrides.sessionAccountId } : undefined,
+      client: overrides?.clientOrgId ? { organizationId: overrides.clientOrgId } : undefined,
     },
   };
 }
@@ -161,6 +167,18 @@ describe('OIDC Rendering Hooks', () => {
     mockRenderPage.mockResolvedValue('<html><body>Styled Page</body></html>');
     mockGetUserById.mockResolvedValue(null);
     mockGetOrganizationById.mockResolvedValue(null);
+    mockResolveEffectiveBranding.mockResolvedValue({
+      companyName: 'Acme Corporation',
+      primaryColor: '#FF5733',
+      logoUrl: 'https://acme.com/logo.png',
+      faviconUrl: 'https://acme.com/favicon.ico',
+      customCss: '.custom { color: red; }',
+      imageSources: ['https://acme.com'],
+    });
+    mockBuildHtmlCsp.mockImplementation((imageSources: readonly string[] = []) => {
+      const suffix = imageSources.length > 0 ? ` ${imageSources.join(' ')}` : '';
+      return `${EXPECTED_BRANDED_HTML_CSP}${suffix}`;
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -353,6 +371,12 @@ describe('OIDC Rendering Hooks', () => {
       expect(templateContext.branding.companyName).toBe('Acme Corporation');
       expect(templateContext.branding.logoUrl).toBe('https://acme.com/logo.png');
       expect(templateContext.orgSlug).toBe('acme');
+      expect(mockResolveEffectiveBranding).toHaveBeenCalledWith(SAMPLE_ORG);
+      expect(ctx.set).toHaveBeenCalledWith(
+        'Content-Security-Policy',
+        EXPECTED_EXTERNAL_BRANDING_HTML_CSP,
+      );
+      expect(mockBuildHtmlCsp).toHaveBeenCalledWith(['https://acme.com']);
     });
 
     it('should use default branding when org resolution fails', async () => {
@@ -377,7 +401,7 @@ describe('OIDC Rendering Hooks', () => {
       const ctx = createMockCtx();
       await logoutSourceHook(ctx, SAMPLE_FORM);
 
-      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_HTML_CSP);
+      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_BRANDED_HTML_CSP);
     });
 
     it('should set HTML_CSP header even in fallback path', async () => {
@@ -473,7 +497,7 @@ describe('OIDC Rendering Hooks', () => {
       const ctx = createMockCtx();
       await postLogoutSuccessSourceHook(ctx);
 
-      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_HTML_CSP);
+      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_BRANDED_HTML_CSP);
     });
 
     it('should fall back to minimal HTML when template engine throws', async () => {
@@ -582,7 +606,7 @@ describe('OIDC Rendering Hooks', () => {
       const ctx = createMockCtx();
       await renderErrorHook(ctx, { error: 'invalid_client' }, new Error('test'));
 
-      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_HTML_CSP);
+      expect(ctx.set).toHaveBeenCalledWith('Content-Security-Policy', EXPECTED_BRANDED_HTML_CSP);
     });
 
     it('should fall back to minimal HTML when template engine throws', async () => {

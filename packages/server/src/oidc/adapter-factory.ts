@@ -19,8 +19,111 @@
 import { PostgresAdapter, revokeGrantsByIds } from './postgres-adapter.js';
 import { RedisAdapter, cleanupRedisGrants } from './redis-adapter.js';
 import { findForOidc } from '../clients/service.js';
+import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 import type { AdapterPayload } from './postgres-adapter.js';
+
+/** Boolean result returned by the live authority validation query. */
+interface AuthorityValidationRow {
+  clientsLive: boolean;
+  usersLive: boolean;
+  grantsLive: boolean;
+}
+
+/** Authority identifiers referenced by one cached OIDC artifact. */
+interface AuthorityReferences {
+  clientIds: Set<string>;
+  userIds: Set<string>;
+  grantIds: Set<string>;
+}
+
+/** Return true when a value is a plain object suitable for safe field inspection. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Add a non-empty string field to an authority-reference set. */
+function addStringReference(target: Set<string>, value: unknown): void {
+  if (typeof value === 'string' && value.length > 0) target.add(value);
+}
+
+/**
+ * Extract every database-backed identifier carried by an OIDC payload.
+ *
+ * Session authorization maps use public client IDs as keys, so they must be
+ * checked in addition to the top-level fields shared by other artifacts.
+ */
+function collectAuthorityReferences(payload: AdapterPayload): AuthorityReferences {
+  const references: AuthorityReferences = {
+    clientIds: new Set<string>(),
+    userIds: new Set<string>(),
+    grantIds: new Set<string>(),
+  };
+
+  addStringReference(references.clientIds, payload.clientId);
+  addStringReference(references.userIds, payload.accountId);
+  addStringReference(references.grantIds, payload.grantId);
+
+  if (isRecord(payload.authorizations)) {
+    for (const [clientId, authorization] of Object.entries(payload.authorizations)) {
+      addStringReference(references.clientIds, clientId);
+      if (isRecord(authorization)) {
+        addStringReference(references.grantIds, authorization.grantId);
+      }
+    }
+  }
+
+  return references;
+}
+
+/**
+ * Verify cached OIDC references against current PostgreSQL authority.
+ *
+ * One set-based query checks all identifiers. Invalid UUID-shaped user IDs
+ * simply fail the text comparison instead of causing a PostgreSQL cast error.
+ * A database failure propagates so callers fail closed rather than accepting
+ * an artifact whose authority could not be established.
+ */
+async function hasLiveAuthority(payload: AdapterPayload): Promise<boolean> {
+  const references = collectAuthorityReferences(payload);
+  if (
+    references.clientIds.size === 0 &&
+    references.userIds.size === 0 &&
+    references.grantIds.size === 0
+  ) {
+    return true;
+  }
+
+  const result = await getPool().query<AuthorityValidationRow>(
+    `SELECT
+       NOT EXISTS (
+         SELECT 1
+         FROM unnest($1::text[]) AS requested(client_id)
+         LEFT JOIN clients AS client
+           ON client.client_id = requested.client_id AND client.status = 'active'
+         WHERE client.id IS NULL
+       ) AS "clientsLive",
+       NOT EXISTS (
+         SELECT 1
+         FROM unnest($2::text[]) AS requested(user_id)
+         LEFT JOIN users AS account
+           ON account.id::text = requested.user_id AND account.status = 'active'
+         WHERE account.id IS NULL
+       ) AS "usersLive",
+       NOT EXISTS (
+         SELECT 1
+         FROM unnest($3::text[]) AS requested(grant_id)
+         LEFT JOIN oidc_payloads AS grant_payload
+           ON grant_payload.id = requested.grant_id
+          AND grant_payload.type = 'Grant'
+          AND (grant_payload.expires_at IS NULL OR grant_payload.expires_at > NOW())
+         WHERE grant_payload.id IS NULL
+       ) AS "grantsLive"`,
+    [[...references.clientIds], [...references.userIds], [...references.grantIds]],
+  );
+  const authority = result.rows[0];
+  return Boolean(authority?.clientsLive && authority.usersLive && authority.grantsLive);
+}
 
 /**
  * Models routed to Redis for performance.
@@ -102,17 +205,20 @@ export function createAdapterFactory() {
       if (this.name === 'Client') {
         return findForOidc(id) as Promise<AdapterPayload | undefined>;
       }
-      return this.delegate.find(id);
+      const payload = await this.delegate.find(id);
+      return payload && (await hasLiveAuthority(payload)) ? payload : undefined;
     }
 
     /** Find an artifact by user code (device flow) */
     async findByUserCode(userCode: string): Promise<AdapterPayload | undefined> {
-      return this.delegate.findByUserCode(userCode);
+      const payload = await this.delegate.findByUserCode(userCode);
+      return payload && (await hasLiveAuthority(payload)) ? payload : undefined;
     }
 
     /** Find an artifact by UID (sessions) */
     async findByUid(uid: string): Promise<AdapterPayload | undefined> {
-      return this.delegate.findByUid(uid);
+      const payload = await this.delegate.findByUid(uid);
+      return payload && (await hasLiveAuthority(payload)) ? payload : undefined;
     }
 
     /** Mark an artifact as consumed */
@@ -142,10 +248,7 @@ export function createAdapterFactory() {
           const session = await this.delegate.find(id);
           if (session?.authorizations) {
             const grantIds: string[] = [];
-            const authorizations = session.authorizations as Record<
-              string,
-              { grantId?: string }
-            >;
+            const authorizations = session.authorizations as Record<string, { grantId?: string }>;
             for (const auth of Object.values(authorizations)) {
               if (auth.grantId) grantIds.push(auth.grantId);
             }

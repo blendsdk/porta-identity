@@ -35,7 +35,7 @@ test('should independently observe bravo ownership through an alpha-scoped admin
   assert.deepEqual(observation.routeChecks, [
     { operation: 'read', status: 'not-found' },
     { operation: 'update', status: 'not-found' },
-    { operation: 'suspend', status: 'not-found' },
+    { operation: 'deactivate', status: 'not-found' },
     { operation: 'roles', status: 'not-found' },
     { operation: 'two-factor', status: 'not-found' },
     { operation: 'export', status: 'not-found' },

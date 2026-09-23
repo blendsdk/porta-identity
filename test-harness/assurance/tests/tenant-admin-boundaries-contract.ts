@@ -65,7 +65,7 @@ export interface ControlPlaneBoundaryObservation {
   /** Intended handler was reached before the request was rejected. */
   readonly handlerReached: boolean;
   /** Boundary that made the final authorization decision. */
-  readonly decisionBoundary: 'handler' | 'permission' | 'resource';
+  readonly decisionBoundary: 'handler' | 'membership' | 'permission' | 'resource';
   /** Every cataloged prohibited side effect and whether it was observed. */
   readonly prohibitedSideEffects: Readonly<Record<string, boolean>>;
   /** Target state before the request, observed independently. */
@@ -151,11 +151,10 @@ export interface OrganizationCacheIsolationObservation {
   readonly result: 'allowed' | 'not-found';
 }
 
-/** One documented protection for the bootstrap super-admin user. */
-export interface SuperAdminExceptionObservation {
-  /** Protected destructive operation. */
-  readonly operation:
-    'delete' | 'suspend' | 'lock' | 'deactivate' | 'remove-super-admin-role' | 'manage-2fa';
+/** One observed destructive operation on the bootstrap administrator. */
+export interface BootstrapAdministratorOperationObservation {
+  /** Destructive operation under observation. */
+  readonly operation: 'delete' | 'deactivate' | 'remove-super-admin-role' | 'manage-2fa';
   /** Public result observed after the protected operation. */
   readonly result: AuthorizationResult;
   /** Whether independently verified bootstrap-user state remained unchanged. */
@@ -164,7 +163,7 @@ export interface SuperAdminExceptionObservation {
 
 /** Supported public authority transition exercised by the stale-state sentinel. */
 export type SupportedStaleAuthorityTransition =
-  'role-removal' | 'actor-deactivation' | 'actor-suspension' | 'session-revocation';
+  'role-removal' | 'actor-deactivation' | 'session-revocation';
 
 /** Client/process context used to retry authority after a durable transition. */
 export type StaleAuthorityRetryContext = 'existing-client' | 'fresh-client' | 'fresh-porta-process';
@@ -246,8 +245,10 @@ export interface TenantAdminBoundariesContract {
   observeConcurrentTenantIsolation(): Promise<ConcurrentTenantIsolationResult>;
   /** Forces one known cache write and probes the other tenant through public UserInfo. */
   observeOrganizationCacheIsolation(): Promise<OrganizationCacheIsolationObservation>;
-  /** Exercises documented protections for the bootstrap super-admin user. */
-  observeSuperAdminExceptions(): Promise<readonly SuperAdminExceptionObservation[]>;
+  /** Exercises documented destructive operations on the bootstrap administrator. */
+  observeBootstrapAdministratorOperations(): Promise<
+    readonly BootstrapAdministratorOperationObservation[]
+  >;
   /** Warms authority state, performs one supported transition, and retries in all contexts. */
   observeStaleAuthorityScenario(
     request: StaleAuthorityScenarioRequest,

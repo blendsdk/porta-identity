@@ -18,9 +18,13 @@
 
 import { createPrivateKey, generateKeyPairSync, createHash } from 'node:crypto';
 import { config } from '../config/index.js';
-import { getPool } from './database.js';
+import { getPool, runDatabaseTransaction } from './database.js';
 import { logger } from './logger.js';
-import { encryptPrivateKey, decryptPrivateKey } from './signing-key-crypto.js';
+import {
+  encryptPrivateKey,
+  decryptPrivateKey,
+  SigningKeyCryptoError,
+} from './signing-key-crypto.js';
 
 // ---------------------------------------------------------------------------
 // Cached JWKS for JWT verification (admin auth middleware, etc.)
@@ -28,7 +32,10 @@ import { encryptPrivateKey, decryptPrivateKey } from './signing-key-crypto.js';
 
 /** In-memory cache for the active JWK set — avoids a DB round-trip per request */
 let cachedJwks: { keys: JwkKeyPair[] } | null = null;
+/** Millisecond timestamp of the currently installed cache entry. */
 let jwksCacheTimestamp = 0;
+/** Monotonic invalidation marker used to reject stale in-flight cache installations. */
+let jwksCacheGeneration = 0;
 
 /** Cache TTL for the active JWK set — 60 seconds matches system-config cache */
 const JWKS_CACHE_TTL_MS = 60_000;
@@ -48,16 +55,25 @@ export async function getActiveJwks(): Promise<{ keys: JwkKeyPair[] }> {
     return cachedJwks;
   }
 
+  const loadGeneration = jwksCacheGeneration;
   const records = await loadSigningKeysFromDb();
-  cachedJwks = signingKeysToJwks(records);
-  jwksCacheTimestamp = now;
-  return cachedJwks;
+  const loadedJwks = signingKeysToJwks(records);
+
+  // A mutation may invalidate the cache while this database read is pending. The caller may use
+  // its completed snapshot, but installing it would make later callers observe stale key state.
+  if (loadGeneration === jwksCacheGeneration) {
+    cachedJwks = loadedJwks;
+    jwksCacheTimestamp = now;
+  }
+
+  return loadedJwks;
 }
 
 /**
  * Clear the cached JWK set — useful for testing and after key rotation.
  */
 export function clearJwksCache(): void {
+  jwksCacheGeneration += 1;
   cachedJwks = null;
   jwksCacheTimestamp = 0;
 }
@@ -183,10 +199,8 @@ export function signingKeysToJwks(records: SigningKeyRecord[]): { keys: JwkKeyPa
   for (const record of records) {
     try {
       keys.push(pemToJwk(record.privateKey, record.kid));
-    } catch (error) {
-      // Skip invalid PEM keys rather than crashing — log error and continue
-      // with remaining keys so the provider can still start
-      logger.error({ kid: record.kid, error }, 'Failed to convert signing key PEM to JWK, skipping');
+    } catch {
+      throw invalidSigningKeyRecord(record.kid);
     }
   }
 
@@ -228,44 +242,59 @@ export async function loadSigningKeysFromDb(): Promise<SigningKeyRecord[]> {
      ORDER BY activated_at DESC`,
   );
 
-  // Map snake_case DB columns to camelCase TypeScript interface.
-  // Decrypt private keys that are stored encrypted; pass through plaintext legacy keys.
+  // Map snake_case DB columns to camelCase TypeScript interface. Every private key must use the
+  // authenticated encrypted representation; accepting a partial or plaintext row would weaken
+  // the storage guarantee and could expose key material through later error handling.
   return result.rows.map((row) => {
-    let privateKey: string;
-    if (row.encrypted && row.private_key_iv && row.private_key_tag) {
-      // Encrypted key — decrypt with AES-256-GCM
-      privateKey = decryptPrivateKey(
+    if (!row.encrypted || !row.private_key_iv || !row.private_key_tag) {
+      throw invalidSigningKeyRecord(row.kid);
+    }
+
+    try {
+      const privateKey = decryptPrivateKey(
         row.private_key,
         row.private_key_iv,
         row.private_key_tag,
         config.signingKeyEncryptionKey,
       );
-    } else {
-      // Legacy plaintext key — use as-is
-      privateKey = row.private_key;
-    }
 
-    return {
-      id: row.id,
-      kid: row.kid,
-      algorithm: row.algorithm,
-      publicKey: row.public_key,
-      privateKey,
-      status: row.status,
-      activatedAt: row.activated_at,
-      retiredAt: row.retired_at,
-      expiresAt: row.expires_at,
-    };
+      return {
+        id: row.id,
+        kid: row.kid,
+        algorithm: row.algorithm,
+        publicKey: row.public_key,
+        privateKey,
+        status: row.status,
+        activatedAt: row.activated_at,
+        retiredAt: row.retired_at,
+        expiresAt: row.expires_at,
+      };
+    } catch {
+      throw invalidSigningKeyRecord(row.kid);
+    }
   });
+}
+
+/**
+ * Creates and records the fixed failure used for any unusable stored signing key.
+ *
+ * Only the public key identifier is logged. Ciphertext, metadata, parser errors, and stack traces
+ * are deliberately omitted because they can reveal secrets or internal deployment details.
+ *
+ * @param kid - Public identifier of the unusable database row.
+ * @returns A safe domain error suitable for propagation to startup and CLI boundaries.
+ */
+function invalidSigningKeyRecord(kid: string): SigningKeyCryptoError {
+  logger.error({ event: 'signing-key-record-invalid', kid }, 'Signing key record is invalid');
+  return new SigningKeyCryptoError('Signing key record is invalid');
 }
 
 /**
  * Ensure at least one active signing key exists in the database.
  *
- * Called at application startup. If no active keys are found:
- * 1. Generate a new ES256 key pair
- * 2. Insert it into the signing_keys table with status='active'
- * 3. Log a warning that a key was auto-generated
+ * Called at application startup. A transaction-scoped table lock serializes the active-key
+ * recheck and optional encrypted insert, so simultaneous new processes cannot each create a
+ * bootstrap key. Every caller reloads the committed rows after releasing the lock.
  *
  * This guarantees the OIDC provider can always start, even on a fresh database
  * that has no signing keys yet (e.g., first run after migrations).
@@ -273,16 +302,17 @@ export async function loadSigningKeysFromDb(): Promise<SigningKeyRecord[]> {
  * @returns The JWK key set containing all active and retired keys
  */
 export async function ensureSigningKeys(): Promise<{ keys: JwkKeyPair[] }> {
-  let records = await loadSigningKeysFromDb();
-
-  // Check if there are any active keys
-  const hasActiveKey = records.some((r) => r.status === 'active');
-
-  if (!hasActiveKey) {
-    logger.warn('No active signing keys found — auto-generating a new ES256 key pair');
-
-    const keyPair = generateES256KeyPair();
+  await runDatabaseTransaction(async () => {
     const pool = getPool();
+    await pool.query('LOCK TABLE signing_keys IN SHARE ROW EXCLUSIVE MODE');
+
+    // Recheck under the lock because another process may have inserted the first key while this
+    // process was waiting. Only the lock holder that still sees no active key may create one.
+    const lockedRecords = await loadSigningKeysFromDb();
+    if (lockedRecords.some((record) => record.status === 'active')) return;
+
+    logger.warn('No active signing keys found — auto-generating a new ES256 key pair');
+    const keyPair = generateES256KeyPair();
 
     // Encrypt the private key before storage (AES-256-GCM)
     const { encrypted, iv, tag } = encryptPrivateKey(
@@ -298,10 +328,10 @@ export async function ensureSigningKeys(): Promise<{ keys: JwkKeyPair[] }> {
     );
 
     logger.info({ kid: keyPair.kid }, 'Auto-generated signing key inserted into database');
+  });
 
-    // Reload keys from DB to get the full record including generated UUID
-    records = await loadSigningKeysFromDb();
-  }
-
+  // Every caller reloads after the lock transaction commits. This gives both the inserting caller
+  // and any waiter the same authoritative winner, including its database-generated identifier.
+  const records = await loadSigningKeysFromDb();
   return signingKeysToJwks(records);
 }

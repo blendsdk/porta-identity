@@ -10,6 +10,7 @@ export type {
   PaginatedResponse,
   ETagResponse,
   HistoryEntry,
+  HistoryResult,
 } from './common.js';
 
 // Organizations
@@ -20,7 +21,6 @@ export type {
   LoginMethod,
   CreateOrganizationInput,
   UpdateOrganizationInput,
-  BrandingInput,
 } from './organizations.js';
 
 // Applications
@@ -39,8 +39,11 @@ export type {
   Client,
   ClientStatus,
   ClientType,
+  ApplicationType,
+  ClientSecretStatus,
   GrantType,
   ResponseType,
+  TokenEndpointAuthMethod,
   CreateClientInput,
   UpdateClientInput,
   ClientSecret,
@@ -52,26 +55,20 @@ export type {
 export type {
   User,
   UserStatus,
+  AddressInput,
   CreateUserInput,
   UpdateUserInput,
   InviteUserInput,
+  InviteUserResult,
   SetPasswordInput,
   UserListParams,
 } from './users.js';
 
 // Roles
-export type {
-  Role,
-  CreateRoleInput,
-  UpdateRoleInput,
-  RoleWithPermissions,
-} from './roles.js';
+export type { Role, CreateRoleInput, UpdateRoleInput, RoleWithPermissions } from './roles.js';
 
 // Permissions
-export type {
-  Permission,
-  CreatePermissionInput,
-} from './permissions.js';
+export type { Permission, CreatePermissionInput, UpdatePermissionInput } from './permissions.js';
 
 // Custom Claims
 export type {
@@ -85,18 +82,23 @@ export type {
 
 // Config
 export type {
+  ConfigKey,
+  ConfigValue,
+  ConfigGroup,
+  ConfigValueType,
+  ConfigUnit,
+  ConfigApplicationMode,
   ConfigEntry,
   SetConfigInput,
+  ConfigUpdateResult,
+  ConfigBatchUpdateResult,
 } from './config.js';
 
 // Keys
 export type { SigningKey } from './keys.js';
 
 // Audit
-export type {
-  AuditEntry,
-  AuditListParams,
-} from './audit.js';
+export type { AuditEntry, AuditListParams } from './audit.js';
 
 // Stats
 export type {
@@ -110,13 +112,8 @@ export type {
   SystemHealth,
 } from './stats.js';
 
-
 // Sessions
-export type {
-  AdminSession,
-  SessionListParams,
-  RevokeUserSessionsResult,
-} from './sessions.js';
+export type { AdminSession, SessionListParams, RevokeUserSessionsResult } from './sessions.js';
 
 // Bulk
 export type {
@@ -129,13 +126,20 @@ export type {
 } from './bulk.js';
 
 // Branding
-export type { BrandingAssets } from './branding.js';
+export type {
+  BrandingAsset,
+  BrandingAssetContentType,
+  BrandingAssetUploadInput,
+  UpdateBrandingSettingsInput,
+} from './branding.js';
 
 // Exports
 export type {
   ExportEntityType,
   ExportFormat,
   ExportParams,
+  ExportManifestRequest,
+  ExportManifestResponse,
 } from './exports.js';
 
 // Two-Factor
@@ -149,27 +153,11 @@ export type {
   RegenerateRecoveryCodesResult,
 } from './two-factor.js';
 
-
-
-// Imports
-export type {
-  ImportMode,
-  ImportManifest,
-  ImportEntityResult,
-  ImportSkippedResult,
-  ImportErrorResult,
-  ImportClientCredentials,
-  ImportResult,
-} from './imports.js';
+// Portability manifests and import results
+export type * from './imports.js';
 
 // User Roles
-export type {
-  UserRoleAssignment,
-  AssignRoleInput,
-} from './user-roles.js';
+export type { UserRoleRemovalResult } from './user-roles.js';
 
 // User Claims
-export type {
-  UserClaimEntry,
-  SetUserClaimValueInput,
-} from './user-claims.js';
+export type { UserClaimEntry, SetUserClaimValueInput } from './user-claims.js';

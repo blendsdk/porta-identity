@@ -38,7 +38,7 @@ vi.mock('../../src/prompt.js', () => ({
 }));
 
 import { handleError } from '../../src/error-handler.js';
-import { printTable, printJson, success, warn } from '../../src/output.js';
+import { printTable, printJson, success, warn, info } from '../../src/output.js';
 import { confirm } from '../../src/prompt.js';
 
 // ---------------------------------------------------------------------------
@@ -150,6 +150,7 @@ describe('keys command', () => {
 
       expect(mockKeys.generate).toHaveBeenCalled();
       expect(success).toHaveBeenCalledWith(expect.stringContaining('kid-abc1'));
+      expect(info).toHaveBeenCalledTimes(2);
     });
 
     it('outputs JSON when --json', async () => {
@@ -158,6 +159,7 @@ describe('keys command', () => {
       await invokeSubcommand('generate', { json: true });
 
       expect(printJson).toHaveBeenCalledWith(sampleKey);
+      expect(info).not.toHaveBeenCalled();
     });
   });
 
@@ -171,6 +173,7 @@ describe('keys command', () => {
       expect(confirm).toHaveBeenCalled();
       expect(mockKeys.rotate).toHaveBeenCalled();
       expect(success).toHaveBeenCalledWith(expect.stringContaining('kid-abc1'));
+      expect(info).toHaveBeenCalledTimes(2);
     });
 
     it('aborts when confirmation denied', async () => {
@@ -198,6 +201,7 @@ describe('keys command', () => {
       await invokeSubcommand('rotate', { json: true });
 
       expect(printJson).toHaveBeenCalledWith(sampleKey);
+      expect(info).not.toHaveBeenCalled();
     });
   });
 });

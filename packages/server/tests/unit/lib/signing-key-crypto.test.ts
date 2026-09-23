@@ -59,23 +59,17 @@ describe('signing-key-crypto', () => {
 
     it('throws SigningKeyCryptoError for short key', () => {
       const { privateKeyPem } = generateES256KeyPair();
-      expect(() => encryptPrivateKey(privateKeyPem, 'a'.repeat(32))).toThrow(
-        SigningKeyCryptoError,
-      );
+      expect(() => encryptPrivateKey(privateKeyPem, 'a'.repeat(32))).toThrow(SigningKeyCryptoError);
     });
 
     it('throws SigningKeyCryptoError for non-hex key', () => {
       const { privateKeyPem } = generateES256KeyPair();
-      expect(() => encryptPrivateKey(privateKeyPem, 'z'.repeat(64))).toThrow(
-        SigningKeyCryptoError,
-      );
+      expect(() => encryptPrivateKey(privateKeyPem, 'z'.repeat(64))).toThrow(SigningKeyCryptoError);
     });
 
     it('throws SigningKeyCryptoError for empty key', () => {
       const { privateKeyPem } = generateES256KeyPair();
-      expect(() => encryptPrivateKey(privateKeyPem, '')).toThrow(
-        SigningKeyCryptoError,
-      );
+      expect(() => encryptPrivateKey(privateKeyPem, '')).toThrow(SigningKeyCryptoError);
     });
   });
 
@@ -101,9 +95,7 @@ describe('signing-key-crypto', () => {
       const { privateKeyPem } = generateES256KeyPair();
       const { encrypted, iv, tag } = encryptPrivateKey(privateKeyPem, TEST_KEY);
 
-      expect(() => decryptPrivateKey(encrypted, iv, tag, WRONG_KEY)).toThrow(
-        SigningKeyCryptoError,
-      );
+      expect(() => decryptPrivateKey(encrypted, iv, tag, WRONG_KEY)).toThrow(SigningKeyCryptoError);
     });
 
     it('throws SigningKeyCryptoError with tampered ciphertext', () => {
@@ -115,9 +107,7 @@ describe('signing-key-crypto', () => {
       const original = parseInt(encrypted[mid], 16);
       const replacement = ((original + 1) % 16).toString(16);
       const tampered = encrypted.slice(0, mid) + replacement + encrypted.slice(mid + 1);
-      expect(() => decryptPrivateKey(tampered, iv, tag, TEST_KEY)).toThrow(
-        SigningKeyCryptoError,
-      );
+      expect(() => decryptPrivateKey(tampered, iv, tag, TEST_KEY)).toThrow(SigningKeyCryptoError);
     });
 
     it('throws SigningKeyCryptoError with tampered tag', () => {
@@ -131,7 +121,7 @@ describe('signing-key-crypto', () => {
       );
     });
 
-    it('error message includes "Decryption failed"', () => {
+    it('uses the fixed safe message without the underlying crypto error', () => {
       const { privateKeyPem } = generateES256KeyPair();
       const { encrypted, iv, tag } = encryptPrivateKey(privateKeyPem, TEST_KEY);
 
@@ -140,7 +130,7 @@ describe('signing-key-crypto', () => {
         expect.fail('Should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(SigningKeyCryptoError);
-        expect((error as SigningKeyCryptoError).message).toContain('Decryption failed');
+        expect((error as SigningKeyCryptoError).message).toBe('Signing key record is invalid');
       }
     });
   });

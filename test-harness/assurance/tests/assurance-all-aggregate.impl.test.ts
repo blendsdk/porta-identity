@@ -135,7 +135,7 @@ function writeKnownIncompleteArtifact(
   return relativePath;
 }
 
-/** Creates an executor whose only incomplete result is the registered forwarding observer gap. */
+/** Creates an executor whose only incomplete result is an unregistered forwarding observation. */
 function knownIncompleteDependencies(
   root: string,
   calls: AssuranceAllInvocationRegistration[],
@@ -194,36 +194,7 @@ test('keeps the executable registry independent and identical to the immutable c
       'report-aggregate-run',
     ],
   );
-  assert.deepEqual(
-    aggregateKnownIncompleteCollectors.map((entry) => [
-      entry.invocationId,
-      entry.profile,
-      entry.gapId,
-      Object.keys(entry.incompleteCases),
-    ]),
-    [
-      [
-        'harness-security-operational',
-        'operational',
-        'forwarding-context-observer-incomplete',
-        [
-          'st53-untrusted-forwarded-host',
-          'st53-untrusted-forwarded-proto',
-          'st53-untrusted-forwarded-client-ip',
-        ],
-      ],
-      [
-        'harness-security-production-security',
-        'production-security',
-        'forwarding-context-observer-incomplete',
-        [
-          'st53-untrusted-forwarded-host',
-          'st53-untrusted-forwarded-proto',
-          'st53-untrusted-forwarded-client-ip',
-        ],
-      ],
-    ],
-  );
+  assert.deepEqual(aggregateKnownIncompleteCollectors, []);
   assert.match(aggregateRegistryDigest(), /^sha256:[a-f0-9]{64}$/);
 });
 
@@ -297,20 +268,14 @@ test('stops after a terminal child and accounts for every remaining invocation',
   }
 });
 
-test('continues only after an exact registered incomplete observer artifact', async () => {
-  const root = mkdtempSync(join(tmpdir(), 'porta-assurance-all-known-incomplete-'));
+test('stops when an incomplete collector has no registered continuation', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'porta-assurance-all-no-continuation-'));
   const calls: AssuranceAllInvocationRegistration[] = [];
   try {
     const result = await runAssuranceAggregate(root, knownIncompleteDependencies(root, calls));
-    assert.equal(calls.length, 16);
     assert.equal(result.exitCode, 50);
-    const parsed: unknown = JSON.parse(readFileSync(join(root, result.artifactPath), 'utf8'));
-    const evidence = validateAggregateEvidence(parsed);
-    const invocation = evidence.items.find(
-      (item) => item.id === 'invocation:harness-security-operational',
-    );
-    assert.equal(invocation?.observation, 'evidence-incomplete');
-    assert.equal(invocation?.conclusion, 'incomplete');
+    assert.equal(calls.at(-1)?.id, 'harness-security-operational');
+    assert.ok(calls.length < 16);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

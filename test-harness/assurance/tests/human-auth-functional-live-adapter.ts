@@ -7,6 +7,7 @@ import { LiveTenantAdminContext } from './tenant-admin-live-context.js';
 import { functionalAuthorizationUrl } from './human-auth-functional-authorization.js';
 import {
   assembleFunctionalCaseObservation,
+  assertCallbackNavigationOutcome,
   functionalBodyFingerprint,
   functionalHeaderFingerprint,
   observedFunctionalResponse as observedResponse,
@@ -97,16 +98,23 @@ async function passwordAttempt(
       });
     }
     await page.locator('input#password').fill(password);
-    const [response] = await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
-      page.locator('form[action$="/login"] button[type="submit"]').click(),
-    ]);
-    const status = response?.status() ?? 0;
-    const headers = response?.headers() ?? {};
+    let response: Awaited<ReturnType<typeof page.waitForNavigation>> | undefined;
+    let navigationError: unknown;
+    try {
+      [response] = await Promise.all([
+        page.waitForNavigation({ waitUntil: 'domcontentloaded' }),
+        page.locator('form[action$="/login"] button[type="submit"]').click(),
+      ]);
+    } catch (error) {
+      navigationError = error;
+    }
     const callback = await page
       .waitForURL((url) => url.origin === new URL(redirectUri).origin, { timeout: 5_000 })
       .then(() => true)
       .catch(() => false);
+    assertCallbackNavigationOutcome(navigationError, callback);
+    const status = response?.status() ?? 0;
+    const headers = response?.headers() ?? {};
     if (!callback) {
       await page.locator('input#email').waitFor({ state: 'visible', timeout: 5_000 });
     }

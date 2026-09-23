@@ -46,6 +46,7 @@ interface RuntimeUser {
   readonly alias: string;
   readonly id: string;
   readonly email: string;
+  readonly organizationId: string;
 }
 
 interface RuntimeClient {
@@ -105,23 +106,12 @@ export async function arrangeFixtureBaseline(
     await import('../../packages/server/src/applications/index.js');
   const { createClient, generateSecret, listClientsByApplication } =
     await import('../../packages/server/src/clients/index.js');
-  const {
-    createUser,
-    getUserByEmail,
-    lockUser,
-    markEmailVerified,
-    reactivateUser,
-    setUserPassword,
-    suspendUser,
-  } = await import('../../packages/server/src/users/index.js');
-  const {
-    assignPermissionsToRole,
-    assignRolesToUser,
-    createPermission,
-    createRole,
-    findPermissionBySlug,
-    findRoleBySlug,
-  } = await import('../../packages/server/src/rbac/index.js');
+  const { activateUser, createUser, getUserByEmail, markEmailVerified, setUserPassword } =
+    await import('../../packages/server/src/users/index.js');
+  const { createPermission, createRole, findPermissionBySlug, findRoleBySlug } =
+    await import('../../packages/server/src/rbac/index.js');
+  const { assignPermissionsToRole, assignRolesToUser } =
+    await import('../../packages/server/src/rbac/mapping-repository.js');
   const { setupTotp } = await import('../../packages/server/src/two-factor/index.js');
 
   const pool = getPool();
@@ -163,13 +153,15 @@ export async function arrangeFixtureBaseline(
         password: userPassword,
       });
       await setUserPassword(user.id, userPassword);
-      if (user.status === 'inactive') await reactivateUser(user.id);
+      if (user.status === 'inactive') await activateUser(user.id);
       await markEmailVerified(user.id);
       if (userDefinition.state === 'locked' && user.status !== 'locked') {
-        await lockUser(user.id, 'assurance fixture');
-      }
-      if (userDefinition.state === 'suspended' && user.status !== 'suspended') {
-        await suspendUser(user.id, 'assurance fixture');
+        await pool.query(
+          `UPDATE users
+           SET status = 'locked', locked_at = NOW(), locked_reason = 'auto_lockout'
+           WHERE id = $1`,
+          [user.id],
+        );
       }
       if (userDefinition.twoFactorEnabled && !user.twoFactorEnabled) {
         const setup = await setupTotp(user.id, email, fixture.id);
@@ -186,7 +178,12 @@ export async function arrangeFixtureBaseline(
         );
       }
       credentials.set(userDefinition.passwordCredentialRef, userPassword);
-      runtimeUsers.set(userDefinition.id, { alias: userDefinition.id, id: user.id, email });
+      runtimeUsers.set(userDefinition.id, {
+        alias: userDefinition.id,
+        id: user.id,
+        email,
+        organizationId: organization.id,
+      });
       entities.push({ alias: userDefinition.id, id: user.id });
     }
 
@@ -268,23 +265,28 @@ export async function arrangeFixtureBaseline(
       name: `${fixture.id} resource reader`,
       slug: roleSlug,
     });
-    await assignPermissionsToRole(role.id, [permission.id]);
+    await assignPermissionsToRole(application.id, role.id, [permission.id]);
     const activeUser = runtimeUsers.get(`${fixture.id}-user-active`);
     if (activeUser === undefined) throw new Error(`active fixture user missing: ${fixture.id}`);
-    await assignRolesToUser(activeUser.id, [role.id]);
+    await assignRolesToUser(activeUser.organizationId, activeUser.id, [role.id]);
     entities.push({ alias: roleSlug, id: role.id });
 
     const publicClient = runtimeClients.get(`${fixture.id}-client-public`);
     if (publicClient === undefined) throw new Error(`public fixture client missing: ${fixture.id}`);
     const sessionValue = randomCredential();
     const tokenValue = randomCredential();
-    await pool.query(
+    const sessionResult = await pool.query<{ public_id: string }>(
       `INSERT INTO admin_sessions
          (session_id, user_id, client_id, organization_id, grant_id, expires_at)
        VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '1 hour')
-       ON CONFLICT (session_id) DO NOTHING`,
+       ON CONFLICT (session_id) DO NOTHING
+       RETURNING public_id`,
       [sessionValue, activeUser.id, publicClient.id, organization.id, `${fixture.id}-grant`],
     );
+    const publicSessionId = sessionResult.rows[0]?.public_id;
+    if (publicSessionId === undefined) {
+      throw new Error(`baseline fixture session was not created: ${fixture.id}`);
+    }
     await pool.query(
       `INSERT INTO oidc_payloads (id, type, payload, grant_id, expires_at)
        VALUES ($1, 'AccessToken', $2::jsonb, $3, NOW() + INTERVAL '1 hour')
@@ -302,16 +304,30 @@ export async function arrangeFixtureBaseline(
     );
     credentials.set(`credential:${fixture.id}:cookie:baseline`, sessionValue);
     credentials.set(`credential:${fixture.id}:token:baseline`, tokenValue);
-    // Session and token identifiers are bearer credentials, so only their protected references
-    // appear in the public fixture definition. The public entity index keeps the non-secret
-    // resource association and never serializes those raw values.
-    entities.push({ alias: `${fixture.id}-resource-primary`, id: activeUser.id });
+    // Bearer credentials remain protected. The session's separate public UUID is safe to expose
+    // in the entity index for administrative resource routes.
+    entities.push(
+      { alias: `${fixture.id}-session-baseline`, id: publicSessionId },
+      { alias: `${fixture.id}-resource-primary`, id: activeUser.id },
+    );
   }
 
   const superAdminOrganization = await findSuperAdminOrganization();
   const adminApplication = await getApplicationBySlug('porta-admin');
   if (superAdminOrganization === null || adminApplication === null) {
     throw new Error('Porta bootstrap must create the super-admin organization and application');
+  }
+  const adminClients = await listClientsByApplication(adminApplication.id, {
+    page: 1,
+    pageSize: 100,
+  });
+  const adminClient = adminClients.data.find(
+    (candidate) =>
+      candidate.organizationId === superAdminOrganization.id &&
+      candidate.clientName === 'Porta Admin CLI',
+  );
+  if (adminClient === undefined) {
+    throw new Error('Porta bootstrap must create the admin CLI client');
   }
   entities.push(
     { alias: 'super-admin', id: superAdminOrganization.id },
@@ -330,7 +346,7 @@ export async function arrangeFixtureBaseline(
       password: actorPassword,
     });
     await setUserPassword(user.id, actorPassword);
-    if (user.status === 'inactive') await reactivateUser(user.id);
+    if (user.status === 'inactive') await activateUser(user.id);
     await markEmailVerified(user.id);
     let role = await findRoleBySlug(adminApplication.id, actor.roleId);
     if (role === null && actor.permissionSet === 'unprivileged') {
@@ -342,7 +358,7 @@ export async function arrangeFixtureBaseline(
       });
     }
     if (role === null) throw new Error(`Porta bootstrap role missing: ${actor.roleId}`);
-    await assignRolesToUser(user.id, [role.id]);
+    await assignRolesToUser(superAdminOrganization.id, user.id, [role.id], user.id);
     credentials.set(actor.passwordCredentialRef, actorPassword);
     const adminToken = randomCredential();
     await pool.query(
@@ -352,7 +368,7 @@ export async function arrangeFixtureBaseline(
         adminToken,
         JSON.stringify({
           accountId: user.id,
-          clientId: 'porta-admin-assurance',
+          clientId: adminClient.clientId,
           scope: fixtureProtocolScopes.join(' '),
         }),
       ],
@@ -369,7 +385,9 @@ export async function arrangeFixtureBaseline(
   if (ordinaryMembershipActor === undefined || auditorRole === null) {
     throw new Error('ordinary administrative membership control is incomplete');
   }
-  await assignRolesToUser(ordinaryMembershipActor.id, [auditorRole.id]);
+  await assignRolesToUser(ordinaryMembershipActor.organizationId, ordinaryMembershipActor.id, [
+    auditorRole.id,
+  ]);
   entities.push({
     alias: 'alpha-ordinary-admin-role-control',
     id: ordinaryMembershipActor.id,

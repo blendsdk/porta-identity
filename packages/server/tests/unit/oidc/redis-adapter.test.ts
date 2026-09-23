@@ -8,15 +8,49 @@ vi.mock('../../../src/lib/logger.js', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
+vi.mock('../../../src/lib/session-tracking.js', () => ({
+  getSession: vi.fn(),
+  revokeSession: vi.fn(),
+  upsertSession: vi.fn(),
+}));
+
 import { getRedis } from '../../../src/lib/redis.js';
+import { getSession, revokeSession, upsertSession } from '../../../src/lib/session-tracking.js';
 import { RedisAdapter } from '../../../src/oidc/redis-adapter.js';
+
+/** Return a live tracking record for Redis-backed Session tests. */
+function createLiveTracking() {
+  const now = new Date();
+  return {
+    sessionId: 'sess-1',
+    userId: 'user-1',
+    clientId: null,
+    organizationId: null,
+    grantId: null,
+    ipAddress: null,
+    userAgent: null,
+    createdAt: now,
+    expiresAt: new Date(now.getTime() + 3_600_000),
+    lastActivityAt: now,
+    revokedAt: null,
+  };
+}
 
 function createMockRedis() {
   const pipelineOps: Array<{ method: string; args: unknown[] }> = [];
   const mockPipeline = {
-    set: vi.fn((...args: unknown[]) => { pipelineOps.push({ method: 'set', args }); return mockPipeline; }),
-    sadd: vi.fn((...args: unknown[]) => { pipelineOps.push({ method: 'sadd', args }); return mockPipeline; }),
-    expire: vi.fn((...args: unknown[]) => { pipelineOps.push({ method: 'expire', args }); return mockPipeline; }),
+    set: vi.fn((...args: unknown[]) => {
+      pipelineOps.push({ method: 'set', args });
+      return mockPipeline;
+    }),
+    sadd: vi.fn((...args: unknown[]) => {
+      pipelineOps.push({ method: 'sadd', args });
+      return mockPipeline;
+    }),
+    expire: vi.fn((...args: unknown[]) => {
+      pipelineOps.push({ method: 'expire', args });
+      return mockPipeline;
+    }),
     exec: vi.fn().mockResolvedValue([]),
   };
 
@@ -24,6 +58,7 @@ function createMockRedis() {
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue('OK'),
     del: vi.fn().mockResolvedValue(1),
+    eval: vi.fn().mockResolvedValue(1),
     ttl: vi.fn().mockResolvedValue(300),
     smembers: vi.fn().mockResolvedValue([]),
     sadd: vi.fn().mockResolvedValue(1),
@@ -39,6 +74,9 @@ describe('RedisAdapter', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(getSession).mockResolvedValue(createLiveTracking());
+    vi.mocked(revokeSession).mockResolvedValue(undefined);
+    vi.mocked(upsertSession).mockResolvedValue(undefined);
     adapter = new RedisAdapter('Session');
   });
 
@@ -69,12 +107,7 @@ describe('RedisAdapter', () => {
       const { mockPipeline } = createMockRedis();
       await adapter.upsert('sess-1', { uid: 'uid-1' }, 3600);
 
-      expect(mockPipeline.set).toHaveBeenCalledWith(
-        'oidc:Session:uid:uid-1',
-        'sess-1',
-        'EX',
-        3600,
-      );
+      expect(mockPipeline.set).toHaveBeenCalledWith('oidc:Session:uid:uid-1', 'sess-1', 'EX', 3600);
     });
 
     it('sets user_code index key when present', async () => {
@@ -93,10 +126,7 @@ describe('RedisAdapter', () => {
       const { mockPipeline } = createMockRedis();
       await adapter.upsert('sess-1', { grantId: 'grant-1' }, 3600);
 
-      expect(mockPipeline.sadd).toHaveBeenCalledWith(
-        'oidc:Session:grant:grant-1',
-        'sess-1',
-      );
+      expect(mockPipeline.sadd).toHaveBeenCalledWith('oidc:Session:grant:grant-1', 'sess-1');
     });
   });
 
@@ -130,7 +160,7 @@ describe('RedisAdapter', () => {
       const { redis } = createMockRedis();
       const payload = { accountId: 'user-1' };
       redis.get
-        .mockResolvedValueOnce('sess-1')          // uid index lookup
+        .mockResolvedValueOnce('sess-1') // uid index lookup
         .mockResolvedValueOnce(JSON.stringify(payload)); // main key lookup
 
       const result = await adapter.findByUid('uid-123');
@@ -150,9 +180,7 @@ describe('RedisAdapter', () => {
     it('looks up index key then main key', async () => {
       const { redis } = createMockRedis();
       const payload = { kind: 'DeviceCode' };
-      redis.get
-        .mockResolvedValueOnce('dc-1')
-        .mockResolvedValueOnce(JSON.stringify(payload));
+      redis.get.mockResolvedValueOnce('dc-1').mockResolvedValueOnce(JSON.stringify(payload));
 
       const result = await adapter.findByUserCode('ABCD');
       expect(redis.get).toHaveBeenCalledWith('oidc:Session:user_code:ABCD');
@@ -161,28 +189,27 @@ describe('RedisAdapter', () => {
   });
 
   describe('consume', () => {
-    it('reads payload, adds consumed timestamp, writes back with remaining TTL', async () => {
+    it('atomically consumes the artifact while preserving its TTL', async () => {
       const { redis } = createMockRedis();
-      const payload = { accountId: 'user-1' };
-      redis.get.mockResolvedValue(JSON.stringify(payload));
-      redis.ttl.mockResolvedValue(1800);
 
       await adapter.consume('sess-1');
 
-      expect(redis.get).toHaveBeenCalledWith('oidc:Session:sess-1');
-      expect(redis.ttl).toHaveBeenCalledWith('oidc:Session:sess-1');
-      expect(redis.set).toHaveBeenCalledWith(
+      expect(redis.eval).toHaveBeenCalledWith(
+        expect.stringContaining("'KEEPTTL'"),
+        1,
         'oidc:Session:sess-1',
-        expect.stringContaining('"consumed"'),
-        'EX',
-        1800,
+        expect.any(Number),
       );
     });
 
-    it('does nothing when key not found', async () => {
+    it('rejects an artifact that another request already consumed', async () => {
       const { redis } = createMockRedis();
-      await adapter.consume('missing');
-      expect(redis.set).not.toHaveBeenCalled();
+      redis.eval.mockResolvedValue(0);
+
+      await expect(adapter.consume('sess-1')).rejects.toMatchObject({
+        error: 'invalid_grant',
+        status: 400,
+      });
     });
   });
 
@@ -214,9 +241,7 @@ describe('RedisAdapter', () => {
       const { redis } = createMockRedis();
       redis.smembers.mockResolvedValue(['sess-1', 'sess-2']);
       // Each destroy call reads then deletes
-      redis.get
-        .mockResolvedValueOnce(JSON.stringify({}))
-        .mockResolvedValueOnce(JSON.stringify({}));
+      redis.get.mockResolvedValueOnce(JSON.stringify({})).mockResolvedValueOnce(JSON.stringify({}));
 
       await adapter.revokeByGrantId('grant-1');
 

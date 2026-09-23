@@ -15,7 +15,9 @@ import {
   emailExists,
   updateLoginStats,
   countByOrganization,
+  requireActiveSuperAdminSurvivor,
 } from '../../../src/users/repository.js';
+import { UserValidationError } from '../../../src/users/errors.js';
 import type { UserRow } from '../../../src/users/types.js';
 
 /** Helper to create a mock pool with a query function returning given rows */
@@ -247,17 +249,15 @@ describe('user repository', () => {
     it('should throw when no fields provided', async () => {
       mockPool([]);
 
-      await expect(
-        updateUser('user-uuid-1', {}),
-      ).rejects.toThrow('No fields to update');
+      await expect(updateUser('user-uuid-1', {})).rejects.toThrow('No fields to update');
     });
 
     it('should throw when user not found', async () => {
       mockPool([]); // No rows returned from UPDATE
 
-      await expect(
-        updateUser('nonexistent', { givenName: 'Test' }),
-      ).rejects.toThrow('User not found');
+      await expect(updateUser('nonexistent', { givenName: 'Test' })).rejects.toThrow(
+        'User not found',
+      );
     });
   });
 
@@ -268,7 +268,8 @@ describe('user repository', () => {
   describe('listUsers', () => {
     it('should return paginated results', async () => {
       const row = createTestRow();
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '1' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [row], rowCount: 1 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -285,7 +286,8 @@ describe('user repository', () => {
     });
 
     it('should filter by status', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -297,7 +299,8 @@ describe('user repository', () => {
     });
 
     it('should filter by search term', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -311,7 +314,8 @@ describe('user repository', () => {
     });
 
     it('should sort by specified column', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -329,7 +333,8 @@ describe('user repository', () => {
     });
 
     it('should scope to organization', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -403,6 +408,46 @@ describe('user repository', () => {
       const count = await countByOrganization('org-uuid-1');
 
       expect(count).toBe(42);
+    });
+  });
+
+  describe('requireActiveSuperAdminSurvivor', () => {
+    it('locks the control-plane organization before checking for a survivor', async () => {
+      const mockQuery = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'org-uuid-1' }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{ exists: true }], rowCount: 1 });
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
+
+      await requireActiveSuperAdminSurvivor('org-uuid-1', 'user-uuid-1');
+
+      expect(mockQuery).toHaveBeenCalledTimes(2);
+      expect(mockQuery.mock.calls[0]?.[0]).toContain('is_super_admin = TRUE');
+      expect(mockQuery.mock.calls[0]?.[0]).toContain('FOR UPDATE');
+      expect(mockQuery.mock.calls[0]?.[1]).toEqual(['org-uuid-1']);
+      expect(mockQuery.mock.calls[1]?.[0]).toContain("role.slug = 'porta-super-admin'");
+      expect(mockQuery.mock.calls[1]?.[0]).toContain("application.slug = 'porta-admin'");
+      expect(mockQuery.mock.calls[1]?.[1]).toEqual(['org-uuid-1', 'user-uuid-1']);
+    });
+
+    it('skips the survivor query for an ordinary organization', async () => {
+      const mockQuery = mockPool([]);
+
+      await requireActiveSuperAdminSurvivor('org-uuid-1', 'user-uuid-1');
+
+      expect(mockQuery).toHaveBeenCalledOnce();
+    });
+
+    it('rejects removal when no other active exact holder exists', async () => {
+      const mockQuery = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [{ id: 'org-uuid-1' }], rowCount: 1 })
+        .mockResolvedValueOnce({ rows: [{ exists: false }], rowCount: 1 });
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
+
+      await expect(requireActiveSuperAdminSurvivor('org-uuid-1', 'user-uuid-1')).rejects.toThrow(
+        UserValidationError,
+      );
     });
   });
 });

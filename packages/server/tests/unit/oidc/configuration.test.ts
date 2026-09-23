@@ -31,14 +31,19 @@ vi.mock('../../../src/config/index.js', () => ({
   config: mockConfig,
 }));
 
-import { buildProviderConfiguration, type BuildProviderConfigParams } from '../../../src/oidc/configuration.js';
+import {
+  buildProviderConfiguration,
+  type BuildProviderConfigParams,
+} from '../../../src/oidc/configuration.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /** Minimal valid params for buildProviderConfiguration */
-function createTestParams(overrides?: Partial<BuildProviderConfigParams>): BuildProviderConfigParams {
+function createTestParams(
+  overrides?: Partial<BuildProviderConfigParams>,
+): BuildProviderConfigParams {
   return {
     ttl: {
       accessToken: 3600,
@@ -184,9 +189,24 @@ describe('buildProviderConfiguration', () => {
 
     it('requires PKCE with S256 only', () => {
       const cfg = buildProviderConfiguration(createTestParams());
-      const pkce = cfg.pkce as { required: () => boolean; methods: string[] };
+      const pkce = cfg.pkce as {
+        required: (ctx: unknown, client: Record<string, unknown>) => boolean;
+        methods: string[];
+      };
 
-      expect(pkce.required()).toBe(true);
+      expect(pkce.required(undefined, { 'urn:porta:client_type': 'public' })).toBe(true);
+      expect(
+        pkce.required(undefined, {
+          'urn:porta:client_type': 'confidential',
+          'urn:porta:require_pkce': true,
+        }),
+      ).toBe(true);
+      expect(
+        pkce.required(undefined, {
+          'urn:porta:client_type': 'confidential',
+          'urn:porta:require_pkce': false,
+        }),
+      ).toBe(false);
       expect(pkce.methods).toEqual(['S256']);
     });
 
@@ -226,6 +246,13 @@ describe('buildProviderConfiguration', () => {
 
       expect(claims.openid).toContain('roles');
       expect(claims.openid).toContain('permissions');
+    });
+
+    it('preserves the private application identifier in provider client metadata', () => {
+      const cfg = buildProviderConfiguration(createTestParams());
+      const metadata = cfg.extraClientMetadata as { properties: string[] };
+
+      expect(metadata.properties).toContain('urn:porta:internal_application_id');
     });
 
     it('enables refresh token rotation', () => {

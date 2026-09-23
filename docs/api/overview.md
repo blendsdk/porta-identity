@@ -82,7 +82,7 @@ Many list endpoints support filtering:
 | Parameter | Description |
 |-----------|-------------|
 | `search` | Free-text search across relevant fields |
-| `status` | Filter by status (`active`, `suspended`, `archived`) |
+| `status` | Filter by a resource's supported active or disabled statuses |
 | `sort` | Sort field (e.g., `name`, `createdAt`) |
 | `order` | Sort direction (`asc` or `desc`) |
 

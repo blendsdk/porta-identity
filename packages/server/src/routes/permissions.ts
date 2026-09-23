@@ -10,7 +10,7 @@
  *   GET    /                — List permissions (optional ?moduleId filter)
  *   GET    /:permId         — Get a permission by ID
  *   PUT    /:permId         — Update a permission (name/description only)
- *   DELETE /:permId         — Delete a permission (?force=true)
+ *   DELETE /:permissionId   — Delete a permission
  *   GET    /:permId/roles   — List roles that have this permission
  *
  * Error mapping:
@@ -23,9 +23,13 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
-import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, ALL_ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { getApplicationBySlug } from '../applications/service.js';
 import * as permissionService from '../rbac/permission-service.js';
 import { PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
+
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -34,7 +38,7 @@ import { PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js'
 /** Schema for creating a new permission */
 const createPermissionSchema = z.object({
   name: z.string().min(1).max(255),
-  slug: z.string().min(1).max(150),
+  slug: z.string().trim().min(1).max(150),
   moduleId: z.string().uuid().optional(),
   description: z.string().max(1000).optional(),
 });
@@ -49,6 +53,21 @@ const updatePermissionSchema = z.object({
 const listPermissionsSchema = z.object({
   moduleId: z.string().uuid().optional(),
 });
+
+/** Parent-qualified parameters accepted by permission reads and updates. */
+const permissionIdentifierSchema = z.object({
+  appId: z.string().uuid(),
+  permId: z.string().uuid(),
+});
+
+/** Parent-qualified parameters accepted by permission deletion. */
+const deletionIdentifierSchema = z.object({
+  appId: z.string().uuid(),
+  permissionId: z.string().uuid(),
+});
+
+/** Application parent parameter accepted by collection routes. */
+const applicationIdentifierSchema = z.object({ appId: z.string().uuid() });
 
 // ---------------------------------------------------------------------------
 // Error handler helper
@@ -76,6 +95,22 @@ function handleError(
   throw err;
 }
 
+/** Reject generic route mutations of a canonical Porta Admin permission. */
+async function requireMutablePermission(
+  applicationId: string,
+  permissionId: string,
+): Promise<void> {
+  const permission = await permissionService.findPermissionById(applicationId, permissionId);
+  // The mutation service remains responsible for authoritative not-found handling and repeats the
+  // canonical check after locking. This route lookup exists only for an early sanitized rejection.
+  if (!permission) return;
+  if (!ADMIN_PERMISSION_SLUGS.has(permission.slug)) return;
+  const adminApplication = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (adminApplication?.id === permission.applicationId) {
+    throw new RbacValidationError('Canonical Porta Admin permissions cannot be modified');
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Router factory
 // ---------------------------------------------------------------------------
@@ -101,11 +136,15 @@ export function createPermissionRouter(): Router {
   // -------------------------------------------------------------------------
   router.post('/', requirePermission(ADMIN_PERMISSIONS.PERMISSION_CREATE), async (ctx) => {
     try {
+      applicationIdentifierSchema.parse(ctx.params);
       const body = createPermissionSchema.parse(ctx.request.body);
-      const permission = await permissionService.createPermission({
-        applicationId: ctx.params.appId,
-        ...body,
-      });
+      const permission = await permissionService.createPermission(
+        {
+          applicationId: ctx.params.appId,
+          ...body,
+        },
+        ctx.state.adminUser?.id,
+      );
       ctx.status = 201;
       ctx.body = { data: permission };
     } catch (err) {
@@ -118,6 +157,7 @@ export function createPermissionRouter(): Router {
   // -------------------------------------------------------------------------
   router.get('/', requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ), async (ctx) => {
     try {
+      applicationIdentifierSchema.parse(ctx.params);
       const query = listPermissionsSchema.parse(ctx.query);
       const permissions = await permissionService.listPermissionsByApplication(
         ctx.params.appId,
@@ -133,20 +173,15 @@ export function createPermissionRouter(): Router {
   // GET /:permId — Get permission by ID
   // -------------------------------------------------------------------------
   router.get('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ), async (ctx) => {
-    const permission = await permissionService.findPermissionById(ctx.params.permId);
-    if (!permission) {
-      ctx.throw(404, 'Permission not found');
-    }
-    ctx.body = { data: permission };
-  });
-
-  // -------------------------------------------------------------------------
-  // PUT /:permId — Update permission (name and description only)
-  // -------------------------------------------------------------------------
-  router.put('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_CREATE), async (ctx) => {
     try {
-      const body = updatePermissionSchema.parse(ctx.request.body);
-      const permission = await permissionService.updatePermission(ctx.params.permId, body);
+      permissionIdentifierSchema.parse(ctx.params);
+      const permission = await permissionService.findPermissionById(
+        ctx.params.appId,
+        ctx.params.permId,
+      );
+      if (!permission) {
+        ctx.throw(404, 'Permission not found');
+      }
       ctx.body = { data: permission };
     } catch (err) {
       handleError(ctx, err);
@@ -154,17 +189,42 @@ export function createPermissionRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // DELETE /:permId — Delete permission
-  // Supports ?force=true to delete even when roles reference it
+  // PUT /:permId — Update permission (name and description only)
+  // -------------------------------------------------------------------------
+  router.put('/:permId', requirePermission(ADMIN_PERMISSIONS.PERMISSION_UPDATE), async (ctx) => {
+    try {
+      permissionIdentifierSchema.parse(ctx.params);
+      const body = updatePermissionSchema.parse(ctx.request.body);
+      await requireMutablePermission(ctx.params.appId, ctx.params.permId);
+      const permission = await permissionService.updatePermission(
+        ctx.params.appId,
+        ctx.params.permId,
+        body,
+        ctx.state.adminUser?.id,
+      );
+      ctx.body = { data: permission };
+    } catch (err) {
+      handleError(ctx, err);
+    }
+  });
+
+  // -------------------------------------------------------------------------
+  // DELETE /:permissionId — Delete permission
   // -------------------------------------------------------------------------
   router.delete(
-    '/:permId',
-    requirePermission(ADMIN_PERMISSIONS.PERMISSION_ARCHIVE),
+    '/:permissionId',
+    requirePermission(ADMIN_PERMISSIONS.PERMISSION_DELETE),
     async (ctx) => {
       try {
-        const force = ctx.query.force === 'true';
-        await permissionService.deletePermission(ctx.params.permId, force);
-        ctx.status = 204;
+        deletionIdentifierSchema.parse(ctx.params);
+        await requireMutablePermission(ctx.params.appId, ctx.params.permissionId);
+        const result = await permissionService.deletePermission(
+          ctx.params.appId,
+          ctx.params.permissionId,
+          ctx.state.adminUser?.id,
+        );
+        ctx.status = 200;
+        ctx.body = { data: result };
       } catch (err) {
         handleError(ctx, err);
       }
@@ -179,7 +239,11 @@ export function createPermissionRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.PERMISSION_READ),
     async (ctx) => {
       try {
-        const roles = await permissionService.getRolesWithPermission(ctx.params.permId);
+        permissionIdentifierSchema.parse(ctx.params);
+        const roles = await permissionService.getRolesWithPermission(
+          ctx.params.appId,
+          ctx.params.permId,
+        );
         ctx.body = { data: roles };
       } catch (err) {
         handleError(ctx, err);

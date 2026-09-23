@@ -14,8 +14,7 @@
  *   PUT    /:id/branding      — Update branding
  *   POST   /:id/suspend       — Suspend organization
  *   POST   /:id/activate      — Activate organization
- *   POST   /:id/archive       — Archive organization
- *   POST   /:id/restore       — Restore organization
+ *   DELETE /:idOrSlug         — Delete organization
  *
  * Error mapping:
  *   OrganizationNotFoundError → 404
@@ -32,7 +31,16 @@ import * as organizationService from '../organizations/service.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { OrganizationNotFoundError, OrganizationValidationError } from '../organizations/errors.js';
-import { LOGIN_METHODS } from '../clients/types.js';
+import {
+  brandingCompanyNameSchema,
+  brandingCustomCssSchema,
+  brandingImageUrlSchema,
+  brandingPrimaryColorSchema,
+  organizationLocaleSchema,
+  organizationLoginMethodsSchema,
+  organizationNameSchema,
+  organizationSlugSchema,
+} from '../organizations/validators.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -43,70 +51,35 @@ import { LOGIN_METHODS } from '../clients/types.js';
  * Uses the runtime `LOGIN_METHODS` const so adding a new method only requires
  * updating the union in `src/clients/types.ts`.
  */
-const loginMethodSchema = z.enum(LOGIN_METHODS);
-
-/**
- * Organization-level default login methods — a non-empty array (empty arrays
- * are rejected by the service layer and must be rejected at the HTTP boundary
- * too so the 400 carries a useful validation message).
- */
-const defaultLoginMethodsSchema = z.array(loginMethodSchema).min(1);
+const brandingSchema = z.object({
+  logoUrl: brandingImageUrlSchema.nullable().optional(),
+  faviconUrl: brandingImageUrlSchema.nullable().optional(),
+  primaryColor: brandingPrimaryColorSchema.nullable().optional(),
+  companyName: brandingCompanyNameSchema.nullable().optional(),
+  customCss: brandingCustomCssSchema.nullable().optional(),
+});
 
 const createOrganizationSchema = z.object({
-  name: z.string().min(1).max(255),
-  slug: z.string().min(3).max(100).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z
-    .object({
-      logoUrl: z.string().url().nullable().optional(),
-      faviconUrl: z.string().url().nullable().optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .nullable()
-        .optional(),
-      companyName: z.string().max(255).nullable().optional(),
-      customCss: z.string().max(10000).nullable().optional(),
-    })
-    .optional(),
+  name: organizationNameSchema,
+  slug: organizationSlugSchema.optional(),
+  defaultLocale: organizationLocaleSchema.optional(),
+  defaultLoginMethods: organizationLoginMethodsSchema.optional(),
+  branding: brandingSchema.optional(),
 });
 
 const updateOrganizationSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
-  defaultLocale: z.string().min(2).max(10).optional(),
-  defaultLoginMethods: defaultLoginMethodsSchema.optional(),
-  branding: z
-    .object({
-      logoUrl: z.string().url().nullable().optional(),
-      faviconUrl: z.string().url().nullable().optional(),
-      primaryColor: z
-        .string()
-        .regex(/^#[0-9A-Fa-f]{6}$/)
-        .nullable()
-        .optional(),
-      companyName: z.string().max(255).nullable().optional(),
-      customCss: z.string().max(10000).nullable().optional(),
-    })
-    .optional(),
+  name: organizationNameSchema.optional(),
+  defaultLocale: organizationLocaleSchema.optional(),
+  defaultLoginMethods: organizationLoginMethodsSchema.optional(),
+  branding: brandingSchema.optional(),
 });
 
-const updateBrandingSchema = z.object({
-  logoUrl: z.string().url().nullable().optional(),
-  faviconUrl: z.string().url().nullable().optional(),
-  primaryColor: z
-    .string()
-    .regex(/^#[0-9A-Fa-f]{6}$/)
-    .nullable()
-    .optional(),
-  companyName: z.string().max(255).nullable().optional(),
-  customCss: z.string().max(10000).nullable().optional(),
-});
+const updateBrandingSchema = brandingSchema;
 
 const listOrganizationsSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['active', 'suspended', 'archived']).optional(),
+  status: z.enum(['active', 'suspended']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
@@ -116,14 +89,26 @@ const listOrganizationsSchema = z.object({
 const listOrganizationsCursorSchema = z.object({
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.enum(['active', 'suspended', 'archived']).optional(),
+  status: z.enum(['active', 'suspended']).optional(),
   search: z.string().max(255).optional(),
   sortBy: z.enum(['name', 'created_at']).default('created_at'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 
 const validateSlugSchema = z.object({
-  slug: z.string().min(1),
+  slug: organizationSlugSchema,
+});
+
+/** UUID or slug accepted by the organization deletion endpoint. */
+const idOrSlugSchema = z.object({
+  idOrSlug: z.union([
+    z.string().uuid(),
+    z
+      .string()
+      .min(3)
+      .max(100)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  ]),
 });
 
 // ---------------------------------------------------------------------------
@@ -263,8 +248,12 @@ export function createOrganizationRouter(): Router {
   // -------------------------------------------------------------------------
   router.put('/:id/branding', requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE), async (ctx) => {
     try {
-      const body = updateBrandingSchema.parse(ctx.request.body);
-      const org = await organizationService.updateOrganizationBranding(ctx.params.id, body);
+      const body = updateBrandingSchema.safeParse(ctx.request.body);
+      if (!body.success) {
+        ctx.throw(400, 'Organization request is invalid');
+        return;
+      }
+      const org = await organizationService.updateOrganizationBranding(ctx.params.id, body.data);
       ctx.body = { data: org };
     } catch (err) {
       handleError(ctx, err);
@@ -297,18 +286,6 @@ export function createOrganizationRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/archive — Archive organization
-  // -------------------------------------------------------------------------
-  router.post('/:id/archive', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
-    try {
-      await organizationService.archiveOrganization(ctx.params.id);
-      ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
-
-  // -------------------------------------------------------------------------
   // GET /:id/history — Organization change history
   // -------------------------------------------------------------------------
   router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.ORG_READ), async (ctx) => {
@@ -322,48 +299,13 @@ export function createOrganizationRouter(): Router {
   });
 
   // -------------------------------------------------------------------------
-  // POST /:id/restore — Restore organization
+  // DELETE /:idOrSlug — Permanently delete organization
   // -------------------------------------------------------------------------
-  router.post('/:id/restore', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
+  router.delete('/:idOrSlug', requirePermission(ADMIN_PERMISSIONS.ORG_DELETE), async (ctx) => {
     try {
-      await organizationService.restoreOrganization(ctx.params.id);
+      const { idOrSlug } = idOrSlugSchema.parse(ctx.params);
+      await organizationService.deleteOrganization(idOrSlug, ctx.state.adminUser?.id);
       ctx.status = 204;
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
-
-  // -------------------------------------------------------------------------
-  // DELETE /:idOrSlug — Permanently destroy organization (cascade)
-  // -------------------------------------------------------------------------
-  router.delete('/:idOrSlug', requirePermission(ADMIN_PERMISSIONS.ORG_ARCHIVE), async (ctx) => {
-    try {
-      const { idOrSlug } = ctx.params;
-      const dryRun = ctx.query['dry-run'] === 'true';
-
-      if (dryRun) {
-        // Resolve org and return cascade counts without deleting
-        const org =
-          (await organizationService.getOrganizationById(idOrSlug)) ??
-          (await organizationService.getOrganizationBySlug(idOrSlug));
-        if (!org) {
-          ctx.throw(404, `Organization not found: ${idOrSlug}`);
-          return;
-        }
-        if (org.isSuperAdmin) {
-          ctx.throw(400, 'Cannot destroy the super-admin organization');
-          return;
-        }
-        const cascadeCounts = await organizationService.getCascadeCounts(org.id);
-        ctx.body = { dryRun: true, organization: org, cascadeCounts };
-        return;
-      }
-
-      const result = await organizationService.destroyOrganization(
-        idOrSlug,
-        ctx.state.adminUser?.id,
-      );
-      ctx.body = result;
     } catch (err) {
       handleError(ctx, err);
     }

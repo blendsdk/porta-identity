@@ -24,7 +24,10 @@ vi.mock('../../../src/config/index.js', () => ({
   },
 }));
 
-import { getCachedOrganizationBySlug, cacheOrganization } from '../../../src/organizations/cache.js';
+import {
+  getCachedOrganizationBySlug,
+  cacheOrganization,
+} from '../../../src/organizations/cache.js';
 import { findOrganizationBySlug } from '../../../src/organizations/repository.js';
 import { tenantResolver } from '../../../src/middleware/tenant-resolver.js';
 
@@ -141,19 +144,6 @@ describe('tenant-resolver', () => {
     const next = vi.fn();
 
     await expect(middleware(ctx as never, next)).rejects.toThrow('Organization not found');
-  });
-
-  it('should throw 404 for archived organization', async () => {
-    const org = createTestOrg({ status: 'archived' });
-    (getCachedOrganizationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(org);
-
-    const middleware = tenantResolver();
-    const ctx = createMockCtx('acme-corp');
-    const next = vi.fn();
-
-    await expect(middleware(ctx as never, next)).rejects.toThrow('Organization not found');
-    expect(ctx.throw).toHaveBeenCalledWith(404, 'Organization not found');
-    expect(next).not.toHaveBeenCalled();
   });
 
   it('should throw 403 for suspended organization', async () => {

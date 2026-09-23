@@ -1,25 +1,16 @@
 /**
- * GDPR data export and purge for users.
+ * User data export.
  *
- * Implements Article 17 (right to erasure) and Article 20 (data portability)
- * capabilities for Porta's user data. These functions collect all user-related
- * data across multiple tables for export, or anonymize/delete it for purge.
+ * Collects the user-related data exposed by Porta's portability endpoint.
  *
  * **Export** collects: user profile, role assignments, custom claim values,
  * audit log entries (as actor or target), 2FA enrollment status (NOT secrets),
  * and active OIDC sessions/grants.
  *
- * **Purge** anonymizes the user record and audit entries, deletes all
- * related data (roles, claims, 2FA, OIDC sessions), and writes the compliance
- * audit event in the same transaction before commit.
- *
- * Safety: Purging super-admin org users is blocked to prevent lock-out.
- *
  * @module users/gdpr
  */
 
-import { getDatabaseTransactionClient, getPool, runDatabaseTransaction } from '../lib/database.js';
-import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { getPool } from '../lib/database.js';
 import type { User } from './types.js';
 
 // ---------------------------------------------------------------------------
@@ -72,17 +63,6 @@ export interface UserDataExport {
     method: string | null;
   };
   oidcSessions: number;
-}
-
-/** Result from a purge operation */
-export interface PurgeResult {
-  userId: string;
-  anonymizedEmail: string;
-  deletedRoles: number;
-  deletedClaims: number;
-  deletedTwoFactor: number;
-  deletedOidcPayloads: number;
-  anonymizedAuditEntries: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -214,127 +194,4 @@ export async function exportUserData(user: User): Promise<UserDataExport> {
     },
     oidcSessions: parseInt(oidcResult.rows[0]?.count ?? '0', 10),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Purge — anonymize/delete all user data (Article 17)
-// ---------------------------------------------------------------------------
-
-/**
- * Irreversibly purge all PII for a user.
- *
- * Anonymizes the user record (email → purged-{id}@purged.local, clears
- * name fields, sets status to 'inactive'). Deletes related records: role
- * assignments, custom claim values, 2FA data, OIDC sessions/grants.
- * Anonymizes audit log entries (actor_email → [purged]).
- *
- * Fires a `user.purged` audit event BEFORE anonymization for compliance trail.
- *
- * Safety checks:
- * - Cannot purge users belonging to the super-admin organization
- * - Requires explicit confirmation (caller responsibility)
- *
- * @param user - The user to purge (must be a full User object)
- * @param actorId - ID of the admin performing the purge
- * @returns Summary of what was deleted/anonymized
- * @throws Error if user belongs to super-admin org
- */
-export async function purgeUserData(user: User, actorId: string): Promise<PurgeResult> {
-  return runDatabaseTransaction(async () => {
-    const client = getDatabaseTransactionClient();
-    if (!client) throw new Error('GDPR purge transaction is unavailable');
-
-    // The authority check and destructive changes share the same transaction.
-    const orgCheck = await client.query<{ is_super_admin: boolean }>(
-      'SELECT is_super_admin FROM organizations WHERE id = $1 FOR SHARE',
-      [user.organizationId],
-    );
-    if (orgCheck.rows[0]?.is_super_admin) {
-      throw new Error('Cannot purge users belonging to the super-admin organization');
-    }
-
-    // 1. Revoke all active OIDC sessions/grants
-    const oidcDelete = await client.query(
-      `DELETE FROM oidc_payloads WHERE payload->>'accountId' = $1`,
-      [user.id],
-    );
-
-    // 2. Delete 2FA data (TOTP secrets, OTP codes, recovery codes)
-    await client.query('DELETE FROM user_totp WHERE user_id = $1', [user.id]);
-    await client.query('DELETE FROM two_factor_otp_codes WHERE user_id = $1', [user.id]);
-    const twoFactorDelete = await client.query(
-      'DELETE FROM two_factor_recovery_codes WHERE user_id = $1',
-      [user.id],
-    );
-
-    // 3. Delete custom claim values
-    const claimsDelete = await client.query('DELETE FROM user_claim_values WHERE user_id = $1', [
-      user.id,
-    ]);
-
-    // 4. Delete role assignments
-    const rolesDelete = await client.query('DELETE FROM user_roles WHERE user_id = $1', [user.id]);
-
-    // 5. Anonymize audit log entries referencing this user
-    const auditUpdate = await client.query(
-      `UPDATE audit_log
-       SET metadata = metadata || '{"purged": true}'::jsonb
-       WHERE actor_id = $1 OR user_id = $1`,
-      [user.id],
-    );
-
-    // 6. Anonymize user record — clear PII, keep ID for referential integrity
-    const anonymizedEmail = `purged-${user.id}@purged.local`;
-    await client.query(
-      `UPDATE users SET
-         email = $2,
-         email_verified = false,
-         password_hash = NULL,
-         given_name = NULL,
-         family_name = NULL,
-         middle_name = NULL,
-         nickname = NULL,
-         preferred_username = NULL,
-         profile_url = NULL,
-         picture_url = NULL,
-         website_url = NULL,
-         gender = NULL,
-         birthdate = NULL,
-         zoneinfo = NULL,
-         locale = NULL,
-         phone_number = NULL,
-         phone_number_verified = false,
-         address_street = NULL,
-         address_locality = NULL,
-         address_region = NULL,
-         address_postal_code = NULL,
-         address_country = NULL,
-         status = 'inactive',
-         two_factor_enabled = false,
-         two_factor_method = NULL,
-         updated_at = NOW()
-       WHERE id = $1`,
-      [user.id, anonymizedEmail],
-    );
-
-    await writeAuditLogInTransaction(client, {
-      organizationId: user.organizationId,
-      userId: user.id,
-      actorId,
-      eventType: 'user.purged',
-      eventCategory: 'gdpr',
-      description: 'GDPR purge committed',
-      metadata: { userId: user.id },
-    });
-
-    return {
-      userId: user.id,
-      anonymizedEmail,
-      deletedRoles: rolesDelete.rowCount ?? 0,
-      deletedClaims: claimsDelete.rowCount ?? 0,
-      deletedTwoFactor: twoFactorDelete.rowCount ?? 0,
-      deletedOidcPayloads: oidcDelete.rowCount ?? 0,
-      anonymizedAuditEntries: auditUpdate.rowCount ?? 0,
-    };
-  });
 }

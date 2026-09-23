@@ -11,6 +11,7 @@
  */
 
 import { getPool } from '../../../src/lib/database.js';
+import { SYSTEM_CONFIG_CATALOG } from '../../../src/lib/system-config-catalog.js';
 
 // ---------------------------------------------------------------------------
 // Truncation
@@ -74,24 +75,18 @@ export async function seedBaseData(): Promise<void> {
     VALUES ('Porta Admin', 'porta-admin', 'active', TRUE, 'Porta', 'en')
   `);
 
-  // System config defaults (matches migration 011_seed.sql)
-  await pool.query(`
-    INSERT INTO system_config (key, value, value_type, description, is_sensitive) VALUES
-      ('access_token_ttl',       '"3600"',    'duration', 'Access token TTL in seconds',             FALSE),
-      ('id_token_ttl',           '"3600"',    'duration', 'ID token TTL in seconds',                 FALSE),
-      ('refresh_token_ttl',      '"2592000"', 'duration', 'Refresh token TTL in seconds',            FALSE),
-      ('authorization_code_ttl', '"600"',     'duration', 'Authorization code TTL in seconds',       FALSE),
-      ('session_ttl',            '"86400"',   'duration', 'Session TTL in seconds',                  FALSE),
-      ('cookie_secure',          'true',      'boolean',  'Require HTTPS for cookies',               FALSE),
-      ('magic_link_ttl',         '"900"',     'duration', 'Magic link token TTL in seconds',         FALSE),
-      ('magic_link_length',      '48',        'number',   'Magic link token length in bytes',        FALSE),
-      ('password_reset_ttl',     '"3600"',    'duration', 'Password reset token TTL in seconds',     FALSE),
-      ('invitation_ttl',         '"604800"',  'duration', 'Invitation token TTL in seconds',         FALSE),
-      ('login_rate_limit',       '10',        'number',   'Max login attempts per 15 min',           FALSE),
-      ('api_rate_limit',         '100',       'number',   'Max API requests per client per min',     FALSE),
-      ('max_failed_logins',      '5',         'number',   'Max failed logins before lockout',        FALSE),
-      ('lockout_duration',       '"900"',     'duration', 'Account lockout duration in seconds',     FALSE),
-      ('require_pkce',           'true',      'boolean',  'Require PKCE for auth code flows',        FALSE),
-      ('cors_max_age',           '86400',     'number',   'CORS preflight cache duration in seconds', FALSE)
-  `);
+  // Keep runtime fixtures aligned with the immutable catalog, using native JSONB scalars.
+  for (const definition of SYSTEM_CONFIG_CATALOG) {
+    const storedType =
+      definition.unit === 'seconds'
+        ? 'duration'
+        : definition.valueType === 'integer'
+          ? 'number'
+          : 'string';
+    await pool.query(
+      `INSERT INTO system_config (key, value, value_type, description, is_sensitive)
+       VALUES ($1, $2::jsonb, $3, $4, FALSE)`,
+      [definition.key, JSON.stringify(definition.defaultValue), storedType, definition.description],
+    );
+  }
 }

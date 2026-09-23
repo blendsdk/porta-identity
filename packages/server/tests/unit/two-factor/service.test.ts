@@ -23,6 +23,11 @@ vi.mock('../../../src/lib/logger.js', () => ({
   logger: { info: vi.fn(), debug: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: vi.fn(),
+  runDatabaseTransaction: vi.fn(async (work: () => Promise<unknown>) => work()),
+}));
+
 vi.mock('../../../src/two-factor/crypto.js', () => ({
   encryptTotpSecret: vi.fn().mockReturnValue({ encrypted: 'enc', iv: 'iv', tag: 'tag' }),
   decryptTotpSecret: vi.fn().mockReturnValue('DECODED_SECRET'),
@@ -38,7 +43,7 @@ vi.mock('../../../src/two-factor/totp.js', () => ({
   generateTotpSecret: vi.fn().mockReturnValue('BASE32SECRET'),
   generateTotpUri: vi.fn().mockReturnValue('otpauth://totp/Test?secret=BASE32SECRET'),
   generateQrCodeDataUri: vi.fn().mockResolvedValue('data:image/png;base64,abc'),
-  verifyTotpCode: vi.fn().mockReturnValue(true),
+  verifyTotpCode: vi.fn().mockReturnValue({ timeStep: 123 }),
 }));
 
 vi.mock('../../../src/two-factor/recovery.js', () => ({
@@ -50,7 +55,8 @@ vi.mock('../../../src/two-factor/recovery.js', () => ({
 vi.mock('../../../src/two-factor/repository.js', () => ({
   insertTotp: vi.fn().mockResolvedValue({ id: 'totp-1', userId: 'user-1', verified: false }),
   findTotpByUserId: vi.fn().mockResolvedValue(null),
-  markTotpVerified: vi.fn().mockResolvedValue(undefined),
+  consumeTotpTimeStep: vi.fn().mockResolvedValue(true),
+  verifyTotpEnrollment: vi.fn().mockResolvedValue(true),
   deleteTotp: vi.fn().mockResolvedValue(undefined),
   insertOtpCode: vi.fn().mockResolvedValue({ id: 'otp-1' }),
   findActiveOtpCodes: vi.fn().mockResolvedValue([]),
@@ -94,12 +100,28 @@ import {
   determineTwoFactorMethod,
 } from '../../../src/two-factor/service.js';
 import { findUserById, updateUser } from '../../../src/users/repository.js';
-import { findTotpByUserId, findActiveOtpCodes, findUnusedRecoveryCodes, countActiveOtpCodes, countUnusedRecoveryCodes } from '../../../src/two-factor/repository.js';
+import {
+  findTotpByUserId,
+  consumeTotpTimeStep,
+  verifyTotpEnrollment,
+  findActiveOtpCodes,
+  findUnusedRecoveryCodes,
+  countActiveOtpCodes,
+  countUnusedRecoveryCodes,
+} from '../../../src/two-factor/repository.js';
 import { getCachedTwoFactorStatus } from '../../../src/two-factor/cache.js';
 import { verifyOtpCode } from '../../../src/two-factor/otp.js';
 import { verifyTotpCode } from '../../../src/two-factor/totp.js';
 import { verifyRecoveryCode as verifyRecoveryCodeHash } from '../../../src/two-factor/recovery.js';
-import { TwoFactorAlreadyEnabledError, TwoFactorNotEnabledError, TotpNotConfiguredError, OtpExpiredError, OtpInvalidError, RecoveryCodesExhaustedError, RecoveryCodeInvalidError } from '../../../src/two-factor/errors.js';
+import {
+  TwoFactorAlreadyEnabledError,
+  TwoFactorNotEnabledError,
+  TotpNotConfiguredError,
+  OtpExpiredError,
+  OtpInvalidError,
+  RecoveryCodesExhaustedError,
+  RecoveryCodeInvalidError,
+} from '../../../src/two-factor/errors.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -134,11 +156,16 @@ describe('two-factor service', () => {
 
       expect(result.method).toBe('email');
       expect(result.recoveryCodes).toEqual(['CODE-0001', 'CODE-0002']);
-      expect(updateUser).toHaveBeenCalledWith('user-1', { twoFactorEnabled: true, twoFactorMethod: 'email' });
+      expect(updateUser).toHaveBeenCalledWith('user-1', {
+        twoFactorEnabled: true,
+        twoFactorMethod: 'email',
+      });
     });
 
     it('should throw TwoFactorAlreadyEnabledError if 2FA is already enabled', async () => {
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: true }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: true }),
+      );
 
       await expect(setupEmailOtp('user-1', 'org-1')).rejects.toThrow(TwoFactorAlreadyEnabledError);
     });
@@ -163,33 +190,55 @@ describe('two-factor service', () => {
     });
 
     it('should throw TwoFactorAlreadyEnabledError if 2FA is already enabled', async () => {
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: true }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: true }),
+      );
 
-      await expect(setupTotp('user-1', 'user@example.com', 'acme')).rejects.toThrow(TwoFactorAlreadyEnabledError);
+      await expect(setupTotp('user-1', 'user@example.com', 'acme')).rejects.toThrow(
+        TwoFactorAlreadyEnabledError,
+      );
     });
   });
 
   describe('confirmTotpSetup', () => {
     it('should confirm TOTP setup and enable 2FA', async () => {
       (findTotpByUserId as ReturnType<typeof vi.fn>).mockResolvedValue({
-        id: 'totp-1', userId: 'user-1', verified: false,
-        encryptedSecret: 'enc', encryptionIv: 'iv', encryptionTag: 'tag',
+        id: 'totp-1',
+        userId: 'user-1',
+        verified: false,
+        encryptedSecret: 'enc',
+        encryptionIv: 'iv',
+        encryptionTag: 'tag',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
       });
       (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser());
-      (verifyTotpCode as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      (verifyTotpCode as ReturnType<typeof vi.fn>).mockReturnValue({ timeStep: 123 });
 
       const result = await confirmTotpSetup('user-1', '123456');
 
       expect(result).toBe(true);
-      expect(updateUser).toHaveBeenCalledWith('user-1', { twoFactorEnabled: true, twoFactorMethod: 'totp' });
+      expect(verifyTotpEnrollment).toHaveBeenCalledWith('totp-1', 'user-1', 123);
+      expect(updateUser).toHaveBeenCalledWith('user-1', {
+        twoFactorEnabled: true,
+        twoFactorMethod: 'totp',
+      });
     });
 
     it('should return false for an invalid TOTP code', async () => {
       (findTotpByUserId as ReturnType<typeof vi.fn>).mockResolvedValue({
-        id: 'totp-1', userId: 'user-1', verified: false,
-        encryptedSecret: 'enc', encryptionIv: 'iv', encryptionTag: 'tag',
+        id: 'totp-1',
+        userId: 'user-1',
+        verified: false,
+        encryptedSecret: 'enc',
+        encryptionIv: 'iv',
+        encryptionTag: 'tag',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
       });
-      (verifyTotpCode as ReturnType<typeof vi.fn>).mockReturnValue(false);
+      (verifyTotpCode as ReturnType<typeof vi.fn>).mockReturnValue(null);
 
       const result = await confirmTotpSetup('user-1', '000000');
 
@@ -216,8 +265,9 @@ describe('two-factor service', () => {
     it('should throw when too many active codes', async () => {
       (countActiveOtpCodes as ReturnType<typeof vi.fn>).mockResolvedValue(5);
 
-      await expect(sendOtpCode('user-1', 'user@example.com', 'org-1'))
-        .rejects.toThrow('Too many active OTP codes');
+      await expect(sendOtpCode('user-1', 'user@example.com', 'org-1')).rejects.toThrow(
+        'Too many active OTP codes',
+      );
     });
   });
 
@@ -255,13 +305,20 @@ describe('two-factor service', () => {
   describe('verifyTotp', () => {
     it('should verify a valid TOTP code', async () => {
       (findTotpByUserId as ReturnType<typeof vi.fn>).mockResolvedValue({
-        id: 'totp-1', verified: true,
-        encryptedSecret: 'enc', encryptionIv: 'iv', encryptionTag: 'tag',
+        id: 'totp-1',
+        verified: true,
+        encryptedSecret: 'enc',
+        encryptionIv: 'iv',
+        encryptionTag: 'tag',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
       });
-      (verifyTotpCode as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      (verifyTotpCode as ReturnType<typeof vi.fn>).mockReturnValue({ timeStep: 123 });
 
       const result = await verifyTotp('user-1', '123456');
       expect(result).toBe(true);
+      expect(consumeTotpTimeStep).toHaveBeenCalledWith('totp-1', 'user-1', 123);
     });
 
     it('should throw TotpNotConfiguredError if no verified TOTP', async () => {
@@ -272,8 +329,14 @@ describe('two-factor service', () => {
 
     it('should throw TotpNotConfiguredError if TOTP is not verified', async () => {
       (findTotpByUserId as ReturnType<typeof vi.fn>).mockResolvedValue({
-        id: 'totp-1', verified: false,
-        encryptedSecret: 'enc', encryptionIv: 'iv', encryptionTag: 'tag',
+        id: 'totp-1',
+        verified: false,
+        encryptedSecret: 'enc',
+        encryptionIv: 'iv',
+        encryptionTag: 'tag',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
       });
 
       await expect(verifyTotp('user-1', '123456')).rejects.toThrow(TotpNotConfiguredError);
@@ -294,8 +357,9 @@ describe('two-factor service', () => {
     it('should throw RecoveryCodesExhaustedError when no unused codes', async () => {
       (findUnusedRecoveryCodes as ReturnType<typeof vi.fn>).mockResolvedValue([]);
 
-      await expect(verifyRecoveryCodeService('user-1', 'ABCD-1234'))
-        .rejects.toThrow(RecoveryCodesExhaustedError);
+      await expect(verifyRecoveryCodeService('user-1', 'ABCD-1234')).rejects.toThrow(
+        RecoveryCodesExhaustedError,
+      );
     });
 
     it('should throw RecoveryCodeInvalidError when no code matches', async () => {
@@ -304,8 +368,9 @@ describe('two-factor service', () => {
       ]);
       (verifyRecoveryCodeHash as ReturnType<typeof vi.fn>).mockResolvedValue(false);
 
-      await expect(verifyRecoveryCodeService('user-1', 'WRONG-CODE'))
-        .rejects.toThrow(RecoveryCodeInvalidError);
+      await expect(verifyRecoveryCodeService('user-1', 'WRONG-CODE')).rejects.toThrow(
+        RecoveryCodeInvalidError,
+      );
     });
   });
 
@@ -315,7 +380,12 @@ describe('two-factor service', () => {
 
   describe('getTwoFactorStatus', () => {
     it('should return cached status when available', async () => {
-      const cachedStatus = { enabled: true, method: 'totp' as const, totpConfigured: true, recoveryCodesRemaining: 8 };
+      const cachedStatus = {
+        enabled: true,
+        method: 'totp' as const,
+        totpConfigured: true,
+        recoveryCodesRemaining: 8,
+      };
       (getCachedTwoFactorStatus as ReturnType<typeof vi.fn>).mockResolvedValue(cachedStatus);
 
       const result = await getTwoFactorStatus('user-1');
@@ -324,7 +394,9 @@ describe('two-factor service', () => {
 
     it('should build status from DB when cache misses', async () => {
       (getCachedTwoFactorStatus as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: true, twoFactorMethod: 'email' }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: true, twoFactorMethod: 'email' }),
+      );
       (findTotpByUserId as ReturnType<typeof vi.fn>).mockResolvedValue(null);
       (countUnusedRecoveryCodes as ReturnType<typeof vi.fn>).mockResolvedValue(10);
 
@@ -347,15 +419,22 @@ describe('two-factor service', () => {
 
   describe('disableTwoFactor', () => {
     it('should disable 2FA and clear all data', async () => {
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: true, twoFactorMethod: 'totp' }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: true, twoFactorMethod: 'totp' }),
+      );
 
       await disableTwoFactor('user-1');
 
-      expect(updateUser).toHaveBeenCalledWith('user-1', { twoFactorEnabled: false, twoFactorMethod: null });
+      expect(updateUser).toHaveBeenCalledWith('user-1', {
+        twoFactorEnabled: false,
+        twoFactorMethod: null,
+      });
     });
 
     it('should throw TwoFactorNotEnabledError if not enabled', async () => {
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: false }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: false }),
+      );
 
       await expect(disableTwoFactor('user-1')).rejects.toThrow(TwoFactorNotEnabledError);
     });
@@ -369,14 +448,18 @@ describe('two-factor service', () => {
 
   describe('regenerateRecoveryCodes', () => {
     it('should return new recovery codes', async () => {
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: true }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: true }),
+      );
 
       const codes = await regenerateRecoveryCodes('user-1');
       expect(codes).toEqual(['CODE-0001', 'CODE-0002']);
     });
 
     it('should throw TwoFactorNotEnabledError if 2FA not enabled', async () => {
-      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(createMockUser({ twoFactorEnabled: false }));
+      (findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        createMockUser({ twoFactorEnabled: false }),
+      );
 
       await expect(regenerateRecoveryCodes('user-1')).rejects.toThrow(TwoFactorNotEnabledError);
     });
@@ -388,45 +471,95 @@ describe('two-factor service', () => {
 
   describe('requiresTwoFactor', () => {
     it('should return false when policy is optional', () => {
-      expect(requiresTwoFactor({ twoFactorPolicy: 'optional' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBe(false);
+      expect(
+        requiresTwoFactor(
+          { twoFactorPolicy: 'optional' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBe(false);
     });
 
     it('should return false when user already has 2FA enabled', () => {
-      expect(requiresTwoFactor({ twoFactorPolicy: 'required_any' }, { twoFactorEnabled: true, twoFactorMethod: 'totp' })).toBe(false);
+      expect(
+        requiresTwoFactor(
+          { twoFactorPolicy: 'required_any' },
+          { twoFactorEnabled: true, twoFactorMethod: 'totp' },
+        ),
+      ).toBe(false);
     });
 
     it('should return true when policy requires 2FA and user has none', () => {
-      expect(requiresTwoFactor({ twoFactorPolicy: 'required_email' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBe(true);
+      expect(
+        requiresTwoFactor(
+          { twoFactorPolicy: 'required_email' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBe(true);
     });
 
     it('should return true for required_totp when user has no 2FA', () => {
-      expect(requiresTwoFactor({ twoFactorPolicy: 'required_totp' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBe(true);
+      expect(
+        requiresTwoFactor(
+          { twoFactorPolicy: 'required_totp' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBe(true);
     });
 
     it('should return true for required_any when user has no 2FA', () => {
-      expect(requiresTwoFactor({ twoFactorPolicy: 'required_any' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBe(true);
+      expect(
+        requiresTwoFactor(
+          { twoFactorPolicy: 'required_any' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBe(true);
     });
   });
 
   describe('determineTwoFactorMethod', () => {
     it('should return user method when 2FA is already enabled', () => {
-      expect(determineTwoFactorMethod({ twoFactorPolicy: 'optional' }, { twoFactorEnabled: true, twoFactorMethod: 'totp' })).toBe('totp');
+      expect(
+        determineTwoFactorMethod(
+          { twoFactorPolicy: 'optional' },
+          { twoFactorEnabled: true, twoFactorMethod: 'totp' },
+        ),
+      ).toBe('totp');
     });
 
     it('should return email for required_email policy', () => {
-      expect(determineTwoFactorMethod({ twoFactorPolicy: 'required_email' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBe('email');
+      expect(
+        determineTwoFactorMethod(
+          { twoFactorPolicy: 'required_email' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBe('email');
     });
 
     it('should return totp for required_totp policy', () => {
-      expect(determineTwoFactorMethod({ twoFactorPolicy: 'required_totp' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBe('totp');
+      expect(
+        determineTwoFactorMethod(
+          { twoFactorPolicy: 'required_totp' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBe('totp');
     });
 
     it('should return null for required_any policy (user chooses)', () => {
-      expect(determineTwoFactorMethod({ twoFactorPolicy: 'required_any' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBeNull();
+      expect(
+        determineTwoFactorMethod(
+          { twoFactorPolicy: 'required_any' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBeNull();
     });
 
     it('should return null for optional policy', () => {
-      expect(determineTwoFactorMethod({ twoFactorPolicy: 'optional' }, { twoFactorEnabled: false, twoFactorMethod: null })).toBeNull();
+      expect(
+        determineTwoFactorMethod(
+          { twoFactorPolicy: 'optional' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toBeNull();
     });
   });
 });

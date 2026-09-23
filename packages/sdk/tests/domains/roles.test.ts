@@ -1,7 +1,28 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { HttpTransport, TransportResponse } from '../../src/transport/types.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createRolesDomain } from '../../src/domains/roles.js';
+import type { HttpTransport, TransportResponse } from '../../src/transport/types.js';
 
+const appId = 'app-1';
+const role = {
+  id: 'role-1',
+  applicationId: appId,
+  name: 'Billing Reader',
+  slug: 'billing-reader',
+  description: null,
+  createdAt: '2026-09-10T00:00:00.000Z',
+  updatedAt: '2026-09-10T00:00:00.000Z',
+};
+const permission = {
+  id: 'permission-1',
+  applicationId: appId,
+  moduleId: null,
+  name: 'Read invoices',
+  slug: 'billing:invoice:read',
+  description: null,
+  createdAt: '2026-09-10T00:00:00.000Z',
+};
+
+/** Build a deterministic transport for one domain implementation case. */
 function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport {
   return {
     request: vi.fn().mockResolvedValue({
@@ -13,155 +34,127 @@ function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport
   };
 }
 
-describe('domains/roles', () => {
-  let transport: ReturnType<typeof mockTransport>;
-  const appId = 'app-1';
+describe('domains/roles request serialization', () => {
+  let transport: HttpTransport;
 
-  // ── list ────────────────────────────────────────────────────
-  describe('list', () => {
-    it('calls GET /applications/:appId/roles', async () => {
-      transport = mockTransport({ body: { data: [], total: 0, page: 1, pageSize: 20 } });
-      const roles = createRolesDomain(transport);
-      await roles.list(appId);
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/applications/app-1/roles', params: undefined,
-      });
-    });
+  beforeEach(() => {
+    transport = mockTransport();
+  });
 
-    it('passes pagination params', async () => {
-      transport = mockTransport({ body: { data: [], total: 0, page: 2, pageSize: 10 } });
-      const roles = createRolesDomain(transport);
-      await roles.list(appId, { page: 2, pageSize: 10 });
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/applications/app-1/roles',
-        params: { page: 2, pageSize: 10 },
-      });
+  it('sends the complete collection request without query parameters', async () => {
+    transport = mockTransport({ body: { data: [] } });
+
+    await createRolesDomain(transport).list(appId);
+
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'GET',
+      path: '/applications/app-1/roles',
     });
   });
 
-  // ── get ─────────────────────────────────────────────────────
-  describe('get', () => {
-    it('calls GET and returns plain Role (no embedded permissions)', async () => {
-      const roleData = { id: 'r1', name: 'admin', slug: 'admin', applicationId: appId };
-      transport = mockTransport({ body: { data: roleData } });
-      const roles = createRolesDomain(transport);
-      const result = await roles.get(appId, 'r1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/applications/app-1/roles/r1',
-      });
-      expect(result).toEqual(roleData);
+  it.each([
+    ['get', 'GET', '/applications/app-1/roles/role-1', undefined],
+    ['create', 'POST', '/applications/app-1/roles', { name: role.name, slug: role.slug }],
+  ])('serializes %s requests', async (methodName, method, path, body) => {
+    transport = mockTransport({ body: { data: role } });
+    const roles = createRolesDomain(transport);
+
+    if (methodName === 'get') await roles.get(appId, role.id);
+    else await roles.create(appId, body ?? { name: role.name });
+
+    expect(transport.request).toHaveBeenCalledWith({
+      method,
+      path,
+      ...(body === undefined ? {} : { body }),
     });
   });
 
-  // ── create ──────────────────────────────────────────────────
-  describe('create', () => {
-    it('calls POST /applications/:appId/roles with input', async () => {
-      const input = { name: 'editor', slug: 'editor' };
-      transport = mockTransport({ body: { data: { id: 'r2', ...input } } });
-      const roles = createRolesDomain(transport);
-      const result = await roles.create(appId, input);
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/applications/app-1/roles', body: input,
-      });
-      expect(result).toEqual({ id: 'r2', ...input });
+  it('serializes updates and returns the authoritative result', async () => {
+    const result = { role, reauthenticationRequired: true };
+    transport = mockTransport({ body: { data: result } });
+
+    await expect(
+      createRolesDomain(transport).update(appId, role.id, { name: 'Renamed' }),
+    ).resolves.toEqual(result);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'PUT',
+      path: '/applications/app-1/roles/role-1',
+      body: { name: 'Renamed' },
     });
   });
 
-  // ── update ──────────────────────────────────────────────────
-  describe('update', () => {
-    it('calls PUT /applications/:appId/roles/:roleId', async () => {
-      transport = mockTransport({ body: { data: { id: 'r1', name: 'super-admin' } } });
-      const roles = createRolesDomain(transport);
-      const result = await roles.update(appId, 'r1', { name: 'super-admin' });
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'PUT', path: '/applications/app-1/roles/r1', body: { name: 'super-admin' },
-      });
-      expect(result).toEqual({ id: 'r1', name: 'super-admin' });
+  it('returns the committed role deletion result', async () => {
+    const result = { reauthenticationRequired: false };
+    transport = mockTransport({ body: { data: result } });
+
+    await expect(createRolesDomain(transport).delete(appId, role.id)).resolves.toEqual(result);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'DELETE',
+      path: '/applications/app-1/roles/role-1',
     });
   });
 
-  // ── archive ─────────────────────────────────────────────────
-  describe('archive', () => {
-    it('calls POST /applications/:appId/roles/:roleId/archive', async () => {
-      transport = mockTransport();
-      const roles = createRolesDomain(transport);
-      await roles.archive(appId, 'r1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/applications/app-1/roles/r1/archive',
-      });
+  it('serializes permission collection requests', async () => {
+    transport = mockTransport({ body: { data: [permission] } });
+    await createRolesDomain(transport).listPermissions(appId, role.id);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'GET',
+      path: '/applications/app-1/roles/role-1/permissions',
+    });
+
+    transport = mockTransport();
+    await createRolesDomain(transport).assignPermissions(appId, role.id, [permission.id]);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'PUT',
+      path: '/applications/app-1/roles/role-1/permissions',
+      body: { permissionIds: [permission.id] },
     });
   });
 
-  // ── remove ──────────────────────────────────────────────────
-  describe('remove', () => {
-    it('calls DELETE /applications/:appId/roles/:roleId', async () => {
-      transport = mockTransport();
-      const roles = createRolesDomain(transport);
-      await roles.remove(appId, 'r1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/applications/app-1/roles/r1', params: undefined,
-      });
-    });
+  it('serializes permission removal and returns its committed result', async () => {
+    const result = { reauthenticationRequired: true };
+    transport = mockTransport({ body: { data: result } });
 
-    it('passes ?force=true', async () => {
-      transport = mockTransport();
-      const roles = createRolesDomain(transport);
-      await roles.remove(appId, 'r1', true);
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/applications/app-1/roles/r1', params: { force: 'true' },
-      });
+    await expect(
+      createRolesDomain(transport).removePermissions(appId, role.id, [permission.id]),
+    ).resolves.toEqual(result);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'DELETE',
+      path: '/applications/app-1/roles/role-1/permissions',
+      body: { permissionIds: [permission.id] },
     });
   });
+});
 
-  // ── permission management ───────────────────────────────────
-  describe('permission management', () => {
-    beforeEach(() => { transport = mockTransport(); });
-
-    it('listPermissions calls GET /:roleId/permissions', async () => {
-      const perms = [{ id: 'p1', name: 'read' }];
-      transport = mockTransport({ body: { data: perms } });
-      const roles = createRolesDomain(transport);
-      const result = await roles.listPermissions(appId, 'r1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/applications/app-1/roles/r1/permissions',
-      });
-      expect(result).toEqual(perms);
-    });
-
-    it('assignPermissions calls PUT with permissionIds array', async () => {
-      const roles = createRolesDomain(transport);
-      await roles.assignPermissions(appId, 'r1', ['p1', 'p2']);
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'PUT', path: '/applications/app-1/roles/r1/permissions',
-        body: { permissionIds: ['p1', 'p2'] },
-      });
-    });
-
-    it('removePermissions calls DELETE with permissionIds array', async () => {
-      const roles = createRolesDomain(transport);
-      await roles.removePermissions(appId, 'r1', ['p1']);
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/applications/app-1/roles/r1/permissions',
-        body: { permissionIds: ['p1'] },
-      });
-    });
-
-    it('assignPermission (singular) wraps to bulk PUT', async () => {
-      const roles = createRolesDomain(transport);
-      await roles.assignPermission(appId, 'r1', 'p1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'PUT', path: '/applications/app-1/roles/r1/permissions',
-        body: { permissionIds: ['p1'] },
-      });
-    });
-
-    it('removePermission (singular) wraps to bulk DELETE', async () => {
-      const roles = createRolesDomain(transport);
-      await roles.removePermission(appId, 'r1', 'p1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/applications/app-1/roles/r1/permissions',
-        body: { permissionIds: ['p1'] },
-      });
-    });
+describe('domains/roles response validation', () => {
+  it.each([
+    [
+      'role lookup',
+      () =>
+        createRolesDomain(mockTransport({ body: { data: { ...role, id: 4 } } })).get(
+          appId,
+          role.id,
+        ),
+    ],
+    [
+      'role creation',
+      () => createRolesDomain(mockTransport({ body: role })).create(appId, { name: role.name }),
+    ],
+    [
+      'role update',
+      () =>
+        createRolesDomain(
+          mockTransport({ body: { data: { role, reauthenticationRequired: 'yes' } } }),
+        ).update(appId, role.id, { name: 'Renamed' }),
+    ],
+    [
+      'permission collection',
+      () =>
+        createRolesDomain(
+          mockTransport({ body: { data: [{ ...permission, moduleId: 5 }] } }),
+        ).listPermissions(appId, role.id),
+    ],
+  ])('rejects an invalid %s response', async (_name, request) => {
+    await expect(request()).rejects.toThrow('Porta API returned an invalid response.');
   });
 });

@@ -41,10 +41,11 @@ function registrationFor(
 }
 
 /**
- * Admits only the exact known forwarding-context observer gap.
+ * Admits a known incomplete collector only when the registry approves the exact artifact.
  *
- * Returning false leaves exit 40 terminal. The function never turns incomplete evidence into a
- * pass; it only proves that continuing later independent collectors is safe and already governed.
+ * No continuation is currently registered, so the gate denies by default and leaves exit 40
+ * terminal. The function never turns incomplete evidence into a pass; it only proves that
+ * continuing later independent collectors is safe and already governed.
  */
 export function admitKnownIncompleteCollector(input: AggregateIncompleteAdmissionInput): boolean {
   const registration = registrationFor(input.invocation);

@@ -9,7 +9,8 @@ import type { GlobalOptions } from '../global-options.js';
 
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, info, formatDate } from '../output.js';
+import { printTable, printJson, success, warn, formatDate } from '../output.js';
+import { confirm } from '../prompt.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -18,14 +19,12 @@ import { printTable, printJson, success, warn, info, formatDate } from '../outpu
 interface PermCreateArgs extends GlobalOptions {
   'app-id': string;
   name: string;
-  slug?: string;
+  slug: string;
   description?: string;
 }
 
 interface PermListArgs extends GlobalOptions {
   'app-id': string;
-  page: number;
-  'page-size': number;
 }
 
 interface PermShowArgs extends GlobalOptions {
@@ -33,9 +32,14 @@ interface PermShowArgs extends GlobalOptions {
   'permission-id': string;
 }
 
-interface PermArchiveArgs extends GlobalOptions {
+interface PermDeleteArgs extends GlobalOptions {
   'app-id': string;
   'permission-id': string;
+}
+
+interface PermUpdateArgs extends PermDeleteArgs {
+  name?: string;
+  description?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,13 +62,16 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               description: 'Application ID',
             })
             .option('name', { type: 'string', demandOption: true, description: 'Permission name' })
-            .option('slug', { type: 'string', description: 'Permission slug' })
+            .option('slug', {
+              type: 'string',
+              demandOption: true,
+              description: 'Permission slug',
+            })
             .option('description', { type: 'string', description: 'Permission description' }),
         async (argv) => {
           try {
             const client = createClient(argv);
             const perm = await client.permissions.create(argv['app-id'], {
-              applicationId: argv['app-id'],
               name: argv.name,
               slug: argv.slug,
               description: argv.description,
@@ -94,36 +101,35 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         'list <app-id>',
         'List permissions for an application',
         (y) =>
-          y
-            .positional('app-id', {
-              type: 'string',
-              demandOption: true,
-              description: 'Application ID',
-            })
-            .option('page', { type: 'number', default: 1, description: 'Page number' })
-            .option('page-size', { type: 'number', default: 20, description: 'Items per page' }),
+          y.positional('app-id', {
+            type: 'string',
+            demandOption: true,
+            description: 'Application ID',
+          }),
         async (argv) => {
           try {
             const client = createClient(argv);
-            const result = await client.permissions.list(argv['app-id'], {
-              page: argv.page,
-              pageSize: argv['page-size'],
-            });
+            const permissions = await client.permissions.list(argv['app-id']);
 
-            if (result.data.length === 0) {
+            if (argv.json) {
+              printJson(permissions);
+              return;
+            }
+
+            if (permissions.length === 0) {
               warn('No permissions found');
               return;
             }
 
-            if (argv.json) {
-              printJson(result);
-            } else {
-              printTable(
-                ['ID', 'Name', 'Slug', 'Created'],
-                result.data.map((p) => [p.id, p.name, p.slug, formatDate(p.createdAt)]),
-              );
-              info(`Total: ${result.total} permissions`);
-            }
+            printTable(
+              ['ID', 'Name', 'Slug', 'Created'],
+              permissions.map((permission) => [
+                permission.id,
+                permission.name,
+                permission.slug,
+                formatDate(permission.createdAt),
+              ]),
+            );
           } catch (err) {
             handleError(err, argv.verbose);
           }
@@ -162,7 +168,6 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
                   ['Description', perm.description ?? '—'],
                   ['Created', formatDate(perm.createdAt)],
                 ],
-
               );
             }
           } catch (err) {
@@ -171,9 +176,45 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         },
       )
 
-      .command<PermArchiveArgs>(
-        'archive <app-id> <permission-id>',
-        'Archive a permission',
+      .command<PermUpdateArgs>(
+        'update <app-id> <permission-id>',
+        'Update permission metadata',
+        (y) =>
+          y
+            .positional('app-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Application ID',
+            })
+            .positional('permission-id', {
+              type: 'string',
+              demandOption: true,
+              description: 'Permission ID',
+            })
+            .option('name', { type: 'string', description: 'New permission name' })
+            .option('description', { type: 'string', description: 'New description' }),
+        async (argv) => {
+          try {
+            const client = createClient(argv);
+            const permission = await client.permissions.update(
+              argv['app-id'],
+              argv['permission-id'],
+              { name: argv.name, description: argv.description },
+            );
+            if (argv.json) {
+              printJson(permission);
+            } else {
+              success(`Permission updated: ${permission.name}`);
+            }
+          } catch (err) {
+            handleError(err, argv.verbose);
+          }
+        },
+      )
+
+      .command<PermDeleteArgs>(
+        'delete <app-id> <permission-id>',
+        'Permanently delete a permission and its role links',
         (y) =>
           y
             .positional('app-id', {
@@ -189,14 +230,29 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
         async (argv) => {
           try {
             const client = createClient(argv);
-            await client.permissions.archive(argv['app-id'], argv['permission-id']);
-            success('Permission archived');
+            const permission = await client.permissions.get(argv['app-id'], argv['permission-id']);
+            const confirmed = await confirm(
+              `Keep permission "${permission.name}" (${permission.slug}), or Delete ${permission.name}? This permanently deletes its role links.`,
+            );
+            if (!confirmed) {
+              warn('Operation cancelled');
+              return;
+            }
+            const result = await client.permissions.delete(argv['app-id'], argv['permission-id']);
+            if (argv.json) {
+              printJson(result);
+            } else {
+              success(`Permission deleted: ${permission.name} (${permission.slug})`);
+              if (result.reauthenticationRequired) {
+                warn('Authenticate again before the next command.');
+              }
+            }
           } catch (err) {
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Specify a permission subcommand: create, list, show, archive');
+      .demandCommand(1, 'Specify a permission subcommand: create, list, show, update, delete');
   },
   handler: () => {},
 };

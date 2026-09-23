@@ -30,10 +30,10 @@ yarn add @portaidentity/sdk
 import { createPortaClient, createBrowserTransport } from '@portaidentity/sdk/browser';
 
 const transport = createBrowserTransport({
-  baseUrl: '/api/admin',    // BFF proxy path
-  csrfCookieName: '_csrf',  // CSRF cookie name
+  baseUrl: '/api/admin', // BFF proxy path
+  csrfCookieName: '_csrf', // CSRF cookie name
   csrfHeaderName: 'x-csrf-token',
-  on401: () => window.location.href = '/login',
+  on401: () => (window.location.href = '/login'),
 });
 
 const client = createPortaClient(transport);
@@ -42,7 +42,8 @@ const client = createPortaClient(transport);
 const orgs = await client.organizations.list({ page: 1, pageSize: 20 });
 
 // Create a user
-const user = await client.users.create('org-id', {
+const user = await client.users.create({
+  organizationId: 'org-id',
   email: 'user@example.com',
   givenName: 'Jane',
   familyName: 'Doe',
@@ -66,8 +67,8 @@ const client = createPortaClient(transport);
 // List all organizations (auto-pagination)
 const allOrgs = await client.organizations.listAll();
 
-// Suspend a user
-await client.users.suspend('org-id', 'user-id');
+// Deactivate a user
+await client.users.deactivate('org-id', 'user-id');
 
 // Assign a role
 await client.userRoles.assign('org-id', 'user-id', { roleId: 'role-id' });
@@ -76,10 +77,14 @@ await client.userRoles.assign('org-id', 'user-id', { roleId: 'role-id' });
 ### Client Credentials (Server-to-Server)
 
 ```typescript
-import { createPortaClient, createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import {
+  createPortaClient,
+  createNodeTransport,
+  createClientCredentialsAuth,
+} from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
-  tokenUrl: 'https://porta.local:3443/super-admin/oidc/token',
+  tokenUrl: 'https://porta.local:3443/super-admin/token',
   clientId: 'my-service',
   clientSecret: 'my-secret',
   scope: 'openid',
@@ -105,7 +110,7 @@ const tools = getToolDefinitions();
 
 // Execute a tool call from an AI agent
 const client = createPortaClient(
-  createNodeTransport({ baseUrl: '...', auth: createTokenAuth('...') })
+  createNodeTransport({ baseUrl: '...', auth: createTokenAuth('...') }),
 );
 
 const result = await executeTool(client, 'organizations.list', { page: 1 });
@@ -113,35 +118,55 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 
 ## Domain Namespaces
 
-| Namespace | Methods | Description |
-|-----------|---------|-------------|
-| `organizations` | 12 | CRUD, status lifecycle, slug validation, history |
-| `applications` | 13 | CRUD, status, modules management, history |
-| `clients` | 12 | CRUD, status, secret management, history |
-| `users` | 19 | CRUD, 6 status transitions, password, email, export, purge |
-| `roles` | 9 | CRUD, archive, permission assignment |
-| `permissions` | 6 | CRUD, archive |
-| `userRoles` | 3 | List, assign, remove role assignments |
-| `userClaims` | 3 | List, set, remove claim values |
-| `customClaims` | 6 | Claim definitions CRUD, archive |
-| `config` | 3 | System configuration get/set/list |
-| `keys` | 3 | Signing key list/generate/rotate |
-| `audit` | 1 | Audit log listing with filters |
-| `stats` | 1 | Dashboard statistics |
-| `sessions` | 3 | Session listing and revocation |
-| `bulk` | 1 | Bulk status operations |
-| `branding` | 5 | Org branding settings and asset management |
-| `exports` | 1 | CSV/JSON data export |
-| `twoFactor` | 3 | 2FA status, disable, reset |
-| `imports` | 1 | Declarative provisioning |
+| Namespace       | Methods | Description                                           |
+| --------------- | ------- | ----------------------------------------------------- |
+| `organizations` | 10      | CRUD, status lifecycle, slug validation, history      |
+| `applications`  | 13      | CRUD, status, module management, history              |
+| `clients`       | 12      | CRUD, status, secret management, history              |
+| `users`         | 19      | CRUD, status transitions, password, email, and export |
+| `roles`         | 9       | CRUD and permission assignment                        |
+| `permissions`   | 6       | CRUD                                                  |
+| `userRoles`     | 3       | List, assign, remove role assignments                 |
+| `userClaims`    | 3       | List, set, remove claim values                        |
+| `customClaims`  | 6       | Claim definition CRUD                                 |
+| `config`        | 3       | System configuration get/set/list                     |
+| `keys`          | 3       | Signing key list/generate/rotate                      |
+| `audit`         | 1       | Audit log listing with filters                        |
+| `stats`         | 1       | Dashboard statistics                                  |
+| `sessions`      | 3       | Session listing and revocation                        |
+| `bulk`          | 1       | Bulk status operations                                |
+| `branding`      | 5       | Org branding settings and asset management            |
+| `exports`       | 2       | CSV/JSON reports and selective manifest export        |
+| `twoFactor`     | 3       | 2FA status, disable, reset                            |
+| `imports`       | 2       | Manifest preview and atomic import                    |
+
+## Environment Portability
+
+```typescript
+const exported = await client.exports.manifest({
+  scope: { kind: 'organization', organization_slug: 'acme' },
+  categories: ['organizations', 'applications_authorization'],
+  application_selection: { all_applications: true, application_slugs: [] },
+});
+
+const preview = await client.imports.preview(exported.manifest);
+if (preview.errors.length === 0) {
+  const applied = await client.imports.apply(exported.manifest, 'keep-existing');
+  // Store any applied.credentials secrets now; Porta returns them only once.
+}
+```
+
+The SDK returns parsed data and never writes files. Manifest export excludes existing credentials
+and other authentication material. Import callers should always preview first; apply repeats all
+server validation and commits atomically.
 
 ## Auth Providers
 
-| Provider | Use Case |
-|----------|----------|
-| `createTokenAuth(token)` | Static Bearer token (scripts, testing) |
-| `createClientCredentialsAuth(opts)` | Server-to-server OAuth2 (with caching and concurrent dedup) |
-| `createCliAuth(opts)` | CLI credentials file (`~/.porta/credentials.json`) with auto-refresh |
+| Provider                            | Use Case                                                             |
+| ----------------------------------- | -------------------------------------------------------------------- |
+| `createTokenAuth(token)`            | Static Bearer token (scripts, testing)                               |
+| `createClientCredentialsAuth(opts)` | Server-to-server OAuth2 (with caching and concurrent dedup)          |
+| `createCliAuth(opts)`               | CLI credentials file (`~/.porta/credentials.json`) with auto-refresh |
 
 ## Error Handling
 
@@ -173,6 +198,10 @@ const allUsers = await client.users.listAll('org-id');
 // → User[]
 ```
 
+`users.invite()` returns an `InviteUserResult`. Administrators can activate and deactivate users.
+User lockout is automatic and is not an administrator mutation. `users.getHistory()` returns the
+first-page `{ data, hasMore, nextCursor }` history envelope.
+
 ## Architecture
 
 ```
@@ -199,12 +228,12 @@ const allUsers = await client.users.listAll('org-id');
 
 ## Entrypoints
 
-| Import Path | Includes | Excludes |
-|------------|----------|----------|
-| `@portaidentity/sdk` | Types, errors, pagination, client factory | Transport, auth (bring your own) |
-| `@portaidentity/sdk/browser` | + BrowserTransport | NodeTransport, auth providers |
-| `@portaidentity/sdk/node` | + NodeTransport, all auth providers | BrowserTransport |
-| `@portaidentity/sdk/agent` | + Tool definitions, executeTool | Transports, auth |
+| Import Path                  | Includes                                  | Excludes                         |
+| ---------------------------- | ----------------------------------------- | -------------------------------- |
+| `@portaidentity/sdk`         | Types, errors, pagination, client factory | Transport, auth (bring your own) |
+| `@portaidentity/sdk/browser` | + BrowserTransport                        | NodeTransport, auth providers    |
+| `@portaidentity/sdk/node`    | + NodeTransport, all auth providers       | BrowserTransport                 |
+| `@portaidentity/sdk/agent`   | + Tool definitions, executeTool           | Transports, auth                 |
 
 ## Testing
 

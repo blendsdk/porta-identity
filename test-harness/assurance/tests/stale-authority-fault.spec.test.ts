@@ -17,7 +17,6 @@ test('should bind the stale-authority negative control only to supported public 
   });
   assert.deepEqual(staleAuthorityScenarios.map((scenario) => scenario.transition).sort(), [
     'actor-deactivation',
-    'actor-suspension',
     'role-removal',
     'session-revocation',
   ]);

@@ -396,10 +396,13 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
           bodyContract: 'generic-stable-response-without-dependency-or-product-detail',
           headerContract: ['server-version-header-absent', 'internal-debug-headers-absent'],
         },
-        independentStateObservations: [
-          'protected-state-fingerprint-after-equals-before',
-          'no-partial-durable-effect',
-        ],
+        independentStateObservations:
+          dependency.family === 'mail-error-exposure'
+            ? [
+                'exactly-one-probe-recovery-job-has-valid-failure-state',
+                'probe-recovery-token-is-job-bound-without-orphans',
+              ]
+            : ['protected-state-fingerprint-after-equals-before', 'no-partial-durable-effect'],
         prohibitedSideEffects: [
           'stack-trace-disclosed',
           'sql-text-disclosed',
@@ -415,11 +418,18 @@ export const validationExposureProductionCases: readonly ValidationExposureRawCa
           'recovery-outcome',
         ],
         forbiddenLogFields: validationExposureForbiddenFields,
-        recoveryExpectations: [
-          'owned-dependency-restored',
-          'same-handler-control-succeeds-after-restoration',
-          'target-fingerprint-confirms-no-partial-write',
-        ],
+        recoveryExpectations:
+          dependency.family === 'mail-error-exposure'
+            ? [
+                'owned-dependency-restored',
+                'same-handler-control-succeeds-after-restoration',
+                'probe-recovery-state-is-consistent',
+              ]
+            : [
+                'owned-dependency-restored',
+                'same-handler-control-succeeds-after-restoration',
+                'target-fingerprint-confirms-no-partial-write',
+              ],
         referenceIds: [
           'rd-05-r5.2',
           'rd-05-r5.8',

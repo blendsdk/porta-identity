@@ -1,133 +1,109 @@
-import { describe, it, expect, vi } from 'vitest';
-import type { HttpTransport, TransportResponse } from '../../src/transport/types.js';
+import { describe, expect, it, vi } from 'vitest';
 import { createImportsDomain } from '../../src/domains/imports.js';
+import { PortaConflictError } from '../../src/errors/index.js';
+import type { HttpTransport, TransportResponse } from '../../src/transport/types.js';
+import type { PortabilityManifest, PortabilityResult } from '../../src/types/index.js';
 
-function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport {
+const manifest: PortabilityManifest = {
+  version: '1.0',
+  exported_at: '2026-09-14T10:11:12.345Z',
+  scope: { kind: 'organization', organization_slug: 'acme' },
+  categories: ['organizations'],
+  application_selection: { all_applications: false, application_slugs: [] },
+  organizations: [],
+  applications: [],
+  application_modules: [],
+  roles: [],
+  permissions: [],
+  claim_definitions: [],
+  role_permission_mappings: [],
+  users: [],
+  user_role_assignments: [],
+  user_claim_values: [],
+  clients: [],
+};
+
+const counts = { created: 0, updated: 0, skipped: 0, rejected: 0 } as const;
+
+/** Create a valid result for the requested preview or apply mode. */
+function result(mode: PortabilityResult['mode']): PortabilityResult {
   return {
-    request: vi.fn().mockResolvedValue({
-      status: 200,
-      headers: {},
-      body: {},
-      ...response,
-    }),
+    mode,
+    summary: {
+      organizations: counts,
+      applications: counts,
+      application_modules: counts,
+      roles: counts,
+      permissions: counts,
+      claim_definitions: counts,
+      role_permission_mappings: counts,
+      users: counts,
+      user_role_assignments: counts,
+      user_claim_values: counts,
+      clients: counts,
+    },
+    items: [],
+    errors: [],
+  };
+}
+
+/** Create a transport that resolves with one response. */
+function resolvingTransport(response: Partial<TransportResponse>): HttpTransport {
+  return {
+    request: vi.fn().mockResolvedValue({ status: 200, headers: {}, body: {}, ...response }),
   };
 }
 
 describe('domains/imports', () => {
-  // ── provision ───────────────────────────────────────────────
-  describe('provision', () => {
-    it('calls POST /import with manifest', async () => {
-      const manifest = {
-        manifest: { organizations: [{ name: 'Org A', slug: 'org-a' }] },
-        mode: 'merge' as const,
-      };
+  it('previews the manifest in dry-run mode', async () => {
+    const body = result('dry-run');
+    const transport = resolvingTransport({ body });
 
-      /** Response shape matching server ImportResult exactly */
-      const body = {
-        mode: 'merge',
-        created: [{ type: 'organization', slug: 'org-a', name: 'Org A' }],
-        updated: [],
-        skipped: [],
-        errors: [],
-        credentials: [],
-      };
-      const transport = mockTransport({ body });
-      const imports = createImportsDomain(transport);
-      const result = await imports.provision(manifest);
-
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST',
-        path: '/import',
-        body: manifest,
-      });
-      expect(result).toEqual(body);
+    await expect(createImportsDomain(transport).preview(manifest)).resolves.toBe(body);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'POST',
+      path: '/import',
+      body: { manifest, mode: 'dry-run' },
     });
+  });
 
-    it('returns result with created and updated entities', async () => {
-      const body = {
-        mode: 'overwrite',
-        created: [{ type: 'application', slug: 'portal', name: 'Portal' }],
-        updated: [{ type: 'organization', slug: 'acme', name: 'Acme Corp', changes: ['name'] }],
-        skipped: [],
-        errors: [],
-        credentials: [],
-      };
-      const transport = mockTransport({ body });
-      const imports = createImportsDomain(transport);
-      const result = await imports.provision({ manifest: {}, mode: 'overwrite' });
+  it('applies the manifest with the selected conflict policy', async () => {
+    const body = result('update-existing');
+    const transport = resolvingTransport({ body });
 
-      expect(result.mode).toBe('overwrite');
-      expect(result.created).toHaveLength(1);
-      expect(result.updated).toHaveLength(1);
-      expect(result.updated[0].changes).toEqual(['name']);
+    await expect(createImportsDomain(transport).apply(manifest, 'update-existing')).resolves.toBe(
+      body,
+    );
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'POST',
+      path: '/import',
+      body: { manifest, mode: 'update-existing' },
     });
+  });
 
-    it('returns result with skipped and error entries', async () => {
-      const body = {
-        mode: 'merge',
-        created: [],
-        updated: [],
-        skipped: [{ type: 'organization', slug: 'acme', reason: 'Already exists' }],
-        errors: [{ type: 'client', slug: 'bad-client', error: 'Invalid redirect URI' }],
-        credentials: [],
-      };
-      const transport = mockTransport({ body });
-      const imports = createImportsDomain(transport);
-      const result = await imports.provision({ manifest: {}, mode: 'merge' });
+  it('returns a validated rejected plan', async () => {
+    const rejected = result('dry-run');
+    const transport: HttpTransport = {
+      request: vi.fn().mockRejectedValue(
+        new PortaConflictError({
+          error: 'Import plan rejected',
+          code: 'import_plan_rejected',
+          result: rejected,
+        }),
+      ),
+    };
 
-      expect(result.skipped).toHaveLength(1);
-      expect(result.skipped[0].reason).toBe('Already exists');
-      expect(result.errors).toHaveLength(1);
-      expect(result.errors[0].error).toBe('Invalid redirect URI');
+    await expect(createImportsDomain(transport).preview(manifest)).resolves.toBe(rejected);
+  });
+
+  it('preserves normal conflict handling for a malformed rejection', async () => {
+    const conflict = new PortaConflictError({
+      error: 'Different conflict',
+      code: 'import_plan_rejected',
+      result: result('dry-run'),
     });
+    const transport: HttpTransport = { request: vi.fn().mockRejectedValue(conflict) };
 
-    it('returns client credentials for confidential clients', async () => {
-      const body = {
-        mode: 'merge',
-        created: [{ type: 'client', slug: 'api-client', name: 'API Client' }],
-        updated: [],
-        skipped: [],
-        errors: [],
-        credentials: [
-          {
-            clientName: 'API Client',
-            clientId: 'generated-id-123',
-            clientType: 'confidential',
-            secretPlaintext: 'secret-abc-123',
-            secretId: 'secret-row-id',
-            secretLabel: 'default',
-            secretExpiresAt: '2027-01-01T00:00:00.000Z',
-          },
-        ],
-      };
-      const transport = mockTransport({ body });
-      const imports = createImportsDomain(transport);
-      const result = await imports.provision({ manifest: {} });
-
-      expect(result.credentials).toHaveLength(1);
-      expect(result.credentials[0].clientName).toBe('API Client');
-      expect(result.credentials[0].secretPlaintext).toBe('secret-abc-123');
-    });
-
-    it('returns dry-run mode in result', async () => {
-      const body = {
-        mode: 'dry-run',
-        created: [{ type: 'organization', slug: 'test-org', name: 'Test Org' }],
-        updated: [],
-        skipped: [],
-        errors: [],
-        credentials: [],
-      };
-      const transport = mockTransport({ body });
-      const imports = createImportsDomain(transport);
-      const result = await imports.provision({ manifest: {}, dryRun: true });
-
-      expect(result.mode).toBe('dry-run');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST',
-        path: '/import',
-        body: { manifest: {}, mode: 'dry-run' },
-      });
-    });
+    await expect(createImportsDomain(transport).preview(manifest)).rejects.toBe(conflict);
   });
 });

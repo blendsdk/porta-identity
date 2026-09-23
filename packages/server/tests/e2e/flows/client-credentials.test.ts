@@ -6,7 +6,7 @@
  * interaction required.
  *
  * Covers: happy path, correct claims, no ID token, no refresh token,
- * scope restriction, invalid secret rejection, and revoked client.
+ * scope restriction, invalid secret rejection, and inactive clients.
  */
 
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
@@ -111,12 +111,8 @@ describe('Client Credentials Flow (E2E)', () => {
     expect([400, 401]).toContain(response.status);
   });
 
-  // ── Revoked Client ─────────────────────────────────────────────
-
-  it('should reject a revoked client', async () => {
-    // Revoke the client
-    await updateClient(internalClientId, { status: 'revoked' });
-
+  it('should reject an inactive client', async () => {
+    await updateClient(internalClientId, { status: 'inactive' });
     const oidc = new OidcTestClient(baseUrl, orgSlug, clientId, clientSecret);
 
     await expect(oidc.clientCredentials()).rejects.toThrow();

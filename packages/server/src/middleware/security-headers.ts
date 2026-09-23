@@ -33,6 +33,8 @@
  *     inject custom branding CSS via `{{{branding.customCss}}}`, hence
  *     `style-src 'unsafe-inline'` is required.  Login pages must never
  *     be embedded in iframes (`frame-ancestors 'none'`).
+ *     The final HTML policy also permits same-origin images, data-backed QR images, and only the
+ *     validated external origins required by effective organization branding.
  *
  *     Note: `form-action` is intentionally omitted.  Chrome enforces
  *     `form-action` on the entire redirect chain of a form submission,
@@ -53,6 +55,14 @@
 
 import type { Middleware } from 'koa';
 import { config } from '../config/index.js';
+import { validateBrandingImageUrl } from '../organizations/branding-url.js';
+
+declare module 'koa' {
+  interface DefaultState {
+    /** Validated image origins required by the authentication HTML response. */
+    brandingImageSources?: readonly string[];
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Exported constants — consumed by tests and by other middleware that may
@@ -96,6 +106,35 @@ export const DEFAULT_CSP = "default-src 'none'";
  */
 export const HTML_CSP =
   "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; frame-ancestors 'none'";
+
+/** Return one safe external origin, rejecting paths and malformed or disallowed URLs. */
+function validatedExternalImageOrigin(candidate: string): string | null {
+  try {
+    const validated = validateBrandingImageUrl(candidate);
+    const origin = new URL(validated).origin;
+    return validated === origin ? origin : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build the authentication-page CSP with only validated image origins.
+ *
+ * Same-origin uploads and data-backed QR images are always permitted for authentication HTML.
+ * Additional external sources must be exact origins accepted by the branding URL validator.
+ *
+ * @param imageSources - Candidate image sources from effective organization branding.
+ * @returns Complete HTML Content-Security-Policy value.
+ */
+export function buildHtmlCsp(imageSources: readonly string[] = []): string {
+  const externalOrigins = imageSources
+    .map(validatedExternalImageOrigin)
+    .filter((origin): origin is string => origin !== null)
+    .sort();
+  const sources = ["'self'", 'data:', ...new Set(externalOrigins)];
+  return `${HTML_CSP}; img-src ${sources.join(' ')}`;
+}
 
 /**
  * HSTS header value — one year, include subdomains.
@@ -167,7 +206,7 @@ export function securityHeaders(): Middleware {
     // -----------------------------------------------------------------------
     const contentType = ctx.response.get('Content-Type') || '';
     if (contentType.includes('text/html')) {
-      ctx.set('Content-Security-Policy', HTML_CSP);
+      ctx.set('Content-Security-Policy', buildHtmlCsp(ctx.state?.brandingImageSources));
     }
   };
 }

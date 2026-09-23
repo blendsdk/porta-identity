@@ -36,7 +36,13 @@ export interface PaginatedResult<T> {
 
   // ── Cursor-based pagination fields ──
 
-  /** Cursor for the next page. Null when on the last page. */
+  /** Cursor for the next page as returned by the Porta API. Null on the last page. */
+  nextCursor?: string | null;
+
+  /** Cursor for the previous page. Null on the first page. */
+  previousCursor?: string | null;
+
+  /** Legacy alias for {@link PaginatedResult.nextCursor}; only read when `nextCursor` is absent. */
   cursor?: string | null;
 
   /** Whether more pages exist after this one. */
@@ -121,14 +127,14 @@ export async function listAll<T>(
 
   // Detect cursor-based pagination (hasMore field present)
   if (typeof firstPage.hasMore === 'boolean') {
-    let nextCursor = firstPage.cursor;
+    let nextCursor = firstPage.nextCursor ?? firstPage.cursor;
     let hasMore = firstPage.hasMore;
 
     while (hasMore && nextCursor) {
       signal?.throwIfAborted();
       const nextPage = await fetchPage({ ...baseParams, cursor: nextCursor });
       allData.push(...nextPage.data);
-      nextCursor = nextPage.cursor;
+      nextCursor = nextPage.nextCursor ?? nextPage.cursor;
       hasMore = nextPage.hasMore ?? false;
     }
 

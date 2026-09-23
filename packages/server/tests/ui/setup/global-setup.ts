@@ -64,11 +64,6 @@ const RESETTABLE_USER_PASSWORD = 'OldPassword123!';
  */
 const ADDITIONAL_USERS = [
   {
-    email: 'suspended@test.example.com',
-    status: 'suspended' as const,
-    password: ADDITIONAL_USER_PASSWORD,
-  },
-  {
     email: 'inactive@test.example.com',
     status: 'inactive' as const,
     password: ADDITIONAL_USER_PASSWORD,
@@ -102,11 +97,21 @@ const ADDITIONAL_USERS = [
  */
 const ADDITIONAL_ORGS = [
   { name: 'Suspended Org', slug: 'suspended-org', status: 'suspended' as const },
-  { name: 'Archived Org', slug: 'archived-org', status: 'archived' as const },
 ] as const;
 
 /** Dedicated port for UI tests — distinct from E2E (random) and dev (3000) */
 const UI_TEST_PORT = 49200;
+
+/** Small renderable logo used to prove uploaded SVG delivery in a real browser. */
+const BRANDING_TEST_LOGO = Buffer.from(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="#2563eb"/></svg>',
+);
+
+/** Valid one-pixel PNG used as the uploaded browser-test favicon. */
+const BRANDING_TEST_FAVICON = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=',
+  'base64',
+);
 
 /** Module-level server reference — read by global-teardown via env var */
 let server: Server | null = null;
@@ -216,7 +221,10 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // a stored SHA-256 hash of the secret in the database. This tenant exercises
   // the full OIDC flow: auth → token → id_token → introspect → userinfo.
   const confTenant = await createFullTestTenant({
-    orgOverrides: { name: 'Confidential Test Org' },
+    orgOverrides: {
+      name: 'Confidential Test Org',
+      brandingLogoUrl: `http://localhost:${UI_TEST_PORT}/${tenant.org.slug}/branding/logo`,
+    },
     clientOverrides: {
       clientName: 'Confidential Test Client',
       clientType: 'confidential',
@@ -237,6 +245,9 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   // Create users in various statuses for login error state and auth workflow tests.
   // Use direct DB update for non-active statuses (bypasses service-layer validation).
   const pool = (await import('../../../src/lib/database.js')).getPool();
+  const { uploadAsset } = await import('../../../src/lib/branding-assets.js');
+  await uploadAsset(tenant.org.id, 'logo', 'image/svg+xml', BRANDING_TEST_LOGO);
+  await uploadAsset(tenant.org.id, 'favicon', 'image/png', BRANDING_TEST_FAVICON);
   const resettableUserIdRef: { value: string } = { value: '' };
 
   for (const userData of ADDITIONAL_USERS) {
@@ -291,6 +302,13 @@ async function globalSetup(_config: FullConfig): Promise<void> {
       org.id,
     ]);
   }
+
+  // Retain a known slug whose row has been physically deleted.
+  const deletedOrg = await createTestOrganization({
+    name: 'Deleted Org',
+    slug: 'deleted-org',
+  });
+  await pool.query(`DELETE FROM organizations WHERE id = $1`, [deletedOrg.id]);
 
   // ── Step 9d: Seed 2FA-enabled users ─────────────────────────────────
   // Create users with email OTP and TOTP 2FA enabled. These are seeded
@@ -432,7 +450,6 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.TEST_CONF_USER_PASSWORD = confTenant.password ?? DEFAULT_TEST_PASSWORD;
 
   // Phase 2: Additional user emails and passwords for status tests
-  process.env.UI_TEST_SUSPENDED_USER_EMAIL = 'suspended@test.example.com';
   process.env.UI_TEST_INACTIVE_USER_EMAIL = 'inactive@test.example.com';
   process.env.UI_TEST_LOCKED_USER_EMAIL = 'locked@test.example.com';
   process.env.UI_TEST_LOCKABLE_USER_EMAIL = 'lockable@test.example.com';
@@ -444,7 +461,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
 
   // Phase 2: Additional org slugs for tenant isolation tests
   process.env.UI_TEST_SUSPENDED_ORG_SLUG = 'suspended-org';
-  process.env.UI_TEST_ARCHIVED_ORG_SLUG = 'archived-org';
+  process.env.UI_TEST_DELETED_ORG_SLUG = 'deleted-org';
 
   // 2FA test data — seeded users with 2FA enabled
   process.env.UI_TEST_2FA_EMAIL_USER = 'ui-test-2fa-email@test.local';

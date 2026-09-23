@@ -12,13 +12,39 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { truncateAllTables, seedBaseData } from '../helpers/database.js';
+import { TEST_SIGNING_KEY_ENCRYPTION_KEY } from '../../helpers/constants.js';
 import { getPool } from '../../../src/lib/database.js';
+import { encryptPrivateKey } from '../../../src/lib/signing-key-crypto.js';
 import {
   generateES256KeyPair,
   pemToJwk,
   loadSigningKeysFromDb,
   ensureSigningKeys,
 } from '../../../src/lib/signing-keys.js';
+
+/** Stores one encrypted key fixture through the same column contract used by the product. */
+async function storeSigningKey(
+  keyPair: ReturnType<typeof generateES256KeyPair>,
+  status: 'active' | 'retired' | 'revoked',
+): Promise<void> {
+  const encrypted = encryptPrivateKey(keyPair.privateKeyPem, TEST_SIGNING_KEY_ENCRYPTION_KEY);
+  await getPool().query(
+    `INSERT INTO signing_keys
+       (kid, algorithm, public_key, private_key, private_key_iv, private_key_tag,
+        encrypted, status, activated_at, retired_at)
+     VALUES ($1, $2, $3, $4, $5, $6, TRUE, $7, NOW(), $8)`,
+    [
+      keyPair.kid,
+      keyPair.algorithm,
+      keyPair.publicKeyPem,
+      encrypted.encrypted,
+      encrypted.iv,
+      encrypted.tag,
+      status,
+      status === 'retired' ? new Date() : null,
+    ],
+  );
+}
 
 describe('Signing Key Service (Integration)', () => {
   beforeEach(async () => {
@@ -40,11 +66,7 @@ describe('Signing Key Service (Integration)', () => {
 
     // Insert into database
     const pool = getPool();
-    await pool.query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status, activated_at)
-       VALUES ($1, $2, $3, $4, 'active', NOW())`,
-      [keyPair.kid, keyPair.algorithm, keyPair.publicKeyPem, keyPair.privateKeyPem],
-    );
+    await storeSigningKey(keyPair, 'active');
 
     // Verify it can be loaded from DB
     const loaded = await loadSigningKeysFromDb();
@@ -54,36 +76,32 @@ describe('Signing Key Service (Integration)', () => {
     expect(loaded[0].status).toBe('active');
     expect(loaded[0].publicKey).toContain('BEGIN PUBLIC KEY');
     expect(loaded[0].privateKey).toContain('BEGIN PRIVATE KEY');
+    const stored = await pool.query<{
+      private_key: string;
+      private_key_iv: string | null;
+      private_key_tag: string | null;
+      encrypted: boolean;
+    }>('SELECT private_key, private_key_iv, private_key_tag, encrypted FROM signing_keys');
+    expect(stored.rows[0]).toMatchObject({ encrypted: true });
+    expect(stored.rows[0]?.private_key).not.toContain('PRIVATE KEY');
+    expect(stored.rows[0]?.private_key_iv).not.toBeNull();
+    expect(stored.rows[0]?.private_key_tag).not.toBeNull();
   });
 
   // ── Load Active Keys ──────────────────────────────────────────
 
   it('should load active and retired keys, excluding revoked', async () => {
-    const pool = getPool();
-
     // Insert an active key
     const key1 = generateES256KeyPair();
-    await pool.query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status, activated_at)
-       VALUES ($1, $2, $3, $4, 'active', NOW())`,
-      [key1.kid, key1.algorithm, key1.publicKeyPem, key1.privateKeyPem],
-    );
+    await storeSigningKey(key1, 'active');
 
     // Insert a retired key (should still be loaded for verification)
     const key2 = generateES256KeyPair();
-    await pool.query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status, activated_at, retired_at)
-       VALUES ($1, $2, $3, $4, 'retired', NOW() - INTERVAL '1 day', NOW())`,
-      [key2.kid, key2.algorithm, key2.publicKeyPem, key2.privateKeyPem],
-    );
+    await storeSigningKey(key2, 'retired');
 
     // Insert a revoked key (should NOT be loaded)
     const key3 = generateES256KeyPair();
-    await pool.query(
-      `INSERT INTO signing_keys (kid, algorithm, public_key, private_key, status, activated_at)
-       VALUES ($1, $2, $3, $4, 'revoked', NOW() - INTERVAL '2 days')`,
-      [key3.kid, key3.algorithm, key3.publicKeyPem, key3.privateKeyPem],
-    );
+    await storeSigningKey(key3, 'revoked');
 
     const loaded = await loadSigningKeysFromDb();
     // Should include active + retired, exclude revoked
@@ -115,6 +133,17 @@ describe('Signing Key Service (Integration)', () => {
     // Must have public key coordinates for verification
     expect(key.x).toBeDefined();
     expect(key.y).toBeDefined();
+    const stored = await getPool().query<{
+      private_key: string;
+      private_key_iv: string | null;
+      private_key_tag: string | null;
+      encrypted: boolean;
+    }>('SELECT private_key, private_key_iv, private_key_tag, encrypted FROM signing_keys');
+    expect(stored.rows).toHaveLength(1);
+    expect(stored.rows[0]).toMatchObject({ encrypted: true });
+    expect(stored.rows[0]?.private_key).not.toContain('PRIVATE KEY');
+    expect(stored.rows[0]?.private_key_iv).not.toBeNull();
+    expect(stored.rows[0]?.private_key_tag).not.toBeNull();
   });
 
   // ── PEM → JWK Format ──────────────────────────────────────────

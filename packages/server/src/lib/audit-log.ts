@@ -82,11 +82,11 @@ export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
  * administrative mutations must call it before commit so an unavailable durable audit boundary
  * rolls back the mutation instead of creating an unaudited success.
  *
- * @param client - PostgreSQL client which owns the mutation transaction.
+ * @param client - Query boundary currently routed through the mutation transaction.
  * @param entry - Closed business audit entry.
  */
 export async function writeAuditLogInTransaction(
-  client: PoolClient,
+  client: Pick<PoolClient, 'query'>,
   entry: AuditLogEntry,
 ): Promise<void> {
   await client.query(

@@ -58,6 +58,12 @@ const setValueSchema = z.object({
   value: z.unknown(),
 });
 
+/** Parent-qualified parameters accepted by claim deletion. */
+const identifierSchema = z.object({
+  appId: z.string().uuid(),
+  claimId: z.string().uuid(),
+});
+
 // ---------------------------------------------------------------------------
 // Error handler helper
 // ---------------------------------------------------------------------------
@@ -174,9 +180,14 @@ export function createCustomClaimRouter(): Router {
   // -------------------------------------------------------------------------
   // DELETE /:claimId — Delete claim definition
   // -------------------------------------------------------------------------
-  router.delete('/:claimId', requirePermission(ADMIN_PERMISSIONS.CLAIM_ARCHIVE), async (ctx) => {
+  router.delete('/:claimId', requirePermission(ADMIN_PERMISSIONS.CLAIM_DELETE), async (ctx) => {
     try {
-      await claimService.deleteDefinition(ctx.params.claimId);
+      identifierSchema.parse(ctx.params);
+      await claimService.deleteDefinition(
+        ctx.params.appId,
+        ctx.params.claimId,
+        ctx.state.adminUser?.id,
+      );
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);

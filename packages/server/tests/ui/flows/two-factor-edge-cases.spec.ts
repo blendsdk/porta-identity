@@ -195,6 +195,12 @@ test.describe('Two-Factor Edge Cases', () => {
     // Should show QR code (data URI image)
     const qrImage = page.locator('img[src^="data:image"]');
     await expect(qrImage).toBeVisible();
+    await expect
+      .poll(() => qrImage.evaluate((image: HTMLImageElement) => image.naturalWidth))
+      .toBeGreaterThan(0);
+
+    const setupResponse = await page.request.get(page.url());
+    expect(setupResponse.headers()['content-security-policy']).toContain("img-src 'self' data:");
 
     // Should show manual entry code
     const manualCode = page.locator('code');

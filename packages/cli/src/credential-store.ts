@@ -18,15 +18,13 @@
  * @module credential-store
  */
 
-import {
-  readFileSync,
-  writeFileSync,
-  mkdirSync,
-  unlinkSync,
-  existsSync,
-} from 'node:fs';
-import { join } from 'node:path';
+import { readFileSync, writeFileSync, mkdirSync, unlinkSync, existsSync } from 'node:fs';
+import { chmod, mkdir, open, rename, rm } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { dirname, join } from 'node:path';
 import { homedir } from 'node:os';
+import type { CliCredentialPersistence } from '@portaidentity/sdk/node';
+import { withCredentialLock } from './credential-lock.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -92,6 +90,67 @@ const FILE_MODE = 0o600;
 /** Directory permissions: owner access only (0700) */
 const DIR_MODE = 0o700;
 
+/** Maximum wait for another CLI process to finish a credential update. */
+const LOGIN_LOCK_TIMEOUT_MS = 5_000;
+
+/** Organization slug format shared with Porta's server-side validator. */
+const ORGANIZATION_SLUG = /^[a-z0-9][a-z0-9-]{1,98}[a-z0-9]$/;
+
+/** Returns true for a non-empty string accepted at a credential boundary. */
+function isNonEmptyString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
+
+/** Validates a stored credential snapshot before any field is trusted. */
+function parseStoredCredentials(value: unknown): StoredCredentials | null {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const userInfoValue = candidate.userInfo;
+  if (!userInfoValue || typeof userInfoValue !== 'object') return null;
+  const userInfo = userInfoValue as Record<string, unknown>;
+  if (
+    !isNonEmptyString(candidate.server) ||
+    !isNonEmptyString(candidate.orgSlug) ||
+    !ORGANIZATION_SLUG.test(candidate.orgSlug) ||
+    !isNonEmptyString(candidate.clientId) ||
+    !isNonEmptyString(candidate.accessToken) ||
+    (candidate.refreshToken !== undefined && typeof candidate.refreshToken !== 'string') ||
+    !isNonEmptyString(candidate.idToken) ||
+    !isNonEmptyString(candidate.expiresAt) ||
+    Number.isNaN(Date.parse(candidate.expiresAt)) ||
+    !isNonEmptyString(userInfo.sub) ||
+    typeof userInfo.email !== 'string' ||
+    (userInfo.name !== undefined && typeof userInfo.name !== 'string')
+  ) {
+    return null;
+  }
+  try {
+    const server = new URL(candidate.server);
+    if (
+      server.protocol !== 'https:' ||
+      server.username ||
+      server.password ||
+      !/^\/*$/.test(server.pathname) ||
+      server.search ||
+      server.hash
+    ) {
+      return null;
+    }
+  } catch {
+    return null;
+  }
+  return {
+    server: candidate.server,
+    orgSlug: candidate.orgSlug,
+    clientId: candidate.clientId,
+    accessToken: candidate.accessToken,
+    refreshToken: isNonEmptyString(candidate.refreshToken) ? candidate.refreshToken : undefined,
+    idToken: candidate.idToken,
+    expiresAt: candidate.expiresAt,
+    userInfo: { sub: userInfo.sub, email: userInfo.email, name: userInfo.name },
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
@@ -110,7 +169,7 @@ export function loadCredentials(): StoredCredentials | null {
       return null;
     }
     const raw = readFileSync(CREDENTIALS_PATH, 'utf-8');
-    return JSON.parse(raw) as StoredCredentials;
+    return parseStoredCredentials(JSON.parse(raw));
   } catch {
     // Corrupt file or parse error — treat as no credentials
     return null;
@@ -135,6 +194,22 @@ export function saveCredentials(credentials: StoredCredentials): void {
     mode: FILE_MODE,
     encoding: 'utf-8',
   });
+}
+
+/** Persists login credentials under the same lock and atomic-write contract as refresh. */
+export async function saveCredentialsDurably(
+  credentials: StoredCredentials,
+  signal: AbortSignal = new AbortController().signal,
+): Promise<void> {
+  await prepareCredentialDirectory(CREDENTIALS_PATH);
+  await withCredentialLock(
+    {
+      lockPath: `${CREDENTIALS_PATH}.lock`,
+      timeoutMs: LOGIN_LOCK_TIMEOUT_MS,
+      signal,
+    },
+    async () => persistAtomically(CREDENTIALS_PATH, credentials),
+  );
 }
 
 /**
@@ -170,6 +245,66 @@ export function hasCredentials(): boolean {
  */
 export function getCredentialsPath(): string {
   return CREDENTIALS_PATH;
+}
+
+/** Options for durable SDK refresh persistence owned by the CLI. */
+export interface CliCredentialPersistenceOptions {
+  /** Credential file to replace atomically. */
+  readonly credentialsPath?: string;
+  /** Maximum time to wait for another CLI process. */
+  readonly lockTimeoutMs: number;
+  /** Optional cancellation signal for lock acquisition. */
+  readonly signal?: AbortSignal;
+}
+
+/** Creates and corrects the owner-only directory needed by a credential path. */
+async function prepareCredentialDirectory(path: string): Promise<void> {
+  const directory = dirname(path);
+  await mkdir(directory, { recursive: true, mode: DIR_MODE });
+  await chmod(directory, DIR_MODE);
+}
+
+/** Writes a credential snapshot through an owner-only sibling and atomic rename. */
+async function persistAtomically(path: string, credentials: StoredCredentials): Promise<void> {
+  await prepareCredentialDirectory(path);
+  const temporaryPath = `${path}.${randomBytes(12).toString('hex')}.tmp`;
+  const handle = await open(temporaryPath, 'wx', FILE_MODE);
+  try {
+    try {
+      await handle.writeFile(JSON.stringify(credentials), 'utf8');
+      await handle.sync();
+      await handle.chmod(FILE_MODE);
+    } finally {
+      await handle.close();
+    }
+    await rename(temporaryPath, path);
+    await chmod(path, FILE_MODE);
+  } catch (error) {
+    await rm(temporaryPath, { force: true });
+    throw error;
+  }
+}
+
+/** Creates the CLI-owned lock and atomic-write hooks used by SDK refresh. */
+export function createCliCredentialPersistence(
+  options: CliCredentialPersistenceOptions,
+): CliCredentialPersistence {
+  const credentialsPath = options.credentialsPath ?? CREDENTIALS_PATH;
+  const signal = options.signal ?? new AbortController().signal;
+  return {
+    withRefreshLock: (operation) =>
+      withCredentialLock(
+        {
+          lockPath: `${credentialsPath}.lock`,
+          timeoutMs: options.lockTimeoutMs,
+          signal,
+        },
+        operation,
+      ),
+    persistRefreshedCredentials: async (_previous, refreshed) => {
+      await persistAtomically(credentialsPath, refreshed);
+    },
+  };
 }
 
 /**

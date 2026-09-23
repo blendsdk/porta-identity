@@ -198,16 +198,6 @@ export function buildMagicLinkCallbackRateLimitKey(
 }
 
 /**
- * Build a rate limit key for password reset requests.
- * Rate-limits per email to prevent abuse.
- *
- * Format: ratelimit:reset:{org_id}:{sha256(email)[:16]}
- *
- * @param orgId - Organization UUID
- * @param email - Email address requesting password reset
- * @returns Rate limit key string
- */
-/**
  * Build a generic rate limit key for custom actions (e.g., 2FA verification, OTP resend).
  *
  * @param action - Action identifier (e.g., '2fa_verify', '2fa_resend')
@@ -219,6 +209,12 @@ export function buildRateLimitKey(action: string, orgId: string, identifier: str
   return `ratelimit:${action}:${orgId}:${hashIdentifier(identifier)}`;
 }
 
+/**
+ * Build a rate limit key for password reset requests, isolated by tenant and hashed address.
+ * @param orgId - Organization UUID.
+ * @param email - Email address requesting password reset.
+ * @returns Privacy-safe Redis key for the request budget.
+ */
 export function buildPasswordResetRateLimitKey(orgId: string, email: string): string {
   return `ratelimit:reset:${orgId}:${hashIdentifier(email)}`;
 }
@@ -234,8 +230,8 @@ export function buildPasswordResetRateLimitKey(orgId: string, email: string): st
  */
 export async function loadLoginRateLimitConfig(): Promise<RateLimitConfig> {
   const [max, windowSeconds] = await Promise.all([
-    getSystemConfigNumber('rate_limit_login_max', 10),
-    getSystemConfigNumber('rate_limit_login_window', 900),
+    getSystemConfigNumber('rate_limit_login_max'),
+    getSystemConfigNumber('rate_limit_login_window'),
   ]);
   return { max, windowSeconds };
 }
@@ -247,8 +243,8 @@ export async function loadLoginRateLimitConfig(): Promise<RateLimitConfig> {
  */
 export async function loadMagicLinkRateLimitConfig(): Promise<RateLimitConfig> {
   const [max, windowSeconds] = await Promise.all([
-    getSystemConfigNumber('rate_limit_magic_link_max', 5),
-    getSystemConfigNumber('rate_limit_magic_link_window', 900),
+    getSystemConfigNumber('rate_limit_magic_link_max'),
+    getSystemConfigNumber('rate_limit_magic_link_window'),
   ]);
   return { max, windowSeconds };
 }
@@ -260,8 +256,8 @@ export async function loadMagicLinkRateLimitConfig(): Promise<RateLimitConfig> {
  */
 export async function loadPasswordResetRateLimitConfig(): Promise<RateLimitConfig> {
   const [max, windowSeconds] = await Promise.all([
-    getSystemConfigNumber('rate_limit_password_reset_max', 5),
-    getSystemConfigNumber('rate_limit_password_reset_window', 900),
+    getSystemConfigNumber('rate_limit_password_reset_max'),
+    getSystemConfigNumber('rate_limit_password_reset_window'),
   ]);
   return { max, windowSeconds };
 }

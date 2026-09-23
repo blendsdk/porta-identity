@@ -20,6 +20,16 @@ vi.mock('@portaidentity/sdk/node', () => ({
 // Mock global-options to control server URL resolution
 vi.mock('../src/global-options.js', () => ({
   resolveServerUrl: vi.fn(() => 'https://porta.example.com'),
+  normalizeServerOrigin: vi.fn((value: string) => new URL(value)),
+}));
+
+vi.mock('../src/credential-store.js', () => ({
+  createCliCredentialPersistence: vi.fn(() => ({
+    withRefreshLock: vi.fn(),
+    persistRefreshedCredentials: vi.fn(),
+  })),
+  getCredentialsPath: vi.fn(() => '/tmp/porta-credentials.json'),
+  loadCredentials: vi.fn(() => null),
 }));
 
 import { createPortaClient } from '@portaidentity/sdk';

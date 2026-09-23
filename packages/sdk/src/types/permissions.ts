@@ -4,25 +4,40 @@
  * @module types/permissions
  */
 
-/**
- * A permission — mirrors the server `mapRowToPermission` (src/rbac/types.ts).
- * The server projection has no `updatedAt` field; it was SDK drift (AR-18).
- */
+/** A permission granted to roles within one application. */
 export interface Permission {
+  /** Stable permission identifier. */
   id: string;
+  /** Application that owns the permission. */
   applicationId: string;
+  /** Optional application module that groups the permission. */
   moduleId: string | null;
+  /** Human-readable permission name. */
   name: string;
+  /** Stable permission key used in authority checks. */
   slug: string;
+  /** Optional explanation shown to administrators. */
   description: string | null;
+  /** ISO 8601 creation time. */
   createdAt: string;
 }
 
-
+/** Input for creating a permission under the application in the request path. */
 export interface CreatePermissionInput {
-  applicationId: string;
+  /** Human-readable permission name. */
   name: string;
-  slug?: string;
+  /** Exact permission claim value expected by the application, such as `CAN_ADD_ORDER`. */
+  slug: string;
+  /** Optional explanation shown to administrators. */
   description?: string;
+  /** Optional application module identifier. */
   moduleId?: string;
+}
+
+/** Mutable permission metadata. The permission slug remains immutable. */
+export interface UpdatePermissionInput {
+  /** Replacement display name. */
+  name?: string;
+  /** Replacement description, or `null` to clear it. */
+  description?: string | null;
 }

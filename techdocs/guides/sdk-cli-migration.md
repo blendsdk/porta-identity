@@ -15,6 +15,7 @@ porta user list
 ```
 
 Key components:
+
 - **`src/cli/http-client.ts`** — `AdminHttpClient` class with `get()`, `post()`, `put()`, `patch()`, `delete()` methods
 - **`src/cli/token-store.ts`** — Reads `~/.porta/credentials.json` for Bearer tokens
 - **`src/cli/bootstrap.ts`** — `withHttpClient()` creates an `AdminHttpClient` instance for each command
@@ -33,14 +34,14 @@ porta user list
 
 ## Migration Benefits
 
-| Aspect | Before (AdminHttpClient) | After (@portaidentity/sdk) |
-|---|---|---|
-| **Type safety** | Manual URL building, untyped responses | Fully typed methods and return values |
-| **Auth refresh** | Manual token refresh logic | Automatic via CliAuth provider |
-| **Error handling** | Manual HTTP status → error mapping | Typed error hierarchy (PortaValidationError, etc.) |
-| **Pagination** | Manual URL parameter building | Built-in `listAll()` auto-pagination |
-| **ETag support** | Manual header management | Built-in ETag/If-Match support |
-| **Maintenance** | CLI maintained a separate HTTP client | CLI and scripts share the supported SDK |
+| Aspect             | Before (AdminHttpClient)               | After (@portaidentity/sdk)                         |
+| ------------------ | -------------------------------------- | -------------------------------------------------- |
+| **Type safety**    | Manual URL building, untyped responses | Fully typed methods and return values              |
+| **Auth refresh**   | Manual token refresh logic             | Automatic via CliAuth provider                     |
+| **Error handling** | Manual HTTP status → error mapping     | Typed error hierarchy (PortaValidationError, etc.) |
+| **Pagination**     | Manual URL parameter building          | Built-in `listAll()` auto-pagination               |
+| **ETag support**   | Manual header management               | Built-in ETag/If-Match support                     |
+| **Maintenance**    | CLI maintained a separate HTTP client  | CLI and scripts share the supported SDK            |
 
 ## Historical Migration Strategy
 
@@ -75,7 +76,7 @@ Migrate one command module at a time, from simplest to most complex:
 1. **Read-only commands first**: `health`, `whoami`, `config list`, `keys list`
 2. **Simple CRUD**: `org list/show`, `app list/show`, `client list/show`
 3. **Complex CRUD**: `user create/invite`, `org create/update`
-4. **Status transitions**: `org suspend/activate`, `user lock/unlock`
+4. **Status transitions**: `org suspend/activate`, `user activate/deactivate`
 5. **Nested resources**: `app role create`, `user claims set`
 6. **Special commands**: `provision`, `export`
 

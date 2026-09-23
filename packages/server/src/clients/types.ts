@@ -21,7 +21,7 @@ export type ClientType = 'confidential' | 'public';
 export type ApplicationType = 'web' | 'native' | 'spa';
 
 /** Client status values */
-export type ClientStatus = 'active' | 'inactive' | 'revoked';
+export type ClientStatus = 'active' | 'inactive';
 
 /** Secret status values */
 export type SecretStatus = 'active' | 'revoked';

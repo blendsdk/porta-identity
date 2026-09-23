@@ -4,6 +4,7 @@ import test from 'node:test';
 import { validatePackedP1ReadEvidence } from './p1-packed-read-adapter.js';
 import { packedP1ReadRequirements } from './p1-packed-read-requirements.js';
 import { completePackedP1ReadEvidence } from './p1-packed-read-spec-fixtures.js';
+import { packedP1ReadExitCode } from '../compat/p1-read.js';
 
 import type { PackedP1ReadClient, PackedP1ReadSurface } from './p1-packed-read-requirements.js';
 
@@ -164,4 +165,24 @@ test('validates complete packed evidence and rejects expectation-shaped defects'
 
   const logCredit = { ...complete, correlatedLogEvidenceCollected: true };
   assert.throws(() => validatePackedP1ReadEvidence(logCredit), /correlated log/i);
+});
+
+test('maps observed packed-client product failures to the registered product exit', () => {
+  const complete = completePackedP1ReadEvidence();
+  const failed = {
+    ...complete,
+    journeys: complete.journeys.map((journey, index) =>
+      index === 0 ? { ...journey, outcome: 'product-failure' as const } : journey,
+    ),
+  };
+
+  assert.equal(packedP1ReadExitCode(complete), 0);
+  assert.equal(packedP1ReadExitCode(failed), 20);
+  assert.throws(
+    () =>
+      packedP1ReadExitCode({
+        journeys: [{ outcome: 'incomplete' }],
+      }),
+    /no registered observation condition/i,
+  );
 });

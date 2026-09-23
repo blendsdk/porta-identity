@@ -131,11 +131,4 @@ describe('Tenant Isolation (E2E)', () => {
     expect([403, 404]).toContain(response.status);
   });
 
-  it('should return 404 for archived org discovery', async () => {
-    // Create as active, then update status (insertOrganization doesn't accept status)
-    const archivedOrg = await createTestOrganization({ name: 'Archived Org' });
-    await updateOrganization(archivedOrg.id, { status: 'archived' });
-    const response = await http.get(`/${archivedOrg.slug}/.well-known/openid-configuration`);
-    expect([404]).toContain(response.status);
-  });
 });

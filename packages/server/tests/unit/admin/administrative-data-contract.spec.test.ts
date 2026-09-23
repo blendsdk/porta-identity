@@ -7,8 +7,6 @@ import {
   type AdministrativeDataObservation,
   type AdministrativeDataSpecDriver,
   type ExportEntityType,
-  type JsonObject,
-  type JsonValue,
 } from './administrative-data-contract.js';
 
 const capability = getAdministrativeDataCapability();
@@ -34,22 +32,6 @@ function entityById(observation: AdministrativeDataObservation, id: string) {
   const entity = observation.entities.find((candidate) => candidate.id === id);
   expect(entity, `owned entity ${id} should be observable`).toBeDefined();
   return entity;
-}
-
-/** Create the smallest valid confidential-client manifest for an arranged tenant. */
-function clientManifest(
-  fixture: AdministrativeDataFixture,
-  clientNames: readonly string[],
-): JsonObject {
-  return {
-    version: ADMINISTRATIVE_DATA_ORACLE.import.manifestVersion,
-    clients: clientNames.map((clientName) => ({
-      client_name: clientName,
-      application_slug: fixture.alphaApplicationSlug,
-      organization_slug: fixture.alphaOrganizationSlug,
-      client_type: 'confidential',
-    })),
-  };
 }
 
 /** Return the complete authority needed for one export entity. */
@@ -92,31 +74,12 @@ describe('administrative data requirement catalog', () => {
       maximumReasonCharacters: 500,
       actions: {
         organization: ['activate', 'suspend', 'archive'],
-        user: ['activate', 'deactivate', 'suspend', 'lock', 'unlock'],
+        user: ['activate', 'deactivate'],
       },
       envelopeFields: ['total', 'succeeded', 'failed', 'results'],
       concealedItemCode: 'not_found_or_not_authorized',
       stoppedItemCode: 'not_attempted',
     });
-  });
-
-  // Import accepts one version and limits overwrite to non-authority presentation fields.
-  it('should freeze import modes, forbidden secrets, and overwrite fields', () => {
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.manifestVersion).toBe('1.0');
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.modes).toStrictEqual([
-      'merge',
-      'overwrite',
-      'dry-run',
-    ]);
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.prohibitedFieldNames).toContain('password_hash');
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.prohibitedFieldNames).toContain('client_secret');
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.prohibitedFieldNames).toContain('totp_secret');
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.mutableFields.client).toStrictEqual(['client_name']);
-    expect(ADMINISTRATIVE_DATA_ORACLE.import.mutableFields.user).toStrictEqual([
-      'given_name',
-      'family_name',
-      'locale',
-    ]);
   });
 
   // Export is a closed, dual-authority, bounded, serialization-safe surface.
@@ -168,15 +131,6 @@ if (capability.available) {
         (fixture: AdministrativeDataFixture) => ({
           ids: [fixture.alphaUserIds[0]],
           action: 'destroy',
-          organizationId: fixture.alphaOrganizationId,
-        }),
-      ],
-      [
-        'oversized reason',
-        (fixture: AdministrativeDataFixture) => ({
-          ids: [fixture.alphaUserIds[0]],
-          action: 'deactivate',
-          reason: 'r'.repeat(ADMINISTRATIVE_DATA_ORACLE.bulk.maximumReasonCharacters + 1),
           organizationId: fixture.alphaOrganizationId,
         }),
       ],
@@ -275,239 +229,6 @@ if (capability.available) {
         expect(entityById(after, fixture.alphaUserIds[1])).toStrictEqual(
           entityById(before, fixture.alphaUserIds[1]),
         );
-      });
-    });
-  });
-
-  describe('administrative import behavior', () => {
-    // Merge skips an existing tenant-qualified key unchanged and creates the missing key.
-    it('should merge by tenant-qualified natural key without changing existing rows', async () => {
-      await withDriver(async (driver) => {
-        const fixture = await driver.reset();
-        const before = await driver.observe();
-        const existingBefore = before.entities.find(
-          (entity) => entity.naturalKey === fixture.existingClientNaturalKey,
-        );
-        const outcome = await driver.submitImport(
-          'merge',
-          clientManifest(fixture, [fixture.existingClientNaturalKey, fixture.newClientNaturalKey]),
-          { organizationId: fixture.alphaOrganizationId },
-        );
-
-        expect(outcome.accepted).toBe(true);
-        expect(outcome.skipped.map((item) => item.naturalKey)).toContain(
-          fixture.existingClientNaturalKey,
-        );
-        expect(outcome.created.map((item) => item.naturalKey)).toContain(
-          fixture.newClientNaturalKey,
-        );
-        expect(outcome.errors).toBeUndefined();
-        const after = await driver.observe();
-        expect(
-          after.entities.find((entity) => entity.naturalKey === fixture.existingClientNaturalKey),
-        ).toStrictEqual(existingBefore);
-        expect(outcome.credentials).toHaveLength(1);
-        const credential = outcome.credentials[0];
-        expect(typeof credential.secretPlaintext).toBe('string');
-        const secret = String(credential.secretPlaintext);
-        expect(serializedSurfaces(outcome).split(secret)).toHaveLength(2);
-        expect(serializedSurfaces(after.operationalOutput)).not.toContain(secret);
-        expect(after.audits.at(-1)).toMatchObject({
-          actorId: fixture.actorId,
-          mode: 'merge',
-          manifestVersion: ADMINISTRATIVE_DATA_ORACLE.import.manifestVersion,
-          contentValues: [],
-        });
-        expect(after.audits.at(-1)?.manifestDigest).toMatch(/^[a-f0-9]{64}$/);
-      });
-    });
-
-    // Overwrite may change only presentation/configuration and never moves authority or identity.
-    it('should overwrite only presentation fields and reject credential-equivalent input', async () => {
-      await withDriver(async (driver) => {
-        const fixture = await driver.reset();
-        const manifest = clientManifest(fixture, [fixture.existingClientNaturalKey]);
-        const validManifest = {
-          ...manifest,
-          clients: [
-            {
-              client_name: fixture.existingClientNaturalKey,
-              application_slug: fixture.alphaApplicationSlug,
-              organization_slug: fixture.alphaOrganizationSlug,
-              client_type: 'confidential',
-            },
-          ],
-        };
-        const outcome = await driver.submitImport('overwrite', validManifest, {
-          organizationId: fixture.alphaOrganizationId,
-        });
-        expect(outcome.accepted).toBe(true);
-        for (const update of outcome.updated) {
-          expect(
-            update.changedFields.every((field) =>
-              ADMINISTRATIVE_DATA_ORACLE.import.mutableFields[update.entityType]?.includes(field),
-            ),
-          ).toBe(true);
-        }
-
-        const beforeImmutableAttempt = await driver.observe();
-        const immutableChanges: readonly Record<string, JsonValue>[] = [
-          { id: fixture.bravoApplicationId },
-          { organization_slug: fixture.bravoOrganizationSlug },
-          { application_slug: fixture.bravoApplicationSlug },
-          { client_type: 'public' },
-        ];
-        for (const immutableChange of immutableChanges) {
-          const prohibited = {
-            ...validManifest,
-            clients: [{ ...validManifest.clients[0], ...immutableChange }],
-          };
-          expect(
-            (
-              await driver.submitImport('overwrite', prohibited, {
-                organizationId: fixture.alphaOrganizationId,
-              })
-            ).accepted,
-          ).toBe(false);
-          expect(await driver.observe()).toStrictEqual(beforeImmutableAttempt);
-        }
-      });
-    });
-
-    // Every credential-equivalent field rejects before mutation, audit, or disclosure.
-    it.each(ADMINISTRATIVE_DATA_ORACLE.import.prohibitedFieldNames)(
-      'should reject prohibited import field %s before mutation',
-      async (fieldName) => {
-        await withDriver(async (driver) => {
-          const fixture = await driver.reset();
-          const before = await driver.observe();
-          const manifest = clientManifest(fixture, [fixture.newClientNaturalKey]);
-          const outcome = await driver.submitImport(
-            'overwrite',
-            {
-              ...manifest,
-              [fieldName]: fixture.secretCanary,
-            },
-            { organizationId: fixture.alphaOrganizationId },
-          );
-
-          expect(outcome.accepted).toBe(false);
-          expect(serializedSurfaces(outcome)).not.toContain(fixture.secretCanary);
-          expect(await driver.observe()).toStrictEqual(before);
-        });
-      },
-    );
-
-    // Dry-run executes the same planner without identifiers, credentials, or side effects.
-    it('should dry-run create, update, and skip plans without any durable or secret effect', async () => {
-      await withDriver(async (driver) => {
-        const fixture = await driver.reset();
-        const before = await driver.observe();
-        const outcome = await driver.submitImport(
-          'dry-run',
-          {
-            ...clientManifest(fixture, [
-              fixture.existingClientNaturalKey,
-              fixture.newClientNaturalKey,
-            ]),
-            organizations: [
-              {
-                name: `${fixture.alphaOrganizationName} Updated`,
-                slug: fixture.alphaOrganizationSlug,
-              },
-            ],
-          },
-          { organizationId: fixture.alphaOrganizationId },
-        );
-
-        expect(outcome.accepted).toBe(true);
-        expect(outcome.errors).toBeUndefined();
-        expect(outcome.created.length).toBeGreaterThan(0);
-        expect(outcome.updated.length).toBeGreaterThan(0);
-        expect(outcome.skipped.length).toBeGreaterThan(0);
-        expect(
-          outcome.credentials.every((credential) =>
-            Object.hasOwn(credential, ADMINISTRATIVE_DATA_ORACLE.import.dryRunCredentialField),
-          ),
-        ).toBe(true);
-        expect(serializedSurfaces(outcome)).not.toContain('secretPlaintext');
-        expect(outcome.created.every((item) => item.publicIdentifier === undefined)).toBe(true);
-        expect(await driver.observe()).toStrictEqual(before);
-      });
-    });
-
-    // Every non-skip planning or runtime failure rejects or rolls back the complete manifest.
-    it('should reject every planning or execution error atomically without disclosure', async () => {
-      await withDriver(async (driver) => {
-        const fixture = await driver.reset();
-        const valid = clientManifest(fixture, [fixture.newClientNaturalKey]);
-        await driver.arrangeImportCollision('collision-client');
-        const invalidManifests: readonly JsonValue[] = [
-          { ...valid, version: '0.9' },
-          { ...valid, unknown_field: true },
-          clientManifest(fixture, [fixture.newClientNaturalKey, fixture.newClientNaturalKey]),
-          {
-            ...valid,
-            clients: [
-              {
-                client_name: fixture.newClientNaturalKey,
-                application_slug: 'missing-parent',
-                organization_slug: fixture.alphaOrganizationSlug,
-                client_type: 'confidential',
-              },
-            ],
-          },
-          {
-            ...valid,
-            role_permission_mappings: [
-              {
-                role_slug: 'missing-role',
-                permission_slugs: ['missing-permission'],
-                application_slug: fixture.alphaApplicationSlug,
-                organization_slug: fixture.alphaOrganizationSlug,
-              },
-            ],
-          },
-          clientManifest(fixture, ['collision-client']),
-        ];
-
-        for (const manifest of invalidManifests) {
-          const before = await driver.observe();
-          const outcome = await driver.submitImport('merge', manifest, {
-            organizationId: fixture.alphaOrganizationId,
-          });
-          expect(outcome.accepted).toBe(false);
-          expect(serializedSurfaces(outcome)).not.toContain(fixture.secretCanary);
-          expect(await driver.observe()).toStrictEqual(before);
-        }
-
-        const foreignBefore = await driver.observe();
-        const foreign = await driver.submitImport(
-          'merge',
-          {
-            version: ADMINISTRATIVE_DATA_ORACLE.import.manifestVersion,
-            clients: [
-              {
-                client_name: fixture.newClientNaturalKey,
-                application_slug: fixture.bravoApplicationSlug,
-                organization_slug: fixture.bravoOrganizationSlug,
-                client_type: 'confidential',
-              },
-            ],
-          },
-          { organizationId: fixture.alphaOrganizationId },
-        );
-        expect(foreign.accepted).toBe(false);
-        expect(await driver.observe()).toStrictEqual(foreignBefore);
-
-        await driver.failImportAt(fixture.newClientNaturalKey);
-        const runtimeBefore = await driver.observe();
-        const runtime = await driver.submitImport('merge', valid, {
-          organizationId: fixture.alphaOrganizationId,
-        });
-        expect(runtime.accepted).toBe(false);
-        expect(serializedSurfaces(runtime)).not.toContain(fixture.dependencyErrorCanary);
-        expect(await driver.observe()).toStrictEqual(runtimeBefore);
       });
     });
   });

@@ -51,7 +51,6 @@ Each organization has a **status** that controls access:
 |--------|-------------|
 | `active` | Fully operational — users can authenticate, APIs work normally |
 | `suspended` | Temporarily disabled — all authentication requests are rejected |
-| `archived` | Permanently decommissioned — organization cannot be reactivated |
 
 Status transitions follow strict rules:
 
@@ -60,13 +59,9 @@ stateDiagram-v2
     [*] --> active
     active --> suspended: Suspend
     suspended --> active: Activate
-    active --> archived: Archive
-    suspended --> archived: Archive
 ```
 
-::: warning
-Archiving is irreversible. Once archived, an organization and all its data are effectively sealed.
-:::
+Permanent removal is a separate Delete operation, not a lifecycle status.
 
 ## Super-Admin Organization
 
@@ -74,7 +69,7 @@ One special organization is marked as the **super-admin** (`is_super_admin = tru
 
 - Hosts the administrative users who manage all other tenants
 - Is the issuer of admin API JWT tokens
-- Cannot be suspended or archived
+- Cannot be suspended or deleted
 - Is guaranteed to be unique (enforced by a partial unique index)
 
 The super-admin organization is created during the initial `porta init` bootstrap process.

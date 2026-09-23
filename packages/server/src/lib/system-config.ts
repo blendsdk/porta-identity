@@ -1,25 +1,32 @@
 /**
  * System configuration service — reads runtime settings from the system_config table.
  *
- * Values are cached in-memory with a configurable TTL to minimize database queries.
+ * Found values are cached in-memory for 60 seconds to minimize database queries.
  * The cache is shared across all requests within the process.
  *
- * The system_config table stores values as JSONB. Duration-type values are stored
- * as JSONB strings (e.g., '"3600"'), while booleans and numbers are stored as
- * native JSONB types. The typed getters handle parsing and coercion for each type.
+ * Public values use native JSONB scalars and the immutable catalog's validation and defaults.
+ * No coercion is performed. Missing, invalid or unavailable policy uses a bounded safe warning.
  *
  * @example
- *   const ttl = await getSystemConfigNumber('access_token_ttl', 3600);
- *   const secure = await getSystemConfigBoolean('cookie_secure', true);
+ *   const ttl = await getSystemConfigNumber('access_token_ttl');
  *   const allTtls = await loadOidcTtlConfig();
  */
 
 import { getPool } from './database.js';
 import { logger } from './logger.js';
+import { findSystemConfigDefinition, validateSystemConfigValue } from './system-config-catalog.js';
+import type {
+  NumericSystemConfigKey,
+  SupportedLocale,
+  SystemConfigKey,
+  SystemConfigValue,
+} from './system-config-catalog.js';
 
 /** Cache entry with expiration timestamp */
 interface CacheEntry {
+  /** Native database content, validated by the appropriate reader before use. */
   value: unknown;
+  /** Exclusive expiry based on the start of the database read. */
   expiresAt: number;
 }
 
@@ -41,25 +48,30 @@ export interface OidcTtlConfig {
   grant: number;
 }
 
-// In-memory cache with TTL (default: 60 seconds)
-const cache = new Map<string, CacheEntry>();
+/** Active local cache; old queries retain their original map after explicit invalidation. */
+let cache = new Map<string, CacheEntry>();
+/** Maximum time another healthy process may retain a previously read policy value. */
 const CACHE_TTL_MS = 60_000;
+
+/** Distinguish absent storage from a failed read without retaining or exposing database exceptions. */
+type RawConfigResult = { status: 'found'; value: unknown } | { status: 'missing' | 'unavailable' };
 
 /**
  * Fetch a raw config value from the database by key.
- * Returns undefined if the key does not exist.
- * Results are cached for CACHE_TTL_MS milliseconds.
+ * Only found rows are cached. Each query captures its cache map before awaiting PostgreSQL,
+ * so a completion from before invalidation cannot refill the replacement cache with stale policy.
  *
  * @param key - Config key to look up (e.g., 'access_token_ttl')
- * @returns The JSONB value from the database, or undefined if not found
+ * @returns Found JSONB content, missing, or unavailable; raw errors never escape this boundary.
  */
-async function getRawConfigValue(key: string): Promise<unknown | undefined> {
+async function getRawConfigValue(key: string): Promise<RawConfigResult> {
   const now = Date.now();
+  const startingCache = cache;
 
   // Check cache first
-  const cached = cache.get(key);
+  const cached = startingCache.get(key);
   if (cached && cached.expiresAt > now) {
-    return cached.value;
+    return { status: 'found', value: cached.value };
   }
 
   try {
@@ -69,97 +81,83 @@ async function getRawConfigValue(key: string): Promise<unknown | undefined> {
       [key],
     );
 
-    if (result.rows.length === 0) {
-      // Cache the miss to avoid repeated DB queries for unknown keys
-      cache.set(key, { value: undefined, expiresAt: now + CACHE_TTL_MS });
-      return undefined;
-    }
-
-    const value = result.rows[0].value;
-    cache.set(key, { value, expiresAt: now + CACHE_TTL_MS });
-    return value;
-  } catch (error) {
-    // Log warning but don't fail — callers always provide fallback defaults
-    logger.warn({ key, error }, 'Failed to read system_config value, using fallback');
-    return undefined;
+    const row = result.rows[0];
+    if (!row) return { status: 'missing' };
+    startingCache.set(key, { value: row.value, expiresAt: now + CACHE_TTL_MS });
+    return { status: 'found', value: row.value };
+  } catch {
+    return { status: 'unavailable' };
   }
 }
 
 /**
- * Get a string config value from the system_config table.
- *
- * @param key - Config key (e.g., 'magic_link_length')
- * @param fallback - Default value returned if key not found or value is not a string
- * @returns The config value as a string, or the fallback
+ * Read public policy through application-owned validation and defaults. Warning fields contain
+ * only a catalog key and closed reason; neither stored content nor infrastructure exceptions leak.
  */
-export async function getSystemConfigString(key: string, fallback: string): Promise<string> {
-  const raw = await getRawConfigValue(key);
-  if (raw === undefined || raw === null) return fallback;
-
-  // JSONB values may be strings, numbers, or booleans — coerce to string
-  return String(raw);
+async function readCatalogValue(key: SystemConfigKey): Promise<SystemConfigValue> {
+  const definition = findSystemConfigDefinition(key);
+  if (!definition) throw new Error('Unsupported system configuration key');
+  const result = await getRawConfigValue(key);
+  const value =
+    result.status === 'found' ? validateSystemConfigValue(definition, result.value) : undefined;
+  if (value !== undefined) return value;
+  const reason = result.status === 'found' ? 'invalid' : result.status;
+  logger.warn(
+    { event: 'system-config-fallback', key, reason },
+    'Using default system configuration value',
+  );
+  return definition.defaultValue;
 }
 
 /**
- * Get a numeric config value from the system_config table.
- *
- * Handles two storage patterns:
- * - Duration-type values stored as JSONB strings (e.g., '"3600"') → parsed to number
- * - Number-type values stored as native JSONB numbers (e.g., 10) → returned directly
- *
- * @param key - Config key (e.g., 'access_token_ttl')
- * @param fallback - Default value returned if key not found or not a valid number
- * @returns The config value as a number, or the fallback
+ * Read a native, bounded integer or its exact catalog default, without caller-owned fallbacks.
+ * @param key - Public integer policy key.
+ * @returns Valid stored integer or the same catalog's safe default.
+ * @throws Error when JavaScript callers supply a non-numeric or non-catalog key.
+ * @example
+ * await getSystemConfigNumber('magic_link_ttl'); // seconds
  */
-export async function getSystemConfigNumber(key: string, fallback: number): Promise<number> {
-  const raw = await getRawConfigValue(key);
-  if (raw === undefined || raw === null) return fallback;
-
-  // If already a number (native JSONB number), return directly
-  if (typeof raw === 'number' && !Number.isNaN(raw)) return raw;
-
-  // If it's a string (duration values stored as JSONB strings like '"3600"'),
-  // parse as number
-  if (typeof raw === 'string') {
-    const parsed = Number(raw);
-    if (!Number.isNaN(parsed)) return parsed;
-  }
-
-  logger.warn({ key, raw }, 'system_config value is not a valid number, using fallback');
-  return fallback;
+export async function getSystemConfigNumber(key: NumericSystemConfigKey): Promise<number> {
+  const value = await readCatalogValue(key);
+  if (typeof value !== 'number') throw new Error('Expected numeric system configuration key');
+  return value;
 }
 
 /**
- * Get a boolean config value from the system_config table.
- *
- * Handles native JSONB booleans (true/false) and string representations
- * ('true'/'false') for maximum flexibility.
- *
- * @param key - Config key (e.g., 'cookie_secure')
- * @param fallback - Default value returned if key not found or not a valid boolean
- * @returns The config value as a boolean, or the fallback
+ * Read the final authentication locale fallback without coercing arbitrary database content.
+ * @param key - The closed public locale key.
+ * @returns Completely supported stored locale or its catalog default.
+ * @throws Error when JavaScript callers supply a non-locale or non-catalog key.
+ * @example
+ * await getSystemConfigString('default_locale'); // 'en'
  */
-export async function getSystemConfigBoolean(key: string, fallback: boolean): Promise<boolean> {
-  const raw = await getRawConfigValue(key);
-  if (raw === undefined || raw === null) return fallback;
+export async function getSystemConfigString(key: 'default_locale'): Promise<SupportedLocale> {
+  const value = await readCatalogValue(key);
+  if (typeof value !== 'string') throw new Error('Expected locale system configuration key');
+  return value;
+}
 
-  // Native JSONB boolean
-  if (typeof raw === 'boolean') return raw;
-
-  // String representation (from some JSONB encodings)
-  if (typeof raw === 'string') {
-    if (raw === 'true') return true;
-    if (raw === 'false') return false;
-  }
-
-  logger.warn({ key, raw }, 'system_config value is not a valid boolean, using fallback');
-  return fallback;
+/**
+ * Read trusted internal string rows independently of public operational policy. Internal rows
+ * never enter administrative projections, and raw exceptions or stored content are not logged.
+ * @param key - Internal name supplied by Porta code, not by an administrative request.
+ * @param fallback - Safe result when storage is absent, unavailable or not a native string.
+ * @returns Native internal string, or the supplied fallback.
+ * @example
+ * await getInternalSystemConfigString('super_admin_user_id', '');
+ */
+export async function getInternalSystemConfigString(
+  key: string,
+  fallback: string,
+): Promise<string> {
+  const result = await getRawConfigValue(key);
+  return result.status === 'found' && typeof result.value === 'string' ? result.value : fallback;
 }
 
 /**
  * Load all TTL config values needed by the OIDC provider.
  *
- * Reads each TTL key from system_config with hardcoded fallback defaults.
+ * Reads each native TTL through the same catalog used by administrative policy.
  * Called once at provider initialization to build the TTL configuration.
  * The interaction TTL is hardcoded (not stored in system_config).
  *
@@ -167,11 +165,11 @@ export async function getSystemConfigBoolean(key: string, fallback: boolean): Pr
  */
 export async function loadOidcTtlConfig(): Promise<OidcTtlConfig> {
   const [accessToken, idToken, refreshToken, authorizationCode, session] = await Promise.all([
-    getSystemConfigNumber('access_token_ttl', 3600),
-    getSystemConfigNumber('id_token_ttl', 3600),
-    getSystemConfigNumber('refresh_token_ttl', 2592000),
-    getSystemConfigNumber('authorization_code_ttl', 600),
-    getSystemConfigNumber('session_ttl', 86400),
+    getSystemConfigNumber('access_token_ttl'),
+    getSystemConfigNumber('id_token_ttl'),
+    getSystemConfigNumber('refresh_token_ttl'),
+    getSystemConfigNumber('authorization_code_ttl'),
+    getSystemConfigNumber('session_ttl'),
   ]);
 
   return {
@@ -189,8 +187,9 @@ export async function loadOidcTtlConfig(): Promise<OidcTtlConfig> {
 
 /**
  * Clear the in-memory config cache.
- * Useful for testing to ensure fresh reads from the database.
+ * Successful administrative saves call this after commit. Replacing the map also isolates
+ * reads already awaiting PostgreSQL, so their later completion cannot restore stale policy.
  */
 export function clearSystemConfigCache(): void {
-  cache.clear();
+  cache = new Map<string, CacheEntry>();
 }

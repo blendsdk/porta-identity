@@ -11,8 +11,6 @@
  *
  * Protected operations (all throw 403 Forbidden):
  *   - Delete
- *   - Suspend
- *   - Lock
  *   - Deactivate
  *   - Remove porta-super-admin role
  *   - Manage 2FA (disable, reset, regenerate recovery codes)
@@ -20,7 +18,7 @@
  * @module lib/super-admin-protection
  */
 
-import { getSystemConfigString } from './system-config.js';
+import { getInternalSystemConfigString } from './system-config.js';
 
 // ============================================================================
 // Constants
@@ -35,13 +33,12 @@ export const SUPER_ADMIN_USER_ID_KEY = 'super_admin_user_id';
  */
 export const PROTECTED_OPERATIONS = [
   'delete',
-  'suspend',
-  'lock',
   'deactivate',
   'remove-super-admin-role',
   'manage-2fa',
 ] as const;
 
+/** Destructive operations that cannot target the bootstrap administrator. */
 export type ProtectedOperation = (typeof PROTECTED_OPERATIONS)[number];
 
 // ============================================================================
@@ -59,9 +56,9 @@ export type ProtectedOperation = (typeof PROTECTED_OPERATIONS)[number];
  * @returns true if the user is the super-admin
  */
 export async function isSuperAdminUser(userId: string): Promise<boolean> {
-  // getSystemConfigString returns the fallback when the key doesn't exist.
+  // The internal reader returns the fallback when the key doesn't exist.
   // Empty string fallback means: if no super-admin is configured, nobody matches.
-  const superAdminUserId = await getSystemConfigString(SUPER_ADMIN_USER_ID_KEY, '');
+  const superAdminUserId = await getInternalSystemConfigString(SUPER_ADMIN_USER_ID_KEY, '');
   if (!superAdminUserId) {
     return false;
   }
@@ -82,6 +79,7 @@ export class SuperAdminProtectionError extends Error {
   /** The operation that was attempted */
   readonly operation: ProtectedOperation;
 
+  /** Create the public rejection for an attempted protected operation. */
   constructor(operation: ProtectedOperation) {
     super(`Cannot ${operation} the super-admin user`);
     this.name = 'SuperAdminProtectionError';
@@ -94,8 +92,8 @@ export class SuperAdminProtectionError extends Error {
  *
  * Call this before executing any destructive operation on a user:
  * ```typescript
- * await guardSuperAdmin(userId, 'suspend');
- * // ... proceed with suspend logic
+ * await guardSuperAdmin(userId, 'deactivate');
+ * // ... proceed with deactivation
  * ```
  *
  * If the user is not the super-admin, this function is a no-op.

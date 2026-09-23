@@ -71,9 +71,7 @@ export interface CallbackServerResult {
  * @param expectedState - The state parameter to validate against
  * @returns Object with the assigned port and a promise that resolves with the auth code
  */
-export function startCallbackServer(
-  expectedState: string,
-): Promise<CallbackServerResult> {
+export function startCallbackServer(expectedState: string): Promise<CallbackServerResult> {
   return new Promise((resolveSetup) => {
     let resolveCode: (code: string) => void;
     let rejectCode: (err: Error) => void;
@@ -100,15 +98,12 @@ export function startCallbackServer(
 
       // Case 1: OIDC provider returned an error (user cancelled, etc.)
       if (errorParam) {
-        const desc =
-          url.searchParams.get('error_description') || errorParam;
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(
-          '<html><body><h1>Login Failed</h1>' +
-            '<p>You can close this tab.</p></body></html>',
+          '<html><body><h1>Login Failed</h1>' + '<p>You can close this tab.</p></body></html>',
         );
         server.close();
-        rejectCode(new Error(`Authentication failed: ${desc}`));
+        rejectCode(new Error('Authentication failed'));
         return;
       }
 
@@ -120,9 +115,7 @@ export function startCallbackServer(
             '<p>State mismatch. Please try again.</p></body></html>',
         );
         server.close();
-        rejectCode(
-          new Error('Security error: state mismatch. Login aborted.'),
-        );
+        rejectCode(new Error('Security error: state mismatch. Login aborted.'));
         return;
       }
 
@@ -130,8 +123,7 @@ export function startCallbackServer(
       if (!code) {
         res.writeHead(200, { 'Content-Type': 'text/html' });
         res.end(
-          '<html><body><h1>Error</h1>' +
-            '<p>No authorization code received.</p></body></html>',
+          '<html><body><h1>Error</h1>' + '<p>No authorization code received.</p></body></html>',
         );
         server.close();
         rejectCode(new Error('No authorization code received'));
@@ -186,24 +178,18 @@ export function startCallbackServer(
  * @returns The authorization code extracted from the URL
  * @throws Error if the URL is malformed, state mismatches, or code is missing
  */
-export function parseCallbackUrl(
-  pastedUrl: string,
-  expectedState: string,
-): string {
+export function parseCallbackUrl(pastedUrl: string, expectedState: string): string {
   let url: URL;
   try {
     url = new URL(pastedUrl.trim());
   } catch {
-    throw new Error(
-      'Invalid URL. Please copy the full URL from your browser\'s address bar.',
-    );
+    throw new Error("Invalid URL. Please copy the full URL from your browser's address bar.");
   }
 
   // Check for OIDC error response in the callback URL
   const errorParam = url.searchParams.get('error');
   if (errorParam) {
-    const desc = url.searchParams.get('error_description') || errorParam;
-    throw new Error(`Authentication failed: ${desc}`);
+    throw new Error('Authentication failed');
   }
 
   // Validate state parameter (CSRF protection)

@@ -8,7 +8,7 @@
  * the HTTP server (bootstrap, migrations, seed, health check, 2FA admin).
  *
  * All HTTP-based admin commands (org, app, client, user, keys, config,
- * audit, sessions, stats, bulk, exports, provision) have been extracted
+ * audit, sessions, stats, bulk, export, import) have been extracted
  * to the standalone `@portaidentity/cli` package.
  *
  * Usage: porta <command> <subcommand> [options]
@@ -99,9 +99,7 @@ export function buildCli(argv?: string[]): Argv<GlobalOptions> {
     .strict()
     .help()
     .version()
-    .epilogue(
-      'For full admin CLI (org, app, client, user, etc.), install @portaidentity/cli',
-    )
+    .epilogue('For full admin CLI (org, app, client, user, etc.), install @portaidentity/cli')
     .wrap(Math.min(120, process.stdout.columns ?? 80));
 
   return cli as Argv<GlobalOptions>;

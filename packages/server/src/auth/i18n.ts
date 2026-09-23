@@ -28,6 +28,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import Handlebars from 'handlebars';
 import { getSystemConfigString } from '../lib/system-config.js';
+import { SUPPORTED_LOCALES } from '../lib/system-config-catalog.js';
 import { logger } from '../lib/logger.js';
 import { getLocalesDirectory } from '../lib/runtime-paths.js';
 
@@ -42,7 +43,7 @@ const LOCALES_DIR = getLocalesDirectory();
  * All translation namespaces loaded by default.
  * Each maps to a JSON file: locales/{locale}/{namespace}.json
  */
-const NAMESPACES = [
+export const NAMESPACES = Object.freeze([
   'common',
   'login',
   'consent',
@@ -54,7 +55,7 @@ const NAMESPACES = [
   'errors',
   'emails',
   'two-factor',
-] as const;
+] as const);
 
 /** Hardcoded fallback locale when all resolution steps fail */
 const FALLBACK_LOCALE = 'en';
@@ -92,8 +93,8 @@ export async function initI18n(): Promise<void> {
     },
     // Don't try to detect language from environment
     detection: undefined,
-    // Preload English locale at startup
-    preload: [FALLBACK_LOCALE],
+    // Only completely packaged, allowlisted locales are preloaded at startup.
+    preload: [...SUPPORTED_LOCALES],
   });
 
   logger.info({ localesDir: LOCALES_DIR }, 'i18n initialized');
@@ -212,7 +213,7 @@ export async function resolveLocale(
   }
 
   // Step 4: Try global default_locale from system_config
-  const globalDefault = await getSystemConfigString('default_locale', FALLBACK_LOCALE);
+  const globalDefault = await getSystemConfigString('default_locale');
   const normalized = normalizeLocale(globalDefault);
   if (isLocaleAvailable(normalized)) {
     return normalized;

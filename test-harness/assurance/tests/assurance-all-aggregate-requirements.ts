@@ -182,12 +182,6 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
       conclusion: 'blocked',
     },
     {
-      id: 'forwarding-context-observer-incomplete',
-      authority: 'stale-or-no-go-evidence',
-      statusSource: 'approved-program-gap-register',
-      conclusion: 'unqualified',
-    },
-    {
       id: 'correlated-security-decision-observer-incomplete',
       authority: 'stale-or-no-go-evidence',
       statusSource: 'approved-program-gap-register',
@@ -207,29 +201,8 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
     },
   ]);
 
-/** Exact known incomplete collector rules that may continue without receiving assurance credit. */
-export const assuranceAllKnownIncompleteCollectorRegistry = Object.freeze(
-  (['operational', 'production-security'] as const).map((profile) =>
-    Object.freeze({
-      invocationId: `harness-security-${profile}`,
-      profile,
-      gapId: 'forwarding-context-observer-incomplete',
-      incompleteCaseIds: Object.freeze([
-        'st53-untrusted-forwarded-host',
-        'st53-untrusted-forwarded-proto',
-        'st53-untrusted-forwarded-client-ip',
-      ]),
-      unobservedStateObservations: Object.freeze([
-        'configured-public-origin-unchanged',
-        'cookie-policy-unchanged',
-        'rate-limit-key-uses-direct-peer-not-spoofed-value',
-      ]),
-      unobservedProhibitedEffects: Object.freeze(['rate-limit-budget-split-by-spoofed-ip']),
-      continuedConclusion: 'incomplete',
-      finalExitRemainsNonzero: true,
-    }),
-  ),
-);
+/** Approved incomplete-collector continuations; there are currently none. */
+export const assuranceAllKnownIncompleteCollectorRegistry = Object.freeze([]);
 
 /** Closed artifact fields allowed to survive evidence sanitization. */
 export const assuranceAllRetainedFieldNames = Object.freeze([
@@ -434,7 +407,7 @@ const assuranceAllAggregateItemsFixture: readonly AssuranceAllItemEvidence[] = O
 export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence = Object.freeze({
   schemaVersion: 1,
   registryVersion: 1,
-  registryDigest: 'sha256:2da5bf9c9d08148e0f71281a8613ab49b4526178df44d21182fdf71f33e4b7bb',
+  registryDigest: 'sha256:3ed1b88c9e7fcdea9c203f683c2216988163907d3a1d83377b6bfe9a88bc74d7',
   baselineRevision: 'b'.repeat(40),
   baselineTreeDigest: `sha256:${'c'.repeat(64)}`,
   children: Object.freeze(

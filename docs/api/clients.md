@@ -67,21 +67,29 @@ PUT /api/admin/clients/:id
 
 Updatable fields: `client_name`, `redirect_uris`, `grant_types`, `response_types`, `scope`, `cors_origins`, `login_methods`.
 
-**Response:** `200 OK`
+**Response:** `204 No Content`
 
 ## Status Management
 
 ```http
-POST /api/admin/clients/:id/revoke
 POST /api/admin/clients/:id/activate
 POST /api/admin/clients/:id/deactivate
 ```
 
 **Response:** `200 OK`
 
-::: warning
-Revoking a client immediately invalidates all its tokens and prevents new authentication flows.
-:::
+## Delete Client
+
+```http
+DELETE /api/admin/clients/:id
+```
+
+Permanently deletes the client and its secrets. Its server-backed protocol authority and affected
+sessions are revoked.
+
+**Permission:** `admin:client:delete`
+
+**Response:** `204 No Content`
 
 ## Client Secrets
 

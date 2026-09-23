@@ -14,12 +14,11 @@
  * Status lifecycle rules (different from organizations):
  *   - deactivate: active → inactive
  *   - activate:   inactive → active
- *   - archive:    active|inactive → archived (permanent, cannot be restored)
  *
  * Module management:
  *   - Modules belong to an application (parent must exist)
  *   - Module slugs are unique within their parent application
- *   - Module deactivation sets status to inactive
+ *   - Modules can move between active and inactive status
  */
 
 import type {
@@ -45,8 +44,16 @@ import {
   updateModule as repoUpdateModule,
   listModules as repoListModules,
   moduleSlugExists,
+  captureApplicationForDeletion,
+  deleteCapturedApplication,
+  captureModuleForDeletion,
+  deleteCapturedModule,
 } from './repository.js';
-import type { ListApplicationsCursorOptions } from './repository.js';
+import type {
+  ApplicationDeletionCapture,
+  ListApplicationsCursorOptions,
+  ModuleDeletionCapture,
+} from './repository.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import {
   getCachedApplicationById,
@@ -57,6 +64,9 @@ import {
 import { generateSlug, validateSlug } from './slugs.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { ApplicationNotFoundError, ApplicationValidationError } from './errors.js';
+import { getDatabaseTransactionClient } from '../lib/database.js';
+import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 
 // ===========================================================================
 // Application CRUD
@@ -265,10 +275,7 @@ async function loadAppForStatusChange(id: string): Promise<Application> {
  * @throws ApplicationNotFoundError if not found
  * @throws ApplicationValidationError if not currently active
  */
-export async function deactivateApplication(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function deactivateApplication(id: string, actorId?: string): Promise<void> {
   const app = await loadAppForStatusChange(id);
 
   if (app.status !== 'active') {
@@ -296,16 +303,11 @@ export async function deactivateApplication(
  * @throws ApplicationNotFoundError if not found
  * @throws ApplicationValidationError if not currently inactive
  */
-export async function activateApplication(
-  id: string,
-  actorId?: string,
-): Promise<void> {
+export async function activateApplication(id: string, actorId?: string): Promise<void> {
   const app = await loadAppForStatusChange(id);
 
   if (app.status !== 'inactive') {
-    throw new ApplicationValidationError(
-      `Cannot activate application from status: ${app.status}`,
-    );
+    throw new ApplicationValidationError(`Cannot activate application from status: ${app.status}`);
   }
 
   await repoUpdateApp(id, { status: 'active' });
@@ -316,38 +318,6 @@ export async function activateApplication(
     eventCategory: 'admin',
     actorId,
     metadata: { applicationId: app.id },
-  });
-}
-
-/**
- * Archive an application (active or inactive → archived).
- *
- * Archive is a permanent soft-delete — archived applications cannot
- * be restored (unlike organizations which support restore).
- *
- * @param id - Application UUID
- * @param actorId - UUID of the user performing the action
- * @throws ApplicationNotFoundError if not found
- * @throws ApplicationValidationError if already archived
- */
-export async function archiveApplication(
-  id: string,
-  actorId?: string,
-): Promise<void> {
-  const app = await loadAppForStatusChange(id);
-
-  if (app.status === 'archived') {
-    throw new ApplicationValidationError('Application is already archived');
-  }
-
-  await repoUpdateApp(id, { status: 'archived' });
-  await invalidateApplicationCache(app.slug, app.id);
-
-  await writeAuditLog({
-    eventType: 'app.archived',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { applicationId: app.id, previousStatus: app.status },
   });
 }
 
@@ -418,6 +388,7 @@ export async function createModule(
 /**
  * Update a module's basic fields (name, description).
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param moduleId - Module UUID
  * @param input - Fields to update
  * @param actorId - UUID of the user performing the action
@@ -425,10 +396,15 @@ export async function createModule(
  * @throws ApplicationNotFoundError if module not found
  */
 export async function updateModule(
+  applicationId: string,
   moduleId: string,
   input: UpdateModuleInput,
   actorId?: string,
 ): Promise<ApplicationModule> {
+  const ownedModule = await findModuleById(applicationId, moduleId);
+  if (!ownedModule || ownedModule.applicationId !== applicationId) {
+    throw new ApplicationNotFoundError(moduleId);
+  }
   // Build update data from input
   const updateData: Record<string, unknown> = {};
   if (input.name !== undefined) updateData.name = input.name;
@@ -436,7 +412,7 @@ export async function updateModule(
 
   let mod: ApplicationModule;
   try {
-    mod = await repoUpdateModule(moduleId, updateData);
+    mod = await repoUpdateModule(applicationId, moduleId, updateData);
   } catch (err) {
     if (err instanceof Error && err.message === 'Module not found') {
       throw new ApplicationNotFoundError(moduleId);
@@ -449,7 +425,11 @@ export async function updateModule(
     eventType: 'app.module.updated',
     eventCategory: 'admin',
     actorId,
-    metadata: { moduleId: mod.id, applicationId: mod.applicationId, fields: Object.keys(updateData) },
+    metadata: {
+      moduleId: mod.id,
+      applicationId: mod.applicationId,
+      fields: Object.keys(updateData),
+    },
   });
 
   return mod;
@@ -458,28 +438,63 @@ export async function updateModule(
 /**
  * Deactivate a module (set status to inactive).
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param moduleId - Module UUID
  * @param actorId - UUID of the user performing the action
  * @throws ApplicationNotFoundError if module not found
  * @throws ApplicationValidationError if not currently active
  */
 export async function deactivateModule(
+  applicationId: string,
   moduleId: string,
   actorId?: string,
 ): Promise<void> {
-  const mod = await findModuleById(moduleId);
-  if (!mod) throw new ApplicationNotFoundError(moduleId);
-
-  if (mod.status !== 'active') {
-    throw new ApplicationValidationError(
-      `Cannot deactivate module from status: ${mod.status}`,
-    );
+  const mod = await findModuleById(applicationId, moduleId);
+  if (!mod || mod.applicationId !== applicationId) {
+    throw new ApplicationNotFoundError(moduleId);
   }
 
-  await repoUpdateModule(moduleId, { status: 'inactive' });
+  if (mod.status !== 'active') {
+    throw new ApplicationValidationError(`Cannot deactivate module from status: ${mod.status}`);
+  }
+
+  await repoUpdateModule(applicationId, moduleId, { status: 'inactive' });
 
   await writeAuditLog({
     eventType: 'app.module.deactivated',
+    eventCategory: 'admin',
+    actorId,
+    metadata: { moduleId: mod.id, applicationId: mod.applicationId },
+  });
+}
+
+/**
+ * Activate an inactive module.
+ *
+ * @param applicationId - Authoritative parent application UUID
+ * @param moduleId - Module UUID
+ * @param actorId - UUID of the user performing the action
+ * @throws ApplicationNotFoundError if the module is not owned by the application
+ * @throws ApplicationValidationError if the module is not inactive
+ */
+export async function activateModule(
+  applicationId: string,
+  moduleId: string,
+  actorId?: string,
+): Promise<void> {
+  const mod = await findModuleById(applicationId, moduleId);
+  if (!mod || mod.applicationId !== applicationId) {
+    throw new ApplicationNotFoundError(moduleId);
+  }
+
+  if (mod.status !== 'inactive') {
+    throw new ApplicationValidationError(`Cannot activate module from status: ${mod.status}`);
+  }
+
+  await repoUpdateModule(applicationId, moduleId, { status: 'active' });
+
+  await writeAuditLog({
+    eventType: 'app.module.activated',
     eventCategory: 'admin',
     actorId,
     metadata: { moduleId: mod.id, applicationId: mod.applicationId },
@@ -495,4 +510,117 @@ export async function deactivateModule(
  */
 export async function listModules(applicationId: string): Promise<ApplicationModule[]> {
   return repoListModules(applicationId);
+}
+
+/**
+ * Physically delete an application after capturing cross-organization authority.
+ *
+ * @param id - Application UUID.
+ * @param actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured before PostgreSQL applied its cascade.
+ * @throws ApplicationNotFoundError when the application does not exist.
+ */
+export async function deleteApplication(
+  id: string,
+  actorId?: string,
+): Promise<ApplicationDeletionCapture> {
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('Application deletion requires an active database transaction');
+  const capture = await captureApplicationForDeletion(id);
+  if (!capture) throw new ApplicationNotFoundError(id);
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'clientId' = ANY($2::text[])
+       OR payload->>'accountId' = ANY($3::text[])`,
+    [capture.grantIds, capture.publicClientIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    actorId,
+    eventType: 'app.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      applicationId: capture.application.id,
+      slug: capture.application.slug,
+      status: capture.application.status,
+    },
+  });
+  await deleteCapturedApplication(id);
+  await registerDeletionCleanup({
+    resource: 'application',
+    targetId: id,
+    targetSlug: capture.application.slug,
+    userIds: capture.userIds,
+    clientIds: capture.clientIds,
+    publicClientIds: capture.publicClientIds,
+    grantIds: capture.grantIds,
+    roleIds: capture.roleIds,
+    permissionIds: capture.permissionIds,
+    claimIds: capture.claimIds,
+    applicationIds: [id],
+  });
+  return capture;
+}
+
+/**
+ * Physically delete a module through its authoritative application parent.
+ *
+ * @param applicationId - Parent application UUID.
+ * @param moduleId - Module UUID.
+ * @param actorId - Actor identifier available for audit attribution.
+ * @returns The graph captured before PostgreSQL applied its cascade.
+ * @throws ApplicationNotFoundError for a missing or mismatched module.
+ */
+export async function deleteModule(
+  applicationId: string,
+  moduleId: string,
+  actorId?: string,
+): Promise<ModuleDeletionCapture> {
+  const client = getDatabaseTransactionClient();
+  if (!client) throw new Error('Module deletion requires an active database transaction');
+  const capture = await captureModuleForDeletion(applicationId, moduleId);
+  if (!capture) throw new ApplicationNotFoundError(moduleId);
+  await client.query(
+    `UPDATE admin_sessions SET revoked_at = NOW()
+     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+    [capture.userIds],
+  );
+  await client.query(
+    `DELETE FROM oidc_payloads
+     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+       OR payload->>'accountId' = ANY($2::text[])`,
+    [capture.grantIds, capture.userIds],
+  );
+  await writeAuditLogInTransaction(client, {
+    actorId,
+    eventType: 'app.module.deleted',
+    eventCategory: 'admin',
+    metadata: {
+      applicationId,
+      moduleId,
+      slug: capture.module.slug,
+      status: capture.module.status,
+    },
+  });
+  await deleteCapturedModule(applicationId, moduleId);
+  await registerDeletionCleanup({
+    resource: 'module',
+    targetId: moduleId,
+    targetSlug: capture.module.slug,
+    parentId: applicationId,
+    userIds: capture.userIds,
+    clientIds: [],
+    publicClientIds: [],
+    grantIds: capture.grantIds,
+    roleIds: capture.roleIds,
+    permissionIds: capture.permissionIds,
+    claimIds: [],
+    applicationIds: [applicationId],
+  });
+  return capture;
 }

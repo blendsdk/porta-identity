@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { configSchema } from '../../src/config/schema.js';
-import { publicConfigValue } from '../../src/routes/config.js';
+import { findSystemConfigDefinition } from '../../src/lib/system-config-catalog.js';
 
 const validEnv = {
   nodeEnv: 'development',
@@ -22,9 +22,10 @@ const validEnv = {
 };
 
 describe('config schema', () => {
-  it('should mask sensitive administrative values in every public response', () => {
-    expect(publicConfigValue('redis://private-cache:6379', true)).toBe('***');
-    expect(publicConfigValue('public-value', false)).toBe('public-value');
+  it('should exclude sensitive bootstrap settings from the administrative catalog entirely', () => {
+    expect(findSystemConfigDefinition('REDIS_URL')).toBeUndefined();
+    expect(findSystemConfigDefinition('COOKIE_KEYS')).toBeUndefined();
+    expect(findSystemConfigDefinition('SIGNING_KEY_ENCRYPTION_KEY')).toBeUndefined();
   });
 
   it('accepts valid configuration', () => {
@@ -195,6 +196,68 @@ describe('config schema', () => {
       if (result.success) {
         expect(result.data.trustProxy).toBe(true);
       }
+    });
+  });
+
+  describe('trustProxyHops validation', () => {
+    it('defaults to 1 when not provided', () => {
+      const result = configSchema.safeParse(validEnv);
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(1);
+      }
+    });
+
+    it('treats a blank value as unset and uses the default', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(1);
+      }
+    });
+
+    it('treats a whitespace value as unset and uses the default', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '   ' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(1);
+      }
+    });
+
+    it('accepts a numeric string and coerces it to a number', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '2' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(2);
+      }
+    });
+
+    it('rejects a hop count above the supported ceiling', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '11' });
+      expect(result.success).toBe(false);
+    });
+
+    it('accepts the 0 lower bound', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '0' });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.trustProxyHops).toBe(0);
+      }
+    });
+
+    it('rejects a negative hop count', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '-1' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a fractional hop count', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: '1.5' });
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects a non-numeric hop count', () => {
+      const result = configSchema.safeParse({ ...validEnv, trustProxyHops: 'many' });
+      expect(result.success).toBe(false);
     });
   });
 });

@@ -59,7 +59,6 @@ export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
       plaintext = recoveryArtifactToken(job.id, job.jobType, job.protectedAddress.keyId);
       const ttlSeconds = await getSystemConfigNumber(
         job.jobType === 'magic_link' ? 'magic_link_ttl' : 'password_reset_ttl',
-        job.jobType === 'magic_link' ? 900 : 3_600,
       );
       const artifactInput = {
         recoveryJobId: job.id,

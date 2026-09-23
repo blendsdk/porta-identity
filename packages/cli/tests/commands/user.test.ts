@@ -14,12 +14,7 @@ const mockUsers = {
   list: vi.fn(),
   get: vi.fn(),
   update: vi.fn(),
-  suspend: vi.fn(),
-  unsuspend: vi.fn(),
-  reactivate: vi.fn(),
-  lock: vi.fn(),
-
-  unlock: vi.fn(),
+  activate: vi.fn(),
   deactivate: vi.fn(),
   setPassword: vi.fn(),
   getHistory: vi.fn(),
@@ -89,6 +84,15 @@ const sampleUser = {
   updatedAt: '2024-01-02T00:00:00Z',
 };
 
+const sampleRole = {
+  id: 'role-uuid',
+  applicationId: 'app-uuid',
+  name: 'admin',
+  slug: 'admin',
+  description: null,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-02T00:00:00Z',
+};
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -172,9 +176,12 @@ describe('user command', () => {
 
       // The CLI splits --name into OIDC given/family fields (server truth).
       expect(mockUsers.create).toHaveBeenCalledWith(
-        expect.objectContaining({ givenName: 'Alice', familyName: 'Smith', password: 'Secret123!' }),
+        expect.objectContaining({
+          givenName: 'Alice',
+          familyName: 'Smith',
+          password: 'Secret123!',
+        }),
       );
-
     });
 
     it('handles create errors', async () => {
@@ -192,8 +199,14 @@ describe('user command', () => {
 
   describe('invite', () => {
     it('invites a user', async () => {
-      const bobUser = { ...sampleUser, email: 'bob@example.com' };
-      mockUsers.invite.mockResolvedValue(bobUser);
+      const invitation = {
+        userId: sampleUser.id,
+        email: 'bob@example.com',
+        created: true,
+        invitationSent: true,
+        expiresAt: '2026-09-01T12:00:00.000Z',
+      };
+      mockUsers.invite.mockResolvedValue(invitation);
 
       await invokeSubcommand('invite', { org: 'org-uuid', email: 'bob@example.com' });
 
@@ -204,11 +217,18 @@ describe('user command', () => {
     });
 
     it('invites with JSON output', async () => {
-      mockUsers.invite.mockResolvedValue(sampleUser);
+      const invitation = {
+        userId: sampleUser.id,
+        email: 'bob@example.com',
+        created: true,
+        invitationSent: true,
+        expiresAt: '2026-09-01T12:00:00.000Z',
+      };
+      mockUsers.invite.mockResolvedValue(invitation);
 
       await invokeSubcommand('invite', { org: 'org-uuid', email: 'bob@example.com', json: true });
 
-      expect(printJson).toHaveBeenCalledWith(sampleUser);
+      expect(printJson).toHaveBeenCalledWith(invitation);
     });
 
     it('handles invite errors', async () => {
@@ -310,9 +330,17 @@ describe('user command', () => {
   describe('update', () => {
     it('updates user name (split into given/family)', async () => {
       mockUsers.get.mockResolvedValue({ data: sampleUser, etag: 'etag-1' });
-      mockUsers.update.mockResolvedValue({ ...sampleUser, givenName: 'Alice', familyName: 'Updated' });
+      mockUsers.update.mockResolvedValue({
+        ...sampleUser,
+        givenName: 'Alice',
+        familyName: 'Updated',
+      });
 
-      await invokeSubcommand('update', { org: 'org-uuid', _pos_: 'user-uuid-1234', name: 'Alice Updated' });
+      await invokeSubcommand('update', {
+        org: 'org-uuid',
+        _pos_: 'user-uuid-1234',
+        name: 'Alice Updated',
+      });
 
       expect(mockUsers.update).toHaveBeenCalledWith(
         'org-uuid',
@@ -323,12 +351,16 @@ describe('user command', () => {
       expect(success).toHaveBeenCalledWith(expect.stringContaining('updated'));
     });
 
-
     it('outputs JSON on update', async () => {
       mockUsers.get.mockResolvedValue({ data: sampleUser, etag: 'etag-1' });
       mockUsers.update.mockResolvedValue(sampleUser);
 
-      await invokeSubcommand('update', { org: 'org-uuid', _pos_: 'user-uuid-1234', name: 'New', json: true });
+      await invokeSubcommand('update', {
+        org: 'org-uuid',
+        _pos_: 'user-uuid-1234',
+        name: 'New',
+        json: true,
+      });
 
       expect(printJson).toHaveBeenCalledWith(sampleUser);
     });
@@ -346,57 +378,12 @@ describe('user command', () => {
   // status lifecycle
   // =========================================================================
 
-  describe('suspend', () => {
-    it('suspends a user', async () => {
-      await invokeSubcommand('suspend', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
+  describe('activate', () => {
+    it('activates a user', async () => {
+      await invokeSubcommand('activate', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
-      expect(mockUsers.suspend).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('suspended'));
-    });
-
-    it('handles suspend errors', async () => {
-      mockUsers.suspend.mockRejectedValue(new Error('Already suspended'));
-
-      await invokeSubcommand('suspend', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
-
-      expect(handleError).toHaveBeenCalled();
-    });
-  });
-
-  describe('unsuspend', () => {
-    it('unsuspends a user (ST-23)', async () => {
-      await invokeSubcommand('unsuspend', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
-
-      expect(mockUsers.unsuspend).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('unsuspended'));
-    });
-  });
-
-  describe('reactivate', () => {
-    it('reactivates a user', async () => {
-      await invokeSubcommand('reactivate', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
-
-      expect(mockUsers.reactivate).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('reactivated'));
-    });
-  });
-
-
-  describe('lock', () => {
-    it('locks a user', async () => {
-      await invokeSubcommand('lock', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
-
-      expect(mockUsers.lock).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('locked'));
-    });
-  });
-
-  describe('unlock', () => {
-    it('unlocks a user', async () => {
-      await invokeSubcommand('unlock', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
-
-      expect(mockUsers.unlock).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
-      expect(success).toHaveBeenCalledWith(expect.stringContaining('unlocked'));
+      expect(mockUsers.activate).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
+      expect(success).toHaveBeenCalledWith(expect.stringContaining('activated'));
     });
   });
 
@@ -421,7 +408,11 @@ describe('user command', () => {
     });
 
     it('skips confirmation with --force', async () => {
-      await invokeSubcommand('deactivate', { org: 'org-uuid', _pos_: 'user-uuid-1234', force: true });
+      await invokeSubcommand('deactivate', {
+        org: 'org-uuid',
+        _pos_: 'user-uuid-1234',
+        force: true,
+      });
 
       expect(confirm).not.toHaveBeenCalled();
       expect(mockUsers.deactivate).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
@@ -466,9 +457,19 @@ describe('user command', () => {
   describe('history', () => {
     it('shows user history in table format', async () => {
       // Server HistoryEntry shape (src/lib/entity-history.ts).
-      mockUsers.getHistory.mockResolvedValue([
-        { id: 'h1', eventType: 'user.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' },
-      ]);
+      mockUsers.getHistory.mockResolvedValue({
+        data: [
+          {
+            id: 'h1',
+            eventType: 'user.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      });
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
@@ -477,9 +478,20 @@ describe('user command', () => {
     });
 
     it('shows history in JSON format', async () => {
-      const history = [{ id: 'h1', eventType: 'user.created', actorId: 'admin', metadata: null, createdAt: '2024-01-01T00:00:00Z' }];
+      const history = {
+        data: [
+          {
+            id: 'h1',
+            eventType: 'user.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      };
       mockUsers.getHistory.mockResolvedValue(history);
-
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234', json: true });
 
@@ -487,7 +499,7 @@ describe('user command', () => {
     });
 
     it('shows warning when no history found', async () => {
-      mockUsers.getHistory.mockResolvedValue([]);
+      mockUsers.getHistory.mockResolvedValue({ data: [], hasMore: false, nextCursor: null });
 
       await invokeSubcommand('history', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
@@ -502,9 +514,7 @@ describe('user command', () => {
   describe('roles', () => {
     describe('list', () => {
       it('lists assigned roles', async () => {
-        mockUserRoles.list.mockResolvedValue([
-          { roleId: 'role-uuid', roleName: 'admin', assignedAt: '2024-01-01T00:00:00Z' },
-        ]);
+        mockUserRoles.list.mockResolvedValue([sampleRole]);
 
         await invokeSubcommand('roles list', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
 
@@ -513,10 +523,14 @@ describe('user command', () => {
       });
 
       it('lists roles in JSON', async () => {
-        const roles = [{ roleId: 'role-uuid', roleName: 'admin', assignedAt: '2024-01-01T00:00:00Z' }];
+        const roles = [sampleRole];
         mockUserRoles.list.mockResolvedValue(roles);
 
-        await invokeSubcommand('roles list', { org: 'org-uuid', _pos_: 'user-uuid-1234', json: true });
+        await invokeSubcommand('roles list', {
+          org: 'org-uuid',
+          _pos_: 'user-uuid-1234',
+          json: true,
+        });
 
         expect(printJson).toHaveBeenCalledWith(roles);
       });
@@ -538,7 +552,9 @@ describe('user command', () => {
           role: 'role-uuid',
         });
 
-        expect(mockUserRoles.assign).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', 'role-uuid');
+        expect(mockUserRoles.assign).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', [
+          'role-uuid',
+        ]);
         expect(success).toHaveBeenCalledWith(expect.stringContaining('assigned'));
       });
 
@@ -557,13 +573,16 @@ describe('user command', () => {
 
     describe('remove', () => {
       it('removes a role', async () => {
+        mockUserRoles.remove.mockResolvedValue({ reauthenticationRequired: false });
         await invokeSubcommand('roles remove', {
           org: 'org-uuid',
           _pos_: 'user-uuid-1234',
           role: 'role-uuid',
         });
 
-        expect(mockUserRoles.remove).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', 'role-uuid');
+        expect(mockUserRoles.remove).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', [
+          'role-uuid',
+        ]);
         expect(success).toHaveBeenCalledWith(expect.stringContaining('removed'));
       });
     });
@@ -587,10 +606,16 @@ describe('user command', () => {
       });
 
       it('lists claims in JSON', async () => {
-        const claims = [{ claimDefinitionId: 'claim-uuid', claimName: 'department', value: 'Engineering' }];
+        const claims = [
+          { claimDefinitionId: 'claim-uuid', claimName: 'department', value: 'Engineering' },
+        ];
         mockUserClaims.list.mockResolvedValue(claims);
 
-        await invokeSubcommand('claims list', { org: 'org-uuid', _pos_: 'user-uuid-1234', json: true });
+        await invokeSubcommand('claims list', {
+          org: 'org-uuid',
+          _pos_: 'user-uuid-1234',
+          json: true,
+        });
 
         expect(printJson).toHaveBeenCalledWith(claims);
       });
@@ -644,7 +669,11 @@ describe('user command', () => {
           claim: 'claim-uuid',
         });
 
-        expect(mockUserClaims.remove).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234', 'claim-uuid');
+        expect(mockUserClaims.remove).toHaveBeenCalledWith(
+          'org-uuid',
+          'user-uuid-1234',
+          'claim-uuid',
+        );
         expect(success).toHaveBeenCalledWith(expect.stringContaining('removed'));
       });
     });

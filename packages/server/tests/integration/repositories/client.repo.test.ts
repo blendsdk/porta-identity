@@ -137,7 +137,7 @@ describe('Client Repository (Integration)', () => {
 
   // ── Client Secret CRUD ───────────────────────────────────────
 
-  it('should insert, list, and revoke client secrets', async () => {
+  it('should insert, list, and permanently delete client secrets', async () => {
     const client = await createTestClient(orgId, appId);
 
     // Insert a secret hash
@@ -157,10 +157,10 @@ describe('Client Repository (Integration)', () => {
     const secrets = await listSecretsByClient(client.id);
     expect(secrets).toHaveLength(1);
 
-    // Revoke secret
-    await revokeSecret(secret.id);
+    // Delete secret
+    await revokeSecret(client.id, secret.id);
     const afterRevoke = await listSecretsByClient(client.id);
-    expect(afterRevoke[0].status).toBe('revoked');
+    expect(afterRevoke).toEqual([]);
   });
 
   // ── Secret Verification ──────────────────────────────────────
@@ -198,20 +198,5 @@ describe('Client Repository (Integration)', () => {
     // Secrets should be gone too
     const secrets = await listSecretsByClient(client.id);
     expect(secrets).toHaveLength(0);
-  });
-
-  // ── Revoked Client ───────────────────────────────────────────
-
-  it('should handle revoked client status', async () => {
-    const client = await createTestClient(orgId, appId);
-
-    // Revoke the client
-    const revoked = await updateClient(client.id, { status: 'revoked' });
-    expect(revoked.status).toBe('revoked');
-
-    // Client should still be findable by ID (status filtering is service-layer logic)
-    const found = await findClientById(client.id);
-    expect(found).not.toBeNull();
-    expect(found!.status).toBe('revoked');
   });
 });

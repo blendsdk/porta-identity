@@ -5,7 +5,10 @@ import { createUsersDomain } from '../../src/domains/users.js';
 function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport {
   return {
     request: vi.fn().mockResolvedValue({
-      status: 200, headers: {}, body: {}, ...response,
+      status: 200,
+      headers: {},
+      body: {},
+      ...response,
     }),
   };
 }
@@ -19,7 +22,9 @@ describe('domains/users', () => {
       const users = createUsersDomain(transport);
       await users.list('org-1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/organizations/org-1/users', params: undefined,
+        method: 'GET',
+        path: '/organizations/org-1/users',
+        params: undefined,
       });
     });
 
@@ -28,7 +33,8 @@ describe('domains/users', () => {
       const users = createUsersDomain(transport);
       await users.list('org-1', { search: 'alice', status: 'active' });
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/organizations/org-1/users',
+        method: 'GET',
+        path: '/organizations/org-1/users',
         params: { search: 'alice', status: 'active' },
       });
     });
@@ -36,11 +42,15 @@ describe('domains/users', () => {
 
   describe('get', () => {
     it('calls GET /organizations/:orgId/users/:userId and returns ETag', async () => {
-      transport = mockTransport({ body: { data: { id: 'u1', email: 'a@b.com' } }, headers: { etag: '"v2"' } });
+      transport = mockTransport({
+        body: { data: { id: 'u1', email: 'a@b.com' } },
+        headers: { etag: '"v2"' },
+      });
       const users = createUsersDomain(transport);
       const result = await users.get('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/organizations/org-1/users/u1',
+        method: 'GET',
+        path: '/organizations/org-1/users/u1',
       });
       expect(result.data).toEqual({ id: 'u1', email: 'a@b.com' });
       expect(result.etag).toBe('"v2"');
@@ -55,7 +65,9 @@ describe('domains/users', () => {
       const result = await users.create(input);
 
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users', body: input,
+        method: 'POST',
+        path: '/organizations/org-1/users',
+        body: input,
       });
       expect(result).toEqual({ id: 'u1', email: 'a@b.com' });
     });
@@ -68,7 +80,9 @@ describe('domains/users', () => {
       const input = { organizationId: 'org-1', email: 'b@c.com' };
       await users.invite(input);
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/invite', body: input,
+        method: 'POST',
+        path: '/organizations/org-1/users/invite',
+        body: input,
       });
     });
   });
@@ -86,53 +100,30 @@ describe('domains/users', () => {
   });
 
   describe('status transitions', () => {
-    beforeEach(() => { transport = mockTransport(); });
+    beforeEach(() => {
+      transport = mockTransport();
+    });
 
-    it('suspend calls POST .../suspend', async () => {
+    it('activate calls POST .../activate', async () => {
       const users = createUsersDomain(transport);
-      await users.suspend('org-1', 'u1');
+      await users.activate('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/suspend',
+        method: 'POST',
+        path: '/organizations/org-1/users/u1/activate',
       });
     });
 
-    it('unsuspend calls POST .../unsuspend (ST-11)', async () => {
-      // Source: src/routes/users.ts — POST /organizations/:orgId/users/:userId/unsuspend
-      const users = createUsersDomain(transport);
-      await users.unsuspend('org-1', 'u1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/unsuspend',
-      });
-    });
-
-    it('reactivate calls POST .../reactivate', async () => {
-      const users = createUsersDomain(transport);
-      await users.reactivate('org-1', 'u1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/reactivate',
-      });
-    });
-
-    it('does not expose an org-scoped activate() (ST-10)', () => {
-      // Source: org-scoped router has no /activate route — removed (AR-9/PF-006).
+    it('does not expose an org-scoped reactivate alias', () => {
       const users = createUsersDomain(transport) as Record<string, unknown>;
-      expect(users.activate).toBeUndefined();
-    });
-
-    it('lock calls POST .../lock', async () => {
-
-      const users = createUsersDomain(transport);
-      await users.lock('org-1', 'u1');
-      expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/lock',
-      });
+      expect(users.reactivate).toBeUndefined();
     });
 
     it('deactivate calls POST .../deactivate', async () => {
       const users = createUsersDomain(transport);
       await users.deactivate('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/deactivate',
+        method: 'POST',
+        path: '/organizations/org-1/users/u1/deactivate',
       });
     });
   });
@@ -143,24 +134,27 @@ describe('domains/users', () => {
       const users = createUsersDomain(transport);
       await users.setPassword('org-1', 'u1', { password: 'NewP@ss1' });
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/password',
+        method: 'POST',
+        path: '/organizations/org-1/users/u1/password',
         body: { password: 'NewP@ss1' },
       });
     });
   });
 
   // ---------------------------------------------------------------------------
-  // Newly added methods (ST-10) — each must map to a real server route under
-  // /organizations/:orgId/users (src/routes/users.ts).
+  // Each method below maps to an existing organization-scoped server route.
   // ---------------------------------------------------------------------------
   describe('added user methods', () => {
-    beforeEach(() => { transport = mockTransport(); });
+    beforeEach(() => {
+      transport = mockTransport();
+    });
 
     it('clearPassword calls DELETE .../password', async () => {
       const users = createUsersDomain(transport);
       await users.clearPassword('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'DELETE', path: '/organizations/org-1/users/u1/password',
+        method: 'DELETE',
+        path: '/organizations/org-1/users/u1/password',
       });
     });
 
@@ -168,7 +162,8 @@ describe('domains/users', () => {
       const users = createUsersDomain(transport);
       await users.verifyEmail('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/verify-email',
+        method: 'POST',
+        path: '/organizations/org-1/users/u1/verify-email',
       });
     });
 
@@ -177,18 +172,19 @@ describe('domains/users', () => {
       const users = createUsersDomain(transport);
       const result = await users.exportData('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/organizations/org-1/users/u1/export',
+        method: 'GET',
+        path: '/organizations/org-1/users/u1/export',
       });
       expect(result).toEqual({ user: { id: 'u1' } });
     });
 
-    it('purge calls POST .../purge with X-Confirm-Purge header', async () => {
-      transport = mockTransport({ body: { data: { purged: true } } });
+    it('delete calls DELETE /organizations/:orgId/users/:userId', async () => {
+      transport = mockTransport();
       const users = createUsersDomain(transport);
-      await users.purge('org-1', 'u1');
+      await users.delete('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/u1/purge',
-        headers: { 'X-Confirm-Purge': 'true' },
+        method: 'DELETE',
+        path: '/organizations/org-1/users/u1',
       });
     });
 
@@ -198,10 +194,11 @@ describe('domains/users', () => {
       const input = { organizationId: 'org-1', email: 'b@c.com', givenName: 'Bob' };
       const result = await users.invitePreview(input);
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/organizations/org-1/users/invite/preview', body: input,
+        method: 'POST',
+        path: '/organizations/org-1/users/invite/preview',
+        body: input,
       });
       expect(result).toEqual({ html: '<html></html>', subject: 'Invite' });
     });
   });
 });
-

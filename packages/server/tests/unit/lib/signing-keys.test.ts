@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
+  runDatabaseTransaction: vi.fn(async (work: () => Promise<unknown>) => work()),
 }));
 
 vi.mock('../../../src/lib/logger.js', () => ({
@@ -14,17 +15,29 @@ vi.mock('../../../src/config/index.js', () => ({
   },
 }));
 
-vi.mock('../../../src/lib/signing-key-crypto.js', () => ({
-  encryptPrivateKey: vi.fn().mockReturnValue({
-    encrypted: 'encrypted-hex-data',
-    iv: 'a'.repeat(24),
-    tag: 'b'.repeat(32),
-  }),
-  decryptPrivateKey: vi.fn().mockImplementation(
-    (_encrypted: string, _iv: string, _tag: string, _key: string) =>
-      '-----BEGIN PRIVATE KEY-----\ndecrypted-pem\n-----END PRIVATE KEY-----',
-  ),
-}));
+vi.mock('../../../src/lib/signing-key-crypto.js', () => {
+  /** Test double preserving the production error's public identity. */
+  class SigningKeyCryptoError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'SigningKeyCryptoError';
+    }
+  }
+
+  return {
+    SigningKeyCryptoError,
+    encryptPrivateKey: vi.fn().mockReturnValue({
+      encrypted: 'encrypted-hex-data',
+      iv: 'a'.repeat(24),
+      tag: 'b'.repeat(32),
+    }),
+    decryptPrivateKey: vi
+      .fn()
+      .mockImplementation(
+        (encrypted: string, _iv: string, _tag: string, _key: string) => encrypted,
+      ),
+  };
+});
 
 import { getPool } from '../../../src/lib/database.js';
 import { logger } from '../../../src/lib/logger.js';
@@ -38,6 +51,7 @@ import {
 } from '../../../src/lib/signing-keys.js';
 import type { SigningKeyRecord } from '../../../src/lib/signing-keys.js';
 
+/** Configures a pool whose queries return the supplied database rows. */
 function mockPool(rows: Record<string, unknown>[] = []) {
   const mockQuery = vi.fn().mockResolvedValue({ rows });
   (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -103,17 +117,19 @@ describe('signing-keys', () => {
   describe('signingKeysToJwks', () => {
     it('converts multiple records to JWK key set', () => {
       const keyPair = generateES256KeyPair();
-      const records: SigningKeyRecord[] = [{
-        id: 'uuid-1',
-        kid: keyPair.kid,
-        algorithm: 'ES256',
-        publicKey: keyPair.publicKeyPem,
-        privateKey: keyPair.privateKeyPem,
-        status: 'active',
-        activatedAt: new Date(),
-        retiredAt: null,
-        expiresAt: null,
-      }];
+      const records: SigningKeyRecord[] = [
+        {
+          id: 'uuid-1',
+          kid: keyPair.kid,
+          algorithm: 'ES256',
+          publicKey: keyPair.publicKeyPem,
+          privateKey: keyPair.privateKeyPem,
+          status: 'active',
+          activatedAt: new Date(),
+          retiredAt: null,
+          expiresAt: null,
+        },
+      ];
       const result = signingKeysToJwks(records);
       expect(result.keys).toHaveLength(1);
       expect(result.keys[0].kid).toBe(keyPair.kid);
@@ -125,40 +141,46 @@ describe('signing-keys', () => {
       expect(result.keys).toHaveLength(0);
     });
 
-    it('skips records with invalid PEM and logs error', () => {
-      const records: SigningKeyRecord[] = [{
-        id: 'uuid-bad',
-        kid: 'bad-kid',
-        algorithm: 'ES256',
-        publicKey: 'not-a-pem',
-        privateKey: 'not-a-pem',
-        status: 'active',
-        activatedAt: new Date(),
-        retiredAt: null,
-        expiresAt: null,
-      }];
-      const result = signingKeysToJwks(records);
-      expect(result.keys).toHaveLength(0);
-      expect(logger.error).toHaveBeenCalled();
+    it('rejects records with invalid PEM and logs only the key identifier', () => {
+      const records: SigningKeyRecord[] = [
+        {
+          id: 'uuid-bad',
+          kid: 'bad-kid',
+          algorithm: 'ES256',
+          publicKey: 'not-a-pem',
+          privateKey: 'not-a-pem',
+          status: 'active',
+          activatedAt: new Date(),
+          retiredAt: null,
+          expiresAt: null,
+        },
+      ];
+      expect(() => signingKeysToJwks(records)).toThrowError('Signing key record is invalid');
+      expect(logger.error).toHaveBeenCalledWith(
+        { event: 'signing-key-record-invalid', kid: 'bad-kid' },
+        'Signing key record is invalid',
+      );
     });
   });
 
   describe('loadSigningKeysFromDb', () => {
     it('returns mapped records from database', async () => {
-      mockPool([{
-        id: 'uuid-1',
-        kid: 'kid-1',
-        algorithm: 'ES256',
-        public_key: '-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----',
-        private_key: '-----BEGIN PRIVATE KEY-----\ntest\n-----END PRIVATE KEY-----',
-        private_key_iv: null,
-        private_key_tag: null,
-        encrypted: false,
-        status: 'active',
-        activated_at: new Date('2025-01-01'),
-        retired_at: null,
-        expires_at: null,
-      }]);
+      mockPool([
+        {
+          id: 'uuid-1',
+          kid: 'kid-1',
+          algorithm: 'ES256',
+          public_key: '-----BEGIN PUBLIC KEY-----\ntest\n-----END PUBLIC KEY-----',
+          private_key: 'encrypted-private-key',
+          private_key_iv: 'a'.repeat(24),
+          private_key_tag: 'b'.repeat(32),
+          encrypted: true,
+          status: 'active',
+          activated_at: new Date('2025-01-01'),
+          retired_at: null,
+          expires_at: null,
+        },
+      ]);
       const result = await loadSigningKeysFromDb();
       expect(result).toHaveLength(1);
       expect(result[0].kid).toBe('kid-1');
@@ -173,42 +195,47 @@ describe('signing-keys', () => {
       expect(sql).toContain("status IN ('active', 'retired')");
     });
 
-    it('passes through plaintext legacy keys without decryption', async () => {
-      mockPool([{
-        id: 'uuid-legacy',
-        kid: 'kid-legacy',
-        algorithm: 'ES256',
-        public_key: '-----BEGIN PUBLIC KEY-----\nlegacy\n-----END PUBLIC KEY-----',
-        private_key: '-----BEGIN PRIVATE KEY-----\nlegacy-plaintext\n-----END PRIVATE KEY-----',
-        private_key_iv: null,
-        private_key_tag: null,
-        encrypted: false,
-        status: 'active',
-        activated_at: new Date('2025-01-01'),
-        retired_at: null,
-        expires_at: null,
-      }]);
-      const result = await loadSigningKeysFromDb();
-      expect(result[0].privateKey).toContain('legacy-plaintext');
-      // decryptPrivateKey should NOT have been called for plaintext rows
+    it('rejects plaintext legacy keys without attempting decryption', async () => {
+      mockPool([
+        {
+          id: 'uuid-legacy',
+          kid: 'kid-legacy',
+          algorithm: 'ES256',
+          public_key: '-----BEGIN PUBLIC KEY-----\nlegacy\n-----END PUBLIC KEY-----',
+          private_key: '-----BEGIN PRIVATE KEY-----\nlegacy-plaintext\n-----END PRIVATE KEY-----',
+          private_key_iv: null,
+          private_key_tag: null,
+          encrypted: false,
+          status: 'active',
+          activated_at: new Date('2025-01-01'),
+          retired_at: null,
+          expires_at: null,
+        },
+      ]);
+      await expect(loadSigningKeysFromDb()).rejects.toMatchObject({
+        name: 'SigningKeyCryptoError',
+        message: 'Signing key record is invalid',
+      });
       expect(decryptPrivateKey).not.toHaveBeenCalled();
     });
 
     it('decrypts encrypted rows using decryptPrivateKey', async () => {
-      mockPool([{
-        id: 'uuid-encrypted',
-        kid: 'kid-encrypted',
-        algorithm: 'ES256',
-        public_key: '-----BEGIN PUBLIC KEY-----\nenc\n-----END PUBLIC KEY-----',
-        private_key: 'encrypted-hex-data',
-        private_key_iv: 'a'.repeat(24),
-        private_key_tag: 'b'.repeat(32),
-        encrypted: true,
-        status: 'active',
-        activated_at: new Date('2025-06-01'),
-        retired_at: null,
-        expires_at: null,
-      }]);
+      mockPool([
+        {
+          id: 'uuid-encrypted',
+          kid: 'kid-encrypted',
+          algorithm: 'ES256',
+          public_key: '-----BEGIN PUBLIC KEY-----\nenc\n-----END PUBLIC KEY-----',
+          private_key: 'encrypted-hex-data',
+          private_key_iv: 'a'.repeat(24),
+          private_key_tag: 'b'.repeat(32),
+          encrypted: true,
+          status: 'active',
+          activated_at: new Date('2025-06-01'),
+          retired_at: null,
+          expires_at: null,
+        },
+      ]);
       const result = await loadSigningKeysFromDb();
       expect(decryptPrivateKey).toHaveBeenCalledWith(
         'encrypted-hex-data',
@@ -216,11 +243,10 @@ describe('signing-keys', () => {
         'b'.repeat(32),
         'a'.repeat(64),
       );
-      // Should return the decrypted PEM from the mock
-      expect(result[0].privateKey).toContain('decrypted-pem');
+      expect(result[0].privateKey).toBe('encrypted-hex-data');
     });
 
-    it('handles mixed encrypted and plaintext rows', async () => {
+    it('rejects a mixed result instead of returning a partial key set', async () => {
       mockPool([
         {
           id: 'uuid-enc',
@@ -251,12 +277,11 @@ describe('signing-keys', () => {
           expires_at: null,
         },
       ]);
-      const result = await loadSigningKeysFromDb();
-      expect(result).toHaveLength(2);
-      // Encrypted row should be decrypted
+      await expect(loadSigningKeysFromDb()).rejects.toMatchObject({
+        name: 'SigningKeyCryptoError',
+        message: 'Signing key record is invalid',
+      });
       expect(decryptPrivateKey).toHaveBeenCalledTimes(1);
-      // Plaintext row should be passed through
-      expect(result[1].privateKey).toContain('plaintext');
     });
 
     it('selects encryption metadata columns', async () => {
@@ -272,20 +297,22 @@ describe('signing-keys', () => {
   describe('ensureSigningKeys', () => {
     it('returns existing keys when active key exists', async () => {
       const keyPair = generateES256KeyPair();
-      mockPool([{
-        id: 'uuid-1',
-        kid: keyPair.kid,
-        algorithm: 'ES256',
-        public_key: keyPair.publicKeyPem,
-        private_key: keyPair.privateKeyPem,
-        private_key_iv: null,
-        private_key_tag: null,
-        encrypted: false,
-        status: 'active',
-        activated_at: new Date(),
-        retired_at: null,
-        expires_at: null,
-      }]);
+      mockPool([
+        {
+          id: 'uuid-1',
+          kid: keyPair.kid,
+          algorithm: 'ES256',
+          public_key: keyPair.publicKeyPem,
+          private_key: keyPair.privateKeyPem,
+          private_key_iv: 'a'.repeat(24),
+          private_key_tag: 'b'.repeat(32),
+          encrypted: true,
+          status: 'active',
+          activated_at: new Date(),
+          retired_at: null,
+          expires_at: null,
+        },
+      ]);
       const result = await ensureSigningKeys();
       expect(result.keys).toHaveLength(1);
       expect(logger.warn).not.toHaveBeenCalled();
@@ -296,26 +323,25 @@ describe('signing-keys', () => {
       const keyPair = generateES256KeyPair();
       const mockQuery = vi.fn().mockImplementation(() => {
         callCount++;
-        // First call: loadSigningKeysFromDb (empty)
-        // Second call: INSERT new encrypted key
-        // Third call: loadSigningKeysFromDb (now has key — returns as plaintext for mock simplicity)
-        if (callCount === 1) return Promise.resolve({ rows: [] });
-        if (callCount === 2) return Promise.resolve({ rows: [] });
+        // Lock, recheck, insert, then reload the committed winner.
+        if (callCount <= 3) return Promise.resolve({ rows: [] });
         return Promise.resolve({
-          rows: [{
-            id: 'uuid-new',
-            kid: keyPair.kid,
-            algorithm: 'ES256',
-            public_key: keyPair.publicKeyPem,
-            private_key: keyPair.privateKeyPem,
-            private_key_iv: null,
-            private_key_tag: null,
-            encrypted: false,
-            status: 'active',
-            activated_at: new Date(),
-            retired_at: null,
-            expires_at: null,
-          }],
+          rows: [
+            {
+              id: 'uuid-new',
+              kid: keyPair.kid,
+              algorithm: 'ES256',
+              public_key: keyPair.publicKeyPem,
+              private_key: keyPair.privateKeyPem,
+              private_key_iv: 'a'.repeat(24),
+              private_key_tag: 'b'.repeat(32),
+              encrypted: true,
+              status: 'active',
+              activated_at: new Date(),
+              retired_at: null,
+              expires_at: null,
+            },
+          ],
         });
       });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -326,7 +352,7 @@ describe('signing-keys', () => {
       // Verify encryptPrivateKey was called
       expect(encryptPrivateKey).toHaveBeenCalled();
       // Verify INSERT includes encrypted columns
-      const insertCall = mockQuery.mock.calls[1];
+      const insertCall = mockQuery.mock.calls[2];
       expect(insertCall[0]).toContain('INSERT INTO signing_keys');
       expect(insertCall[0]).toContain('private_key_iv');
       expect(insertCall[0]).toContain('private_key_tag');
@@ -340,23 +366,22 @@ describe('signing-keys', () => {
     it('INSERT sets encrypted=true via SQL literal', async () => {
       const mockQuery = vi.fn().mockImplementation(() => {
         const count = mockQuery.mock.calls.length;
-        if (count === 1) return Promise.resolve({ rows: [] });
-        if (count === 2) return Promise.resolve({ rows: [] });
-        return Promise.resolve({ rows: [{ ...makePlaintextRow() }] });
+        if (count <= 3) return Promise.resolve({ rows: [] });
+        return Promise.resolve({ rows: [{ ...makeEncryptedRow() }] });
       });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
 
       await ensureSigningKeys();
 
-      const insertSql = mockQuery.mock.calls[1][0] as string;
+      const insertSql = mockQuery.mock.calls[2][0] as string;
       // The SQL should include 'true' as a literal for the encrypted column
       expect(insertSql).toContain('true');
     });
   });
 });
 
-/** Helper to create a minimal plaintext DB row for mock responses */
-function makePlaintextRow() {
+/** Creates a minimal encrypted database row for bootstrap mock responses. */
+function makeEncryptedRow() {
   const keyPair = generateES256KeyPair();
   return {
     id: 'uuid-helper',
@@ -364,9 +389,9 @@ function makePlaintextRow() {
     algorithm: 'ES256',
     public_key: keyPair.publicKeyPem,
     private_key: keyPair.privateKeyPem,
-    private_key_iv: null,
-    private_key_tag: null,
-    encrypted: false,
+    private_key_iv: 'a'.repeat(24),
+    private_key_tag: 'b'.repeat(32),
+    encrypted: true,
     status: 'active',
     activated_at: new Date(),
     retired_at: null,

@@ -1,12 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import type {
-  ApplicationRow,
-  ApplicationModuleRow,
-} from '../../../src/applications/types.js';
-import {
-  mapRowToApplication,
-  mapRowToModule,
-} from '../../../src/applications/types.js';
+import type { ApplicationRow, ApplicationModuleRow } from '../../../src/applications/types.js';
+import { mapRowToApplication, mapRowToModule } from '../../../src/applications/types.js';
 
 /**
  * Helper to create a complete ApplicationRow with sensible defaults.
@@ -29,9 +23,7 @@ function createTestRow(overrides: Partial<ApplicationRow> = {}): ApplicationRow 
  * Helper to create a complete ApplicationModuleRow with sensible defaults.
  * Override individual fields as needed in each test.
  */
-function createTestModuleRow(
-  overrides: Partial<ApplicationModuleRow> = {},
-): ApplicationModuleRow {
+function createTestModuleRow(overrides: Partial<ApplicationModuleRow> = {}): ApplicationModuleRow {
   return {
     id: 'mod-uuid-1',
     application_id: 'app-uuid-1',
@@ -76,7 +68,7 @@ describe('types', () => {
     it('should cast status string to ApplicationStatus type', () => {
       // The DB CHECK constraint ensures only valid values, but we verify
       // the cast works for all three valid statuses
-      for (const status of ['active', 'inactive', 'archived'] as const) {
+      for (const status of ['active', 'inactive'] as const) {
         const row = createTestRow({ status });
         const app = mapRowToApplication(row);
         expect(app.status).toBe(status);

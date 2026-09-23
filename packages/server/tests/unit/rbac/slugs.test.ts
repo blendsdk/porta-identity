@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   generateRoleSlug,
+  normalizeRbacSlug,
   validateRoleSlug,
   validatePermissionSlug,
   parsePermissionSlug,
@@ -74,33 +75,27 @@ describe('slugs', () => {
     });
   });
 
-  // -------------------------------------------------------------------------
-  // validateRoleSlug
-  // -------------------------------------------------------------------------
+  describe('normalizeRbacSlug', () => {
+    it('should trim surrounding whitespace without changing the claim value', () => {
+      expect(normalizeRbacSlug('  GROUP_ABC  ')).toBe('GROUP_ABC');
+      expect(normalizeRbacSlug('  Role Administrator  ')).toBe('Role Administrator');
+    });
+  });
 
   describe('validateRoleSlug', () => {
-    it('should accept a valid kebab-case slug', () => {
-      expect(validateRoleSlug('crm-editor')).toBe(true);
-    });
-
-    it('should accept a single character slug', () => {
-      expect(validateRoleSlug('a')).toBe(true);
-    });
-
-    it('should accept a slug with numbers', () => {
-      expect(validateRoleSlug('level-3-admin')).toBe(true);
+    it('should accept application-defined role claim values', () => {
+      expect(validateRoleSlug('GROUP_ABC')).toBe(true);
+      expect(validateRoleSlug('Role Administrator')).toBe(true);
+      expect(validateRoleSlug('role:administrator')).toBe(true);
+      expect(validateRoleSlug('-custom.role-')).toBe(true);
     });
 
     it('should accept a slug of exactly 100 characters', () => {
       expect(validateRoleSlug('a'.repeat(100))).toBe(true);
     });
 
-    it('should accept a two-character slug', () => {
-      expect(validateRoleSlug('ab')).toBe(true);
-    });
-
-    it('should accept a numeric-only slug', () => {
-      expect(validateRoleSlug('123')).toBe(true);
+    it('should validate the value after trimming surrounding whitespace', () => {
+      expect(validateRoleSlug('  GROUP_ABC  ')).toBe(true);
     });
 
     it('should reject an empty string', () => {
@@ -111,29 +106,11 @@ describe('slugs', () => {
       expect(validateRoleSlug('a'.repeat(101))).toBe(false);
     });
 
-    it('should reject slugs with uppercase letters', () => {
-      expect(validateRoleSlug('CRM-Editor')).toBe(false);
-    });
-
-    it('should reject slugs with spaces', () => {
-      expect(validateRoleSlug('crm editor')).toBe(false);
-    });
-
-    it('should reject slugs with leading hyphen', () => {
-      expect(validateRoleSlug('-crm-editor')).toBe(false);
-    });
-
-    it('should reject slugs with trailing hyphen', () => {
-      expect(validateRoleSlug('crm-editor-')).toBe(false);
-    });
-
-    it('should reject slugs with special characters', () => {
-      expect(validateRoleSlug('crm_editor')).toBe(false);
-    });
-
-    it('should reject slugs with colons', () => {
-      // Colons are for permission slugs, not role slugs
-      expect(validateRoleSlug('crm:editor')).toBe(false);
+    it('should reject whitespace-only and control characters', () => {
+      expect(validateRoleSlug('   ')).toBe(false);
+      expect(validateRoleSlug('GROUP\nABC')).toBe(false);
+      expect(validateRoleSlug('GROUP\tABC')).toBe(false);
+      expect(validateRoleSlug(`GROUP${String.fromCharCode(0x7f)}ABC`)).toBe(false);
     });
   });
 
@@ -142,61 +119,20 @@ describe('slugs', () => {
   // -------------------------------------------------------------------------
 
   describe('validatePermissionSlug', () => {
-    it('should accept a valid 3-segment slug', () => {
+    it('should accept application-defined permission claim values', () => {
+      expect(validatePermissionSlug('CAN_ADD_ORDER')).toBe(true);
+      expect(validatePermissionSlug('ALLOW_SEND_INVOICE')).toBe(true);
+      expect(validatePermissionSlug('access-that-resource')).toBe(true);
       expect(validatePermissionSlug('crm:contacts:read')).toBe(true);
-    });
-
-    it('should accept a valid slug with different actions', () => {
-      expect(validatePermissionSlug('crm:contacts:write')).toBe(true);
-      expect(validatePermissionSlug('admin:system:manage')).toBe(true);
-      expect(validatePermissionSlug('billing:invoices:delete')).toBe(true);
-    });
-
-    it('should accept slugs with 4 or more segments', () => {
-      expect(validatePermissionSlug('crm:sub-module:items:write')).toBe(true);
-      expect(validatePermissionSlug('a:b:c:d:e')).toBe(true);
-    });
-
-    it('should accept segments with hyphens', () => {
-      expect(validatePermissionSlug('crm:contact-list:read-all')).toBe(true);
-    });
-
-    it('should accept segments with numbers', () => {
-      expect(validatePermissionSlug('app1:resource2:action3')).toBe(true);
+      expect(validatePermissionSlug('Permission with spaces')).toBe(true);
     });
 
     it('should reject an empty string', () => {
       expect(validatePermissionSlug('')).toBe(false);
     });
 
-    it('should reject a slug with only 1 segment (no colons)', () => {
-      expect(validatePermissionSlug('contacts-read')).toBe(false);
-    });
-
-    it('should reject a slug with only 2 segments', () => {
-      expect(validatePermissionSlug('crm:contacts')).toBe(false);
-    });
-
-    it('should reject a slug with empty segments', () => {
-      expect(validatePermissionSlug('crm::read')).toBe(false);
-      expect(validatePermissionSlug(':contacts:read')).toBe(false);
-      expect(validatePermissionSlug('crm:contacts:')).toBe(false);
-    });
-
-    it('should reject segments with uppercase letters', () => {
-      expect(validatePermissionSlug('CRM:contacts:read')).toBe(false);
-    });
-
-    it('should reject segments with spaces', () => {
-      expect(validatePermissionSlug('crm:contact list:read')).toBe(false);
-    });
-
-    it('should reject segments starting with a hyphen', () => {
-      expect(validatePermissionSlug('crm:-contacts:read')).toBe(false);
-    });
-
-    it('should reject segments ending with a hyphen', () => {
-      expect(validatePermissionSlug('crm:contacts-:read')).toBe(false);
+    it('should validate the value after trimming surrounding whitespace', () => {
+      expect(validatePermissionSlug('  CAN_ADD_ORDER  ')).toBe(true);
     });
 
     it('should reject slugs exceeding 150 characters', () => {
@@ -213,8 +149,10 @@ describe('slugs', () => {
       expect(validatePermissionSlug(slug)).toBe(true);
     });
 
-    it('should reject segments with underscores', () => {
-      expect(validatePermissionSlug('crm:contact_list:read')).toBe(false);
+    it('should reject whitespace-only and control characters', () => {
+      expect(validatePermissionSlug('   ')).toBe(false);
+      expect(validatePermissionSlug('CAN\nADD')).toBe(false);
+      expect(validatePermissionSlug('CAN\tADD')).toBe(false);
     });
   });
 
@@ -284,8 +222,12 @@ describe('slugs', () => {
       expect(parsePermissionSlug('crm::read')).toBeNull();
     });
 
-    it('should return null for a slug with uppercase segments', () => {
-      expect(parsePermissionSlug('CRM:contacts:read')).toBeNull();
+    it('should preserve case when parsing a conventional identifier', () => {
+      expect(parsePermissionSlug('CRM:Contacts:READ')).toEqual({
+        module: 'CRM',
+        resource: 'Contacts',
+        action: 'READ',
+      });
     });
   });
 });

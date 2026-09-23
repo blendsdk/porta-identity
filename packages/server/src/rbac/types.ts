@@ -75,8 +75,7 @@ export interface UpdateRoleInput {
  * Full permission record as stored in the database.
  * Maps to the `permissions` table columns (see migration 006).
  * Permissions are defined globally per application, optionally scoped
- * to a module. The slug follows the module:resource:action format
- * (e.g., "crm:contacts:read").
+ * to a module. The slug is the exact permission value emitted to the application.
  */
 export interface Permission {
   id: string;
@@ -104,8 +103,7 @@ export interface PermissionRow {
 
 /**
  * Input for creating a new permission.
- * The slug must follow the module:resource:action format and is
- * validated by the service layer before insert.
+ * The slug is an application-defined claim value validated by the service layer before insert.
  */
 export interface CreatePermissionInput {
   applicationId: string;

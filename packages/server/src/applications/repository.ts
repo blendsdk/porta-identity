@@ -80,10 +80,7 @@ export async function insertApplication(data: InsertApplicationData): Promise<Ap
 export async function findApplicationById(id: string): Promise<Application | null> {
   const pool = getPool();
 
-  const result = await pool.query<ApplicationRow>(
-    'SELECT * FROM applications WHERE id = $1',
-    [id],
-  );
+  const result = await pool.query<ApplicationRow>('SELECT * FROM applications WHERE id = $1', [id]);
 
   if (result.rows.length === 0) return null;
   return mapRowToApplication(result.rows[0]);
@@ -92,7 +89,7 @@ export async function findApplicationById(id: string): Promise<Application | nul
 /**
  * Find an application by its slug.
  *
- * Returns applications of any status (active, inactive, archived).
+ * Returns applications of any retained status (active or inactive).
  * The caller (service layer) is responsible for status-based access control.
  *
  * @param slug - Application slug
@@ -101,10 +98,9 @@ export async function findApplicationById(id: string): Promise<Application | nul
 export async function findApplicationBySlug(slug: string): Promise<Application | null> {
   const pool = getPool();
 
-  const result = await pool.query<ApplicationRow>(
-    'SELECT * FROM applications WHERE slug = $1',
-    [slug],
-  );
+  const result = await pool.query<ApplicationRow>('SELECT * FROM applications WHERE slug = $1', [
+    slug,
+  ]);
 
   if (result.rows.length === 0) return null;
   return mapRowToApplication(result.rows[0]);
@@ -299,7 +295,9 @@ export async function listApplicationsCursor(
     const decoded = decodeCursor(options.cursor);
     if (decoded) {
       if (decoded.s === null) {
-        conditions.push(`(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`);
+        conditions.push(
+          `(${sortColumn} IS NOT NULL OR (${sortColumn} IS NULL AND id ${comparator} $${paramIndex}))`,
+        );
         params.push(decoded.i);
         paramIndex++;
       } else {
@@ -332,7 +330,7 @@ export async function listApplicationsCursor(
   return buildCursorResult(
     rows,
     limit,
-    (app) => sortColumn === 'name' ? app.name : app.createdAt.toISOString(),
+    (app) => (sortColumn === 'name' ? app.name : app.createdAt.toISOString()),
     (app) => app.id,
   );
 }
@@ -344,7 +342,7 @@ export async function listApplicationsCursor(
 /**
  * Check if an application slug is already taken in the database.
  *
- * Checks across all statuses (active, inactive, archived) because
+ * Checks across all retained statuses because
  * slugs must be globally unique regardless of application status.
  *
  * @param slug - Slug to check
@@ -415,15 +413,19 @@ export async function insertModule(data: InsertModuleData): Promise<ApplicationM
 /**
  * Find a module by its UUID.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param id - Module UUID
  * @returns ApplicationModule or null if not found
  */
-export async function findModuleById(id: string): Promise<ApplicationModule | null> {
+export async function findModuleById(
+  applicationId: string,
+  id: string,
+): Promise<ApplicationModule | null> {
   const pool = getPool();
 
   const result = await pool.query<ApplicationModuleRow>(
-    'SELECT * FROM application_modules WHERE id = $1',
-    [id],
+    'SELECT * FROM application_modules WHERE application_id = $1 AND id = $2',
+    [applicationId, id],
   );
 
   if (result.rows.length === 0) return null;
@@ -457,12 +459,14 @@ const MODULE_FIELD_TO_COLUMN: Record<string, string> = {
  * Only explicitly provided fields (not undefined) are included in the
  * UPDATE statement. The `updated_at` column is handled by the DB trigger.
  *
+ * @param applicationId - Authoritative parent application UUID
  * @param id - Module UUID
  * @param data - Fields to update (only non-undefined fields are applied)
  * @returns Updated module
  * @throws Error if module not found or no fields provided
  */
 export async function updateModule(
+  applicationId: string,
   id: string,
   data: UpdateModuleData,
 ): Promise<ApplicationModule> {
@@ -470,8 +474,8 @@ export async function updateModule(
 
   // Build dynamic SET clause from provided fields
   const setClauses: string[] = [];
-  const values: unknown[] = [id]; // $1 is always the ID
-  let paramIndex = 2;
+  const values: unknown[] = [applicationId, id];
+  let paramIndex = 3;
 
   for (const [field, column] of Object.entries(MODULE_FIELD_TO_COLUMN)) {
     const value = data[field as keyof UpdateModuleData];
@@ -486,7 +490,9 @@ export async function updateModule(
     throw new Error('No fields to update');
   }
 
-  const sql = `UPDATE application_modules SET ${setClauses.join(', ')} WHERE id = $1 RETURNING *`;
+  const sql = `UPDATE application_modules SET ${setClauses.join(', ')}
+    WHERE application_id = $1 AND id = $2
+    RETURNING *`;
   const result = await pool.query<ApplicationModuleRow>(sql, values);
 
   if (result.rows.length === 0) {
@@ -555,4 +561,204 @@ export async function moduleSlugExists(
     [applicationId, slug],
   );
   return result.rows[0].exists;
+}
+
+/** Authority identifiers captured before an application cascade runs. */
+export interface ApplicationDeletionCapture {
+  application: Application;
+  userIds: string[];
+  clientIds: string[];
+  publicClientIds: string[];
+  grantIds: string[];
+  moduleIds: string[];
+  roleIds: string[];
+  permissionIds: string[];
+  claimIds: string[];
+}
+
+/** Authority identifiers captured before a module cascade runs. */
+export interface ModuleDeletionCapture {
+  module: ApplicationModule;
+  userIds: string[];
+  permissionIds: string[];
+  roleIds: string[];
+  grantIds: string[];
+}
+
+/**
+ * Lock, capture, and delete one deployment-global application graph.
+ *
+ * @param id - Application UUID.
+ * @returns The captured graph, or null when the application does not exist.
+ */
+export async function captureApplicationForDeletion(
+  id: string,
+): Promise<ApplicationDeletionCapture | null> {
+  const pool = getPool();
+  const target = await pool.query<ApplicationRow>(
+    'SELECT * FROM applications WHERE id = $1 FOR UPDATE',
+    [id],
+  );
+  if (!target.rows[0]) return null;
+  const application = mapRowToApplication(target.rows[0]);
+  const graph = await pool.query<{
+    user_ids: string[];
+    client_ids: string[];
+    public_client_ids: string[];
+    grant_ids: string[];
+    module_ids: string[];
+    role_ids: string[];
+    permission_ids: string[];
+    claim_ids: string[];
+  }>(
+    `WITH owned_clients AS (
+       SELECT id, client_id FROM clients WHERE application_id = $1
+     ), affected_users AS (
+       SELECT assignment.user_id
+       FROM user_roles assignment
+       JOIN roles role ON role.id = assignment.role_id
+       WHERE role.application_id = $1
+       UNION
+       SELECT value.user_id
+       FROM custom_claim_values value
+       JOIN custom_claim_definitions definition ON definition.id = value.claim_id
+       WHERE definition.application_id = $1
+     )
+     SELECT
+       ARRAY(SELECT user_id FROM affected_users ORDER BY user_id) AS user_ids,
+       ARRAY(SELECT id FROM owned_clients ORDER BY id) AS client_ids,
+       ARRAY(SELECT client_id FROM owned_clients ORDER BY client_id) AS public_client_ids,
+       ARRAY(
+         SELECT DISTINCT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'clientId' = ANY(ARRAY(SELECT client_id FROM owned_clients))
+         ORDER BY payload.id
+       ) AS grant_ids,
+       ARRAY(SELECT id FROM application_modules WHERE application_id = $1 ORDER BY id) AS module_ids,
+       ARRAY(SELECT id FROM roles WHERE application_id = $1 ORDER BY id) AS role_ids,
+       ARRAY(SELECT id FROM permissions WHERE application_id = $1 ORDER BY id) AS permission_ids,
+       ARRAY(SELECT id FROM custom_claim_definitions WHERE application_id = $1 ORDER BY id) AS claim_ids`,
+    [id],
+  );
+  return { application, ...camelApplicationGraph(graph.rows[0]!) };
+}
+
+/** Physically delete an application previously locked and captured. */
+export async function deleteCapturedApplication(id: string): Promise<void> {
+  await getPool().query('DELETE FROM applications WHERE id = $1', [id]);
+}
+
+/** Capture and immediately delete an application for direct repository callers. */
+export async function deleteApplication(id: string): Promise<ApplicationDeletionCapture | null> {
+  const capture = await captureApplicationForDeletion(id);
+  if (!capture) return null;
+  await deleteCapturedApplication(id);
+  return capture;
+}
+
+/**
+ * Lock, capture, and delete a module through its application parent.
+ *
+ * @param applicationId - Parent application UUID.
+ * @param moduleId - Module UUID.
+ * @returns The captured graph, or null for a missing or mismatched module.
+ */
+export async function captureModuleForDeletion(
+  applicationId: string,
+  moduleId: string,
+): Promise<ModuleDeletionCapture | null> {
+  const pool = getPool();
+  const target = await pool.query<ApplicationModuleRow>(
+    `SELECT * FROM application_modules
+     WHERE application_id = $1 AND id = $2
+     FOR UPDATE`,
+    [applicationId, moduleId],
+  );
+  if (!target.rows[0]) return null;
+  const module = mapRowToModule(target.rows[0]);
+  const graph = await pool.query<{
+    user_ids: string[];
+    permission_ids: string[];
+    role_ids: string[];
+    grant_ids: string[];
+  }>(
+    `WITH owned_permissions AS (
+       SELECT id FROM permissions WHERE module_id = $2
+     ), affected_roles AS (
+       SELECT DISTINCT link.role_id
+       FROM role_permissions link
+       WHERE link.permission_id = ANY(ARRAY(SELECT id FROM owned_permissions))
+     )
+     SELECT
+       ARRAY(
+         SELECT DISTINCT assignment.user_id
+         FROM user_roles assignment
+         WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
+         ORDER BY assignment.user_id
+       ) AS user_ids,
+       ARRAY(SELECT id FROM owned_permissions ORDER BY id) AS permission_ids,
+       ARRAY(SELECT role_id FROM affected_roles ORDER BY role_id) AS role_ids,
+       ARRAY(
+         SELECT payload.id FROM oidc_payloads payload
+         WHERE payload.type = 'Grant'
+           AND payload.payload->>'accountId' = ANY(ARRAY(
+             SELECT DISTINCT assignment.user_id::text FROM user_roles assignment
+             WHERE assignment.role_id = ANY(ARRAY(SELECT role_id FROM affected_roles))
+           ))
+           AND payload.payload->>'clientId' = ANY(ARRAY(
+             SELECT client_id FROM clients WHERE application_id = $1
+           ))
+         ORDER BY payload.id
+       ) AS grant_ids`,
+    [applicationId, moduleId],
+  );
+  const captured = graph.rows[0]!;
+  return {
+    module,
+    userIds: captured.user_ids,
+    permissionIds: captured.permission_ids,
+    roleIds: captured.role_ids,
+    grantIds: captured.grant_ids,
+  };
+}
+
+/** Physically delete a module previously locked through its parent. */
+export async function deleteCapturedModule(applicationId: string, moduleId: string): Promise<void> {
+  await getPool().query('DELETE FROM application_modules WHERE application_id = $1 AND id = $2', [
+    applicationId,
+    moduleId,
+  ]);
+}
+
+/** Capture and immediately delete a module for direct repository callers. */
+export async function deleteModule(
+  applicationId: string,
+  moduleId: string,
+): Promise<ModuleDeletionCapture | null> {
+  const capture = await captureModuleForDeletion(applicationId, moduleId);
+  if (!capture) return null;
+  await deleteCapturedModule(applicationId, moduleId);
+  return capture;
+}
+
+function camelApplicationGraph(row: {
+  user_ids: string[];
+  client_ids: string[];
+  public_client_ids: string[];
+  grant_ids: string[];
+  module_ids: string[];
+  role_ids: string[];
+  permission_ids: string[];
+  claim_ids: string[];
+}): Omit<ApplicationDeletionCapture, 'application'> {
+  return {
+    userIds: row.user_ids,
+    clientIds: row.client_ids,
+    publicClientIds: row.public_client_ids,
+    grantIds: row.grant_ids,
+    moduleIds: row.module_ids,
+    roleIds: row.role_ids,
+    permissionIds: row.permission_ids,
+    claimIds: row.claim_ids,
+  };
 }

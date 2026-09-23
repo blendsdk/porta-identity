@@ -10,6 +10,7 @@
  */
 
 import { createInterface } from 'node:readline';
+import { sanitizeTerminalText } from './output.js';
 
 // ---------------------------------------------------------------------------
 // Confirmation Prompt
@@ -24,8 +25,8 @@ import { createInterface } from 'node:readline';
  * @param message - The confirmation question
  * @returns true if the user answers 'y' or 'yes'
  */
-export async function confirm(message: string): Promise<boolean> {
-  const answer = await question(`${message} [y/N] `);
+export async function confirm(message: string, signal?: AbortSignal): Promise<boolean> {
+  const answer = await question(`${message} [y/N] `, signal);
   return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 }
 
@@ -54,14 +55,30 @@ export async function confirmTyped(message: string, expected: string): Promise<b
  * @param prompt - The prompt message to display
  * @returns The user's input string
  */
-export async function question(prompt: string): Promise<string> {
+export async function question(prompt: string, signal?: AbortSignal): Promise<string> {
+  const safePrompt = sanitizeTerminalText(prompt);
   const rl = createInterface({
     input: process.stdin,
     output: process.stderr, // Prompt on stderr so stdout stays clean for piping
   });
 
-  return new Promise<string>((resolve) => {
-    rl.question(prompt, (answer) => {
+  return new Promise<string>((resolve, reject) => {
+    let settled = false;
+    const abort = (): void => {
+      if (settled) return;
+      settled = true;
+      rl.close();
+      reject(new DOMException('The operation was aborted', 'AbortError'));
+    };
+    if (signal?.aborted) {
+      abort();
+      return;
+    }
+    signal?.addEventListener('abort', abort, { once: true });
+    rl.question(safePrompt, (answer) => {
+      if (settled) return;
+      settled = true;
+      signal?.removeEventListener('abort', abort);
       rl.close();
       resolve(answer.trim());
     });
@@ -79,6 +96,7 @@ export async function question(prompt: string): Promise<string> {
  * @returns The entered password string
  */
 export async function password(prompt: string): Promise<string> {
+  const safePrompt = sanitizeTerminalText(prompt);
   const rl = createInterface({
     input: process.stdin,
     output: process.stderr,
@@ -87,7 +105,7 @@ export async function password(prompt: string): Promise<string> {
   // Suppress echoing of password characters
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (rl as any)._writeToOutput = function _writeToOutput(str: string) {
-    if (str.includes(prompt)) {
+    if (str.includes(safePrompt)) {
       // Show the prompt itself
       process.stderr.write(str);
     } else {
@@ -97,7 +115,7 @@ export async function password(prompt: string): Promise<string> {
   };
 
   return new Promise<string>((resolve) => {
-    rl.question(prompt, (answer) => {
+    rl.question(safePrompt, (answer) => {
       process.stderr.write('\n'); // New line after hidden input
       rl.close();
       resolve(answer);

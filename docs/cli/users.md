@@ -13,12 +13,12 @@ porta user create --org <id> --email alice@example.com \
   [--name "Alice Smith"] [--password "secure-password"]
 ```
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--org` | ✅ | Organization ID |
-| `--email` | ✅ | Email address |
-| `--name` | | Display name. Split into OIDC `givenName`/`familyName` on the first space (e.g. `"Alice Smith"` → given `Alice`, family `Smith`; a single token sets only `givenName`). |
-| `--password` | | Initial password (omit for a passwordless user) |
+| Flag         | Required | Description                                                                                                                                                             |
+| ------------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--org`      | ✅       | Organization ID                                                                                                                                                         |
+| `--email`    | ✅       | Email address                                                                                                                                                           |
+| `--name`     |          | Display name. Split into OIDC `givenName`/`familyName` on the first space (e.g. `"Alice Smith"` → given `Alice`, family `Smith`; a single token sets only `givenName`). |
+| `--password` |          | Initial password (omit for a passwordless user)                                                                                                                         |
 
 ### `porta user invite`
 
@@ -32,11 +32,11 @@ Sends an invitation email. The `--name` value is split into OIDC
 ### `porta user list`
 
 ```bash
-porta user list --org <id> [--status active|inactive|suspended|locked] \
+porta user list --org <id> [--status active|inactive|locked] \
   [--search "alice"] [--page 1] [--page-size 20]
 ```
 
-The `--status` choices are `active`, `inactive`, `suspended`, and `locked`
+The `--status` choices are `active`, `inactive`, and `locked`
 (matching the server `UserStatus`).
 
 ### `porta user show`
@@ -51,7 +51,7 @@ The Name column is derived from the user's `givenName`/`familyName`
 ### `porta user update`
 
 ```bash
-porta user update --org <id> <user-id> [--name "Alice Johnson"] [--email new@example.com]
+porta user update --org <id> <user-id> [--name "Alice Johnson"]
 ```
 
 `--name` is split into `givenName`/`familyName` just like `create`.
@@ -61,17 +61,13 @@ porta user update --org <id> <user-id> [--name "Alice Johnson"] [--email new@exa
 ## Status Management
 
 ```bash
-porta user suspend     --org <id> <user-id>
-porta user unsuspend   --org <id> <user-id>   # suspended → active
 porta user deactivate  --org <id> <user-id>   # active → inactive
-porta user reactivate  --org <id> <user-id>   # inactive → active
-porta user lock        --org <id> <user-id>
-porta user unlock      --org <id> <user-id>
+porta user activate    --org <id> <user-id>   # inactive → active
 ```
 
-The lifecycle statuses are `active`, `inactive`, `suspended`, and `locked`.
-`unsuspend` returns a suspended user to active; `reactivate` returns a
-deactivated (inactive) user to active.
+Administrators manage only the `active` and `inactive` lifecycle states. The
+server may temporarily report `locked` after failed login attempts and restores
+the account automatically after the configured cooldown.
 
 ### `porta user set-password`
 
@@ -79,32 +75,51 @@ deactivated (inactive) user to active.
 porta user set-password --org <id> <user-id> --password "new-password"
 ```
 
+### `porta user history`
+
+```bash
+porta user history --org <id> <user-id>
+```
+
+Returns the current first-page history envelope.
+
+## Interactive Admin UI
+
+After `porta admin` authenticates and an organization is selected, open the Users menu to browse,
+search, filter, create, or invite users. Enter on a user row opens its detail view. Available profile,
+credential, history, lifecycle, and Delete actions are shown only when the verified identity has the
+corresponding permission. The detail view also offers **Roles** when the administrator can read
+roles. That modal lists direct assignments across applications and allows assignments and removals
+only when the corresponding capability is available. Import and export are not part of this screen.
 
 ---
 
 ## User Roles
 
-Assign and manage RBAC roles for a user.
+Assign and manage a user's direct RBAC role assignments within one organization. The role itself
+belongs to an application, so use `porta app role list <app-id>` to find its ID.
 
 ### `porta user roles assign`
 
 ```bash
-porta user roles assign --org-id <id> --user-id <id> --role-id <id>
+porta user roles assign --org <org-id> <user-id> --role <role-id>
 ```
 
 ### `porta user roles remove`
 
 ```bash
-porta user roles remove --org-id <id> --user-id <id> --role-id <id>
+porta user roles remove --org <org-id> <user-id> --role <role-id>
 ```
 
 ### `porta user roles list`
 
 ```bash
-porta user roles list --org-id <id> --user-id <id>
+porta user roles list --org <org-id> <user-id>
 ```
 
-Shows all roles assigned to the user, grouped by application.
+The list shows the role ID, name, slug, and creation date. Removing a role can invalidate the
+current admin session; authenticate again when the command reports that reauthentication is
+required.
 
 ---
 
@@ -151,12 +166,12 @@ porta user 2fa status --user-id <id> --direct
 
 Shows whether 2FA is enabled, the active method (`email` or `totp`), TOTP configuration status, and remaining recovery code count.
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--org-id` | HTTP mode | Organization ID (not needed in direct mode) |
-| `--user-id` | ✅ | User ID |
-| `--direct` | | Use direct database connection instead of HTTP |
-| `--json` | | Output as JSON |
+| Flag        | Required  | Description                                    |
+| ----------- | --------- | ---------------------------------------------- |
+| `--org-id`  | HTTP mode | Organization ID (not needed in direct mode)    |
+| `--user-id` | ✅        | User ID                                        |
+| `--direct`  |           | Use direct database connection instead of HTTP |
+| `--json`    |           | Output as JSON                                 |
 
 ### `porta user 2fa disable`
 
@@ -170,12 +185,12 @@ porta user 2fa disable --user-id <id> --direct
 
 Force-disables 2FA for the user. Prompts for confirmation (use `--force` to skip). Protected: cannot disable the super-admin user's 2FA.
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--org-id` | HTTP mode | Organization ID |
-| `--user-id` | ✅ | User ID |
-| `--direct` | | Use direct database connection |
-| `--force` | | Skip confirmation prompt |
+| Flag        | Required  | Description                    |
+| ----------- | --------- | ------------------------------ |
+| `--org-id`  | HTTP mode | Organization ID                |
+| `--user-id` | ✅        | User ID                        |
+| `--direct`  |           | Use direct database connection |
+| `--force`   |           | Skip confirmation prompt       |
 
 ### `porta user 2fa reset`
 
@@ -189,18 +204,18 @@ porta user 2fa reset --user-id <id> --direct
 
 Resets 2FA by disabling and clearing all enrollment data, forcing the user to re-enroll on next login. Prompts for confirmation. Protected: cannot reset the super-admin user's 2FA.
 
-| Flag | Required | Description |
-|------|----------|-------------|
-| `--org-id` | HTTP mode | Organization ID |
-| `--user-id` | ✅ | User ID |
-| `--direct` | | Use direct database connection |
-| `--force` | | Skip confirmation prompt |
+| Flag        | Required  | Description                    |
+| ----------- | --------- | ------------------------------ |
+| `--org-id`  | HTTP mode | Organization ID                |
+| `--user-id` | ✅        | User ID                        |
+| `--direct`  |           | Use direct database connection |
+| `--force`   |           | Skip confirmation prompt       |
 
 ---
 
-## GDPR Compliance
+## Data Export and Deletion
 
-Commands for GDPR data portability (Article 20) and right to erasure (Article 17).
+Commands for data portability and physical user deletion.
 
 ### `porta user export`
 
@@ -216,20 +231,20 @@ Use `--json` to pipe the output to a file:
 porta user export --org-id <id> --user-id <id> --json > user-data.json
 ```
 
-### `porta user purge`
+### `porta user delete`
 
 ```bash
-porta user purge --org-id <id> --user-id <id>
+porta user delete <org-id> <user-id>
 ```
 
-Permanently anonymizes and deletes a user's personal data. This operation:
+Permanently deletes the user and owned identity and security data. This includes role assignments,
+claim values, credentials, recovery data, and server-backed sessions. Audit history is retained
+separately under the configured audit policy and can still identify the deleted user.
 
-1. Anonymizes the user record (replaces PII with anonymized placeholders)
-2. Deletes all associated data (roles, claims, tokens, 2FA, audit metadata)
-3. Executes in a single database transaction
-
-Prompts for confirmation before executing. Use `--force` to skip the confirmation prompt.
+The CLI always asks whether to keep or delete the named user. There is no record-deletion
+`--force` option.
 
 ::: danger Irreversible
-Data purge cannot be undone. Super-admin users cannot be purged as a safety measure.
+Deletion cannot be undone. A control-plane user cannot be deleted when that would leave no other
+active user with the exact built-in `porta-super-admin` role.
 :::

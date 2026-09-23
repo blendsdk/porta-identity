@@ -54,7 +54,7 @@ describe('Role Repository (Integration)', () => {
   it('should insert and retrieve a role by ID', async () => {
     const role = await createTestRole(appId);
 
-    const found = await findRoleById(role.id);
+    const found = await findRoleById(appId, role.id);
     expect(found).not.toBeNull();
     expect(found!.id).toBe(role.id);
     expect(found!.name).toBe(role.name);
@@ -68,9 +68,9 @@ describe('Role Repository (Integration)', () => {
   it('should reject duplicate role slugs within the same app', async () => {
     await createTestRole(appId, { slug: 'admin-role' });
 
-    await expect(
-      insertRole(buildRoleInput(appId, { slug: 'admin-role' })),
-    ).rejects.toThrow(/duplicate key|unique/i);
+    await expect(insertRole(buildRoleInput(appId, { slug: 'admin-role' }))).rejects.toThrow(
+      /duplicate key|unique/i,
+    );
   });
 
   it('should allow same slug in different apps', async () => {
@@ -103,16 +103,16 @@ describe('Role Repository (Integration)', () => {
     const perm = await createTestPermission(appId);
 
     // Assign permission to role
-    await assignPermissionsToRole(role.id, [perm.id]);
+    await assignPermissionsToRole(appId, role.id, [perm.id]);
 
     // List permissions for role
-    const perms = await getPermissionsForRole(role.id);
+    const perms = await getPermissionsForRole(appId, role.id);
     expect(perms).toHaveLength(1);
     expect(perms[0].id).toBe(perm.id);
 
     // Remove permission from role
-    await removePermissionsFromRole(role.id, [perm.id]);
-    const afterRemove = await getPermissionsForRole(role.id);
+    await removePermissionsFromRole(appId, role.id, [perm.id]);
+    const afterRemove = await getPermissionsForRole(appId, role.id);
     expect(afterRemove).toHaveLength(0);
   });
 
@@ -123,7 +123,7 @@ describe('Role Repository (Integration)', () => {
     const user = await createTestUser(orgId);
 
     // Assign role to user
-    await assignRolesToUser(user.id, [role.id]);
+    await assignRolesToUser(orgId, user.id, [role.id]);
 
     // List roles for user
     const roles = await getRolesForUser(user.id);
@@ -131,7 +131,7 @@ describe('Role Repository (Integration)', () => {
     expect(roles[0].id).toBe(role.id);
 
     // Remove role from user
-    await removeRolesFromUser(user.id, [role.id]);
+    await removeRolesFromUser(orgId, user.id, [role.id]);
     const afterRemove = await getRolesForUser(user.id);
     expect(afterRemove).toHaveLength(0);
   });
@@ -143,15 +143,15 @@ describe('Role Repository (Integration)', () => {
     const perm = await createTestPermission(appId);
     const user = await createTestUser(orgId);
 
-    await assignPermissionsToRole(role.id, [perm.id]);
-    await assignRolesToUser(user.id, [role.id]);
+    await assignPermissionsToRole(appId, role.id, [perm.id]);
+    await assignRolesToUser(orgId, user.id, [role.id]);
 
     // Delete the role — mappings should cascade
     const pool = getPool();
     await pool.query('DELETE FROM roles WHERE id = $1', [role.id]);
 
     // Permission should still exist (it's not deleted, just the mapping)
-    const permsForRole = await getPermissionsForRole(role.id);
+    const permsForRole = await getPermissionsForRole(appId, role.id);
     expect(permsForRole).toHaveLength(0);
 
     const userRoles = await getRolesForUser(user.id);

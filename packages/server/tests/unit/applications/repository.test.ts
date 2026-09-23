@@ -172,7 +172,7 @@ describe('application repository', () => {
     });
 
     it('should not filter by status (returns any status)', async () => {
-      const row = createAppRow({ status: 'archived' });
+      const row = createAppRow({ status: 'inactive' });
       const mockQuery = mockPool([row]);
 
       const app = await findApplicationBySlug('business-suite');
@@ -180,7 +180,7 @@ describe('application repository', () => {
       // Verify the SQL does NOT contain a status filter
       const sql = mockQuery.mock.calls[0][0] as string;
       expect(sql).not.toContain('status');
-      expect(app!.status).toBe('archived');
+      expect(app!.status).toBe('inactive');
     });
   });
 
@@ -223,17 +223,15 @@ describe('application repository', () => {
     it('should throw when application not found', async () => {
       mockPool([]); // No rows returned
 
-      await expect(
-        updateApplication('nonexistent', { name: 'Test' }),
-      ).rejects.toThrow('Application not found');
+      await expect(updateApplication('nonexistent', { name: 'Test' })).rejects.toThrow(
+        'Application not found',
+      );
     });
 
     it('should throw when no fields provided', async () => {
       mockPool([]);
 
-      await expect(
-        updateApplication('app-uuid-1', {}),
-      ).rejects.toThrow('No fields to update');
+      await expect(updateApplication('app-uuid-1', {})).rejects.toThrow('No fields to update');
     });
   });
 
@@ -245,7 +243,8 @@ describe('application repository', () => {
     it('should execute count and data queries with correct pagination', async () => {
       const row = createAppRow();
       // First call: count query, second call: data query
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '1' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [row], rowCount: 1 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -262,7 +261,8 @@ describe('application repository', () => {
     });
 
     it('should add WHERE clause when status filter provided', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -277,7 +277,8 @@ describe('application repository', () => {
     });
 
     it('should add ILIKE clause when search provided', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -293,7 +294,8 @@ describe('application repository', () => {
     });
 
     it('should use whitelisted sort column and direction', async () => {
-      const mockQuery = vi.fn()
+      const mockQuery = vi
+        .fn()
         .mockResolvedValueOnce({ rows: [{ count: '0' }], rowCount: 1 })
         .mockResolvedValueOnce({ rows: [], rowCount: 0 });
       (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query: mockQuery });
@@ -406,7 +408,7 @@ describe('application repository', () => {
       const row = createModuleRow();
       mockPool([row]);
 
-      const mod = await findModuleById('mod-uuid-1');
+      const mod = await findModuleById('app-uuid-1', 'mod-uuid-1');
 
       expect(mod).not.toBeNull();
       expect(mod!.id).toBe('mod-uuid-1');
@@ -416,7 +418,7 @@ describe('application repository', () => {
     it('should return null when not found', async () => {
       mockPool([]);
 
-      const mod = await findModuleById('nonexistent');
+      const mod = await findModuleById('app-uuid-1', 'nonexistent');
 
       expect(mod).toBeNull();
     });
@@ -431,29 +433,29 @@ describe('application repository', () => {
       const row = createModuleRow({ name: 'Updated CRM' });
       const mockQuery = mockPool([row]);
 
-      await updateModule('mod-uuid-1', { name: 'Updated CRM' });
+      await updateModule('app-uuid-1', 'mod-uuid-1', { name: 'Updated CRM' });
 
       const sql = mockQuery.mock.calls[0][0] as string;
       expect(sql).toContain('UPDATE application_modules SET');
-      expect(sql).toContain('name = $2');
-      expect(sql).toContain('WHERE id = $1');
+      expect(sql).toContain('name = $3');
+      expect(sql).toContain('WHERE application_id = $1 AND id = $2');
       expect(sql).toContain('RETURNING *');
     });
 
     it('should throw when module not found', async () => {
       mockPool([]);
 
-      await expect(
-        updateModule('nonexistent', { name: 'Test' }),
-      ).rejects.toThrow('Module not found');
+      await expect(updateModule('app-uuid-1', 'nonexistent', { name: 'Test' })).rejects.toThrow(
+        'Module not found',
+      );
     });
 
     it('should throw when no fields provided', async () => {
       mockPool([]);
 
-      await expect(
-        updateModule('mod-uuid-1', {}),
-      ).rejects.toThrow('No fields to update');
+      await expect(updateModule('app-uuid-1', 'mod-uuid-1', {})).rejects.toThrow(
+        'No fields to update',
+      );
     });
   });
 

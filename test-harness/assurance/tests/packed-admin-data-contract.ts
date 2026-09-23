@@ -6,7 +6,7 @@ export type PackedAdminDataClient = 'sdk' | 'cli';
 
 /** Closed non-destructive administrative-data journeys. */
 export type PackedAdminDataSurface =
-  'bulk-duplicate-rejection' | 'import-dry-run' | 'export-users-json';
+  'bulk-duplicate-rejection' | 'import-manifest-preview' | 'export-manifest';
 
 /** One immutable packed-client journey requirement. */
 export interface PackedAdminDataRequirement {

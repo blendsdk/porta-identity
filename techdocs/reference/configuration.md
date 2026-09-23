@@ -1,10 +1,13 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-05-07
+> **Last Updated**: 2026-09-17
 
 ## Overview
 
-Porta's configuration is managed through environment variables, validated at startup using a **Zod schema** (`packages/server/src/config/schema.ts`). If any required variable is missing or invalid, the process exits immediately with a clear error message (fail-fast principle).
+Porta separates external startup configuration from a closed database-backed operational catalog.
+Environment variables are validated at startup using a **Zod schema** (`packages/server/src/config/schema.ts`).
+If any required variable is missing or invalid, the process exits immediately with a clear error
+message (fail-fast principle). PostgreSQL stores operational native values; code owns their metadata.
 
 Configuration is loaded via `packages/server/src/config/index.ts`, which reads from `process.env` (with `.env` file support via dotenv in development).
 
@@ -12,13 +15,14 @@ Configuration is loaded via `packages/server/src/config/index.ts`, which reads f
 
 ### Server
 
-| Variable      | Type                                              | Default       | Required | Description                                      |
-| ------------- | ------------------------------------------------- | ------------- | -------- | ------------------------------------------------ |
-| `NODE_ENV`    | `development` \| `test` \| `production`           | `development` | No       | Runtime environment mode                         |
-| `PORT`        | Integer                                           | `3000`        | No       | HTTP server listen port                          |
-| `HOST`        | String                                            | `0.0.0.0`     | No       | HTTP server bind address                         |
-| `TRUST_PROXY` | Boolean                                           | `false`       | No       | Trust `X-Forwarded-*` headers from reverse proxy |
-| `LOG_LEVEL`   | `debug` \| `info` \| `warn` \| `error` \| `fatal` | `info`        | No       | Pino log level                                   |
+| Variable           | Type                                              | Default       | Required | Description                                                                                                        |
+| ------------------ | ------------------------------------------------- | ------------- | -------- | ------------------------------------------------------------------------------------------------------------------ |
+| `NODE_ENV`         | `development` \| `test` \| `production`           | `development` | No       | Runtime environment mode                                                                                           |
+| `PORT`             | Integer                                           | `3000`        | No       | HTTP server listen port                                                                                            |
+| `HOST`             | String                                            | `0.0.0.0`     | No       | HTTP server bind address                                                                                           |
+| `TRUST_PROXY`      | Boolean                                           | `true`        | No       | Trust `X-Forwarded-*` headers from reverse proxy; set `false` for direct exposure                                  |
+| `TRUST_PROXY_HOPS` | Integer                                           | `1`           | No       | Trusted proxy hops that append to `X-Forwarded-For`; the resolved client IP used for rate-limit and audit identity |
+| `LOG_LEVEL`        | `debug` \| `info` \| `warn` \| `error` \| `fatal` | `info`        | No       | Pino log level                                                                                                     |
 
 ### Database
 
@@ -134,26 +138,72 @@ When `NODE_ENV=production`, Porta enforces additional validation rules via Zod's
 
 ## System Config (Runtime)
 
-In addition to environment variables, Porta reads runtime configuration from the `system_config` PostgreSQL table. These values are cached in-memory for 60 seconds (`packages/server/src/lib/system-config.ts`).
+Global operational policy lives in the `system_config` PostgreSQL table. The server-owned
+catalog in `packages/server/src/lib/system-config-catalog.ts` defines exactly 18 supported keys,
+native JSONB values, integer bounds, supported locales and application modes. Bootstrap settings,
+infrastructure addresses and root secrets remain environment-owned. Internal bootstrap identity
+rows use a separate native-string reader and are not operational policy.
+
+Runtime readers validate stored values without coercion. Missing, invalid or unavailable values
+use their exact catalog defaults and emit only a catalog key and fixed fallback reason. Found rows
+are cached process-locally for 60 seconds; missing rows and storage failures are not cached.
+Explicit clearing replaces the cache map so a read started before clearing cannot restore stale
+policy in the active cache. The administrative API is a separate authoritative boundary and must
+not present runtime fallbacks as stored values.
 
 System config is managed via:
 
 - **CLI**: `porta config list/get/set`
 - **API**: `GET/PUT /api/admin/config`
+- **Embedded Admin UI**: **System Configuration…** with four maximized Layout DSL tabs and one
+  persistent Save/Cancel footer, using exact read/update capabilities and one changed-key batch.
+
+Keys cannot be created, renamed or deleted through these surfaces. The API returns authoritative
+entries only: missing/corrupt/unavailable storage uses fixed `503 config_store_unavailable` with a
+request ID, not runtime defaults. Unknown/internal/external names share `404 config_entry_not_found`;
+invalid native inputs share `400 config_value_invalid`. Single bodies are exactly `{ value }`, batch
+bodies exactly non-empty `{ values }`. One existing transaction updates targets and writes one
+`admin.config.updated` audit record containing keys and restart status, never values. No upsert or
+automatic mutation retry is added. See [the API design](../architecture/api-design.md#global-operational-configuration).
+
+After a successful save commits, the local process cache is cleared; subsequent runtime reads see
+the saved policy immediately. Other healthy server instances pick up runtime changes on their next
+read within the existing at-most-60-second cache lifetime. Cache expiration is read-driven, not a
+background task. There is no broadcast invalidation, polling worker or automatic server restart.
 
 ### System Config Keys
 
-| Key                          | Type             | Description            |
-| ---------------------------- | ---------------- | ---------------------- |
-| `oidc.ttl.accessToken`       | Number (seconds) | Access token TTL       |
-| `oidc.ttl.refreshToken`      | Number (seconds) | Refresh token TTL      |
-| `oidc.ttl.idToken`           | Number (seconds) | ID token TTL           |
-| `oidc.ttl.session`           | Number (seconds) | OIDC session TTL       |
-| `oidc.ttl.interaction`       | Number (seconds) | Interaction TTL        |
-| `oidc.ttl.authorizationCode` | Number (seconds) | Authorization code TTL |
-| `oidc.ttl.grant`             | Number (seconds) | Grant TTL              |
+| Key                                | Default   | Inclusive range / choices | Unit     | Application mode   |
+| ---------------------------------- | --------- | ------------------------- | -------- | ------------------ |
+| `access_token_ttl`                 | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `id_token_ttl`                     | `3600`    | `60..86400`               | seconds  | `restart-required` |
+| `refresh_token_ttl`                | `2592000` | `300..31536000`           | seconds  | `restart-required` |
+| `authorization_code_ttl`           | `600`     | `30..3600`                | seconds  | `restart-required` |
+| `session_ttl`                      | `86400`   | `300..2592000`            | seconds  | `restart-required` |
+| `magic_link_ttl`                   | `900`     | `60..3600`                | seconds  | `runtime`          |
+| `password_reset_ttl`               | `3600`    | `300..86400`              | seconds  | `runtime`          |
+| `invitation_ttl`                   | `604800`  | `300..2592000`            | seconds  | `runtime`          |
+| `rate_limit_login_max`             | `10`      | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_login_window`          | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_magic_link_max`        | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_magic_link_window`     | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `rate_limit_password_reset_max`    | `5`       | `1..100`                  | attempts | `runtime`          |
+| `rate_limit_password_reset_window` | `900`     | `60..86400`               | seconds  | `runtime`          |
+| `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
+| `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
+| `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
+| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
 
-These TTLs are loaded at startup and passed to the OIDC provider configuration.
+The first five lifetimes are loaded at provider startup; changes require restarting every server
+instance. Interaction lifetime remains fixed at 3600 seconds and grant lifetime follows refresh
+token lifetime. Runtime policy is read at its existing decision point. Absolute artifact expiries
+and existing Redis counter expiries are not rewritten. Queued recovery work reads its current
+lifetime when creating the artifact; lockout eligibility uses the current duration with the
+existing lock timestamp.
+
+Migration `030_global_configuration_catalog.sql` overwrites the 18 canonical rows with native
+defaults, deletes seven obsolete public keys and preserves internal rows. Down is intentionally a
+no-op; development reset uses `yarn admin:env reset` rather than restoring retired public values.
 
 ## Example `.env` File
 
@@ -184,7 +234,9 @@ SMTP_FROM=noreply@porta.local
 LOG_LEVEL=debug
 
 # Reverse proxy
-TRUST_PROXY=false
+TRUST_PROXY=true
+# Set to the exact number of trusted proxies when TRUST_PROXY=true.
+TRUST_PROXY_HOPS=1
 
 # Encryption keys (dev placeholders — replace in production!)
 TWO_FACTOR_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef

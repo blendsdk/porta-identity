@@ -21,62 +21,40 @@ import { flushTestRedis } from '../helpers/redis.js';
 
 // Repository-level imports for direct DB operations
 import { findSuperAdminOrganization } from '../../../src/organizations/repository.js';
+import { findApplicationBySlug } from '../../../src/applications/repository.js';
+import { createApplication, getApplicationBySlug } from '../../../src/applications/index.js';
 import {
-  findApplicationBySlug,
-} from '../../../src/applications/repository.js';
-import {
-  createApplication,
-  getApplicationBySlug,
-} from '../../../src/applications/index.js';
-import {
-  createPermission,
+  insertPermission,
   listPermissionsByApplication,
-} from '../../../src/rbac/index.js';
+} from '../../../src/rbac/permission-repository.js';
+import { insertRole } from '../../../src/rbac/role-repository.js';
 import {
-  createRole,
   assignPermissionsToRole,
   assignRolesToUser,
-  getUserRoles,
-} from '../../../src/rbac/index.js';
-import {
   getPermissionsForRole,
+  getRolesForUser,
 } from '../../../src/rbac/mapping-repository.js';
-import {
-  createClient,
-} from '../../../src/clients/index.js';
-import {
-  createUser,
-  reactivateUser,
-  markEmailVerified,
-} from '../../../src/users/index.js';
+import { createClient } from '../../../src/clients/index.js';
+import { createUser, activateUser, markEmailVerified } from '../../../src/users/index.js';
 import { findUserByEmail } from '../../../src/users/repository.js';
 import { ensureSigningKeys } from '../../../src/lib/signing-keys.js';
 import { getPool } from '../../../src/lib/database.js';
+import {
+  ADMIN_ROLE_DEFINITIONS,
+  ALL_ADMIN_PERMISSIONS,
+  ALL_ADMIN_ROLES,
+} from '../../../src/lib/admin-permissions.js';
 
 // ---------------------------------------------------------------------------
-// Constants — mirror the init command's entity definitions
+// Helpers — mirror the init command's direct bootstrap inserts
 // ---------------------------------------------------------------------------
 
-const ADMIN_PERMISSION_SLUGS = [
-  'admin:organizations:manage',
-  'admin:applications:manage',
-  'admin:clients:manage',
-  'admin:users:manage',
-  'admin:roles:manage',
-  'admin:permissions:manage',
-  'admin:claims:manage',
-  'admin:system:manage',
-];
-
-const ADMIN_PERMISSION_DEFS = ADMIN_PERMISSION_SLUGS.map((slug) => ({
-  slug,
-  name: slug
-    .replace('admin:', '')
-    .replace(':manage', '')
-    .replace(/^\w/, (c) => c.toUpperCase()) +
-    ' Management',
-  description: `Manage ${slug.split(':')[1]}`,
-}));
+/** Build the readable permission name used by the direct bootstrap path. */
+function permissionName(slug: string): string {
+  const [, resource, action] = slug.split(':');
+  const capitalize = (value: string): string => value.charAt(0).toUpperCase() + value.slice(1);
+  return `${capitalize(resource)} ${capitalize(action)}`;
+}
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -110,37 +88,46 @@ describe('Init Flow (Integration)', () => {
       expect(adminApp).not.toBeNull();
       expect(adminApp.slug).toBe('porta-admin');
 
-      // Step 4: Create 8 permissions
-      const permissionIds: string[] = [];
-      for (const def of ADMIN_PERMISSION_DEFS) {
-        const perm = await createPermission({
+      // Step 4: Create the complete static permission catalog.
+      const permissionIds = new Map<string, string>();
+      for (const slug of ALL_ADMIN_PERMISSIONS) {
+        const perm = await insertPermission({
           applicationId: adminApp.id,
-          name: def.name,
-          slug: def.slug,
-          description: def.description,
+          name: permissionName(slug),
+          slug,
+          description: `Permission to administer ${slug.split(':')[1]}`,
         });
-        permissionIds.push(perm.id);
+        permissionIds.set(slug, perm.id);
       }
 
       // Verify permissions exist in DB
       const perms = await listPermissionsByApplication(adminApp.id);
-      expect(perms).toHaveLength(8);
+      expect(perms).toHaveLength(ALL_ADMIN_PERMISSIONS.length);
       const permSlugs = perms.map((p) => p.slug).sort();
-      expect(permSlugs).toEqual([...ADMIN_PERMISSION_SLUGS].sort());
+      expect(permSlugs).toEqual([...ALL_ADMIN_PERMISSIONS].sort());
 
-      // Step 5: Create role
-      const adminRole = await createRole({
-        applicationId: adminApp.id,
-        name: 'Porta Administrator',
-        slug: 'porta-admin',
-        description: 'Full administrative access to Porta',
-      });
-      expect(adminRole.slug).toBe('porta-admin');
-
-      // Step 6: Assign all permissions to role
-      await assignPermissionsToRole(adminRole.id, permissionIds);
-      const rolePerms = await getPermissionsForRole(adminRole.id);
-      expect(rolePerms).toHaveLength(8);
+      // Steps 5–6: Create every built-in role and its static permission links.
+      const createdRoles = new Map<string, string>();
+      for (const definition of ALL_ADMIN_ROLES) {
+        const role = await insertRole({
+          applicationId: adminApp.id,
+          name: definition.name,
+          slug: definition.slug,
+          description: definition.description,
+        });
+        createdRoles.set(role.slug, role.id);
+        const rolePermissionIds = definition.permissions.map((slug) => {
+          const permissionId = permissionIds.get(slug);
+          if (!permissionId) throw new Error(`Missing bootstrap permission: ${slug}`);
+          return permissionId;
+        });
+        await assignPermissionsToRole(adminApp.id, role.id, rolePermissionIds);
+      }
+      expect(createdRoles.size).toBe(ALL_ADMIN_ROLES.length);
+      const superAdminRoleId = createdRoles.get(ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug);
+      expect(superAdminRoleId).toBeDefined();
+      const rolePerms = await getPermissionsForRole(adminApp.id, superAdminRoleId!);
+      expect(rolePerms).toHaveLength(ALL_ADMIN_PERMISSIONS.length);
 
       // Step 7: Create public PKCE client
       const { client: adminClient } = await createClient({
@@ -149,10 +136,7 @@ describe('Init Flow (Integration)', () => {
         clientName: 'Porta Admin CLI',
         clientType: 'public',
         applicationType: 'native',
-        redirectUris: [
-          'http://127.0.0.1/callback',
-          'http://localhost/callback',
-        ],
+        redirectUris: ['http://127.0.0.1/callback', 'http://localhost/callback'],
         postLogoutRedirectUris: [],
         grantTypes: ['authorization_code', 'refresh_token'],
         scope: 'openid profile email offline_access',
@@ -162,10 +146,9 @@ describe('Init Flow (Integration)', () => {
 
       // Verify client in DB
       const pool = getPool();
-      const clientResult = await pool.query(
-        'SELECT * FROM clients WHERE application_id = $1',
-        [adminApp.id],
-      );
+      const clientResult = await pool.query('SELECT * FROM clients WHERE application_id = $1', [
+        adminApp.id,
+      ]);
       expect(clientResult.rows).toHaveLength(1);
       expect(clientResult.rows[0].client_type).toBe('public');
       expect(clientResult.rows[0].require_pkce).toBe(true);
@@ -182,24 +165,21 @@ describe('Init Flow (Integration)', () => {
       // Step 9: Activate user (if not already active) and verify email.
       // The service may create users as 'active' when a password is provided.
       if (adminUser.status !== 'active') {
-        await reactivateUser(adminUser.id);
+        await activateUser(adminUser.id);
       }
       await markEmailVerified(adminUser.id);
 
       // Verify user state in DB
-      const verifiedUser = await findUserByEmail(
-        superAdminOrg!.id,
-        'admin@test.example.com',
-      );
+      const verifiedUser = await findUserByEmail(superAdminOrg!.id, 'admin@test.example.com');
       expect(verifiedUser).not.toBeNull();
       expect(verifiedUser!.status).toBe('active');
       expect(verifiedUser!.emailVerified).toBe(true);
 
       // Step 10: Assign admin role to user
-      await assignRolesToUser(adminUser.id, [adminRole.id]);
-      const userRoles = await getUserRoles(adminUser.id);
+      await assignRolesToUser(superAdminOrg!.id, adminUser.id, [superAdminRoleId!], adminUser.id);
+      const userRoles = await getRolesForUser(adminUser.id);
       expect(userRoles).toHaveLength(1);
-      expect(userRoles[0].slug).toBe('porta-admin');
+      expect(userRoles[0].slug).toBe(ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug);
     });
   });
 
@@ -239,19 +219,19 @@ describe('Init Flow (Integration)', () => {
         slug: 'porta-admin',
         description: 'Admin app',
       });
-      const perm = await createPermission({
+      const perm = await insertPermission({
         applicationId: app.id,
         name: 'Test Permission',
         slug: 'admin:test:manage',
         description: 'Test',
       });
-      const role = await createRole({
+      const role = await insertRole({
         applicationId: app.id,
         name: 'Test Role',
         slug: 'test-admin',
         description: 'Test',
       });
-      await assignPermissionsToRole(role.id, [perm.id]);
+      await assignPermissionsToRole(app.id, role.id, [perm.id]);
 
       // Flush Redis — all cache entries are gone
       await flushTestRedis();
@@ -265,7 +245,7 @@ describe('Init Flow (Integration)', () => {
       expect(permsFromDb).toHaveLength(1);
       expect(permsFromDb[0].slug).toBe('admin:test:manage');
 
-      const rolePerms = await getPermissionsForRole(role.id);
+      const rolePerms = await getPermissionsForRole(app.id, role.id);
       expect(rolePerms).toHaveLength(1);
     });
   });

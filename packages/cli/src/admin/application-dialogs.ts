@@ -1,0 +1,505 @@
+/** Movable Layout DSL dialogs for deployment-global application administration. */
+
+import type {
+  CreateApplicationInput,
+  CreateModuleInput,
+  UpdateApplicationInput,
+  UpdateModuleInput,
+} from '@portaidentity/sdk';
+import {
+  Button,
+  col,
+  Commands,
+  cover,
+  Dialog,
+  fixed,
+  grow,
+  Input,
+  Label,
+  Memo,
+  row,
+  signal,
+  spacer,
+  Text,
+} from '@jsvision/ui';
+import type { EventLoop, ModalDialogHost, Signal, Validator } from '@jsvision/ui';
+
+import { runAbortableAdminDialog } from './application-runtime.js';
+import type { AdminApplication, AdminApplicationModule } from './application-state.js';
+import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
+import { SelectableReadOnlyInput } from './selectable-read-only-input.js';
+import { textValidator } from './user-dialog-fields.js';
+
+/** Plain-language scope note shown when an application is created. */
+const APPLICATION_CREATE_SCOPE_NOTICE = 'This application will be available to every organization.';
+
+/** Plain-language scope note shown when a shared application or module changes. */
+const APPLICATION_CHANGE_SCOPE_NOTICE = 'Changes apply wherever this application is used.';
+
+/** Preferred height that leaves the shared description memo several visible editing rows. */
+const ENTITY_FORM_DIALOG_HEIGHT = 20;
+
+/** Modal host needed for abort-driven application dialog closure. */
+export interface AdminApplicationDialogHost extends ModalDialogHost {
+  /** Event loop that can synchronously close the currently owned modal. */
+  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal' | 'focusView'>;
+}
+
+/** Result of the global application create dialog. */
+export type CreateApplicationDialogResult =
+  { readonly kind: 'create'; readonly input: CreateApplicationInput } | { readonly kind: 'cancel' };
+
+/** Result of the global application edit dialog. */
+export type EditApplicationDialogResult =
+  | {
+      readonly kind: 'update';
+      readonly applicationId: string;
+      readonly etag?: string;
+      readonly input: UpdateApplicationInput;
+    }
+  | { readonly kind: 'cancel' };
+
+/** Application lifecycle choices that require an explicit warning. */
+export type ApplicationLifecycleAction = 'deactivate';
+
+/** Result of an application lifecycle confirmation. */
+export type ApplicationLifecycleDialogResult =
+  | {
+      readonly kind: ApplicationLifecycleAction;
+      readonly applicationId: string;
+    }
+  | { readonly kind: 'cancel' };
+
+/** Result of the module create dialog. */
+export type CreateModuleDialogResult =
+  | {
+      readonly kind: 'create-module';
+      readonly applicationId: string;
+      readonly input: CreateModuleInput;
+    }
+  | { readonly kind: 'cancel' };
+
+/** Result of the module edit dialog. */
+export type EditModuleDialogResult =
+  | {
+      readonly kind: 'update-module';
+      readonly applicationId: string;
+      readonly moduleId: string;
+      readonly input: UpdateModuleInput;
+    }
+  | { readonly kind: 'cancel' };
+
+/** Result of the module deactivation confirmation. */
+export type ModuleDeactivationDialogResult =
+  | {
+      readonly kind: 'deactivate-module';
+      readonly applicationId: string;
+      readonly moduleId: string;
+    }
+  | { readonly kind: 'cancel' };
+
+/** Result of an irreversible application or module deletion dialog. */
+export type ApplicationDeleteDialogResult =
+  { readonly kind: 'delete'; readonly applicationId: string } | { readonly kind: 'cancel' };
+
+/** Result of an irreversible module deletion dialog. */
+export type ModuleDeleteDialogResult =
+  | { readonly kind: 'delete'; readonly applicationId: string; readonly moduleId: string }
+  | { readonly kind: 'cancel' };
+
+/** Signals and controls shared by the small application and module forms. */
+interface EntityForm {
+  /** Mutable display name. */
+  readonly name: Signal<string>;
+  /** Optional create-only slug. */
+  readonly slug?: Signal<string>;
+  /** Optional or nullable description. */
+  readonly description: Signal<string>;
+  /** Name input used by the dialog validity sweep. */
+  readonly nameInput: Input;
+  /** Create-only slug input used by the dialog validity sweep. */
+  readonly slugInput?: Input;
+  /** Multiline bounded description editor. */
+  readonly descriptionMemo: Memo;
+}
+
+/** Dialog that includes its multiline description in the modal validity gate. */
+class EntityDialog extends Dialog {
+  /** Creates one ordinary movable dialog with a bounded description owner. */
+  constructor(
+    title: string,
+    width: number,
+    height: number,
+    private readonly description: Signal<string>,
+    private readonly descriptionMemo: Memo,
+  ) {
+    super({ title, width, height, centered: true });
+  }
+
+  /** Rejects oversized or unsafe descriptions before the modal can close. */
+  valid(command: string): boolean {
+    if (
+      command !== Commands.cancel &&
+      !validMultilineText(this.description.peek(), 0, 2_000, true)
+    ) {
+      this.firstInvalid = this.descriptionMemo;
+      return false;
+    }
+    return super.valid(command);
+  }
+}
+
+/** Accepts bounded memo text with line endings while rejecting other terminal controls. */
+function validMultilineText(
+  value: string,
+  minimum: number,
+  maximum: number,
+  optional = false,
+): boolean {
+  if (value.length === 0) return optional || minimum === 0;
+  if (value.length < minimum || value.length > maximum) return false;
+  for (const character of value) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (codePoint === 0x0a || codePoint === 0x0d) continue;
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return false;
+  }
+  return true;
+}
+
+/** Creates the server-compatible create-only slug validator. */
+function slugValidator(): Validator {
+  const syntax = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
+  return {
+    isValidInput: (value) =>
+      value.length <= 100 && ![...value].some((character) => character.codePointAt(0)! <= 0x1f),
+    isValid: (value) =>
+      value.length === 0 || (value.length >= 3 && value.length <= 100 && syntax.test(value)),
+  };
+}
+
+/** Returns a dialog size capped to the current terminal surface. */
+function dialogSize(
+  host: AdminApplicationDialogHost,
+  preferredWidth: number,
+  preferredHeight: number,
+): { readonly width: number; readonly height: number } {
+  return {
+    width: Math.max(1, Math.min(preferredWidth, host.desktop.bounds.width)),
+    height: Math.max(1, Math.min(preferredHeight, host.desktop.bounds.height)),
+  };
+}
+
+/** Runs one abortable modal and always removes its window from the desktop. */
+async function runDialog(
+  host: AdminApplicationDialogHost,
+  dialog: Dialog,
+  operationSignal: AbortSignal,
+): Promise<string> {
+  host.desktop.addWindow(dialog);
+  try {
+    return await runAbortableAdminDialog(
+      host.loop,
+      operationSignal,
+      async () => (await host.loop.execView<string>(dialog)) ?? Commands.cancel,
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === 'AbortError') return Commands.cancel;
+    throw error;
+  } finally {
+    host.desktop.removeWindow(dialog);
+  }
+}
+
+/** Creates one labeled single-line row that cannot stretch vertically. */
+function inputRow(label: string, input: Input): ReturnType<typeof row> {
+  return fixed(row({ gap: 1 }, fixed(new Label(label, input), 14), grow(input)), 1);
+}
+
+/** Creates form signals and controls for create or edit. */
+function entityForm(
+  current?: AdminApplication | AdminApplicationModule,
+  includeSlug = false,
+): EntityForm {
+  const name = signal(current?.name ?? '');
+  const slug = includeSlug ? signal('') : undefined;
+  const description = signal(current?.description ?? '');
+  const nameInput = new Input({
+    value: name,
+    maxLength: 255,
+    validator: textValidator(1, 255, false),
+  });
+  const slugInput = slug
+    ? new Input({ value: slug, maxLength: 100, validator: slugValidator() })
+    : undefined;
+  const descriptionMemo = new Memo({ value: description });
+  return {
+    name,
+    ...(slug ? { slug } : {}),
+    description,
+    nameInput,
+    ...(slugInput ? { slugInput } : {}),
+    descriptionMemo,
+  };
+}
+
+/** Builds the complete Layout DSL content for one entity form. */
+function formLayout(
+  form: EntityForm,
+  readOnlySlug: string | undefined,
+  submitLabel: string,
+  scopeNotice: string,
+): ReturnType<typeof col> {
+  return col(
+    { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+    inputRow('Name', form.nameInput),
+    form.slugInput && inputRow('Slug', form.slugInput),
+    readOnlySlug ? inputRow('Slug', new SelectableReadOnlyInput(readOnlySlug)) : undefined,
+    fixed(new Text('Description'), 1),
+    grow(form.descriptionMemo, 1, { min: 4 }),
+    fixed(new Text(scopeNotice), 1),
+    fixed(
+      row(
+        { gap: 1 },
+        spacer(),
+        new Button(submitLabel, { command: Commands.ok, default: true }),
+        new Button('Cancel', { command: Commands.cancel }),
+      ),
+      2,
+    ),
+  );
+}
+
+/** Shows the application create form with optional slug and description. */
+export async function showCreateApplicationDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+): Promise<CreateApplicationDialogResult> {
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
+  const form = entityForm(undefined, true);
+  const dialog = new EntityDialog(
+    'Create application',
+    width,
+    height,
+    form.description,
+    form.descriptionMemo,
+  );
+  dialog.add(cover(formLayout(form, undefined, '~C~reate', APPLICATION_CREATE_SCOPE_NOTICE)));
+  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
+  const input: CreateApplicationInput = { name: form.name.peek() };
+  if (form.slug?.peek()) input.slug = form.slug.peek();
+  if (form.description.peek()) input.description = form.description.peek();
+  return { kind: 'create', input };
+}
+
+/** Shows the application editor while keeping its stable slug read-only. */
+export async function showEditApplicationDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  application: AdminApplication,
+  etag?: string,
+): Promise<EditApplicationDialogResult> {
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
+  const form = entityForm(application);
+  const dialog = new EntityDialog(
+    'Edit application',
+    width,
+    height,
+    form.description,
+    form.descriptionMemo,
+  );
+  dialog.add(cover(formLayout(form, application.slug, '~S~ave', APPLICATION_CHANGE_SCOPE_NOTICE)));
+  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
+  const input: UpdateApplicationInput = {};
+  if (form.name.peek() !== application.name) input.name = form.name.peek();
+  if (form.description.peek() !== (application.description ?? '')) {
+    input.description = form.description.peek() || null;
+  }
+  return {
+    kind: 'update',
+    applicationId: application.id,
+    ...(etag ? { etag } : {}),
+    input,
+  };
+}
+
+/** Shows the exact application lifecycle effect before dispatch. */
+export async function showApplicationLifecycleDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  action: ApplicationLifecycleAction,
+  application: AdminApplication,
+): Promise<ApplicationLifecycleDialogResult> {
+  const { width, height } = dialogSize(host, 68, 12);
+  const title = 'Deactivate application';
+  const dialog = new Dialog({ title, width, height, centered: true });
+  dialog.add(
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(
+          new Text(
+            `${title}: ${application.name}?\nNew client creation stops.\nExisting clients remain enabled.`,
+          ),
+        ),
+        fixed(new Text(APPLICATION_CHANGE_SCOPE_NOTICE), 1),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            new Button(title, { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
+          ),
+          2,
+        ),
+      ),
+    ),
+  );
+  return (await runDialog(host, dialog, operationSignal)) === Commands.ok
+    ? { kind: action, applicationId: application.id }
+    : { kind: 'cancel' };
+}
+
+/** Shows the deployment-global cascade before permanently deleting an application. */
+export async function showDeleteApplicationDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  application: AdminApplication,
+): Promise<ApplicationDeleteDialogResult> {
+  const { width, height } = dialogSize(host, 76, 14);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(application.name, width), {
+    command: Commands.yes,
+  });
+  const dialog = new Dialog({ title: 'Delete application', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Application: ${application.name}`,
+    warning:
+      'This deployment-global deletion removes its modules, clients, roles, permissions, and claims.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes
+    ? { kind: 'delete', applicationId: application.id }
+    : { kind: 'cancel' };
+}
+
+/** Shows the module create form under its explicit internal parent UUID. */
+export async function showCreateModuleDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  applicationId: string,
+): Promise<CreateModuleDialogResult> {
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
+  const form = entityForm(undefined, true);
+  const dialog = new EntityDialog(
+    'Add module',
+    width,
+    height,
+    form.description,
+    form.descriptionMemo,
+  );
+  dialog.add(cover(formLayout(form, undefined, '~A~dd', APPLICATION_CHANGE_SCOPE_NOTICE)));
+  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
+  const input: CreateModuleInput = { name: form.name.peek() };
+  if (form.slug?.peek()) input.slug = form.slug.peek();
+  if (form.description.peek()) input.description = form.description.peek();
+  return { kind: 'create-module', applicationId, input };
+}
+
+/** Shows the module editor with its stable slug and parent kept read-only. */
+export async function showEditModuleDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  module: AdminApplicationModule,
+): Promise<EditModuleDialogResult> {
+  const { width, height } = dialogSize(host, 68, ENTITY_FORM_DIALOG_HEIGHT);
+  const form = entityForm(module);
+  const dialog = new EntityDialog(
+    'Edit module',
+    width,
+    height,
+    form.description,
+    form.descriptionMemo,
+  );
+  dialog.add(cover(formLayout(form, module.slug, '~S~ave', APPLICATION_CHANGE_SCOPE_NOTICE)));
+  if ((await runDialog(host, dialog, operationSignal)) !== Commands.ok) return { kind: 'cancel' };
+  const input: UpdateModuleInput = {};
+  if (form.name.peek() !== module.name) input.name = form.name.peek();
+  if (form.description.peek() !== (module.description ?? '')) {
+    input.description = form.description.peek() || null;
+  }
+  return {
+    kind: 'update-module',
+    applicationId: module.applicationId,
+    moduleId: module.id,
+    input,
+  };
+}
+
+/** Shows the exact module deactivation target before dispatch. */
+export async function showModuleDeactivationDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  application: AdminApplication,
+  module: AdminApplicationModule,
+): Promise<ModuleDeactivationDialogResult> {
+  if (module.applicationId !== application.id) return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 68, 11);
+  const dialog = new Dialog({ title: 'Deactivate module', width, height, centered: true });
+  dialog.add(
+    cover(
+      col(
+        { gap: 1, padding: { top: 1, right: 2, bottom: 1, left: 2 } },
+        grow(new Text(`Application: ${application.name}\nModule: ${module.name}`)),
+        fixed(new Text(APPLICATION_CHANGE_SCOPE_NOTICE), 1),
+        fixed(
+          row(
+            { gap: 1 },
+            spacer(),
+            new Button('Deactivate', { command: Commands.ok, default: true }),
+            new Button('Cancel', { command: Commands.cancel }),
+          ),
+          2,
+        ),
+      ),
+    ),
+  );
+  return (await runDialog(host, dialog, operationSignal)) === Commands.ok
+    ? {
+        kind: 'deactivate-module',
+        applicationId: application.id,
+        moduleId: module.id,
+      }
+    : { kind: 'cancel' };
+}
+
+/** Shows the owned-permission cascade before permanently deleting a module. */
+export async function showDeleteModuleDialog(
+  host: AdminApplicationDialogHost,
+  operationSignal: AbortSignal,
+  application: AdminApplication,
+  module: AdminApplicationModule,
+): Promise<ModuleDeleteDialogResult> {
+  if (module.applicationId !== application.id) return { kind: 'cancel' };
+  const { width, height } = dialogSize(host, 70, 13);
+  const keep = new Button('Keep', { command: Commands.cancel, default: true });
+  const remove = new Button(deleteActionLabel(module.name, width), { command: Commands.yes });
+  const dialog = new Dialog({ title: 'Delete module', width, height, centered: true });
+  const confirmation = deleteConfirmationLayout({
+    dialogWidth: width,
+    details: `Application: ${application.name}\nModule: ${module.name}`,
+    warning: 'Deleting this module also deletes its\npermissions and dependent links.',
+    keep,
+    remove,
+  });
+  dialog.add(cover(confirmation.content));
+  const outcome = runDialog(host, dialog, operationSignal);
+  host.loop.focusView(keep);
+  return (await outcome) === Commands.yes
+    ? { kind: 'delete', applicationId: application.id, moduleId: module.id }
+    : { kind: 'cancel' };
+}

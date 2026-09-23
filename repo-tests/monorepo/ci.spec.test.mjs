@@ -344,8 +344,8 @@ test('should contain no publishing, release, versioning, deprecation, deployment
   );
 });
 
-// Retired playgrounds and the known provisioning-smoke defect remain outside the migration CI gate.
-test('should exclude retired playground and provisioning-smoke commands from branch CI', () => {
+// Retired playground and legacy smoke commands remain outside the migration CI gate.
+test('should exclude retired playground and legacy smoke commands from branch CI', () => {
   const commands = getRunSteps(readBuildAndTestWorkflow())
     .map(({ command }) => command)
     .join('\n');
@@ -357,7 +357,7 @@ test('should exclude retired playground and provisioning-smoke commands from bra
   );
   assert.doesNotMatch(
     commands,
-    /\bprovision:smoke\b|scripts\/provision-smoke-test\.ts/i,
-    `${workflowPath} must preserve the documented provisioning-smoke baseline exclusion`,
+    /\bprovision:smoke\b/i,
+    `${workflowPath} must not restore the retired provisioning smoke command`,
   );
 });

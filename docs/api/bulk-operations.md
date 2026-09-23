@@ -30,16 +30,15 @@ Content-Type: application/json
 | Field    | Type   | Required | Description                                  |
 | -------- | ------ | -------- | -------------------------------------------- |
 | `ids`    | UUID[] | Yes      | Organization IDs (1-100)                     |
-| `action` | string | Yes      | One of: `activate`, `suspend`, `archive`     |
+| `action` | string | Yes      | One of: `activate`, `suspend`                |
 | `reason` | string | No       | Reason for the status change (max 500 chars) |
 
 ### Valid Organization Transitions
 
-| Action     | From Status       | To Status |
-| ---------- | ----------------- | --------- |
-| `activate` | suspended         | active    |
-| `suspend`  | active            | suspended |
-| `archive`  | active, suspended | archived  |
+| Action     | From Status | To Status |
+| ---------- | ----------- | --------- |
+| `activate` | suspended   | active    |
+| `suspend`  | active      | suspended |
 
 ## Bulk User Status Change
 
@@ -54,28 +53,23 @@ Content-Type: application/json
 ```json
 {
   "ids": ["uuid-1", "uuid-2"],
-  "action": "suspend",
-  "reason": "Suspicious activity",
+  "action": "deactivate",
   "organizationId": "org-uuid"
 }
 ```
 
-| Field            | Type   | Required | Description                                                   |
-| ---------------- | ------ | -------- | ------------------------------------------------------------- |
-| `ids`            | UUID[] | Yes      | User IDs (1-100)                                              |
-| `action`         | string | Yes      | One of: `activate`, `deactivate`, `suspend`, `lock`, `unlock` |
-| `reason`         | string | No       | Reason for suspend/lock (max 500 chars)                       |
-| `organizationId` | UUID   | Yes      | Organization scope                                            |
+| Field            | Type   | Required | Description                      |
+| ---------------- | ------ | -------- | -------------------------------- |
+| `ids`            | UUID[] | Yes      | User IDs (1-100)                 |
+| `action`         | string | Yes      | One of: `activate`, `deactivate` |
+| `organizationId` | UUID   | Yes      | Organization scope               |
 
 ### Valid User Transitions
 
-| Action       | From Status         | To Status |
-| ------------ | ------------------- | --------- |
-| `activate`   | inactive, suspended | active    |
-| `deactivate` | active              | inactive  |
-| `suspend`    | active              | suspended |
-| `lock`       | active              | locked    |
-| `unlock`     | locked              | active    |
+| Action       | From Status | To Status |
+| ------------ | ----------- | --------- |
+| `activate`   | inactive    | active    |
+| `deactivate` | active      | inactive  |
 
 ## Response Format
 
@@ -92,13 +86,13 @@ Both endpoints return the same response format with per-item results:
       "success": true,
       "code": null,
       "previousStatus": "active",
-      "newStatus": "suspended"
+      "newStatus": "inactive"
     },
     {
       "id": "uuid-2",
       "success": true,
       "previousStatus": "active",
-      "newStatus": "suspended"
+      "newStatus": "inactive"
     },
     {
       "id": "uuid-3",

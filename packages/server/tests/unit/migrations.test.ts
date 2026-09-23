@@ -194,5 +194,19 @@ describe('Migration File Validation', () => {
       expect(upSection).not.toMatch(/CHECK\s*\([^)]*login_methods/i);
       expect(upSection).not.toMatch(/CHECK\s*\([^)]*default_login_methods/i);
     });
+
+    it('028_totp_replay_protection.sql adds replay state and fixed TOTP constraints', () => {
+      const content = readFileSync(
+        join(MIGRATIONS_DIR, '028_totp_replay_protection.sql'),
+        'utf-8',
+      );
+      const downSection = content.slice(content.indexOf('-- Down Migration'));
+
+      expect(content).toContain('last_accepted_time_step BIGINT');
+      expect(content).toContain('user_totp_algorithm_check');
+      expect(content).toContain('user_totp_digits_check');
+      expect(content).toContain('user_totp_period_check');
+      expect(downSection).toContain('DROP COLUMN IF EXISTS last_accepted_time_step');
+    });
   });
 });

@@ -7,7 +7,7 @@ techdocs: true
 > **Project**: Porta
 > **Type**: Multi-tenant OIDC Provider (API / SaaS)
 > **Tech Stack**: TypeScript, Koa, node-oidc-provider, PostgreSQL, Redis
-> **Last Updated**: 2026-08-26
+> **Last Updated**: 2026-09-15
 
 ---
 
@@ -20,6 +20,9 @@ contribute to the Porta codebase.
 
 For product documentation (how to use, configure, and administer Porta),
 see the [main documentation](../docs/).
+
+The `techdocs: true` frontmatter is Porta's automatic-maintenance opt-in. This repository keeps the
+marker here because `docs/index.md` is the published product-documentation home.
 
 ## Contents
 
@@ -40,6 +43,7 @@ see the [main documentation](../docs/).
 | [Decision Log](decisions/index.md)                            | Architecture Decision Records (ADRs)                                          |
 | [Getting Started](guides/getting-started.md)                  | Developer setup, prerequisites, first run                                     |
 | [Development Workflow](guides/development.md)                 | Coding patterns, testing, module conventions                                  |
+| [Admin Playground](guides/admin-playground.md)                | Local admin shell, MailHog, persistence, reset, and troubleshooting           |
 | [Release Operations](guides/releasing.md)                     | Lockstep npm release, Trusted Publishing cutover, and Docker verification     |
 | [SDK CLI Migration Record](guides/sdk-cli-migration.md)       | Historical rationale for adopting the shared SDK in the CLI                   |
 | [Deployment](guides/deployment.md)                            | Production deployment, Docker, environment config                             |

@@ -143,7 +143,7 @@ describe('types', () => {
     });
 
     it('should handle all user statuses', () => {
-      for (const status of ['active', 'inactive', 'suspended', 'locked'] as const) {
+      for (const status of ['active', 'inactive', 'locked'] as const) {
         const row = createTestRow({ status });
         const user = mapRowToUser(row);
         expect(user.status).toBe(status);

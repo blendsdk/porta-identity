@@ -79,17 +79,13 @@ test('should expose the exact organization ontology and required tenant cardinal
   assertOrdinaryTenant(publicManifest.bravo);
 });
 
-// Active, locked, suspended, two-factor, recovery, and enumeration identities are explicit so a
+// Active, locked, two-factor, recovery, and enumeration identities are explicit so a
 // slice never has to infer account behavior from production implementation details.
 test('should provide unambiguous ordinary-principal authentication states', async () => {
   const { publicManifest } = await loadFixtureAssuranceSurface();
 
   for (const tenant of [publicManifest.alpha, publicManifest.bravo]) {
-    assert.deepEqual(uniqueSorted(tenant.users.map((user) => user.state)), [
-      'active',
-      'locked',
-      'suspended',
-    ]);
+    assert.deepEqual(uniqueSorted(tenant.users.map((user) => user.state)), ['active', 'locked']);
     assert.ok(tenant.users.some((user) => user.twoFactorEnabled));
     assert.ok(tenant.users.some((user) => user.recoveryEnabled));
     assert.ok(tenant.users.some((user) => user.enumerationSubject));

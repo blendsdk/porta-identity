@@ -16,9 +16,10 @@ vi.mock('../../../src/clients/service.js', () => ({
   updateClient: vi.fn(),
   listClientsByOrganization: vi.fn(),
   listClientsByApplication: vi.fn(),
+  listClientsCursor: vi.fn(),
   deactivateClient: vi.fn(),
   activateClient: vi.fn(),
-  revokeClient: vi.fn(),
+  deleteClient: vi.fn(),
   findForOidc: vi.fn(),
 }));
 
@@ -200,6 +201,7 @@ describe('client routes', () => {
     (organizationService.getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(
       createTestOrg(),
     );
+    (clientService.getClientById as ReturnType<typeof vi.fn>).mockResolvedValue(createTestClient());
   });
 
   // -------------------------------------------------------------------------
@@ -410,6 +412,42 @@ describe('client routes', () => {
       expect(ctx.body).toEqual(result);
       expect(clientService.listClientsByOrganization).toHaveBeenCalled();
     });
+
+    it('should decorate every offset-paginated client with effective login methods', async () => {
+      const client = createTestClient({ loginMethods: null });
+      const result = { data: [client], total: 1, page: 1, pageSize: 20, totalPages: 1 };
+      (clientService.listClientsByOrganization as ReturnType<typeof vi.fn>).mockResolvedValue(
+        result,
+      );
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'GET', '/api/admin/clients');
+      const ctx = createMockCtx({ query: {} });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(ctx.body).toEqual({
+        ...result,
+        data: [{ ...client, effectiveLoginMethods: ['password', 'magic_link'] }],
+      });
+    });
+
+    it('should decorate every cursor-paginated client with effective login methods', async () => {
+      const client = createTestClient({ loginMethods: ['magic_link'] });
+      const result = { data: [client], total: 1, cursor: null, hasMore: false };
+      (clientService.listClientsCursor as ReturnType<typeof vi.fn>).mockResolvedValue(result);
+
+      const router = createClientRouter();
+      const handler = findHandler(router, 'GET', '/api/admin/clients');
+      const ctx = createMockCtx({ query: { limit: '20' } });
+
+      await handler(ctx as never, vi.fn());
+
+      expect(ctx.body).toEqual({
+        ...result,
+        data: [{ ...client, effectiveLoginMethods: ['magic_link'] }],
+      });
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -575,32 +613,6 @@ describe('client routes', () => {
   // Status actions
   // -------------------------------------------------------------------------
 
-  describe('POST /:id/revoke', () => {
-    it('should return 204 on success', async () => {
-      (clientService.revokeClient as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
-
-      const router = createClientRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/revoke');
-      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
-
-      await handler(ctx as never, vi.fn());
-
-      expect(ctx.status).toBe(204);
-    });
-
-    it('should throw 400 when already revoked', async () => {
-      (clientService.revokeClient as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new ClientValidationError('Client is already revoked'),
-      );
-
-      const router = createClientRouter();
-      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/revoke');
-      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' } });
-
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
-    });
-  });
-
   describe('POST /:id/activate', () => {
     it('should return 204 on success', async () => {
       (clientService.activateClient as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
@@ -668,6 +680,18 @@ describe('client routes', () => {
 
       expect(ctx.status).toBe(201);
     });
+
+    it('should map the active-secret cap to the fixed client-validation response', async () => {
+      (secretService.generateAndStore as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new ClientValidationError('Client secret active limit reached'),
+      );
+      const router = createClientRouter();
+      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets');
+      const ctx = createMockCtx({ params: { id: 'client-db-uuid-1' }, body: {} });
+
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
+      expect(ctx.throw).toHaveBeenCalledWith(400, 'Client request is invalid');
+    });
   });
 
   describe('GET /:id/secrets — List secrets', () => {
@@ -691,16 +715,12 @@ describe('client routes', () => {
     });
   });
 
-  describe('POST /:id/secrets/:secretId/revoke — Revoke secret', () => {
+  describe('POST /:id/secrets/:secretId/revoke — Permanently delete secret', () => {
     it('should return 204 on success', async () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 
       const router = createClientRouter();
-      const handler = findHandler(
-        router,
-        'POST',
-        '/api/admin/clients/:id/secrets/:secretId/revoke',
-      );
+      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets/:secretId/revoke');
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
@@ -708,26 +728,21 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(204);
-      // Verify secretId is used (not the client id)
-      expect(secretService.revoke).toHaveBeenCalledWith('secret-uuid-1');
+      expect(secretService.revoke).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
     });
 
-    it('should throw 400 when secret already revoked', async () => {
+    it('should throw 404 when the secret no longer exists', async () => {
       (secretService.revoke as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new ClientValidationError('Secret is already revoked'),
+        new ClientNotFoundError('secret-uuid-1'),
       );
 
       const router = createClientRouter();
-      const handler = findHandler(
-        router,
-        'POST',
-        '/api/admin/clients/:id/secrets/:secretId/revoke',
-      );
+      const handler = findHandler(router, 'POST', '/api/admin/clients/:id/secrets/:secretId/revoke');
       const ctx = createMockCtx({
         params: { id: 'client-db-uuid-1', secretId: 'secret-uuid-1' },
       });
 
-      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client request is invalid');
+      await expect(handler(ctx as never, vi.fn())).rejects.toThrow('Client not found');
     });
   });
 
@@ -751,7 +766,7 @@ describe('client routes', () => {
       expect(paths).toContain('GET /api/admin/clients');
       expect(paths).toContain('GET /api/admin/clients/:id');
       expect(paths).toContain('PUT /api/admin/clients/:id');
-      expect(paths).toContain('POST /api/admin/clients/:id/revoke');
+      expect(paths).toContain('DELETE /api/admin/clients/:id');
       expect(paths).toContain('POST /api/admin/clients/:id/activate');
       expect(paths).toContain('POST /api/admin/clients/:id/deactivate');
       expect(paths).toContain('POST /api/admin/clients/:id/secrets');

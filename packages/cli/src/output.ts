@@ -16,6 +16,26 @@ import Table from 'cli-table3';
 import chalk from 'chalk';
 
 /**
+ * Replace terminal control characters before rendering untrusted text.
+ *
+ * JSON output remains untouched because `JSON.stringify` escapes controls for machine consumers.
+ * Human output uses this boundary to prevent stored names or labels from emitting terminal escape
+ * sequences, changing the screen, or writing to the clipboard.
+ *
+ * @param value - Text that may originate from the server or command input
+ * @returns Printable text with C0, DEL, and C1 controls replaced
+ */
+export function sanitizeTerminalText(value: string): string {
+  return Array.from(value, (character) => {
+    const codePoint = character.codePointAt(0);
+    return codePoint !== undefined &&
+      (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
+      ? '\ufffd'
+      : character;
+  }).join('');
+}
+
+/**
  * Formats data as a table and prints to stdout.
  *
  * Creates a cli-table3 instance with bold headers and prints each row. Cell
@@ -29,12 +49,11 @@ import chalk from 'chalk';
  */
 export function printTable(headers: string[], rows: string[][]): void {
   const table = new Table({
-    head: headers.map((h) => chalk.bold(h)),
+    head: headers.map((header) => chalk.bold(sanitizeTerminalText(header))),
   });
-  rows.forEach((row) => table.push(row));
+  rows.forEach((row) => table.push(row.map(sanitizeTerminalText)));
   console.log(table.toString());
 }
-
 
 /**
  * Prints data as formatted JSON to stdout.
@@ -54,7 +73,7 @@ export function printJson(data: unknown): void {
  * @param message - The success message
  */
 export function success(message: string): void {
-  console.log(chalk.green(`✓ ${message}`));
+  console.log(chalk.green(`✓ ${sanitizeTerminalText(message)}`));
 }
 
 /**
@@ -63,7 +82,7 @@ export function success(message: string): void {
  * @param message - The warning message
  */
 export function warn(message: string): void {
-  console.error(chalk.yellow(`⚠ ${message}`));
+  console.error(chalk.yellow(`⚠ ${sanitizeTerminalText(message)}`));
 }
 
 /**
@@ -72,7 +91,7 @@ export function warn(message: string): void {
  * @param message - The error message
  */
 export function error(message: string): void {
-  console.error(chalk.red(`✗ ${message}`));
+  console.error(chalk.red(`✗ ${sanitizeTerminalText(message)}`));
 }
 
 /**
@@ -81,7 +100,7 @@ export function error(message: string): void {
  * @param message - The info message
  */
 export function info(message: string): void {
-  console.log(chalk.blue(`ℹ ${message}`));
+  console.log(chalk.blue(`ℹ ${sanitizeTerminalText(message)}`));
 }
 
 /**

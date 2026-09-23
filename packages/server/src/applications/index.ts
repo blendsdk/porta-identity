@@ -41,14 +41,16 @@ export type { CursorPaginatedResult } from '../lib/cursor.js';
 export {
   deactivateApplication,
   activateApplication,
-  archiveApplication,
+  deleteApplication,
 } from './service.js';
 
 // Service functions — Module management
 export {
   createModule,
   updateModule,
+  activateModule,
   deactivateModule,
+  deleteModule,
   listModules,
 } from './service.js';
 

@@ -8,7 +8,6 @@ export const PASSWORD_IDENTITY_STATES = [
   'absent',
   'passwordless',
   'disabled',
-  'suspended',
   'locked',
 ] as const;
 

@@ -79,14 +79,14 @@ describe('domains/custom-claims', () => {
     });
   });
 
-  // ── archive ─────────────────────────────────────────────────
-  describe('archive', () => {
-    it('calls POST /applications/:appId/claims/:claimId/archive', async () => {
+  // ── delete ──────────────────────────────────────────────────
+  describe('delete', () => {
+    it('calls DELETE /applications/:appId/claims/:claimId', async () => {
       transport = mockTransport();
       const claims = createCustomClaimsDomain(transport);
-      await claims.archive(appId, 'c1');
+      await claims.delete(appId, 'c1');
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'POST', path: '/applications/app-1/claims/c1/archive',
+        method: 'DELETE', path: '/applications/app-1/claims/c1',
       });
     });
   });

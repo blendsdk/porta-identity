@@ -102,7 +102,6 @@ describe('enumeration-resistance requirement catalog', () => {
       'absent',
       'passwordless',
       'disabled',
-      'suspended',
       'locked',
     ]);
     expect(ENUMERATION_RESISTANCE_ORACLE.recoveryJobTypes).toStrictEqual([

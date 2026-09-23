@@ -347,6 +347,20 @@ test('should preserve OIDC harness failures while always cleaning up', () => {
   assert.match(testScript, /exit\s+["']?\$status/, 'harness runner must preserve failure status');
 });
 
+test('should rate-limit Admin mutations before allocating branding upload bodies', () => {
+  const serverSource = readFileSync(
+    resolve(repositoryRoot, 'packages/server/src/server.ts'),
+    'utf8',
+  );
+  const corsIndex = serverSource.indexOf('app.use(adminCors(config))');
+  const limiterIndex = serverSource.indexOf('app.use(adminRateLimiter())');
+  const parserIndex = serverSource.indexOf('brandingUploadBodyParser(ctx, next)');
+
+  assert.ok(corsIndex >= 0, 'Admin CORS middleware must remain mounted');
+  assert.ok(limiterIndex > corsIndex, 'Admin mutation limiting must follow Admin CORS');
+  assert.ok(parserIndex > limiterIndex, 'branding upload parsing must follow mutation limiting');
+});
+
 // The migration retains the complete behavioral test inventory in its designated package locations.
 test('should retain every behavioral and harness test file', () => {
   const inventories = [
@@ -355,22 +369,22 @@ test('should retain every behavioral and harness test file', () => {
       paths: ['unit', 'integration', 'e2e', 'pentest'].flatMap((suite) =>
         findPhysicalFiles(`packages/server/tests/${suite}`, /(?:\.test|\.spec)\.ts$/),
       ),
-      expectedCount: 252,
+      expectedCount: 336,
     },
     {
       label: 'server browser UI tests',
       paths: findPhysicalFiles('packages/server/tests/ui', /\.spec\.ts$/),
-      expectedCount: 24,
+      expectedCount: 25,
     },
     {
       label: 'SDK tests',
       paths: findPhysicalFiles('packages/sdk/tests', /\.test\.ts$/),
-      expectedCount: 31,
+      expectedCount: 53,
     },
     {
       label: 'CLI tests',
       paths: findPhysicalFiles('packages/cli/tests', /\.test\.ts$/),
-      expectedCount: 29,
+      expectedCount: 100,
     },
     {
       label: 'OIDC harness tests',
@@ -388,27 +402,8 @@ test('should retain every behavioral and harness test file', () => {
   }
 });
 
-// Smoke and harness utilities import server source from its package instead of the retired root location.
-test('should point retained smoke and harness utilities at current package paths', () => {
-  const smokeTestPath = 'scripts/provision-smoke-test.ts';
-  assert.equal(isRepositoryFile(smokeTestPath), true, `${smokeTestPath} must remain available`);
-
-  const smokeTest = readFileSync(resolve(repositoryRoot, smokeTestPath), 'utf8');
-  const activeSourceImports = [
-    ...smokeTest.matchAll(/\bimport\s*\(\s*['"]([^'"]*src\/[^'"]+)['"]\s*\)/g),
-  ].map((match) => match[1]);
-  assert.ok(
-    activeSourceImports.length > 0,
-    `${smokeTestPath} must retain its server source imports`,
-  );
-  for (const importPath of activeSourceImports) {
-    assert.match(
-      importPath,
-      /packages\/server\/src\//,
-      `${smokeTestPath} import ${importPath} must point to packages/server/src`,
-    );
-  }
-
+// Harness utilities import server source from its package instead of the retired root location.
+test('should point retained harness utilities at current package paths', () => {
   const harnessFiles = [
     'test-harness/Dockerfile',
     ...findPhysicalFiles('test-harness/scripts', /\.(?:sh|ts)$/),
