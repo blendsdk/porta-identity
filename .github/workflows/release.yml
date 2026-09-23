@@ -56,6 +56,31 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
+      # A promotion that does not bump the version (for example, a workflow or
+      # documentation change) re-enters this workflow for a version that is
+      # already fully released. Treat that as a successful no-op instead of
+      # failing on an existing tag that points at the original release commit.
+      - name: Detect completed release
+        id: released
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+        shell: bash
+        run: |
+          packages_published=true
+          for package_name in server sdk cli; do
+            found=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version 2>/dev/null || true)
+            if [ "$found" != "$RELEASE_VERSION" ]; then packages_published=false; fi
+          done
+          tag_sha=$(git ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')
+          if [ "$packages_published" = true ] && [ -n "$tag_sha" ] && gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "complete=true" >> "$GITHUB_OUTPUT"
+            echo "Release $RELEASE_TAG is already complete; this run is a no-op."
+          else
+            echo "complete=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Pack expected release artifacts
         run: |
           mkdir release-artifacts
@@ -123,6 +148,7 @@ jobs:
       # Independent of the publish step so a re-run can complete a release whose
       # packages were already published. Both operations are idempotent.
       - name: Create release tag and GitHub release
+        if: steps.released.outputs.complete != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -145,6 +171,7 @@ jobs:
           fi
 
       - name: Dispatch tested Docker release
+        if: steps.released.outputs.complete != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
