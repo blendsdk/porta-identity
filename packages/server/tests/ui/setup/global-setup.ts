@@ -142,7 +142,7 @@ async function globalSetup(_config: FullConfig): Promise<void> {
 
   // ── Step 2: Dynamic imports ────────────────────────────────────────
   // Import after env vars are set so modules read correct config
-  const { connectDatabase } = await import('../../../src/lib/database.js');
+  const { connectDatabase, getPool } = await import('../../../src/lib/database.js');
   const { connectRedis } = await import('../../../src/lib/redis.js');
   const { runMigrations } = await import('../../../src/lib/migrator.js');
   const { ensureSigningKeys } = await import('../../../src/lib/signing-keys.js');
@@ -200,6 +200,16 @@ async function globalSetup(_config: FullConfig): Promise<void> {
 
   // ── Step 10: Seed test data ────────────────────────────────────────
   await seedBaseData();
+
+  // Several UI tests request magic links for the same shared test address
+  // within one run. The production default (5 requests per 15 minutes) would
+  // stop delivery and fail the suite, so raise only this budget for the run.
+  // The limit itself stays covered by the server unit and integration suites.
+  await getPool().query(
+    `INSERT INTO system_config (key, value, value_type)
+     VALUES ('rate_limit_magic_link_max', '1000'::jsonb, 'number')
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+  );
 
   // Create a full test tenant: org → app → public client (with secret) → user (with password)
   const {
