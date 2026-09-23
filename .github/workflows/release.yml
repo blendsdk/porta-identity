@@ -63,14 +63,35 @@ jobs:
           node_modules/.bin/npm pack --workspace @portaidentity/sdk --pack-destination release-artifacts
           node_modules/.bin/npm pack --workspace @portaidentity/cli --pack-destination release-artifacts
 
+      # A re-run after a partial or post-publish failure must not fail on
+      # "cannot publish over the previously published versions". Skip the
+      # publish when every package already carries this version.
+      - name: Check published state
+        id: published
+        env:
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+        shell: bash
+        run: |
+          missing=0
+          for package_name in server sdk cli; do
+            found=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version 2>/dev/null || true)
+            if [ "$found" != "$RELEASE_VERSION" ]; then missing=$((missing + 1)); fi
+          done
+          if [ "$missing" -eq 0 ]; then
+            echo "all_published=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "all_published=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Publish with npm Trusted Publishing
+        if: steps.published.outputs.all_published != 'true'
         run: yarn release:publish
 
-      - name: Verify registry and create release tag
+      # npm view can lag the publish by minutes, so retry the version,
+      # integrity, and provenance checks for up to 400s per package instead of
+      # failing a release whose packages are already live.
+      - name: Verify published packages
         env:
-          GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
           RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
         shell: bash
         run: |
@@ -79,24 +100,35 @@ jobs:
             openssl dgst -sha512 -binary "$1" | openssl base64 -A
           }
           for package_name in server sdk cli; do
-            published=''
-            for attempt in {1..12}; do
+            expected_integrity=$(package_integrity "release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
+            verified=false
+            for attempt in $(seq 1 40); do
               published=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version 2>/dev/null || true)
               if [ "$published" = "$RELEASE_VERSION" ]; then
-                break
+                published_integrity=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.integrity 2>/dev/null || true)
+                provenance=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.attestations.provenance.predicateType 2>/dev/null || true)
+                if [ "$published_integrity" = "$expected_integrity" ] && [ "$provenance" = 'https://slsa.dev/provenance/v1' ]; then
+                  verified=true
+                  break
+                fi
               fi
-              if [ "$attempt" -lt 12 ]; then
-                sleep 5
-              fi
+              if [ "$attempt" -lt 40 ]; then sleep 10; fi
             done
-            test "$published" = "$RELEASE_VERSION"
-            expected_integrity=$(package_integrity "release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
-            published_integrity=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.integrity)
-            test "$published_integrity" = "$expected_integrity"
-            provenance=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.attestations.provenance.predicateType)
-            test "$provenance" = 'https://slsa.dev/provenance/v1'
+            if [ "$verified" != true ]; then
+              echo "::error::@portaidentity/$package_name@$RELEASE_VERSION was not verifiable within the deadline"
+              exit 1
+            fi
           done
 
+      # Independent of the publish step so a re-run can complete a release whose
+      # packages were already published. Both operations are idempotent.
+      - name: Create release tag and GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+        shell: bash
+        run: |
           remote_tag_sha=$(git ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')
           if [ -n "$remote_tag_sha" ]; then
             test "$remote_tag_sha" = "$RELEASE_SHA"
@@ -106,14 +138,26 @@ jobs:
               -f sha="$RELEASE_SHA"
           fi
 
-          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "GitHub release $RELEASE_TAG already exists"
+          else
             gh release create "$RELEASE_TAG" --verify-tag --title "$RELEASE_TAG" --notes-file RELEASE_NOTES.md
+          fi
 
       - name: Dispatch tested Docker release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: >-
-          gh workflow run docker.yml
-          --ref main
-          -f tag=${{ steps.candidate.outputs.tag }}
-          -f sha=${{ github.event.workflow_run.head_sha }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+        shell: bash
+        run: |
+          # The workflow-created tag uses GITHUB_TOKEN, which does not emit a
+          # tag-push event, so dispatch explicitly. Skip when the image already
+          # exists so a re-run does not rebuild and repush the same tags.
+          version="${RELEASE_TAG#v}"
+          if docker manifest inspect "blendsdk/porta:$version" >/dev/null 2>&1; then
+            echo "Docker image blendsdk/porta:$version already exists; skipping dispatch"
+            exit 0
+          fi
+          gh workflow run docker.yml --ref main \
+            -f tag="$RELEASE_TAG" \
+            -f sha="${{ github.event.workflow_run.head_sha }}"
