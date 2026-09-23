@@ -119,8 +119,14 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /id-token:\s*write/);
   assert.match(source, /runs-on:\s*ubuntu-latest/);
   assert.match(source, /run:\s*yarn release:publish/);
-  assert.match(source, /for attempt in \{1\.\.12\}/);
-  assert.match(source, /sleep 5/);
+  assert.match(source, /for attempt in \$\(seq 1 40\)/);
+  assert.match(source, /sleep 10/);
+  // The release is idempotent: a re-run skips the publish when every package
+  // already carries the version and skips the Docker dispatch when the image
+  // already exists, so a post-publish failure can be recovered.
+  assert.match(source, /Check published state/);
+  assert.match(source, /all_published/);
+  assert.match(source, /docker manifest inspect/);
   assert.match(
     readRepositoryJson('package.json').scripts?.['release:publish'] ?? '',
     /npm_config_registry=https:\/\/registry\.npmjs\.org/,
