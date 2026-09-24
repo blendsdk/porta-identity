@@ -191,6 +191,35 @@ test('covers every delivered-artifact binding, expiry, replay, throttle, and exp
     const observation = await contract.observeCase(requirement);
     const kinds =
       sentinel === 'ST-46' ? ['magic-link', 'password-reset', 'invitation'] : ['email-otp'];
+    // A wrong-recipient probe needs a recipient/interaction input to vary; a throttle probe needs
+    // a public-issuance limiter. Password reset and invitation have neither as consumption input.
+    const probeSuffixes: Record<string, readonly string[]> =
+      sentinel === 'ST-47'
+        ? {
+            'email-otp': [
+              'wrong-recipient',
+              'wrong-tenant',
+              'configured-expiry',
+              'sequential-replay',
+              'throttled-request',
+            ],
+          }
+        : {
+            'magic-link': [
+              'wrong-recipient',
+              'wrong-tenant',
+              'configured-expiry',
+              'sequential-replay',
+              'throttled-request',
+            ],
+            'password-reset': [
+              'wrong-tenant',
+              'configured-expiry',
+              'sequential-replay',
+              'throttled-request',
+            ],
+            invitation: ['wrong-tenant', 'configured-expiry', 'sequential-replay'],
+          };
     for (const kind of kinds) {
       assert.equal(
         byStepId(observation, `${kind}-delivery-control`).facts.cryptographicallyUnpredictable,
@@ -200,13 +229,7 @@ test('covers every delivered-artifact binding, expiry, replay, throttle, and exp
         byStepId(observation, `${kind}-delivery-control`).facts.intendedDeliveryOnly,
         true,
       );
-      for (const suffix of [
-        'wrong-recipient',
-        'wrong-tenant',
-        'configured-expiry',
-        'sequential-replay',
-        'throttled-request',
-      ]) {
+      for (const suffix of probeSuffixes[kind] ?? []) {
         assert.ok(byStepId(observation, `${kind}-${suffix}`));
       }
     }

@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 23:48
-> **Progress**: 8/17 tasks (47%)
+> **Last Updated**: 2026-09-24 23:51
+> **Progress**: 14/17 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -78,14 +78,19 @@ product change.
 
 ## Phase 2: Owning requirement clarification
 
+> **Phase baseline tree**: bfb8011036342ba31efdb263dfb0e28b489f3d78
+> **Scope**: strict
+> **Expected modification set**: `codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md`, `requirements/00-ambiguity-register.md`, `test-harness/assurance/tests/human-auth-slice-profile-requirements.ts`, `human-auth-slice-profiles.spec.test.ts`, `human-auth-boundaries.spec.test.ts`, and this plan's `99-execution-plan.md`
+> **Mechanical correction**: the executable catalogue change also required updating the boundary specification (`human-auth-boundaries.spec.test.ts`) probe-existence loop, which the plan did not name — same capability-aware principle, no scope change
+
 ### Step 2.1: RD-05 R5.7
 
 **Reference**: [03-02](03-02-rd05-clarification.md) · AR-5, AR-10
 **Objective**: Make the bearer-flow model explicit in the owning requirement.
 
-- [ ] 2.1.1 Append the two clarifying sentences to R5.7 in `codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md`, leaving the rest verbatim
-- [ ] 2.1.2 Add the clarification row to `codeops/features/test-assurance/requirements/00-ambiguity-register.md` referencing this plan's AR-5/AR-10
-- [ ] 2.1.3 Confirm the `test-assurance-program` traceability/testing notes pin no removed id or the number 15; update only if needed
+- [x] 2.1.1 Append the two clarifying sentences to R5.7 in `codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md`, leaving the rest verbatim ✅ (completed: 2026-09-24 23:51)
+- [x] 2.1.2 Add the clarification row to `codeops/features/test-assurance/requirements/00-ambiguity-register.md` referencing this plan's AR-5/AR-10 ✅ (completed: 2026-09-24 23:51)
+- [x] 2.1.3 Confirm the `test-assurance-program` traceability/testing notes pin no removed id or the number 15; update only if needed ✅ (completed: 2026-09-24 23:51)
 
 **Deliverables**:
 - R5.7 states the bearer-flow model; R5.14 and all retained detail intact
@@ -99,9 +104,9 @@ product change.
 **Reference**: [03-03](03-03-slice-profile-catalog-correction.md) · AR-14
 **Objective**: Align the declarative second ST-46 with the clarified R5.7.
 
-- [ ] 2.2.1 [spec-author] Narrow the `/public-throttled-rejection/` assertion in `test-harness/assurance/tests/human-auth-slice-profiles.spec.test.ts` to the public-issuance profiles and assert invitation does not declare it; run it and verify it FAILS against the current catalog (red phase)
-- [ ] 2.2.2 Correct the `invitation` and `password-reset` profiles and the ST-46 claim in `test-harness/assurance/tests/human-auth-slice-profile-requirements.ts`; run `human-auth-slice-profiles.spec.test.ts` and verify it PASSES (green phase)
-- [ ] 2.2.3 Check `traceability.json`, `traceability-nodes.json`, and the program traceability/testing notes for the removed strings; update if referenced; run `yarn test:structure`
+- [x] 2.2.1 [spec-author] Narrow the `/public-throttled-rejection/` assertion in `test-harness/assurance/tests/human-auth-slice-profiles.spec.test.ts` to the public-issuance profiles and assert invitation does not declare it; run it and verify it FAILS against the current catalog (red phase) ✅ (completed: 2026-09-24 23:51)
+- [x] 2.2.2 Correct the `invitation` and `password-reset` profiles and the ST-46 claim in `test-harness/assurance/tests/human-auth-slice-profile-requirements.ts`; run `human-auth-slice-profiles.spec.test.ts` and verify it PASSES (green phase) ✅ (completed: 2026-09-24 23:51; also corrected the boundary spec probe-existence loop)
+- [x] 2.2.3 Check `traceability.json`, `traceability-nodes.json`, and the program traceability/testing notes for the removed strings; update if referenced; run `yarn test:structure` ✅ (completed: 2026-09-24 23:51)
 
 **Deliverables**:
 - The declarative catalog matches the clarified R5.7; its immutable spec test passes
