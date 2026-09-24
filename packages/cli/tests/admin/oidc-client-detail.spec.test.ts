@@ -58,6 +58,7 @@ const client: AdminClient = {
   tokenEndpointAuthMethod: 'client_secret_basic',
   allowedOrigins: ['https://portal.example.test'],
   requirePkce: true,
+  requireConsent: true,
   loginMethods: null,
   effectiveLoginMethods: ['password', 'magic_link'],
   status: 'active',
@@ -355,6 +356,9 @@ describe('OIDC client detail surface', () => {
     expect(scope).toBeInstanceOf(Input);
     expect(authentication).toBeInstanceOf(RadioGroup);
     expect(pkce).toBeInstanceOf(Switch);
+    const switches = views.filter((view) => view instanceof Switch);
+    expect(switches).toHaveLength(2);
+    expect(frameText(mounted.host)).toContain('Require consent');
     if (!(pkce instanceof Switch)) throw new Error('Protocol PKCE switch missing.');
     expect(pkce.layout.size).toBeUndefined();
     expect(pkce.bounds.width).toBe(pkce.measure().width);
@@ -382,6 +386,7 @@ describe('OIDC client detail surface', () => {
         scope: 'openid profile email offline_access',
         tokenEndpointAuthMethod: 'client_secret_basic',
         requirePkce: true,
+        requireConsent: true,
       },
     });
   });
@@ -485,6 +490,7 @@ describe('OIDC client detail surface', () => {
         scope: 'openid profile',
         tokenEndpointAuthMethod: 'none',
         requirePkce: true,
+        requireConsent: true,
       },
     });
 

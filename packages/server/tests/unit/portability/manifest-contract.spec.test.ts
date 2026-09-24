@@ -167,6 +167,7 @@ const completeManifest = {
       post_logout_redirect_uris: ['https://portal.example.com/signed-out'],
       allowed_origins: ['https://portal.example.com'],
       require_pkce: true,
+      require_consent: true,
     },
   ],
 } as const satisfies PortabilityManifest;

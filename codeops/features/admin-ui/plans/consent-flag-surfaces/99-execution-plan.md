@@ -2,9 +2,9 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Status**: Ready
-> **Last Updated**: 2026-09-24 09:40
-> **Progress**: 0/21 tasks (0%)
+> **Status**: Executing
+> **Last Updated**: 2026-09-24 10:35
+> **Progress**: 5/21 tasks (24%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -35,17 +35,17 @@ assertion fails while the existing required lanes stay green.
 ## Phase 1: Specification tests first
 
 > **Lenses**: correctness, compatibility
-> **Phase baseline tree**: _(recorded by the exec-plan skill from a temporary-index snapshot of committed, staged, unstaged, and untracked phase-start state)_
+> **Phase baseline tree**: 1fd22ca19642aa86120940114ff280cb8f32f7d5
 
 **Reference**: `03-01`–`03-04`; `07-testing-strategy.md`; AR-1, AR-2, AR-3, AR-4, AR-8, AR-9.
 **Scope mode**: strict
 **Expected modification set**: the listed `.spec.test` files plus existing test fixtures.
 
-- [ ] 1.1 [spec-author] Add the SDK contract oracle (ST-1, ST-2, ST-3): `Client`/input exact types, the `isClient` guard, and the `create`/`update` body — `packages/sdk/tests/clients-rd04.spec.test.ts`
-- [ ] 1.2 [spec-author] Add the CLI contract oracle (ST-4, ST-5, ST-6): create/update mapping including `--no-require-consent` and omission, and the `get` row — `packages/cli/tests/commands/application-client-contracts.spec.test.ts`
-- [ ] 1.3 [spec-author] Add the Admin UI oracle (ST-7, ST-8, ST-9): Protocol switch render, dirty/save input, and strict projection — `packages/cli/tests/admin/oidc-client-detail.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`
-- [ ] 1.4 [spec-author] Add the portability oracle (ST-10, ST-11, ST-12): export payload, round-trip, import-plan diff, and the SDK import type — `packages/server/tests/unit/portability/portability-engine.spec.test.ts`, `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`
-- [ ] 1.5 Run the new specifications and record the exact RED for each; confirm typecheck and `yarn test:structure` stay green
+- [x] 1.1 [spec-author] Add the SDK contract oracle (ST-1, ST-2, ST-3): `Client`/input exact types, the `isClient` guard, and the `create`/`update` body — `packages/sdk/tests/clients-rd04.spec.test.ts` ✅ (completed: 2026-09-24 10:35; `packages/sdk/tests/clients-rd04.spec.test.ts`; guard RED via `clients.get` rejecting a response missing or mistyping `requireConsent`; the exact-type oracle is a type-contracts typecheck RED)
+- [x] 1.2 [spec-author] Add the CLI contract oracle (ST-4, ST-5, ST-6): create/update mapping including `--no-require-consent` and omission, and the `get` row — `packages/cli/tests/commands/application-client-contracts.spec.test.ts` ✅ (completed: 2026-09-24 10:35; `packages/cli/tests/commands/application-client-contracts.spec.test.ts`; 3 RED — create `--require-consent`, update `--no-require-consent`/omission, and the `get` row)
+- [x] 1.3 [spec-author] Add the Admin UI oracle (ST-7, ST-8, ST-9): Protocol switch render, dirty/save input, and strict projection — `packages/cli/tests/admin/oidc-client-detail.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts` ✅ (completed: 2026-09-24 10:35; `oidc-client-detail.spec.test.ts` (two-switch render + both `save-protocol` inputs) and `application-client-state.spec.test.ts` (ST-9 single-client rejection) RED)
+- [x] 1.4 [spec-author] Add the portability oracle (ST-10, ST-11, ST-12): export payload, round-trip, import-plan diff, and the SDK import type — `packages/server/tests/unit/portability/portability-engine.spec.test.ts`, `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts` ✅ (completed: 2026-09-24 10:35; SDK portability type oracle RED; server unit portability 11 RED from the `.strict()` schema rejecting `require_consent` and the export assertion)
+- [x] 1.5 Run the new specifications and record the exact RED for each; confirm typecheck and `yarn test:structure` stay green ✅ (completed: 2026-09-24 10:35; SDK/CLI lint clean; `yarn test:structure` 126/126 green; expected SDK type-contracts typecheck RED recorded)
 
 **Phase gate:** every new specification fails for the intended missing field while the existing
 required suites stay green.
