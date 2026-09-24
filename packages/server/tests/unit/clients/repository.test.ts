@@ -112,7 +112,8 @@ describe('client repository', () => {
       const sql = mockQuery.mock.calls[0][0] as string;
       const values = mockQuery.mock.calls[0][1] as unknown[];
       expect(sql).not.toContain('login_methods');
-      expect(values).toHaveLength(14); // no 15th value for login_methods
+      expect(values).toHaveLength(15); // require_consent is the last column
+      expect(values[14]).toBe(false); // require_consent defaults to false
     });
 
     it('should include login_methods column when provided as array', async () => {
@@ -140,7 +141,7 @@ describe('client repository', () => {
       const sql = mockQuery.mock.calls[0][0] as string;
       const values = mockQuery.mock.calls[0][1] as unknown[];
       expect(sql).toContain('login_methods');
-      expect(values[14]).toEqual(['password']);
+      expect(values[15]).toEqual(['password']);
     });
 
     it('should include login_methods column when provided as explicit null', async () => {
@@ -168,7 +169,7 @@ describe('client repository', () => {
       const sql = mockQuery.mock.calls[0][0] as string;
       const values = mockQuery.mock.calls[0][1] as unknown[];
       expect(sql).toContain('login_methods');
-      expect(values[14]).toBeNull();
+      expect(values[15]).toBeNull();
     });
   });
 
