@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Last Updated**: 2026-09-24 21:45
-> **Progress**: 20/23 tasks (87%)
+> **Progress**: 23/23 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -120,12 +120,15 @@ Specification tests precede implementation in every phase.
 
 ### Step 4.1: Live run
 
-- [ ] 4.1.1 Run `yarn assurance:harness --project security --profile production-security` and record the result artifact id and pass counts (if ST-46 fails, report truthfully — do not weaken the assertion)
+- [x] 4.1.1 Run `yarn assurance:harness --project security --profile production-security` and record the result artifact id and pass counts (if ST-46 fails, report truthfully — do not weaken the assertion) ✅ (completed: 2026-09-24 22:06)
+  - Result: harness run `666e83dd-2a10-42f3-8849-a2e67ce6df2a`, exit 21. production-exposure passed=11 (product/incomplete/execution failures=0); functional 7/7; recovery block 3 pass / 1 fail.
+  - ST-46 fails truthfully at `password-reset-wrong-recipient` (`accepted`/1 instead of `invalid-artifact`/0) per AR-29; the invitation wrong-recipient and invitation-throttle findings (AR-29/AR-30) are recorded, not weakened.
+  - The recovery block now runs last so a truthful ST-46 failure does not stop the other production-security blocks.
 
 ### Step 4.2: Closure
 
-- [ ] 4.2.1 Mark DEF-8 resolved in `codeops/features/test-assurance/00-remaining-work.md` and set the roadmap row to Done
-- [ ] 4.2.2 Run the full verification
+- [x] 4.2.1 Mark DEF-8 resolved in `codeops/features/test-assurance/00-remaining-work.md` and set the roadmap row to Done ✅ (completed: 2026-09-24 22:06)
+- [x] 4.2.2 Run the full verification ✅ (completed: 2026-09-24 22:26) `yarn verify`: structure 126, sdk 560, cli 1430, server unit 3689 / integration 479 / e2e 133 / pentest 268
 
 **Verify**: `yarn verify`
 

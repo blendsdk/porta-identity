@@ -820,27 +820,6 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       return selectAssuranceExitCode([retainedProductExit, functionalExit]);
     }
 
-    const recoveryReset = await runLifecycleAction('reset');
-    const recoveryResetExit = managedChildExit(recoveryReset, setupFailureExit);
-    if (recoveryResetExit !== 0) {
-      return selectAssuranceExitCode([retainedProductExit, recoveryResetExit]);
-    }
-    const recoveryActive = readActiveCoverageRun(process.cwd());
-    const recoverySpecifications = await runNodeSuite(
-      humanAuthRecoverySpecificationFiles,
-      undefined,
-      Object.freeze({
-        ...environmentForManifest(recoveryActive.lease.manifest),
-        PORTA_ASSURANCE_PROJECT: 'security',
-        PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER: 'live',
-        NODE_TLS_REJECT_UNAUTHORIZED: '0',
-      }),
-    );
-    const recoveryExit = managedChildExit(recoverySpecifications, testFailureExit);
-    if (recoveryExit !== 0) {
-      return selectAssuranceExitCode([retainedProductExit, recoveryExit]);
-    }
-
     const secondFactorReset = await runLifecycleAction('reset');
     const secondFactorResetExit = managedChildExit(secondFactorReset, setupFailureExit);
     if (secondFactorResetExit !== 0) {
@@ -877,7 +856,31 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       }),
     );
     const tenantAdminExit = managedChildExit(tenantAdminSpecifications, testFailureExit);
-    return selectAssuranceExitCode([retainedProductExit, tenantAdminExit]);
+    if (tenantAdminExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, tenantAdminExit]);
+    }
+
+    // The delivered-artifact recovery block runs last: its ST-46 case may fail truthfully on the
+    // documented reset/invitation wrong-recipient and invitation-throttle findings, which must not
+    // stop the other production-security blocks from running.
+    const recoveryReset = await runLifecycleAction('reset');
+    const recoveryResetExit = managedChildExit(recoveryReset, setupFailureExit);
+    if (recoveryResetExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, recoveryResetExit]);
+    }
+    const recoveryActive = readActiveCoverageRun(process.cwd());
+    const recoverySpecifications = await runNodeSuite(
+      humanAuthRecoverySpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(recoveryActive.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER: 'live',
+        NODE_TLS_REJECT_UNAUTHORIZED: '0',
+      }),
+    );
+    const recoveryExit = managedChildExit(recoverySpecifications, testFailureExit);
+    return selectAssuranceExitCode([retainedProductExit, recoveryExit]);
   });
 }
 
