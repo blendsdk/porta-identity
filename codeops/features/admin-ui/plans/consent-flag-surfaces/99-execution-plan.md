@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-09-24 10:35
-> **Progress**: 5/21 tasks (24%)
+> **Last Updated**: 2026-09-24 10:40
+> **Progress**: 8/21 tasks (38%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -59,9 +59,9 @@ required suites stay green.
 **Reference**: `03-01`; AR-1, AR-5.
 **Scope mode**: strict
 
-- [ ] 2.1 Add `requireConsent` to `Client`, `CreateClientInput`, and `UpdateClientInput`, and the `isClient` guard — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/domains/clients.ts`
-- [ ] 2.2 Update the remaining SDK fixtures and implementation tests that construct a `Client` and confirm the Phase 1 oracle turns green — `packages/sdk/tests/`
-- [ ] 2.3 Run `yarn workspace @portaidentity/sdk verify`
+- [x] 2.1 Add `requireConsent` to `Client`, `CreateClientInput`, and `UpdateClientInput`, and the `isClient` guard — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/domains/clients.ts` ✅ (completed: 2026-09-24 10:40; `Client`/`CreateClientInput`/`UpdateClientInput` and the `isClient` guard; the SDK portability import type `require_consent` was also added here because the SDK type-contracts include the portability type oracle)
+- [x] 2.2 Update the remaining SDK fixtures and implementation tests that construct a `Client` and confirm the Phase 1 oracle turns green — `packages/sdk/tests/` ✅ (completed: 2026-09-24 10:40; `packages/sdk/tests/domains/{clients,client-secret-expiry.impl}.test.ts` and `tests/type-contracts/client-secret-expiry-contract.spec.test.ts` fixtures)
+- [x] 2.3 Run `yarn workspace @portaidentity/sdk verify` ✅ (completed: 2026-09-24 10:40; `yarn workspace @portaidentity/sdk verify` 562/562, lint + typecheck + build clean)
 
 **Phase gate:** the SDK exposes and validates the field, the exact-type oracle passes, and the SDK
 verify command is green.

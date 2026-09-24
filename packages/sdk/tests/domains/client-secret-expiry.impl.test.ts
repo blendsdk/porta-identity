@@ -29,6 +29,7 @@ function createResponse(expiresAt: unknown = EXPIRY) {
           tokenEndpointAuthMethod: 'client_secret_basic',
           allowedOrigins: [],
           requirePkce: true,
+          requireConsent: false,
           loginMethods: null,
           effectiveLoginMethods: ['password'],
           status: 'active',
