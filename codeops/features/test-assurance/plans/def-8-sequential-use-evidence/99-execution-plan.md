@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 21:44
-> **Progress**: 16/23 tasks (70%)
+> **Last Updated**: 2026-09-24 21:45
+> **Progress**: 20/23 tasks (87%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -101,13 +101,13 @@ Specification tests precede implementation in every phase.
 
 ### Step 3.2: Wiring and TTL control
 
-- [ ] 3.2.1 Register `humanAuthRecoverySpecificationFiles`, the `human-auth-recovery-specs` selector, and the aggregate entry — `test-harness/assurance/scripts/run-command.ts`
-- [ ] 3.2.2 Add the production-security recovery block (reset + live env + fail-fast) — `test-harness/assurance/scripts/run-command.ts`
-- [ ] 3.2.3 Implement the bounded TTL control (set minimums, single wait, restore in `finally`) — `human-auth-recovery-live-adapter.ts`
+- [x] 3.2.1 Register `humanAuthRecoverySpecificationFiles`, the `human-auth-recovery-specs` selector, and the aggregate entry — `test-harness/assurance/scripts/run-command.ts` ✅ (completed: 2026-09-24 21:45)
+- [x] 3.2.2 Add the production-security recovery block (reset + live env + fail-fast) — `test-harness/assurance/scripts/run-command.ts` ✅ (completed: 2026-09-24 21:45)
+- [x] 3.2.3 Implement the bounded TTL control (set minimums, single wait, restore in `finally`) — `human-auth-recovery-live-adapter.ts` ✅ (completed: 2026-09-24 21:45)
 
 ### Step 3.3: Verify
 
-- [ ] 3.3.1 Confirm the selectors and structure contracts pass
+- [x] 3.3.1 Confirm the selectors and structure contracts pass ✅ (completed: 2026-09-24 21:45)
 
 **Verify**: `yarn test:structure`
 
