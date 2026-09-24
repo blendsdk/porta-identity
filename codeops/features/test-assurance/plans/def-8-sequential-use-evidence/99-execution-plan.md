@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 13:45
-> **Progress**: 5/20 tasks (25%)
+> **Last Updated**: 2026-09-24 13:55
+> **Progress**: 7/20 tasks (35%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -63,8 +63,8 @@ owned production-security harness run. Specification tests precede implementatio
 
 ### Step 2.1: Tests first (RED)
 
-- [ ] 2.1.1 [spec-author] Write helper impl tests (ST-1, ST-2, ST-14, ST-16) — `test-harness/assurance/tests/human-auth-recovery-observations.impl.test.ts`
-- [ ] 2.1.2 Run the impl test file directly and confirm RED
+- [x] 2.1.1 [spec-author] Write helper impl tests (ST-1, ST-2, ST-14, ST-16) — `test-harness/assurance/tests/human-auth-recovery-observations.impl.test.ts`
+- [x] 2.1.2 Run the impl test file directly and confirm RED
 
 ### Step 2.2: Implementation
 
