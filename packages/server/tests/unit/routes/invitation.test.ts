@@ -181,6 +181,24 @@ describe('invitation routes', () => {
       );
       expect(ctx.status).toBe(400);
     });
+
+    it('should emit one security rejection audit event for an invalid token', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'GET', 'accept-invite');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledTimes(1);
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'user.invite.failed', eventCategory: 'security' }),
+      );
+      expect(JSON.stringify(vi.mocked(auditLog.writeAuditLog).mock.calls)).not.toContain(
+        'invite-token-123',
+      );
+    });
   });
 
   // =========================================================================
@@ -251,6 +269,47 @@ describe('invitation routes', () => {
         expect.objectContaining({ orgSlug: 'test-org' }),
       );
       expect(ctx.status).toBe(400);
+    });
+
+    it('should emit one security rejection audit event when the token expires during submission', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'POST', 'accept-invite');
+      const ctx = createMockCtx({
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledTimes(1);
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'user.invite.failed', eventCategory: 'security' }),
+      );
+      expect(JSON.stringify(vi.mocked(auditLog.writeAuditLog).mock.calls)).not.toContain(
+        'invite-token-123',
+      );
+    });
+
+    it('should not emit a rejection audit event on successful acceptance', async () => {
+      const tokenRecord = { id: 'tok-1', userId: 'user-uuid-1', details: null, invitedBy: null };
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(tokenRecord as never);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'POST', 'accept-invite');
+      const ctx = createMockCtx({
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'user.invite.accepted' }),
+      );
+      const eventTypes = vi
+        .mocked(auditLog.writeAuditLog)
+        .mock.calls.map((call) => (call[0] as { eventType: string }).eventType);
+      expect(eventTypes).not.toContain('user.invite.failed');
     });
 
     it('should show error when passwords do not match', async () => {

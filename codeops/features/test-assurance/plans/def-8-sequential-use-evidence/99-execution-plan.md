@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 13:05
-> **Progress**: 0/14 tasks (0%)
+> **Last Updated**: 2026-09-24 13:25
+> **Progress**: 2/14 tasks (14%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -40,8 +40,8 @@ owned production-security harness run. Specification tests precede implementatio
 
 ### Step 1.1: Specification tests (RED)
 
-- [ ] 1.1.1 [spec-author] Add rejection-audit cases (ST-18, ST-19) to `packages/server/tests/unit/routes/invitation.test.ts`
-- [ ] 1.1.2 Run the suite and confirm the new cases FAIL (RED)
+- [x] 1.1.1 [spec-author] Add rejection-audit cases (ST-18, ST-19) to `packages/server/tests/unit/routes/invitation.test.ts`
+- [x] 1.1.2 Run the suite and confirm the new cases FAIL (RED)
 
 ### Step 1.2: Implementation
 
