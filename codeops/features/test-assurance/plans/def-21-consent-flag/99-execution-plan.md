@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Ready
-> **Last Updated**: 2026-09-24 08:14
-> **Progress**: 4/15 tasks (27%)
+> **Last Updated**: 2026-09-24 08:19
+> **Progress**: 8/15 tasks (53%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -58,10 +58,10 @@ required suites stay green.
 **Reference**: RD-05; DEF-21; decisions D1, D6, D8.
 **Scope mode**: strict
 
-- [ ] 2.1 Add `packages/server/migrations/032_client_require_consent.sql` adding `require_consent BOOLEAN NOT NULL DEFAULT FALSE` to `clients`.
-- [ ] 2.2 Thread the field through `packages/server/src/clients/{types,repository,service,validators}.ts`: persist on create/update, return on read/list, and add `requireConsent` to the `findForOidc` provider metadata.
-- [ ] 2.3 Extend `packages/server/src/routes/clients.ts` create/update schemas and every client response with `requireConsent`.
-- [ ] 2.4 Run the focused unit suites and update the exact server test-file inventory in `repo-tests/monorepo/server-package.spec.test.mjs` if new test files were added, then `yarn test:structure`.
+- [x] 2.1 Add `packages/server/migrations/032_client_require_consent.sql` adding `require_consent BOOLEAN NOT NULL DEFAULT FALSE` to `clients`. ✅ (completed: 2026-09-24 08:19; `032_client_require_consent.sql`)
+- [x] 2.2 Thread the field through `packages/server/src/clients/{types,repository,service,validators}.ts`: persist on create/update, return on read/list, and add `requireConsent` to the `findForOidc` provider metadata. ✅ (completed: 2026-09-24 08:19; types, repository (defaults omitted callers to false), service, and `extraClientMetadata` registration)
+- [x] 2.3 Extend `packages/server/src/routes/clients.ts` create/update schemas and every client response with `requireConsent`. ✅ (completed: 2026-09-24 08:19; `createClientSchema` and `updateClientSchema`; responses flow through `mapRowToClient`)
+- [x] 2.4 Run the focused unit suites and update the exact server test-file inventory in `repo-tests/monorepo/server-package.spec.test.mjs` if new test files were added, then `yarn test:structure`. ✅ (completed: 2026-09-24 08:19; unit 42/42, client integration 12/12, e2e gate still 3 RED pending Phase 3, structure 126/126)
 
 **Phase gate:** an admin can create and update a client with `requireConsent`; it defaults to
 `false`; existing clients are unchanged.

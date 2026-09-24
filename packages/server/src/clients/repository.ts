@@ -46,6 +46,11 @@ export interface InsertClientData {
   allowedOrigins: string[];
   requirePkce: boolean;
   /**
+   * Whether the client must ask the end user for consent. Omitted callers
+   * persist `false`, matching the database default.
+   */
+  requireConsent?: boolean;
+  /**
    * Optional per-client login-method override.
    *   - omitted → column is persisted as `NULL` via the `DEFAULT NULL` clause
    *     (caller inherits org defaults at resolve time)
@@ -89,6 +94,7 @@ export async function insertClient(data: InsertClientData): Promise<Client> {
     'token_endpoint_auth_method',
     'allowed_origins',
     'require_pkce',
+    'require_consent',
   ];
   const values: unknown[] = [
     data.organizationId,
@@ -105,6 +111,7 @@ export async function insertClient(data: InsertClientData): Promise<Client> {
     data.tokenEndpointAuthMethod,
     data.allowedOrigins,
     data.requirePkce,
+    data.requireConsent ?? false,
   ];
 
   // Include login_methods only when the caller passed the key (including
@@ -178,6 +185,7 @@ export interface UpdateClientData {
   tokenEndpointAuthMethod?: string;
   allowedOrigins?: string[];
   requirePkce?: boolean;
+  requireConsent?: boolean;
   status?: string;
   /**
    * Per-client login-method override. Three-state semantics distinguish
@@ -206,6 +214,7 @@ const CLIENT_FIELD_TO_COLUMN: Record<string, string> = {
   tokenEndpointAuthMethod: 'token_endpoint_auth_method',
   allowedOrigins: 'allowed_origins',
   requirePkce: 'require_pkce',
+  requireConsent: 'require_consent',
   status: 'status',
   loginMethods: 'login_methods',
 };
