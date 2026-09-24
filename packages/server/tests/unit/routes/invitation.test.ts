@@ -232,6 +232,48 @@ describe('invitation routes', () => {
         'invite-token-123',
       );
     });
+
+    it('should scope the invitation lookup to the resolved organization', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+        details: null,
+        invitedBy: null,
+      } as never);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'GET', 'accept-invite');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.findValidInvitationToken).toHaveBeenCalledWith(
+        'hashed-token-abc',
+        'org-uuid-1',
+      );
+    });
+
+    it('should reject an invitation token issued by another organization', async () => {
+      // An organization-scoped lookup yields no record for a foreign tenant's token.
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'GET', 'accept-invite');
+      const ctx = createMockCtx();
+      ctx.state.organization = createMockOrg({ id: 'org-uuid-bravo', slug: 'bravo' });
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.findValidInvitationToken).toHaveBeenCalledWith(
+        'hashed-token-abc',
+        'org-uuid-bravo',
+      );
+      expect(ctx.status).toBe(400);
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'invite-expired',
+        expect.objectContaining({ orgSlug: 'bravo' }),
+      );
+    });
   });
 
   // =========================================================================
@@ -265,6 +307,28 @@ describe('invitation routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'invite-success',
         expect.objectContaining({ flash: { success: expect.any(String) } }),
+      );
+    });
+
+    it('should scope the acceptance lookup to the resolved organization', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-uuid-1',
+        details: null,
+        invitedBy: null,
+      } as never);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'POST', 'accept-invite');
+      const ctx = createMockCtx({
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.findValidInvitationToken).toHaveBeenCalledWith(
+        'hashed-token-abc',
+        'org-uuid-1',
       );
     });
 

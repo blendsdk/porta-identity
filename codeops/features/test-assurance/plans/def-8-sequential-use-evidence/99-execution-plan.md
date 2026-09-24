@@ -2,15 +2,16 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 14:05
-> **Progress**: 8/20 tasks (40%)
+> **Last Updated**: 2026-09-24 15:20
+> **Progress**: 9/23 tasks (39%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
 
-Deliver live ST-46 evidence: the product invitation rejection audit fix, the live adapter and its
-observation helpers, the immutable live spec and harness wiring with bounded TTL control, and one
-owned production-security harness run. Specification tests precede implementation in every phase.
+Deliver live ST-46 evidence: the product invitation rejection audit fix, the organization-scoped
+invitation-token fix, the live adapter and its observation helpers, the immutable live spec and
+harness wiring with bounded TTL control, and one owned production-security harness run.
+Specification tests precede implementation in every phase.
 
 **🚨 Update this document after EACH completed task!**
 
@@ -21,11 +22,11 @@ owned production-security harness run. Specification tests precede implementatio
 | Phase | Title                                | Tasks |
 | ----- | ------------------------------------ | ----- |
 | 1     | Product invitation rejection audit   | 4     |
-| 2     | Live adapter and observation helpers | 4     |
+| 2     | Live adapter and observation helpers | 9     |
 | 3     | Live spec and harness wiring         | 4     |
 | 4     | Live evidence and closure            | 2     |
 
-**Total: 20 tasks across 4 phases**
+**Total: 23 tasks across 4 phases** (Phase 2 gained 3 tasks for the AR-29 invitation tenant-scoping fix)
 
 > **⚠️ EXECUTION RULE:** the phase checkboxes below are the single source of truth. Mark `[~]` on
 > implementation, `[x]` on verify pass, update the Progress header after every task, and append
@@ -76,7 +77,15 @@ owned production-security harness run. Specification tests precede implementatio
 
 - [ ] 2.3.1 Register the impl test in the `human-auth-live` selector and confirm it stays service-free — `test-harness/assurance/scripts/run-command.ts`
 
-**Verify**: `yarn assurance:test --select human-auth-live`
+### Step 2.4: AR-29 invitation tenant-scoping fix
+
+> **Reference**: AR #29 · `packages/server/src/{routes/invitation.ts,auth/token-repository.ts}`
+
+- [x] 2.4.1 [spec-author] Add a cross-tenant invitation rejection test (alpha token under bravo) to `packages/server/tests/unit/routes/invitation.test.ts` and confirm RED
+- [ ] 2.4.2 Add an organization-scoped invitation-token lookup and use it in `showAcceptInvite`/`processAcceptInvite`
+- [ ] 2.4.3 Confirm the invitation suites and server verify pass
+
+**Verify**: `yarn workspace @portaidentity/server verify` · `yarn assurance:test --select human-auth-live`
 
 ---
 
