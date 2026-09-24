@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 15:30
-> **Progress**: 11/23 tasks (48%)
+> **Last Updated**: 2026-09-24 15:40
+> **Progress**: 13/23 tasks (57%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -96,8 +96,8 @@ Specification tests precede implementation in every phase.
 
 ### Step 3.1: Specification test (skips unless live)
 
-- [ ] 3.1.1 [spec-author] Write the immutable live spec (ST-3..ST-15, ST-17) — `test-harness/assurance/tests/human-auth-recovery.spec.test.ts`
-- [ ] 3.1.2 Confirm the suite SKIPS without the adapter env
+- [x] 3.1.1 [spec-author] Write the immutable live spec (ST-3..ST-15, ST-17) — `test-harness/assurance/tests/human-auth-recovery.spec.test.ts` (written before 2.2.2 per specification-first ordering)
+- [x] 3.1.2 Confirm the suite SKIPS without the adapter env
 
 ### Step 3.2: Wiring and TTL control
 
