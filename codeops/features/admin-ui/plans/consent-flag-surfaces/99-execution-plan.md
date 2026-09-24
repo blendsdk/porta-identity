@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-09-24 10:45
-> **Progress**: 11/21 tasks (52%)
+> **Last Updated**: 2026-09-24 10:55
+> **Progress**: 16/21 tasks (76%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -91,11 +91,11 @@ prints the value.
 **Reference**: `03-03`; AR-4, AR-5.
 **Scope mode**: strict
 
-- [ ] 4.1 Add `requireConsent` to `AdminClient` — `packages/cli/src/admin/client-state.ts`
-- [ ] 4.2 Validate and project the field in `clientValue` — `packages/cli/src/admin/client-service.ts`
-- [ ] 4.3 Add the switch, dirty check, and save input to `protocolSection` — `packages/cli/src/admin/client-workspace.ts`
-- [ ] 4.4 Update every `AdminClient` fixture the compiler reports plus both exact `save-protocol` input assertions in `oidc-client-detail.spec.test.ts`, then confirm the Admin UI suite — `packages/cli/tests/admin/`
-- [ ] 4.5 Run `yarn workspace @portaidentity/cli verify`
+- [x] 4.1 Add `requireConsent` to `AdminClient` — `packages/cli/src/admin/client-state.ts` ✅ (completed: 2026-09-24 10:55; `packages/cli/src/admin/client-state.ts`)
+- [x] 4.2 Validate and project the field in `clientValue` — `packages/cli/src/admin/client-service.ts` ✅ (completed: 2026-09-24 10:55; `clientValue` rejects a missing/non-boolean flag and projects it — `packages/cli/src/admin/client-service.ts`)
+- [x] 4.3 Add the switch, dirty check, and save input to `protocolSection` — `packages/cli/src/admin/client-workspace.ts` ✅ (completed: 2026-09-24 10:55; `signal` + `Re~q~uire consent` Switch, `isDirty`, and the `save-protocol` input — `packages/cli/src/admin/client-workspace.ts`)
+- [x] 4.4 Update every `AdminClient` fixture the compiler reports plus both exact `save-protocol` input assertions in `oidc-client-detail.spec.test.ts`, then confirm the Admin UI suite — `packages/cli/tests/admin/` ✅ (completed: 2026-09-24 10:55; added `requireConsent` to all 13 remaining admin fixtures; both `save-protocol` assertions were extended in Phase 1; admin suite 902/902)
+- [x] 4.5 Run `yarn workspace @portaidentity/cli verify` ✅ (completed: 2026-09-24 10:55; `yarn workspace @portaidentity/cli verify` 1434/1434, lint + typecheck + build clean)
 
 **Phase gate:** the Protocol tab shows and saves the flag, the strict projection rejects an untrusted
 shape, and the CLI workspace verify is green.

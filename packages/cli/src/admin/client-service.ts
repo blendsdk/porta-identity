@@ -220,6 +220,7 @@ function clientValue(value: unknown, organizationId: string): AdminClient | unde
     !origins ||
     !origins.every(isAllowedOrigin) ||
     typeof candidate.requirePkce !== 'boolean' ||
+    typeof candidate.requireConsent !== 'boolean' ||
     !hasCompatibleProtocol(
       candidate.clientType,
       grants,
@@ -250,6 +251,7 @@ function clientValue(value: unknown, organizationId: string): AdminClient | unde
     tokenEndpointAuthMethod: candidate.tokenEndpointAuthMethod,
     allowedOrigins: origins,
     requirePkce: candidate.requirePkce,
+    requireConsent: candidate.requireConsent,
     loginMethods: override,
     effectiveLoginMethods: effective,
     status: candidate.status,
