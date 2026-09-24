@@ -69,7 +69,7 @@ describe('Enhanced Invitation (Integration)', () => {
         new Date(Date.now() + 86400_000), // 24h from now
       );
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token).not.toBeNull();
       expect(token!.userId).toBe(user.id);
@@ -102,7 +102,7 @@ describe('Enhanced Invitation (Integration)', () => {
         inviter.id,
       );
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token).not.toBeNull();
       expect(token!.userId).toBe(invitee.id);
@@ -115,11 +115,24 @@ describe('Enhanced Invitation (Integration)', () => {
     });
 
     it('should return null for non-existent token hash', async () => {
+      const org = await createTestOrganization();
       const fakeHash = createHash('sha256').update('nonexistent').digest('hex');
 
-      const token = await findValidInvitationToken(fakeHash);
+      const token = await findValidInvitationToken(fakeHash, org.id);
 
       expect(token).toBeNull();
+    });
+
+    it('should reject a valid token issued for another organization', async () => {
+      const owningOrg = await createTestOrganization({ slug: 'invite-owning-org' });
+      const foreignOrg = await createTestOrganization({ slug: 'invite-foreign-org' });
+      const user = await createTestUser(owningOrg.id);
+      const { hash } = generateTokenPair();
+
+      await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000));
+
+      expect(await findValidInvitationToken(hash, owningOrg.id)).not.toBeNull();
+      expect(await findValidInvitationToken(hash, foreignOrg.id)).toBeNull();
     });
 
     it('should return null for expired invitation token', async () => {
@@ -134,7 +147,7 @@ describe('Enhanced Invitation (Integration)', () => {
         new Date(Date.now() - 1000), // already expired
       );
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token).toBeNull();
     });
@@ -147,10 +160,10 @@ describe('Enhanced Invitation (Integration)', () => {
       await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000));
 
       // Consume the token — find it first to get its ID
-      const found = await findValidInvitationToken(hash);
+      const found = await findValidInvitationToken(hash, org.id);
       await markTokenUsed('invitation_tokens', found!.id);
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token).toBeNull();
     });
@@ -178,7 +191,7 @@ describe('Enhanced Invitation (Integration)', () => {
 
       await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000), complexDetails);
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token!.details).toEqual(complexDetails);
     });
@@ -190,7 +203,7 @@ describe('Enhanced Invitation (Integration)', () => {
 
       await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000), {});
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token!.details).toEqual({});
     });
@@ -202,7 +215,7 @@ describe('Enhanced Invitation (Integration)', () => {
 
       await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000), null, null);
 
-      const token = await findValidInvitationToken(hash);
+      const token = await findValidInvitationToken(hash, org.id);
 
       expect(token!.details).toBeNull();
       expect(token!.invitedBy).toBeNull();
@@ -227,8 +240,8 @@ describe('Enhanced Invitation (Integration)', () => {
         personalMessage: 'Welcome user 2!',
       });
 
-      const found1 = await findValidInvitationToken(token1.hash);
-      const found2 = await findValidInvitationToken(token2.hash);
+      const found1 = await findValidInvitationToken(token1.hash, org.id);
+      const found2 = await findValidInvitationToken(token2.hash, org.id);
 
       expect(found1!.userId).toBe(user1.id);
       expect(found1!.details!.personalMessage).toBe('Welcome user 1!');

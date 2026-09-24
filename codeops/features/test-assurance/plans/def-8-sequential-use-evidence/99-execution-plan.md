@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 15:20
-> **Progress**: 9/23 tasks (39%)
+> **Last Updated**: 2026-09-24 15:30
+> **Progress**: 11/23 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -82,8 +82,8 @@ Specification tests precede implementation in every phase.
 > **Reference**: AR #29 · `packages/server/src/{routes/invitation.ts,auth/token-repository.ts}`
 
 - [x] 2.4.1 [spec-author] Add a cross-tenant invitation rejection test (alpha token under bravo) to `packages/server/tests/unit/routes/invitation.test.ts` and confirm RED
-- [ ] 2.4.2 Add an organization-scoped invitation-token lookup and use it in `showAcceptInvite`/`processAcceptInvite`
-- [ ] 2.4.3 Confirm the invitation suites and server verify pass
+- [x] 2.4.2 Add an organization-scoped invitation-token lookup and use it in `showAcceptInvite`/`processAcceptInvite`
+- [x] 2.4.3 Confirm the invitation suites and server verify pass
 
 **Verify**: `yarn workspace @portaidentity/server verify` · `yarn assurance:test --select human-auth-live`
 
