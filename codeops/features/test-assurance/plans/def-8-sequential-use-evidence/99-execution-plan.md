@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 16:35
-> **Progress**: 13/23 tasks (57%)
+> **Last Updated**: 2026-09-24 21:44
+> **Progress**: 16/23 tasks (70%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -70,12 +70,12 @@ Specification tests precede implementation in every phase.
 ### Step 2.2: Implementation
 
 - [x] 2.2.1 Add the observation/classification helpers — `test-harness/assurance/tests/human-auth-recovery-observations.ts`
-- [ ] 2.2.2 Add the live ST-46 adapter — `test-harness/assurance/tests/human-auth-recovery-live-adapter.ts`
-- [ ] 2.2.3 Dispatch live mode to the adapter — `test-harness/assurance/tests/human-auth-cases-adapter.ts`
+- [x] 2.2.2 Add the live ST-46 adapter — `test-harness/assurance/tests/human-auth-recovery-live-adapter.ts` ✅ (completed: 2026-09-24 21:44)
+- [x] 2.2.3 Dispatch live mode to the adapter — `test-harness/assurance/tests/human-auth-cases-adapter.ts` ✅ (completed: 2026-09-24 21:44)
 
 ### Step 2.3: Verify
 
-- [ ] 2.3.1 Register the impl test in the `human-auth-live` selector and confirm it stays service-free — `test-harness/assurance/scripts/run-command.ts`
+- [x] 2.3.1 Register the impl test in the `human-auth-live` selector and confirm it stays service-free — `test-harness/assurance/scripts/run-command.ts` ✅ (completed: 2026-09-24 21:44)
 
 ### Step 2.4: AR-29 invitation tenant-scoping fix
 

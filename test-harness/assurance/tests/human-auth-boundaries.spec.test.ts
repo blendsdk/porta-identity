@@ -257,13 +257,17 @@ test('keeps concurrent artifact consumption as a requirements-only deferred entr
 });
 
 test(
-  'fails closed when live human-authentication mode is requested',
+  'fails closed for non-delivered-artifact sentinels in live mode',
   { concurrency: false },
-  () => {
+  async () => {
     const previous = process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER;
     process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER = 'live';
     try {
-      assert.throws(() => createHumanAuthCasesContract(), /HUMAN_AUTH_LIVE_ADAPTER_UNAVAILABLE/);
+      const contract = createHumanAuthCasesContract();
+      await assert.rejects(
+        () => contract.observeCase(byRequirement('ST-42')),
+        /HUMAN_AUTH_LIVE_SENTINEL_UNSUPPORTED/,
+      );
     } finally {
       if (previous === undefined) delete process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER;
       else process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER = previous;

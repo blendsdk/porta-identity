@@ -428,6 +428,7 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
     'test-harness/assurance/tests/harness-profile-admission.impl.test.ts',
     'test-harness/assurance/tests/human-auth-functional-observations.impl.test.ts',
     'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+    'test-harness/assurance/tests/human-auth-recovery-observations.impl.test.ts',
     'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
   ],
   'human-auth-all': [
