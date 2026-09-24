@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 23:51
-> **Progress**: 14/17 tasks (82%)
+> **Last Updated**: 2026-09-25 01:30
+> **Progress**: 17/17 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -122,9 +122,9 @@ product change.
 **Reference**: [07-testing-strategy.md](07-testing-strategy.md) · AR-6, AR-11, AR-12
 **Objective**: Prove ST-46 truthfully under the production-security harness and close the findings.
 
-- [ ] 3.1.1 Ensure all plan documents (including the preflight report) and the RD-05, slice-profile, and roadmap edits are committed, then start a fresh harness stack and run `yarn assurance:harness --project security --profile production-security`; record the run id, the ST-46 pass, and the exit code
-- [ ] 3.1.2 Run `yarn verify` and record the counts
-- [ ] 3.1.3 Update `codeops/features/test-assurance/00-remaining-work.md` and `00-roadmap.md`: mark AR-29/AR-30 closed with the new plan, advance only the DEF-26 row (do not re-point RD-05), and add a cross-reference in the def-8 register that AR-29/AR-30 are corrected by this plan
+- [x] 3.1.1 Ensure all plan documents (including the preflight report) and the RD-05, slice-profile, and roadmap edits are committed, then start a fresh harness stack and run `yarn assurance:harness --project security --profile production-security`; record the run id, the ST-46 pass, and the exit code ✅ (completed: 2026-09-25 01:13; run `14c4cf25-df3c-464f-8400-fe78241bd295` exit 0 — production-exposure 11/0/0/0, functional 7/0, second-factor 4/0, tenant-admin 17/0, recovery 5/0 with ST-46 passing. An intervening run failed the unrelated flaky `st55-production-session-cookie-policy` and passed on rerun)
+- [x] 3.1.2 Run `yarn verify` and record the counts ✅ (completed: 2026-09-25 01:30; structure 126, sdk 560, cli 1430, server 3689/479/133/268)
+- [x] 3.1.3 Update `codeops/features/test-assurance/00-remaining-work.md` and `00-roadmap.md`: mark AR-29/AR-30 closed with the new plan, advance only the DEF-26 row (do not re-point RD-05), and add a cross-reference in the def-8 register that AR-29/AR-30 are corrected by this plan ✅ (completed: 2026-09-25 01:30)
 
 **Deliverables**:
 - ST-46 passes in the production-security harness with no truthful failure
