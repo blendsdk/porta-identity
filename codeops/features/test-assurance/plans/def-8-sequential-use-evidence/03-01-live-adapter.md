@@ -83,6 +83,15 @@ interface IssuedArtifact {
 
 ### Observation Assembly
 
+`durableEffectCount` fingerprints `GET /api/admin/organizations/:orgId/users/:userId` before
+and after each consumption and counts changed resource keys; exactly one key changes for each
+accepted control (magic-link login/verification fields, reset `passwordChangedAt`, invitation
+`emailVerified`). No session follow-through and no membership expectation are used.
+
+The `invitation-throttled-request` probe makes a bounded set of equivalent-input issuance attempts
+below the global admin budget and reports the unthrottled result truthfully; it never exhausts the
+shared admin limiter (AR-30).
+
 `protectedStateUnchanged` is computed per `protectedStateKeys` entry (`intended-account-state`,
 `wrong-recipient-account-state`, `wrong-tenant-state`, `membership-and-role-state`,
 `artifact-consumption-state`) using `publicStateUnchanged` over `sha256:` digests of the relevant

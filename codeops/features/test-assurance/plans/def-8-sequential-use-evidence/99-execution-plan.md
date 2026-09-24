@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 15:40
+> **Last Updated**: 2026-09-24 16:35
 > **Progress**: 13/23 tasks (57%)
 > **CodeOps Artifact Schema**: 1
 
@@ -151,7 +151,7 @@ Phase 4 (live evidence + closure)
 
 1. ✅ All phases completed
 2. ✅ `human-auth-recovery-specs` and `human-auth-live` pass; `human-auth-live` stays service-free
-3. ✅ One owned production-security harness run passes ST-46 and its artifact is recorded
+3. ✅ One owned production-security harness run records the truthful ST-46 outcome (including the AR-29/AR-30 requirements-level findings) and its artifact is recorded
 4. ✅ `yarn verify` and `yarn test:structure` pass
 5. ✅ The invitation rejection audit event exists with product test coverage
 6. ✅ No existing pentest assertion is deleted, skipped, relaxed, or replaced
