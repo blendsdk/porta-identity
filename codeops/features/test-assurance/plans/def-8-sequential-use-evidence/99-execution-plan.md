@@ -21,12 +21,12 @@ Specification tests precede implementation in every phase.
 
 | Phase | Title                                | Tasks |
 | ----- | ------------------------------------ | ----- |
-| 1     | Product invitation rejection audit   | 4     |
+| 1     | Product invitation rejection audit   | 5     |
 | 2     | Live adapter and observation helpers | 9     |
-| 3     | Live spec and harness wiring         | 4     |
-| 4     | Live evidence and closure            | 2     |
+| 3     | Live spec and harness wiring         | 6     |
+| 4     | Live evidence and closure            | 3     |
 
-**Total: 23 tasks across 4 phases** (Phase 2 gained 3 tasks for the AR-29 invitation tenant-scoping fix)
+**Total: 23 tasks across 4 phases** (Phase 2 gained the 3 AR-29 invitation tenant-scoping tasks)
 
 > **⚠️ EXECUTION RULE:** the phase checkboxes below are the single source of truth. Mark `[~]` on
 > implementation, `[x]` on verify pass, update the Progress header after every task, and append
