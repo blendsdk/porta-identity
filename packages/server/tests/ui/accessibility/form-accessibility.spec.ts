@@ -22,10 +22,7 @@ import { test, expect } from '../fixtures/test-fixtures.js';
 test.describe('Form Accessibility', () => {
   // ── 14.1: Form inputs have associated labels ─────────────────────────
 
-  test('login form inputs have associated labels', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('login form inputs have associated labels', async ({ page, startAuthFlow }) => {
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
@@ -40,9 +37,7 @@ test.describe('Form Accessibility', () => {
 
     // At least one accessible naming mechanism should be present
     const hasEmailLabel =
-      (await emailLabel.count()) > 0 ||
-      emailAriaLabel !== null ||
-      emailPlaceholder !== null;
+      (await emailLabel.count()) > 0 || emailAriaLabel !== null || emailPlaceholder !== null;
     expect(hasEmailLabel).toBe(true);
 
     // Password field should have a label
@@ -62,10 +57,7 @@ test.describe('Form Accessibility', () => {
 
   // ── 14.2: Error messages linked to inputs ────────────────────────────
 
-  test('login form shows accessible error messages', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('login form shows accessible error messages', async ({ page, startAuthFlow }) => {
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
@@ -98,14 +90,10 @@ test.describe('Form Accessibility', () => {
 
   // ── 14.3: Focus management on page load ──────────────────────────────
 
-  test('forgot-password page focuses on email input', async ({
-    page,
-    testData,
-  }) => {
-    await page.goto(
-      `${testData.baseUrl}/${testData.orgSlug}/auth/forgot-password`,
-      { waitUntil: 'networkidle' },
-    );
+  test('forgot-password page focuses on email input', async ({ page, testData }) => {
+    await page.goto(`${testData.baseUrl}/${testData.orgSlug}/auth/forgot-password`, {
+      waitUntil: 'networkidle',
+    });
 
     // The email input should be visible
     const emailInput = page.locator('#email, input[name="email"]');
@@ -127,10 +115,7 @@ test.describe('Form Accessibility', () => {
 
   // ── 14.4: Keyboard navigation through form ───────────────────────────
 
-  test('login form supports keyboard navigation', async ({
-    page,
-    startAuthFlow,
-  }) => {
+  test('login form supports keyboard navigation', async ({ page, startAuthFlow }) => {
     await startAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
@@ -140,18 +125,14 @@ test.describe('Form Accessibility', () => {
       document.activeElement?.tagName.toLowerCase(),
     );
     // Should be on an input or button element
-    expect(['input', 'button', 'a', 'select', 'textarea']).toContain(
-      firstFocusedTag,
-    );
+    expect(['input', 'button', 'a', 'select', 'textarea']).toContain(firstFocusedTag);
 
     // Tab again
     await page.keyboard.press('Tab');
     const secondFocusedTag = await page.evaluate(() =>
       document.activeElement?.tagName.toLowerCase(),
     );
-    expect(['input', 'button', 'a', 'select', 'textarea']).toContain(
-      secondFocusedTag,
-    );
+    expect(['input', 'button', 'a', 'select', 'textarea']).toContain(secondFocusedTag);
 
     // Verify multiple interactive elements exist and are tabbable
     // (exact focus order varies by browser/OS, so we check that
@@ -165,46 +146,32 @@ test.describe('Form Accessibility', () => {
   test('consent page has accessible action buttons', async ({
     page,
     testData,
-    startAuthFlow,
+    startConsentAuthFlow,
   }) => {
-    // Start auth flow and log in to reach consent
-    await startAuthFlow(page);
+    // Sign into the consent-requiring tenant so the page renders.
+    await startConsentAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
-    await page.fill('#email', testData.userEmail);
-    await page.fill('#password', testData.userPassword);
+    await page.fill('#email', testData.consentUserEmail);
+    await page.fill('#password', testData.consentUserPassword);
     await page.click('button[type="submit"]');
     await page.waitForLoadState('networkidle');
 
-    const currentUrl = page.url();
+    // Consent page should have at least one action button.
+    const buttons = page.locator('button, input[type="submit"]');
+    const buttonCount = await buttons.count();
+    expect(buttonCount).toBeGreaterThan(0);
 
-    // If we reached consent page
-    if (currentUrl.includes('/interaction/')) {
-      // Look for action buttons (Allow/Deny or similar)
-      const buttons = page.locator('button, input[type="submit"]');
-      const buttonCount = await buttons.count();
+    // Each button should have an accessible name.
+    for (let i = 0; i < buttonCount; i++) {
+      const button = buttons.nth(i);
+      const buttonText = await button.textContent();
+      const ariaLabel = await button.getAttribute('aria-label');
+      const value = await button.getAttribute('value');
 
-      // Consent page should have at least one action button
-      expect(buttonCount).toBeGreaterThan(0);
-
-      // Each button should have accessible text
-      for (let i = 0; i < buttonCount; i++) {
-        const button = buttons.nth(i);
-        const buttonText = await button.textContent();
-        const ariaLabel = await button.getAttribute('aria-label');
-        const value = await button.getAttribute('value');
-
-        // Button should have some accessible name
-        const hasName =
-          (buttonText && buttonText.trim().length > 0) ||
-          ariaLabel !== null ||
-          value !== null;
-        expect(hasName).toBe(true);
-      }
-    } else {
-      // If auto-consent happened, we ended up on callback — that's fine
-      // The test passes because there was no consent page to check
-      expect(currentUrl).toContain(testData.redirectUri.split('?')[0].split('/').pop()!);
+      const hasName =
+        (buttonText && buttonText.trim().length > 0) || ariaLabel !== null || value !== null;
+      expect(hasName).toBe(true);
     }
   });
 });

@@ -415,6 +415,16 @@ State-changing interaction endpoints (login, consent) use CSRF tokens:
 - Validated on POST submission
 - Single-use to prevent replay
 
+### Consent Trust Model
+
+Consent is driven by the client's trust, not by organization equality. Each client carries a
+`requireConsent` flag: a trusted client (default `false`) is auto-consented, while a third-party
+client (`true`) shows the consent page for every scope, claim, or resource the user has not already
+granted. An explicit `prompt=consent` shows the page for a trusted client only when a new item is
+requested. Granted consent is persisted as a provider `Grant` (PostgreSQL `oidc_payloads`) and
+remembered per scope, so an already-approved scope never re-prompts. Clients remain bound to one
+organization; cross-organization clients are still rejected before an interaction is created.
+
 ### Session Lifecycle
 
 - **New session on authentication** — prevents session fixation

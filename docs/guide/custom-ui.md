@@ -4,12 +4,12 @@ Porta gives you full control over every user-facing page — login, consent, pas
 
 ## What Can Be Customized?
 
-| Layer | What It Covers | Effort |
-|-------|---------------|--------|
-| **API-driven branding** | Uploaded or external logo/favicon, colors, company name, custom CSS per org | Zero code — API/CLI only |
-| **Custom CSS injection** | Full style override via `customCss` field (up to 10KB) | CSS only |
-| **Template override** | Replace any or all Handlebars templates via Docker volume mount | HTML/Handlebars |
-| **Email templates** | Customize HTML and plain-text transactional emails | HTML/Handlebars |
+| Layer                    | What It Covers                                                              | Effort                   |
+| ------------------------ | --------------------------------------------------------------------------- | ------------------------ |
+| **API-driven branding**  | Uploaded or external logo/favicon, colors, company name, custom CSS per org | Zero code — API/CLI only |
+| **Custom CSS injection** | Full style override via `customCss` field (up to 10KB)                      | CSS only                 |
+| **Template override**    | Replace any or all Handlebars templates via Docker volume mount             | HTML/Handlebars          |
+| **Email templates**      | Customize HTML and plain-text transactional emails                          | HTML/Handlebars          |
 
 ---
 
@@ -19,15 +19,15 @@ The fastest way to customize Porta's UI is through per-organization branding. No
 
 ### Available Branding Settings
 
-| Setting | API Field | Default | Description |
-|---------|-----------|---------|-------------|
-| Uploaded logo | Branding asset `logo` | _(none)_ | Preferred image for page and HTML email headers |
-| Uploaded favicon | Branding asset `favicon` | _(none)_ | Preferred browser tab icon |
-| Logo URL | `logoUrl` | _(none)_ | External fallback when no logo asset is stored |
-| Favicon URL | `faviconUrl` | _(none)_ | External fallback when no favicon asset is stored |
-| Primary Color | `primaryColor` | `#3B82F6` | Buttons, links, accents (sets CSS `--primary` variable) |
-| Company Name | `companyName` | Organization name | Page titles, headers, footers, email signatures |
-| Custom CSS | `customCss` | _(none)_ | Raw CSS injected into `<head>` (max 10KB) |
+| Setting          | API Field                | Default           | Description                                             |
+| ---------------- | ------------------------ | ----------------- | ------------------------------------------------------- |
+| Uploaded logo    | Branding asset `logo`    | _(none)_          | Preferred image for page and HTML email headers         |
+| Uploaded favicon | Branding asset `favicon` | _(none)_          | Preferred browser tab icon                              |
+| Logo URL         | `logoUrl`                | _(none)_          | External fallback when no logo asset is stored          |
+| Favicon URL      | `faviconUrl`             | _(none)_          | External fallback when no favicon asset is stored       |
+| Primary Color    | `primaryColor`           | `#3B82F6`         | Buttons, links, accents (sets CSS `--primary` variable) |
+| Company Name     | `companyName`            | Organization name | Page titles, headers, footers, email signatures         |
+| Custom CSS       | `customCss`              | _(none)_          | Raw CSS injected into `<head>` (max 10KB)               |
 
 ### Setting Branding via CLI
 
@@ -96,21 +96,37 @@ The `customCss` field lets you override any style without touching templates:
 
 ```css
 /* Change the font */
-body { font-family: "Inter", system-ui, sans-serif; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+}
 
 /* Rounded buttons */
-.btn { border-radius: 24px; }
+.btn {
+  border-radius: 24px;
+}
 
 /* Custom background */
-body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
 
 /* Hide the footer */
-.footer { display: none; }
+.footer {
+  display: none;
+}
 
 /* Dark mode */
-body { background: #1a1a2e; color: #eee; }
-.card { background: #16213e; border-color: #0f3460; }
-.btn { background: #e94560; }
+body {
+  background: #1a1a2e;
+  color: #eee;
+}
+.card {
+  background: #16213e;
+  border-color: #0f3460;
+}
+.btn {
+  background: #e94560;
+}
 ```
 
 ::: tip
@@ -178,61 +194,71 @@ All templates have access to these variables:
 
 ### Global Variables (All Pages)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `branding.logoUrl` | `string \| null` | Public uploaded-logo URL, configured fallback, or `null` |
-| `branding.faviconUrl` | `string \| null` | Public uploaded-favicon URL, configured fallback, or `null` |
-| `branding.primaryColor` | `string` | Hex color (default `#3B82F6`) |
-| `branding.companyName` | `string` | Organization display name |
-| `branding.customCss` | `string \| null` | Raw CSS for injection |
-| `pageTitle` | `string` | Page title (e.g., "Sign In", "Reset Password") |
-| `locale` | `string` | Current locale (e.g., `en`) |
-| `year` | `number` | Current year (for copyright footers) |
-| `t` | `function` | Translation helper — <code v-pre>{{t "key"}}</code> |
+| Variable                | Type             | Description                                                 |
+| ----------------------- | ---------------- | ----------------------------------------------------------- |
+| `branding.logoUrl`      | `string \| null` | Public uploaded-logo URL, configured fallback, or `null`    |
+| `branding.faviconUrl`   | `string \| null` | Public uploaded-favicon URL, configured fallback, or `null` |
+| `branding.primaryColor` | `string`         | Hex color (default `#3B82F6`)                               |
+| `branding.companyName`  | `string`         | Organization display name                                   |
+| `branding.customCss`    | `string \| null` | Raw CSS for injection                                       |
+| `pageTitle`             | `string`         | Page title (e.g., "Sign In", "Reset Password")              |
+| `locale`                | `string`         | Current locale (e.g., `en`)                                 |
+| `year`                  | `number`         | Current year (for copyright footers)                        |
+| `t`                     | `function`       | Translation helper — <code v-pre>{{t "key"}}</code>         |
 
 ### Login Page (`pages/login.hbs`)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `uid` | `string` | OIDC interaction ID |
-| `csrfToken` | `string` | CSRF token for form submission |
-| `loginHint` | `string \| null` | Pre-filled email from OIDC `login_hint` parameter |
-| `flash.error` | `string \| null` | Error message to display |
-| `flash.success` | `string \| null` | Success message to display |
-| `showPassword` | `boolean` | Whether to show the password form |
-| `showMagicLink` | `boolean` | Whether to show the magic link form |
-| `showForgotPassword` | `boolean` | Whether to show "Forgot password?" link |
+| Variable             | Type             | Description                                       |
+| -------------------- | ---------------- | ------------------------------------------------- |
+| `uid`                | `string`         | OIDC interaction ID                               |
+| `csrfToken`          | `string`         | CSRF token for form submission                    |
+| `loginHint`          | `string \| null` | Pre-filled email from OIDC `login_hint` parameter |
+| `flash.error`        | `string \| null` | Error message to display                          |
+| `flash.success`      | `string \| null` | Success message to display                        |
+| `showPassword`       | `boolean`        | Whether to show the password form                 |
+| `showMagicLink`      | `boolean`        | Whether to show the magic link form               |
+| `showForgotPassword` | `boolean`        | Whether to show "Forgot password?" link           |
 
 ### Consent Page (`pages/consent.hbs`)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `uid` | `string` | OIDC interaction ID |
-| `csrfToken` | `string` | CSRF token |
-| `client` | `object` | Client metadata (`name`, `logoUri`, `tosUri`, `policyUri`) |
-| `scopes` | `string[]` | Requested scopes |
-| `claims` | `string[]` | Requested claims |
+When the consent page is shown depends on the client's trust and the request:
+
+- A **trusted** client (`requireConsent` is `false`, the default) is auto-consented.
+- A **third-party** client (`requireConsent` is `true`) shows this page for every
+  scope, claim, or resource the user has not already granted.
+- A `prompt=consent` request shows the page for a trusted client only when a new
+  scope, claim, or resource is requested.
+- Once the user grants a scope it is remembered, so the same scope never prompts
+  again — even if the client sends `prompt=consent`. A new scope prompts again.
+
+| Variable    | Type       | Description                                                |
+| ----------- | ---------- | ---------------------------------------------------------- |
+| `uid`       | `string`   | OIDC interaction ID                                        |
+| `csrfToken` | `string`   | CSRF token                                                 |
+| `client`    | `object`   | Client metadata (`name`, `logoUri`, `tosUri`, `policyUri`) |
+| `scopes`    | `string[]` | Requested scopes                                           |
+| `claims`    | `string[]` | Requested claims                                           |
 
 ### 2FA Pages (`pages/two-factor-verify.hbs`)
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `uid` | `string` | OIDC interaction ID |
-| `csrfToken` | `string` | CSRF token |
-| `method` | `string` | Current 2FA method (`email_otp`, `totp`, `recovery`) |
-| `maskedEmail` | `string \| null` | Masked email for OTP display |
-| `flash.error` | `string \| null` | Error message |
+| Variable      | Type             | Description                                          |
+| ------------- | ---------------- | ---------------------------------------------------- |
+| `uid`         | `string`         | OIDC interaction ID                                  |
+| `csrfToken`   | `string`         | CSRF token                                           |
+| `method`      | `string`         | Current 2FA method (`email_otp`, `totp`, `recovery`) |
+| `maskedEmail` | `string \| null` | Masked email for OTP display                         |
+| `flash.error` | `string \| null` | Error message                                        |
 
 ### Email Templates
 
-| Variable | Type | Description |
-|----------|------|-------------|
-| `branding.*` | `object` | Same branding variables as pages |
-| `url` | `string` | Action URL (magic link, reset link, invite link) |
-| `code` | `string` | OTP code (for otp-code template) |
-| `expiresIn` | `string` | Human-readable expiry (e.g., "15 minutes") |
-| `userName` | `string` | Recipient's display name |
-| `year` | `number` | Current year |
+| Variable     | Type     | Description                                      |
+| ------------ | -------- | ------------------------------------------------ |
+| `branding.*` | `object` | Same branding variables as pages                 |
+| `url`        | `string` | Action URL (magic link, reset link, invite link) |
+| `code`       | `string` | OTP code (for otp-code template)                 |
+| `expiresIn`  | `string` | Human-readable expiry (e.g., "15 minutes")       |
+| `userName`   | `string` | Recipient's display name                         |
+| `year`       | `number` | Current year                                     |
 
 ---
 
@@ -261,6 +287,7 @@ cp -r templates/default my-templates
 Edit `my-templates/pages/login.hbs`:
 
 ::: v-pre
+
 ```handlebars
 {{!-- Custom login page --}}
 <div class="card" style="max-width: 400px; margin: 40px auto;">
@@ -330,6 +357,7 @@ Edit `my-templates/pages/login.hbs`:
   {{> footer}}
 </div>
 ```
+
 :::
 
 ### Step 3: Customize the Layout
@@ -337,64 +365,68 @@ Edit `my-templates/pages/login.hbs`:
 Edit `my-templates/layouts/main.hbs` to change the overall page structure, add external fonts, or modify the base styles:
 
 ::: v-pre
+
 ```handlebars
-<!DOCTYPE html>
-<html lang="{{locale}}">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  {{#if branding.faviconUrl}}<link rel="icon" href="{{branding.faviconUrl}}">{{/if}}
-  <title>{{pageTitle}} — {{branding.companyName}}</title>
+<html lang='{{locale}}'>
+  <head>
+    <meta charset='utf-8' />
+    <meta name='viewport' content='width=device-width, initial-scale=1' />
+    {{#if branding.faviconUrl}}<link rel='icon' href='{{branding.faviconUrl}}' />{{/if}}
+    <title>{{pageTitle}} — {{branding.companyName}}</title>
 
-  <!-- Add custom fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Add custom fonts -->
+    <link rel='preconnect' href='https://fonts.googleapis.com' />
+    <link
+      href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap'
+      rel='stylesheet'
+    />
 
-  <style>
-    :root { --primary: {{branding.primaryColor}}; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: "Inter", system-ui, sans-serif;
-      background: #f8fafc;
-      color: #334155;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .card {
-      background: white;
-      padding: 32px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-    }
-    .btn {
-      display: inline-block;
-      background: var(--primary);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 15px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    .btn:hover { opacity: 0.9; }
-    label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
-    a { color: var(--primary); }
-    /* Flash messages */
-    .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
-    .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
-  </style>
+    <style>
+      :root { --primary:{{branding.primaryColor}}; }
+          * { box-sizing: border-box; margin: 0; padding: 0; }
+          body {
+            font-family: "Inter", system-ui, sans-serif;
+            background: #f8fafc;
+            color: #334155;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          }
+          .card {
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+          }
+          .btn {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+          }
+          .btn:hover { opacity: 0.9; }
+          label { display: block; font-weight: 500; margin-bottom: 4px; font-size: 14px; }
+          a { color: var(--primary); }
+          /* Flash messages */
+          .flash-error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+          .flash-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; padding: 12px; border-radius: 8px; margin-bottom: 16px; }
+    </style>
 
-  {{!-- Inject per-org custom CSS (overrides everything above) --}}
-  {{#if branding.customCss}}<style>{{{branding.customCss}}}</style>{{/if}}
-</head>
-<body>
-  {{{body}}}
-</body>
+    {{! Inject per-org custom CSS (overrides everything above) }}
+    {{#if branding.customCss}}<style>{{{branding.customCss}}}</style>{{/if}}
+  </head>
+  <body>
+    {{{body}}}
+  </body>
 </html>
 ```
+
 :::
 
 ### Step 4: Mount in Docker Compose
@@ -426,50 +458,55 @@ Email templates come in pairs — an HTML version (`.hbs`) and a plain-text vers
 
 ### Available Email Templates
 
-| Template | When It's Sent |
-|----------|---------------|
-| `magic-link` | User requests a magic link login |
-| `password-reset` | User requests a password reset |
-| `invitation` | Admin invites a user to an organization |
-| `otp-code` | 2FA email OTP code delivery |
-| `password-changed` | Notification after password is changed |
-| `welcome` | Welcome email after account creation |
+| Template           | When It's Sent                          |
+| ------------------ | --------------------------------------- |
+| `magic-link`       | User requests a magic link login        |
+| `password-reset`   | User requests a password reset          |
+| `invitation`       | Admin invites a user to an organization |
+| `otp-code`         | 2FA email OTP code delivery             |
+| `password-changed` | Notification after password is changed  |
+| `welcome`          | Welcome email after account creation    |
 
 ### Example: Custom Magic Link Email
 
 Edit `my-templates/emails/magic-link.hbs`:
 
 ::: v-pre
+
 ```handlebars
-<!DOCTYPE html>
 <html>
-<head>
-  <style>
-    body { font-family: system-ui, sans-serif; background: #f8f9fa; padding: 40px 20px; }
-    .container { max-width: 480px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; }
-    .header { background: {{branding.primaryColor}}; color: white; padding: 24px; text-align: center; }
-    .content { padding: 32px 24px; }
-    .btn { display: inline-block; background: {{branding.primaryColor}}; color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 500; }
-    .footer { padding: 16px 24px; text-align: center; color: #888; font-size: 13px; border-top: 1px solid #eee; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      {{#if branding.logoUrl}}<img src="{{branding.logoUrl}}" alt="{{branding.companyName}}" style="max-height: 40px;">{{/if}}
-      <h2>{{branding.companyName}}</h2>
+  <head>
+    <style>
+      body { font-family: system-ui, sans-serif; background: #f8f9fa; padding: 40px 20px; }
+      .container { max-width: 480px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; }
+      .header { background:{{branding.primaryColor}}; color: white; padding: 24px; text-align: center; }
+          .content { padding: 32px 24px; }
+          .btn { display: inline-block; background:{{branding.primaryColor}}; color: white; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: 500; }
+          .footer { padding: 16px 24px; text-align: center; color: #888; font-size: 13px; border-top: 1px solid #eee; }
+    </style>
+  </head>
+  <body>
+    <div class='container'>
+      <div class='header'>
+        {{#if branding.logoUrl}}<img
+            src='{{branding.logoUrl}}'
+            alt='{{branding.companyName}}'
+            style='max-height: 40px;'
+          />{{/if}}
+        <h2>{{branding.companyName}}</h2>
+      </div>
+      <div class='content'>
+        <p>Hi {{userName}},</p>
+        <p>Click the button below to sign in. This link expires in {{expiresIn}}.</p>
+        <p style='text-align: center; margin: 24px 0;'>
+          <a href='{{url}}' class='btn'>Sign In to {{branding.companyName}}</a>
+        </p>
+        <p style='color: #888; font-size: 13px;'>If you didn't request this, you can safely ignore
+          this email.</p>
+      </div>
+      <div class='footer'>&copy; {{year}} {{branding.companyName}}</div>
     </div>
-    <div class="content">
-      <p>Hi {{userName}},</p>
-      <p>Click the button below to sign in. This link expires in {{expiresIn}}.</p>
-      <p style="text-align: center; margin: 24px 0;">
-        <a href="{{url}}" class="btn">Sign In to {{branding.companyName}}</a>
-      </p>
-      <p style="color: #888; font-size: 13px;">If you didn't request this, you can safely ignore this email.</p>
-    </div>
-    <div class="footer">&copy; {{year}} {{branding.companyName}}</div>
-  </div>
-</body>
+  </body>
 </html>
 ```
 
@@ -478,19 +515,21 @@ Edit `my-templates/emails/magic-link.hbs`:
 And the plain-text version `my-templates/emails/magic-link.txt.hbs`:
 
 ::: v-pre
-```handlebars
-Hi {{userName}},
 
-Sign in to {{branding.companyName}} by visiting this link:
+```handlebars
+Hi
+{{userName}}, Sign in to
+{{branding.companyName}}
+by visiting this link:
 
 {{url}}
 
-This link expires in {{expiresIn}}.
-
-If you didn't request this, you can safely ignore this email.
-
-© {{year}} {{branding.companyName}}
+This link expires in
+{{expiresIn}}. If you didn't request this, you can safely ignore this email. ©
+{{year}}
+{{branding.companyName}}
 ```
+
 :::
 
 ---
@@ -506,7 +545,7 @@ services:
   porta:
     image: blendsdk/porta:latest
     ports:
-      - "3000:3000"
+      - '3000:3000'
     env_file: [.env]
     environment:
       DATABASE_URL: postgresql://porta:porta_secret@postgres:5432/porta
@@ -522,11 +561,11 @@ services:
     image: postgres:16-alpine
     environment: { POSTGRES_DB: porta, POSTGRES_USER: porta, POSTGRES_PASSWORD: porta_secret }
     volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck: { test: ["CMD-SHELL", "pg_isready -U porta"], interval: 5s, retries: 5 }
+    healthcheck: { test: ['CMD-SHELL', 'pg_isready -U porta'], interval: 5s, retries: 5 }
 
   redis:
     image: redis:7-alpine
-    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 5 }
+    healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 5s, retries: 5 }
 
 volumes:
   pgdata:
@@ -537,12 +576,14 @@ volumes:
 For production, you can either:
 
 **Option A: Volume mount** (recommended for easy updates)
+
 ```yaml
 volumes:
-  - ./my-templates:/app/templates/default:ro  # read-only mount
+  - ./my-templates:/app/templates/default:ro # read-only mount
 ```
 
 **Option B: Custom Docker image** (for immutable deployments)
+
 ```dockerfile
 FROM blendsdk/porta:latest
 COPY my-templates/ /app/templates/default/
@@ -575,9 +616,11 @@ Templates are read from disk on each request in development. After editing a tem
 
 ::: tip MailHog for Email Testing
 For testing email templates locally, use the development Docker Compose profile which includes MailHog:
+
 ```bash
 docker compose --profile dev up -d
 ```
+
 Then open [http://localhost:8025](http://localhost:8025) to view all sent emails.
 :::
 
@@ -601,11 +644,13 @@ locales/default/
 Use the <code v-pre>{{t "key"}}</code> helper in templates to reference translated strings:
 
 ::: v-pre
+
 ```handlebars
-<h1>{{t "login.title"}}</h1>
-<button type="submit">{{t "common.submit"}}</button>
-<p>{{t "login.forgot_password"}}</p>
+<h1>{{t 'login.title'}}</h1>
+<button type='submit'>{{t 'common.submit'}}</button>
+<p>{{t 'login.forgot_password'}}</p>
 ```
+
 :::
 
 To add a new language, create a new locale directory (e.g., `locales/default/nl/`) with the same JSON files and mount it alongside your custom templates.

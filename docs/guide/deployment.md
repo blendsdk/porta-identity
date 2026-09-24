@@ -898,12 +898,12 @@ Beyond Prometheus metrics, monitor:
 
 Porta applies Redis-backed, per-IP rate limiting to sensitive endpoints:
 
-| Scope                     | Limit                          | Window     | Endpoints                                 |
-| ------------------------- | ------------------------------ | ---------- | ----------------------------------------- |
-| **Token endpoint**        | 30 requests                    | 5 minutes  | `POST /:orgSlug/auth/token`               |
-| **Admin API** (write ops) | 60 requests                    | 60 seconds | `POST/PUT/PATCH/DELETE /api/admin/*`      |
-| **Introspection**         | 100 requests                   | 60 seconds | `POST /:orgSlug/auth/token/introspection` |
-| **Login interactions**    | Per existing auth rate limiter | —          | `POST /:orgSlug/interaction/*`            |
+| Scope                     | Limit                          | Window     | Endpoints                            |
+| ------------------------- | ------------------------------ | ---------- | ------------------------------------ |
+| **Token endpoint**        | 30 requests                    | 5 minutes  | `POST /:orgSlug/auth/token`          |
+| **Admin API** (write ops) | 60 requests                    | 60 seconds | `POST/PUT/PATCH/DELETE /api/admin/*` |
+| **Introspection**         | 100 requests                   | 60 seconds | `POST /:orgSlug/token/introspection` |
+| **Login interactions**    | Per existing auth rate limiter | —          | `POST /:orgSlug/interaction/*`       |
 
 When a rate limit is exceeded, the server returns `429 Too Many Requests` with a `Retry-After` header. Rate limit events are logged to the audit trail as `security.rate_limited`.
 
