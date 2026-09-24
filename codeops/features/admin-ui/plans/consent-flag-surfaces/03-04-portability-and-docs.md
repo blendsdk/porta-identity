@@ -23,8 +23,10 @@ in `packages/sdk/src/types/imports.ts`. All of these carry `require_pkce` but no
 ### Proposed Changes
 
 Add `require_consent` everywhere `require_pkce` appears in the client export/import path, including
-the SDK import type. The exported JSON key is `requireConsent` (the schema maps row → payload), and
-the database column is `require_consent`.
+the SDK import type. The manifest uses **snake_case** keys (the schema is `.strict()`), so the
+export/import key is `require_consent` — matching `require_pkce` and the SDK import type
+(`packages/sdk/src/types/imports.ts:262`). The camelCase `requireConsent` is only the admin API
+field name, not the portability key. The database column is `require_consent`.
 
 ## Implementation Details
 
@@ -37,10 +39,8 @@ readonly require_consent: boolean;
 // packages/sdk/src/types/imports.ts — import payload client
 readonly require_consent: boolean;
 
-// packages/server/src/portability/schema.ts
+// packages/server/src/portability/schema.ts (snake_case, .strict())
 require_consent: z.boolean(),
-// exported payload field:
-requireConsent: client.require_consent,
 ```
 
 ### New Functions/Methods
@@ -60,33 +60,33 @@ requireConsent: client.require_consent,
 ## Code Examples
 
 ```jsonc
-// exported client fragment
+// exported client fragment (manifest uses snake_case)
 {
-  "clientId": "erp-connector",
-  "requirePkce": true,
-  "requireConsent": true,
+  "client_id": "erp-connector",
+  "require_pkce": true,
+  "require_consent": true,
 }
 ```
 
 ## Error Handling
 
-| Error Case                                           | Handling Strategy                                                              | AR Ref |
-| ---------------------------------------------------- | ------------------------------------------------------------------------------ | ------ |
-| An export from an older Porta lacks `requireConsent` | Schema treats the field as a required boolean; a missing flag fails validation | AR-2   |
-| An import changes only the flag                      | The plan diff detects it and the writer updates `require_consent`              | AR-2   |
+| Error Case                                            | Handling Strategy                                                              | AR Ref      |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------ | ----------- |
+| An export from an older Porta lacks `require_consent` | Schema treats the field as a required boolean; a missing flag fails validation | AR-2, AR-10 |
+| An import changes only the flag                       | The plan diff detects it and the writer updates `require_consent`              | AR-2        |
 
 > **Traceability:** Every design choice references the Ambiguity Register entry that resolved it.
 > See `00-ambiguity-register.md`.
 
 ## Documentation Changes
 
-| File                                  | Change                                                          |
-| ------------------------------------- | --------------------------------------------------------------- |
-| `docs/api/clients.md`                 | Add the `require_consent` create field and updatable-field list |
-| `docs/cli/clients.md`                 | Add the `--require-consent` flag row                            |
-| `docs/database/schema.md`             | Add the `require_consent` column row                            |
-| `techdocs/architecture/data-model.md` | Add the `require_consent` column row                            |
-| `docs/database/migrations.md`         | **Out of scope** — pre-existing 029–032 gap (R-02, AR-7)        |
+| File                                  | Change                                                                                                                                                        |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `docs/api/clients.md`                 | Add the `require_consent` create field and updatable-field list                                                                                               |
+| `docs/cli/clients.md`                 | Add the `--require-consent` flag row and align the `create`/`get`/`update` sections it sits in to the real flags (`--org`, `--app`, positional `<client-id>`) |
+| `docs/database/schema.md`             | Add the `require_consent` column row                                                                                                                          |
+| `techdocs/architecture/data-model.md` | Add the `require_consent` column row                                                                                                                          |
+| `docs/database/migrations.md`         | **Out of scope** — pre-existing 029–032 gap (R-02, AR-7)                                                                                                      |
 
 ## Testing Requirements
 

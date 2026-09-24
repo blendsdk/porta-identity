@@ -62,24 +62,30 @@ dependency, harness, or framework.
 
 ```bash
 # Create a third-party client that must show the consent page
-porta client create --org acme --app crm --name "ERP Connector" --require-consent
+porta client create \
+  --org <org-id> --app <app-id> --name "ERP Connector" \
+  --type confidential --redirect-uris "https://erp.example.com/callback" \
+  --require-consent
 
-# Read it back
-porta client get --org acme <client-id>      # prints "Require Consent  true"
+# Read it back (client-id is positional)
+porta client get <client-id>                 # prints "Require Consent  true"
 
 # Switch an existing client to require consent, or back off, without touching anything else
-porta client update --org acme <client-id> --require-consent
-porta client update --org acme <client-id> --no-require-consent
+porta client update <client-id> --require-consent
+porta client update <client-id> --no-require-consent
 ```
 
 ```ts
-import { createClient } from '@portaidentity/sdk';
+import { createPortaClient } from '@portaidentity/sdk';
 
-const { client } = await createClient({ ... });
-await client.clients.create({
-  organizationId: 'acme',
-  applicationId: 'crm',
+const porta = createPortaClient({ transport });
+await porta.clients.create({
+  organizationId: 'org-id',
+  applicationId: 'app-id',
   clientName: 'ERP Connector',
+  clientType: 'confidential',
+  applicationType: 'web',
+  redirectUris: ['https://erp.example.com/callback'],
   requireConsent: true,
 });
 ```

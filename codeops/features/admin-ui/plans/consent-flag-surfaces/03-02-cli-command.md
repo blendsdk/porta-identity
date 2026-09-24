@@ -66,10 +66,11 @@ No `default: false` is set. A default would make an unrelated `client update` se
 ## Code Examples
 
 ```bash
-porta client create --org acme --app crm --name "ERP Connector" --require-consent
-porta client get --org acme <client-id>            # -> Require Consent  true
-porta client update --org acme <client-id> --no-require-consent
-porta client update --org acme <client-id> --name "Renamed"   # flag untouched
+porta client create --org <org-id> --app <app-id> --name "ERP Connector" \
+  --type confidential --redirect-uris "https://erp.example.com/callback" --require-consent
+porta client get <client-id>                      # -> Require Consent  true
+porta client update <client-id> --no-require-consent
+porta client update <client-id> --name "Renamed"  # flag untouched
 ```
 
 ## Error Handling

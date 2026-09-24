@@ -18,8 +18,8 @@
   types, the response guard, and the conventional CLI.
 - RD-04 AC-17/AC-18: thin presentation services and server-owned defaults; the Admin UI switch calls
   the existing update path and does not derive defaults itself.
-- Plan-local: carry `requireConsent` through the portability export/import contract so a
-  backup/restore preserves the trust decision (AR-2), and add the field to the client-field
+- Plan-local: carry the flag (`require_consent`) through the portability export/import contract so a
+  backup/restore preserves the trust decision (AR-2, AR-10), and add the field to the client-field
   documentation.
 
 ### Deferred / out of this plan
@@ -61,8 +61,8 @@
 3. The Admin UI Protocol tab renders a "Require consent" switch for the selected client, marks the
    form dirty on change, and includes `requireConsent` in the `save-protocol` input. The
    registration dialog is unchanged and new clients default to `false`.
-4. A client exported with `requireConsent: true` imports with `requireConsent: true`; a changed flag
-   is detected as a difference by the import plan.
+4. A client stored with `require_consent = true` exports a manifest with `require_consent: true` and
+   imports back with the flag set; a changed flag is detected as a difference by the import plan.
 5. The client-field documentation lists the flag in `docs/api/clients.md`, `docs/cli/clients.md`,
    `docs/database/schema.md`, and `techdocs/architecture/data-model.md`.
 6. All ST cases in `07-testing-strategy.md` pass as immutable specification tests, and the AR-9

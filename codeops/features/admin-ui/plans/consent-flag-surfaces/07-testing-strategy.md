@@ -45,17 +45,17 @@
 
 ### Admin UI Protocol Tab (03-03)
 
-| #    | Input / Scenario                                                         | Expected Output / Behavior                                                       | Source      |
-| ---- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------- | ----------- |
-| ST-7 | Open the Protocol tab for a client with `requireConsent: true`           | A "Require consent" switch is shown in the on state                              | AC-3 / AR-4 |
-| ST-8 | Toggle the switch and save                                               | The form is dirty and the `save-protocol` input carries the new `requireConsent` | AC-3        |
-| ST-9 | Project a server client whose `requireConsent` is missing or non-boolean | `clientValue` rejects the shape (returns undefined)                              | AR-4        |
+| #    | Input / Scenario                                                                                   | Expected Output / Behavior                                                       | Source      |
+| ---- | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ----------- |
+| ST-7 | Open the Protocol tab for a client with `requireConsent: true`                                     | A "Require consent" switch is shown in the on state                              | AC-3 / AR-4 |
+| ST-8 | Toggle the switch and save (exact `save-protocol` assertions in `oidc-client-detail.spec.test.ts`) | The form is dirty and the `save-protocol` input carries the new `requireConsent` | AC-3        |
+| ST-9 | Project a server client whose `requireConsent` is missing or non-boolean                           | `clientValue` rejects the shape (returns undefined)                              | AR-4        |
 
 ### Portability and Import (03-04)
 
 | #     | Input / Scenario                                              | Expected Output / Behavior                               | Source      |
 | ----- | ------------------------------------------------------------- | -------------------------------------------------------- | ----------- |
-| ST-10 | Export a client stored with `require_consent = true`          | The export payload contains `requireConsent: true`       | AC-4 / AR-2 |
+| ST-10 | Export a client stored with `require_consent = true`          | The manifest payload contains `require_consent: true`    | AC-4 / AR-2 |
 | ST-11 | Import that payload into an empty organization                | The imported client row has `require_consent = true`     | AC-4 / AR-2 |
 | ST-12 | Plan an import where the stored flag differs from the payload | The client diff reports a change (plan does not skip it) | AR-2        |
 
@@ -71,7 +71,7 @@
 | `packages/sdk/tests/clients-rd04.spec.test.ts`                                | ST-1, ST-2, ST-3 | SDK         |
 | `packages/sdk/tests/type-contracts/portability.spec.test.ts`                  | ST-10            | SDK import  |
 | `packages/cli/tests/commands/application-client-contracts.spec.test.ts`       | ST-4, ST-5, ST-6 | CLI         |
-| `packages/cli/tests/admin/oidc-client-editors.spec.test.ts`                   | ST-7, ST-8       | Admin UI    |
+| `packages/cli/tests/admin/oidc-client-detail.spec.test.ts`                    | ST-7, ST-8       | Admin UI    |
 | `packages/cli/tests/admin/application-client-state.spec.test.ts`              | ST-9             | Admin UI    |
 | `packages/server/tests/unit/portability/portability-engine.spec.test.ts`      | ST-10, ST-12     | Portability |
 | `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts` | ST-11            | Portability |
@@ -81,7 +81,7 @@
 | Test File                                                                       | Description                                         | Priority |
 | ------------------------------------------------------------------------------- | --------------------------------------------------- | -------- |
 | `packages/cli/tests/commands/client.test.ts`                                    | Fixtures and create/update/get assertions           | High     |
-| `packages/cli/tests/admin/oidc-client-editors.impl.test.ts`                     | Protocol editor internals and dirty tracking        | Medium   |
+| `packages/cli/tests/admin/oidc-client-detail.impl.test.ts`                      | Protocol editor internals and dirty tracking        | Medium   |
 | `packages/cli/tests/admin/*.impl.test.ts` / `*.spec.test.ts` fixtures           | Add `requireConsent` to every `AdminClient` fixture | High     |
 | `packages/sdk/tests/domains/clients.test.ts`                                    | Guard and body pass-through                         | High     |
 | `packages/server/tests/unit/portability/portability-import-engine.spec.test.ts` | Import writer and plan comparison                   | Medium   |
@@ -105,7 +105,7 @@
 - An SDK `Client` fixture with `requireConsent: true`.
 - A CLI `sampleClient` with `requireConsent: true`.
 - All Admin UI `AdminClient` fixtures gain `requireConsent: false` unless the case needs `true`.
-- A portability client payload with `requireConsent: true`.
+- A portability client manifest entry with `require_consent: true`.
 
 ### Mock Requirements
 

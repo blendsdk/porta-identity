@@ -75,10 +75,14 @@ boolean fails `isClient`, matching how the guard treats every other known field 
 ### Example 1: Create a third-party client
 
 ```ts
-const { client } = await portaclient.clients.create({
-  organizationId: 'acme',
-  applicationId: 'crm',
+const porta = createPortaClient({ transport });
+const { client } = await porta.clients.create({
+  organizationId: 'org-id',
+  applicationId: 'app-id',
   clientName: 'ERP Connector',
+  clientType: 'confidential',
+  applicationType: 'web',
+  redirectUris: ['https://erp.example.com/callback'],
   requireConsent: true,
 });
 ```

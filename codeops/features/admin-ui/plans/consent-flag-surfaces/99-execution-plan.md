@@ -43,7 +43,7 @@ assertion fails while the existing required lanes stay green.
 
 - [ ] 1.1 [spec-author] Add the SDK contract oracle (ST-1, ST-2, ST-3): `Client`/input exact types, the `isClient` guard, and the `create`/`update` body — `packages/sdk/tests/clients-rd04.spec.test.ts`
 - [ ] 1.2 [spec-author] Add the CLI contract oracle (ST-4, ST-5, ST-6): create/update mapping including `--no-require-consent` and omission, and the `get` row — `packages/cli/tests/commands/application-client-contracts.spec.test.ts`
-- [ ] 1.3 [spec-author] Add the Admin UI oracle (ST-7, ST-8, ST-9): Protocol switch render, dirty/save input, and strict projection — `packages/cli/tests/admin/oidc-client-editors.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`
+- [ ] 1.3 [spec-author] Add the Admin UI oracle (ST-7, ST-8, ST-9): Protocol switch render, dirty/save input, and strict projection — `packages/cli/tests/admin/oidc-client-detail.spec.test.ts`, `packages/cli/tests/admin/application-client-state.spec.test.ts`
 - [ ] 1.4 [spec-author] Add the portability oracle (ST-10, ST-11, ST-12): export payload, round-trip, import-plan diff, and the SDK import type — `packages/server/tests/unit/portability/portability-engine.spec.test.ts`, `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`, `packages/sdk/tests/type-contracts/portability.spec.test.ts`
 - [ ] 1.5 Run the new specifications and record the exact RED for each; confirm typecheck and `yarn test:structure` stay green
 
@@ -94,7 +94,7 @@ prints the value.
 - [ ] 4.1 Add `requireConsent` to `AdminClient` — `packages/cli/src/admin/client-state.ts`
 - [ ] 4.2 Validate and project the field in `clientValue` — `packages/cli/src/admin/client-service.ts`
 - [ ] 4.3 Add the switch, dirty check, and save input to `protocolSection` — `packages/cli/src/admin/client-workspace.ts`
-- [ ] 4.4 Update every `AdminClient` fixture the compiler reports and confirm the Admin UI suite — `packages/cli/tests/admin/`
+- [ ] 4.4 Update every `AdminClient` fixture the compiler reports plus both exact `save-protocol` input assertions in `oidc-client-detail.spec.test.ts`, then confirm the Admin UI suite — `packages/cli/tests/admin/`
 - [ ] 4.5 Run `yarn workspace @portaidentity/cli verify`
 
 **Phase gate:** the Protocol tab shows and saves the flag, the strict projection rejects an untrusted
@@ -111,7 +111,7 @@ shape, and the CLI workspace verify is green.
 
 - [ ] 5.1 Add `require_consent` to the portability contract: `packages/server/src/portability/{types,repository,schema,plan-support,import-user-client-writers}.ts` and the SDK import type `packages/sdk/src/types/imports.ts`
 - [ ] 5.2 Extend the portability specification/implementation tests and run the server unit + integration portability suites — `packages/server/tests/`
-- [ ] 5.3 Update the client-field documentation — `docs/api/clients.md`, `docs/cli/clients.md`, `docs/database/schema.md`, `techdocs/architecture/data-model.md`; run `yarn docs:build`
+- [ ] 5.3 Update the client-field documentation — `docs/api/clients.md`, `docs/cli/clients.md` (add the flag row and align the create/get/update sections to the real flags), `docs/database/schema.md`, `techdocs/architecture/data-model.md`; run `yarn docs:build`
 - [ ] 5.4 Resolve the DEF-21 follow-up row for these surfaces in `codeops/features/test-assurance/00-remaining-work.md` and note the pre-existing migrations-doc gap (R-02); run `yarn test:structure`
 - [ ] 5.5 Full verification: `yarn workspace @portaidentity/sdk verify`, `yarn workspace @portaidentity/cli verify`, `yarn test:structure`, `yarn assurance:compat --select compatibility`, `yarn verify`
 

@@ -1,7 +1,7 @@
 # Ambiguity Register: Consent Flag Surfaces
 
-> **Status**: ✅ GATE PASSED — all 9 items resolved
-> **Last Updated**: 2026-09-24 09:40
+> **Status**: ✅ GATE PASSED — all 10 items resolved
+> **Last Updated**: 2026-09-24 09:55
 > **CodeOps Artifact Schema**: 1
 
 | #   | Category           | Ambiguity / Gap                                                                                     | Options Presented                                                            | User Decision                                                                                                                                                 | Status      |
@@ -15,6 +15,7 @@
 | 7   | Scope              | `docs/database/migrations.md` documents only through migration 028; 029–032 are already missing.    | Exclude and record the gap / backfill 029–032                                | Exclude; record the pre-existing 029–032 documentation gap as out of scope                                                                                    | ✅ Resolved |
 | 8   | UX & presentation  | Where does the CLI display the flag?                                                                | `client get` only / `client get` + a `client list` column                    | `client get` only, matching the existing "Require PKCE" line                                                                                                  | ✅ Resolved |
 | 9   | Technical unknowns | Which commands verify every task in this plan?                                                      | sdk+cli verify, structure, compat / workspace verify + structure only        | `yarn workspace @portaidentity/sdk verify`, `yarn workspace @portaidentity/cli verify`, `yarn test:structure`, `yarn assurance:compat --select compatibility` | ✅ Resolved |
+| 10  | Data & state       | Should the new portability field be required (rejecting pre-change `1.0` manifests) or optional?    | Required / `.default(false)`                                                 | Required, matching `require_pkce`; a pre-change manifest fails loudly on import (accepted compatibility consequence)                                          | ✅ Resolved |
 
 > **Gate confirmation:** every row above carries an explicit user decision made during planning
 > discovery. The user confirms the complete register before execution begins. No row is silently
@@ -47,3 +48,9 @@ editing `migrations.md` here would only partially document a pre-existing gap. R
 **AR-9:** SDK and CLI contract changes require the registered compatibility selector from a clean
 committed revision (`AGENTS.md`). The final phase also runs the root `yarn verify` as a broader
 safety net even though it is not a per-task Verify line.
+
+**AR-10:** Raised by preflight (PF-007). The portability manifest is `.strict()` with
+`version: z.literal('1.0')` and every other client field is required, so `require_consent` is
+required too. A manifest exported before this change lacks the key and fails import validation. The
+failure is loud and fail-closed (it never silently trusts a client), so it is accepted rather than
+defaulting the field. `03-04` records this in its error table.

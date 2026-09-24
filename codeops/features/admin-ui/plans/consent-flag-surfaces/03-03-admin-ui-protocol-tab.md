@@ -50,7 +50,7 @@ if (typeof candidate.requireConsent !== 'boolean') {
 requireConsent: candidate.requireConsent,
 
 // client-workspace.ts — protocolSection
-const requireConsent = createSignal(client.requireConsent);
+const requireConsent = signal(selected.requireConsent);
 new Switch({
   value: requireConsent,
   label: 'Re~q~uire consent',
@@ -91,7 +91,10 @@ the UI; the switch reflects the server value (AR-4, AR-17 thin-service boundary)
 
 ## Testing Requirements
 
-- Extend `packages/cli/tests/admin/oidc-client-editors.spec.test.ts` to assert the switch renders
-  and the save input carries the value (ST-7, ST-8), and
-  `packages/cli/tests/admin/application-client-state.spec.test.ts` for the strict projection (ST-9).
+- Extend `packages/cli/tests/admin/oidc-client-detail.spec.test.ts` — the file that owns the Protocol
+  editor and holds the two exact `save-protocol` input assertions
+  (`oidc-client-detail.spec.test.ts:376-386,480-487`) — to assert the switch renders and to add
+  `requireConsent` to both input assertions (ST-7, ST-8).
+- Extend `packages/cli/tests/admin/application-client-state.spec.test.ts` for the strict projection
+  (ST-9).
 - Update all `AdminClient` fixtures listed by the compiler in the admin test suite.
