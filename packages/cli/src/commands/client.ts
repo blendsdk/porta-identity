@@ -44,6 +44,7 @@ interface ClientCreateArgs extends GlobalOptions {
   'application-type': 'web' | 'native' | 'spa';
   'redirect-uris': string;
   'login-methods'?: string;
+  'require-consent'?: boolean;
 }
 
 interface ClientListArgs extends GlobalOptions {
@@ -61,6 +62,7 @@ interface ClientUpdateArgs extends ClientIdArgs {
   name?: string;
   'redirect-uris'?: string;
   'login-methods'?: string;
+  'require-consent'?: boolean;
 }
 
 interface LoginMethodsSetArgs extends ClientIdArgs {
@@ -119,6 +121,11 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 type: 'string',
                 description:
                   'Comma-separated login methods (password, magic_link) or "inherit" to use the org default',
+              })
+              .option('require-consent', {
+                type: 'boolean',
+                description:
+                  'Show the consent page for this client (--no-require-consent disables it)',
               }),
           async (argv) => {
             try {
@@ -145,6 +152,9 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 applicationType: argv['application-type'],
                 redirectUris: parseCommaSeparated(argv['redirect-uris']),
                 ...(loginMethods !== undefined && { loginMethods }),
+                ...(argv['require-consent'] !== undefined && {
+                  requireConsent: argv['require-consent'],
+                }),
               });
 
               if (argv.json) {
@@ -282,6 +292,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     ['Token Endpoint Authentication', c.tokenEndpointAuthMethod],
                     ['Allowed Origins', c.allowedOrigins.join(', ') || '—'],
                     ['Require PKCE', String(c.requirePkce)],
+                    ['Require Consent', String(c.requireConsent)],
                     [
                       'Login Method Override',
                       c.loginMethods === null ? 'inherit' : c.loginMethods.join(', '),
@@ -321,6 +332,11 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 type: 'string',
                 description:
                   'Comma-separated login methods (password, magic_link) or "inherit" to reset to org default',
+              })
+              .option('require-consent', {
+                type: 'boolean',
+                description:
+                  'Show the consent page for this client (--no-require-consent disables it)',
               }),
           async (argv) => {
             try {
@@ -340,6 +356,9 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     ? parseCommaSeparated(argv['redirect-uris'])
                     : undefined,
                   ...(loginMethods !== undefined && { loginMethods }),
+                  ...(argv['require-consent'] !== undefined && {
+                    requireConsent: argv['require-consent'],
+                  }),
                 },
                 etag ?? undefined,
               );

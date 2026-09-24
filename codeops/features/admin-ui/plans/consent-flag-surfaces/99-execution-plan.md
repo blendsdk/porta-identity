@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-09-24 10:40
-> **Progress**: 8/21 tasks (38%)
+> **Last Updated**: 2026-09-24 10:45
+> **Progress**: 11/21 tasks (52%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -75,9 +75,9 @@ verify command is green.
 **Reference**: `03-02`; AR-3, AR-6, AR-8.
 **Scope mode**: strict
 
-- [ ] 3.1 Add the `require-consent` boolean option (no default) and the conditional spread to `client create` and `client update`, and the "Require Consent" row to `client get` — `packages/cli/src/commands/client.ts`
-- [ ] 3.2 Update the CLI fixtures and implementation tests — `packages/cli/tests/commands/client.test.ts`
-- [ ] 3.3 Run `yarn workspace @portaidentity/cli verify`
+- [x] 3.1 Add the `require-consent` boolean option (no default) and the conditional spread to `client create` and `client update`, and the "Require Consent" row to `client get` — `packages/cli/src/commands/client.ts` ✅ (completed: 2026-09-24 10:45; create/update option + conditional spread and the `get` row in `packages/cli/src/commands/client.ts`)
+- [x] 3.2 Update the CLI fixtures and implementation tests — `packages/cli/tests/commands/client.test.ts` ✅ (completed: 2026-09-24 10:45; added `requireConsent` to the `sampleClient` fixture in `packages/cli/tests/commands/client.test.ts`)
+- [x] 3.3 Run `yarn workspace @portaidentity/cli verify` ✅ (completed: 2026-09-24 10:45; `tests/commands/` 367/367 and CLI lint clean; the full `cli verify` also runs the still-RED Admin UI specs, so it moves to task 4.5)
 
 **Phase gate:** create/update reach the SDK input, an omitted flag is never sent, and `client get`
 prints the value.
