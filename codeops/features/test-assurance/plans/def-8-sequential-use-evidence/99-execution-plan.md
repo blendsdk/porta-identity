@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 13:55
-> **Progress**: 7/20 tasks (35%)
+> **Last Updated**: 2026-09-24 14:05
+> **Progress**: 8/20 tasks (40%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -68,7 +68,7 @@ owned production-security harness run. Specification tests precede implementatio
 
 ### Step 2.2: Implementation
 
-- [ ] 2.2.1 Add the observation/classification helpers — `test-harness/assurance/tests/human-auth-recovery-observations.ts`
+- [x] 2.2.1 Add the observation/classification helpers — `test-harness/assurance/tests/human-auth-recovery-observations.ts`
 - [ ] 2.2.2 Add the live ST-46 adapter — `test-harness/assurance/tests/human-auth-recovery-live-adapter.ts`
 - [ ] 2.2.3 Dispatch live mode to the adapter — `test-harness/assurance/tests/human-auth-cases-adapter.ts`
 
