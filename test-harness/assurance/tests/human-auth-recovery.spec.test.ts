@@ -120,8 +120,62 @@ function assertNoRawSecret(observation: HumanAuthCaseObservation): void {
 test('freezes the delivered-artifact requirement shape', () => {
   assert.equal(recoveryRequirement.sentinelId, 'ST-46');
   assert.equal(recoveryRequirement.controls.length, 6);
-  assert.equal(recoveryRequirement.probes.length, 15);
+  assert.equal(recoveryRequirement.probes.length, 12);
   assert.equal(recoveryRequirement.requiredLogEvent, 'delivered-authentication-artifact-rejection');
+});
+
+/**
+ * The reachable delivered-artifact probes.
+ *
+ * Magic links consume through a recipient/interaction authority, so a mismatched recipient is
+ * rejected. Password reset and invitation resolve the account from the token alone and are
+ * issued from an authenticated admin route, so a recipient-mismatch probe or a public-issuance
+ * throttle probe cannot describe them.
+ */
+const reachableProbeIds = [
+  'magic-link-wrong-recipient',
+  'magic-link-wrong-tenant',
+  'magic-link-configured-expiry',
+  'magic-link-sequential-replay',
+  'magic-link-throttled-request',
+  'password-reset-wrong-tenant',
+  'password-reset-configured-expiry',
+  'password-reset-sequential-replay',
+  'password-reset-throttled-request',
+  'invitation-wrong-tenant',
+  'invitation-configured-expiry',
+  'invitation-sequential-replay',
+] as const;
+
+test('declares exactly the reachable delivered-artifact probes', () => {
+  assert.deepEqual(
+    recoveryRequirement.probes.map((probe) => probe.id),
+    [...reachableProbeIds],
+  );
+  const facts = new Map(
+    recoveryRequirement.probes.map((probe) => [probe.id, probe.expectedFacts] as const),
+  );
+  for (const id of [
+    'magic-link-wrong-recipient',
+    'magic-link-wrong-tenant',
+    'password-reset-wrong-tenant',
+    'invitation-wrong-tenant',
+    'magic-link-sequential-replay',
+    'password-reset-sequential-replay',
+    'invitation-sequential-replay',
+  ]) {
+    assert.equal(facts.get(id)?.result, 'invalid-artifact', id);
+  }
+  for (const id of [
+    'magic-link-configured-expiry',
+    'password-reset-configured-expiry',
+    'invitation-configured-expiry',
+  ]) {
+    assert.equal(facts.get(id)?.result, 'expired-artifact', id);
+  }
+  for (const id of ['magic-link-throttled-request', 'password-reset-throttled-request']) {
+    assert.equal(facts.get(id)?.result, 'throttled', id);
+  }
 });
 
 test('keeps every probe tied to a declared control that precedes it', () => {

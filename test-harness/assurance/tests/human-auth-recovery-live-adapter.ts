@@ -755,55 +755,6 @@ async function observeDedicatedThrottle(
   });
 }
 
-/**
- * Observes the invitation throttle probe truthfully.
- *
- * Invitation issuance has no equivalent-public-input limiter and no rejection audit event; the
- * adapter makes a small bounded set of attempts well below the shared admin budget and reports the
- * unthrottled result, never exhausting the limiter other evidence depends on.
- */
-async function observeInvitationThrottle(
-  context: LiveTenantAdminContext,
-  step: HumanAuthStepRequirement,
-  caseRequirement: HumanAuthCaseRequirement,
-): Promise<HumanAuthStepObservation> {
-  const intendedUserId = context.entity('alpha-user-active');
-  const protectedBefore = await captureProtected(context, intendedUserId);
-  const durableBefore = await captureDurable(context, intendedUserId);
-  let status = 0;
-  let deliveryCount = 0;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const before = await mailCountGlobal(context);
-    const response = await context.rawRequest(
-      'POST',
-      `/api/admin/organizations/${context.entity('alpha')}/users/invite`,
-      'admin-full',
-      { email: invitationRecipient(), givenName: 'Throttle', familyName: 'Probe' },
-    );
-    status = response.status;
-    deliveryCount += Math.max(0, (await mailCountGlobal(context)) - before);
-    if (response.status === 429) break;
-  }
-  const durableAfter = await captureDurable(context, intendedUserId);
-  const protectedAfter = await captureProtected(context, intendedUserId);
-  return Object.freeze({
-    id: step.id,
-    boundary: step.boundary,
-    action: step.action,
-    target: step.target,
-    facts: Object.freeze({
-      result: status === 429 ? 'throttled' : 'generic-response',
-      durableEffectCount: countDurableEffects(durableBefore, durableAfter),
-      deliveryCount,
-    }),
-    publicResponse: publicResponseOf({ status, location: null, body: '', headers: {} }),
-    prohibitedSideEffects: prohibitedSideEffects(caseRequirement.prohibitedSideEffects, false),
-    protectedStateUnchanged: protectedStateUnchanged(protectedBefore, protectedAfter),
-    securityLog: null,
-    recoveryObserved: caseRequirement.recoveryExpectation,
-  });
-}
-
 /** Builds one delivery-control observation from issuance evidence. */
 function deliveryControlObservation(
   step: HumanAuthStepRequirement,
@@ -999,25 +950,16 @@ async function runPasswordReset(
       () => presentAccountArtifact(context, 'reset-password', control.token, 'alpha', false),
     ),
   );
-  const wrongRecipient = await issuePasswordReset(context, jar, INTENDED_EMAIL);
-  steps.set(
-    'password-reset-wrong-recipient',
-    await observeConsumption(
-      context,
-      stepOf(requirement, 'password-reset-wrong-recipient'),
-      requirement,
-      wrongRecipient.token,
-      wrongRecipient.intendedUserId,
-      ['user.password_reset.failed'],
-      () => presentAccountArtifact(context, 'reset-password', wrongRecipient.token, 'alpha', false),
-    ),
-  );
+  // A second issuance for the same address provides the delivery-count evidence for the delivery
+  // control; reset consumption resolves the account from the token, so it has no recipient input
+  // to vary and therefore no reachable wrong-recipient probe.
+  const second = await issuePasswordReset(context, jar, INTENDED_EMAIL);
   steps.set(
     'password-reset-delivery-control',
     deliveryControlObservation(
       stepOf(requirement, 'password-reset-delivery-control'),
       control,
-      wrongRecipient,
+      second,
     ),
   );
   await issuePasswordReset(context, jar, INTENDED_EMAIL);
@@ -1095,18 +1037,8 @@ async function runInvitation(
       () => presentAccountArtifact(context, 'accept-invite', first.token, 'alpha', false),
     ),
   );
-  steps.set(
-    'invitation-wrong-recipient',
-    await observeConsumption(
-      context,
-      stepOf(requirement, 'invitation-wrong-recipient'),
-      requirement,
-      second.token,
-      second.intendedUserId,
-      ['user.invite.failed'],
-      () => presentAccountArtifact(context, 'accept-invite', second.token, 'alpha', false),
-    ),
-  );
+  // Invitation consumption also resolves the account from the token, so it has no recipient input
+  // to vary; the second issuance serves only the delivery control.
   const wrongTenantArtifact = await issueInvitation(context, invitationRecipient());
   steps.set(
     'invitation-wrong-tenant',
@@ -1123,14 +1055,6 @@ async function runInvitation(
   );
   const expiryRecipient = invitationRecipient();
   const expiry = await issueInvitation(context, expiryRecipient);
-  steps.set(
-    'invitation-throttled-request',
-    await observeInvitationThrottle(
-      context,
-      stepOf(requirement, 'invitation-throttled-request'),
-      requirement,
-    ),
-  );
   return Object.freeze({
     steps,
     expiry: Object.freeze({

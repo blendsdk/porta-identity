@@ -16,7 +16,7 @@
 | admin-ui             | [→](features/admin-ui/00-roadmap.md)             | Authentication gate planned; foundation and organization context complete | 86 / 90 (96%)  | 🔄     | 2026-08-29 11:46 |
 | monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration complete · publishing backlog                                   | 74 / 74 (100%) | ✅     | 2026-08-09 00:45 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |
-| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-8 sequential-use evidence complete      | 66 / 66 (100%) | 🔄     | 2026-09-24 22:06 |
+| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-8 done; ST-46 correction planned        | 66 / 66 (100%) | 🔄     | 2026-09-24 23:31 |
 
 ## Archived
 
