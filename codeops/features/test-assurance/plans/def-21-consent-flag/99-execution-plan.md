@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Ready
-> **Last Updated**: 2026-09-24 08:19
-> **Progress**: 8/15 tasks (53%)
+> **Last Updated**: 2026-09-24 08:31
+> **Progress**: 11/15 tasks (73%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -75,9 +75,9 @@ required suites stay green.
 **Reference**: RD-05 R5.4; DEF-21; decisions D2–D4, D7.
 **Scope mode**: strict
 
-- [ ] 3.1 Replace the organization-equality branch in `showConsent` (`packages/server/src/routes/interactions.ts`) with the gate: finish silently when nothing is missing; otherwise render the page when `requireConsent` or `prompt=consent`, else auto-consent.
-- [ ] 3.2 Keep the audit trail correct: `user.consent.granted` distinguishes auto-consent from an explicit approval, and a denial emits `user.consent.denied`.
-- [ ] 3.3 Run the integration suites for `tests/integration/clients/` and the consent path, and the `oidc-attacks` penetration suite.
+- [x] 3.1 Replace the organization-equality branch in `showConsent` (`packages/server/src/routes/interactions.ts`) with the gate: finish silently when nothing is missing; otherwise render the page when `requireConsent` or `prompt=consent`, else auto-consent. ✅ (completed: 2026-09-24 08:31; the silent path reuses the provider-resolved `interaction.grantId` so already-approved scopes are never dropped; register-grant helper extracted)
+- [x] 3.2 Keep the audit trail correct: `user.consent.granted` distinguishes auto-consent from an explicit approval, and a denial emits `user.consent.denied`. ✅ (completed: 2026-09-24 08:31; auto-consent, explicit approval, and denial each emit one audit event; the silent path changes nothing and emits none)
+- [x] 3.3 Run the integration suites for `tests/integration/clients/` and the consent path, and the `oidc-attacks` penetration suite. ✅ (completed: 2026-09-24 08:31; unit 41/41, e2e auth 31/31, client integration 12/12, pentest oidc-attacks 39/39, lint clean)
 
 **Phase gate:** a third-party client shows the consent page, an approved scope is remembered per
 scope, a new scope re-prompts, and the tenant binding is unchanged.
