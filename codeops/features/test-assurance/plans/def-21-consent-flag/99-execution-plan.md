@@ -2,9 +2,9 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Status**: Ready
-> **Last Updated**: 2026-09-24 08:31
-> **Progress**: 11/15 tasks (73%)
+> **Status**: Complete
+> **Last Updated**: 2026-09-24 09:05
+> **Progress**: 15/15 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -93,8 +93,8 @@ scope, a new scope re-prompts, and the tenant binding is unchanged.
 
 - [x] 4.1 Make the browser acceptance tests real: create a `requireConsent` client in the UI fixture and assert the page renders, approve returns a code, deny returns `access_denied`, and a repeat request with the same scopes does not re-prompt (`consent.spec.ts`, `consent-edge-cases.spec.ts`, `accessibility/form-accessibility.spec.ts`); run `yarn test:ui`. ✅ (completed: 2026-09-24 08:45; added a consent tenant + `startConsentAuthFlow` fixture; `consent.spec.ts` and the accessibility consent test now assert the page render; `consent-edge-cases.spec.ts` already asserts the unchanged auto-consent and cross-org rejection; full UI suite 133/133)
 - [x] 4.2 Document the flag and behavior in `docs/guide/custom-ui.md` and the client docs, fix the introspection endpoint path in `docs/guide/deployment.md:905`, and update `techdocs/architecture/security.md`. ✅ (completed: 2026-09-24 08:45; consent trust model documented in `custom-ui.md` and `security.md`; introspection path corrected to `/:orgSlug/token/introspection`)
-- [ ] 4.3 Update `00-remaining-work.md` and `00-roadmap.md`: resolve DEF-21 and record the deferred SDK/CLI/admin-UI, connected-apps, and resource-server follow-ups.
-- [ ] 4.4 Full verification: `yarn workspace @portaidentity/server verify`, `yarn test:ui`, `yarn test:structure`, `yarn assurance:compat --select compatibility`, and `yarn assurance:harness --project security --profile production-security`.
+- [x] 4.3 Update `00-remaining-work.md` and `00-roadmap.md`: resolve DEF-21 and record the deferred SDK/CLI/admin-UI, connected-apps, and resource-server follow-ups. ✅ (completed: 2026-09-24 09:05; DEF-21 moved to the resolved backlog and the roadmap row set to Done; deferred follow-ups recorded)
+- [x] 4.4 Full verification: `yarn workspace @portaidentity/server verify`, `yarn test:ui`, `yarn test:structure`, `yarn assurance:compat --select compatibility`, and `yarn assurance:harness --project security --profile production-security`. ✅ (completed: 2026-09-24 09:05; server verify unit 3683 / integration 477 / e2e 133 / pentest 268; UI 133/133; structure 126/126; assurance:compat compatibility exit 0; production-security harness passed=11 incomplete=0 exit 0)
 
 **Phase gate:** the consent page is proven in a browser against a third-party client, the flag and
 its memory semantics are documented, and the backlog no longer lists DEF-21.
