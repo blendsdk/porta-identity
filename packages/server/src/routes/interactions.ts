@@ -1085,12 +1085,105 @@ async function handleSendMagicLink(
   }
 }
 
+/** Interaction details returned by the provider for a consent interaction. */
+type ConsentInteraction = Awaited<ReturnType<Provider['interactionDetails']>>;
+
+/**
+ * Report whether the authorization request carries an explicit `prompt=consent`.
+ *
+ * @param params - Authorization request parameters from the interaction
+ * @returns `true` when the client explicitly requested consent
+ */
+function requestedExplicitConsent(params: Record<string, unknown>): boolean {
+  const prompt = typeof params.prompt === 'string' ? params.prompt : '';
+  return prompt.split(' ').includes('consent');
+}
+
+/**
+ * Report whether the interaction has no scope, claim, or resource left to grant.
+ *
+ * @param details - The interaction prompt details listing what is missing
+ * @returns `true` when nothing remains to consent to
+ */
+function nothingMissing(details: Record<string, unknown>): boolean {
+  const missingScopes = (details.missingOIDCScope as Iterable<string> | undefined) ?? [];
+  const missingClaims = (details.missingOIDCClaims as Iterable<string> | undefined) ?? [];
+  const missingResources =
+    (details.missingResourceScopes as Record<string, Iterable<string>> | undefined) ?? {};
+  return (
+    [...missingScopes].length === 0 &&
+    [...missingClaims].length === 0 &&
+    Object.values(missingResources).every((scopes) => [...scopes].length === 0)
+  );
+}
+
+/**
+ * Persist a consent grant covering the interaction's missing scopes and finish.
+ *
+ * Grants exactly what the provider listed as missing plus `offline_access` when
+ * requested (the provider treats it as a consent signal and may omit it from
+ * `missingOIDCScope`, but the grant must include it for a refresh token).
+ *
+ * @param ctx - Koa context with organization state
+ * @param provider - OIDC provider instance
+ * @param interaction - Current interaction details
+ * @param description - Audit description for the recorded grant
+ */
+async function grantConsentAndFinish(
+  ctx: InteractionContext,
+  provider: Provider,
+  interaction: ConsentInteraction,
+  description: string,
+): Promise<void> {
+  const params = interaction.params as Record<string, unknown>;
+  const details = interaction.prompt.details as Record<string, unknown>;
+  const clientId = params.client_id as string;
+  const grant = new provider.Grant({ accountId: interaction.session?.accountId, clientId });
+
+  if (details.missingOIDCScope) {
+    grant.addOIDCScope([...(details.missingOIDCScope as Iterable<string>)].join(' '));
+  }
+  if (details.missingOIDCClaims) {
+    grant.addOIDCClaims([...(details.missingOIDCClaims as Iterable<string>)]);
+  }
+  if (details.missingResourceScopes) {
+    for (const [indicator, scopes] of Object.entries(
+      details.missingResourceScopes as Record<string, Iterable<string>>,
+    )) {
+      grant.addResourceScope(indicator, [...scopes].join(' '));
+    }
+  }
+  const requestedScope = (params.scope as string) ?? '';
+  if (requestedScope.includes('offline_access')) {
+    grant.addOIDCScope('offline_access');
+  }
+
+  const grantId = await grant.save();
+  writeAuditLog({
+    organizationId: ctx.state.organization.id,
+    userId: interaction.session?.accountId,
+    eventType: 'user.consent.granted',
+    eventCategory: 'authentication',
+    description,
+  });
+  await provider.interactionFinished(
+    ctx.req,
+    ctx.res,
+    { consent: { grantId } },
+    { mergeWithLastSubmission: true },
+  );
+}
+
 /**
  * Show the consent page for an OIDC interaction.
  *
- * If the client belongs to the same organization (first-party app),
- * auto-consents by immediately finishing the interaction. Otherwise,
- * renders the consent page with requested scopes and client info.
+ * The decision is trust-driven rather than organization-driven:
+ *   - Nothing is missing → finish without rendering and reuse or create the
+ *     grant. An explicit `prompt=consent` is ignored so a user who already
+ *     consented is never asked again.
+ *   - Something is missing → render the consent page when the client requires
+ *     consent (`requireConsent`) or explicitly requested `prompt=consent`;
+ *     otherwise auto-consent the trusted first-party client.
  *
  * @param ctx - Koa context with organization state
  * @param provider - OIDC provider instance
@@ -1104,73 +1197,54 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     await resolveOrganizationForInteraction(ctx, params.client_id as string, interaction.uid);
     const org = ctx.state.organization;
 
+    const clientId = params.client_id as string;
+    const client = await provider.Client.find(clientId);
+    const requiresConsent = client?.metadata()?.requireConsent === true;
+    const details = prompt.details as Record<string, unknown>;
+
+    // Nothing left to grant: finish without rendering, even under prompt=consent.
+    // Reuse the provider's resolved grant; creating a new grant here would
+    // replace it with an empty one and drop the scopes the user already
+    // approved, which would make the provider prompt again.
+    if (nothingMissing(details)) {
+      const existingGrantId = (interaction as unknown as { grantId?: string }).grantId;
+      if (existingGrantId !== undefined) {
+        await provider.interactionFinished(
+          ctx.req,
+          ctx.res,
+          { consent: { grantId: existingGrantId } },
+          { mergeWithLastSubmission: true },
+        );
+        return;
+      }
+      await grantConsentAndFinish(
+        ctx,
+        provider,
+        interaction,
+        `Consent already granted for client ${clientId}`,
+      );
+      return;
+    }
+
+    // A new scope, claim, or resource is requested. Ask only when the client
+    // requires consent or explicitly requested it; trusted clients auto-consent.
+    const explicitConsent = requestedExplicitConsent(params as Record<string, unknown>);
+    if (!requiresConsent && !explicitConsent) {
+      await grantConsentAndFinish(
+        ctx,
+        provider,
+        interaction,
+        `Auto-consent granted for first-party client ${clientId}`,
+      );
+      return;
+    }
+
     // Resolve locale for the consent page
     const uiLocales = params.ui_locales as string | undefined;
     const acceptLanguage = ctx.get('Accept-Language') || undefined;
     const locale = await resolveLocale(uiLocales, acceptLanguage, org.defaultLocale);
     const t = getTranslationFunction(locale, org.slug);
 
-    // Auto-consent for first-party apps: if the client metadata includes
-    // the org ID matching the current tenant, skip the consent screen
-    const clientId = params.client_id as string;
-    const client = await provider.Client.find(clientId);
-
-    if (client) {
-      // Check if this is a first-party client (belongs to the same org)
-      const clientOrgId = client.metadata()?.organizationId as string | undefined;
-      if (clientOrgId && clientOrgId === org.id) {
-        // Auto-consent: finish interaction immediately with consent grant
-        const grant = new provider.Grant({ accountId: interaction.session?.accountId, clientId });
-
-        // Use prompt.details to grant exactly what the provider requires
-        const details = prompt.details as Record<string, unknown>;
-
-        if (details.missingOIDCScope) {
-          const scopes = details.missingOIDCScope as Iterable<string>;
-          grant.addOIDCScope([...scopes].join(' '));
-        }
-        if (details.missingOIDCClaims) {
-          const claims = details.missingOIDCClaims as Iterable<string>;
-          grant.addOIDCClaims([...claims]);
-        }
-        if (details.missingResourceScopes) {
-          for (const [indicator, scopes] of Object.entries(
-            details.missingResourceScopes as Record<string, Iterable<string>>,
-          )) {
-            grant.addResourceScope(indicator, [...scopes].join(' '));
-          }
-        }
-
-        // Explicitly grant offline_access if requested — node-oidc-provider
-        // treats it as a consent signal and may not include it in missingOIDCScope,
-        // but the Grant must include it for a refresh_token to be issued.
-        const requestedScope = (params.scope as string) ?? '';
-        if (requestedScope.includes('offline_access')) {
-          grant.addOIDCScope('offline_access');
-        }
-
-        const grantId = await grant.save();
-
-        const result = {
-          consent: { grantId },
-        };
-
-        writeAuditLog({
-          organizationId: org.id,
-          userId: interaction.session?.accountId,
-          eventType: 'user.consent.granted',
-          eventCategory: 'authentication',
-          description: `Auto-consent granted for first-party client ${clientId}`,
-        });
-
-        await provider.interactionFinished(ctx.req, ctx.res, result, {
-          mergeWithLastSubmission: true,
-        });
-        return;
-      }
-    }
-
-    // Third-party client: show the consent page
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const requestedScopes = ((params.scope as string) ?? '').split(' ').filter(Boolean);

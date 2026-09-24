@@ -69,6 +69,14 @@ export interface Client {
   allowedOrigins: string[];
   requirePkce: boolean;
   /**
+   * Whether this client must ask the end user for consent.
+   *
+   * `false` (default) marks a trusted first-party client whose interaction is
+   * auto-consented. `true` marks an external or partner client for which the
+   * consent page is rendered for scopes the user has not already granted.
+   */
+  requireConsent: boolean;
+  /**
    * Per-client login-method override.
    *   - `null` → inherit from the organization's `defaultLoginMethods`
    *   - non-empty array → use these methods exclusively
@@ -131,6 +139,8 @@ export interface CreateClientInput {
   tokenEndpointAuthMethod?: string;
   allowedOrigins?: string[];
   requirePkce?: boolean;
+  /** Whether the client must ask the end user for consent. Defaults to false. */
+  requireConsent?: boolean;
   secretLabel?: string;
   /**
    * Optional per-client login-method override set at creation time.
@@ -155,6 +165,8 @@ export interface UpdateClientInput {
   tokenEndpointAuthMethod?: string;
   allowedOrigins?: string[];
   requirePkce?: boolean;
+  /** Whether the client must ask the end user for consent. */
+  requireConsent?: boolean;
   /**
    * Per-client login-method override. Three-state input:
    *   - `undefined` → leave the current value alone (partial update)
@@ -215,6 +227,7 @@ export interface ClientRow {
   token_endpoint_auth_method: string;
   allowed_origins: string[];
   require_pkce: boolean;
+  require_consent: boolean;
   /**
    * Nullable TEXT[] column. `null` means "inherit org default".
    * Stored as-is by pg; the domain mapper preserves the null sentinel.
@@ -265,6 +278,7 @@ export function mapRowToClient(row: ClientRow): Client {
     tokenEndpointAuthMethod: row.token_endpoint_auth_method,
     allowedOrigins: row.allowed_origins ?? [],
     requirePkce: row.require_pkce,
+    requireConsent: row.require_consent,
     // Preserve the null sentinel — null means "inherit org default".
     // When non-null, the DB column is a TEXT[] of valid LoginMethod values
     // (enforced by the service-layer validator on write). Cast is safe because

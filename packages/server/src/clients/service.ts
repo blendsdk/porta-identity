@@ -201,6 +201,7 @@ export async function createClient(
   const tokenEndpointAuthMethod =
     input.tokenEndpointAuthMethod ?? getDefaultTokenEndpointAuthMethod(input.clientType);
   const requirePkce = input.requirePkce ?? true;
+  const requireConsent = input.requireConsent ?? false;
 
   requireCompatibleProtocol({
     clientType: input.clientType,
@@ -237,6 +238,7 @@ export async function createClient(
     tokenEndpointAuthMethod,
     allowedOrigins: input.allowedOrigins ?? [],
     requirePkce,
+    requireConsent,
     // Pass through validated value as-is: `undefined` triggers column
     // omission (DB default), `null` inserts NULL explicitly, array inserts
     // the validated methods. The repo honors all three states.
@@ -378,6 +380,7 @@ export async function updateClient(
     updateData.tokenEndpointAuthMethod = input.tokenEndpointAuthMethod;
   if (input.allowedOrigins !== undefined) updateData.allowedOrigins = input.allowedOrigins;
   if (input.requirePkce !== undefined) updateData.requirePkce = input.requirePkce;
+  if (input.requireConsent !== undefined) updateData.requireConsent = input.requireConsent;
 
   // Validate + normalize the login-method override if the caller passed the
   // key (including `null` = clear). Capture the previous value first for the
@@ -607,9 +610,12 @@ export async function findForOidc(clientId: string): Promise<Record<string, unkn
     // Internal authority boundary consumed only while building this client's claims.
     // Keeping the value in provider metadata avoids a database lookup on every claim request.
     'urn:porta:internal_application_id': client.applicationId,
-    // Organization ID — used by auto-consent logic in showConsent() to
-    // identify first-party clients (same org → skip consent screen)
+    // Organization ID — the tenant that owns the client.
     organizationId: client.organizationId,
+    // Whether the client must ask the end user for consent. The consent gate
+    // in showConsent() renders the consent page when this is true and a
+    // requested scope has not already been granted.
+    requireConsent: client.requireConsent,
   };
 
   // For confidential clients, include the SHA-256 hash as client_secret.

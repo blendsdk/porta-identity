@@ -112,6 +112,7 @@ const createClientSchema = z
     tokenEndpointAuthMethod: tokenEndpointAuthMethodSchema.optional(),
     allowedOrigins: optionalClientUrisSchema.optional(),
     requirePkce: z.boolean().optional(),
+    requireConsent: z.boolean().optional(),
     loginMethods: clientLoginMethodsSchema.optional(),
     secretLabel: secretLabelSchema.optional(),
     secretExpiresAt: futureSecretExpirySchema.optional(),
@@ -143,6 +144,7 @@ const updateClientSchema = z.object({
   tokenEndpointAuthMethod: tokenEndpointAuthMethodSchema.optional(),
   allowedOrigins: optionalClientUrisSchema.optional(),
   requirePkce: z.boolean().optional(),
+  requireConsent: z.boolean().optional(),
   loginMethods: clientLoginMethodsSchema.optional(),
 });
 

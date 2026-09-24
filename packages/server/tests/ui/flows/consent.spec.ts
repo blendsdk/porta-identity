@@ -67,66 +67,40 @@ test.describe('Consent Flow', () => {
   test('should display consent page with requested scopes', async ({
     page,
     testData,
-    startAuthFlow,
+    startConsentAuthFlow,
   }) => {
-    // Start a fresh auth flow and login
-    await startAuthFlow(page);
+    // The consent-requiring client must render the page after login.
+    await startConsentAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
-    await page.fill('#email', testData.userEmail);
-    await page.fill('#password', testData.userPassword);
+    await page.fill('#email', testData.consentUserEmail);
+    await page.fill('#password', testData.consentUserPassword);
     await page.click('button[type="submit"]');
     await page.waitForLoadState('networkidle');
 
-    // Check if we landed on a consent page
-    const currentUrl = page.url();
-    const isConsentPage =
-      currentUrl.includes('consent') ||
-      (await page.locator('.scope-list, .btn-secondary').count()) > 0;
+    await expect(page.locator('h1')).toBeVisible();
+    await expect(page.locator('button:has-text("Allow access")')).toBeVisible();
+    await expect(page.locator('button:has-text("Deny")')).toBeVisible();
 
-    if (isConsentPage) {
-      // Verify consent page elements: heading, scopes list, approve/deny buttons
-      await expect(page.locator('h1')).toBeVisible();
-
-      // Approve button
-      await expect(page.locator('button:has-text("Allow access")')).toBeVisible();
-      // Deny button
-      await expect(page.locator('button:has-text("Deny")')).toBeVisible();
-
-      // CSRF token should be present in the form(s)
-      const csrfInputs = page.locator('input[name="_csrf"]');
-      expect(await csrfInputs.count()).toBeGreaterThanOrEqual(1);
-    } else {
-      // Auto-consent happened — the flow completed without showing consent.
-      // This is expected for first-party clients. Verify we got a code.
-      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
-      const url = new URL(page.url());
-      expect(url.searchParams.get('code')).toBeTruthy();
-    }
+    const csrfInputs = page.locator('input[name="_csrf"]');
+    expect(await csrfInputs.count()).toBeGreaterThanOrEqual(1);
   });
 
   test('should redirect to callback with code after approving consent', async ({
     page,
     testData,
-    startAuthFlow,
+    startConsentAuthFlow,
   }) => {
-    // Start auth flow and login
-    await startAuthFlow(page);
+    await startConsentAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
-    await page.fill('#email', testData.userEmail);
-    await page.fill('#password', testData.userPassword);
+    await page.fill('#email', testData.consentUserEmail);
+    await page.fill('#password', testData.consentUserPassword);
     await page.click('button[type="submit"]');
     await page.waitForLoadState('networkidle');
 
-    const _currentUrl = page.url();
+    await page.click('button:has-text("Allow access")');
 
-    if ((await page.locator('button:has-text("Allow access")').count()) > 0) {
-      // Click the approve button
-      await page.click('button:has-text("Allow access")');
-    }
-
-    // Should redirect to callback with authorization code
     await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
     const url = new URL(page.url());
     expect(url.searchParams.get('code')).toBeTruthy();
@@ -136,35 +110,20 @@ test.describe('Consent Flow', () => {
   test('should redirect to callback with error after denying consent', async ({
     page,
     testData,
-    startAuthFlow,
+    startConsentAuthFlow,
   }) => {
-    // Start auth flow and login
-    await startAuthFlow(page);
+    await startConsentAuthFlow(page);
     await page.waitForURL('**/interaction/**');
 
-    await page.fill('#email', testData.userEmail);
-    await page.fill('#password', testData.userPassword);
+    await page.fill('#email', testData.consentUserEmail);
+    await page.fill('#password', testData.consentUserPassword);
     await page.click('button[type="submit"]');
     await page.waitForLoadState('networkidle');
 
-    const _currentUrl = page.url();
+    await page.click('button:has-text("Deny")');
 
-    if ((await page.locator('button:has-text("Deny")').count()) > 0) {
-      // Click the deny button
-      await page.click('button:has-text("Deny")');
-
-      // Should redirect to callback with error=access_denied
-      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
-      const url = new URL(page.url());
-      expect(url.searchParams.get('error')).toBe('access_denied');
-    } else {
-      // Auto-consent happened — the flow completed without consent page.
-      // This test is about denying consent, so if no consent page is shown,
-      // the deny action cannot be tested (first-party clients auto-consent).
-      // Verify we at least got a valid callback.
-      await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
-      const url = new URL(page.url());
-      expect(url.searchParams.get('code')).toBeTruthy();
-    }
+    await page.waitForURL(`${testData.redirectUri}*`, { timeout: 25_000 });
+    const url = new URL(page.url());
+    expect(url.searchParams.get('error')).toBe('access_denied');
   });
 });

@@ -251,6 +251,24 @@ async function globalSetup(_config: FullConfig): Promise<void> {
     },
   });
 
+  // Create a third tenant whose client requires end-user consent, so the
+  // browser consent tests exercise a real consent page for an untrusted
+  // client instead of falling back to auto-consent.
+  const consentTenant = await createFullTestTenant({
+    orgOverrides: { name: 'Consent Test Org' },
+    clientOverrides: {
+      clientName: 'Consent Test Client',
+      requireConsent: true,
+      grantTypes: ['authorization_code', 'refresh_token'],
+      redirectUris: [`http://localhost:${UI_TEST_PORT}/callback`],
+    },
+    userOverrides: {
+      email: 'consent-user@example.com',
+      givenName: 'Consent',
+      familyName: 'Tester',
+    },
+  });
+
   // ── Step 9b: Seed additional users (Phase 2) ────────────────────────
   // Create users in various statuses for login error state and auth workflow tests.
   // Use direct DB update for non-active statuses (bypasses service-layer validation).
@@ -458,6 +476,14 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   process.env.TEST_CONF_CLIENT_SECRET = confTenant.clientSecret;
   process.env.TEST_CONF_USER_EMAIL = confTenant.user.email;
   process.env.TEST_CONF_USER_PASSWORD = confTenant.password ?? DEFAULT_TEST_PASSWORD;
+
+  // Consent tenant — a client that requires end-user consent.
+  process.env.UI_TEST_CONSENT_ORG_SLUG = consentTenant.org.slug;
+  process.env.UI_TEST_CONSENT_CLIENT_ID = consentTenant.client.clientId;
+  process.env.UI_TEST_CONSENT_CLIENT_SECRET = consentTenant.clientSecret;
+  process.env.UI_TEST_CONSENT_USER_EMAIL = consentTenant.user.email;
+  process.env.UI_TEST_CONSENT_USER_PASSWORD = consentTenant.password ?? DEFAULT_TEST_PASSWORD;
+  process.env.UI_TEST_CONSENT_REDIRECT_URI = `http://localhost:${UI_TEST_PORT}/callback`;
 
   // Phase 2: Additional user emails and passwords for status tests
   process.env.UI_TEST_INACTIVE_USER_EMAIL = 'inactive@test.example.com';
