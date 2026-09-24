@@ -94,6 +94,7 @@ OIDC client registrations, scoped to an organization and optionally to an applic
 | `id_token_signed_response_alg` | VARCHAR(10)  | Default `ES256`                                            |
 | `scope`                        | TEXT         | Allowed scopes                                             |
 | `require_pkce`                 | BOOLEAN      | PKCE enforcement                                           |
+| `require_consent`              | BOOLEAN      | Show the OIDC consent page for this client                 |
 
 ### Client Secrets
 

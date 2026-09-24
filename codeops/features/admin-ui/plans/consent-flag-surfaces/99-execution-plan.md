@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Status**: Executing
-> **Last Updated**: 2026-09-24 10:55
-> **Progress**: 16/21 tasks (76%)
+> **Last Updated**: 2026-09-24 11:10
+> **Progress**: 20/21 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -109,10 +109,10 @@ shape, and the CLI workspace verify is green.
 **Reference**: `03-04`; AR-2, AR-7, AR-9.
 **Scope mode**: strict
 
-- [ ] 5.1 Add `require_consent` to the portability contract: `packages/server/src/portability/{types,repository,schema,plan-support,import-user-client-writers}.ts` and the SDK import type `packages/sdk/src/types/imports.ts`
-- [ ] 5.2 Extend the portability specification/implementation tests and run the server unit + integration portability suites — `packages/server/tests/`
-- [ ] 5.3 Update the client-field documentation — `docs/api/clients.md`, `docs/cli/clients.md` (add the flag row and align the create/get/update sections to the real flags), `docs/database/schema.md`, `techdocs/architecture/data-model.md`; run `yarn docs:build`
-- [ ] 5.4 Resolve the DEF-21 follow-up row for these surfaces in `codeops/features/test-assurance/00-remaining-work.md` and note the pre-existing migrations-doc gap (R-02); run `yarn test:structure`
+- [x] 5.1 Add `require_consent` to the portability contract: `packages/server/src/portability/{types,repository,schema,plan-support,import-user-client-writers}.ts` and the SDK import type `packages/sdk/src/types/imports.ts` ✅ (completed: 2026-09-24 11:10; `types.ts`/`repository.ts`/`schema.ts`/`plan-support.ts`/`import-user-client-writers.ts`/`import-repository.ts`; the SDK import type was added in Phase 2)
+- [x] 5.2 Extend the portability specification/implementation tests and run the server unit + integration portability suites — `packages/server/tests/` ✅ (completed: 2026-09-24 11:10; server typecheck clean; unit portability 79/79; integration portability 36/36)
+- [x] 5.3 Update the client-field documentation — `docs/api/clients.md`, `docs/cli/clients.md` (add the flag row and align the create/get/update sections to the real flags), `docs/database/schema.md`, `techdocs/architecture/data-model.md`; run `yarn docs:build` ✅ (completed: 2026-09-24 11:10; `docs/api/clients.md`, `docs/cli/clients.md` (CRUD aligned to the real flags), `docs/database/schema.md`, `techdocs/architecture/data-model.md`; `yarn docs:build` green)
+- [x] 5.4 Resolve the DEF-21 follow-up row for these surfaces in `codeops/features/test-assurance/00-remaining-work.md` and note the pre-existing migrations-doc gap (R-02); run `yarn test:structure` ✅ (completed: 2026-09-24 11:10; DEF-21 follow-up row updated, R-02 gap noted in 02-current-state, roadmap T-04 Done; structure 126/126)
 - [ ] 5.5 Full verification: `yarn workspace @portaidentity/sdk verify`, `yarn workspace @portaidentity/cli verify`, `yarn test:structure`, `yarn assurance:compat --select compatibility`, `yarn verify`
 
 **Phase gate:** the flag round-trips through export/import, the documentation lists it, the backlog
