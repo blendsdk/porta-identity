@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-24 13:25
-> **Progress**: 2/14 tasks (14%)
+> **Last Updated**: 2026-09-24 13:45
+> **Progress**: 5/20 tasks (25%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -25,7 +25,7 @@ owned production-security harness run. Specification tests precede implementatio
 | 3     | Live spec and harness wiring         | 4     |
 | 4     | Live evidence and closure            | 2     |
 
-**Total: 14 tasks across 4 phases**
+**Total: 20 tasks across 4 phases**
 
 > **⚠️ EXECUTION RULE:** the phase checkboxes below are the single source of truth. Mark `[~]` on
 > implementation, `[x]` on verify pass, update the Progress header after every task, and append
@@ -45,12 +45,12 @@ owned production-security harness run. Specification tests precede implementatio
 
 ### Step 1.2: Implementation
 
-- [ ] 1.2.1 Add the `user.invite.failed` audit event on the invalid/used/expired path — `packages/server/src/routes/invitation.ts`
-- [ ] 1.2.2 Add the integration coverage (ST-18) — `packages/server/tests/integration/services/invitation-enhanced.test.ts`
+- [x] 1.2.1 Add the `user.invite.failed` audit event on the invalid/used/expired path — `packages/server/src/routes/invitation.ts`
+- [x] 1.2.2 Add the integration coverage (ST-18) — `packages/server/tests/integration/services/invitation-enhanced.test.ts`
 
 ### Step 1.3: Impl tests and verify
 
-- [ ] 1.3.1 Confirm the invitation suites pass and no existing assertion changed
+- [x] 1.3.1 Confirm the invitation suites pass and no existing assertion changed
 
 **Verify**: `yarn workspace @portaidentity/server verify`
 
