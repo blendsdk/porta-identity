@@ -135,6 +135,7 @@ describe('portability manifest schema implementation', () => {
         post_logout_redirect_uris: [],
         allowed_origins: ['https://client.example'],
         require_pkce: true,
+        require_consent: true,
       },
     ];
 
