@@ -1,7 +1,7 @@
 # Ambiguity Register: ST-46 Delivered-Artifact Requirement Correction
 
-> **Status**: ✅ GATE PASSED — all 15 items resolved
-> **Last Updated**: 2026-09-24 23:34
+> **Status**: ✅ GATE PASSED — all 16 items resolved (AR-16 added during execution)
+> **Last Updated**: 2026-09-25 00:35
 
 This register gates the plan that corrects the `ST-46` delivered-artifact assurance specification
 so the production-security harness proves the real security properties truthfully. It closes the
@@ -27,6 +27,7 @@ changing an expectation to bless an observed defect.
 | AR-13 | Scope | Does the correction require any product code change? | No — no limiter, no audit event, no recipient-binding rework; the invitation rejection audit and organization-scoped invitation lookup already shipped with DEF-8 Phase 1 and 2.4 | Derived from AR-2, AR-3, AR-4 | ✅ Resolved |
 | AR-14 | Scope / Consistency | Preflight PF-001: a second, immutable `ST-46` exists as a declarative slice profile plus claim (`human-auth-slice-profile-requirements.ts:610`), pinned by `human-auth-slice-profiles.spec.test.ts`, which still asserts invitation `request-limit-exhausted:public-throttled-rejection` and reset/invitation `wrong-recipient-use` | (A) extend the plan to correct that catalog and its spec test; (B) keep it as an intentionally broader specification-only model; (C) defer | (A) correct the second catalog too — user | ✅ Resolved |
 | AR-15 | Integration / Consistency | Preflight PF-002–PF-005: roadmap double-link risk, stale def-8 findings, non-automated RD-05 wording check, and uncommitted plan artifacts before the harness | Accept all four recommendations: advance only the DEF-26 row; cross-reference def-8; accept the manual RD-05 check; commit all docs before 3.1.1 | Accepted — user | ✅ Resolved |
+| AR-16 | Behavioral (runtime) | The live ST-46 spec's raw-secret assertion flags its own `sha256:<64-hex>` digest values once the case reaches the final check (masked before, when an earlier probe failed) | (A) refine the 64-hex regex to exclude a scheme colon so digests are ignored but raw token values are still detected; (B) strip digest fields before the check; (C) change the digest format | (A) refine the regex — user | ✅ Resolved |
 
 ## Resolution Notes
 
@@ -78,3 +79,5 @@ product-remediation roadmap link; only the new DEF-26 row advances. PF-003: task
 cross-reference in the def-8 register. PF-004: the documentation-only R5.7 change keeps the manual
 re-read verification. PF-005: all plan documents (including the preflight report) and the RD-05,
 slice-profile, and roadmap edits are committed before the harness task 3.1.1.
+
+**AR-16 (runtime):** Discovered during Phase 3. All 18 regex matches in the observation are `sha256:` digests; none are secrets. Adding `:` to the negative lookbehind keeps detection of a raw 64-hex value (preceded by a quote or whitespace) while ignoring labelled digests. This is a precision fix, not a weakening: the assertion still fails on any unlabelled 64-hex secret.

@@ -113,7 +113,7 @@ function assertProbeEvidence(
 /** Asserts the whole observation carries no raw bearer material in a recognisable shape. */
 function assertNoRawSecret(observation: HumanAuthCaseObservation): void {
   const serialized = JSON.stringify(observation);
-  assert.doesNotMatch(serialized, /(?<![A-Za-z0-9])[a-f0-9]{64}(?![A-Za-z0-9])/u);
+  assert.doesNotMatch(serialized, /(?<![A-Za-z0-9:])[a-f0-9]{64}(?![A-Za-z0-9])/u);
   assert.doesNotMatch(serialized, /\b(token|secret|password|cookie)\b\s*[:=]\s*"/iu);
 }
 
