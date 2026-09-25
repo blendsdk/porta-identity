@@ -403,6 +403,7 @@ export function createAdminClientWorkspace(
     const grants = signal([...initialGrants]);
     const authenticationMethod = signal(initialAuthentication);
     const requirePkce = signal(selected.requirePkce);
+    const requireConsent = signal(selected.requireConsent);
     const scope = signal(selected.scope);
     const submitted = signal(false);
     const grantChoices = new CheckGroup({
@@ -426,6 +427,10 @@ export function createAdminClientWorkspace(
       label: '~P~KCE required',
       disabled: selected.clientType === 'public',
     });
+    const consentSwitch = new Switch({
+      value: requireConsent,
+      label: 'Re~q~uire consent',
+    });
     const isValid = (): boolean =>
       protocolIsValid(
         selected,
@@ -438,6 +443,7 @@ export function createAdminClientWorkspace(
       grants().some((value, index) => value !== initialGrants[index]) ||
       authenticationMethod() !== initialAuthentication ||
       requirePkce() !== selected.requirePkce ||
+      requireConsent() !== selected.requireConsent ||
       scope() !== selected.scope;
     const save = new Button('~S~ave', {
       disabled: () =>
@@ -455,6 +461,7 @@ export function createAdminClientWorkspace(
             scope: scope.peek(),
             tokenEndpointAuthMethod: authenticationNames[authenticationMethod.peek()]!,
             requirePkce: requirePkce.peek(),
+            requireConsent: requireConsent.peek(),
           },
         });
       },
@@ -488,6 +495,7 @@ export function createAdminClientWorkspace(
         row(
           { gap: 2 },
           pkceSwitch,
+          consentSwitch,
           grow(
             new Text(() =>
               isValid() ? '' : 'Not supported for this client type.',

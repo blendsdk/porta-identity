@@ -642,6 +642,9 @@ export function buildProviderConfiguration(
         //   string[]   → explicit override (subset of ['password','magic_link'])
         // Resolved to effective methods inside the interaction route handlers.
         'urn:porta:login_methods',
+        // Whether the client must ask the end user for consent. Read by the
+        // consent gate in showConsent().
+        'requireConsent',
       ],
     },
   };

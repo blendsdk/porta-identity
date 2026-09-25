@@ -137,10 +137,18 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
 
   // Validate the invitation token
   const tokenHash = hashToken(tokenPlaintext);
-  const tokenRecord = await findValidInvitationToken(tokenHash);
+  const tokenRecord = await findValidInvitationToken(tokenHash, org.id);
 
   if (!tokenRecord) {
-    // Token is invalid, expired, or already used — show expired page
+    // Token is invalid, expired, already used, or belongs to another tenant — record the rejection and show expired page
+    writeAuditLog({
+      organizationId: org.id,
+      eventType: 'user.invite.failed',
+      eventCategory: 'security',
+      description: 'Invitation acceptance failed: invalid or expired token',
+      ipAddress: ctx.ip,
+    });
+
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
@@ -217,10 +225,18 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
 
   // Step 2: Re-validate the invitation token
   const tokenHash = hashToken(tokenPlaintext);
-  const tokenRecord = await findValidInvitationToken(tokenHash);
+  const tokenRecord = await findValidInvitationToken(tokenHash, org.id);
 
   if (!tokenRecord) {
-    // Token expired between page load and form submission
+    // Token expired or was issued by another tenant between page load and form submission — record the rejection
+    writeAuditLog({
+      organizationId: org.id,
+      eventType: 'user.invite.failed',
+      eventCategory: 'security',
+      description: 'Invitation acceptance failed: invalid or expired token',
+      ipAddress: ctx.ip,
+    });
+
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {

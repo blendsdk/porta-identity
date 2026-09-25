@@ -33,49 +33,52 @@ the full Admin surface and reload authoritative server state after saving.
 
 ```bash
 porta client create \
+  --org <org-id> \
+  --app <app-id> \
   --name "ERP Web App" \
-  --org-id <org-id> \
-  --app-id <app-id> \
   --type public \
   --redirect-uris "https://erp.example.com/callback" \
-  [--scope "openid profile email roles"] \
-  [--cors-origins "https://erp.example.com"]
+  [--application-type web] \
+  [--login-methods "password,magic_link"] \
+  [--require-consent]
 ```
 
 | Flag                 | Required | Description                                |
 | -------------------- | -------- | ------------------------------------------ |
-| `--name`             | ✅       | Client display name                        |
-| `--org-id`           | ✅       | Organization ID                            |
-| `--app-id`           | ✅       | Application ID                             |
-| `--type`             | ✅       | `public` or `confidential`                 |
+| `--org`              | ✅       | Organization UUID (owner of the client)    |
+| `--app`              | ✅       | Application UUID or slug                   |
+| `--name`             |          | Client display name                        |
+| `--type`             | ✅       | `confidential` or `public`                 |
 | `--redirect-uris`    | ✅       | Comma-separated redirect URIs              |
 | `--application-type` |          | `web`, `native`, or `spa` (default: `web`) |
-| `--scope`            |          | Space-separated scopes                     |
-| `--cors-origins`     |          | Comma-separated CORS origins               |
 | `--login-methods`    |          | Override org default login methods         |
+| `--require-consent`  |          | Show the OIDC consent page for this client |
 
 ### `porta client list`
 
 ```bash
-porta client list [--org-id <id>] [--status active] [--search "erp"]
+porta client list --app <app-id> [--status active] [--page 1] [--page-size 20]
 ```
 
-### `porta client show`
+### `porta client get`
 
 ```bash
-porta client show --id <client-id>
+porta client get <client-id>
 ```
 
-Shows full client details including `effectiveLoginMethods`.
+Shows full client details including `effectiveLoginMethods` and `requireConsent`.
 
 ### `porta client update`
 
 ```bash
-porta client update --id <client-id> \
+porta client update <client-id> \
   [--name "New Name"] \
   [--redirect-uris "https://new.example.com/callback"] \
-  [--scope "openid profile email"]
+  [--login-methods "password,magic_link"] \
+  [--require-consent | --no-require-consent]
 ```
+
+Omit `--require-consent`/`--no-require-consent` to leave the stored value unchanged.
 
 ### `porta client delete`
 
@@ -93,8 +96,8 @@ Deleting a client removes its credentials and immediately ends its protocol auth
 ### `porta client activate` / `porta client deactivate`
 
 ```bash
-porta client activate --id <client-id>
-porta client deactivate --id <client-id>
+porta client activate <client-id>
+porta client deactivate <client-id>
 ```
 
 ---

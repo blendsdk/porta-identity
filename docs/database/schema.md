@@ -186,6 +186,7 @@ OIDC clients (public or confidential).
 | `token_endpoint_auth_method` | `text`    | Auth method                             |
 | `cors_origins`               | `text[]`  | CORS origins                            |
 | `require_pkce`               | `boolean` | Require PKCE                            |
+| `require_consent`            | `boolean` | Show the consent page for this client   |
 | `login_methods`              | `text[]`  | Override login methods (NULL = inherit) |
 | `status`                     | `text`    | `active` or `inactive`                  |
 

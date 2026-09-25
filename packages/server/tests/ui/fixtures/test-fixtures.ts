@@ -63,6 +63,14 @@ export interface TestData {
   confUserEmail: string;
   /** Confidential client user password */
   confUserPassword: string;
+  /** Org slug of the tenant whose client requires end-user consent */
+  consentOrgSlug: string;
+  /** Consent client OIDC client_id */
+  consentClientId: string;
+  /** Consent client user email */
+  consentUserEmail: string;
+  /** Consent client user password */
+  consentUserPassword: string;
 
   // ── Phase 2 fields (user status tests) ─────────────────────────────
 
@@ -171,6 +179,8 @@ export const test = base.extend<{
   testData: TestData;
   /** Navigate browser to login page via OIDC auth request with PKCE */
   startAuthFlow: (page: Page) => Promise<string>;
+  /** Navigate browser to the login page of the consent-requiring tenant */
+  startConsentAuthFlow: (page: Page) => Promise<string>;
   /** Mail capture fixture — read/search/wait for MailHog emails */
   mailCapture: MailCapture;
   /** Database helper fixture — direct DB/Redis access for test setup */
@@ -197,6 +207,10 @@ export const test = base.extend<{
       confClientSecret: process.env.TEST_CONF_CLIENT_SECRET!,
       confUserEmail: process.env.TEST_CONF_USER_EMAIL!,
       confUserPassword: process.env.TEST_CONF_USER_PASSWORD!,
+      consentOrgSlug: process.env.UI_TEST_CONSENT_ORG_SLUG!,
+      consentClientId: process.env.UI_TEST_CONSENT_CLIENT_ID!,
+      consentUserEmail: process.env.UI_TEST_CONSENT_USER_EMAIL!,
+      consentUserPassword: process.env.UI_TEST_CONSENT_USER_PASSWORD!,
 
       // Phase 2: Additional users for status tests
       inactiveUserEmail: process.env.UI_TEST_INACTIVE_USER_EMAIL!,
@@ -272,6 +286,45 @@ export const test = base.extend<{
 
       // Store the code verifier on the page context for later token exchange
       // (accessible via page.evaluate if tests need to complete the full flow)
+      await page.evaluate((cv) => {
+        (window as unknown as Record<string, string>).__CODE_VERIFIER = cv;
+      }, codeVerifier);
+
+      return page.url();
+    };
+
+    await use(startFlow);
+  },
+
+  /**
+   * Fixture: startConsentAuthFlow
+   *
+   * Like `startAuthFlow`, but signs into the tenant whose client requires
+   * end-user consent, so the authorization flow reaches the consent page.
+   *
+   * Usage:
+   * ```ts
+   * const loginUrl = await startConsentAuthFlow(page);
+   * ```
+   */
+  startConsentAuthFlow: async ({ testData }, use) => {
+    const startFlow = async (page: Page): Promise<string> => {
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = generateCodeChallenge(codeVerifier);
+      const authUrl = new URL(`${testData.baseUrl}/${testData.consentOrgSlug}/auth`);
+      authUrl.searchParams.set('client_id', testData.consentClientId);
+      authUrl.searchParams.set(
+        'redirect_uri',
+        process.env.UI_TEST_CONSENT_REDIRECT_URI ?? testData.redirectUri,
+      );
+      authUrl.searchParams.set('response_type', 'code');
+      authUrl.searchParams.set('scope', 'openid profile email');
+      authUrl.searchParams.set('code_challenge', codeChallenge);
+      authUrl.searchParams.set('code_challenge_method', 'S256');
+      authUrl.searchParams.set('state', crypto.randomBytes(16).toString('hex'));
+
+      await page.goto(authUrl.toString(), { waitUntil: 'networkidle' });
+
       await page.evaluate((cv) => {
         (window as unknown as Record<string, string>).__CODE_VERIFIER = cv;
       }, codeVerifier);

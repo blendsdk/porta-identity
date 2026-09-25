@@ -404,6 +404,7 @@ describe('interaction routes', () => {
         metadata: () => ({
           client_name: 'Third-Party App',
           organizationId: undefined,
+          requireConsent: true,
           'urn:porta:login_methods': null,
         }),
       });
@@ -428,8 +429,8 @@ describe('interaction routes', () => {
       await exec(layer!, ctx);
 
       // showLogin detects consent and calls showConsent() directly (no redirect).
-      // Since the mock client has organizationId: undefined (third-party),
-      // the consent template is rendered instead of auto-consent.
+      // The client requires consent, so the consent template is rendered
+      // instead of auto-consent.
       expect(ctx.redirect).not.toHaveBeenCalled();
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'consent',
@@ -1260,11 +1261,11 @@ describe('interaction routes', () => {
 
     it('should render consent page for third-party client', async () => {
       const provider = createMockProvider();
-      // Third-party: no organizationId or different one
+      // The client requires consent, so the page renders instead of auto-consent.
       provider.Client.find.mockResolvedValue({
         metadata: () => ({
           client_name: 'Third-Party App',
-          organizationId: undefined,
+          requireConsent: true,
         }),
       });
 

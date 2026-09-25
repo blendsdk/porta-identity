@@ -39,6 +39,7 @@ const clientRow = {
   tokenEndpointAuthMethod: 'client_secret_basic' as const,
   allowedOrigins: ['https://portal.example.test'],
   requirePkce: true,
+  requireConsent: false,
   loginMethods: null,
   effectiveLoginMethods: ['password' as const],
   status: 'active' as const,

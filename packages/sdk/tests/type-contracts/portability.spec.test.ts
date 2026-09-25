@@ -153,6 +153,7 @@ type ExpectedManifest = {
     readonly post_logout_redirect_uris: readonly string[];
     readonly allowed_origins: readonly string[];
     readonly require_pkce: boolean;
+    readonly require_consent: boolean;
   }[];
 };
 

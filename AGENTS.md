@@ -112,7 +112,7 @@ Evidence: `codeops/features/production-readiness/plans/postgresql-backed-global-
 
 - Do not edit or commit `dist/`, `coverage/`, `test-results/`, `playwright-report/`, VitePress caches, generated playground configuration, or generated TLS certificates.
 - `.env` is local and must never be committed. Treat connection strings, signing keys, cookie keys, npm tokens, and release-provider keys as secrets.
-- Lockstep owns coordinated manifest versions, internal dependency ranges and changelogs. Use `yarn release:prepare` and `scripts/sync-versions.js` for release-derived source constants; do not hand-edit them during ordinary feature work. Release preparation and publication require explicit authorization, not an ordinary verification run.
+- Lockstep owns coordinated manifest versions, internal dependency ranges and changelogs. A release is a manual dispatch of the `Release` workflow on `main`: it bumps, writes the changelogs and release notes, commits and tags, publishes with provenance, creates the GitHub Release, dispatches Docker, and syncs `develop`. `yarn release:prepare` and `scripts/sync-versions.js` remain for local preparation; do not hand-edit version-derived constants during ordinary feature work. Triggering the release workflow is the explicit publication authorization, not an ordinary verification run.
 
 ## CI-only loopback DNS
 
@@ -122,7 +122,7 @@ Evidence: `codeops/features/production-readiness/plans/postgresql-backed-global-
 - Subdomains beneath `ci.portaidentity.com` are different origins but the same browser site. Tests that specifically require cross-site behavior must use different registrable domains instead.
 - Do not add an `AAAA` record unless every participating test service is intentionally bound to IPv6 loopback as well.
 
-The read-only `.github/workflows/build-and-test.yml` branch gate verifies the monorepo, UI, OIDC harness, public docs, production Docker build, and production dependency audit. Separate release workflows publish the tested `main` revision and release-tagged Docker images. Do not run release, publishing or deployment workflows as ordinary feature verification.
+The read-only `.github/workflows/build-and-test.yml` branch gate verifies the monorepo, UI, OIDC harness, public docs, production Docker build, and production dependency audit. The `Release` workflow is manual (`workflow_dispatch` on `main`) and publishes a verified `main` revision, its GitHub Release, and the release-tagged Docker image. Do not run release, publishing or deployment workflows as ordinary feature verification.
 
 ## Security invariants
 

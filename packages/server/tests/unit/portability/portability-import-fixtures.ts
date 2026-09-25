@@ -79,6 +79,7 @@ export const confidentialClient = {
   post_logout_redirect_uris: [],
   allowed_origins: ['https://alpha.example'],
   require_pkce: true,
+  require_consent: true,
 } as const;
 
 /** Destination organization row with its internal relationship identifier. */

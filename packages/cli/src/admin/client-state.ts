@@ -35,6 +35,8 @@ export interface AdminClient {
   readonly allowedOrigins: readonly string[];
   /** Whether authorization-code requests require PKCE. */
   readonly requirePkce: boolean;
+  /** Whether the authorization server shows the OIDC consent page for this client. */
+  readonly requireConsent: boolean;
   /** Per-client login-method override, or null to inherit. */
   readonly loginMethods: readonly ('password' | 'magic_link')[] | null;
   /** Effective login methods after organization inheritance. */

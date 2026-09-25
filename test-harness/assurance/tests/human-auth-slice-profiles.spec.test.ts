@@ -197,7 +197,6 @@ test('freezes exact method, session, cookie, recovery-artifact, and second-facto
     assert.match(profile?.allowedOutcomes.join(' ') ?? '', /intended-recipient-and-tenant/);
     assert.match(profile?.exactRejections.join(' ') ?? '', /configured-expiry-reached/);
     assert.match(profile?.exactRejections.join(' ') ?? '', /sequential-replay/);
-    assert.match(profile?.exactRejections.join(' ') ?? '', /public-throttled-rejection/);
     assert.ok(
       [
         'artifact-in-wrong-mailbox',
@@ -214,6 +213,19 @@ test('freezes exact method, session, cookie, recovery-artifact, and second-facto
       slice,
     );
   }
+
+  for (const slice of ['magic-link', 'password-reset', 'email-otp'] as const) {
+    assert.match(
+      profiles.get(slice)?.exactRejections.join(' ') ?? '',
+      /public-throttled-rejection/,
+      slice,
+    );
+  }
+  assert.doesNotMatch(
+    profiles.get('invitation')?.exactRejections.join(' ') ?? '',
+    /public-throttled-rejection/,
+    'invitation issuance is admin-authenticated and has no public-input limiter',
+  );
 
   assert.match(
     profiles.get('totp')?.exactRejections.join(' ') ?? '',

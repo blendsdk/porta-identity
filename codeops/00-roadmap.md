@@ -14,9 +14,9 @@
 | Feature              | Roadmap                                          | Stage Summary                                                             | Progress       | Status | Last Updated     |
 | -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------- | -------------- | ------ | ---------------- |
 | admin-ui             | [→](features/admin-ui/00-roadmap.md)             | Authentication gate planned; foundation and organization context complete | 86 / 90 (96%)  | 🔄     | 2026-08-29 11:46 |
-| monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration complete · publishing backlog                                   | 74 / 74 (100%) | ✅     | 2026-08-09 00:45 |
+| monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Automated release trigger in progress; publishing cutover complete        | 74 / 75 (99%)  | 🔄     | 2026-09-25 10:28 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |
-| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; residual defect campaigns (DEF-13/14) active | 66 / 66 (100%) | 🔄     | 2026-09-21 20:56 |
+| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-8 and the ST-46 correction complete        | 66 / 66 (100%) | 🔄     | 2026-09-25 01:30 |
 
 ## Archived
 

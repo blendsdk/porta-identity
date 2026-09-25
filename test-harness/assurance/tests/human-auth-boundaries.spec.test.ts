@@ -191,6 +191,35 @@ test('covers every delivered-artifact binding, expiry, replay, throttle, and exp
     const observation = await contract.observeCase(requirement);
     const kinds =
       sentinel === 'ST-46' ? ['magic-link', 'password-reset', 'invitation'] : ['email-otp'];
+    // A wrong-recipient probe needs a recipient/interaction input to vary; a throttle probe needs
+    // a public-issuance limiter. Password reset and invitation have neither as consumption input.
+    const probeSuffixes: Record<string, readonly string[]> =
+      sentinel === 'ST-47'
+        ? {
+            'email-otp': [
+              'wrong-recipient',
+              'wrong-tenant',
+              'configured-expiry',
+              'sequential-replay',
+              'throttled-request',
+            ],
+          }
+        : {
+            'magic-link': [
+              'wrong-recipient',
+              'wrong-tenant',
+              'configured-expiry',
+              'sequential-replay',
+              'throttled-request',
+            ],
+            'password-reset': [
+              'wrong-tenant',
+              'configured-expiry',
+              'sequential-replay',
+              'throttled-request',
+            ],
+            invitation: ['wrong-tenant', 'configured-expiry', 'sequential-replay'],
+          };
     for (const kind of kinds) {
       assert.equal(
         byStepId(observation, `${kind}-delivery-control`).facts.cryptographicallyUnpredictable,
@@ -200,13 +229,7 @@ test('covers every delivered-artifact binding, expiry, replay, throttle, and exp
         byStepId(observation, `${kind}-delivery-control`).facts.intendedDeliveryOnly,
         true,
       );
-      for (const suffix of [
-        'wrong-recipient',
-        'wrong-tenant',
-        'configured-expiry',
-        'sequential-replay',
-        'throttled-request',
-      ]) {
+      for (const suffix of probeSuffixes[kind] ?? []) {
         assert.ok(byStepId(observation, `${kind}-${suffix}`));
       }
     }
@@ -257,13 +280,17 @@ test('keeps concurrent artifact consumption as a requirements-only deferred entr
 });
 
 test(
-  'fails closed when live human-authentication mode is requested',
+  'fails closed for non-delivered-artifact sentinels in live mode',
   { concurrency: false },
-  () => {
+  async () => {
     const previous = process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER;
     process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER = 'live';
     try {
-      assert.throws(() => createHumanAuthCasesContract(), /HUMAN_AUTH_LIVE_ADAPTER_UNAVAILABLE/);
+      const contract = createHumanAuthCasesContract();
+      await assert.rejects(
+        () => contract.observeCase(byRequirement('ST-42')),
+        /HUMAN_AUTH_LIVE_SENTINEL_UNSUPPORTED/,
+      );
     } finally {
       if (previous === undefined) delete process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER;
       else process.env.PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER = previous;

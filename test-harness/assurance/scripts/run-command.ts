@@ -176,6 +176,11 @@ const humanAuthSecondFactorSpecificationFiles = [
   'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
 ] as const;
 
+/** Delivered-artifact recovery specifications executed only through the live security harness. */
+const humanAuthRecoverySpecificationFiles = [
+  'test-harness/assurance/tests/human-auth-recovery.spec.test.ts',
+] as const;
+
 /** Independently selectable invariant-specific tenant/admin fault specifications. */
 const tenantAdminFaultSpecificationFiles = [
   'test-harness/assurance/tests/tenant-admin-fault-requirements.spec.test.ts',
@@ -274,6 +279,7 @@ const assuranceAllInternalFiles = [
   'test-harness/assurance/tests/human-auth-functional.spec.test.ts',
   'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
   'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+  'test-harness/assurance/tests/human-auth-recovery.spec.test.ts',
   'test-harness/assurance/tests/human-auth-baseline.impl.test.ts',
   ...validationExposureSpecificationFiles,
   ...p1PackedReadSpecificationFiles,
@@ -424,10 +430,12 @@ const internalTestSuites: Readonly<Record<string, readonly string[]>> = {
   'human-auth-second-factor-specs': [
     'test-harness/assurance/tests/human-auth-second-factor.spec.test.ts',
   ],
+  'human-auth-recovery-specs': humanAuthRecoverySpecificationFiles,
   'human-auth-live': [
     'test-harness/assurance/tests/harness-profile-admission.impl.test.ts',
     'test-harness/assurance/tests/human-auth-functional-observations.impl.test.ts',
     'test-harness/assurance/tests/human-auth-live-observers.impl.test.ts',
+    'test-harness/assurance/tests/human-auth-recovery-observations.impl.test.ts',
     'test-harness/assurance/tests/tenant-admin-live.impl.test.ts',
   ],
   'human-auth-all': [
@@ -848,7 +856,31 @@ async function runHarnessCommand(options: readonly string[]): Promise<void> {
       }),
     );
     const tenantAdminExit = managedChildExit(tenantAdminSpecifications, testFailureExit);
-    return selectAssuranceExitCode([retainedProductExit, tenantAdminExit]);
+    if (tenantAdminExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, tenantAdminExit]);
+    }
+
+    // The delivered-artifact recovery block runs last: its ST-46 case may fail truthfully on the
+    // documented reset/invitation wrong-recipient and invitation-throttle findings, which must not
+    // stop the other production-security blocks from running.
+    const recoveryReset = await runLifecycleAction('reset');
+    const recoveryResetExit = managedChildExit(recoveryReset, setupFailureExit);
+    if (recoveryResetExit !== 0) {
+      return selectAssuranceExitCode([retainedProductExit, recoveryResetExit]);
+    }
+    const recoveryActive = readActiveCoverageRun(process.cwd());
+    const recoverySpecifications = await runNodeSuite(
+      humanAuthRecoverySpecificationFiles,
+      undefined,
+      Object.freeze({
+        ...environmentForManifest(recoveryActive.lease.manifest),
+        PORTA_ASSURANCE_PROJECT: 'security',
+        PORTA_ASSURANCE_HUMAN_AUTH_ADAPTER: 'live',
+        NODE_TLS_REJECT_UNAUTHORIZED: '0',
+      }),
+    );
+    const recoveryExit = managedChildExit(recoverySpecifications, testFailureExit);
+    return selectAssuranceExitCode([retainedProductExit, recoveryExit]);
   });
 }
 

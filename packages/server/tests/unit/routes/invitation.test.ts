@@ -85,19 +85,29 @@ import type { Organization } from '../../../src/organizations/types.js';
 
 function createMockOrg(overrides: Partial<Organization> = {}): Organization {
   return {
-    id: 'org-uuid-1', name: 'Test Org', slug: 'test-org', status: 'active',
-    isSuperAdmin: false, brandingLogoUrl: null, brandingFaviconUrl: null,
-    brandingPrimaryColor: '#3B82F6', brandingCompanyName: 'Test Corp',
-    brandingCustomCss: null, defaultLocale: 'en',
-    createdAt: new Date('2026-01-01'), updatedAt: new Date('2026-01-01'),
+    id: 'org-uuid-1',
+    name: 'Test Org',
+    slug: 'test-org',
+    status: 'active',
+    isSuperAdmin: false,
+    brandingLogoUrl: null,
+    brandingFaviconUrl: null,
+    brandingPrimaryColor: '#3B82F6',
+    brandingCompanyName: 'Test Corp',
+    brandingCustomCss: null,
+    defaultLocale: 'en',
+    createdAt: new Date('2026-01-01'),
+    updatedAt: new Date('2026-01-01'),
     ...overrides,
   };
 }
 
-function createMockCtx(overrides: {
-  params?: Record<string, string>;
-  body?: Record<string, string>;
-} = {}) {
+function createMockCtx(
+  overrides: {
+    params?: Record<string, string>;
+    body?: Record<string, string>;
+  } = {},
+) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
   let contentType = '';
@@ -106,14 +116,27 @@ function createMockCtx(overrides: {
     params: { orgSlug: 'test-org', token: 'invite-token-123', ...(overrides.params ?? {}) },
     query: {},
     request: { body: overrides.body ?? {} },
-    req: {}, res: {},
+    req: {},
+    res: {},
     ip: '127.0.0.1',
-    get status() { return statusCode; },
-    set status(v: number) { statusCode = v; },
-    get body() { return responseBody; },
-    set body(v: unknown) { responseBody = v; },
-    get type() { return contentType; },
-    set type(v: string) { contentType = v; },
+    get status() {
+      return statusCode;
+    },
+    set status(v: number) {
+      statusCode = v;
+    },
+    get body() {
+      return responseBody;
+    },
+    set body(v: unknown) {
+      responseBody = v;
+    },
+    get type() {
+      return contentType;
+    },
+    set type(v: string) {
+      contentType = v;
+    },
     state: { organization: createMockOrg() },
     cookies: {
       get: vi.fn().mockReturnValue('csrf-token-abc'),
@@ -123,13 +146,18 @@ function createMockCtx(overrides: {
   };
 }
 
-function findLayer(router: ReturnType<typeof createInvitationRouter>, method: string, pathPattern: string) {
-  return router.stack.find(
-    (l) => l.methods.includes(method) && l.path.includes(pathPattern),
-  );
+function findLayer(
+  router: ReturnType<typeof createInvitationRouter>,
+  method: string,
+  pathPattern: string,
+) {
+  return router.stack.find((l) => l.methods.includes(method) && l.path.includes(pathPattern));
 }
 
-async function exec(layer: NonNullable<ReturnType<typeof findLayer>>, ctx: ReturnType<typeof createMockCtx>) {
+async function exec(
+  layer: NonNullable<ReturnType<typeof findLayer>>,
+  ctx: ReturnType<typeof createMockCtx>,
+) {
   return layer.stack[layer.stack.length - 1](ctx as never, vi.fn());
 }
 
@@ -151,7 +179,12 @@ describe('invitation routes', () => {
 
   describe('GET /:orgSlug/auth/accept-invite/:token — showAcceptInvite', () => {
     it('should render accept-invite form for valid token', async () => {
-      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+        details: null,
+        invitedBy: null,
+      } as never);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'GET', 'accept-invite');
@@ -180,6 +213,66 @@ describe('invitation routes', () => {
         expect.objectContaining({ orgSlug: 'test-org' }),
       );
       expect(ctx.status).toBe(400);
+    });
+
+    it('should emit one security rejection audit event for an invalid token', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'GET', 'accept-invite');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledTimes(1);
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'user.invite.failed', eventCategory: 'security' }),
+      );
+      expect(JSON.stringify(vi.mocked(auditLog.writeAuditLog).mock.calls)).not.toContain(
+        'invite-token-123',
+      );
+    });
+
+    it('should scope the invitation lookup to the resolved organization', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+        details: null,
+        invitedBy: null,
+      } as never);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'GET', 'accept-invite');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.findValidInvitationToken).toHaveBeenCalledWith(
+        'hashed-token-abc',
+        'org-uuid-1',
+      );
+    });
+
+    it('should reject an invitation token issued by another organization', async () => {
+      // An organization-scoped lookup yields no record for a foreign tenant's token.
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'GET', 'accept-invite');
+      const ctx = createMockCtx();
+      ctx.state.organization = createMockOrg({ id: 'org-uuid-bravo', slug: 'bravo' });
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.findValidInvitationToken).toHaveBeenCalledWith(
+        'hashed-token-abc',
+        'org-uuid-bravo',
+      );
+      expect(ctx.status).toBe(400);
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'invite-expired',
+        expect.objectContaining({ orgSlug: 'bravo' }),
+      );
     });
   });
 
@@ -214,6 +307,28 @@ describe('invitation routes', () => {
       expect(templateEngine.renderPage).toHaveBeenCalledWith(
         'invite-success',
         expect.objectContaining({ flash: { success: expect.any(String) } }),
+      );
+    });
+
+    it('should scope the acceptance lookup to the resolved organization', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-uuid-1',
+        details: null,
+        invitedBy: null,
+      } as never);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'POST', 'accept-invite');
+      const ctx = createMockCtx({
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(tokenRepo.findValidInvitationToken).toHaveBeenCalledWith(
+        'hashed-token-abc',
+        'org-uuid-1',
       );
     });
 
@@ -253,8 +368,54 @@ describe('invitation routes', () => {
       expect(ctx.status).toBe(400);
     });
 
+    it('should emit one security rejection audit event when the token expires during submission', async () => {
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(null);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'POST', 'accept-invite');
+      const ctx = createMockCtx({
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledTimes(1);
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'user.invite.failed', eventCategory: 'security' }),
+      );
+      expect(JSON.stringify(vi.mocked(auditLog.writeAuditLog).mock.calls)).not.toContain(
+        'invite-token-123',
+      );
+    });
+
+    it('should not emit a rejection audit event on successful acceptance', async () => {
+      const tokenRecord = { id: 'tok-1', userId: 'user-uuid-1', details: null, invitedBy: null };
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(tokenRecord as never);
+
+      const router = createInvitationRouter();
+      const layer = findLayer(router, 'POST', 'accept-invite');
+      const ctx = createMockCtx({
+        body: { password: 'SecurePass123!', confirmPassword: 'SecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({ eventType: 'user.invite.accepted' }),
+      );
+      const eventTypes = vi
+        .mocked(auditLog.writeAuditLog)
+        .mock.calls.map((call) => (call[0] as { eventType: string }).eventType);
+      expect(eventTypes).not.toContain('user.invite.failed');
+    });
+
     it('should show error when passwords do not match', async () => {
-      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+        details: null,
+        invitedBy: null,
+      } as never);
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
@@ -271,8 +432,16 @@ describe('invitation routes', () => {
     });
 
     it('should show error when password validation fails', async () => {
-      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
-      vi.mocked(passwordUtils.validatePassword).mockReturnValue({ isValid: false, error: 'Too short' });
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+        details: null,
+        invitedBy: null,
+      } as never);
+      vi.mocked(passwordUtils.validatePassword).mockReturnValue({
+        isValid: false,
+        error: 'Too short',
+      });
 
       const router = createInvitationRouter();
       const layer = findLayer(router, 'POST', 'accept-invite');
@@ -289,7 +458,12 @@ describe('invitation routes', () => {
     });
 
     it('should show error when setUserPassword throws', async () => {
-      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({ id: 'tok-1', userId: 'user-1', details: null, invitedBy: null } as never);
+      vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue({
+        id: 'tok-1',
+        userId: 'user-1',
+        details: null,
+        invitedBy: null,
+      } as never);
       vi.mocked(userService.setUserPassword).mockRejectedValue(new Error('DB error'));
 
       const router = createInvitationRouter();

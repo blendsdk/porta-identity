@@ -79,18 +79,37 @@ test('should keep every publishable component on the coordinated release version
   );
 });
 
-test('should publish only an exact successful main candidate with provenance', () => {
+test('should release from a manual dispatch that bumps, notes, tags, and publishes', () => {
   const manifest = readRepositoryJson('package.json');
   const workflow = readWorkflow('.github/workflows/release.yml');
   const source = readRepositoryFile('.github/workflows/release.yml');
 
-  assert.deepEqual(workflow.on?.workflow_run?.branches, ['main']);
+  // Manual dispatch only: the version bump is automated inside the run.
+  assert.equal(workflow.on?.workflow_run, undefined);
+  const dispatch = workflow.on?.workflow_dispatch;
+  assert.ok(dispatch, 'workflow_dispatch trigger is required');
+  assert.deepEqual(dispatch.inputs?.bump?.options, ['auto', 'patch', 'minor', 'major']);
+  assert.equal(dispatch.inputs?.bump?.default, 'auto');
+  assert.equal(dispatch.inputs?.dry_run?.type, 'boolean');
+
+  assert.equal(workflow.permissions?.contents, 'write');
   assert.equal(workflow.permissions?.['id-token'], 'write');
+  assert.equal(workflow.permissions?.actions, 'write');
   assert.equal(workflow.permissions?.issues, undefined);
   assert.equal(workflow.permissions?.['pull-requests'], undefined);
-  assert.match(source, /github\.event\.workflow_run\.head_sha/);
+
+  // Verification gate, automated bump, publish, explicit tag push, release, and Docker.
+  assert.match(source, /Build and Test/);
+  assert.match(source, /lockstep version/);
+  assert.match(source, /--no-git-commit/);
   assert.match(source, /yarn release:preflight/);
   assert.match(source, /yarn release:publish/);
+  assert.match(source, /--dry/);
+  assert.match(source, /refs\/tags\//);
+  assert.match(source, /gh release create/);
+  assert.match(source, /--verify-tag/);
+  assert.match(source, /gh workflow run docker\.yml/);
+  assert.doesNotMatch(source, /^\s+workflow_run:/m);
   assert.doesNotMatch(source, /NODE_AUTH_TOKEN|NPM_TOKEN/);
   assert.match(manifest.scripts?.['release:publish'] ?? '', /--provenance/);
   assert.doesNotMatch(source, /semantic-release/);

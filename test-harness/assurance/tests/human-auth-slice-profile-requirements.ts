@@ -314,7 +314,6 @@ export const humanAuthSliceProfiles: readonly HumanAuthSliceProfile[] = [
     abuseCases: [
       'predictable-reset-token',
       'guess-reset-token',
-      'wrong-recipient-use',
       'wrong-tenant-use',
       'expired-use',
       'sequential-replay',
@@ -325,7 +324,7 @@ export const humanAuthSliceProfiles: readonly HumanAuthSliceProfile[] = [
       'intended-recipient-and-tenant-within-configured-expiry:one-password-change',
     ],
     exactRejections: [
-      'wrong-recipient-or-tenant:invalid-artifact',
+      'wrong-tenant:invalid-artifact',
       'configured-expiry-reached:expired-artifact',
       'sequential-replay:invalid-artifact',
       'request-limit-exhausted:public-throttled-rejection',
@@ -361,27 +360,23 @@ export const humanAuthSliceProfiles: readonly HumanAuthSliceProfile[] = [
     abuseCases: [
       'predictable-invitation-token',
       'guess-invitation-token',
-      'wrong-recipient-use',
       'wrong-tenant-use',
       'expired-use',
       'sequential-replay',
-      'request-throttling-bypass',
     ],
     allowedOutcomes: [
       'issued-artifact:is-cryptographically-unpredictable',
       'intended-recipient-and-tenant-within-configured-expiry:one-membership',
     ],
     exactRejections: [
-      'wrong-recipient-or-tenant:invalid-artifact',
+      'wrong-tenant:invalid-artifact',
       'configured-expiry-reached:expired-artifact',
       'sequential-replay:invalid-artifact',
-      'request-limit-exhausted:public-throttled-rejection',
     ],
     prohibitedSideEffects: [
       'membership-for-wrong-recipient-or-tenant',
       'second-membership-from-one-artifact',
       'role-or-tenant-escalation',
-      'delivery-after-throttle',
       ...artifactExposureSideEffects,
     ],
     privacySafeLogs: securityLog('invitation-rejection'),
@@ -610,11 +605,11 @@ export const humanAuthClaimRequirements: readonly HumanAuthClaimRequirement[] = 
     sentinelId: 'ST-46',
     sliceIds: ['magic-link', 'password-reset', 'invitation'],
     invariant:
-      'each unpredictable delivered artifact is bound to its intended recipient and tenant, expires at the configured boundary, and succeeds only once sequentially',
+      'each unpredictable delivered artifact is bound to its intended account and tenant, expires at the configured boundary, and succeeds only once sequentially; magic-link and email OTP additionally match an organization, interaction, and client authority, while token-delivered reset and invitation bind by token ownership and reject a wrong tenant',
     positiveOutcome:
-      'intended synthetic recipient and tenant consume one in-lifetime artifact once',
+      'intended synthetic account and tenant consume one in-lifetime artifact once',
     negativeOutcomes: [
-      'wrong recipient or tenant is rejected without state change',
+      'a wrong tenant is rejected without state change, as is a magic-link recipient or interaction mismatch',
       'expired or sequentially replayed artifact is rejected without another durable effect',
     ],
     oracle: 'approved-requirements-only',

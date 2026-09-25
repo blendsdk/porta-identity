@@ -1,7 +1,7 @@
 # Ambiguity Register: Porta Test Assurance
 
-> **Status**: ✅ GATE PASSED — all 26 items resolved
-> **Last Updated**: 2026-08-09 14:27
+> **Status**: ✅ GATE PASSED — all 27 items resolved
+> **Last Updated**: 2026-09-24 23:49
 > **CodeOps Artifact Schema**: 1
 > **Auto-design root**: `AD-TA-20260809-1421` · policy version 1
 
@@ -33,6 +33,7 @@
 |  24 | Integration    | External certification                                             | Claim standards conformance / run relevant normative cases without certification / omit standards | Use applicable OIDC, OAuth, JWT, PKCE, and OWASP requirements as oracles without claiming certification                                      | ✅ Resolved |
 |  25 | Non-functional | Slice completion evidence                                          | Passing tests only / coverage target only / traceability plus fault sensitivity and verification  | All Must criteria traced, exact specs green, fault sensitivity proven, full verification green, and gaps named                               | ✅ Resolved |
 |  26 | Security       | Known security failures and release safety                         | Continue regardless / severity-based risk acceptance / invariant violation blocks completion      | A verified security-invariant violation blocks slice completion and follows existing security policy; this feature grants no risk acceptance | ✅ Resolved |
+|  27 | Consistency    | Delivered-artifact requirement model                               | Keep the over-specified recipient/throttle claims / clarify the bearer-flow and public-issuance model / leave the catalogs inconsistent | Clarify R5.7 so recipient/authority matching applies only to input-bearing flows, bearer reset/invitation bind by token ownership plus wrong-tenant rejection, and throttling applies only to public issuance | ✅ Resolved |
 
 ## Resolution Notes
 
@@ -315,3 +316,13 @@ Reopen triggers: Evidence shows a required artifact is redundant or fails to pre
 ### AR-26 — Security failure authority
 
 Authority: User and governing project policy — security takes precedence over deadlines and convenience. This feature cannot accept risk, weaken assertions, or declare a slice complete over a verified security-invariant violation.
+
+### AR-27 — Delivered-artifact requirement model
+
+Authority: User decision during the `st46-delivered-artifact-correction` plan (AR-5, AR-10, AR-14).
+Objective: Make the delivered-artifact requirement model match what each flow can enforce.
+Decision: R5.7 now distinguishes input-bearing flows (magic-link, email OTP), which bind and reject a recipient/authority mismatch, from token-delivered bearer flows (reset, invitation), which bind by token ownership and reject a wrong tenant; throttling applies to public issuance with a dedicated limiter, and admin-authenticated invitation issuance is bounded by the administrative limiter. No guarantee is removed: unpredictability, expiry, single use, replay rejection, wrong-tenant rejection, and exposure constraints remain.
+Evidence: Reset and invitation consumption resolve the account from the token alone (`password-reset.ts`, `invitation.ts`); invitation issuance is the admin-authenticated `/api/admin/organizations/:orgId/users/invite` route whose only bound is the global admin per-IP limiter.
+Rejected alternatives: Keeping an unreachable wrong-recipient probe and an inapplicable public-input throttle would assert outcomes the flows cannot produce.
+Confidence: High.
+Reopen triggers: A flow gains a recipient authority or a dedicated public limiter, or a new delivered artifact is added.

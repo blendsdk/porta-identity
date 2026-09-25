@@ -65,7 +65,14 @@ claim and is not a certification statement.
 - [ ] **R5.7 (L)** Magic-link, reset, invitation, email OTP, TOTP, and recovery-code claims shall
       cover unpredictability, intended recipient/tenant, configured expiry boundary, single use,
       sequential replay, throttling, and absence of secret/token exposure outside the allowlisted
-      synthetic delivery/verification channel. Concurrent duplicate consumption remains part of
+      synthetic delivery/verification channel. Recipient/authority matching is required only for
+      flows that accept a recipient or authority input: magic-link and email OTP bind an
+      organization, an optional interaction, and client authority before mutation, and reject a
+      mismatch non-consumingly. Token-delivered bearer artifacts (reset, invitation) establish the
+      intended recipient by token ownership and instead rely on organization-scoped lookup to
+      reject a token presented under a wrong tenant. Throttling covers public issuance endpoints
+      with a dedicated equivalent-input limiter; admin-authenticated invitation issuance is
+      bounded by the administrative limiter. Concurrent duplicate consumption remains part of
       the deferred consistency catalog and receives no ordinary-lane credit. Delivered values must
       be absent from wrong mailboxes, responses, redirects, logs, audit events, traces, reports,
       referrers, and browser history, and must be redacted from retained evidence. Magic-link
