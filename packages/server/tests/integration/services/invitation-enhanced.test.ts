@@ -274,12 +274,22 @@ describe('Enhanced Invitation (Integration)', () => {
 
       await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn() as never);
 
-      const result = await getPool().query<{ event_type: string; event_category: string }>(
-        `SELECT event_type, event_category FROM audit_log WHERE organization_id = $1 AND event_type = 'user.invite.failed'`,
-        [org.id],
-      );
-      expect(result.rowCount).toBe(1);
-      expect(result.rows[0]).toMatchObject({
+      // The rejection audit is best-effort: the handler does not await the write, so it may land
+      // shortly after the response. Poll briefly for the durable row instead of racing it.
+      const pool = getPool();
+      let auditRow: { event_type: string; event_category: string } | undefined;
+      for (let attempt = 0; attempt < 40 && auditRow === undefined; attempt += 1) {
+        const result = await pool.query<{ event_type: string; event_category: string }>(
+          `SELECT event_type, event_category FROM audit_log WHERE organization_id = $1 AND event_type = 'user.invite.failed'`,
+          [org.id],
+        );
+        if (result.rowCount === 1) {
+          auditRow = result.rows[0];
+        } else {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+      }
+      expect(auditRow).toMatchObject({
         event_type: 'user.invite.failed',
         event_category: 'security',
       });
