@@ -49,6 +49,12 @@ jobs:
       - name: Install pinned release tools
         run: yarn install --frozen-lockfile
 
+      # Lockstep commits the bump, so the runner needs a git identity.
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       # A re-run after a successful release finds HEAD already tagged. In that case the bump and
       # publish are skipped and the remaining steps (release, Docker, sync) resume idempotently.
       - name: Resolve release mode
