@@ -66,6 +66,7 @@ function isClient(value: unknown): value is Client {
       value.tokenEndpointAuthMethod === 'none') &&
     isStringArray(value.allowedOrigins) &&
     typeof value.requirePkce === 'boolean' &&
+    typeof value.requireConsent === 'boolean' &&
     (value.loginMethods === null || isLoginMethods(value.loginMethods)) &&
     isLoginMethods(value.effectiveLoginMethods) &&
     (value.status === 'active' || value.status === 'inactive') &&

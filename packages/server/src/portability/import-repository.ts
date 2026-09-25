@@ -379,7 +379,8 @@ export async function readPortabilityImportSnapshot(
             c.grant_types, c.response_types, c.scope, c.login_methods,
             c.token_endpoint_auth_method, c.redirect_uris,
             COALESCE(c.post_logout_redirect_uris, '{}') AS post_logout_redirect_uris,
-            COALESCE(c.allowed_origins, '{}') AS allowed_origins, c.require_pkce
+            COALESCE(c.allowed_origins, '{}') AS allowed_origins, c.require_pkce,
+            c.require_consent
        FROM clients c
        JOIN organizations o ON o.id = c.organization_id
        JOIN applications a ON a.id = c.application_id

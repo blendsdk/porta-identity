@@ -1,44 +1,3 @@
-# Test Assurance: Remaining Work
-
-> **Feature**: Test Assurance
-> **Status**: Active backlog
-> **Last Updated**: 2026-09-24 08:45
-> **CodeOps Artifact Schema**: 1
-
-## Purpose
-
-This document is the durable "remember this" record of the test-assurance defects and gaps that
-remain after the low-risk cleanup recorded in
-[def-quick-cleanup](plans/def-quick-cleanup/00-index.md). A future session should start here to
-decide which items to plan and implement. Each row names the verified current state, exactly what
-completion requires, whether a product or security-authority decision is needed, and where the
-work lives. It is a backlog, not an evidence artifact: nothing here grants assurance credit.
-
-## Status legend
-
-| Marker                      | Meaning                                                                                                    |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Code-fixed, refresh pending | The product defect is fixed with tests, but the live assurance selector must be re-run to close the claim. |
-| Partial                     | Part of the recorded gap is fixed; the residual is named.                                                  |
-| Open (harness)              | A new or extended assurance capability is required.                                                        |
-| Open (design)               | A product or contract decision is required before implementation.                                          |
-| Policy-blocked              | A security-authority decision is required; the campaign was previously declined.                           |
-
-## Remaining items
-
-| ID     | Title                                    | Verified state | What completion requires                                                                                                       | Authority                                | Location / selector                                                              |
-| ------ | ---------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- | -------------------------------------------------------------------------------- |
-| DEF-3  | Advanced protocol consistency campaign   | Open (harness) | Implement the live concurrency, response-loss, restart, and commit-boundary adapter                                            | None                                     | `test-harness/assurance/tests/protocol-consistency-adapter.ts`; `protocol-specs` |
-| DEF-6  | Protocol observation completeness        | Open (harness) | Independently establish the consent/session, JWKS-key, side-effect/recovery, and correlated-log subclaims                      | None                                     | `test-harness/assurance/tests/oidc-token-cases-live.ts`; `protocol` project      |
-| DEF-22 | Real command-stage signal observation    | Open (harness) | Execute real alias and registered-stage signal handling rather than the synthetic process group                                | None                                     | `test-harness/assurance/command-outcomes/`; `assurance-command-signals`          |
-| DEF-5  | Protocol control sensitivity campaign    | Open (harness) | Add disposable protocol source variations to the control-sensitivity registry                                                  | Product decision                         | `test-harness/assurance/control-sensitivity/registry.ts`                         |
-| DEF-11 | Human-auth control sensitivity campaign  | Open (harness) | Add disposable human-auth source variations                                                                                    | Product decision                         | same registry                                                                    |
-| DEF-17 | P1 source-variation sensitivity campaign | Open (harness) | Add disposable P1 source variations                                                                                            | Product decision                         | same registry                                                                    |
-| DEF-23 | Statistical enumeration timing authority | Policy-blocked | Approve an enumeration hypothesis, effect-size bound, sample-size/power rule, and noise contract before any timing measurement | Security authority (previously declined) | `test-harness/assurance/tests/human-auth-slice-profile-model.ts:81`              |
-| DEF-20 | Mutation pilot and CI promotion          | Done (no-go)   | Revisit only if a compatible mutation runner is adopted and DEF-22 is closed; promotion stays withheld                         | Product decision                         | `test-harness/assurance/mutation/`; `21-ci-promotion-proposal.md`                |
-
-## Resolved by the fast cleanup
-
 | ID               | Resolution                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DEF-4            | Atomic Redis authorization-code consumption; targeted integration suite passed (2026-09-21)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
@@ -52,13 +11,14 @@ work lives. It is a backlog, not an evidence artifact: nothing here grants assur
 | DEF-25           | Token and introspection limiters now match the real endpoints and mount after OIDC body parsing, with an aggregate per-IP counter ahead of the per-client counter; see the [def-25-token-limiter](plans/def-25-token-limiter/00-index.md) plan. Production-security run `bb4eb111` (passed=11) and operational run `197fb0f4` (passed=6) exit 0                                                                                                                                                                                                                                                                                                                             |
 | DEF-14           | Forwarding-context observers complete: the configured origin and cookie policy are observed through attack-driven probes and the rate-limit identity through the real endpoint. Both runs report every `st53-*` case passed with no unobserved facts; see the [def-14-forwarding-context](plans/def-14-forwarding-context/00-index.md) plan                                                                                                                                                                                                                                                                                                                                 |
 | DEF-24           | Trust-proxy documentation now matches the code default (`true`) and states the direct-exposure precondition (`TRUST_PROXY=false`); see `docs/guide/environment.md`, `docs/guide/deployment.md`, `techdocs/reference/configuration.md`, `docker/DOCKERHUB.md`                                                                                                                                                                                                                                                                                                                                                                                                                |
-| DEF-21           | Consent is now trust-driven: a per-client `requireConsent` flag (default false) shows the consent page for third-party clients, `prompt=consent` is honored only when a new item is requested, and granted scopes are remembered; see the [def-21-consent-flag](plans/def-21-consent-flag/00-index.md) plan. Deferred follow-ups: the SDK/CLI/admin-UI flag surfaces, connected-apps list/revoke, and resource-server scopes/audience                                                                                                                                                                                                                                       |
+| DEF-21           | Consent is now trust-driven: a per-client `requireConsent` flag (default false) shows the consent page for third-party clients, `prompt=consent` is honored only when a new item is requested, and granted scopes are remembered; see the [def-21-consent-flag](plans/def-21-consent-flag/00-index.md) plan. The SDK/CLI/admin-UI flag surfaces are delivered by the [consent-flag-surfaces](../admin-ui/plans/consent-flag-surfaces/00-index.md) plan; remaining follow-ups: connected-apps list/revoke and resource-server scopes/audience |
 | DEF-8            | Live ST-46 adapter observes all 21 delivered-artifact steps through public HTTP, MailHog, and the admin APIs, and the invitation rejection audit and organization-scoped invitation lookup are fixed. Production-security harness run `666e83dd-2a10-42f3-8849-a2e67ce6df2a` (production-exposure passed=11, product/incomplete/execution failures=0; functional 7/7) records ST-46 failing truthfully at `password-reset-wrong-recipient` (AR-29) with the invitation wrong-recipient and invitation-throttle findings (AR-29/AR-30) recorded rather than weakened; AR-29/AR-30 are corrected by the [st46-delivered-artifact-correction](plans/st46-delivered-artifact-correction/99-execution-plan.md) plan (production-security run `14c4cf25-df3c-464f-8400-fe78241bd295` exits 0 with ST-46 passing); see the [def-8-sequential-use-evidence](plans/def-8-sequential-use-evidence/99-execution-plan.md) plan |
 
 ## Suggested sequencing
 
 1. **DEF-3, DEF-6, DEF-22** — protocol and command-signal campaigns.
 2. **DEF-5, DEF-11, DEF-17** — source-variation sensitivity registries.
-3. **SDK/CLI/admin-UI consent-flag surfaces** — expose `requireConsent` through the SDK, the CLI,
-   and the `porta admin` client form (deferred from DEF-21).
+3. **Connected-apps list/revoke and resource-server scopes/audience** — remaining DEF-21
+   follow-ups; the SDK/CLI/admin-UI flag surfaces are delivered by the
+   [consent-flag-surfaces](../admin-ui/plans/consent-flag-surfaces/00-index.md) plan.
 4. **DEF-23** — security-authority ruling that gates "fully production ready".

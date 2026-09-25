@@ -201,6 +201,7 @@ export function clientRecord(clientType: 'public' | 'confidential' = 'confidenti
     post_logout_redirect_uris: [],
     allowed_origins: ['https://portable.example'],
     require_pkce: true,
+    require_consent: true,
   };
 }
 

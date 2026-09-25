@@ -40,6 +40,7 @@ const client = {
   tokenEndpointAuthMethod: 'client_secret_basic',
   allowedOrigins: ['https://portal.example.test'],
   requirePkce: true,
+  requireConsent: true,
   loginMethods: null,
   effectiveLoginMethods: ['password', 'magic_link'],
   status: 'active',
@@ -63,6 +64,7 @@ type ExpectedClient = {
   tokenEndpointAuthMethod: 'client_secret_basic' | 'client_secret_post' | 'none';
   allowedOrigins: string[];
   requirePkce: boolean;
+  requireConsent: boolean;
   loginMethods: Array<'password' | 'magic_link'> | null;
   effectiveLoginMethods: Array<'password' | 'magic_link'>;
   status: 'active' | 'inactive';
@@ -156,6 +158,53 @@ describe('RD-04 OIDC client SDK contract', () => {
       body: input,
       headers: {},
     });
+  });
+
+  it('sends requireConsent through create and update bodies', async () => {
+    const createInput = {
+      organizationId: ORGANIZATION_ID,
+      applicationId: APPLICATION_ID,
+      clientName: client.clientName,
+      clientType: 'confidential' as const,
+      applicationType: 'web' as const,
+      redirectUris: client.redirectUris,
+      requireConsent: true,
+    };
+    const secret = {
+      id: SECRET_ID,
+      clientId: CLIENT_ID,
+      label: 'initial',
+      plaintext: 'porta_secret_plaintext',
+      expiresAt: null,
+      createdAt: '2026-08-30T11:00:00.000Z',
+    };
+    const createTransport = transportWith({ body: { data: { client, secret } } });
+    await createClientsDomain(createTransport).create(createInput);
+    expect(createTransport.request).toHaveBeenCalledWith({
+      method: 'POST',
+      path: '/clients',
+      body: createInput,
+    });
+
+    const updateInput = { requireConsent: false };
+    const updateTransport = transportWith({ body: { data: { ...client, requireConsent: false } } });
+    await createClientsDomain(updateTransport).update(CLIENT_ID, updateInput);
+    expect(updateTransport.request).toHaveBeenCalledWith({
+      method: 'PUT',
+      path: `/clients/${CLIENT_ID}`,
+      body: updateInput,
+      headers: {},
+    });
+  });
+
+  it('rejects a client response whose requireConsent is missing or not a boolean', async () => {
+    const withoutConsent: Partial<typeof client> = { ...client };
+    delete withoutConsent.requireConsent;
+    const missing = transportWith({ body: { data: withoutConsent } });
+    await expect(createClientsDomain(missing).get(CLIENT_ID)).rejects.toThrow();
+
+    const mistyped = transportWith({ body: { data: { ...client, requireConsent: 'yes' } } });
+    await expect(createClientsDomain(mistyped).get(CLIENT_ID)).rejects.toThrow();
   });
 
   it.each([
@@ -266,6 +315,7 @@ describe('RD-04 OIDC client SDK contract', () => {
       tokenEndpointAuthMethod?: 'client_secret_basic' | 'client_secret_post' | 'none';
       allowedOrigins?: string[];
       requirePkce?: boolean;
+      requireConsent?: boolean;
       secretLabel?: string;
       secretExpiresAt?: string;
       loginMethods?: Array<'password' | 'magic_link'> | null;
@@ -280,6 +330,7 @@ describe('RD-04 OIDC client SDK contract', () => {
       tokenEndpointAuthMethod?: 'client_secret_basic' | 'client_secret_post' | 'none';
       allowedOrigins?: string[];
       requirePkce?: boolean;
+      requireConsent?: boolean;
       loginMethods?: Array<'password' | 'magic_link'> | null;
     }>();
     expectTypeOf<ClientSecret>().toEqualTypeOf<ExpectedClientSecret>();

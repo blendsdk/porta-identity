@@ -75,6 +75,7 @@ function client(overrides: Record<string, unknown> = {}): Record<string, unknown
     tokenEndpointAuthMethod: 'client_secret_basic',
     allowedOrigins: ['https://payments.example.test'],
     requirePkce: false,
+    requireConsent: false,
     loginMethods: null,
     effectiveLoginMethods: ['password', 'magic_link'],
     status: 'active',
@@ -605,6 +606,19 @@ describe('selected-organization OIDC client administration workflow', () => {
     expect(result).toEqual({ kind: 'failure', failure: 'invalid-response' });
     expect(JSON.stringify(result)).not.toMatch(/bad|deleted|private_key|webauthn|implicit/);
     expect(listAll).toHaveBeenCalledWith({ organizationId });
+  });
+
+  it('ST-9 rejects a client whose consent flag is missing or not boolean', async () => {
+    const { createAdminClientOperations } = await import('../../src/admin/client-service.js');
+
+    for (const override of [{ requireConsent: undefined }, { requireConsent: 'yes' }]) {
+      const listAll = vi.fn().mockResolvedValue([client(override)]);
+      const operations = createAdminClientOperations(() => clientDomain({ listAll }));
+
+      const result = await operations.listAll(organizationId);
+
+      expect(result).toEqual({ kind: 'failure', failure: 'invalid-response' });
+    }
   });
 
   it.each([

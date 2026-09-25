@@ -10,21 +10,22 @@ Manage OIDC clients. Each client belongs to an organization and an application.
 POST /api/admin/clients
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `client_name` | string | ✅ | Human-readable client name |
-| `organization_id` | uuid | ✅ | Owning organization |
-| `application_id` | uuid | ✅ | Associated application |
-| `client_type` | string | ✅ | `confidential` or `public` |
-| `application_type` | string | | `web`, `native`, or `spa` (default: `web`) |
-| `redirect_uris` | string[] | ✅ | Allowed redirect URIs |
-| `grant_types` | string[] | | Grant types (defaults based on client type) |
-| `response_types` | string[] | | Response types |
-| `scope` | string | | Space-separated scopes |
-| `token_endpoint_auth_method` | string | | `client_secret_post` or `none` |
-| `cors_origins` | string[] | | Allowed CORS origins (for SPAs) |
-| `require_pkce` | boolean | | Require PKCE (default: `true` for public clients) |
-| `login_methods` | string[] | | Override org default login methods |
+| Field                        | Type     | Required | Description                                                   |
+| ---------------------------- | -------- | -------- | ------------------------------------------------------------- |
+| `client_name`                | string   | ✅       | Human-readable client name                                    |
+| `organization_id`            | uuid     | ✅       | Owning organization                                           |
+| `application_id`             | uuid     | ✅       | Associated application                                        |
+| `client_type`                | string   | ✅       | `confidential` or `public`                                    |
+| `application_type`           | string   |          | `web`, `native`, or `spa` (default: `web`)                    |
+| `redirect_uris`              | string[] | ✅       | Allowed redirect URIs                                         |
+| `grant_types`                | string[] |          | Grant types (defaults based on client type)                   |
+| `response_types`             | string[] |          | Response types                                                |
+| `scope`                      | string   |          | Space-separated scopes                                        |
+| `token_endpoint_auth_method` | string   |          | `client_secret_post` or `none`                                |
+| `cors_origins`               | string[] |          | Allowed CORS origins (for SPAs)                               |
+| `require_pkce`               | boolean  |          | Require PKCE (default: `true` for public clients)             |
+| `require_consent`            | boolean  |          | Show the OIDC consent page for this client (default: `false`) |
+| `login_methods`              | string[] |          | Override org default login methods                            |
 
 ```json
 {
@@ -65,7 +66,7 @@ GET /api/admin/clients/:id
 PUT /api/admin/clients/:id
 ```
 
-Updatable fields: `client_name`, `redirect_uris`, `grant_types`, `response_types`, `scope`, `cors_origins`, `login_methods`.
+Updatable fields: `client_name`, `redirect_uris`, `grant_types`, `response_types`, `scope`, `cors_origins`, `require_pkce`, `require_consent`, `login_methods`.
 
 **Response:** `204 No Content`
 
@@ -101,8 +102,8 @@ Confidential clients can have multiple active secrets for zero-downtime rotation
 POST /api/admin/clients/:id/secrets
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field   | Type   | Description                   |
+| ------- | ------ | ----------------------------- |
 | `label` | string | Optional label for the secret |
 
 **Response:** `201 Created`
