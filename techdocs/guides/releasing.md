@@ -10,19 +10,29 @@ Porta publishes the server, SDK, CLI, and Docker image with one coordinated sema
 Lockstep owns package manifest versions and internal dependency ranges. The SDK and CLI version
 constants are derived from the root manifest.
 
-## Normal preparation
+## Normal release
 
-Run preparation before the candidate reaches `main`:
+A release is one manual dispatch of the **Release** workflow (Actions → Release → Run workflow on
+`main`). It performs the whole release with no manual bump work:
 
-```bash
-yarn release:prepare
-yarn release:preflight
-yarn verify
-```
+1. bump every coordinated package and generate the per-package `CHANGELOG.md` files and
+   `RELEASE_NOTES.md` (Lockstep; AI notes when `OPENAI_API_KEY` is present, deterministic fallback
+   otherwise);
+2. commit `chore(release): vX.Y.Z [skip ci]` and tag `vX.Y.Z` on `main`;
+3. publish `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli` with npm
+   provenance;
+4. create the GitHub Release and dispatch the Docker release;
+5. synchronize `develop` with the bump (fast-forward, else a cherry-pick of the bump commit; never
+   a force-push).
 
-`release:prepare` leaves all changes in the working tree and creates no commit or tag. Review and
-commit the manifests, derived constants, changelogs, and release notes together. A successful
-`Build and Test` run for that exact `main` revision is the only automatic release trigger.
+Inputs: `bump` (`auto` default, or `patch`/`minor`/`major`) and `dry_run` (rehearsal that publishes,
+pushes, tags, and dispatches nothing). The workflow requires a successful `Build and Test` run for
+the current `main` HEAD before it mutates anything. `OPENAI_API_KEY` should be a repository Actions
+secret.
+
+`yarn release:prepare`, `yarn release:preflight`, and `yarn release:publish` remain available for
+local preparation and diagnostics. `release:prepare` leaves changes in the working tree and creates
+no commit or tag.
 
 ## Completed 1.7.0 bootstrap
 

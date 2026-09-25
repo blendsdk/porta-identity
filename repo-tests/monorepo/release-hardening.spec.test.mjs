@@ -27,13 +27,28 @@ test('should fail closed when source identity or published package integrity dif
   const workflow = readRepositoryFile('.github/workflows/release.yml');
 
   assert.match(workflow, /persist-credentials:\s*false/);
-  assert.match(workflow, /github\.sha/);
-  assert.match(workflow, /github\.event\.workflow_run\.head_sha/);
   assert.match(workflow, /git rev-parse HEAD/);
   assert.match(workflow, /dist\.integrity/);
   assert.match(workflow, /dist\.attestations\.provenance\.predicateType/);
   assert.doesNotMatch(workflow, /bootstrap|publish_if_absent|NPM_TOKEN|NODE_AUTH_TOKEN/);
-  assert.doesNotMatch(workflow, /git push origin/);
+});
+
+// A release must only run for a revision that already passed the main CI gate.
+test('should require a successful Build and Test for the released revision', () => {
+  const workflow = readRepositoryFile('.github/workflows/release.yml');
+
+  assert.match(workflow, /Build and Test/);
+  assert.match(workflow, /conclusion/);
+});
+
+// The bump lands on main; develop must receive it without any history rewrite.
+test('should sync develop without force-pushing or rewriting history', () => {
+  const workflow = readRepositoryFile('.github/workflows/release.yml');
+
+  assert.match(workflow, /merge-base --is-ancestor/);
+  assert.match(workflow, /cherry-pick/);
+  assert.match(workflow, /gh issue create/);
+  assert.doesNotMatch(workflow, /--force\b|force-with-lease|--rebase/);
 });
 
 // Trusted Publisher setup must use the pinned npm CLI and a real ownership check.
