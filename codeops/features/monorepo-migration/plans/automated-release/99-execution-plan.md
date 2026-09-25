@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-25 10:51
-> **Progress**: 5/11 tasks (45%)
+> **Last Updated**: 2026-09-25 11:14
+> **Progress**: 8/11 tasks (73%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -79,9 +79,9 @@ Release, dispatches Docker, and syncs `develop` safely.
 **Reference**: [03-01](03-01-release-workflow.md) · AR-12
 **Objective**: Document the operator flow and rehearse the release safely.
 
-- [ ] 3.1.1 Update `techdocs/guides/releasing.md` and `AGENTS.md` for the manual-release flow, inputs, `OPENAI_API_KEY`, and develop-sync semantics
-- [ ] 3.1.2 Run a `dry_run` rehearsal (`gh workflow run release.yml --ref feat/automated-release -f dry_run=true`) and confirm no external change
-- [ ] 3.1.3 Run `yarn verify` and record the counts
+- [x] 3.1.1 Update `techdocs/guides/releasing.md` and `AGENTS.md` for the manual-release flow, inputs, `OPENAI_API_KEY`, and develop-sync semantics ✅ (completed: 2026-09-25 11:14)
+- [x] 3.1.2 Run a `dry_run` rehearsal (`gh workflow run release.yml --ref feat/automated-release -f dry_run=true`) and confirm no external change ✅ (completed: 2026-09-25 11:14; dry-run run 36115443351 green; no external change)
+- [x] 3.1.3 Run `yarn verify` and record the counts ✅ (completed: 2026-09-25 11:14; structure 128; sdk 562; cli 1434; server 3689/479/133/268)
 
 **Deliverables**:
 - Docs updated

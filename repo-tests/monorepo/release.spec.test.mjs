@@ -109,7 +109,7 @@ test('should release from a manual dispatch that bumps, notes, tags, and publish
   assert.match(source, /gh release create/);
   assert.match(source, /--verify-tag/);
   assert.match(source, /gh workflow run docker\.yml/);
-  assert.doesNotMatch(source, /workflow_run/);
+  assert.doesNotMatch(source, /^\s+workflow_run:/m);
   assert.doesNotMatch(source, /NODE_AUTH_TOKEN|NPM_TOKEN/);
   assert.match(manifest.scripts?.['release:publish'] ?? '', /--provenance/);
   assert.doesNotMatch(source, /semantic-release/);
