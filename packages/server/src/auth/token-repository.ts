@@ -714,26 +714,36 @@ export async function insertInvitationToken(
 }
 
 /**
- * Find a valid invitation token with its details metadata.
+ * Find a valid invitation token scoped to one organization.
  *
  * Returns the full InvitationTokenRecord including the details JSONB
  * column, which stores pre-assignment metadata for roles, claims, etc.
  *
+ * The invitation token table has no organization column, so the owning
+ * account's organization is the tenant authority. Joining the account is also
+ * what rejects a foreign tenant's otherwise-valid token: presenting an
+ * invitation under the wrong organization slug resolves no record.
+ *
  * @param tokenHash - SHA-256 hex hash to look up
- * @returns The invitation token record with details, or null if not found/expired/used
+ * @param organizationId - Organization that must own the invited account
+ * @returns The invitation token record with details, or null if not found/expired/used/foreign
  */
 export async function findValidInvitationToken(
   tokenHash: string,
+  organizationId: string,
 ): Promise<InvitationTokenRecord | null> {
   const pool = getPool();
 
   const result = await pool.query<InvitationTokenRow>(
-    `SELECT id, user_id, token_hash, expires_at, used_at, created_at, details, invited_by
-     FROM invitation_tokens
-     WHERE token_hash = $1
-       AND used_at IS NULL
-       AND expires_at > NOW()`,
-    [tokenHash],
+    `SELECT token.id, token.user_id, token.token_hash, token.expires_at,
+            token.used_at, token.created_at, token.details, token.invited_by
+     FROM invitation_tokens AS token
+     JOIN users AS account ON account.id = token.user_id
+     WHERE token.token_hash = $1
+       AND token.used_at IS NULL
+       AND token.expires_at > NOW()
+       AND account.organization_id = $2`,
+    [tokenHash, organizationId],
   );
 
   if (result.rows.length === 0) {

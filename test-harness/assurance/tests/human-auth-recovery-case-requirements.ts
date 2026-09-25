@@ -14,17 +14,94 @@ import type {
 
 type DeliveredArtifact = 'magic-link' | 'password-reset' | 'invitation' | 'email-otp';
 
+/**
+ * Describes which interactions a delivered artifact actually supports.
+ *
+ * A recipient authority exists only when consumption accepts a recipient or interaction input
+ * that can be varied to a mismatch. A public-issuance throttle exists only when the artifact is
+ * issued from an unauthenticated endpoint with a dedicated equivalent-input limiter. Probing a
+ * capability an artifact does not have would assert an outcome it can never produce.
+ */
+interface DeliveredArtifactCapabilities {
+  readonly recipientAuthority: boolean;
+  readonly publicIssuanceThrottle: boolean;
+}
+
 interface DeliveredArtifactSteps {
   readonly deliveryControl: HumanAuthStepRequirement;
   readonly consumptionControl: HumanAuthStepRequirement;
   readonly probes: readonly HumanAuthStepRequirement[];
 }
 
-/** Defines one complete delivered-artifact control and its exact negative variations. */
-function deliveredArtifactSteps(kind: DeliveredArtifact): DeliveredArtifactSteps {
+/** Defines one complete delivered-artifact control and its exact reachable negative variations. */
+function deliveredArtifactSteps(
+  kind: DeliveredArtifact,
+  capabilities: DeliveredArtifactCapabilities,
+): DeliveredArtifactSteps {
   const action = `consume-${kind}`;
   const controlId = `${kind}-intended-consumption-control`;
   const target = `tenant-bound-${kind}`;
+  const probes: HumanAuthStepRequirement[] = [];
+  if (capabilities.recipientAuthority) {
+    probes.push(
+      step({
+        id: `${kind}-wrong-recipient`,
+        controlId,
+        boundary: 'synthetic-mailbox',
+        action,
+        target,
+        inputs: { recipient: 'wrong-synthetic-recipient', tenant: 'alpha', use: 'first' },
+        expectedFacts: { result: 'invalid-artifact', durableEffectCount: 0 },
+        expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
+      }),
+    );
+  }
+  probes.push(
+    step({
+      id: `${kind}-wrong-tenant`,
+      controlId,
+      boundary: 'synthetic-mailbox',
+      action,
+      target: `wrong-tenant-${kind}`,
+      inputs: { recipient: 'intended-synthetic-recipient', tenant: 'bravo', use: 'first' },
+      expectedFacts: { result: 'invalid-artifact', durableEffectCount: 0 },
+      expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
+    }),
+    step({
+      id: `${kind}-configured-expiry`,
+      controlId,
+      boundary: 'synthetic-mailbox',
+      action,
+      target,
+      inputs: { expiryState: 'at-or-after-configured-boundary', use: 'first' },
+      expectedFacts: { result: 'expired-artifact', durableEffectCount: 0 },
+      expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
+    }),
+    step({
+      id: `${kind}-sequential-replay`,
+      controlId,
+      boundary: 'synthetic-mailbox',
+      action,
+      target,
+      inputs: { expiryState: 'inside-configured-boundary', use: 'second-sequential' },
+      expectedFacts: { result: 'invalid-artifact', durableEffectCount: 0 },
+      expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
+    }),
+  );
+  if (capabilities.publicIssuanceThrottle) {
+    probes.push(
+      step({
+        id: `${kind}-throttled-request`,
+        controlId: `${kind}-delivery-control`,
+        boundary: 'raw-http',
+        action: `request-${kind}`,
+        target: 'synthetic-mailbox',
+        inputs: { limitState: 'exhausted', limitKeyVariant: 'equivalent-public-input' },
+        expectedFacts: { result: 'throttled', durableEffectCount: 0, deliveryCount: 0 },
+        expectedPublicResponse: functionalResponse(`${kind}-throttled-rejection`),
+      }),
+    );
+  }
   return {
     deliveryControl: step({
       id: `${kind}-delivery-control`,
@@ -57,65 +134,26 @@ function deliveredArtifactSteps(kind: DeliveredArtifact): DeliveredArtifactSteps
       },
       expectedPublicResponse: functionalResponse(`${kind}-accepted-control`),
     }),
-    probes: [
-      step({
-        id: `${kind}-wrong-recipient`,
-        controlId,
-        boundary: 'synthetic-mailbox',
-        action,
-        target,
-        inputs: { recipient: 'wrong-synthetic-recipient', tenant: 'alpha', use: 'first' },
-        expectedFacts: { result: 'invalid-artifact', durableEffectCount: 0 },
-        expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
-      }),
-      step({
-        id: `${kind}-wrong-tenant`,
-        controlId,
-        boundary: 'synthetic-mailbox',
-        action,
-        target: `wrong-tenant-${kind}`,
-        inputs: { recipient: 'intended-synthetic-recipient', tenant: 'bravo', use: 'first' },
-        expectedFacts: { result: 'invalid-artifact', durableEffectCount: 0 },
-        expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
-      }),
-      step({
-        id: `${kind}-configured-expiry`,
-        controlId,
-        boundary: 'synthetic-mailbox',
-        action,
-        target,
-        inputs: { expiryState: 'at-or-after-configured-boundary', use: 'first' },
-        expectedFacts: { result: 'expired-artifact', durableEffectCount: 0 },
-        expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
-      }),
-      step({
-        id: `${kind}-sequential-replay`,
-        controlId,
-        boundary: 'synthetic-mailbox',
-        action,
-        target,
-        inputs: { expiryState: 'inside-configured-boundary', use: 'second-sequential' },
-        expectedFacts: { result: 'invalid-artifact', durableEffectCount: 0 },
-        expectedPublicResponse: functionalResponse(`${kind}-invalid-artifact`),
-      }),
-      step({
-        id: `${kind}-throttled-request`,
-        controlId: `${kind}-delivery-control`,
-        boundary: 'raw-http',
-        action: `request-${kind}`,
-        target: 'synthetic-mailbox',
-        inputs: { limitState: 'exhausted', limitKeyVariant: 'equivalent-public-input' },
-        expectedFacts: { result: 'throttled', durableEffectCount: 0, deliveryCount: 0 },
-        expectedPublicResponse: functionalResponse(`${kind}-throttled-rejection`),
-      }),
-    ],
+    probes,
   };
 }
 
-const magicLink = deliveredArtifactSteps('magic-link');
-const passwordReset = deliveredArtifactSteps('password-reset');
-const invitation = deliveredArtifactSteps('invitation');
-const emailOtp = deliveredArtifactSteps('email-otp');
+const magicLink = deliveredArtifactSteps('magic-link', {
+  recipientAuthority: true,
+  publicIssuanceThrottle: true,
+});
+const passwordReset = deliveredArtifactSteps('password-reset', {
+  recipientAuthority: false,
+  publicIssuanceThrottle: true,
+});
+const invitation = deliveredArtifactSteps('invitation', {
+  recipientAuthority: false,
+  publicIssuanceThrottle: false,
+});
+const emailOtp = deliveredArtifactSteps('email-otp', {
+  recipientAuthority: true,
+  publicIssuanceThrottle: true,
+});
 
 /** Exact delivered-artifact and second-factor cases executed through the stable adapter seam. */
 export const humanAuthArtifactCaseRequirements: readonly HumanAuthCaseRequirement[] = [
