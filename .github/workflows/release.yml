@@ -69,10 +69,9 @@ jobs:
         shell: bash
         run: |
           head_sha=$(git rev-parse HEAD)
-          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --branch main --workflow "Build and Test" \
-            --limit 20 --json headSha,conclusion,event \
-            --jq ".[] | select(.headSha==\"$head_sha\" and .event==\"push\") | .conclusion" | head -1)
-          if [ "$conclusion" != "success" ]; then
+          result=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$head_sha&per_page=100" \
+            --jq '[.workflow_runs[] | select(.name == "Build and Test" and .event == "push") | .conclusion] | if any(. == "success") then "ok" else "missing" end')
+          if [ "$result" != "ok" ]; then
             echo "::error::main $head_sha has no successful Build and Test run"
             exit 1
           fi
