@@ -431,7 +431,8 @@ export function clientMutableValuesMatch(
     sameValue(source.redirect_uris, destination.redirect_uris) &&
     sameValue(source.post_logout_redirect_uris, destination.post_logout_redirect_uris) &&
     sameValue(source.allowed_origins, destination.allowed_origins) &&
-    source.require_pkce === destination.require_pkce
+    source.require_pkce === destination.require_pkce &&
+    source.require_consent === destination.require_consent
   );
 }
 

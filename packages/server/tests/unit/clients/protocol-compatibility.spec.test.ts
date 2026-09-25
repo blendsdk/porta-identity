@@ -163,6 +163,7 @@ function importAccepts(input: ProtocolInput): boolean {
         login_methods: null,
         token_endpoint_auth_method: input.tokenEndpointAuthMethod,
         require_pkce: input.requirePkce,
+        require_consent: false,
         allowed_origins: input.allowedOrigins ?? [],
       },
     ],

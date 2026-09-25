@@ -29,6 +29,7 @@ const client = {
   tokenEndpointAuthMethod: 'none',
   allowedOrigins: ['https://client.example.test'],
   requirePkce: true,
+  requireConsent: false,
   loginMethods: null,
   effectiveLoginMethods: ['password'],
   status: 'active',

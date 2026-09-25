@@ -88,6 +88,7 @@ const sampleClient = {
   tokenEndpointAuthMethod: 'client_secret_post',
   allowedOrigins: ['https://example.com'],
   requirePkce: true,
+  requireConsent: true,
   loginMethods: null,
   effectiveLoginMethods: ['password' as const, 'magic_link' as const],
   createdAt: '2024-01-01T00:00:00Z',

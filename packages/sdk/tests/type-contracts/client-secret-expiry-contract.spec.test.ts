@@ -30,6 +30,7 @@ function transport(): HttpTransport {
             tokenEndpointAuthMethod: 'client_secret_basic',
             allowedOrigins: [],
             requirePkce: true,
+            requireConsent: false,
             loginMethods: null,
             effectiveLoginMethods: ['password'],
             status: 'active',

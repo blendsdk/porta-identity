@@ -60,6 +60,8 @@ export interface Client {
   allowedOrigins: string[];
   /** Whether authorization-code requests require PKCE. */
   requirePkce: boolean;
+  /** Whether the authorization server shows the OIDC consent page for this client. */
+  requireConsent: boolean;
   /** Per-client login-method override, or null to inherit. */
   loginMethods: LoginMethod[] | null;
   /** Effective login methods after organization inheritance. */
@@ -103,6 +105,8 @@ export interface CreateClientInput {
   allowedOrigins?: string[];
   /** Whether authorization-code requests require PKCE. */
   requirePkce?: boolean;
+  /** Whether the authorization server shows the OIDC consent page for this client. */
+  requireConsent?: boolean;
   /** Optional label for the initial confidential-client secret. */
   secretLabel?: string;
   /** Optional ISO expiry instant; omit it for a non-expiring initial secret. */
@@ -130,6 +134,8 @@ export interface UpdateClientInput {
   allowedOrigins?: string[];
   /** Replacement PKCE requirement. */
   requirePkce?: boolean;
+  /** Replacement consent requirement. */
+  requireConsent?: boolean;
   /** Replacement login-method override, or null to inherit. */
   loginMethods?: LoginMethod[] | null;
 }

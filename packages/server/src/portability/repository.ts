@@ -103,6 +103,7 @@ interface ClientExportRow {
   readonly post_logout_redirect_uris: readonly string[];
   readonly allowed_origins: readonly string[];
   readonly require_pkce: boolean;
+  readonly require_consent: boolean;
 }
 
 /** Resolved organization scope with internal keys kept outside the manifest. */
@@ -611,7 +612,8 @@ export async function readClientExportRecords(
             c.grant_types, c.response_types, c.scope, c.login_methods,
             c.token_endpoint_auth_method, c.redirect_uris,
             COALESCE(c.post_logout_redirect_uris, '{}') AS post_logout_redirect_uris,
-            COALESCE(c.allowed_origins, '{}') AS allowed_origins, c.require_pkce
+            COALESCE(c.allowed_origins, '{}') AS allowed_origins, c.require_pkce,
+            c.require_consent
        FROM clients c
        JOIN organizations o ON o.id = c.organization_id
        JOIN applications a ON a.id = c.application_id
@@ -639,6 +641,7 @@ export async function readClientExportRecords(
         post_logout_redirect_uris,
         allowed_origins,
         require_pkce,
+        require_consent,
       }) => ({
         client_id,
         organization_slug,
@@ -656,6 +659,7 @@ export async function readClientExportRecords(
         post_logout_redirect_uris,
         allowed_origins,
         require_pkce,
+        require_consent,
       }),
     )
     .sort((left, right) => compareText(left.client_id, right.client_id));

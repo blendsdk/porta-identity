@@ -159,6 +159,7 @@ export async function writePortabilityClient(
     record.post_logout_redirect_uris,
     record.allowed_origins,
     record.require_pkce,
+    record.require_consent,
   ];
   if (destinationId === null) {
     await getPool().query(
@@ -166,8 +167,8 @@ export async function writePortabilityClient(
          (id, client_id, organization_id, application_id, client_name, client_type,
           application_type, status, grant_types, response_types, scope, login_methods,
           token_endpoint_auth_method, redirect_uris, post_logout_redirect_uris,
-          allowed_origins, require_pkce)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+          allowed_origins, require_pkce, require_consent)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
       [
         authoritativeId,
         record.client_id,
@@ -186,6 +187,7 @@ export async function writePortabilityClient(
         record.post_logout_redirect_uris,
         record.allowed_origins,
         record.require_pkce,
+        record.require_consent,
       ],
     );
   } else {
@@ -194,7 +196,8 @@ export async function writePortabilityClient(
               response_types = $4, scope = $5, login_methods = $6,
               token_endpoint_auth_method = $7, redirect_uris = $8,
               post_logout_redirect_uris = $9, allowed_origins = $10, require_pkce = $11,
-              updated_at = NOW() WHERE id = $12`,
+              require_consent = $12,
+              updated_at = NOW() WHERE id = $13`,
       [...mutableValues, destinationId],
     );
   }

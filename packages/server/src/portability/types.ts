@@ -260,6 +260,7 @@ export interface PortabilityClient {
   readonly allowed_origins: readonly string[];
   /** Whether authorization-code requests require PKCE. */
   readonly require_pkce: boolean;
+  readonly require_consent: boolean;
 }
 
 /** Complete version 1.0 portability manifest. */

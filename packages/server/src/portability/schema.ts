@@ -311,6 +311,7 @@ const clientSchema = z
     post_logout_redirect_uris: optionalClientUrisSchema.refine(containsUniqueValues),
     allowed_origins: optionalClientUrisSchema.refine(containsUniqueValues),
     require_pkce: z.boolean(),
+    require_consent: z.boolean(),
   })
   .strict()
   .superRefine((client, context) => {

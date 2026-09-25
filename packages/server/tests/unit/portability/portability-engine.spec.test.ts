@@ -378,6 +378,7 @@ describe('portability export engine specification', () => {
       post_logout_redirect_uris: [],
       allowed_origins: [],
       require_pkce: true,
+      require_consent: true,
       secret_hash: 'must-never-export',
     };
     useRows({ clients: [client] });
@@ -391,6 +392,7 @@ describe('portability export engine specification', () => {
     ]);
     expect(selected.manifest.applications).toStrictEqual([]);
     expect(JSON.stringify(selected.manifest)).not.toContain('must-never-export');
+    expect(JSON.stringify(selected.manifest)).toContain('"require_consent":true');
     expect(unselected.manifest.clients).toStrictEqual([]);
   });
 

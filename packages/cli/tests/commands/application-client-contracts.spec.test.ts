@@ -110,6 +110,7 @@ const oidcClient = {
   tokenEndpointAuthMethod: 'client_secret_basic',
   allowedOrigins: ['https://client.example.test'],
   requirePkce: false,
+  requireConsent: true,
   loginMethods: null,
   effectiveLoginMethods: ['password'],
   status: 'active',
@@ -405,6 +406,55 @@ describe('ST-23 bounded conventional CLI inventory', () => {
         'client-etag',
       );
       expect(printJson).toHaveBeenCalledWith(oidcClient);
+    });
+
+    it('maps client create --require-consent to the SDK consent field', async () => {
+      await invoke('client', ['create'], {
+        org: organizationId,
+        app: applicationId,
+        name: 'Machine client',
+        type: 'confidential',
+        'application-type': 'web',
+        'redirect-uris': 'https://client.example.test/callback',
+        'require-consent': true,
+        json: true,
+      });
+
+      expect(clients.create).toHaveBeenCalledWith({
+        organizationId,
+        applicationId,
+        clientName: 'Machine client',
+        clientType: 'confidential',
+        applicationType: 'web',
+        redirectUris: ['https://client.example.test/callback'],
+        requireConsent: true,
+      });
+    });
+
+    it('maps client update consent flags and omits the field when not provided', async () => {
+      await invoke('client', ['update', clientId], { 'no-require-consent': true, json: true });
+      expect(clients.update).toHaveBeenLastCalledWith(
+        clientId,
+        expect.objectContaining({ requireConsent: false }),
+        'client-etag',
+      );
+
+      clients.update.mockClear();
+      await invoke('client', ['update', clientId], { name: 'No consent change', json: true });
+      expect(clients.update).toHaveBeenLastCalledWith(
+        clientId,
+        expect.not.objectContaining({ requireConsent: expect.anything() }),
+        'client-etag',
+      );
+    });
+
+    it('prints the consent requirement in client get output', async () => {
+      await invoke('client', ['get', clientId], {});
+
+      expect(printTable).toHaveBeenLastCalledWith(
+        ['Field', 'Value'],
+        expect.arrayContaining([['Require Consent', 'true']]),
+      );
     });
 
     it.each([

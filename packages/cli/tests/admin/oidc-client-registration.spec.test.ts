@@ -64,6 +64,7 @@ const client: AdminClient = {
   tokenEndpointAuthMethod: 'client_secret_basic',
   allowedOrigins: [],
   requirePkce: true,
+  requireConsent: false,
   loginMethods: null,
   effectiveLoginMethods: ['password', 'magic_link'],
   status: 'active',
