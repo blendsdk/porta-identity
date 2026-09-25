@@ -221,8 +221,15 @@ async function dockerVolumeExists(volumeName) {
 }
 /* node:coverage enable */
 
+/** Writes one opted-in verbose lifecycle diagnostic to standard error. */
+function writeDiagnostic(message) {
+  process.stderr.write(`[admin:env] ${message}\n`);
+}
+
 /** Creates production lifecycle boundaries used by the command entry point. */
 export function productionDependencies(system = {}) {
+  const verbose = system.verbose === true;
+  const report = system.report ?? (verbose ? writeDiagnostic : () => {});
   const composeCommand = system.compose ?? compose;
   const composeInteractiveCommand = system.composeInteractive ?? composeInteractive;
   const execute = system.execFile ?? execFile;
@@ -235,6 +242,7 @@ export function productionDependencies(system = {}) {
   const environment = system.environment ?? process.env;
   return {
     runPreflight: async () => {
+      report('checking prerequisites');
       const services = await inspectServices();
       const httpsPort = validatePlaygroundPort(
         environment.PORTA_ADMIN_HTTPS_PORT,
@@ -254,17 +262,25 @@ export function productionDependencies(system = {}) {
     withMutationLock,
     ensureStableSecrets,
     startServices: async () => {
+      report('building porta image');
       await composeCommand(['build', 'porta']);
+      report('starting postgres, redis, mailhog');
       await composeCommand(['up', '-d', '--build', 'postgres', 'redis', 'mailhog']);
     },
-    runMigrations: async () =>
-      composeCommand(['run', '--rm', 'porta', 'node', 'dist/cli/index.js', 'migrate', 'up'], {
-        timeout: 300_000,
-      }),
+    runMigrations: async () => {
+      report('running database migrations');
+      return composeCommand(
+        ['run', '--rm', 'porta', 'node', 'dist/cli/index.js', 'migrate', 'up'],
+        {
+          timeout: 300_000,
+        },
+      );
+    },
     isInitialized: initialized,
     readHiddenPassword: async () => '',
-    initialize: async (input) =>
-      composeInteractiveCommand([
+    initialize: async (input) => {
+      report('initializing administrator');
+      return composeInteractiveCommand([
         'run',
         '--rm',
         'porta',
@@ -277,9 +293,12 @@ export function productionDependencies(system = {}) {
         input.givenName,
         '--family-name',
         input.familyName,
-      ]),
+      ]);
+    },
     verifyHealth: async () => {
-      await composeCommand(['up', '-d', 'porta', 'nginx']);
+      report('starting porta and nginx');
+      await composeCommand(['up', '-d', '--wait', 'porta', 'nginx']);
+      report('verifying endpoints');
       const httpsPort = environment.PORTA_ADMIN_HTTPS_PORT ?? '3543';
       const mailhogPort = environment.PORTA_ADMIN_MAILHOG_PORT ?? '8026';
       const { stdout: metadataOutput } = await execute('curl', [
@@ -304,16 +323,21 @@ export function productionDependencies(system = {}) {
       return { porta: 'healthy', mailhog: 'healthy' };
     },
     stopServices: async () => {
+      report('stopping services');
       await composeCommand(['down', '--remove-orphans']);
     },
     canBootstrapInteractively: () => process.stdin.isTTY === true && process.stdout.isTTY === true,
     resolveVolumeName: async (volumeKey) => `porta-admin-playground_${volumeKey}`,
     removeVolume: async (volumeName) => {
       if (!(await volumeExists(volumeName))) return;
+      report(`removing volume ${volumeName}`);
       await execute('docker', ['volume', 'rm', volumeName]);
     },
     volumeExists,
-    rotateSecrets: rotate,
+    rotateSecrets: async () => {
+      report('rotating infrastructure secrets');
+      return rotate();
+    },
     clearMail: async () => undefined,
     inspectStatus: status,
     confirmReset: async () => {
@@ -474,8 +498,11 @@ export function createAdminPlaygroundLifecycle(dependencies) {
 }
 
 /** Converts internal failures to a small documented command-line error vocabulary. */
-export function formatPlaygroundError(error) {
-  if (!(error instanceof Error)) return 'Playground operation failed.';
+export function formatPlaygroundError(error, options = {}) {
+  if (!(error instanceof Error)) {
+    return options.verbose ? String(error) : 'Playground operation failed.';
+  }
+  if (options.verbose) return formatVerboseDiagnostics(error);
   const allowed = [
     'Usage:',
     'Required tool is unavailable:',
@@ -493,14 +520,30 @@ export function formatPlaygroundError(error) {
     : 'Playground operation failed.';
 }
 
+/** Builds complete opted-in diagnostics including the underlying process output. */
+function formatVerboseDiagnostics(error) {
+  const sections = [`[admin:env] ${error.message}`];
+  if (typeof error.stderr === 'string' && error.stderr.trim().length > 0) {
+    sections.push(`--- stderr ---\n${error.stderr.trimEnd()}`);
+  }
+  if (typeof error.stdout === 'string' && error.stdout.trim().length > 0) {
+    sections.push(`--- stdout ---\n${error.stdout.trimEnd()}`);
+  }
+  if (typeof error.stack === 'string' && error.stack.length > 0) {
+    sections.push(error.stack);
+  }
+  return sections.join('\n');
+}
+
 /** Executes the requested root lifecycle operation. */
 /* node:coverage disable */
 async function main(arguments_) {
   const [operation, ...flags] = arguments_;
   if (!['up', 'stop', 'status', 'reset'].includes(operation)) {
-    throw new Error('Usage: yarn admin:env <up|stop|status|reset> [--yes]');
+    throw new Error('Usage: yarn admin:env <up|stop|status|reset> [--yes] [--verbose]');
   }
-  const lifecycle = createAdminPlaygroundLifecycle(productionDependencies());
+  const verbose = flags.includes('--verbose');
+  const lifecycle = createAdminPlaygroundLifecycle(productionDependencies({ verbose }));
   const options = {
     yes: flags.includes('--yes'),
     stdinIsTTY: process.stdin.isTTY === true,
@@ -512,8 +555,12 @@ async function main(arguments_) {
 /* node:coverage enable */
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  main(process.argv.slice(2)).catch((error) => {
-    process.stderr.write(`${formatPlaygroundError(error)}\n`);
+  const arguments_ = process.argv.slice(2);
+  main(arguments_).catch((error) => {
+    const diagnostics = formatPlaygroundError(error, {
+      verbose: arguments_.includes('--verbose'),
+    });
+    process.stderr.write(`${diagnostics}\n`);
     process.exitCode = 1;
   });
 }

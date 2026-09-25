@@ -123,7 +123,7 @@ test('should wire production lifecycle policy through injected system adapters',
   assert.equal(await dependencies.resolveVolumeName('postgres_data'), 'porta-admin-playground_postgres_data');
   assert.equal(dependencies.canBootstrapInteractively(), false);
   assert.ok(events.some((event) => event.includes('preflight:4550')));
-  assert.ok(events.some((event) => event.includes('compose:up -d porta nginx')));
+  assert.ok(events.some((event) => event.includes('compose:up -d --wait porta nginx')));
   assert.ok(events.some((event) => event.includes('exec:docker:volume rm present')));
 });
 
@@ -156,6 +156,54 @@ test('should replace unexpected process diagnostics with one public failure', ()
     formatPlaygroundError(new Error('Playground operation unavailable: lifecycle lock timed out.')),
     'Playground operation unavailable: lifecycle lock timed out.',
   );
+});
+
+test('should reveal opted-in diagnostics while keeping default failures sealed', () => {
+  const error = new Error('docker compose build failed');
+  error.stderr = 'no space left on device';
+  error.stdout = 'build step one';
+
+  assert.equal(formatPlaygroundError(error), 'Playground operation failed.');
+  const diagnostics = formatPlaygroundError(error, { verbose: true });
+  assert.match(diagnostics, /docker compose build failed/);
+  assert.match(diagnostics, /no space left on device/);
+  assert.match(diagnostics, /build step one/);
+
+  assert.equal(formatPlaygroundError('plain failure'), 'Playground operation failed.');
+  assert.equal(formatPlaygroundError('plain failure', { verbose: true }), 'plain failure');
+});
+
+test('should report verbose lifecycle steps through injected diagnostics', async () => {
+  const steps = [];
+  const dependencies = productionDependencies({
+    verbose: true,
+    report: (message) => steps.push(message),
+    compose: async () => ({ stdout: '' }),
+    composeInteractive: async () => undefined,
+    execFile: async () => ({ stdout: '{}' }),
+    runPreflight: async () => undefined,
+    inspectComposeServices: async () => [],
+    isInitialized: async () => true,
+    dockerVolumeExists: async () => false,
+    rotateSecrets: async () => undefined,
+    inspectStatus: async () => ({ state: 'missing', endpoints: [] }),
+    environment: {},
+  });
+
+  await dependencies.runPreflight();
+  await dependencies.startServices();
+  await dependencies.runMigrations();
+  await dependencies.stopServices();
+  await dependencies.rotateSecrets();
+
+  assert.deepEqual(steps, [
+    'checking prerequisites',
+    'building porta image',
+    'starting postgres, redis, mailhog',
+    'running database migrations',
+    'stopping services',
+    'rotating infrastructure secrets',
+  ]);
 });
 
 test('should report a loopback port conflict without terminating its owner', async () => {
