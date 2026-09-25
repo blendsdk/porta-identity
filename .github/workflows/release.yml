@@ -1,11 +1,23 @@
-# Publishes the exact revision that passed the main-branch Build and Test workflow.
+# One manual dispatch performs the whole coordinated release: version bump, changelog and release
+# notes, commit and tag, npm publish, GitHub Release, Docker dispatch, and a safe develop sync.
 name: Release
 
 on:
-  workflow_run:
-    workflows: ['Build and Test']
-    branches: [main]
-    types: [completed]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        type: choice
+        options:
+          - auto
+          - patch
+          - minor
+          - major
+        default: auto
+      dry_run:
+        description: Rehearse without publishing, pushing, or tagging
+        type: boolean
+        default: false
 
 permissions:
   actions: write
@@ -20,12 +32,11 @@ jobs:
   release:
     name: Publish coordinated release
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
 
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: main
           fetch-depth: 0
           persist-credentials: false
 
@@ -38,34 +49,87 @@ jobs:
       - name: Install pinned release tools
         run: yarn install --frozen-lockfile
 
-      - name: Build publishable packages
-        run: yarn build
-
-      - name: Validate committed candidate
-        id: candidate
-        env:
-          EVENT_SHA: ${{ github.sha }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+      # A re-run after a successful release finds HEAD already tagged. In that case the bump and
+      # publish are skipped and the remaining steps (release, Docker, sync) resume idempotently.
+      - name: Resolve release mode
+        id: mode
         shell: bash
         run: |
-          test "$EVENT_SHA" = "$RELEASE_SHA"
-          test "$(git rev-parse HEAD)" = "$RELEASE_SHA"
-          yarn release:preflight
-          node_modules/.bin/npm --version
-          version=$(node --input-type=module -e "import manifest from './package.json' with { type: 'json' }; process.stdout.write(manifest.version)")
+          if tag=$(git describe --tags --exact-match HEAD 2>/dev/null); then
+            echo "head_tagged=$tag" >> "$GITHUB_OUTPUT"
+          else
+            echo "head_tagged=" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Fail closed: only release a main revision that already passed the main CI gate.
+      - name: Verify the revision passed Build and Test
+        if: steps.mode.outputs.head_tagged == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          head_sha=$(git rev-parse HEAD)
+          conclusion=$(gh run list --repo "$GITHUB_REPOSITORY" --branch main --workflow "Build and Test" \
+            --limit 20 --json headSha,conclusion,event \
+            --jq ".[] | select(.headSha==\"$head_sha\" and .event==\"push\") | .conclusion" | head -1)
+          if [ "$conclusion" != "success" ]; then
+            echo "::error::main $head_sha has no successful Build and Test run"
+            exit 1
+          fi
+
+      - name: Dry run
+        if: ${{ inputs.dry_run }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          node_modules/.bin/lockstep version --type "${{ inputs.bump }}" --no-git-commit --no-changelog
+          version=$(node --input-type=module -e "import m from './package.json' with { type: 'json' }; process.stdout.write(m.version)")
+          echo "Dry run: a full release would publish v$version"
+          node_modules/.bin/lockstep publish --tag latest --dry
+
+      # Bump before build so Lockstep's `git add .` commits only the version, changelog, and notes.
+      - name: Bump version and generate release notes
+        id: bump
+        if: ${{ !inputs.dry_run && steps.mode.outputs.head_tagged == '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::working tree is not clean before the version bump"
+            exit 1
+          fi
+          node_modules/.bin/lockstep version --type "${{ inputs.bump }}" --ci
+
+      - name: Read release version
+        id: release
+        shell: bash
+        run: |
+          version=$(node --input-type=module -e "import m from './package.json' with { type: 'json' }; process.stdout.write(m.version)")
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
-      # A promotion that does not bump the version (for example, a workflow or
-      # documentation change) re-enters this workflow for a version that is
-      # already fully released. Treat that as a successful no-op instead of
-      # failing on an existing tag that points at the original release commit.
+      - name: Build publishable packages
+        if: ${{ !inputs.dry_run }}
+        run: yarn build
+
+      - name: Validate committed candidate
+        if: ${{ !inputs.dry_run }}
+        shell: bash
+        run: |
+          yarn release:preflight
+          node_modules/.bin/npm --version
+
+      # A promotion that does not bump the version re-enters this workflow for a version that is
+      # already fully released. Treat that as a complete no-op.
       - name: Detect completed release
         id: released
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
-          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         shell: bash
         run: |
           packages_published=true
@@ -82,6 +146,7 @@ jobs:
           fi
 
       - name: Pack expected release artifacts
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
         run: |
           mkdir release-artifacts
           node_modules/.bin/npm pack --workspace @portaidentity/server --pack-destination release-artifacts
@@ -89,12 +154,13 @@ jobs:
           node_modules/.bin/npm pack --workspace @portaidentity/cli --pack-destination release-artifacts
 
       # A re-run after a partial or post-publish failure must not fail on
-      # "cannot publish over the previously published versions". Skip the
-      # publish when every package already carries this version.
+      # "cannot publish over the previously published versions". Skip the publish when every package
+      # already carries this version.
       - name: Check published state
         id: published
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
         env:
-          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
           missing=0
@@ -109,15 +175,15 @@ jobs:
           fi
 
       - name: Publish with npm Trusted Publishing
-        if: steps.published.outputs.all_published != 'true'
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' && steps.published.outputs.all_published != 'true' }}
         run: yarn release:publish
 
-      # npm view can lag the publish by minutes, so retry the version,
-      # integrity, and provenance checks for up to 400s per package instead of
-      # failing a release whose packages are already live.
+      # npm view can lag the publish by minutes, so retry the version, integrity, and provenance
+      # checks for up to 400s per package instead of failing a release whose packages are already live.
       - name: Verify published packages
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
         env:
-          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
         shell: bash
         run: |
           package_integrity() {
@@ -145,25 +211,26 @@ jobs:
             fi
           done
 
-      # Independent of the publish step so a re-run can complete a release whose
-      # packages were already published. Both operations are idempotent.
-      - name: Create release tag and GitHub release
-        if: steps.released.outputs.complete != 'true'
+      # Push the bump commit and its lightweight tag only after a successful publish. The credential
+      # is injected per command and never persisted in the git configuration.
+      - name: Push release commit and tag
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' && steps.mode.outputs.head_tagged == '' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
-          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         shell: bash
         run: |
-          remote_tag_sha=$(git ls-remote --refs origin "refs/tags/$RELEASE_TAG" | awk '{print $1}')
-          if [ -n "$remote_tag_sha" ]; then
-            test "$remote_tag_sha" = "$RELEASE_SHA"
-          else
-            gh api --method POST "repos/$GITHUB_REPOSITORY/git/refs" \
-              -f ref="refs/tags/$RELEASE_TAG" \
-              -f sha="$RELEASE_SHA"
-          fi
+          cred="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push "$cred" HEAD:refs/heads/main
+          git push "$cred" "refs/tags/$RELEASE_TAG"
 
+      - name: Create GitHub Release
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "GitHub release $RELEASE_TAG already exists"
           else
@@ -171,15 +238,14 @@ jobs:
           fi
 
       - name: Dispatch tested Docker release
-        if: steps.released.outputs.complete != 'true'
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
         shell: bash
         run: |
-          # The workflow-created tag uses GITHUB_TOKEN, which does not emit a
-          # tag-push event, so dispatch explicitly. Skip when the image already
-          # exists so a re-run does not rebuild and repush the same tags.
+          # The workflow-created tag uses GITHUB_TOKEN, which does not emit a tag-push event, so
+          # dispatch explicitly. Skip when the image already exists so a re-run does not rebuild it.
           version="${RELEASE_TAG#v}"
           if docker manifest inspect "blendsdk/porta:$version" >/dev/null 2>&1; then
             echo "Docker image blendsdk/porta:$version already exists; skipping dispatch"
@@ -187,4 +253,30 @@ jobs:
           fi
           gh workflow run docker.yml --ref main \
             -f tag="$RELEASE_TAG" \
-            -f sha="${{ github.event.workflow_run.head_sha }}"
+            -f sha="$(git rev-parse HEAD)"
+
+      # Bring the bump back to develop without rewriting its history. Never forces.
+      - name: Sync develop with the release bump
+        if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' && steps.mode.outputs.head_tagged == '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        shell: bash
+        run: |
+          cred="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          bump_sha=$(git rev-parse HEAD)
+          git fetch origin main develop
+          if git merge-base --is-ancestor origin/develop "$bump_sha"; then
+            git push "$cred" "$bump_sha":refs/heads/develop
+          else
+            git checkout -B sync/develop-release origin/develop
+            if git cherry-pick "$bump_sha"; then
+              git push "$cred" sync/develop-release:refs/heads/develop
+            else
+              git cherry-pick --abort
+              gh issue create \
+                --repo "$GITHUB_REPOSITORY" \
+                --title "Release $RELEASE_TAG: develop sync needs a manual cherry-pick" \
+                --body "The release bump commit $bump_sha could not be cherry-picked onto develop automatically. Apply it manually: git checkout develop && git cherry-pick $bump_sha. The release itself succeeded."
+            fi
+          fi
