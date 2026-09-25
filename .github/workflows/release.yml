@@ -105,7 +105,14 @@ jobs:
             echo "::error::working tree is not clean before the version bump"
             exit 1
           fi
-          node_modules/.bin/lockstep version --type "${{ inputs.bump }}" --ci
+          # Mirror release:prepare: bump, realign the derived SDK/CLI constants, then commit and tag
+          # everything together so release:preflight passes.
+          node_modules/.bin/lockstep version --type "${{ inputs.bump }}" --no-git-commit
+          node scripts/sync-versions.js
+          version=$(node --input-type=module -e "import m from './package.json' with { type: 'json' }; process.stdout.write(m.version)")
+          git add .
+          git commit -m "chore(release): v$version [skip ci]"
+          git tag "v$version"
 
       - name: Read release version
         id: release
