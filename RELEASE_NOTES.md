@@ -1,35 +1,17 @@
-# Release Notes — v1.8.0
+# Release Notes — v1.9.0
 
-**Released**: 2026-09-23
+**Released**: 2026-09-25
 
-## Security
+We are excited to announce the release of version 1.9.0, which brings significant updates to enhance user experience and improve functionality across our platform. This release introduces new features that emphasize consent management, ensuring that users maintain control over their data and privacy settings when interacting with our services.
 
-- The OIDC token and introspection endpoints are now rate limited on their real
-  paths (`/{orgSlug}/token` and `/{orgSlug}/token/introspection`). Each applies
-  a per-client budget plus an aggregate per-peer counter, and a rejection
-  carries CORS headers so browser clients can read it.
-- The client address used for rate limiting and audit logging resolves to the
-  trusted proxy hop (`TRUST_PROXY_HOPS`), so a spoofed `X-Forwarded-For` value
-  can no longer rotate a client's rate-limit identity.
+Highlights of this release include:
 
-## Assurance
+- **Enhanced Consent Management:** Users will now see a new “Require Consent” feature, allowing you to determine whether explicit consent is needed for client interactions. This option ensures clarity and compliance with privacy regulations, making it easier for users to understand and manage their consent preferences.
 
-- Forwarding-context observers are complete: the configured public origin and
-  the public cookie policy are observed through attack-driven probes. The
-  production-security and operational assurance runs report no incomplete
-  cases.
-- The P1 live-boundary adapter provides independently observed evidence for
-  administrative permission denials.
-- Ingress-answered rejections are modeled explicitly in the raw oracle.
+- **Updated Consent Features for Developers:** The new consent-related options and protocols have been added for developers working with our platform, including improved tools for implementing consent requirements in client creation and updates. This encourages best practices in consent management across applications.
 
-## Documentation
+- **Stronger Organization Scope for Invitations:** When accepting invitations within organizations, the system will now ensure that invitations are correctly scoped to the respective organization. This helps prevent unauthorized access and enhances overall security.
 
-- `TRUST_PROXY` documentation now matches the code default (`true`) and states
-  the direct-exposure precondition (`TRUST_PROXY=false`).
+- **Improved Invitation Audit Processes:** Enhanced audit features will monitor and record any invitation rejections, ensuring greater accountability and allowing for better tracking of user actions related to invitations.
 
-## Verification
-
-- `main` Build and Test passes: monorepo verification, UI tests, OIDC harness,
-  public documentation, production Docker build, and production dependency
-  audit.
-- `yarn verify` passes for the server, SDK, and CLI workspaces.
+These updates are designed to provide users with greater control over their interactions and reinforce our commitment to security and compliance. We appreciate your continued support and encourage you to explore these new features in version 1.9.0!
