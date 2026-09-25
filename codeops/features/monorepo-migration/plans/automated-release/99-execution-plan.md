@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-25 11:14
-> **Progress**: 8/11 tasks (73%)
+> **Last Updated**: 2026-09-25 11:28
+> **Progress**: 10/11 tasks (91%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -98,8 +98,8 @@ Release, dispatches Docker, and syncs `develop` safely.
 
 **Objective**: Land the workflow and perform the first automated release.
 
-- [ ] 4.1.1 Merge `feat/automated-release` into `develop` (PR, CI green)
-- [ ] 4.1.2 Merge `develop` into `main` (deploys the new workflow; no automatic release fires because the workflow no longer declares `workflow_run`)
+- [x] 4.1.1 Merge `feat/automated-release` into `develop` (PR, CI green) ✅ (completed: 2026-09-25 11:28; PR #130 merged)
+- [x] 4.1.2 Merge `develop` into `main` (deploys the new workflow; no automatic release fires because the workflow no longer declares `workflow_run`) ✅ (completed: 2026-09-25 11:28; PR #131 merged; main fb11f971)
 - [ ] 4.1.3 Trigger `Release` on `main` (`bump=auto`) and verify the version bump, notes, tag, npm publish, GitHub Release, Docker dispatch, and `develop` sync
 
 **Deliverables**:
