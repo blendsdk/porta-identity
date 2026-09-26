@@ -152,7 +152,7 @@ export async function runStabilityCampaign(
   }
 
   const sequence = evaluateStabilitySequence(attempts);
-  let primaryTreeUnchanged = false;
+  let primaryTreeUnchanged: boolean;
   try {
     const after = inspectFoundationProvenance(canonicalRoot);
     primaryTreeUnchanged =

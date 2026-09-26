@@ -52,12 +52,10 @@ export interface AdminUserDetailResult {
 
 /** Allowlisted result of accepting a user invitation. */
 export interface AdminInvitedUser {
-  /** Stable UUID of the invited user. */
-  readonly userId: string;
+  /** Stable UUID of the invitation record. */
+  readonly invitationId: string;
   /** Invited email address. */
   readonly email: string;
-  /** Whether a new user was created. */
-  readonly created: boolean;
   /** Whether an invitation message was sent. */
   readonly invitationSent: boolean;
   /** Invitation expiration timestamp. */

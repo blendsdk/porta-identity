@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-26 20:53
-> **Progress**: 31/68 tasks (46%)
+> **Last Updated**: 2026-09-26 21:14
+> **Progress**: 43/68 tasks (63%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -150,33 +150,33 @@ estimates)
 
 **Reference**: [03-03](03-03-contracts-cli-admin-docs.md) · [07](07-testing-strategy.md) ST-27–ST-29 · AR-7, AR-19
 
-- [ ] 3.1.1 [spec-author] Update the SDK result contract tests (ST-27) — `packages/sdk/tests/type-contracts/users-contract.spec.test.ts`, `packages/sdk/tests/domains/users-contract.spec.test.ts`, `packages/sdk/tests/agent/agent.test.ts`
-- [ ] 3.1.2 [spec-author] Update the CLI invite contract tests (ST-28) — `packages/cli/tests/commands/user-contract.spec.test.ts`
-- [ ] 3.1.3 [spec-author] Update the Admin UI invite result tests (ST-29) — `packages/cli/tests/admin/user-service.spec.test.ts`, `packages/cli/tests/admin/user-dialogs.spec.test.ts`
-- [ ] 3.1.4 Run the updated spec tests and record the red-phase failures
+- [x] 3.1.1 [spec-author] Update the SDK result contract tests (ST-27) — `packages/sdk/tests/type-contracts/users-contract.spec.test.ts`, `packages/sdk/tests/domains/users-contract.spec.test.ts`, `packages/sdk/tests/agent/agent.test.ts` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.1.2 [spec-author] Update the CLI invite contract tests (ST-28) — `packages/cli/tests/commands/user-contract.spec.test.ts` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.1.3 [spec-author] Update the Admin UI invite result tests (ST-29) — `packages/cli/tests/admin/user-service.spec.test.ts`, `packages/cli/tests/admin/user-dialogs.spec.test.ts` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.1.4 Run the updated spec tests and record the red-phase failures ✅ (completed: 2026-09-26 21:14)
 
 ### Step 3.2: Implementation
 
 **Reference**: [03-03](03-03-contracts-cli-admin-docs.md)
 
-- [ ] 3.2.1 Change `InviteUserResult` to the new shape — `packages/sdk/src/types/users.ts`
-- [ ] 3.2.2 Update CLI invite output and wording — `packages/cli/src/commands/user.ts`
-- [ ] 3.2.3 Update Admin UI types and the response validator to the new shape — `packages/cli/src/admin/user-service-types.ts`, `packages/cli/src/admin/user-service.ts`
-- [ ] 3.2.4 Remove the post-invite user reconcile and update success copy/state — `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/user-state.ts`, `packages/cli/src/admin/index.ts`
+- [x] 3.2.1 Change `InviteUserResult` to the new shape — `packages/sdk/src/types/users.ts` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.2.2 Update CLI invite output and wording — `packages/cli/src/commands/user.ts` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.2.3 Update Admin UI types and the response validator to the new shape — `packages/cli/src/admin/user-service-types.ts`, `packages/cli/src/admin/user-service.ts` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.2.4 Remove the post-invite user reconcile and update success copy/state — `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/user-state.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-26 21:14) — the existing `'invited'` success action already publishes without selecting a user; the type/validator change completes it
 - [ ] 3.2.5 Update the assurance harness issuance step: parse `invitationId` and stop expecting a pre-acceptance user id — `test-harness/assurance/tests/human-auth-recovery-live-adapter.ts`
 - [ ] 3.2.6 Update the assurance harness presentation step: follow the confirmation page to `?step=password` before submitting — same file
 - [ ] 3.2.7 Update the assurance harness consumption and expiry steps: resolve the accepted account through the admin users search and capture state around it — same file
 - [ ] 3.2.8 Run the spec tests and confirm they pass (green phase)
-- [ ] 3.2.9 Write/extend implementation tests for the validator and output — `packages/cli/tests/admin/user-service.impl.test.ts`, `packages/cli/tests/commands/user.test.ts`
+- [x] 3.2.9 Write/extend implementation tests for the validator and output — `packages/cli/tests/admin/user-service.impl.test.ts`, `packages/cli/tests/commands/user.test.ts` ✅ (completed: 2026-09-26 21:14)
 
 ### Step 3.3: Descriptor polish and verification
 
-- [ ] 3.3.1 Update the SDK agent descriptor text if it references the old fields — `packages/sdk/src/agent.ts`
-- [ ] 3.3.2 Phase verification: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify`
-- [ ] 3.3.3 Root type and lint verification (includes `test-harness`): `yarn typecheck && yarn lint`
+- [x] 3.3.1 Update the SDK agent descriptor text if it references the old fields — `packages/sdk/src/agent.ts` ✅ (completed: 2026-09-26 21:14) — the descriptor references only the `InviteUserResult` name, not individual fields
+- [x] 3.3.2 Phase verification: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify` ✅ (completed: 2026-09-26 21:14)
+- [x] 3.3.3 Root type and lint verification (includes `test-harness`): `yarn typecheck && yarn lint` ✅ (completed: 2026-09-26 21:14)
 
 **Deliverables**:
-- [ ] SDK/CLI/Admin UI expose `{ invitationId, email, invitationSent, expiresAt }`
+- [x] SDK/CLI/Admin UI expose `{ invitationId, email, invitationSent, expiresAt }` ✅ (completed: 2026-09-26 21:14)
 - [ ] Assurance harness follows the confirmation step and validates the post-acceptance account
 
 **Verify**: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify && yarn typecheck && yarn lint`

@@ -61,9 +61,8 @@ type ExpectedUpdateUserInput = {
 };
 
 type ExpectedInviteUserResult = {
-  userId: string;
+  invitationId: string;
   email: string;
-  created: boolean;
   invitationSent: boolean;
   expiresAt: string;
 };

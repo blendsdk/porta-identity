@@ -478,20 +478,18 @@ function invitedUser(value: unknown): AdminInvitedUser | undefined {
   const candidate = objectValue(value);
   if (
     !candidate ||
-    typeof candidate.userId !== 'string' ||
-    !UUID.test(candidate.userId) ||
+    typeof candidate.invitationId !== 'string' ||
+    !UUID.test(candidate.invitationId) ||
     !isText(candidate.email, 255, 1) ||
     !EMAIL.test(candidate.email) ||
-    typeof candidate.created !== 'boolean' ||
     typeof candidate.invitationSent !== 'boolean' ||
     !isTimestamp(candidate.expiresAt)
   ) {
     return undefined;
   }
   return Object.freeze({
-    userId: candidate.userId,
+    invitationId: candidate.invitationId,
     email: candidate.email,
-    created: candidate.created,
     invitationSent: candidate.invitationSent,
     expiresAt: candidate.expiresAt,
   });
