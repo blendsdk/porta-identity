@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-26 22:40
-> **Progress**: 52/68 tasks (76%)
+> **Last Updated**: 2026-09-26 23:10
+> **Progress**: 56/68 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -210,13 +210,13 @@ estimates)
 
 **Reference**: [07](07-testing-strategy.md) ST-30–ST-32 · AR-8, AR-9, AR-16
 
-- [ ] 5.1.1 [spec-author] Write enumeration-resistance specs: unknown, expired, foreign, and email-conflict all render identically — `packages/server/tests/unit/security/invitation-enumeration.spec.test.ts`
-- [ ] 5.1.2 Add invitation replay, cross-tenant, and email-conflict penetration coverage — `packages/server/tests/pentest/auth-bypass/`
-- [ ] 5.1.3 Assert the plaintext token never reaches logs and only its hash is stored — same security spec file
-- [ ] 5.1.4 Phase verification: `yarn test:pentest && yarn lint && yarn typecheck`
+- [x] 5.1.1 [spec-author] Write enumeration-resistance specs: unknown, expired, foreign, and email-conflict all render identically — `packages/server/tests/unit/security/invitation-enumeration.spec.test.ts` ✅ (completed: 2026-09-26 23:10)
+- [x] 5.1.2 Add invitation replay, cross-tenant, and email-conflict penetration coverage — `packages/server/tests/pentest/auth-bypass/` ✅ (completed: 2026-09-26 23:10)
+- [x] 5.1.3 Assert the plaintext token never reaches logs and only its hash is stored — same security spec file ✅ (completed: 2026-09-26 23:10)
+- [x] 5.1.4 Phase verification: `yarn test:pentest && yarn lint && yarn typecheck` ✅ (completed: 2026-09-26 23:10) — pentest 273 passed
 
 **Deliverables**:
-- [ ] Enumeration, replay, and token-storage assertions in place
+- [x] Enumeration, replay, and token-storage assertions in place ✅ (completed: 2026-09-26 23:10)
 
 **Verify**: `yarn test:pentest && yarn lint && yarn typecheck`
 
