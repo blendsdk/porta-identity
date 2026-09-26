@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-26 23:10
-> **Progress**: 56/68 tasks (82%)
+> **Last Updated**: 2026-09-27 00:00
+> **Progress**: 62/68 tasks (91%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -226,15 +226,15 @@ estimates)
 
 **Reference**: `AGENTS.md` verification workflow · AR-25, AR-26
 
-- [ ] 6.1.1 No-dead-code sweep: remove the create-at-invite remnants, unused imports, and stale fixtures; confirm no `userId`/`created` references remain
-- [ ] 6.1.2 Full repository verification: `yarn verify`
-- [ ] 6.1.3 Browser verification: `yarn test:ui`
-- [ ] 6.1.4 Commit a clean checkpoint (use the git-commit skill), then run the packed-client compatibility gate: `yarn assurance:compat --select tenant-admin`
-- [ ] 6.1.5 Production-security assurance: `yarn assurance:harness --project security --profile production-security`
-- [ ] 6.1.6 Documentation and format gates: `yarn docs:build && yarn format:check`
+- [x] 6.1.1 No-dead-code sweep: remove the create-at-invite remnants, unused imports, and stale fixtures; confirm no `userId`/`created` references remain ✅ (completed: 2026-09-26 23:55) — no create-at-invite remnants; refreshed the stale `/auth/invite` email fixture
+- [x] 6.1.2 Full repository verification: `yarn verify` ✅ (completed: 2026-09-27 00:00) — structure 135, server unit/integration/e2e/pentest, SDK and CLI all pass
+- [x] 6.1.3 Browser verification: `yarn test:ui` ✅ (completed: 2026-09-27 00:00) — 133 passed (fixed the shared invited-address collision in the UI invitation flow)
+- [x] 6.1.4 Commit a clean checkpoint (use the git-commit skill), then run the packed-client compatibility gate: `yarn assurance:compat --select tenant-admin` ✅ (completed: 2026-09-27 00:00) — commit `83868011`; compat run `f4d81a48`
+- [x] 6.1.5 Production-security assurance: `yarn assurance:harness --project security --profile production-security` ✅ (completed: 2026-09-27 00:00) — exit 0; exposure 11 passed/0 incomplete; functional 7, second-factor 4, tenant-admin 17, recovery 5
+- [x] 6.1.6 Documentation and format gates: `yarn docs:build && yarn format:check` ✅ (completed: 2026-09-27 00:00) — `docs:build` passed; **exception**: `format:check` fails on a pre-existing repository baseline (no `.prettierignore`, prettier cannot parse the `.sql` migration or `.hbs` templates, and untouched files such as `AGENTS.md` already fail). Prettier is not run by any CI workflow, and the feature's new files match the surrounding style. No repo-wide reformat was performed.
 
 **Deliverables**:
-- [ ] All verification commands pass; no dead code; clean committed revision for compat
+- [x] All verification commands pass; no dead code; clean committed revision for compat ✅ (completed: 2026-09-27 00:00) — with the recorded `format:check` baseline exception above
 
 **Verify**: `yarn verify && yarn test:ui && yarn assurance:compat --select tenant-admin && yarn assurance:harness --project security --profile production-security`
 
