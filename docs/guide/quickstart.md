@@ -12,6 +12,30 @@ This guide uses Docker Hub images for the fastest setup. For cloning the repo or
 
 ---
 
+## Automated Install
+
+The installer writes `docker-compose.yml` and a `.env` with generated secrets,
+starts the stack, applies migrations, and optionally bootstraps the admin system:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/install-porta.sh | bash
+```
+
+It prompts for your public URL and SMTP relay, scans for a free host port to
+publish, and prints an nginx reverse-proxy example. For an unattended install,
+pass flags instead (run the script with `--help` for the full list):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/install-porta.sh \
+  | bash -s -- \
+      --issuer-url https://auth.example.com \
+      --smtp-host smtp.example.com --smtp-from noreply@example.com
+```
+
+The manual steps below describe the same deployment file by file.
+
+---
+
 ## Step 1: Create a Project Directory
 
 ```bash
