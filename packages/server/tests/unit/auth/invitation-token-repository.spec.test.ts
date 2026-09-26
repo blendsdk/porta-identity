@@ -27,7 +27,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 import { getPool } from '../../../src/lib/database.js';
 import {
   replaceInvitation,
-  findDeferredInvitationToken,
+  findValidInvitationToken,
 } from '../../../src/auth/token-repository.js';
 
 /** One captured query call from the mocked database boundary. */
@@ -138,7 +138,7 @@ describe('invitation token repository — deferred storage', () => {
   it('should resolve a deferred token by its stored organization without joining users', async () => {
     installDatabaseMock({ selectRows: [deferredInvitationRow()] });
 
-    const result = await findDeferredInvitationToken('hash-3', 'org-1');
+    const result = await findValidInvitationToken('hash-3', 'org-1');
 
     expect(result).toMatchObject({
       id: 'invitation-uuid-2',
@@ -151,7 +151,7 @@ describe('invitation token repository — deferred storage', () => {
   it('should reject a token presented under a different organization', async () => {
     const { calls } = installDatabaseMock({ selectRows: [] });
 
-    await expect(findDeferredInvitationToken('hash-3', 'foreign-org')).resolves.toBeNull();
+    await expect(findValidInvitationToken('hash-3', 'foreign-org')).resolves.toBeNull();
 
     const select = calls.find((call) => /^SELECT/i.test(call.sql));
     expect(select).toBeDefined();

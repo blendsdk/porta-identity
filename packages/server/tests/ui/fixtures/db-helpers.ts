@@ -256,11 +256,11 @@ async function createMagicLinkToken(
 /**
  * Create an invitation token in the database.
  *
- * For invitation tokens, we need the user ID. The caller should look up
- * the user by email first if they only have the email address.
+ * An invitation is keyed by organization and email and has no account until it is accepted, so no
+ * user lookup is required.
  *
- * @param email - Email of the invited user (used to look up user_id)
- * @param orgId - Organization ID to find the user in
+ * @param email - Email of the invited person
+ * @param orgId - Organization ID the invitation belongs to
  * @param options - Expiry control options
  * @returns Raw plaintext token for constructing the invitation URL
  */
@@ -273,20 +273,10 @@ async function createInvitationToken(
   const { plaintext, hash } = generateTokenPair();
   const expiresAt = calculateExpiry(10080, options); // Default: 7 days (10080 minutes)
 
-  // Look up user by email + org to get their ID
-  const userResult = await db.query<{ id: string }>(
-    `SELECT id FROM users WHERE email = $1 AND organization_id = $2`,
-    [email, orgId],
-  );
-  if (userResult.rows.length === 0) {
-    throw new Error(`User not found: ${email} in org ${orgId}`);
-  }
-  const userId = userResult.rows[0].id;
-
   await db.query(
-    `INSERT INTO invitation_tokens (user_id, token_hash, expires_at)
-     VALUES ($1, $2, $3)`,
-    [userId, hash, expiresAt],
+    `INSERT INTO invitation_tokens (user_id, organization_id, email, token_hash, expires_at)
+     VALUES (NULL, $1, $2, $3, $4)`,
+    [orgId, email, hash, expiresAt],
   );
 
   return plaintext;

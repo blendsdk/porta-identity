@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-26 20:36
-> **Progress**: 12/68 tasks (18%)
+> **Last Updated**: 2026-09-26 20:53
+> **Progress**: 31/68 tasks (46%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -102,41 +102,41 @@ estimates)
 
 **Reference**: [03-02](03-02-accept-flow-and-routes.md) · [07](07-testing-strategy.md) ST-5–ST-15, ST-18–ST-20, ST-24, ST-34 · AR-5, AR-6, AR-7, AR-8, AR-11, AR-16
 
-- [ ] 2.1.1 [spec-author] Write invite-route spec tests (ST-5–ST-9, ST-34) — `packages/server/tests/unit/routes/invitation-deferral.spec.test.ts`
-- [ ] 2.1.2 [spec-author] Write accept GET spec tests (ST-10–ST-15) — same file
-- [ ] 2.1.3 [spec-author] Write accept POST route error-path spec tests (ST-18–ST-20, ST-24) — same file
-- [ ] 2.1.4 Run the new route spec tests and record the red-phase failures
+- [x] 2.1.1 [spec-author] Write invite-route spec tests (ST-5–ST-9, ST-34) — `packages/server/tests/unit/routes/invitation-deferral.spec.test.ts` ✅ (completed: 2026-09-26 20:40)
+- [x] 2.1.2 [spec-author] Write accept GET spec tests (ST-10–ST-15) — same file ✅ (completed: 2026-09-26 20:40)
+- [x] 2.1.3 [spec-author] Write accept POST route error-path spec tests (ST-18–ST-20, ST-24) — same file ✅ (completed: 2026-09-26 20:40)
+- [x] 2.1.4 Run the new route spec tests and record the red-phase failures ✅ (completed: 2026-09-26 20:40)
 
 ### Step 2.2: Implementation
 
 **Reference**: [03-02](03-02-accept-flow-and-routes.md)
 
-- [ ] 2.2.1 Replace create-at-invite with `replaceInvitation` and the new response body; map a concurrent replace conflict to `409` — `packages/server/src/routes/users.ts`
-- [ ] 2.2.2 Allow the invitation email to send without a user row: optional recipient id, `userId`-free audit with `invitationId` metadata, and drop the preview placeholder id — `packages/server/src/auth/email-service.ts`, `packages/server/src/routes/users.ts`
-- [ ] 2.2.3 Add the confirmation step to the accept GET and the email-conflict rejection — `packages/server/src/routes/invitation.ts`
-- [ ] 2.2.4 Route the accept POST through `acceptInvitation`; pass the created user id to `applyPreAssignments` — `packages/server/src/routes/invitation.ts`
-- [ ] 2.2.5 Add the confirmation page template — `packages/server/templates/default/pages/confirm-invite.hbs`
-- [ ] 2.2.6 Add confirmation locale keys and pass `orgName` on both GET renders — `packages/server/locales/default/en/invitation.json`
-- [ ] 2.2.7 Run the new route spec tests and confirm they pass (green phase)
+- [x] 2.2.1 Replace create-at-invite with `replaceInvitation` and the new response body; map a concurrent replace conflict to `409` — `packages/server/src/routes/users.ts` ✅ (completed: 2026-09-26 20:43)
+- [x] 2.2.2 Allow the invitation email to send without a user row: optional recipient id, `userId`-free audit with `invitationId` metadata, and drop the preview placeholder id — `packages/server/src/auth/email-service.ts`, `packages/server/src/routes/users.ts` ✅ (completed: 2026-09-26 20:43)
+- [x] 2.2.3 Add the confirmation step to the accept GET and the email-conflict rejection — `packages/server/src/routes/invitation.ts` ✅ (completed: 2026-09-26 20:43)
+- [x] 2.2.4 Route the accept POST through `acceptInvitation`; pass the created user id to `applyPreAssignments` — `packages/server/src/routes/invitation.ts` ✅ (completed: 2026-09-26 20:43)
+- [x] 2.2.5 Add the confirmation page template — `packages/server/templates/default/pages/confirm-invite.hbs` ✅ (completed: 2026-09-26 20:43)
+- [x] 2.2.6 Add confirmation locale keys and pass `orgName` on both GET renders — `packages/server/locales/default/en/invitation.json` ✅ (completed: 2026-09-26 20:43)
+- [x] 2.2.7 Run the new route spec tests and confirm they pass (green phase) ✅ (completed: 2026-09-26 20:43)
 
 ### Step 2.3: Test migration, legacy removal, verification
 
 **Reference**: [07](07-testing-strategy.md) ST-10–ST-15, ST-18–ST-20
 
-- [ ] 2.3.1 Write route implementation tests for edge and error paths — `packages/server/tests/unit/routes/invitation.impl.test.ts`
-- [ ] 2.3.2 Update the email-service tests for the deferred recipient — `packages/server/tests/unit/auth/email-service.test.ts`
-- [ ] 2.3.3 Update the existing invite and accept unit tests that mock the token repository to the deferred API — `packages/server/tests/unit/routes/invitation.test.ts`, `packages/server/tests/unit/routes/users.test.ts`, `packages/server/tests/unit/auth/system-config-consumers.spec.test.ts`
-- [ ] 2.3.4 Update the UI fixture and global setup to create invitation records instead of users — `packages/server/tests/ui/fixtures/db-helpers.ts`, `packages/server/tests/ui/setup/global-setup.ts`
-- [ ] 2.3.5 Update the browser invitation flow for the confirmation step — `packages/server/tests/ui/flows/invitation.spec.ts`
-- [ ] 2.3.6 Update the integration specs that seed invitations to the deferred API — `packages/server/tests/integration/services/invitation-enhanced.test.ts`, `packages/server/tests/integration/services/invitation-deleted-preassignments.spec.test.ts`
-- [ ] 2.3.7 Rename the deferred API to the final `InvitationTokenRecord`/`findValidInvitationToken`, remove the legacy user-joined lookup and `insertInvitationToken`, and confirm no consumer imports remain — `packages/server/src/auth/token-repository.ts`, `packages/server/src/routes/invitation.ts`, `packages/server/src/routes/users.ts`
-- [ ] 2.3.8 Phase verification: `yarn workspace @portaidentity/server test:unit && yarn test:structure && yarn workspace @portaidentity/server typecheck`
+- [x] 2.3.1 Write route implementation tests for edge and error paths — `packages/server/tests/unit/routes/invitation.impl.test.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.2 Update the email-service tests for the deferred recipient — `packages/server/tests/unit/auth/email-service.test.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.3 Update the existing invite and accept unit tests that mock the token repository to the deferred API — `packages/server/tests/unit/routes/invitation.test.ts`, `packages/server/tests/unit/routes/users.test.ts`, `packages/server/tests/unit/auth/system-config-consumers.spec.test.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.4 Update the UI fixture and global setup to create invitation records instead of users — `packages/server/tests/ui/fixtures/db-helpers.ts`, `packages/server/tests/ui/setup/global-setup.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.5 Update the browser invitation flow for the confirmation step — `packages/server/tests/ui/flows/invitation.spec.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.6 Update the integration specs that seed invitations to the deferred API — `packages/server/tests/integration/services/invitation-enhanced.test.ts`, `packages/server/tests/integration/services/invitation-deleted-preassignments.spec.test.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.7 Rename the deferred API to the final `InvitationTokenRecord`/`findValidInvitationToken`, remove the legacy user-joined lookup and `insertInvitationToken`, and confirm no consumer imports remain — `packages/server/src/auth/token-repository.ts`, `packages/server/src/routes/invitation.ts`, `packages/server/src/routes/users.ts` ✅ (completed: 2026-09-26 20:53)
+- [x] 2.3.8 Phase verification: `yarn workspace @portaidentity/server test:unit && yarn test:structure && yarn workspace @portaidentity/server typecheck` ✅ (completed: 2026-09-26 20:53)
 
 **Deliverables**:
-- [ ] Invite route creates no user
-- [ ] Confirmation page before the password form
-- [ ] All Phase 2 tests passing
-- [ ] Legacy token API removed; server typecheck passes
+- [x] Invite route creates no user ✅ (completed: 2026-09-26 20:53)
+- [x] Confirmation page before the password form ✅ (completed: 2026-09-26 20:53)
+- [x] All Phase 2 tests passing ✅ (completed: 2026-09-26 20:53)
+- [x] Legacy token API removed; server typecheck passes ✅ (completed: 2026-09-26 20:53)
 
 **Verify**: `yarn workspace @portaidentity/server test:unit && yarn test:structure && yarn workspace @portaidentity/server typecheck`
 

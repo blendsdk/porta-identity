@@ -38,19 +38,6 @@ export interface TokenRecord {
   createdAt: Date;
 }
 
-/**
- * Extended token record for invitation tokens with optional details.
- *
- * The details JSONB column stores pre-assignment metadata (roles, claims,
- * personal message) that should be applied when the invitation is accepted.
- */
-export interface InvitationTokenRecord extends TokenRecord {
-  /** JSONB details stored with the invitation (roles, claims, personalMessage, inviterName) */
-  details: Record<string, unknown> | null;
-  /** User ID of the admin who created this invitation */
-  invitedBy: string | null;
-}
-
 /** Input for idempotently creating a recovery-job-owned token. */
 interface EnsureRecoveryTokenBaseInput {
   /** Token table selected by the closed recovery job type. */
@@ -154,20 +141,15 @@ export interface ConsumedAuthorizedMagicLink {
   readonly interactionUid: string | null;
 }
 
-/** Extended row shape for invitation_tokens with details column */
-interface InvitationTokenRow extends TokenRow {
-  details: Record<string, unknown> | null;
-  invited_by: string | null;
-}
-
 /**
- * Invitation token record for the deferred flow.
+ * Invitation token record.
  *
  * The invitation carries its own tenant authority (`organizationId`) and the invited address
  * (`email`), so it can exist before any account does. `userId` stays null until the invitation is
- * accepted.
+ * accepted. The details JSONB column stores pre-assignment metadata (roles, claims, personal
+ * message) that is applied when the invitation is accepted.
  */
-export interface DeferredInvitationTokenRecord {
+export interface InvitationTokenRecord {
   id: string;
   userId: string | null;
   tokenHash: string;
@@ -183,8 +165,8 @@ export interface DeferredInvitationTokenRecord {
   locale: string | null;
 }
 
-/** Raw PostgreSQL row shape (snake_case) for a deferred invitation token. */
-interface DeferredInvitationTokenRow {
+/** Raw PostgreSQL row shape (snake_case) for an invitation token. */
+interface InvitationTokenRow {
   id: string;
   user_id: string | null;
   token_hash: string;
@@ -227,8 +209,8 @@ export class InvitationConflictError extends Error {
 /** PostgreSQL unique-violation error code. */
 const UNIQUE_VIOLATION = '23505';
 
-/** Map a deferred invitation row to its camelCase record. */
-function mapRowToDeferredInvitation(row: DeferredInvitationTokenRow): DeferredInvitationTokenRecord {
+/** Map an invitation row to its camelCase record. */
+function mapRowToInvitation(row: InvitationTokenRow): InvitationTokenRecord {
   return {
     id: row.id,
     userId: row.user_id,
@@ -770,100 +752,6 @@ export async function invalidateUserTokens(table: TokenTable, userId: string): P
 // ---------------------------------------------------------------------------
 
 /**
- * Insert an invitation token with optional details and inviter metadata.
- *
- * Unlike the generic insertToken(), this stores additional JSONB details
- * (pre-assigned roles, claims, personal message) and tracks who sent the invite.
- *
- * This is the pre-deferral insert retained while route consumers still create the account first.
- * The invitation now requires tenant authority and an address, so it derives them from the owning
- * account inside the same statement.
- *
- * @param userId - UUID of the invited user
- * @param tokenHash - SHA-256 hex hash of the plaintext token
- * @param expiresAt - When this invitation expires
- * @param details - Optional JSONB details (roles, claims, personalMessage, inviterName)
- * @param invitedBy - Optional UUID of the admin who created this invitation
- */
-export async function insertInvitationToken(
-  userId: string,
-  tokenHash: string,
-  expiresAt: Date,
-  details?: Record<string, unknown> | null,
-  invitedBy?: string | null,
-): Promise<void> {
-  const pool = getPool();
-
-  await pool.query(
-    `INSERT INTO invitation_tokens
-       (user_id, organization_id, email, token_hash, expires_at, details, invited_by)
-     VALUES (
-       $1,
-       (SELECT organization_id FROM users WHERE id = $1),
-       (SELECT email FROM users WHERE id = $1),
-       $2, $3, $4, $5
-     )`,
-    [userId, tokenHash, expiresAt, details ? JSON.stringify(details) : null, invitedBy ?? null],
-  );
-
-  logger.debug({ userId, hasDetails: !!details }, 'Invitation token inserted');
-}
-
-/**
- * Find a valid invitation token scoped to one organization.
- *
- * Returns the full InvitationTokenRecord including the details JSONB
- * column, which stores pre-assignment metadata for roles, claims, etc.
- *
- * The invitation token table has no organization column, so the owning
- * account's organization is the tenant authority. Joining the account is also
- * what rejects a foreign tenant's otherwise-valid token: presenting an
- * invitation under the wrong organization slug resolves no record.
- *
- * @param tokenHash - SHA-256 hex hash to look up
- * @param organizationId - Organization that must own the invited account
- * @returns The invitation token record with details, or null if not found/expired/used/foreign
- */
-export async function findValidInvitationToken(
-  tokenHash: string,
-  organizationId: string,
-): Promise<InvitationTokenRecord | null> {
-  const pool = getPool();
-
-  const result = await pool.query<InvitationTokenRow>(
-    `SELECT token.id, token.user_id, token.token_hash, token.expires_at,
-            token.used_at, token.created_at, token.details, token.invited_by
-     FROM invitation_tokens AS token
-     JOIN users AS account ON account.id = token.user_id
-     WHERE token.token_hash = $1
-       AND token.used_at IS NULL
-       AND token.expires_at > NOW()
-       AND account.organization_id = $2`,
-    [tokenHash, organizationId],
-  );
-
-  if (result.rows.length === 0) {
-    return null;
-  }
-
-  const row = result.rows[0];
-  return {
-    id: row.id,
-    userId: row.user_id,
-    tokenHash: row.token_hash,
-    expiresAt: row.expires_at,
-    usedAt: row.used_at,
-    createdAt: row.created_at,
-    details: row.details,
-    invitedBy: row.invited_by,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Deferred invitation operations
-// ---------------------------------------------------------------------------
-
-/**
  * Issue a new deferred invitation, replacing any live invitation for the same address.
  *
  * One transaction invalidates every live invitation for the organization/email pair and inserts the
@@ -928,7 +816,7 @@ export async function replaceInvitation(input: InsertInvitationInput): Promise<{
 }
 
 /**
- * Find a valid deferred invitation by hash within one organization.
+ * Find a valid invitation by hash within one organization.
  *
  * Tenant authority comes from the token's own `organization_id`, so the lookup needs no user join and
  * a token presented under another organization resolves nothing.
@@ -937,11 +825,11 @@ export async function replaceInvitation(input: InsertInvitationInput): Promise<{
  * @param organizationId - Organization resolved from the public route.
  * @returns The valid invitation, or null when it is unknown, used, expired, or foreign.
  */
-export async function findDeferredInvitationToken(
+export async function findValidInvitationToken(
   tokenHash: string,
   organizationId: string,
-): Promise<DeferredInvitationTokenRecord | null> {
-  const result = await getPool().query<DeferredInvitationTokenRow>(
+): Promise<InvitationTokenRecord | null> {
+  const result = await getPool().query<InvitationTokenRow>(
     `SELECT id, user_id, token_hash, expires_at, used_at, created_at,
             details, invited_by, organization_id, email,
             given_name, family_name, locale
@@ -952,11 +840,11 @@ export async function findDeferredInvitationToken(
         AND expires_at > NOW()`,
     [tokenHash, organizationId],
   );
-  return result.rows[0] ? mapRowToDeferredInvitation(result.rows[0]) : null;
+  return result.rows[0] ? mapRowToInvitation(result.rows[0]) : null;
 }
 
 /**
- * Lock one valid deferred invitation for the acceptance transaction.
+ * Lock one valid invitation for the acceptance transaction.
  *
  * The row stays locked until the caller commits or rolls back, which serializes concurrent
  * acceptances of the same token.
@@ -970,8 +858,8 @@ export async function lockValidInvitationForUpdate(
   client: PoolClient,
   tokenHash: string,
   organizationId: string,
-): Promise<DeferredInvitationTokenRecord | null> {
-  const result = await client.query<DeferredInvitationTokenRow>(
+): Promise<InvitationTokenRecord | null> {
+  const result = await client.query<InvitationTokenRow>(
     `SELECT id, user_id, token_hash, expires_at, used_at, created_at,
             details, invited_by, organization_id, email,
             given_name, family_name, locale
@@ -983,7 +871,7 @@ export async function lockValidInvitationForUpdate(
       FOR UPDATE`,
     [tokenHash, organizationId],
   );
-  return result.rows[0] ? mapRowToDeferredInvitation(result.rows[0]) : null;
+  return result.rows[0] ? mapRowToInvitation(result.rows[0]) : null;
 }
 
 /**

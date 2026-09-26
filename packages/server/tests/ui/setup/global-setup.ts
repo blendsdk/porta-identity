@@ -49,7 +49,7 @@ const TEST_2FA_ENCRYPTION_KEY = 'a'.repeat(64);
 // Phase 2 seed data — additional users and orgs for status/error tests
 // ---------------------------------------------------------------------------
 
-/** Password shared by all additional test users (except invited, who has none) */
+/** Password shared by all additional test users */
 const ADDITIONAL_USER_PASSWORD = 'TestPassword123!';
 
 /** Password for the resettable user — must be different from ADDITIONAL so reset tests can verify change */
@@ -59,8 +59,8 @@ const RESETTABLE_USER_PASSWORD = 'OldPassword123!';
  * Additional users to seed for Phase 2 tests.
  *
  * Each user is created in the primary test org alongside the main test user.
- * Users with a password get a hashed password and emailVerified=true.
- * The 'invited' user has no password (simulates a pending invitation).
+ * Every user gets a hashed password and emailVerified=true; invitation tests create their own
+ * pending invitation records because an invited account does not exist until acceptance.
  */
 const ADDITIONAL_USERS = [
   {
@@ -79,8 +79,6 @@ const ADDITIONAL_USERS = [
     status: 'active' as const,
     password: ADDITIONAL_USER_PASSWORD,
   },
-  // Invited user: inactive with no password (simulates pending invitation acceptance)
-  { email: 'invited@test.example.com', status: 'inactive' as const, password: null },
   // Resettable user: active, with known password for password reset tests
   {
     email: 'resettable@test.example.com',
@@ -215,7 +213,6 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   const {
     createFullTestTenant,
     createTestUserWithPassword,
-    createTestUser,
     createTestOrganization,
   } = await import('../../integration/helpers/factories.js');
 
@@ -279,40 +276,25 @@ async function globalSetup(_config: FullConfig): Promise<void> {
   const resettableUserIdRef: { value: string } = { value: '' };
 
   for (const userData of ADDITIONAL_USERS) {
-    if (userData.password) {
-      // User with password — create with hashed password and verified email
-      const { user } = await createTestUserWithPassword(tenant.org.id, userData.password, {
-        email: userData.email,
-        givenName: 'Test',
-        familyName: userData.email.split('@')[0],
-        emailVerified: true,
-      });
+    // User with password — create with hashed password and verified email
+    const { user } = await createTestUserWithPassword(tenant.org.id, userData.password, {
+      email: userData.email,
+      givenName: 'Test',
+      familyName: userData.email.split('@')[0],
+      emailVerified: true,
+    });
 
-      // Update status if not 'active' (factory creates all users as active)
-      if (userData.status !== 'active') {
-        await pool.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [
-          userData.status,
-          user.id,
-        ]);
-      }
-
-      // Track resettable user ID for env var export
-      if (userData.email === 'resettable@test.example.com') {
-        resettableUserIdRef.value = user.id;
-      }
-    } else {
-      // User without password (invited) — create without passwordHash
-      const user = await createTestUser(tenant.org.id, {
-        email: userData.email,
-        givenName: 'Test',
-        familyName: 'Invited',
-      });
-
-      // Set status to 'invited'
+    // Update status if not 'active' (factory creates all users as active)
+    if (userData.status !== 'active') {
       await pool.query(`UPDATE users SET status = $1, updated_at = NOW() WHERE id = $2`, [
         userData.status,
         user.id,
       ]);
+    }
+
+    // Track resettable user ID for env var export
+    if (userData.email === 'resettable@test.example.com') {
+      resettableUserIdRef.value = user.id;
     }
   }
 

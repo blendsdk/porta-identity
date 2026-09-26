@@ -25,7 +25,7 @@ vi.mock('../../../src/auth/tokens.js', () => ({
 }));
 
 vi.mock('../../../src/auth/token-repository.js', () => ({
-  insertInvitationToken: vi.fn().mockResolvedValue(undefined),
+  replaceInvitation: vi.fn().mockResolvedValue({ id: 'invitation-1' }),
   invalidateUserTokens: vi.fn().mockResolvedValue(undefined),
 }));
 

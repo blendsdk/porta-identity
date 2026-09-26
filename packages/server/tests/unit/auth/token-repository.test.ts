@@ -26,7 +26,7 @@ import {
   findAndLockMagicLinkToken,
   invalidateUserTokens,
   replaceInvitation,
-  findDeferredInvitationToken,
+  findValidInvitationToken,
   lockValidInvitationForUpdate,
   consumeInvitation,
   InvitationConflictError,
@@ -515,7 +515,7 @@ describe('token-repository', () => {
     it('should resolve a deferred invitation by organization without a user join', async () => {
       const mockQuery = mockPool([createDeferredRow()], 1);
 
-      const result = await findDeferredInvitationToken('hash-1', 'org-1');
+      const result = await findValidInvitationToken('hash-1', 'org-1');
 
       expect(result).toMatchObject({ id: 'invitation-1', userId: null, organizationId: 'org-1' });
       const sql = mockQuery.mock.calls[0][0] as string;

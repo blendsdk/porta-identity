@@ -30,14 +30,15 @@ import {
   getCsrfFromCookie,
 } from '../auth/csrf.js';
 import { hashToken } from '../auth/tokens.js';
-import { findValidInvitationToken, markTokenUsed } from '../auth/token-repository.js';
+import { findValidInvitationToken } from '../auth/token-repository.js';
 import type { InvitationTokenRecord } from '../auth/token-repository.js';
 import { getPool } from '../lib/database.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { resolveEffectiveBranding } from '../auth/effective-branding.js';
-import { setUserPassword, markEmailVerified } from '../users/service.js';
+import { getUserByEmail } from '../users/service.js';
+import { acceptInvitation } from '../users/invitation-service.js';
 import { validatePassword } from '../users/password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
@@ -117,10 +118,54 @@ export function createInvitationRouter(): Router {
 // ---------------------------------------------------------------------------
 
 /**
- * Show the accept-invite form.
+ * Render the generic expired page and record the rejection.
  *
- * Validates the invitation token before showing the form. If the token
- * is invalid or expired, renders the "invite-expired" page instead.
+ * Every rejection cause — unknown, expired, used, foreign-tenant, or email-conflict — uses this
+ * identical page and audit so an attacker cannot distinguish them.
+ *
+ * @param ctx - Koa context
+ * @param org - Organization for branding
+ * @param locale - Resolved locale
+ * @param t - Translation function
+ */
+async function renderExpiredInvite(
+  ctx: Context,
+  org: Organization,
+  locale: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+): Promise<void> {
+  writeAuditLog({
+    organizationId: org.id,
+    eventType: 'user.invite.failed',
+    eventCategory: 'security',
+    description: 'Invitation acceptance failed: invalid or expired token',
+    ipAddress: ctx.ip,
+  });
+
+  const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
+  const context: TemplateContext = {
+    branding: await resolveEffectiveBranding(org),
+    locale,
+    t,
+    csrfToken,
+    orgSlug: org.slug,
+  };
+
+  await renderAndRespond(ctx, 'invite-expired', context, 400);
+}
+
+/** Read the inviter display name from an invitation's details, when present. */
+function readInviterName(record: InvitationTokenRecord): string | undefined {
+  const name = record.details?.inviterName;
+  return typeof name === 'string' ? name : undefined;
+}
+
+/**
+ * Show the invitation confirmation page or password form.
+ *
+ * The email link is non-mutating: it validates the invitation and renders a confirmation page. The
+ * password form is shown only when `?step=password` is present. No token is consumed on GET.
  *
  * @param ctx - Koa context with organization state
  */
@@ -135,47 +180,46 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
   );
   const t = getTranslationFunction(locale, org.slug);
 
-  // Validate the invitation token
+  // Validate the invitation token; a foreign tenant resolves nothing.
   const tokenHash = hashToken(tokenPlaintext);
   const tokenRecord = await findValidInvitationToken(tokenHash, org.id);
 
-  if (!tokenRecord) {
-    // Token is invalid, expired, already used, or belongs to another tenant — record the rejection and show expired page
-    writeAuditLog({
-      organizationId: org.id,
-      eventType: 'user.invite.failed',
-      eventCategory: 'security',
-      description: 'Invitation acceptance failed: invalid or expired token',
-      ipAddress: ctx.ip,
-    });
+  // An address that already has an account is rejected with the same generic page.
+  if (!tokenRecord || (await getUserByEmail(org.id, tokenRecord.email))) {
+    await renderExpiredInvite(ctx, org, locale, t);
+    return;
+  }
 
-    const csrfToken = generateCsrfToken();
-    setCsrfCookie(ctx, csrfToken);
+  const branding = await resolveEffectiveBranding(org);
+  const csrfToken = generateCsrfToken();
+  setCsrfCookie(ctx, csrfToken);
+
+  if (ctx.query.step === 'password') {
     const context: TemplateContext = {
-      branding: await resolveEffectiveBranding(org),
+      branding,
       locale,
       t,
       csrfToken,
       orgSlug: org.slug,
+      orgName: branding.companyName,
+      token: tokenPlaintext,
+      email: tokenRecord.email,
     };
-
-    await renderAndRespond(ctx, 'invite-expired', context, 400);
+    await renderAndRespond(ctx, 'accept-invite', context);
     return;
   }
 
-  // Token is valid — show the accept invite form
-  const csrfToken = generateCsrfToken();
-  setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: await resolveEffectiveBranding(org),
+    branding,
     locale,
     t,
     csrfToken,
     orgSlug: org.slug,
+    orgName: branding.companyName,
     token: tokenPlaintext,
+    inviterName: readInviterName(tokenRecord),
   };
-
-  await renderAndRespond(ctx, 'accept-invite', context);
+  await renderAndRespond(ctx, 'confirm-invite', context);
 }
 
 /**
@@ -184,11 +228,10 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
  * 1. Verify CSRF token
  * 2. Re-validate the invitation token
  * 3. Validate password and confirm match
- * 4. Set the user's password
- * 5. Mark the user's email as verified
- * 6. Mark the invitation token as used
- * 7. Audit log the acceptance
- * 8. Render success page
+ * 4. Create the account and consume the invitation via `acceptInvitation`
+ * 5. Apply pre-assigned roles and claims (best-effort)
+ * 6. Audit log the acceptance
+ * 7. Render success page
  *
  * @param ctx - Koa context with organization state
  */
@@ -218,6 +261,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       t,
       tokenPlaintext,
       t('errors.csrf_invalid'),
+      undefined,
       403,
     );
     return;
@@ -228,26 +272,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   const tokenRecord = await findValidInvitationToken(tokenHash, org.id);
 
   if (!tokenRecord) {
-    // Token expired or was issued by another tenant between page load and form submission — record the rejection
-    writeAuditLog({
-      organizationId: org.id,
-      eventType: 'user.invite.failed',
-      eventCategory: 'security',
-      description: 'Invitation acceptance failed: invalid or expired token',
-      ipAddress: ctx.ip,
-    });
-
-    const csrfToken = generateCsrfToken();
-    setCsrfCookie(ctx, csrfToken);
-    const context: TemplateContext = {
-      branding: await resolveEffectiveBranding(org),
-      locale,
-      t,
-      csrfToken,
-      orgSlug: org.slug,
-    };
-
-    await renderAndRespond(ctx, 'invite-expired', context, 400);
+    await renderExpiredInvite(ctx, org, locale, t);
     return;
   }
 
@@ -260,34 +285,45 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       t,
       tokenPlaintext,
       t('invitation.error_password_mismatch'),
+      tokenRecord.email,
     );
     return;
   }
 
-  // Step 4: Validate password strength (NIST SP 800-63B)
+  // Step 3b: Validate password strength (NIST SP 800-63B)
   const validation = validatePassword(password);
   if (!validation.isValid) {
-    await renderInviteFormWithError(ctx, org, locale, t, tokenPlaintext, validation.error!);
+    await renderInviteFormWithError(
+      ctx,
+      org,
+      locale,
+      t,
+      tokenPlaintext,
+      validation.error!,
+      tokenRecord.email,
+    );
     return;
   }
 
   try {
-    // Step 5: Set the user's password
-    await setUserPassword(tokenRecord.userId, password);
+    // Step 4: Create the account and consume the invitation atomically
+    const accepted = await acceptInvitation({
+      tokenHash,
+      organizationId: org.id,
+      password,
+    });
+    if (!accepted) {
+      await renderExpiredInvite(ctx, org, locale, t);
+      return;
+    }
 
-    // Step 6: Mark email as verified (accepting invite proves email ownership)
-    await markEmailVerified(tokenRecord.userId);
+    // Step 5: Apply pre-assigned roles and claims from invitation details
+    await applyPreAssignments(tokenRecord, org.id, accepted.userId);
 
-    // Step 7: Mark invitation token as used (single-use)
-    await markTokenUsed('invitation_tokens', tokenRecord.id);
-
-    // Step 7.5: Apply pre-assigned roles and claims from invitation details
-    await applyPreAssignments(tokenRecord, org.id);
-
-    // Step 8: Audit log
+    // Step 6: Audit log
     writeAuditLog({
       organizationId: org.id,
-      userId: tokenRecord.userId,
+      userId: accepted.userId,
       eventType: 'user.invite.accepted',
       eventCategory: 'authentication',
       description: 'Invitation accepted — account set up successfully',
@@ -298,11 +334,12 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       },
     });
 
-    // Step 9: Render success page
+    // Step 7: Render success page
+    const branding = await resolveEffectiveBranding(org);
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
-      branding: await resolveEffectiveBranding(org),
+      branding,
       locale,
       t,
       csrfToken,
@@ -316,7 +353,15 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       { event: 'invitation-acceptance-failed' },
       'Invitation acceptance processing failed',
     );
-    await renderInviteFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.generic'));
+    await renderInviteFormWithError(
+      ctx,
+      org,
+      locale,
+      t,
+      tokenPlaintext,
+      t('errors.generic'),
+      tokenRecord.email,
+    );
   }
 }
 
@@ -333,6 +378,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
  * @param t - Translation function
  * @param token - Invitation token (to re-embed in the form)
  * @param errorMessage - Error message to display
+ * @param email - Invited address to keep pre-filled in the form
  * @param statusCode - HTTP status code (default: 200)
  */
 async function renderInviteFormWithError(
@@ -342,17 +388,21 @@ async function renderInviteFormWithError(
   t: (key: string, options?: Record<string, unknown>) => string,
   token: string,
   errorMessage: string,
+  email?: string,
   statusCode = 200,
 ): Promise<void> {
+  const branding = await resolveEffectiveBranding(org);
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
-    branding: await resolveEffectiveBranding(org),
+    branding,
     locale,
     t,
     csrfToken,
     orgSlug: org.slug,
     token,
+    email,
+    orgName: branding.companyName,
     flash: { error: errorMessage },
   };
 
@@ -389,15 +439,16 @@ interface ClaimPreAssignment {
  *
  * @param tokenRecord - The invitation token record with details
  * @param orgId - Organization ID for audit logging
+ * @param userId - Newly created account id that receives the pre-assignments
  */
 async function applyPreAssignments(
   tokenRecord: InvitationTokenRecord,
   orgId: string,
+  userId: string,
 ): Promise<void> {
   if (!tokenRecord.details) return;
 
   const pool = getPool();
-  const userId = tokenRecord.userId;
   const roles = tokenRecord.details.roles as RolePreAssignment[] | undefined;
   const claims = tokenRecord.details.claims as ClaimPreAssignment[] | undefined;
 

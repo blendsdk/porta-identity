@@ -39,7 +39,7 @@ import {
 import { emailExistsWithClient, insertUserWithClient } from '../../../src/users/repository.js';
 import { acceptInvitation } from '../../../src/users/invitation-service.js';
 import { UserValidationError } from '../../../src/users/errors.js';
-import type { DeferredInvitationTokenRecord } from '../../../src/auth/token-repository.js';
+import type { InvitationTokenRecord } from '../../../src/auth/token-repository.js';
 import type { User } from '../../../src/users/types.js';
 
 /** Build a complete user record for mocked repository results. */
@@ -87,8 +87,8 @@ function buildUser(overrides: Partial<User> = {}): User {
 
 /** A locked invitation as returned by the repository. */
 function buildInvitation(
-  overrides: Partial<DeferredInvitationTokenRecord> = {},
-): DeferredInvitationTokenRecord {
+  overrides: Partial<InvitationTokenRecord> = {},
+): InvitationTokenRecord {
   return {
     id: 'invitation-1',
     userId: null,

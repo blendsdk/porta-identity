@@ -16,7 +16,6 @@ export type { GeneratedToken } from './tokens.js';
 // Token repository (PostgreSQL CRUD for all 3 token tables)
 export {
   insertToken,
-  insertInvitationToken,
   findValidToken,
   findValidInvitationToken,
   markTokenUsed,

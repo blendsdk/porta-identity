@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setEmailTransport } from '../../../src/auth/email-service.js';
 import { initI18n } from '../../../src/auth/i18n.js';
-import { insertInvitationToken } from '../../../src/auth/token-repository.js';
+import { replaceInvitation } from '../../../src/auth/token-repository.js';
 import { generateToken } from '../../../src/auth/tokens.js';
 import { getPool } from '../../../src/lib/database.js';
 import { initTemplateEngine } from '../../../src/auth/template-engine.js';
@@ -114,20 +114,24 @@ async function invoke(
 }
 
 async function storedInvitation(email: string): Promise<{
-  user_id: string;
+  user_id: string | null;
   details: Record<string, unknown> | null;
 } | null> {
   const result = await getPool().query<{
-    user_id: string;
+    user_id: string | null;
     details: Record<string, unknown> | null;
-  }>(
-    `SELECT token.user_id, token.details
-     FROM invitation_tokens token
-     JOIN users account ON account.id = token.user_id
-     WHERE account.email = $1`,
-    [email],
-  );
+  }>('SELECT user_id, details FROM invitation_tokens WHERE email = $1', [email]);
   return result.rows[0] ?? null;
+}
+
+/** Resolve the account created at acceptance for an invited address. */
+async function acceptedUserId(organizationId: string, email: string): Promise<string> {
+  const result = await getPool().query<{ id: string }>(
+    'SELECT id FROM users WHERE organization_id = $1 AND email = $2',
+    [organizationId, email],
+  );
+  expect(result.rowCount).toBe(1);
+  return result.rows[0].id;
 }
 
 describe('invitation continuity after optional preassignment deletion', () => {
@@ -237,7 +241,6 @@ describe('invitation continuity after optional preassignment deletion', () => {
 
   it('accepts a mixed invitation by skipping deleted and wrong-parent references and applying every live entry', async () => {
     const org = await createTestOrganization();
-    const invitedUser = await createTestUser(org.id);
     const application = await createTestApplication();
     const otherApplication = await createTestApplication();
     const liveRole = await createTestRole(application.id);
@@ -249,6 +252,7 @@ describe('invitation continuity after optional preassignment deletion', () => {
     await getPool().query('DELETE FROM roles WHERE id = $1', [deletedRole.id]);
     await getPool().query('DELETE FROM custom_claim_definitions WHERE id = $1', [deletedClaim.id]);
     const token = generateToken();
+    const email = `mixed-${randomUUID()}@test.example.com`;
     const details = {
       roles: [
         { applicationId: application.id, roleId: deletedRole.id },
@@ -273,12 +277,13 @@ describe('invitation continuity after optional preassignment deletion', () => {
         },
       ],
     };
-    await insertInvitationToken(
-      invitedUser.id,
-      token.hash,
-      new Date(Date.now() + 3_600_000),
+    await replaceInvitation({
+      organizationId: org.id,
+      email,
+      tokenHash: token.hash,
+      expiresAt: new Date(Date.now() + 3_600_000),
       details,
-    );
+    });
     const stored = await getPool().query<{ details: Record<string, unknown> }>(
       'SELECT details FROM invitation_tokens WHERE token_hash = $1',
       [token.hash],
@@ -299,33 +304,36 @@ describe('invitation continuity after optional preassignment deletion', () => {
     await invoke(invitationAcceptanceHandler(), context);
 
     expect(context.status).toBe(200);
+    const userId = await acceptedUserId(org.id, email);
     expect(
       await getPool().query<{ role_id: string }>(
         'SELECT role_id FROM user_roles WHERE user_id = $1 ORDER BY role_id',
-        [invitedUser.id],
+        [userId],
       ),
     ).toMatchObject({ rows: [{ role_id: liveRole.id }] });
     expect(
       await getPool().query<{ claim_id: string; value: unknown }>(
         'SELECT claim_id, value FROM custom_claim_values WHERE user_id = $1 ORDER BY claim_id',
-        [invitedUser.id],
+        [userId],
       ),
     ).toMatchObject({ rows: [{ claim_id: liveClaim.id, value: 'live' }] });
-    const accepted = await getPool().query<{ used_at: Date | null; email_verified: boolean }>(
-      `SELECT token.used_at, account.email_verified
-       FROM invitation_tokens token
-       JOIN users account ON account.id = token.user_id
-       WHERE token.token_hash = $1`,
+    const accepted = await getPool().query<{ used_at: Date | null; user_id: string | null }>(
+      'SELECT used_at, user_id FROM invitation_tokens WHERE token_hash = $1',
       [token.hash],
     );
     expect(accepted.rows[0]?.used_at).toBeInstanceOf(Date);
-    expect(accepted.rows[0]?.email_verified).toBe(true);
+    expect(accepted.rows[0]?.user_id).toBe(userId);
+    const account = await getPool().query<{ email_verified: boolean }>(
+      'SELECT email_verified FROM users WHERE id = $1',
+      [userId],
+    );
+    expect(account.rows[0]?.email_verified).toBe(true);
   });
 
-  it('cascades an invited user owned invitation token without rewriting its payload', async () => {
+  it('cascades an accepted invitation token when its created user is deleted', async () => {
     const org = await createTestOrganization();
-    const invitedUser = await createTestUser(org.id);
     const token = generateToken();
+    const email = `cascade-${randomUUID()}@test.example.com`;
     const details = {
       roles: [{ applicationId: randomUUID(), roleId: randomUUID() }],
       claims: [
@@ -336,19 +344,36 @@ describe('invitation continuity after optional preassignment deletion', () => {
         },
       ],
     };
-    await insertInvitationToken(
-      invitedUser.id,
-      token.hash,
-      new Date(Date.now() + 3_600_000),
+    await replaceInvitation({
+      organizationId: org.id,
+      email,
+      tokenHash: token.hash,
+      expiresAt: new Date(Date.now() + 3_600_000),
       details,
-    );
+    });
     const before = await getPool().query<{ details: Record<string, unknown> }>(
       'SELECT details FROM invitation_tokens WHERE token_hash = $1',
       [token.hash],
     );
-
     expect(before.rows[0]?.details).toEqual(details);
-    await getPool().query('DELETE FROM users WHERE id = $1', [invitedUser.id]);
+
+    const csrf = randomUUID();
+    await invoke(
+      invitationAcceptanceHandler(),
+      routeContext({
+        params: { orgSlug: org.slug, token: token.plaintext },
+        body: {
+          password: 'Correct Horse Battery Staple 2026!',
+          confirmPassword: 'Correct Horse Battery Staple 2026!',
+          _csrf: csrf,
+        },
+        organization: org,
+        csrf,
+      }),
+    );
+
+    const userId = await acceptedUserId(org.id, email);
+    await getPool().query('DELETE FROM users WHERE id = $1', [userId]);
 
     const remaining = await getPool().query(
       'SELECT id FROM invitation_tokens WHERE token_hash = $1',

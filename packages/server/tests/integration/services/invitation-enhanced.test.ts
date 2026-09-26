@@ -1,11 +1,9 @@
 /**
- * Enhanced invitation integration tests.
+ * Deferred invitation integration tests.
  *
- * Validates invitation token storage with details (personal message,
- * pre-assignment data), retrieval of invitation tokens with details,
- * and the invitation token lifecycle.
- *
- * @see 07-import-export-invitation.md
+ * Validates invitation token storage with details (personal message, pre-assignment data),
+ * retrieval of invitation tokens with details, and the invitation token lifecycle. Invitations are
+ * email/organization-keyed and carry no account until acceptance.
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -13,7 +11,7 @@ import { truncateAllTables, seedBaseData } from '../helpers/database.js';
 import { flushTestRedis } from '../helpers/redis.js';
 import { createTestOrganization, createTestUser } from '../helpers/factories.js';
 import {
-  insertInvitationToken,
+  replaceInvitation,
   findValidInvitationToken,
   markTokenUsed,
 } from '../../../src/auth/token-repository.js';
@@ -55,24 +53,27 @@ describe('Enhanced Invitation (Integration)', () => {
     await flushTestRedis();
   });
 
-  // ── Insert & Find Invitation Tokens ────────────────────────────────
+  // ── Store & Retrieve Invitation Tokens ─────────────────────────────
 
-  describe('insertInvitationToken / findValidInvitationToken', () => {
+  describe('replaceInvitation / findValidInvitationToken', () => {
     it('should store and retrieve an invitation token without details', async () => {
       const org = await createTestOrganization();
-      const user = await createTestUser(org.id);
+      const email = 'invitee@test.com';
       const { hash } = generateTokenPair();
 
-      await insertInvitationToken(
-        user.id,
-        hash,
-        new Date(Date.now() + 86400_000), // 24h from now
-      );
+      await replaceInvitation({
+        organizationId: org.id,
+        email,
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+      });
 
       const token = await findValidInvitationToken(hash, org.id);
 
       expect(token).not.toBeNull();
-      expect(token!.userId).toBe(user.id);
+      expect(token!.userId).toBeNull();
+      expect(token!.organizationId).toBe(org.id);
+      expect(token!.email).toBe(email);
       expect(token!.tokenHash).toBe(hash);
       expect(token!.details).toBeNull();
       expect(token!.invitedBy).toBeNull();
@@ -82,35 +83,37 @@ describe('Enhanced Invitation (Integration)', () => {
     it('should store and retrieve an invitation token with details', async () => {
       const org = await createTestOrganization();
       const inviter = await createTestUser(org.id, { email: 'inviter@test.com' });
-      const invitee = await createTestUser(org.id, { email: 'invitee@test.com' });
+      const email = 'invitee@test.com';
       const { hash } = generateTokenPair();
 
       const details = {
         personalMessage: 'Welcome to our team!',
         inviterName: 'John Admin',
-        rolePreAssignments: [{ applicationId: 'app-uuid-1', roleId: 'role-uuid-1' }],
-        claimPreAssignments: [
+        roles: [{ applicationId: 'app-uuid-1', roleId: 'role-uuid-1' }],
+        claims: [
           { applicationId: 'app-uuid-2', claimDefinitionId: 'claim-uuid-1', value: 'engineering' },
         ],
       };
 
-      await insertInvitationToken(
-        invitee.id,
-        hash,
-        new Date(Date.now() + 86400_000),
+      await replaceInvitation({
+        organizationId: org.id,
+        email,
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
         details,
-        inviter.id,
-      );
+        invitedBy: inviter.id,
+      });
 
       const token = await findValidInvitationToken(hash, org.id);
 
       expect(token).not.toBeNull();
-      expect(token!.userId).toBe(invitee.id);
+      expect(token!.userId).toBeNull();
+      expect(token!.email).toBe(email);
       expect(token!.details).not.toBeNull();
       expect(token!.details!.personalMessage).toBe('Welcome to our team!');
       expect(token!.details!.inviterName).toBe('John Admin');
-      expect(token!.details!.rolePreAssignments).toBeDefined();
-      expect(token!.details!.claimPreAssignments).toBeDefined();
+      expect(token!.details!.roles).toBeDefined();
+      expect(token!.details!.claims).toBeDefined();
       expect(token!.invitedBy).toBe(inviter.id);
     });
 
@@ -126,10 +129,14 @@ describe('Enhanced Invitation (Integration)', () => {
     it('should reject a valid token issued for another organization', async () => {
       const owningOrg = await createTestOrganization({ slug: 'invite-owning-org' });
       const foreignOrg = await createTestOrganization({ slug: 'invite-foreign-org' });
-      const user = await createTestUser(owningOrg.id);
       const { hash } = generateTokenPair();
 
-      await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000));
+      await replaceInvitation({
+        organizationId: owningOrg.id,
+        email: 'invitee@test.com',
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+      });
 
       expect(await findValidInvitationToken(hash, owningOrg.id)).not.toBeNull();
       expect(await findValidInvitationToken(hash, foreignOrg.id)).toBeNull();
@@ -137,35 +144,33 @@ describe('Enhanced Invitation (Integration)', () => {
 
     it('should return null for expired invitation token', async () => {
       const org = await createTestOrganization();
-      const user = await createTestUser(org.id);
       const { hash } = generateTokenPair();
 
-      // Insert with expiry in the past
-      await insertInvitationToken(
-        user.id,
-        hash,
-        new Date(Date.now() - 1000), // already expired
-      );
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'invitee@test.com',
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() - 1000),
+      });
 
-      const token = await findValidInvitationToken(hash, org.id);
-
-      expect(token).toBeNull();
+      expect(await findValidInvitationToken(hash, org.id)).toBeNull();
     });
 
     it('should return null for already-consumed invitation token', async () => {
       const org = await createTestOrganization();
-      const user = await createTestUser(org.id);
       const { hash } = generateTokenPair();
 
-      await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000));
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'invitee@test.com',
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+      });
 
-      // Consume the token — find it first to get its ID
       const found = await findValidInvitationToken(hash, org.id);
       await markTokenUsed('invitation_tokens', found!.id);
 
-      const token = await findValidInvitationToken(hash, org.id);
-
-      expect(token).toBeNull();
+      expect(await findValidInvitationToken(hash, org.id)).toBeNull();
     });
   });
 
@@ -174,22 +179,25 @@ describe('Enhanced Invitation (Integration)', () => {
   describe('details JSONB preservation', () => {
     it('should preserve complex nested details', async () => {
       const org = await createTestOrganization();
-      const user = await createTestUser(org.id);
       const { hash } = generateTokenPair();
 
       const complexDetails = {
         personalMessage: 'Join us! 🎉',
         inviterName: 'Ádmin Üser',
-        rolePreAssignments: [
+        roles: [
           { applicationId: 'aaa-bbb-ccc', roleId: 'ddd-eee-fff' },
           { applicationId: 'ggg-hhh-iii', roleId: 'jjj-kkk-lll' },
         ],
-        claimPreAssignments: [
-          { applicationId: 'aaa-bbb-ccc', claimDefinitionId: 'claim-1', value: 'dept-a' },
-        ],
+        claims: [{ applicationId: 'aaa-bbb-ccc', claimDefinitionId: 'claim-1', value: 'dept-a' }],
       };
 
-      await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000), complexDetails);
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'invitee@test.com',
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+        details: complexDetails,
+      });
 
       const token = await findValidInvitationToken(hash, org.id);
 
@@ -198,10 +206,15 @@ describe('Enhanced Invitation (Integration)', () => {
 
     it('should handle empty details object', async () => {
       const org = await createTestOrganization();
-      const user = await createTestUser(org.id);
       const { hash } = generateTokenPair();
 
-      await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000), {});
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'invitee@test.com',
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+        details: {},
+      });
 
       const token = await findValidInvitationToken(hash, org.id);
 
@@ -210,10 +223,16 @@ describe('Enhanced Invitation (Integration)', () => {
 
     it('should handle null details gracefully', async () => {
       const org = await createTestOrganization();
-      const user = await createTestUser(org.id);
       const { hash } = generateTokenPair();
 
-      await insertInvitationToken(user.id, hash, new Date(Date.now() + 86400_000), null, null);
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'invitee@test.com',
+        tokenHash: hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+        details: null,
+        invitedBy: null,
+      });
 
       const token = await findValidInvitationToken(hash, org.id);
 
@@ -225,28 +244,55 @@ describe('Enhanced Invitation (Integration)', () => {
   // ── Multiple Invitations ───────────────────────────────────────────
 
   describe('multiple invitations', () => {
-    it('should support multiple pending invitations for different users', async () => {
+    it('should support multiple pending invitations for different emails', async () => {
       const org = await createTestOrganization();
-      const user1 = await createTestUser(org.id, { email: 'inv1@test.com' });
-      const user2 = await createTestUser(org.id, { email: 'inv2@test.com' });
-
       const token1 = generateTokenPair();
       const token2 = generateTokenPair();
 
-      await insertInvitationToken(user1.id, token1.hash, new Date(Date.now() + 86400_000), {
-        personalMessage: 'Welcome user 1!',
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'inv1@test.com',
+        tokenHash: token1.hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+        details: { personalMessage: 'Welcome user 1!' },
       });
-      await insertInvitationToken(user2.id, token2.hash, new Date(Date.now() + 86400_000), {
-        personalMessage: 'Welcome user 2!',
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'inv2@test.com',
+        tokenHash: token2.hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+        details: { personalMessage: 'Welcome user 2!' },
       });
 
       const found1 = await findValidInvitationToken(token1.hash, org.id);
       const found2 = await findValidInvitationToken(token2.hash, org.id);
 
-      expect(found1!.userId).toBe(user1.id);
+      expect(found1!.email).toBe('inv1@test.com');
       expect(found1!.details!.personalMessage).toBe('Welcome user 1!');
-      expect(found2!.userId).toBe(user2.id);
+      expect(found2!.email).toBe('inv2@test.com');
       expect(found2!.details!.personalMessage).toBe('Welcome user 2!');
+    });
+
+    it('should replace the previous live invitation for the same email', async () => {
+      const org = await createTestOrganization();
+      const first = generateTokenPair();
+      const second = generateTokenPair();
+
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'repeat@test.com',
+        tokenHash: first.hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+      });
+      await replaceInvitation({
+        organizationId: org.id,
+        email: 'repeat@test.com',
+        tokenHash: second.hash,
+        expiresAt: new Date(Date.now() + 86400_000),
+      });
+
+      expect(await findValidInvitationToken(first.hash, org.id)).toBeNull();
+      expect(await findValidInvitationToken(second.hash, org.id)).not.toBeNull();
     });
   });
 
@@ -263,6 +309,7 @@ describe('Enhanced Invitation (Integration)', () => {
 
       const ctx = {
         params: { orgSlug: org.slug, token: 'unknown-invitation-token' },
+        query: {},
         state: { organization: org },
         ip: '127.0.0.1',
         status: 200,
