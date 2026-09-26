@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-26 21:14
-> **Progress**: 43/68 tasks (63%)
+> **Last Updated**: 2026-09-26 22:00
+> **Progress**: 47/68 tasks (69%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -163,10 +163,10 @@ estimates)
 - [x] 3.2.2 Update CLI invite output and wording — `packages/cli/src/commands/user.ts` ✅ (completed: 2026-09-26 21:14)
 - [x] 3.2.3 Update Admin UI types and the response validator to the new shape — `packages/cli/src/admin/user-service-types.ts`, `packages/cli/src/admin/user-service.ts` ✅ (completed: 2026-09-26 21:14)
 - [x] 3.2.4 Remove the post-invite user reconcile and update success copy/state — `packages/cli/src/admin/user-controller.ts`, `packages/cli/src/admin/user-state.ts`, `packages/cli/src/admin/index.ts` ✅ (completed: 2026-09-26 21:14) — the existing `'invited'` success action already publishes without selecting a user; the type/validator change completes it
-- [ ] 3.2.5 Update the assurance harness issuance step: parse `invitationId` and stop expecting a pre-acceptance user id — `test-harness/assurance/tests/human-auth-recovery-live-adapter.ts`
-- [ ] 3.2.6 Update the assurance harness presentation step: follow the confirmation page to `?step=password` before submitting — same file
-- [ ] 3.2.7 Update the assurance harness consumption and expiry steps: resolve the accepted account through the admin users search and capture state around it — same file
-- [ ] 3.2.8 Run the spec tests and confirm they pass (green phase)
+- [x] 3.2.5 Update the assurance harness issuance step: parse `invitationId` and stop expecting a pre-acceptance user id — `test-harness/assurance/tests/human-auth-recovery-live-adapter.ts` ✅ (completed: 2026-09-26 22:00)
+- [x] 3.2.6 Update the assurance harness presentation step: follow the confirmation page to `?step=password` before submitting — same file ✅ (completed: 2026-09-26 22:00)
+- [x] 3.2.7 Update the assurance harness consumption and expiry steps: resolve the accepted account through the admin users search and capture state around it — same file ✅ (completed: 2026-09-26 22:00)
+- [x] 3.2.8 Run the spec tests and confirm they pass (green phase) ✅ (completed: 2026-09-26 22:00) — `yarn assurance:harness --project security --profile production-security` exit 0; exposure 11 passed, 0 product failures, 0 incomplete; live recovery case passed
 - [x] 3.2.9 Write/extend implementation tests for the validator and output — `packages/cli/tests/admin/user-service.impl.test.ts`, `packages/cli/tests/commands/user.test.ts` ✅ (completed: 2026-09-26 21:14)
 
 ### Step 3.3: Descriptor polish and verification
@@ -177,7 +177,7 @@ estimates)
 
 **Deliverables**:
 - [x] SDK/CLI/Admin UI expose `{ invitationId, email, invitationSent, expiresAt }` ✅ (completed: 2026-09-26 21:14)
-- [ ] Assurance harness follows the confirmation step and validates the post-acceptance account
+- [x] Assurance harness follows the confirmation step and validates the post-acceptance account ✅ (completed: 2026-09-26 22:00)
 
 **Verify**: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify && yarn typecheck && yarn lint`
 
