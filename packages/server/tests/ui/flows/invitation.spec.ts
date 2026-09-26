@@ -14,36 +14,54 @@
  * @see plans/ui-testing-v2/05-magic-link-invitation-tests.md
  */
 
+import { randomUUID } from 'node:crypto';
+
 import { test, expect } from '../fixtures/test-fixtures.js';
+
+/**
+ * Builds a unique invited address for one test.
+ *
+ * These browser tests share one seeded database and run against a live server, and a live
+ * invitation for an address creates its account when accepted. A unique address per test keeps
+ * tests from colliding on the one-live-invitation-per-email invariant or observing another test's
+ * accepted account.
+ */
+function invitedAddress(): string {
+  return `invited-${randomUUID()}@test.example.com`;
+}
 
 test.describe('Invitation Acceptance Flow', () => {
   /**
-   * Test 5.1: Valid token renders the accept-invite form.
+   * Test 5.1: Valid token renders the confirmation page before the password form.
    *
-   * Creates a valid invitation token and navigates to the acceptance URL.
-   * The form should display the user's email (read-only), password fields,
-   * a CSRF hidden field, and a submit button.
+   * Creates a valid invitation token and navigates to the acceptance URL. The link must be
+   * non-mutating: a confirmation page appears first, and the password form only after the
+   * recipient continues.
    */
-  test('valid invitation token renders form with email and password fields', async ({
+  test('valid invitation token renders confirmation before the password form', async ({
     page,
     testData,
     dbHelpers,
   }) => {
-    // 1. Create invitation token for the invited user
+    // 1. Create invitation token for the invited address
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
-    // 2. Navigate to the accept-invite page
+    // 2. Navigate to the accept-invite page (no step — confirmation page)
     const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
     await page.goto(url, { waitUntil: 'networkidle' });
 
-    // 3. Assert: page heading is visible
+    // 3. Confirmation page first, with no password field yet
     await expect(page.locator('h1')).toBeVisible();
+    await expect(page.locator('#password')).not.toBeVisible();
 
-    // 4. Assert: password input visible
+    // 4. Continue to the password step
+    await page.click('a[href*="step=password"]');
+    await page.waitForLoadState('networkidle');
+
+    // 5. Assert: password inputs visible
     await expect(page.locator('#password')).toBeVisible();
-
-    // 5. Assert: confirm password input visible
     await expect(page.locator('#confirmPassword')).toBeVisible();
 
     // 6. Assert: CSRF hidden field present
@@ -75,10 +93,11 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
     // 2. Navigate to accept-invite page
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
 
     // 3. Fill in matching strong passwords
@@ -114,12 +133,13 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create an expired invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId, {
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId, {
       expired: true,
     });
 
     // 2. Navigate to accept-invite page
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
 
     // 3. Should render invite-expired page (not the accept form)
@@ -176,10 +196,11 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create valid invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
     // 2. Navigate to accept-invite page
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
 
     // 3. Fill in weak passwords (browser minlength=8 might prevent submission,
@@ -218,10 +239,11 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create valid invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
     // 2. Navigate to accept-invite page
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
 
     // 3. Fill in non-matching passwords
@@ -254,10 +276,11 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create valid invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
     // 2. Navigate to accept-invite page
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
 
     // 3. Remove the CSRF hidden field from the form
@@ -295,10 +318,11 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create valid invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
     // 2. Navigate to accept-invite page and accept
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.fill('#password', 'ReplayTestPassword123!');
     await page.fill('#confirmPassword', 'ReplayTestPassword123!');
@@ -335,14 +359,14 @@ test.describe('Invitation Acceptance Flow', () => {
   }) => {
     // 1. Create valid invitation token
     const orgId = await dbHelpers.getOrgIdBySlug(testData.orgSlug);
-    const token = await dbHelpers.createInvitationToken(testData.invitedUserEmail, orgId);
+    const invitedEmail = invitedAddress();
+    const token = await dbHelpers.createInvitationToken(invitedEmail, orgId);
 
-    // 2. Get user record before acceptance
-    const userBefore = await dbHelpers.getUserByEmail(testData.invitedUserEmail, orgId);
-    expect(userBefore).not.toBeNull();
+    // 2. No account exists until the invitation is accepted
+    expect(await dbHelpers.getUserByEmail(invitedEmail, orgId)).toBeNull();
 
     // 3. Accept the invitation
-    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}`;
+    const url = `${testData.baseUrl}/${testData.orgSlug}/auth/accept-invite/${token}?step=password`;
     await page.goto(url, { waitUntil: 'networkidle' });
     await page.fill('#password', 'EmailVerifyTest123!');
     await page.fill('#confirmPassword', 'EmailVerifyTest123!');
@@ -353,8 +377,9 @@ test.describe('Invitation Acceptance Flow', () => {
     const bodyText = await page.textContent('body');
     expect(bodyText?.toLowerCase()).toMatch(/success|account|set up|welcome/);
 
-    // 5. Verify email_verified is now true in the database
-    const isVerified = await dbHelpers.isEmailVerified(userBefore!.id);
-    expect(isVerified).toBe(true);
+    // 5. Resolve the account created at acceptance and verify the email flag
+    const acceptedUser = await dbHelpers.getUserByEmail(invitedEmail, orgId);
+    expect(acceptedUser).not.toBeNull();
+    expect(await dbHelpers.isEmailVerified(acceptedUser!.id)).toBe(true);
   });
 });

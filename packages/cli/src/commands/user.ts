@@ -214,9 +214,8 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printTable(
                   ['Field', 'Value'],
                   [
-                    ['User ID', invitation.userId],
+                    ['Invitation ID', invitation.invitationId],
                     ['Email', invitation.email],
-                    ['Created', String(invitation.created)],
                     ['invitationSent', String(invitation.invitationSent)],
                     ['Expires', invitation.expiresAt],
                   ],

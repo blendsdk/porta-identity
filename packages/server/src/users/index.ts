@@ -40,6 +40,10 @@ export {
   findUserForOidc,
 } from './service.js';
 
+// Invitation acceptance (deferred user creation)
+export { acceptInvitation } from './invitation-service.js';
+export type { AcceptInvitationInput, AcceptedInvitation } from './invitation-service.js';
+
 // Claims builder
 export { buildUserClaims, hasAddress } from './claims.js';
 export type { OidcClaims, OidcAddress } from './claims.js';

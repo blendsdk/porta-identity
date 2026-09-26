@@ -199,12 +199,10 @@ export interface InviteUserInput {
 
 /** Result returned after an invitation request is accepted. */
 export interface InviteUserResult {
-  /** ID of the invited user. */
-  userId: string;
+  /** ID of the invitation record. */
+  invitationId: string;
   /** Email address that received the invitation. */
   email: string;
-  /** Whether the invitation created a new user. */
-  created: boolean;
   /** Whether the invitation email was sent. */
   invitationSent: boolean;
   /** ISO 8601 expiration time for the invitation. */

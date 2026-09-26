@@ -55,6 +55,21 @@ type ArtifactKind = 'magic-link' | 'password-reset' | 'invitation';
 /** Canonical tenant slugs used by the harness fixtures. */
 type TenantSlug = 'alpha' | 'bravo';
 
+/**
+ * Identifies the account an issued artifact is expected to affect.
+ *
+ * Magic links and password resets always target an account that already exists. Invitations are
+ * issued before any account exists: the account is created only when the invitation is accepted, so
+ * the reference is keyed by the organization and recipient email and may resolve to no account yet.
+ */
+type IntendedAccount =
+  | { readonly kind: 'existing-user'; readonly userId: string }
+  | {
+      readonly kind: 'deferred-invitation';
+      readonly organizationId: string;
+      readonly email: string;
+    };
+
 /** One issued artifact retained only until its control and probe steps finish. */
 interface IssuedArtifact {
   readonly kind: ArtifactKind;
@@ -63,7 +78,7 @@ interface IssuedArtifact {
   readonly recipient: string;
   readonly intendedDeliveryOnly: boolean;
   /** Account whose durable and protected state this artifact is expected to affect. */
-  readonly intendedUserId: string;
+  readonly intendedAccount: IntendedAccount;
   /** Interaction session required to consume a magic link; null for reset and invitation. */
   readonly session: InteractionSession | null;
 }
@@ -73,14 +88,14 @@ interface MagicLinkArtifact {
   readonly token: string;
   readonly session: InteractionSession;
   readonly intendedDeliveryOnly: boolean;
-  readonly intendedUserId: string;
+  readonly intendedAccount: IntendedAccount;
 }
 
 /** Mailbox delivery evidence produced by one issuance. */
 interface IssuanceEvidence {
   readonly token: string;
   readonly intendedDeliveryOnly: boolean;
-  readonly intendedUserId: string;
+  readonly intendedAccount: IntendedAccount;
 }
 
 /** Bounded public response retained for classification without keeping raw bodies longer than needed. */
@@ -119,8 +134,11 @@ const PROTECTED_STATE_KEYS = [
   'artifact-consumption-state',
 ] as const;
 
-/** Single durable-effect fingerprint key; exactly this key must change on acceptance. */
+/** One durable-effect fingerprint key; exactly this key must change on acceptance. */
 const CONSUMPTION_EFFECT_KEY = 'consumption-effect';
+
+/** Fingerprint recorded while an artifact's intended account does not exist yet. */
+const ABSENT_ACCOUNT_DIGEST = 'account-absent';
 
 /** Catalog-minimum token lifetimes, keyed by their config names, that make expiry observable. */
 const MINIMUM_LIFETIME_CONFIG: Readonly<Record<string, number>> = Object.freeze({
@@ -385,7 +403,7 @@ async function issueMagicLinkArtifact(
     token,
     session,
     intendedDeliveryOnly: await intendedOnly(context, recipient),
-    intendedUserId: context.entity('alpha-user-active'),
+    intendedAccount: existingUser(context.entity('alpha-user-active')),
   });
 }
 
@@ -434,7 +452,7 @@ async function issuePasswordReset(
   return Object.freeze({
     token,
     intendedDeliveryOnly: await intendedOnly(context, recipient),
-    intendedUserId: context.entity('alpha-user-active'),
+    intendedAccount: existingUser(context.entity('alpha-user-active')),
   });
 }
 
@@ -461,6 +479,16 @@ function invitationRecipient(): string {
   return `recovery-${randomBytes(8).toString('hex')}@test-harness.local`;
 }
 
+/** Issuance envelope for a deferred invitation; no account exists until the recipient accepts. */
+const invitationResponseSchema = z.object({
+  data: z.object({
+    invitationId: z.uuid(),
+    email: z.string(),
+    invitationSent: z.boolean(),
+    expiresAt: z.string(),
+  }),
+});
+
 /** Issues one invitation through the authenticated admin API and waits for its delivery. */
 async function issueInvitation(
   context: LiveTenantAdminContext,
@@ -474,14 +502,62 @@ async function issueInvitation(
     { email: recipient, givenName: 'Synthetic', familyName: 'Invitee' },
   );
   if (response.status !== 201) throw new Error('invitation issuance was not accepted');
-  const invitedUserId = z.object({ data: z.object({ userId: z.uuid() }) }).parse(response.body)
-    .data.userId;
+  const issued = invitationResponseSchema.parse(response.body).data;
+  if (issued.email !== recipient) throw new Error('invitation issuance recipient mismatch');
   const token = await waitForArtifactToken(context, recipient, 'invitation');
   return Object.freeze({
     token,
     intendedDeliveryOnly: await intendedOnly(context, recipient),
-    intendedUserId: invitedUserId,
+    intendedAccount: deferredInvitation(context.entity('alpha'), recipient),
   });
+}
+
+/** References an account that already exists under the intended tenant. */
+function existingUser(userId: string): IntendedAccount {
+  return Object.freeze({ kind: 'existing-user', userId });
+}
+
+/** References an invitation recipient whose account is created only when the invitation is accepted. */
+function deferredInvitation(organizationId: string, email: string): IntendedAccount {
+  return Object.freeze({ kind: 'deferred-invitation', organizationId, email });
+}
+
+/** Finds an organization-scoped user id by exact email through the admin users search. */
+async function findUserIdByEmail(
+  context: LiveTenantAdminContext,
+  organizationId: string,
+  email: string,
+): Promise<string | null> {
+  const response = await context.rawRequest(
+    'GET',
+    `/api/admin/organizations/${organizationId}/users?search=${encodeURIComponent(email)}`,
+    'admin-full',
+  );
+  if (response.status !== 200) throw new Error('public-state-unavailable');
+  const users = z
+    .object({ data: z.array(z.object({ id: z.uuid(), email: z.string() })) })
+    .parse(response.body).data;
+  const normalized = email.toLowerCase();
+  return users.find((user) => user.email.toLowerCase() === normalized)?.id ?? null;
+}
+
+/**
+ * Reads the digest of an artifact's intended account.
+ *
+ * A deferred invitation resolves through the admin users search, so the digest reflects the account
+ * once it exists and the absence marker while the invitation is still pending.
+ */
+async function intendedAccountDigest(
+  context: LiveTenantAdminContext,
+  account: IntendedAccount,
+): Promise<string> {
+  if (account.kind === 'existing-user') {
+    return adminUserDigest(context, context.entity('alpha'), account.userId);
+  }
+  const userId = await findUserIdByEmail(context, account.organizationId, account.email);
+  return userId === null
+    ? ABSENT_ACCOUNT_DIGEST
+    : adminUserDigest(context, account.organizationId, userId);
 }
 
 /** Reads the admin user projection digest for one tenant-owned account. */
@@ -502,25 +578,21 @@ async function adminUserDigest(
 /** Captures the single durable-effect fingerprint for one artifact's intended account. */
 async function captureDurable(
   context: LiveTenantAdminContext,
-  intendedUserId: string,
+  intendedAccount: IntendedAccount,
 ): Promise<Readonly<Record<string, string>>> {
   return Object.freeze({
-    [CONSUMPTION_EFFECT_KEY]: await adminUserDigest(
-      context,
-      context.entity('alpha'),
-      intendedUserId,
-    ),
+    [CONSUMPTION_EFFECT_KEY]: await intendedAccountDigest(context, intendedAccount),
   });
 }
 
 /** Captures all five declared protected-state fingerprints for one artifact's intended account. */
 async function captureProtected(
   context: LiveTenantAdminContext,
-  intendedUserId: string,
+  intendedAccount: IntendedAccount,
 ): Promise<Readonly<Record<string, string>>> {
   const alpha = context.entity('alpha');
   const bravo = context.entity('bravo');
-  const intended = await adminUserDigest(context, alpha, intendedUserId);
+  const intended = await intendedAccountDigest(context, intendedAccount);
   const wrongRecipient = await adminUserDigest(
     context,
     alpha,
@@ -635,7 +707,31 @@ async function presentMagicLink(
   });
 }
 
-/** Presents one reset-password or invitation link: shows the form, then submits a new password. */
+/** Classifies a request that never reached the password form into a consumption outcome. */
+function rejectedAccountArtifact(
+  response: HttpObservation,
+  token: string,
+  expired: boolean,
+): ConsumptionOutcome {
+  return Object.freeze({
+    result: classifyArtifactResponse({
+      status: response.status,
+      redirectLocation: null,
+      acceptedPage: false,
+      expiredPage: expired && response.status === 400,
+      genericPage: false,
+    }),
+    publicResponse: publicResponseOf(response),
+    artifactExposed: artifactExposed(response, token),
+  });
+}
+
+/**
+ * Presents one reset-password or invitation link and submits a new password.
+ *
+ * The invitation email link is non-mutating: its first response is a confirmation page whose button
+ * leads to `?step=password`, where the password form appears. Password reset shows the form directly.
+ */
 async function presentAccountArtifact(
   context: LiveTenantAdminContext,
   action: 'reset-password' | 'accept-invite',
@@ -644,22 +740,19 @@ async function presentAccountArtifact(
   expired: boolean,
 ): Promise<ConsumptionOutcome> {
   const jar = new CookieJar();
-  const url = `${context.endpoints.porta}/${tenant}/auth/${action}/${token}`;
-  const form = await jarGet(jar, url);
-  if (form.status !== 200 || !form.body.includes('name="password"')) {
-    return Object.freeze({
-      result: classifyArtifactResponse({
-        status: form.status,
-        redirectLocation: null,
-        acceptedPage: false,
-        expiredPage: expired && form.status === 400,
-        genericPage: false,
-      }),
-      publicResponse: publicResponseOf(form),
-      artifactExposed: artifactExposed(form, token),
-    });
+  const baseUrl = `${context.endpoints.porta}/${tenant}/auth/${action}/${token}`;
+  const formUrl = action === 'accept-invite' ? `${baseUrl}?step=password` : baseUrl;
+  if (action === 'accept-invite') {
+    const confirmation = await jarGet(jar, baseUrl);
+    if (confirmation.status !== 200 || confirmation.body.includes('name="password"')) {
+      return rejectedAccountArtifact(confirmation, token, expired);
+    }
   }
-  const submit = await jarPost(jar, url, {
+  const form = await jarGet(jar, formUrl);
+  if (form.status !== 200 || !form.body.includes('name="password"')) {
+    return rejectedAccountArtifact(form, token, expired);
+  }
+  const submit = await jarPost(jar, formUrl, {
     password: NEW_PASSWORD,
     confirmPassword: NEW_PASSWORD,
     _csrf: jar.get('_csrf') ?? '',
@@ -684,16 +777,16 @@ async function observeConsumption(
   step: HumanAuthStepRequirement,
   caseRequirement: HumanAuthCaseRequirement,
   token: string,
-  intendedUserId: string,
+  intendedAccount: IntendedAccount,
   auditEventTypes: readonly string[] | null,
   present: () => Promise<ConsumptionOutcome>,
 ): Promise<HumanAuthStepObservation> {
   const since = new Date().toISOString();
-  const protectedBefore = await captureProtected(context, intendedUserId);
-  const durableBefore = await captureDurable(context, intendedUserId);
+  const protectedBefore = await captureProtected(context, intendedAccount);
+  const durableBefore = await captureDurable(context, intendedAccount);
   const outcome = await present();
-  const durableAfter = await captureDurable(context, intendedUserId);
-  const protectedAfter = await captureProtected(context, intendedUserId);
+  const durableAfter = await captureDurable(context, intendedAccount);
+  const protectedAfter = await captureProtected(context, intendedAccount);
   const isProbe = auditEventTypes !== null;
   return Object.freeze({
     id: step.id,
@@ -725,13 +818,13 @@ async function observeDedicatedThrottle(
   auditEventTypes: readonly string[],
   attempt: () => Promise<{ status: number; deliveryCount: number }>,
 ): Promise<HumanAuthStepObservation> {
-  const intendedUserId = context.entity('alpha-user-active');
+  const intendedAccount = existingUser(context.entity('alpha-user-active'));
   const since = new Date().toISOString();
-  const protectedBefore = await captureProtected(context, intendedUserId);
-  const durableBefore = await captureDurable(context, intendedUserId);
+  const protectedBefore = await captureProtected(context, intendedAccount);
+  const durableBefore = await captureDurable(context, intendedAccount);
   const outcome = await attempt();
-  const durableAfter = await captureDurable(context, intendedUserId);
-  const protectedAfter = await captureProtected(context, intendedUserId);
+  const durableAfter = await captureDurable(context, intendedAccount);
+  const protectedAfter = await captureProtected(context, intendedAccount);
   return Object.freeze({
     id: step.id,
     boundary: step.boundary,
@@ -804,7 +897,7 @@ async function runMagicLink(
       stepOf(requirement, 'magic-link-intended-consumption-control'),
       requirement,
       control.token,
-      control.intendedUserId,
+      control.intendedAccount,
       null,
       () =>
         presentMagicLink(
@@ -824,7 +917,7 @@ async function runMagicLink(
       stepOf(requirement, 'magic-link-sequential-replay'),
       requirement,
       control.token,
-      control.intendedUserId,
+      control.intendedAccount,
       ['user.magic_link.failed'],
       () =>
         presentMagicLink(
@@ -845,7 +938,7 @@ async function runMagicLink(
       stepOf(requirement, 'magic-link-wrong-recipient'),
       requirement,
       wrongRecipient.token,
-      wrongRecipient.intendedUserId,
+      wrongRecipient.intendedAccount,
       ['user.magic_link.failed'],
       () =>
         presentMagicLink(
@@ -875,7 +968,7 @@ async function runMagicLink(
       stepOf(requirement, 'magic-link-wrong-tenant'),
       requirement,
       wrongTenant.token,
-      wrongTenant.intendedUserId,
+      wrongTenant.intendedAccount,
       ['user.magic_link.failed'],
       () =>
         presentMagicLink(
@@ -907,7 +1000,7 @@ async function runMagicLink(
       tenant: 'alpha',
       recipient: INTENDED_EMAIL,
       intendedDeliveryOnly: expiry.intendedDeliveryOnly,
-      intendedUserId: expiry.intendedUserId,
+      intendedAccount: expiry.intendedAccount,
       session: expiry.session,
     }),
   });
@@ -933,7 +1026,7 @@ async function runPasswordReset(
       stepOf(requirement, 'password-reset-intended-consumption-control'),
       requirement,
       control.token,
-      control.intendedUserId,
+      control.intendedAccount,
       null,
       () => presentAccountArtifact(context, 'reset-password', control.token, 'alpha', false),
     ),
@@ -945,7 +1038,7 @@ async function runPasswordReset(
       stepOf(requirement, 'password-reset-sequential-replay'),
       requirement,
       control.token,
-      control.intendedUserId,
+      control.intendedAccount,
       ['user.password_reset.failed'],
       () => presentAccountArtifact(context, 'reset-password', control.token, 'alpha', false),
     ),
@@ -971,7 +1064,7 @@ async function runPasswordReset(
       stepOf(requirement, 'password-reset-wrong-tenant'),
       requirement,
       wrongTenant.token,
-      wrongTenant.intendedUserId,
+      wrongTenant.intendedAccount,
       ['user.password_reset.failed'],
       () => presentAccountArtifact(context, 'reset-password', wrongTenant.token, 'bravo', false),
     ),
@@ -995,7 +1088,7 @@ async function runPasswordReset(
       tenant: 'alpha',
       recipient: INTENDED_EMAIL,
       intendedDeliveryOnly: expiry.intendedDeliveryOnly,
-      intendedUserId: expiry.intendedUserId,
+      intendedAccount: expiry.intendedAccount,
       session: null,
     }),
   });
@@ -1020,7 +1113,7 @@ async function runInvitation(
       stepOf(requirement, 'invitation-intended-consumption-control'),
       requirement,
       first.token,
-      first.intendedUserId,
+      first.intendedAccount,
       null,
       () => presentAccountArtifact(context, 'accept-invite', first.token, 'alpha', false),
     ),
@@ -1032,7 +1125,7 @@ async function runInvitation(
       stepOf(requirement, 'invitation-sequential-replay'),
       requirement,
       first.token,
-      first.intendedUserId,
+      first.intendedAccount,
       ['user.invite.failed'],
       () => presentAccountArtifact(context, 'accept-invite', first.token, 'alpha', false),
     ),
@@ -1047,7 +1140,7 @@ async function runInvitation(
       stepOf(requirement, 'invitation-wrong-tenant'),
       requirement,
       wrongTenantArtifact.token,
-      wrongTenantArtifact.intendedUserId,
+      wrongTenantArtifact.intendedAccount,
       ['user.invite.failed'],
       () =>
         presentAccountArtifact(context, 'accept-invite', wrongTenantArtifact.token, 'bravo', false),
@@ -1063,7 +1156,7 @@ async function runInvitation(
       tenant: 'alpha',
       recipient: expiryRecipient,
       intendedDeliveryOnly: expiry.intendedDeliveryOnly,
-      intendedUserId: expiry.intendedUserId,
+      intendedAccount: expiry.intendedAccount,
       session: null,
     }),
   });
@@ -1122,7 +1215,7 @@ async function observeExpiry(
     step,
     requirement,
     artifact.token,
-    artifact.intendedUserId,
+    artifact.intendedAccount,
     auditEvents,
     async () => {
       if (artifact.kind === 'magic-link') {

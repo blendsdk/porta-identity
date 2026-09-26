@@ -134,9 +134,8 @@ describe('admin user service implementation', () => {
   it('projects exact mutation payloads despite runtime extra properties', async () => {
     const create = vi.fn().mockResolvedValue(user());
     const invite = vi.fn().mockResolvedValue({
-      userId,
+      invitationId: userId,
       email: 'person@example.test',
-      created: true,
       invitationSent: true,
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
@@ -179,6 +178,21 @@ describe('admin user service implementation', () => {
       { givenName: 'Updated', address: { country: 'GB' } },
       undefined,
     );
+  });
+
+  it('rejects the legacy invitation result shape', async () => {
+    const invite = vi.fn().mockResolvedValue({
+      userId,
+      email: 'person@example.test',
+      created: true,
+      invitationSent: true,
+      expiresAt: '2026-08-31T10:00:00.000Z',
+    });
+    const operations = createAdminUserOperations(() => domain({ invite }));
+
+    await expect(
+      operations.invite(organizationId, { email: 'person@example.test' }),
+    ).resolves.toEqual({ kind: 'outcome-unknown' });
   });
 
   it('rejects same-organization responses for a different requested user', async () => {

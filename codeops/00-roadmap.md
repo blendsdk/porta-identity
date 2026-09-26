@@ -1,8 +1,8 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-09-22 00:10
-> **Features**: 2 / 4 done
+> **Last Updated**: 2026-09-26 20:18
+> **Features**: 2 / 5 done
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -17,6 +17,7 @@
 | monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration, publishing, and automated release complete                   | 75 / 75 (100%) | ✅     | 2026-09-25 15:21 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |
 | test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-8 and the ST-46 correction complete        | 66 / 66 (100%) | 🔄     | 2026-09-25 01:30 |
+| user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred invitation creation executing; implementation in progress       | 0 / 1 (0%)     | 🔄     | 2026-09-26 20:18 |
 
 ## Archived
 

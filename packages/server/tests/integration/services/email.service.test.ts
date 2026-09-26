@@ -96,7 +96,7 @@ describe('Email Service (Integration)', () => {
   // ── Invitation Email ───────────────────────────────────────────
 
   it('should send an invitation email received by MailHog', async () => {
-    const inviteUrl = 'https://porta.local:3443/test-org/auth/invite/token-ghi789';
+    const inviteUrl = 'https://porta.local:3443/test-org/auth/accept-invite/token-ghi789';
 
     await sendInvitationEmail(testUser, testOrg, inviteUrl, 'en');
 
