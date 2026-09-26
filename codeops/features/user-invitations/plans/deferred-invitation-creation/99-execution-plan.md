@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-27 00:00
-> **Progress**: 62/68 tasks (91%)
+> **Last Updated**: 2026-09-27 00:30
+> **Progress**: 65/68 tasks (96%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -254,9 +254,9 @@ estimates)
 > ordinary task. The `develop` → `main` merge and the Release dispatch each require explicit user
 > authorization at execution time.
 
-- [ ] 7.1.1 Commit the verified work and push the feature branch (git-commit skill, push mode)
-- [ ] 7.1.2 Open a pull request from the feature branch into `develop` and merge it through the repository flow
-- [ ] 7.1.3 Confirm the `Build and Test` workflow is green on `develop` HEAD
+- [x] 7.1.1 Commit the verified work and push the feature branch (git-commit skill, push mode) ✅ (completed: 2026-09-27 00:30) — branch `feat/deferred-invitation-creation` pushed at `c3983cb5`
+- [x] 7.1.2 Open a pull request from the feature branch into `develop` and merge it through the repository flow ✅ (completed: 2026-09-27 00:30) — PR #138 merged as `27a31452`
+- [x] 7.1.3 Confirm the `Build and Test` workflow is green on `develop` HEAD ✅ (completed: 2026-09-27 00:30) — run `36276255144` green on `27a31452`
 - [ ] 7.1.4 With explicit authorization, integrate `develop` into `main` through the repository's designated flow and confirm `Build and Test` is green on `main`
 - [ ] 7.1.5 With explicit authorization, dispatch the manual `Release` workflow on `main` (this is the publication authorization)
 - [ ] 7.1.6 Verify the published artifacts: npm packages with provenance, the GitHub Release, the Docker image, and the `develop` sync
