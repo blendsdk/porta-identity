@@ -22,6 +22,10 @@ import { mapRowToUser } from './types.js';
 import { decodeCursor, buildCursorResult } from '../lib/cursor.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { UserValidationError } from './errors.js';
+import type { PoolClient } from 'pg';
+
+/** Minimal query boundary shared by the pool and an open transaction client. */
+type QueryBoundary = Pick<PoolClient, 'query'>;
 
 // ---------------------------------------------------------------------------
 // Insert
@@ -63,20 +67,21 @@ export interface InsertUserData {
 }
 
 /**
- * Insert a new user into the database.
+ * Insert a new user through a specific query boundary.
  *
- * Uses RETURNING * to get the full row back in a single round trip.
- * The email must be unique within the organization (enforced by the
- * DB unique constraint on (organization_id, email)).
+ * Extracted so the invitation-acceptance transaction can create the account inside the same
+ * transaction that consumes the invitation. {@link insertUser} calls this with the connection pool.
  *
- * @param data - User data to insert (password must already be hashed)
- * @returns The newly created user
- * @throws If email already exists in the org (unique constraint violation)
+ * @param client - Pool or transaction client that runs the insert.
+ * @param data - User data to insert (password must already be hashed).
+ * @returns The newly created user.
+ * @throws If email already exists in the org (unique constraint violation).
  */
-export async function insertUser(data: InsertUserData): Promise<User> {
-  const pool = getPool();
-
-  const result = await pool.query<UserRow>(
+export async function insertUserWithClient(
+  client: QueryBoundary,
+  data: InsertUserData,
+): Promise<User> {
+  const result = await client.query<UserRow>(
     `INSERT INTO users (
        organization_id, email, password_hash, email_verified,
        given_name, family_name, middle_name, nickname,
@@ -115,6 +120,21 @@ export async function insertUser(data: InsertUserData): Promise<User> {
   );
 
   return mapRowToUser(result.rows[0]);
+}
+
+/**
+ * Insert a new user into the database.
+ *
+ * Uses RETURNING * to get the full row back in a single round trip.
+ * The email must be unique within the organization (enforced by the
+ * DB unique constraint on (organization_id, email)).
+ *
+ * @param data - User data to insert (password must already be hashed)
+ * @returns The newly created user
+ * @throws If email already exists in the org (unique constraint violation)
+ */
+export async function insertUser(data: InsertUserData): Promise<User> {
+  return insertUserWithClient(getPool(), data);
 }
 
 // ---------------------------------------------------------------------------
@@ -537,6 +557,29 @@ export async function emailExists(
   const result = await pool.query<{ exists: boolean }>(
     'SELECT EXISTS(SELECT 1 FROM users WHERE organization_id = $1 AND email = $2) as exists',
     [orgId, email],
+  );
+  return result.rows[0].exists;
+}
+
+/**
+ * Check whether an email already exists within an organization inside a transaction.
+ *
+ * The acceptance transaction uses this to reject a deferred invitation whose address became a real
+ * account after the invite, without relying on a unique-constraint failure.
+ *
+ * @param client - Pool or transaction client that runs the check.
+ * @param organizationId - Organization UUID.
+ * @param email - Email to check (case-insensitive).
+ * @returns true when an account already exists for the address.
+ */
+export async function emailExistsWithClient(
+  client: QueryBoundary,
+  organizationId: string,
+  email: string,
+): Promise<boolean> {
+  const result = await client.query<{ exists: boolean }>(
+    'SELECT EXISTS(SELECT 1 FROM users WHERE organization_id = $1 AND email = $2) as exists',
+    [organizationId, email],
   );
   return result.rows[0].exists;
 }

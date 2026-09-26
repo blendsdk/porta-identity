@@ -25,6 +25,11 @@ import {
   consumeAuthorizedMagicLink,
   findAndLockMagicLinkToken,
   invalidateUserTokens,
+  replaceInvitation,
+  findDeferredInvitationToken,
+  lockValidInvitationForUpdate,
+  consumeInvitation,
+  InvitationConflictError,
 } from '../../../src/auth/token-repository.js';
 import type { GenericInsertTokenTable, TokenTable } from '../../../src/auth/token-repository.js';
 
@@ -427,6 +432,125 @@ describe('token-repository', () => {
       await expect(
         invalidateUserTokens('magic_link_tokens', 'user-no-tokens'),
       ).resolves.toBeUndefined();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Deferred invitation operations
+  // -------------------------------------------------------------------------
+
+  describe('deferred invitation operations', () => {
+    /** Raw deferred invitation row as returned by PostgreSQL. */
+    function createDeferredRow(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+      return {
+        id: 'invitation-1',
+        user_id: null,
+        token_hash: 'hash-1',
+        expires_at: new Date('2026-12-31T00:00:00Z'),
+        used_at: null,
+        created_at: new Date('2026-01-01T00:00:00Z'),
+        details: null,
+        invited_by: null,
+        organization_id: 'org-1',
+        email: 'invitee@test.com',
+        given_name: null,
+        family_name: null,
+        locale: null,
+        ...overrides,
+      };
+    }
+
+    it('should invalidate the previous live invitation and insert the replacement in one transaction', async () => {
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // UPDATE previous
+        .mockResolvedValueOnce({ rows: [{ id: 'invitation-2' }], rowCount: 1 }) // INSERT
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // COMMIT
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({
+        connect: vi.fn().mockResolvedValue({ query, release: vi.fn() }),
+      });
+
+      const result = await replaceInvitation({
+        organizationId: 'org-1',
+        email: 'invitee@test.com',
+        tokenHash: 'hash-2',
+        expiresAt: new Date('2026-12-31T00:00:00Z'),
+      });
+
+      expect(result).toEqual({ id: 'invitation-2' });
+      expect(query.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/)[0])).toEqual([
+        'BEGIN',
+        'UPDATE',
+        'INSERT',
+        'COMMIT',
+      ]);
+      expect(query.mock.calls[1][0]).toContain('used_at IS NULL');
+      expect(query.mock.calls[1][1]).toEqual(['org-1', 'invitee@test.com']);
+    });
+
+    it('should map a concurrent insert conflict to InvitationConflictError after rolling back', async () => {
+      const conflict = Object.assign(new Error('duplicate key'), { code: '23505' });
+      const query = vi
+        .fn()
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // BEGIN
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }) // UPDATE previous
+        .mockRejectedValueOnce(conflict) // INSERT
+        .mockResolvedValueOnce({ rows: [], rowCount: 0 }); // ROLLBACK
+      (getPool as ReturnType<typeof vi.fn>).mockReturnValue({
+        connect: vi.fn().mockResolvedValue({ query, release: vi.fn() }),
+      });
+
+      await expect(
+        replaceInvitation({
+          organizationId: 'org-1',
+          email: 'invitee@test.com',
+          tokenHash: 'hash-2',
+          expiresAt: new Date('2026-12-31T00:00:00Z'),
+        }),
+      ).rejects.toThrow(InvitationConflictError);
+      expect(query.mock.calls[3][0]).toBe('ROLLBACK');
+    });
+
+    it('should resolve a deferred invitation by organization without a user join', async () => {
+      const mockQuery = mockPool([createDeferredRow()], 1);
+
+      const result = await findDeferredInvitationToken('hash-1', 'org-1');
+
+      expect(result).toMatchObject({ id: 'invitation-1', userId: null, organizationId: 'org-1' });
+      const sql = mockQuery.mock.calls[0][0] as string;
+      expect(sql).toContain('organization_id = $2');
+      expect(sql).not.toMatch(/JOIN\s+users/i);
+    });
+
+    it('should lock a valid invitation with FOR UPDATE and repeated validity predicates', async () => {
+      const row = createDeferredRow();
+      const { client, query } = await mockTransactionClient([row], 1);
+
+      const result = await lockValidInvitationForUpdate(client, 'hash-1', 'org-1');
+
+      expect(result).toMatchObject({ id: 'invitation-1', organizationId: 'org-1' });
+      const sql = query.mock.calls[0][0] as string;
+      expect(sql).toContain('FOR UPDATE');
+      expect(sql).toContain('used_at IS NULL');
+      expect(sql).toContain('expires_at > NOW()');
+    });
+
+    it('should consume the invitation only while it is still valid', async () => {
+      const { client, query } = await mockTransactionClient([], 1);
+
+      await expect(consumeInvitation(client, 'invitation-1', 'user-1')).resolves.toBe(true);
+
+      const [sql, params] = query.mock.calls[0];
+      expect(sql).toContain('used_at IS NULL');
+      expect(sql).toContain('expires_at > NOW()');
+      expect(sql).toContain('used_at = NOW()');
+      expect(params).toEqual(['invitation-1', 'user-1']);
+    });
+
+    it('should report a false consumption when no valid invitation was updated', async () => {
+      const { client } = await mockTransactionClient([], 0);
+      await expect(consumeInvitation(client, 'invitation-1', 'user-1')).resolves.toBe(false);
     });
   });
 });
