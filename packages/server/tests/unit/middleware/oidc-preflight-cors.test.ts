@@ -374,17 +374,17 @@ describe('oidcPreflightCors', () => {
     it('should handle redirect_uri with different port', async () => {
       mockGetClientByClientId.mockResolvedValue({
         allowedOrigins: [],
-        redirectUris: ['https://porta.local:3443/callback'],
+        redirectUris: ['https://porta-harness.ci.portaidentity.com:3443/callback'],
       });
 
       const ctx = createMockCtx({
-        origin: 'https://porta.local:3443',
+        origin: 'https://porta-harness.ci.portaidentity.com:3443',
         body: { client_id: 'dev-client' },
       });
 
       await middleware(ctx as never, async () => {});
 
-      expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://porta.local:3443');
+      expect(ctx._headers['Access-Control-Allow-Origin']).toBe('https://porta-harness.ci.portaidentity.com:3443');
     });
 
     it('should skip native app scheme redirect_uris', async () => {

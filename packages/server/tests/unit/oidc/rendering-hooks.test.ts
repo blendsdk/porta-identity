@@ -41,7 +41,7 @@ const mockConfig = vi.hoisted(() => ({
   host: '0.0.0.0',
   databaseUrl: 'postgresql://localhost/porta',
   redisUrl: 'redis://localhost:6379',
-  issuerBaseUrl: 'https://porta.local:3443',
+  issuerBaseUrl: 'https://porta-harness.ci.portaidentity.com:3443',
   cookieKeys: ['test-cookie-key-0123456789'],
   smtp: { host: 'localhost', port: 587, user: '', pass: '', from: 'test@test.com' },
   logLevel: 'info',
