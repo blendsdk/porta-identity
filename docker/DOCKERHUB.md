@@ -131,7 +131,7 @@ PORTA_AUTO_MIGRATE=false
 ### 3. Start services
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d --wait postgres redis
 docker compose run --rm porta node dist/cli/index.js migrate up
 docker compose up -d porta
 ```

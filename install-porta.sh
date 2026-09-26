@@ -69,6 +69,7 @@ die() {
 # Emits a final, actionable diagnostic when any command fails unexpectedly.
 on_error() {
   local exit_code=$?
+  trap - ERR
   local line_number=${1:-?}
   printf '\n%serror:%s installation failed at line %s (exit %s).\n' \
     "$COLOR_RED" "$COLOR_RESET" "$line_number" "$exit_code" >&2
@@ -126,6 +127,8 @@ Options:
       --admin-password P    Admin password (only with --admin-email)
       --no-start            Only write docker-compose.yml and .env
       --force               Overwrite existing files in the target directory
+      --fresh               Ignore answers saved in an existing .env and ask
+                            again (combine with --force when files exist)
       --allow-http          Evaluation mode: allow an HTTP issuer on a
                             non-localhost host, disable production mode and
                             proxy trust. Never use in production.
@@ -172,16 +175,21 @@ read_answer() {
     return 0
   fi
 
-  if [ -n "$default" ]; then
-    printf '%s [%s]: ' "$prompt" "$default" >&"$TTY_OUT"
-  else
-    printf '%s: ' "$prompt" >&"$TTY_OUT"
-  fi
-
   if [ "$secret" = "1" ]; then
+    # Never echo a secret default back to the terminal; just say one is kept.
+    if [ -n "$default" ]; then
+      printf '%s [press Enter to keep current]: ' "$prompt" >&"$TTY_OUT"
+    else
+      printf '%s: ' "$prompt" >&"$TTY_OUT"
+    fi
     IFS= read -rs answer <&"$TTY_IN" || true
     printf '\n' >&"$TTY_OUT"
   else
+    if [ -n "$default" ]; then
+      printf '%s [%s]: ' "$prompt" "$default" >&"$TTY_OUT"
+    else
+      printf '%s: ' "$prompt" >&"$TTY_OUT"
+    fi
     IFS= read -r answer <&"$TTY_IN" || true
   fi
 
@@ -364,8 +372,9 @@ TARGET_DIR=""
 HOST_PORT=""
 BIND_ADDR=""
 ISSUER_BASE_URL=""
-TRUST_PROXY="true"
+TRUST_PROXY=""
 TRUST_PROXY_HOPS=""
+TRUST_PROXY_SET="0"
 SMTP_HOST=""
 SMTP_PORT=""
 SMTP_USER=""
@@ -380,8 +389,13 @@ ADMIN_FAMILY_NAME=""
 ADMIN_PASSWORD=""
 DO_START="1"
 FORCE="0"
+FRESH="0"
 ALLOW_HTTP="0"
 NON_INTERACTIVE="0"
+REUSED_CONFIG="0"
+existing_cookie=""
+existing_tfe=""
+existing_signing=""
 
 parse_args() {
   while [ $# -gt 0 ]; do
@@ -394,7 +408,7 @@ parse_args() {
       --bind=*) BIND_ADDR="${1#*=}"; shift ;;
       -u|--issuer-url) ISSUER_BASE_URL="${2:?--issuer-url needs a value}"; shift 2 ;;
       --issuer-url=*) ISSUER_BASE_URL="${1#*=}"; shift ;;
-      --no-proxy) TRUST_PROXY="false"; shift ;;
+      --no-proxy) TRUST_PROXY="false"; TRUST_PROXY_SET="1"; shift ;;
       --trust-proxy-hops) TRUST_PROXY_HOPS="${2:?--trust-proxy-hops needs a value}"; shift 2 ;;
       --trust-proxy-hops=*) TRUST_PROXY_HOPS="${1#*=}"; shift ;;
       --smtp-host) SMTP_HOST="${2:?--smtp-host needs a value}"; shift 2 ;;
@@ -422,6 +436,7 @@ parse_args() {
       --admin-password=*) ADMIN_PASSWORD="${1#*=}"; shift ;;
       --no-start) DO_START="0"; shift ;;
       --force) FORCE="1"; shift ;;
+      --fresh) FRESH="1"; shift ;;
       --allow-http) ALLOW_HTTP="1"; shift ;;
       --non-interactive) NON_INTERACTIVE="1"; shift ;;
       -h|--help) usage; exit 0 ;;
@@ -443,6 +458,81 @@ quote_env_value() {
   value="${value//$'\n'/}"
   value="${value//$'\r'/}"
   printf '%s' "$value"
+}
+
+# Reads one value from an existing .env file, stripping surrounding quotes.
+# Returns non-zero when the key is absent. Used to reuse secrets on --force so
+# that a reinstall keeps the password already baked into the PostgreSQL volume.
+read_env_value() {
+  local file="$1" key="$2" line value
+  [ -f "$file" ] || return 1
+  line="$(grep -E "^${key}=" "$file" | tail -n 1 || true)"
+  [ -n "$line" ] || return 1
+  value="${line#*=}"
+  case "$value" in
+    \"*\") value="${value#\"}"; value="${value%\"}" ;;
+  esac
+  [ -n "$value" ] || return 1
+  printf '%s' "$value"
+}
+
+# Reuses answers saved in an existing .env so repeated test runs do not require
+# retyping. Command-line flags always win: this only fills variables that are
+# still empty. `--fresh` skips reuse entirely; `--force` is still required to
+# overwrite the files.
+load_existing_configuration() {
+  [ -f "$ENV_FILE" ] || return 0
+  [ "$FRESH" = "1" ] && return 0
+
+  local value
+
+  value="$(read_env_value "$ENV_FILE" ISSUER_BASE_URL || true)"
+  [ -n "$ISSUER_BASE_URL" ] || ISSUER_BASE_URL="$value"
+  value="$(read_env_value "$ENV_FILE" HOST_PORT || true)"
+  [ -n "$HOST_PORT" ] || HOST_PORT="$value"
+  value="$(read_env_value "$ENV_FILE" BIND_ADDR || true)"
+  [ -n "$BIND_ADDR" ] || BIND_ADDR="$value"
+  value="$(read_env_value "$ENV_FILE" PORTA_IMAGE || true)"
+  [ -n "$PORTA_IMAGE" ] || PORTA_IMAGE="$value"
+  value="$(read_env_value "$ENV_FILE" POSTGRES_PASSWORD || true)"
+  [ -n "$POSTGRES_PASSWORD" ] || POSTGRES_PASSWORD="$value"
+  value="$(read_env_value "$ENV_FILE" SMTP_HOST || true)"
+  [ -n "$SMTP_HOST" ] || SMTP_HOST="$value"
+  value="$(read_env_value "$ENV_FILE" SMTP_PORT || true)"
+  [ -n "$SMTP_PORT" ] || SMTP_PORT="$value"
+  value="$(read_env_value "$ENV_FILE" SMTP_USER || true)"
+  [ -n "$SMTP_USER" ] || SMTP_USER="$value"
+  value="$(read_env_value "$ENV_FILE" SMTP_PASS || true)"
+  [ -n "$SMTP_PASS" ] || SMTP_PASS="$value"
+  value="$(read_env_value "$ENV_FILE" SMTP_FROM || true)"
+  [ -n "$SMTP_FROM" ] || SMTP_FROM="$value"
+
+  if [ "$TRUST_PROXY_SET" != "1" ]; then
+    value="$(read_env_value "$ENV_FILE" TRUST_PROXY || true)"
+    if [ -n "$value" ]; then
+      TRUST_PROXY="$value"
+    fi
+  fi
+  value="$(read_env_value "$ENV_FILE" TRUST_PROXY_HOPS || true)"
+  [ -n "$TRUST_PROXY_HOPS" ] || TRUST_PROXY_HOPS="$value"
+
+  if [ "$ALLOW_HTTP" != "1" ]; then
+    value="$(read_env_value "$ENV_FILE" NODE_ENV || true)"
+    if [ "$value" = "development" ]; then
+      ALLOW_HTTP="1"
+    fi
+  fi
+
+  if [ -z "$SMTP_HOST" ] || [ "$SMTP_HOST" = "mailhog" ]; then
+    SKIP_SMTP="1"
+  fi
+
+  existing_cookie="$(read_env_value "$ENV_FILE" COOKIE_KEYS || true)"
+  existing_tfe="$(read_env_value "$ENV_FILE" TWO_FACTOR_ENCRYPTION_KEY || true)"
+  existing_signing="$(read_env_value "$ENV_FILE" SIGNING_KEY_ENCRYPTION_KEY || true)"
+
+  REUSED_CONFIG="1"
+  log "Reusing saved configuration from ${ENV_FILE} (flags override; --fresh to ignore)."
 }
 
 # Writes a fixed .env containing generated secrets and the resolved settings.
@@ -520,7 +610,7 @@ services:
     volumes:
       - porta_pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U porta"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U porta"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -557,10 +647,30 @@ YAML
 # Deployment actions
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Runs a Docker Compose command from the target directory so that the adjacent
-# .env file is discovered automatically.
+# Runs a Docker Compose command against the generated project. The .env file is
+# passed explicitly so the command works regardless of the caller's directory,
+# and no subshell is used so that failures are reported by a single error trap.
 compose() {
-  ( cd "$TARGET_DIR" && docker compose "$@" )
+  docker compose --env-file "$ENV_FILE" --project-directory "$TARGET_DIR" -f "$COMPOSE_FILE" "$@"
+}
+
+# Blocks until PostgreSQL and Redis accept connections. The migration container
+# is started with --no-deps, so it does not wait for the compose health checks;
+# connecting before the database is ready fails with ECONNREFUSED. The check
+# forces TCP (-h 127.0.0.1): during first-time initdb PostgreSQL briefly answers
+# on its Unix socket only, which is not yet reachable over the network.
+wait_for_dependencies() {
+  local deadline=$((SECONDS + HEALTH_TIMEOUT_SECONDS))
+  log "Waiting for PostgreSQL and Redis to accept connections..."
+  while (( SECONDS < deadline )); do
+    if compose exec -T postgres pg_isready -h 127.0.0.1 -p 5432 -U porta >/dev/null 2>&1 \
+      && compose exec -T redis redis-cli ping >/dev/null 2>&1; then
+      ok "Database and cache are ready."
+      return 0
+    fi
+    sleep 2
+  done
+  die "PostgreSQL/Redis did not become ready within ${HEALTH_TIMEOUT_SECONDS}s. Check: (cd \"${TARGET_DIR}\" && docker compose logs postgres redis)"
 }
 
 # Applies database migrations as an explicit step before the server starts.
@@ -671,6 +781,12 @@ main() {
     warn "Overwriting existing files in ${TARGET_DIR} (--force)."
   fi
 
+  # Reuse answers from a previous run unless the caller asked for a fresh start.
+  load_existing_configuration
+  if [ "$FRESH" = "1" ] && [ -f "$ENV_FILE" ]; then
+    warn "--fresh ignores saved secrets. If this deployment already has data, remove the old volume first: (cd \"${TARGET_DIR}\" && docker compose down -v)"
+  fi
+
   [ -n "$PORTA_IMAGE" ] || PORTA_IMAGE="$PORTA_IMAGE_DEFAULT"
 
   # ── Public URL and reverse-proxy posture ────────────────────────────────
@@ -687,13 +803,8 @@ main() {
     NODE_ENV_VALUE="production"
   fi
 
-  if [ -z "$TRUST_PROXY_HOPS" ]; then
-    if [ "$TRUST_PROXY" = "true" ]; then
-      TRUST_PROXY_HOPS="1"
-    else
-      TRUST_PROXY_HOPS="1"
-    fi
-  fi
+  [ -n "$TRUST_PROXY" ] || TRUST_PROXY="true"
+  [ -n "$TRUST_PROXY_HOPS" ] || TRUST_PROXY_HOPS="1"
 
   # ── Host port ───────────────────────────────────────────────────────────
   if [ -z "$HOST_PORT" ]; then
@@ -710,7 +821,8 @@ main() {
     fi
   fi
   validate_port "$HOST_PORT"
-  if printf '%s\n' "$(collect_docker_ports; collect_host_ports)" | grep -qx "$HOST_PORT"; then
+  if [ "$REUSED_CONFIG" != "1" ] \
+    && printf '%s\n' "$(collect_docker_ports; collect_host_ports)" | grep -qx "$HOST_PORT"; then
     warn "Port ${HOST_PORT} appears to be in use. Docker will fail to start if it is taken."
   fi
 
@@ -732,7 +844,6 @@ main() {
     SMTP_PORT="1025"
     SMTP_USER=""
     SMTP_PASS=""
-    [ -n "$SMTP_FROM" ] || SMTP_FROM="noreply@$(issuer_host "$ISSUER_BASE_URL")"
     warn "SMTP skipped: email will be captured by MailHog, not delivered."
   else
     prompt_value SMTP_HOST "SMTP relay hostname (or 'skip' for MailHog evaluation)"
@@ -744,14 +855,15 @@ main() {
       SMTP_PASS=""
     fi
     [ -n "$SMTP_PORT" ] || SMTP_PORT="587"
-    if [ "$SKIP_SMTP" != "1" ]; then
-      if [ -n "$TTY_IN" ]; then
-        SMTP_USER="$(read_answer "SMTP username (blank if none)" "${SMTP_USER:-}")"
-        SMTP_PASS="$(read_answer "SMTP password (blank if none)" "${SMTP_PASS:-}" 1)"
-      fi
+    if [ "$SKIP_SMTP" != "1" ] && [ "$REUSED_CONFIG" != "1" ] && [ -n "$TTY_IN" ]; then
+      SMTP_USER="$(read_answer "SMTP username (blank if none)" "${SMTP_USER:-}")"
+      SMTP_PASS="$(read_answer "SMTP password (blank if none)" "${SMTP_PASS:-}" 1)"
     fi
   fi
   [ -n "$SMTP_FROM" ] || SMTP_FROM="noreply@$(issuer_host "$ISSUER_BASE_URL")"
+  if [ "$SKIP_SMTP" != "1" ] && [ -n "$SMTP_USER" ] && [ -z "$SMTP_PASS" ]; then
+    warn "SMTP_USER is set but SMTP_PASS is empty. Most relays reject unauthenticated senders; set a password if email delivery fails."
+  fi
 
   # ── Admin bootstrap defaults ────────────────────────────────────────────
   if [ -n "$ADMIN_EMAIL" ]; then
@@ -761,11 +873,14 @@ main() {
   fi
 
   # ── Secrets ─────────────────────────────────────────────────────────────
+  # Reuse secrets loaded from the existing .env. The PostgreSQL volume keeps the
+  # password from the first run, and changing the root encryption keys would make
+  # already-encrypted data undecryptable.
   [ -n "$POSTGRES_PASSWORD" ] || POSTGRES_PASSWORD="$(random_token 24)"
   local cookie_key tfe_key signing_key
-  cookie_key="$(random_token 32)"
-  tfe_key="$(random_hex64)"
-  signing_key="$(random_hex64)"
+  cookie_key="${existing_cookie:-$(random_token 32)}"
+  tfe_key="${existing_tfe:-$(random_hex64)}"
+  signing_key="${existing_signing:-$(random_hex64)}"
   # The two root keys must differ or Porta refuses to start (domain separation).
   while [ "$signing_key" = "$tfe_key" ]; do
     signing_key="$(random_hex64)"
@@ -784,7 +899,7 @@ main() {
 
 Next steps:
   cd "${TARGET_DIR}"
-  docker compose up -d postgres redis
+  docker compose up -d --wait postgres redis
   docker compose run --rm --no-deps porta node dist/cli/index.js migrate up
 $([ "$SKIP_SMTP" = "1" ] && echo '  docker compose --profile dev up -d' || echo '  docker compose up -d')
   docker exec -it porta-app porta init
@@ -799,6 +914,8 @@ EOF
 
   log "Starting PostgreSQL and Redis..."
   compose up -d postgres redis
+
+  wait_for_dependencies
 
   run_migrations
 

@@ -236,13 +236,45 @@ test('should refuse to overwrite without --force and reject invalid input', () =
     ];
 
     assert.equal(runInstaller(baseArguments).status, 0);
+    const firstEnv = readGeneratedEnv(targetDirectory);
 
     const overwrite = runInstaller(baseArguments);
     assert.notEqual(overwrite.status, 0, 'a second run must fail without --force');
     assert.match(overwrite.stderr, /--force/);
 
-    const forced = runInstaller([...baseArguments, '--force']);
-    assert.equal(forced.status, 0, 'a second run with --force must succeed');
+    const reused = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--force',
+      '--dir',
+      targetDirectory,
+    ]);
+    assert.equal(
+      reused.status,
+      0,
+      `reinstall with no other flags must reuse saved answers: ${reused.stderr}`,
+    );
+
+    const reusedEnv = readGeneratedEnv(targetDirectory);
+    for (const key of [
+      'POSTGRES_PASSWORD',
+      'COOKIE_KEYS',
+      'SIGNING_KEY_ENCRYPTION_KEY',
+      'ISSUER_BASE_URL',
+      'HOST_PORT',
+      'SMTP_HOST',
+    ]) {
+      assert.equal(reusedEnv.get(key), firstEnv.get(key), `reinstall must reuse ${key}`);
+    }
+
+    const fresh = runInstaller([...baseArguments, '--force', '--fresh']);
+    assert.equal(fresh.status, 0, 'a --fresh --force run must succeed');
+    const freshEnv = readGeneratedEnv(targetDirectory);
+    assert.notEqual(
+      freshEnv.get('SIGNING_KEY_ENCRYPTION_KEY'),
+      reusedEnv.get('SIGNING_KEY_ENCRYPTION_KEY'),
+      '--fresh must generate new secrets',
+    );
 
     const invalidPort = runInstaller([
       '--non-interactive',
