@@ -476,6 +476,14 @@ read_env_value() {
   printf '%s' "$value"
 }
 
+# Reports whether a key line exists in a .env file, even when its value is empty.
+# Used to tell "the user deliberately saved a blank value" apart from "the key
+# was never saved", so only genuinely missing values are prompted for again.
+env_key_present() {
+  local file="$1" key="$2"
+  [ -f "$file" ] && grep -qE "^${key}=" "$file"
+}
+
 # Reuses answers saved in an existing .env so repeated test runs do not require
 # retyping. Command-line flags always win: this only fills variables that are
 # still empty. `--fresh` skips reuse entirely; `--force` is still required to
@@ -530,6 +538,10 @@ load_existing_configuration() {
   existing_cookie="$(read_env_value "$ENV_FILE" COOKIE_KEYS || true)"
   existing_tfe="$(read_env_value "$ENV_FILE" TWO_FACTOR_ENCRYPTION_KEY || true)"
   existing_signing="$(read_env_value "$ENV_FILE" SIGNING_KEY_ENCRYPTION_KEY || true)"
+
+  if [ -z "$POSTGRES_PASSWORD" ] || [ -z "$existing_cookie" ] || [ -z "$existing_tfe" ] || [ -z "$existing_signing" ]; then
+    warn "One or more required secrets are missing from ${ENV_FILE}; new values will be generated. If this deployment already holds data, restore the missing values before continuing."
+  fi
 
   REUSED_CONFIG="1"
   log "Reusing saved configuration from ${ENV_FILE} (flags override; --fresh to ignore)."
@@ -787,6 +799,15 @@ main() {
     warn "--fresh ignores saved secrets. If this deployment already has data, remove the old volume first: (cd \"${TARGET_DIR}\" && docker compose down -v)"
   fi
 
+  # Track which SMTP keys were actually saved. A saved-but-blank value is an
+  # intentional choice; a missing key is prompted for again.
+  local smtp_user_present="0" smtp_pass_present="0" smtp_from_present="0"
+  if [ -f "$ENV_FILE" ] && [ "$FRESH" != "1" ]; then
+    env_key_present "$ENV_FILE" SMTP_USER && smtp_user_present="1"
+    env_key_present "$ENV_FILE" SMTP_PASS && smtp_pass_present="1"
+    env_key_present "$ENV_FILE" SMTP_FROM && smtp_from_present="1"
+  fi
+
   [ -n "$PORTA_IMAGE" ] || PORTA_IMAGE="$PORTA_IMAGE_DEFAULT"
 
   # ── Public URL and reverse-proxy posture ────────────────────────────────
@@ -855,11 +876,17 @@ main() {
       SMTP_PASS=""
     fi
     [ -n "$SMTP_PORT" ] || SMTP_PORT="587"
-    if [ "$SKIP_SMTP" != "1" ] && [ "$REUSED_CONFIG" != "1" ] && [ -n "$TTY_IN" ]; then
-      SMTP_USER="$(read_answer "SMTP username (blank if none)" "${SMTP_USER:-}")"
-      SMTP_PASS="$(read_answer "SMTP password (blank if none)" "${SMTP_PASS:-}" 1)"
-      SMTP_FROM="$(read_answer "Sender email address" "${SMTP_FROM:-noreply@$(issuer_host "$ISSUER_BASE_URL")}")"
+    if [ "$SKIP_SMTP" != "1" ] && [ -n "$TTY_IN" ]; then
+      if [ -z "$SMTP_USER" ] && [ "$smtp_user_present" != "1" ]; then
+        SMTP_USER="$(read_answer "SMTP username (blank if none)" "")"
+      fi
+      if [ -z "$SMTP_PASS" ] && [ "$smtp_pass_present" != "1" ]; then
+        SMTP_PASS="$(read_answer "SMTP password (blank if none)" "" 1)"
+      fi
     fi
+  fi
+  if [ "$SKIP_SMTP" != "1" ] && [ -z "$SMTP_FROM" ] && [ "$smtp_from_present" != "1" ] && [ -n "$TTY_IN" ]; then
+    SMTP_FROM="$(read_answer "Sender email address" "noreply@$(issuer_host "$ISSUER_BASE_URL")")"
   fi
   [ -n "$SMTP_FROM" ] || SMTP_FROM="noreply@$(issuer_host "$ISSUER_BASE_URL")"
   if [ "$SKIP_SMTP" != "1" ] && [ -n "$SMTP_USER" ] && [ -z "$SMTP_PASS" ]; then
