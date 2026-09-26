@@ -126,13 +126,19 @@ Options:
       --admin-family-name N Admin family name (default: User)
       --admin-password P    Admin password (only with --admin-email)
       --no-start            Only write docker-compose.yml and .env
-      --force               Overwrite existing files in the target directory
+      --force               Overwrite existing files in the target directory.
+                            Saved answers are reused; only missing values are
+                            asked for again.
       --fresh               Ignore answers saved in an existing .env and ask
                             again (combine with --force when files exist)
+      --check               Read-only: report which values are present, empty
+                            or missing in the target .env, then exit. Exit
+                            status 0 when complete, 1 when something is missing.
       --allow-http          Evaluation mode: allow an HTTP issuer on a
                             non-localhost host, disable production mode and
                             proxy trust. Never use in production.
-      --non-interactive     Never prompt; fail when a required value is missing
+      --non-interactive     Never prompt; apply defaults and fail only when a
+                            required value with no default is missing
   -h, --help                Show this help and exit
 EOF
 }
@@ -194,31 +200,6 @@ read_answer() {
   fi
 
   printf '%s' "${answer:-$default}"
-}
-
-# Prompts for a value only when the caller did not already supply one.
-prompt_value() {
-  local variable_name="$1" prompt="$2" default="${3:-}" secret="${4:-0}"
-  local current="${!variable_name:-}"
-
-  if [ -n "$current" ]; then
-    return 0
-  fi
-
-  if [ -z "$TTY_IN" ]; then
-    if [ -n "$default" ]; then
-      printf -v "$variable_name" '%s' "$default"
-      return 0
-    fi
-    die "Missing required value '${prompt}'. Supply it as a flag (see --help) or run interactively."
-  fi
-
-  local answer
-  answer="$(read_answer "$prompt" "$default" "$secret")"
-  if [ -z "$answer" ] && [ -z "$default" ]; then
-    die "A value is required for '${prompt}'."
-  fi
-  printf -v "$variable_name" '%s' "$answer"
 }
 
 # Asks a yes/no question. Non-interactive runs return the default answer.
@@ -374,7 +355,6 @@ BIND_ADDR=""
 ISSUER_BASE_URL=""
 TRUST_PROXY=""
 TRUST_PROXY_HOPS=""
-TRUST_PROXY_SET="0"
 SMTP_HOST=""
 SMTP_PORT=""
 SMTP_USER=""
@@ -382,7 +362,14 @@ SMTP_PASS=""
 SMTP_FROM=""
 SKIP_SMTP="0"
 POSTGRES_PASSWORD=""
+COOKIE_KEYS=""
+TWO_FACTOR_ENCRYPTION_KEY=""
+SIGNING_KEY_ENCRYPTION_KEY=""
 PORTA_IMAGE=""
+LOG_LEVEL=""
+METRICS_ENABLED=""
+ADMIN_CORS_ORIGINS=""
+NODE_ENV_VALUE=""
 ADMIN_EMAIL=""
 ADMIN_GIVEN_NAME=""
 ADMIN_FAMILY_NAME=""
@@ -390,12 +377,15 @@ ADMIN_PASSWORD=""
 DO_START="1"
 FORCE="0"
 FRESH="0"
+CHECK="0"
 ALLOW_HTTP="0"
 NON_INTERACTIVE="0"
-REUSED_CONFIG="0"
-existing_cookie=""
-existing_tfe=""
-existing_signing=""
+HOST_PORT_REUSED="0"
+REUSED_KEYS=()
+ASKED_KEYS=()
+DEFAULTED_KEYS=()
+GENERATED_KEYS=()
+REQUIRED_MISSING=()
 
 parse_args() {
   while [ $# -gt 0 ]; do
@@ -408,7 +398,7 @@ parse_args() {
       --bind=*) BIND_ADDR="${1#*=}"; shift ;;
       -u|--issuer-url) ISSUER_BASE_URL="${2:?--issuer-url needs a value}"; shift 2 ;;
       --issuer-url=*) ISSUER_BASE_URL="${1#*=}"; shift ;;
-      --no-proxy) TRUST_PROXY="false"; TRUST_PROXY_SET="1"; shift ;;
+      --no-proxy) TRUST_PROXY="false"; shift ;;
       --trust-proxy-hops) TRUST_PROXY_HOPS="${2:?--trust-proxy-hops needs a value}"; shift 2 ;;
       --trust-proxy-hops=*) TRUST_PROXY_HOPS="${1#*=}"; shift ;;
       --smtp-host) SMTP_HOST="${2:?--smtp-host needs a value}"; shift 2 ;;
@@ -437,6 +427,7 @@ parse_args() {
       --no-start) DO_START="0"; shift ;;
       --force) FORCE="1"; shift ;;
       --fresh) FRESH="1"; shift ;;
+      --check) CHECK="1"; shift ;;
       --allow-http) ALLOW_HTTP="1"; shift ;;
       --non-interactive) NON_INTERACTIVE="1"; shift ;;
       -h|--help) usage; exit 0 ;;
@@ -460,10 +451,9 @@ quote_env_value() {
   printf '%s' "$value"
 }
 
-# Reads one value from an existing .env file, stripping surrounding quotes.
-# Returns non-zero when the key is absent. Used to reuse secrets on --force so
-# that a reinstall keeps the password already baked into the PostgreSQL volume.
-read_env_value() {
+# Reads one value from a .env file without requiring it to be non-empty.
+# Strips surrounding double quotes. Returns non-zero only when the key is absent.
+read_env_raw() {
   local file="$1" key="$2" line value
   [ -f "$file" ] || return 1
   line="$(grep -E "^${key}=" "$file" | tail -n 1 || true)"
@@ -472,86 +462,219 @@ read_env_value() {
   case "$value" in
     \"*\") value="${value#\"}"; value="${value%\"}" ;;
   esac
-  [ -n "$value" ] || return 1
   printf '%s' "$value"
 }
 
 # Reports whether a key line exists in a .env file, even when its value is empty.
-# Used to tell "the user deliberately saved a blank value" apart from "the key
-# was never saved", so only genuinely missing values are prompted for again.
 env_key_present() {
   local file="$1" key="$2"
   [ -f "$file" ] && grep -qE "^${key}=" "$file"
 }
 
-# Reuses answers saved in an existing .env so repeated test runs do not require
-# retyping. Command-line flags always win: this only fills variables that are
-# still empty. `--fresh` skips reuse entirely; `--force` is still required to
-# overwrite the files.
-load_existing_configuration() {
-  [ -f "$ENV_FILE" ] || return 0
+# Reports success when a key is missing from .env: either the key line is absent
+# or its value is empty (KEY= or KEY=""). `--fresh` makes every key missing so a
+# fresh install asks for everything.
+env_value_missing() {
+  local key="$1" value
   [ "$FRESH" = "1" ] && return 0
+  [ -f "$ENV_FILE" ] || return 0
+  env_key_present "$ENV_FILE" "$key" || return 0
+  value="$(read_env_raw "$ENV_FILE" "$key" || true)"
+  [ -z "$value" ]
+}
 
-  local value
+# Declarative definition of every value the installer keeps in .env.
+#
+# Fields are pipe-separated: key | prompt | default | secret | required.
+# `default` is either a literal or one of the tokens handled in resolve_settings:
+#   -            required, no default (must be supplied or asked for)
+#   @BLANK@      optional, empty by default
+#   @LATEST@     the default image reference
+#   @PORT@       first free host port
+#   @FROM@       noreply@<issuer host>
+#   @GEN_TOKEN@  freshly generated URL-safe token
+#   @GEN_HEX@    freshly generated 64-character hex key
+# Order matters: the issuer is resolved first so @FROM@ can use its host.
+SETTINGS_SPEC=(
+  'ISSUER_BASE_URL|Public URL for Porta (for example https://auth.example.com)|-|0|1'
+  'HOST_PORT|Host port to expose Porta on|@PORT@|0|1'
+  'BIND_ADDR|Host interface to bind|0.0.0.0|0|1'
+  'PORTA_IMAGE|Porta image reference|@LATEST@|0|0'
+  'POSTGRES_PASSWORD|Database password (Enter to generate)|@GEN_TOKEN@|1|1'
+  'COOKIE_KEYS|Cookie signing key (Enter to generate)|@GEN_TOKEN@|1|1'
+  'TWO_FACTOR_ENCRYPTION_KEY|Two-factor encryption key (Enter to generate)|@GEN_HEX@|1|1'
+  'SIGNING_KEY_ENCRYPTION_KEY|Signing-key encryption key (Enter to generate)|@GEN_HEX@|1|1'
+  'SMTP_HOST|SMTP relay hostname (or "skip" for MailHog evaluation)|-|0|1'
+  'SMTP_PORT|SMTP relay port|587|0|0'
+  'SMTP_USER|SMTP username (blank if none)|@BLANK@|0|0'
+  'SMTP_PASS|SMTP password (blank if none)|@BLANK@|1|0'
+  'SMTP_FROM|Sender email address|@FROM@|0|1'
+  'TRUST_PROXY|Trust reverse-proxy headers (true/false)|true|0|0'
+  'TRUST_PROXY_HOPS|Number of trusted proxy hops|1|0|0'
+  'LOG_LEVEL|Log level (debug/info/warn/error)|info|0|0'
+  'METRICS_ENABLED|Expose Prometheus metrics (true/false)|false|0|0'
+  'ADMIN_CORS_ORIGINS|Admin CORS origins (comma-separated, blank for none)|@BLANK@|0|0'
+)
 
-  value="$(read_env_value "$ENV_FILE" ISSUER_BASE_URL || true)"
-  [ -n "$ISSUER_BASE_URL" ] || ISSUER_BASE_URL="$value"
-  value="$(read_env_value "$ENV_FILE" HOST_PORT || true)"
-  [ -n "$HOST_PORT" ] || HOST_PORT="$value"
-  value="$(read_env_value "$ENV_FILE" BIND_ADDR || true)"
-  [ -n "$BIND_ADDR" ] || BIND_ADDR="$value"
-  value="$(read_env_value "$ENV_FILE" PORTA_IMAGE || true)"
-  [ -n "$PORTA_IMAGE" ] || PORTA_IMAGE="$value"
-  value="$(read_env_value "$ENV_FILE" POSTGRES_PASSWORD || true)"
-  [ -n "$POSTGRES_PASSWORD" ] || POSTGRES_PASSWORD="$value"
-  value="$(read_env_value "$ENV_FILE" SMTP_HOST || true)"
-  [ -n "$SMTP_HOST" ] || SMTP_HOST="$value"
-  value="$(read_env_value "$ENV_FILE" SMTP_PORT || true)"
-  [ -n "$SMTP_PORT" ] || SMTP_PORT="$value"
-  value="$(read_env_value "$ENV_FILE" SMTP_USER || true)"
-  [ -n "$SMTP_USER" ] || SMTP_USER="$value"
-  value="$(read_env_value "$ENV_FILE" SMTP_PASS || true)"
-  [ -n "$SMTP_PASS" ] || SMTP_PASS="$value"
-  value="$(read_env_value "$ENV_FILE" SMTP_FROM || true)"
-  [ -n "$SMTP_FROM" ] || SMTP_FROM="$value"
-
-  if [ "$TRUST_PROXY_SET" != "1" ]; then
-    value="$(read_env_value "$ENV_FILE" TRUST_PROXY || true)"
-    if [ -n "$value" ]; then
-      TRUST_PROXY="$value"
-    fi
+# Reports the status of every expected key in the target .env. Read-only: writes
+# nothing and never prompts. Returns 0 when all values are present and non-empty,
+# 1 when any key is empty or missing.
+run_check() {
+  local record key value present=0 empty=0 missing=0
+  printf 'Checking %s\n' "$ENV_FILE"
+  if [ ! -f "$ENV_FILE" ]; then
+    warn "No .env file found; every value is missing."
   fi
-  value="$(read_env_value "$ENV_FILE" TRUST_PROXY_HOPS || true)"
-  [ -n "$TRUST_PROXY_HOPS" ] || TRUST_PROXY_HOPS="$value"
 
-  if [ "$ALLOW_HTTP" != "1" ]; then
-    value="$(read_env_value "$ENV_FILE" NODE_ENV || true)"
-    if [ "$value" = "development" ]; then
-      ALLOW_HTTP="1"
+  for record in "${SETTINGS_SPEC[@]}"; do
+    IFS='|' read -r key _ _ _ _ <<<"$record"
+    if [ -f "$ENV_FILE" ] && env_key_present "$ENV_FILE" "$key"; then
+      value="$(read_env_raw "$ENV_FILE" "$key" || true)"
+      if [ -n "$value" ]; then
+        printf '  present  %s\n' "$key"
+        present=$((present + 1))
+      else
+        printf '  empty    %s\n' "$key"
+        empty=$((empty + 1))
+      fi
+    else
+      printf '  missing  %s\n' "$key"
+      missing=$((missing + 1))
     fi
-  fi
+  done
 
-  if [ -z "$SMTP_HOST" ] || [ "$SMTP_HOST" = "mailhog" ]; then
+  printf '\n%s present, %s empty, %s missing\n' "$present" "$empty" "$missing"
+  if [ "$empty" -gt 0 ] || [ "$missing" -gt 0 ]; then
+    printf 'Re-run without --check to be asked for the missing values.\n'
+    return 1
+  fi
+  ok "All expected values are present."
+}
+
+# Finds a free host port to offer as the default.
+suggest_host_port() {
+  local used_ports suggested
+  used_ports="$(collect_docker_ports; collect_host_ports)"
+  suggested="$(suggest_port "$used_ports" || true)"
+  [ -n "$suggested" ] || die "Could not find a free host port between ${DEFAULT_PORT_START} and $((DEFAULT_PORT_START + PORT_SCAN_RANGE))."
+  printf '%s' "$suggested"
+}
+
+# Resolves every setting: command-line flags win, then a non-empty saved value
+# in .env, then an interactive prompt or a default. Missing values are asked for
+# one by one; required values with no default are collected and reported together.
+resolve_settings() {
+  local record key prompt default_kind secret required value answer generated used_generated
+
+  # Decide the email mode before resolving the SMTP keys.
+  if [ "$SMTP_HOST" = "skip" ]; then
+    SKIP_SMTP="1"
+    SMTP_HOST="mailhog"
+  fi
+  if [ "$SKIP_SMTP" != "1" ] && [ -f "$ENV_FILE" ] && [ "$FRESH" != "1" ] \
+    && [ "$(read_env_raw "$ENV_FILE" SMTP_HOST || true)" = "mailhog" ]; then
     SKIP_SMTP="1"
   fi
 
-  existing_cookie="$(read_env_value "$ENV_FILE" COOKIE_KEYS || true)"
-  existing_tfe="$(read_env_value "$ENV_FILE" TWO_FACTOR_ENCRYPTION_KEY || true)"
-  existing_signing="$(read_env_value "$ENV_FILE" SIGNING_KEY_ENCRYPTION_KEY || true)"
+  for record in "${SETTINGS_SPEC[@]}"; do
+    IFS='|' read -r key prompt default_kind secret required <<<"$record"
 
-  if [ -z "$POSTGRES_PASSWORD" ] || [ -z "$existing_cookie" ] || [ -z "$existing_tfe" ] || [ -z "$existing_signing" ]; then
-    warn "One or more required secrets are missing from ${ENV_FILE}; new values will be generated. If this deployment already holds data, restore the missing values before continuing."
+    # A command-line flag, or a value already resolved earlier, wins.
+    if [ -n "${!key:-}" ]; then
+      continue
+    fi
+
+    # MailHog owns the SMTP settings when email is intentionally skipped.
+    if [ "$SKIP_SMTP" = "1" ]; then
+      case "$key" in
+        SMTP_HOST) printf -v "$key" '%s' mailhog; continue ;;
+        SMTP_PORT) printf -v "$key" '%s' 1025; continue ;;
+        SMTP_USER | SMTP_PASS) printf -v "$key" '%s' ''; continue ;;
+      esac
+    fi
+
+    # Reuse a saved, non-empty value.
+    if ! env_value_missing "$key"; then
+      value="$(read_env_raw "$ENV_FILE" "$key" || true)"
+      printf -v "$key" '%s' "$value"
+      REUSED_KEYS+=("$key")
+      if [ "$key" = "HOST_PORT" ]; then
+        HOST_PORT_REUSED="1"
+      fi
+      continue
+    fi
+
+    generated="0"
+    case "$default_kind" in
+      - | @BLANK@) value="" ;;
+      @LATEST@) value="$PORTA_IMAGE_DEFAULT" ;;
+      @PORT@) value="$(suggest_host_port || true)" ;;
+      @FROM@) value="noreply@$(issuer_host "${ISSUER_BASE_URL:-}")" ;;
+      @GEN_TOKEN@) value="$(random_token 32)"; generated="1" ;;
+      @GEN_HEX@) value="$(random_hex64)"; generated="1" ;;
+      *) value="$default_kind" ;;
+    esac
+
+    used_generated="0"
+    if [ "$NON_INTERACTIVE" != "1" ] && [ -n "$TTY_IN" ]; then
+      if [ "$secret" = "1" ]; then
+        answer="$(read_answer "$prompt" '' 1)"
+        if [ -z "$answer" ]; then
+          answer="$value"
+          used_generated="$generated"
+        fi
+      else
+        answer="$(read_answer "$prompt" "$value")"
+      fi
+      ASKED_KEYS+=("$key")
+      value="$answer"
+    else
+      DEFAULTED_KEYS+=("$key")
+      used_generated="$generated"
+    fi
+
+    # "skip" entered at the SMTP host prompt switches to MailHog.
+    if [ "$key" = "SMTP_HOST" ] && [ "$value" = "skip" ]; then
+      SKIP_SMTP="1"
+      printf -v "$key" '%s' mailhog
+      continue
+    fi
+
+    if [ -z "$value" ] && [ "$required" = "1" ]; then
+      REQUIRED_MISSING+=("$key")
+      continue
+    fi
+
+    printf -v "$key" '%s' "$value"
+    if [ "$used_generated" = "1" ]; then
+      GENERATED_KEYS+=("$key")
+    fi
+  done
+
+  if [ "${#REQUIRED_MISSING[@]}" -gt 0 ]; then
+    die "No value for required setting(s): ${REQUIRED_MISSING[*]}. Pass them as flags (see --help) or run interactively."
   fi
 
-  REUSED_CONFIG="1"
-  log "Reusing saved configuration from ${ENV_FILE} (flags override; --fresh to ignore)."
+  # Domain separation: the two root encryption keys must not be equal.
+  if [ "$SIGNING_KEY_ENCRYPTION_KEY" = "$TWO_FACTOR_ENCRYPTION_KEY" ]; then
+    SIGNING_KEY_ENCRYPTION_KEY="$(random_hex64)"
+    GENERATED_KEYS+=("SIGNING_KEY_ENCRYPTION_KEY")
+    warn "The signing-key and two-factor keys were equal; a new signing-key key was generated."
+  fi
+
+  if [ "${#REUSED_KEYS[@]}" -gt 0 ]; then
+    log "Reused saved values from ${ENV_FILE}: ${REUSED_KEYS[*]}"
+  fi
+  if [ "${#ASKED_KEYS[@]}" -gt 0 ]; then
+    log "Filled missing values: ${ASKED_KEYS[*]}"
+  fi
+  if [ "${#GENERATED_KEYS[@]}" -gt 0 ]; then
+    warn "Generated new secrets: ${GENERATED_KEYS[*]}. If this deployment already holds data, restore the previous values instead."
+  fi
 }
 
-# Writes a fixed .env containing generated secrets and the resolved settings.
-# The file is created with owner-only permissions because it holds root secrets.
+# Writes the resolved settings to .env with owner-only permissions.
 write_env_file() {
-  local cookie_key="$1" tfe_key="$2" signing_key="$3"
-
   {
     printf '# Porta deployment configuration — generated by install-porta.sh\n'
     printf '# Keep this file private: it contains root encryption secrets.\n\n'
@@ -563,19 +686,22 @@ write_env_file() {
     printf 'PORTA_IMAGE=%s\n\n' "$PORTA_IMAGE"
     printf 'POSTGRES_PASSWORD="%s"\n\n' "$(quote_env_value "$POSTGRES_PASSWORD")"
     printf 'ISSUER_BASE_URL=%s\n\n' "$ISSUER_BASE_URL"
-    printf 'COOKIE_KEYS=%s\n' "$cookie_key"
-    printf 'TWO_FACTOR_ENCRYPTION_KEY=%s\n' "$tfe_key"
-    printf 'SIGNING_KEY_ENCRYPTION_KEY=%s\n\n' "$signing_key"
+    printf 'COOKIE_KEYS=%s\n' "$COOKIE_KEYS"
+    printf 'TWO_FACTOR_ENCRYPTION_KEY=%s\n' "$TWO_FACTOR_ENCRYPTION_KEY"
+    printf 'SIGNING_KEY_ENCRYPTION_KEY=%s\n\n' "$SIGNING_KEY_ENCRYPTION_KEY"
     printf 'SMTP_HOST=%s\n' "$SMTP_HOST"
     printf 'SMTP_PORT=%s\n' "$SMTP_PORT"
     printf 'SMTP_USER="%s"\n' "$(quote_env_value "$SMTP_USER")"
     printf 'SMTP_PASS="%s"\n' "$(quote_env_value "$SMTP_PASS")"
     printf 'SMTP_FROM="%s"\n\n' "$(quote_env_value "$SMTP_FROM")"
-    printf 'LOG_LEVEL=info\n'
+    printf 'LOG_LEVEL=%s\n' "$LOG_LEVEL"
     printf 'TRUST_PROXY=%s\n' "$TRUST_PROXY"
     printf 'TRUST_PROXY_HOPS=%s\n' "$TRUST_PROXY_HOPS"
     printf 'PORTA_AUTO_MIGRATE=false\n'
-    printf 'METRICS_ENABLED=false\n'
+    printf 'METRICS_ENABLED=%s\n' "$METRICS_ENABLED"
+    if [ -n "$ADMIN_CORS_ORIGINS" ]; then
+      printf 'ADMIN_CORS_ORIGINS="%s"\n' "$(quote_env_value "$ADMIN_CORS_ORIGINS")"
+    fi
   } >"$ENV_FILE"
 
   chmod 600 "$ENV_FILE"
@@ -780,7 +906,21 @@ main() {
   setup_terminal
 
   [ -n "$TARGET_DIR" ] || TARGET_DIR="$DEFAULT_DIR"
-  # Resolve the target directory to an absolute path before changing directories.
+
+  # --check is read-only and does not require the target directory to exist.
+  if [ "$CHECK" = "1" ]; then
+    if [ -d "$TARGET_DIR" ]; then
+      ENV_FILE="$(cd "$TARGET_DIR" && pwd)/.env"
+    else
+      ENV_FILE="${TARGET_DIR%/}/.env"
+    fi
+    if run_check; then
+      exit 0
+    fi
+    exit 1
+  fi
+
+  # Resolve the target directory to an absolute path before writing anything.
   mkdir -p "$TARGET_DIR"
   TARGET_DIR="$(cd "$TARGET_DIR" && pwd)"
   COMPOSE_FILE="${TARGET_DIR}/docker-compose.yml"
@@ -793,29 +933,15 @@ main() {
     warn "Overwriting existing files in ${TARGET_DIR} (--force)."
   fi
 
-  # Reuse answers from a previous run unless the caller asked for a fresh start.
-  load_existing_configuration
   if [ "$FRESH" = "1" ] && [ -f "$ENV_FILE" ]; then
-    warn "--fresh ignores saved secrets. If this deployment already has data, remove the old volume first: (cd \"${TARGET_DIR}\" && docker compose down -v)"
+    warn "--fresh ignores saved values. If this deployment already has data, remove the old volume first: (cd \"${TARGET_DIR}\" && docker compose down -v)"
   fi
 
-  # Track which SMTP keys were actually saved. A saved-but-blank value is an
-  # intentional choice; a missing key is prompted for again.
-  local smtp_user_present="0" smtp_pass_present="0" smtp_from_present="0"
-  if [ -f "$ENV_FILE" ] && [ "$FRESH" != "1" ]; then
-    env_key_present "$ENV_FILE" SMTP_USER && smtp_user_present="1"
-    env_key_present "$ENV_FILE" SMTP_PASS && smtp_pass_present="1"
-    env_key_present "$ENV_FILE" SMTP_FROM && smtp_from_present="1"
+  # ── Reverse-proxy posture ───────────────────────────────────────────────
+  if [ "$ALLOW_HTTP" != "1" ] && [ -f "$ENV_FILE" ] && [ "$FRESH" != "1" ] \
+    && [ "$(read_env_raw "$ENV_FILE" NODE_ENV || true)" = "development" ]; then
+    ALLOW_HTTP="1"
   fi
-
-  [ -n "$PORTA_IMAGE" ] || PORTA_IMAGE="$PORTA_IMAGE_DEFAULT"
-
-  # ── Public URL and reverse-proxy posture ────────────────────────────────
-  if [ -z "$ISSUER_BASE_URL" ]; then
-    prompt_value ISSUER_BASE_URL "Public URL for Porta (for example https://auth.example.com)"
-  fi
-  validate_issuer_url "$ISSUER_BASE_URL"
-
   if [ "$ALLOW_HTTP" = "1" ]; then
     warn "Evaluation mode (--allow-http): production mode and proxy trust are disabled."
     NODE_ENV_VALUE="development"
@@ -824,72 +950,22 @@ main() {
     NODE_ENV_VALUE="production"
   fi
 
-  [ -n "$TRUST_PROXY" ] || TRUST_PROXY="true"
-  [ -n "$TRUST_PROXY_HOPS" ] || TRUST_PROXY_HOPS="1"
+  # ── Resolve every setting: flags, then saved values, then prompts/defaults ─
+  resolve_settings
 
-  # ── Host port ───────────────────────────────────────────────────────────
-  if [ -z "$HOST_PORT" ]; then
-    local used_ports suggested
-    used_ports="$(collect_docker_ports; collect_host_ports)"
-    suggested="$(suggest_port "$used_ports" || true)"
-    [ -n "$suggested" ] || die "Could not find a free host port between ${DEFAULT_PORT_START} and $((DEFAULT_PORT_START+PORT_SCAN_RANGE))."
-
-    if [ -n "$TTY_IN" ]; then
-      HOST_PORT="$(read_answer "Host port to expose Porta on" "$suggested")"
-    else
-      HOST_PORT="$suggested"
-      log "Selected free host port ${HOST_PORT} (no terminal detected)."
-    fi
-  fi
+  # ── Validate resolved values ────────────────────────────────────────────
+  validate_issuer_url "$ISSUER_BASE_URL"
   validate_port "$HOST_PORT"
-  if [ "$REUSED_CONFIG" != "1" ] \
+  case "$BIND_ADDR" in
+    *" "* | "") die "Invalid bind address: '${BIND_ADDR}'" ;;
+  esac
+  if [ "$HOST_PORT_REUSED" != "1" ] \
     && printf '%s\n' "$(collect_docker_ports; collect_host_ports)" | grep -qx "$HOST_PORT"; then
     warn "Port ${HOST_PORT} appears to be in use. Docker will fail to start if it is taken."
   fi
-
-  # ── Bind address ────────────────────────────────────────────────────────
-  if [ -z "$BIND_ADDR" ]; then
-    if [ -n "$TTY_IN" ]; then
-      BIND_ADDR="$(read_answer "Host interface to bind" "0.0.0.0")"
-    else
-      BIND_ADDR="0.0.0.0"
-    fi
-  fi
-  case "$BIND_ADDR" in
-    *" "*|"") die "Invalid bind address: '${BIND_ADDR}'" ;;
-  esac
-
-  # ── SMTP ────────────────────────────────────────────────────────────────
   if [ "$SKIP_SMTP" = "1" ]; then
-    SMTP_HOST="mailhog"
-    SMTP_PORT="1025"
-    SMTP_USER=""
-    SMTP_PASS=""
     warn "SMTP skipped: email will be captured by MailHog, not delivered."
-  else
-    prompt_value SMTP_HOST "SMTP relay hostname (or 'skip' for MailHog evaluation)"
-    if [ "$SMTP_HOST" = "skip" ]; then
-      SKIP_SMTP="1"
-      SMTP_HOST="mailhog"
-      SMTP_PORT="1025"
-      SMTP_USER=""
-      SMTP_PASS=""
-    fi
-    [ -n "$SMTP_PORT" ] || SMTP_PORT="587"
-    if [ "$SKIP_SMTP" != "1" ] && [ -n "$TTY_IN" ]; then
-      if [ -z "$SMTP_USER" ] && [ "$smtp_user_present" != "1" ]; then
-        SMTP_USER="$(read_answer "SMTP username (blank if none)" "")"
-      fi
-      if [ -z "$SMTP_PASS" ] && [ "$smtp_pass_present" != "1" ]; then
-        SMTP_PASS="$(read_answer "SMTP password (blank if none)" "" 1)"
-      fi
-    fi
-  fi
-  if [ "$SKIP_SMTP" != "1" ] && [ -z "$SMTP_FROM" ] && [ "$smtp_from_present" != "1" ] && [ -n "$TTY_IN" ]; then
-    SMTP_FROM="$(read_answer "Sender email address" "noreply@$(issuer_host "$ISSUER_BASE_URL")")"
-  fi
-  [ -n "$SMTP_FROM" ] || SMTP_FROM="noreply@$(issuer_host "$ISSUER_BASE_URL")"
-  if [ "$SKIP_SMTP" != "1" ] && [ -n "$SMTP_USER" ] && [ -z "$SMTP_PASS" ]; then
+  elif [ -n "$SMTP_USER" ] && [ -z "$SMTP_PASS" ]; then
     warn "SMTP_USER is set but SMTP_PASS is empty. Most relays reject unauthenticated senders; set a password if email delivery fails."
   fi
 
@@ -900,25 +976,11 @@ main() {
     [ -n "$ADMIN_FAMILY_NAME" ] || ADMIN_FAMILY_NAME="User"
   fi
 
-  # ── Secrets ─────────────────────────────────────────────────────────────
-  # Reuse secrets loaded from the existing .env. The PostgreSQL volume keeps the
-  # password from the first run, and changing the root encryption keys would make
-  # already-encrypted data undecryptable.
-  [ -n "$POSTGRES_PASSWORD" ] || POSTGRES_PASSWORD="$(random_token 24)"
-  local cookie_key tfe_key signing_key
-  cookie_key="${existing_cookie:-$(random_token 32)}"
-  tfe_key="${existing_tfe:-$(random_hex64)}"
-  signing_key="${existing_signing:-$(random_hex64)}"
-  # The two root keys must differ or Porta refuses to start (domain separation).
-  while [ "$signing_key" = "$tfe_key" ]; do
-    signing_key="$(random_hex64)"
-  done
-
   # ── Write configuration ─────────────────────────────────────────────────
   log "Writing ${COMPOSE_FILE}"
   write_compose_file
   log "Writing ${ENV_FILE} (permissions 600)"
-  write_env_file "$cookie_key" "$tfe_key" "$signing_key"
+  write_env_file
 
   # ── Start ───────────────────────────────────────────────────────────────
   if [ "$DO_START" != "1" ]; then

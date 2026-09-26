@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -75,6 +75,30 @@ function readGeneratedEnv(targetDirectory) {
   }
 
   return entries;
+}
+
+/** Sets one line in the generated .env, replacing or appending it. */
+function setEnvLine(targetDirectory, key, value) {
+  const path = join(targetDirectory, '.env');
+  const expression = new RegExp(`^${key}=.*$`, 'm');
+  const replacement = `${key}=${value}`;
+  const current = readText(path);
+  writeFileSync(
+    path,
+    expression.test(current)
+      ? current.replace(expression, replacement)
+      : `${current}${replacement}\n`,
+  );
+}
+
+/** Removes a key line from the generated .env. */
+function removeEnvLine(targetDirectory, key) {
+  const path = join(targetDirectory, '.env');
+  const remaining = readText(path)
+    .split('\n')
+    .filter((line) => !line.startsWith(`${key}=`))
+    .join('\n');
+  writeFileSync(path, remaining);
 }
 
 test('should ship an executable bash installer with valid syntax and help output', () => {
@@ -306,6 +330,167 @@ test('should refuse to overwrite without --force and reject invalid input', () =
       0,
       'plain HTTP for a remote host must be rejected without --allow-http',
     );
+  } finally {
+    rmSync(targetDirectory, { recursive: true, force: true });
+  }
+});
+
+test('should report empty and missing values with --check', () => {
+  const targetDirectory = makeTargetDirectory();
+
+  try {
+    const generated = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--dir',
+      targetDirectory,
+      '--port',
+      '3471',
+      '--issuer-url',
+      'https://auth.example.com',
+      '--smtp-host',
+      'smtp.example.com',
+      '--smtp-from',
+      'noreply@example.com',
+      '--smtp-user',
+      'bob',
+      '--smtp-pass',
+      'secret',
+    ]);
+    assert.equal(generated.status, 0, generated.stderr);
+
+    setEnvLine(targetDirectory, 'ADMIN_CORS_ORIGINS', '"https://admin.example.com"');
+    removeEnvLine(targetDirectory, 'LOG_LEVEL');
+    setEnvLine(targetDirectory, 'TRUST_PROXY_HOPS', '');
+
+    const incomplete = runInstaller(['--check', '--dir', targetDirectory]);
+    assert.equal(incomplete.status, 1, '--check must fail while values are missing');
+    assert.match(incomplete.stdout, /missing\s+LOG_LEVEL/, 'deleted keys must be reported missing');
+    assert.match(
+      incomplete.stdout,
+      /empty\s+TRUST_PROXY_HOPS/,
+      'blank values must be reported empty',
+    );
+    assert.doesNotMatch(
+      incomplete.stdout,
+      /missing\s+ISSUER_BASE_URL/,
+      'present keys must be reused',
+    );
+
+    setEnvLine(targetDirectory, 'LOG_LEVEL', 'info');
+    setEnvLine(targetDirectory, 'TRUST_PROXY_HOPS', '1');
+
+    const complete = runInstaller(['--check', '--dir', targetDirectory]);
+    assert.equal(complete.status, 0, `--check must pass when complete:\n${complete.stdout}`);
+  } finally {
+    rmSync(targetDirectory, { recursive: true, force: true });
+  }
+});
+
+test('should fill missing values non-interactively and preserve optional settings', () => {
+  const targetDirectory = makeTargetDirectory();
+
+  try {
+    const generated = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--dir',
+      targetDirectory,
+      '--port',
+      '3472',
+      '--issuer-url',
+      'https://auth.example.com',
+      '--smtp-host',
+      'smtp.example.com',
+      '--smtp-from',
+      'noreply@example.com',
+    ]);
+    assert.equal(generated.status, 0, generated.stderr);
+
+    setEnvLine(targetDirectory, 'LOG_LEVEL', 'warn');
+    setEnvLine(targetDirectory, 'METRICS_ENABLED', 'true');
+    setEnvLine(targetDirectory, 'ADMIN_CORS_ORIGINS', '"https://admin.example.com"');
+    setEnvLine(targetDirectory, 'TRUST_PROXY_HOPS', '');
+    removeEnvLine(targetDirectory, 'SMTP_PORT');
+
+    const result = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--force',
+      '--dir',
+      targetDirectory,
+    ]);
+    assert.equal(result.status, 0, result.stderr);
+
+    const env = readGeneratedEnv(targetDirectory);
+    assert.equal(env.get('TRUST_PROXY_HOPS'), '1', 'a blank key must be refilled with its default');
+    assert.equal(env.get('SMTP_PORT'), '587', 'a deleted key must be refilled with its default');
+    assert.equal(env.get('LOG_LEVEL'), 'warn', 'a saved optional setting must be preserved');
+    assert.equal(env.get('METRICS_ENABLED'), 'true', 'a saved optional setting must be preserved');
+    assert.equal(
+      env.get('ADMIN_CORS_ORIGINS'),
+      'https://admin.example.com',
+      'a saved optional setting must be preserved',
+    );
+  } finally {
+    rmSync(targetDirectory, { recursive: true, force: true });
+  }
+});
+
+test('should ask only for keys missing from an existing .env', () => {
+  const targetDirectory = makeTargetDirectory();
+
+  try {
+    const generated = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--dir',
+      targetDirectory,
+      '--port',
+      '3473',
+      '--issuer-url',
+      'https://auth.example.com',
+      '--smtp-host',
+      'smtp.example.com',
+      '--smtp-from',
+      'noreply@example.com',
+      '--smtp-user',
+      'bob',
+      '--smtp-pass',
+      'secret',
+    ]);
+    assert.equal(generated.status, 0, generated.stderr);
+
+    setEnvLine(targetDirectory, 'ADMIN_CORS_ORIGINS', '"https://admin.example.com"');
+    removeEnvLine(targetDirectory, 'LOG_LEVEL');
+    setEnvLine(targetDirectory, 'SMTP_PORT', '');
+
+    let output;
+    try {
+      output = execFileSync(
+        'script',
+        [
+          '-qec',
+          `bash ${installScriptPath} --force --no-start --dir ${targetDirectory}`,
+          '/dev/null',
+        ],
+        { encoding: 'utf8', input: '\n\n', stdio: ['pipe', 'pipe', 'pipe'] },
+      );
+    } catch (error) {
+      if (error.code === 'ENOENT') {
+        return;
+      }
+      output = `${error.stdout ?? ''}${error.stderr ?? ''}`;
+    }
+
+    assert.match(output, /Log level/, 'the missing log level must be asked for');
+    assert.match(output, /SMTP relay port/, 'the blank SMTP port must be asked for');
+    assert.doesNotMatch(output, /Host interface to bind/, 'reused values must not be asked for');
+
+    const env = readGeneratedEnv(targetDirectory);
+    assert.equal(env.get('LOG_LEVEL'), 'info');
+    assert.equal(env.get('SMTP_PORT'), '587');
+    assert.equal(env.get('SMTP_USER'), 'bob', 'saved values must be kept');
   } finally {
     rmSync(targetDirectory, { recursive: true, force: true });
   }

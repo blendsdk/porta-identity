@@ -32,6 +32,10 @@ curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/instal
       --smtp-host smtp.example.com --smtp-from noreply@example.com
 ```
 
+Re-running with `--force` reuses every saved answer and only asks for keys that
+are missing or empty. `--check` lists those values without changing anything, and
+`--fresh` ignores the saved file and starts over.
+
 The manual steps below describe the same deployment file by file.
 
 ---

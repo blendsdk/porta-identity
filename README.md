@@ -40,6 +40,10 @@ curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/instal
       --bind 127.0.0.1
 ```
 
+Re-running with `--force` reuses every saved answer and only asks for keys that
+are missing or empty. Use `--check` to list those values without changing
+anything, and `--fresh` to ignore the saved file and start over.
+
 After the stack is healthy, bootstrap the admin system:
 
 ```bash
