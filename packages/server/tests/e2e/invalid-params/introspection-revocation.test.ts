@@ -22,7 +22,7 @@ describe('Introspection/Revocation — Invalid Params (E2E)', () => {
   let clientSecret: string;
 
   beforeAll(() => {
-    baseUrl = process.env.TEST_SERVER_URL ?? 'https://porta.local:3443';
+    baseUrl = process.env.TEST_SERVER_URL ?? 'https://porta-harness.ci.portaidentity.com:3443';
   });
 
   beforeEach(async () => {

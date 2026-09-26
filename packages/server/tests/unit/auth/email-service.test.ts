@@ -443,8 +443,8 @@ describe('email-service', () => {
       vi.mocked(resolveEffectiveBranding).mockResolvedValueOnce({
         companyName: 'Uploaded Brand',
         primaryColor: '#102030',
-        logoUrl: 'https://porta.local/acme-corp/branding/logo',
-        faviconUrl: 'https://porta.local/acme-corp/branding/favicon',
+        logoUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/logo',
+        faviconUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/favicon',
         customCss: null,
         imageSources: ["'self'"],
       });
@@ -458,8 +458,8 @@ describe('email-service', () => {
         expect.objectContaining({
           orgName: 'Uploaded Brand',
           branding: expect.objectContaining({
-            logoUrl: 'https://porta.local/acme-corp/branding/logo',
-            faviconUrl: 'https://porta.local/acme-corp/branding/favicon',
+            logoUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/logo',
+            faviconUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/favicon',
           }),
         }),
       );

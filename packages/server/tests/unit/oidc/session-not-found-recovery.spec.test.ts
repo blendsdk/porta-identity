@@ -21,7 +21,7 @@ const { mockRenderPage, mockT } = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../src/config/index.js', () => ({
-  config: { issuerBaseUrl: 'https://porta.local:3443' },
+  config: { issuerBaseUrl: 'https://porta-harness.ci.portaidentity.com:3443' },
 }));
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: mockRenderPage,

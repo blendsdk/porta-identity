@@ -17,6 +17,7 @@
  * BEFORE calling connectDatabase()/connectRedis().
  */
 
+import { resolve4 } from 'node:dns/promises';
 import { createServer, type Server } from 'node:http';
 import {
   TEST_DATABASE_URL,
@@ -28,9 +29,43 @@ import {
   TEST_SIGNING_KEY_ENCRYPTION_KEY,
 } from './constants.js';
 
+/**
+ * Reserved public host that resolves to IPv4 loopback in every test environment.
+ *
+ * Server tests default to this address when `TEST_SERVER_URL` is not supplied by the
+ * managed setup, so it must resolve to `127.0.0.1` before a live-server suite runs.
+ */
+const RESERVED_LOOPBACK_HOST = 'porta-harness.ci.portaidentity.com';
+
 // Module-level server reference for teardown
 let server: Server | null = null;
 let stopRecoveryWorker: (() => Promise<boolean>) | null = null;
+
+/**
+ * Verifies that a host resolves only to IPv4 loopback.
+ *
+ * The `*.ci.portaidentity.com` wildcard is reserved for test infrastructure and must resolve
+ * to `127.0.0.1`. Failing here produces a clear message instead of a confusing connection
+ * error when the reserved address is unavailable.
+ *
+ * @param host Host name to resolve.
+ * @throws When the host cannot be resolved or maps to any address other than `127.0.0.1`.
+ */
+async function assertLoopbackDns(host: string): Promise<void> {
+  let addresses: string[];
+
+  try {
+    addresses = await resolve4(host);
+  } catch (error) {
+    throw new Error(`Loopback DNS preflight could not resolve ${host}`, { cause: error });
+  }
+
+  if (addresses.length === 0 || addresses.some((address) => address !== '127.0.0.1')) {
+    throw new Error(
+      `Loopback DNS preflight expected ${host} to resolve only to 127.0.0.1, received: ${addresses.join(', ') || 'no addresses'}`,
+    );
+  }
+}
 
 /**
  * Start the full Porta test server.
@@ -43,6 +78,11 @@ let stopRecoveryWorker: (() => Promise<boolean>) | null = null;
  * base URL (e.g., `http://localhost:49123`) for test HTTP requests.
  */
 export async function setup(): Promise<void> {
+  // ── Step 0: Verify the reserved loopback address ───────────────
+  // The server binds to localhost, but tests fall back to the reserved
+  // host when TEST_SERVER_URL is absent, so prove it resolves first.
+  await assertLoopbackDns(RESERVED_LOOPBACK_HOST);
+
   // ── Step 1: Pre-allocate a port ────────────────────────────────
   // We need the port BEFORE creating the OIDC provider because
   // node-oidc-provider captures the issuer URL at construction time.

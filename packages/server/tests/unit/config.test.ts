@@ -8,7 +8,7 @@ const validEnv = {
   host: '0.0.0.0',
   databaseUrl: 'postgresql://porta:porta_dev@localhost:5432/porta',
   redisUrl: 'redis://localhost:6379',
-  issuerBaseUrl: 'https://porta.local:3443',
+  issuerBaseUrl: 'https://porta-harness.ci.portaidentity.com:3443',
   cookieKeys: ['test-cookie-key-at-least-16-chars'],
   smtp: {
     host: 'localhost',
@@ -42,7 +42,7 @@ describe('config schema', () => {
     const minimal = {
       databaseUrl: 'postgresql://localhost/test',
       redisUrl: 'redis://localhost:6379',
-      issuerBaseUrl: 'https://porta.local:3443',
+      issuerBaseUrl: 'https://porta-harness.ci.portaidentity.com:3443',
       cookieKeys: ['minimal-test-cookie-key-16ch'],
       smtp: {
         host: 'localhost',

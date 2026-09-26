@@ -66,7 +66,7 @@ describe('Email Service (Integration)', () => {
   // ── Magic Link Email ───────────────────────────────────────────
 
   it('should send a magic link email received by MailHog', async () => {
-    const magicUrl = 'https://porta.local:3443/test-org/auth/magic/token-abc123';
+    const magicUrl = 'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/magic/token-abc123';
 
     await sendMagicLinkEmail(testUser, testOrg, magicUrl, 'en');
 
@@ -82,7 +82,7 @@ describe('Email Service (Integration)', () => {
   // ── Password Reset Email ───────────────────────────────────────
 
   it('should send a password reset email received by MailHog', async () => {
-    const resetUrl = 'https://porta.local:3443/test-org/auth/reset/token-def456';
+    const resetUrl = 'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/reset/token-def456';
 
     await sendPasswordResetEmail(testUser, testOrg, resetUrl, 'en');
 
@@ -96,7 +96,7 @@ describe('Email Service (Integration)', () => {
   // ── Invitation Email ───────────────────────────────────────────
 
   it('should send an invitation email received by MailHog', async () => {
-    const inviteUrl = 'https://porta.local:3443/test-org/auth/accept-invite/token-ghi789';
+    const inviteUrl = 'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/accept-invite/token-ghi789';
 
     await sendInvitationEmail(testUser, testOrg, inviteUrl, 'en');
 
@@ -110,7 +110,7 @@ describe('Email Service (Integration)', () => {
   // ── Email From Address ─────────────────────────────────────────
 
   it('should use configured SMTP_FROM as sender address', async () => {
-    const magicUrl = 'https://porta.local:3443/from-test';
+    const magicUrl = 'https://porta-harness.ci.portaidentity.com:3443/from-test';
 
     await sendMagicLinkEmail(testUser, testOrg, magicUrl, 'en');
 
@@ -123,7 +123,7 @@ describe('Email Service (Integration)', () => {
   // ── Correct Recipient ──────────────────────────────────────────
 
   it('should deliver to the correct recipient email address', async () => {
-    const magicUrl = 'https://porta.local:3443/recipient-test';
+    const magicUrl = 'https://porta-harness.ci.portaidentity.com:3443/recipient-test';
 
     await sendMagicLinkEmail(testUser, testOrg, magicUrl, 'en');
 
@@ -136,7 +136,7 @@ describe('Email Service (Integration)', () => {
   // ── No Cross-Contamination ─────────────────────────────────────
 
   it('should not have messages for an unrelated recipient', async () => {
-    const magicUrl = 'https://porta.local:3443/isolation-test';
+    const magicUrl = 'https://porta-harness.ci.portaidentity.com:3443/isolation-test';
 
     await sendMagicLinkEmail(testUser, testOrg, magicUrl, 'en');
 
