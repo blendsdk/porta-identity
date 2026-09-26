@@ -858,6 +858,7 @@ main() {
     if [ "$SKIP_SMTP" != "1" ] && [ "$REUSED_CONFIG" != "1" ] && [ -n "$TTY_IN" ]; then
       SMTP_USER="$(read_answer "SMTP username (blank if none)" "${SMTP_USER:-}")"
       SMTP_PASS="$(read_answer "SMTP password (blank if none)" "${SMTP_PASS:-}" 1)"
+      SMTP_FROM="$(read_answer "Sender email address" "${SMTP_FROM:-noreply@$(issuer_host "$ISSUER_BASE_URL")}")"
     fi
   fi
   [ -n "$SMTP_FROM" ] || SMTP_FROM="noreply@$(issuer_host "$ISSUER_BASE_URL")"

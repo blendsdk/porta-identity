@@ -214,6 +214,7 @@ test('should skip SMTP with MailHog and honour a custom bind address', () => {
     assert.equal(env.get('SMTP_HOST'), 'mailhog');
     assert.equal(env.get('SMTP_PORT'), '1025');
     assert.equal(env.get('BIND_ADDR'), '127.0.0.1');
+    assert.equal(env.get('SMTP_FROM'), 'noreply@auth.example.com');
   } finally {
     rmSync(targetDirectory, { recursive: true, force: true });
   }
