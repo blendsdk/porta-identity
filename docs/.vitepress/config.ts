@@ -1,5 +1,14 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitepress';
 import { withMermaid } from 'vitepress-plugin-mermaid';
+
+// The docs banner shows the coordinated release version. Lockstep owns the root
+// manifest and updates it on every release, so reading it at build time keeps
+// the banner in sync without a second place to edit.
+const portaVersion = JSON.parse(
+  readFileSync(fileURLToPath(new URL('../../package.json', import.meta.url)), 'utf8'),
+).version as string;
 
 // https://vitepress.dev/reference/site-config
 export default withMermaid(
@@ -15,6 +24,7 @@ export default withMermaid(
 
     themeConfig: {
       logo: '/logo.svg',
+      portaVersion,
 
       // ── Top navigation bar ──────────────────────────────────
       nav: [

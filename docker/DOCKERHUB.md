@@ -13,6 +13,16 @@ Porta requires **PostgreSQL** and **Redis** as companion services. The fastest w
 
 Get Porta running in under 5 minutes. No git clone required — just create two files and run.
 
+> **Fastest path**
+> The installer generates `docker-compose.yml` and `.env`, starts the stack, and
+> applies migrations. It scans for a free host port if you do not choose one.
+>
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/install-porta.sh | bash
+> ```
+>
+> The manual steps below describe the same deployment file by file.
+
 ### 1. Create `docker-compose.yml`
 
 Create a file called `docker-compose.yml` with the following content:
@@ -121,7 +131,7 @@ PORTA_AUTO_MIGRATE=false
 ### 3. Start services
 
 ```bash
-docker compose up -d postgres redis
+docker compose up -d --wait postgres redis
 docker compose run --rm porta node dist/cli/index.js migrate up
 docker compose up -d porta
 ```

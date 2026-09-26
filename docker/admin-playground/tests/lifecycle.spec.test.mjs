@@ -38,6 +38,19 @@ async function loadLifecycleFactory() {
 }
 
 /**
+ * Loads the complete lifecycle module so verbose diagnostics can be exercised.
+ *
+ * @returns {Promise<Record<string, unknown>>} Lifecycle module exports.
+ */
+async function loadLifecycleModule() {
+  await assert.doesNotReject(
+    access(lifecyclePath),
+    'the admin playground lifecycle entry point must exist',
+  );
+  return import(pathToFileURL(lifecyclePath).href);
+}
+
+/**
  * Creates deterministic lifecycle boundaries without invoking Docker, DNS, or terminal APIs.
  *
  * @param {Record<string, unknown>} overrides Boundary replacements for one scenario.
@@ -318,4 +331,67 @@ test('should report bounded non-secret status without mutation when lifecycle st
     );
     assert.deepEqual(fixture.events, []);
   }
+});
+
+test('should expose the failing step and underlying cause when verbose diagnostics are requested', async () => {
+  const lifecycleModule = await loadLifecycleModule();
+  const steps = [];
+  const failure = new Error('docker compose build failed');
+  failure.stderr = 'no space left on device';
+  const dependencies = lifecycleModule.productionDependencies({
+    verbose: true,
+    report: (message) => steps.push(message),
+    compose: async (arguments_) => {
+      if (arguments_[0] === 'build') throw failure;
+      return { stdout: '' };
+    },
+  });
+
+  await assert.rejects(dependencies.startServices(), /docker compose build failed/);
+
+  assert.ok(
+    steps.includes('building porta image'),
+    'verbose diagnostics must report the step that failed',
+  );
+  assert.match(
+    lifecycleModule.formatPlaygroundError(failure, { verbose: true }),
+    /docker compose build failed[\s\S]*no space left on device/,
+    'verbose diagnostics must expose the underlying cause',
+  );
+  assert.equal(
+    lifecycleModule.formatPlaygroundError(failure),
+    'Playground operation failed.',
+    'default diagnostics must remain sealed',
+  );
+});
+
+test('should wait for the reverse proxy health gate before reporting the playground up', async () => {
+  const lifecycleModule = await loadLifecycleModule();
+  const commands = [];
+  const dependencies = lifecycleModule.productionDependencies({
+    compose: async (arguments_) => {
+      commands.push(arguments_.join(' '));
+      return { stdout: '' };
+    },
+    execFile: async (_command, arguments_) => ({
+      stdout: arguments_.some((value) => String(value).includes('/api/admin/metadata'))
+        ? JSON.stringify({
+            issuer: 'https://porta-admin-playground.ci.portaidentity.com:3543/porta-admin',
+            orgSlug: 'porta-admin',
+            clientId: 'porta-cli',
+          })
+        : '',
+    }),
+    environment: {},
+  });
+
+  await dependencies.verifyHealth();
+
+  const startCommand = commands.find((command) => command.startsWith('up '));
+  assert.ok(startCommand, 'verifyHealth must start the porta and nginx services');
+  assert.match(
+    startCommand,
+    /--wait/,
+    'verifyHealth must wait for the reverse proxy to pass its health gate before probing it',
+  );
 });

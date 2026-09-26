@@ -1,21 +1,6 @@
-> ⚠️ **Pre-release**
->
-> Porta has undergone production hardening, including rate limiting, account lockout protection, GDPR-focused privacy controls, audit retention, and a defence-in-depth security review.
->
-> However, it has not yet been extensively battle-tested in production. APIs, configuration options, and database schemas may still change before a stable release.
->
-> Use with caution, especially in production environments.
-
-> ⚠️ **Coming soon: Porta Administration GUI**
->
-> Porta already provides a powerful CLI for managing the Identity Provider and helping system administrators configure and operate their Porta installation.
->
-> To make administration even easier, we are working on a comprehensive web-based Administration GUI. This new interface will simplify common administrative tasks, improve visibility, and make Porta easier to manage in real-world environments.
->
-> Stay tuned for updates.
-
 [![CI](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml/badge.svg)](https://github.com/blendsdk/porta-identity/actions/workflows/ci.yml)
 [![Docker](https://img.shields.io/docker/v/blendsdk/porta?sort=semver&label=Docker%20Hub)](https://hub.docker.com/r/blendsdk/porta)
+[![Version](https://img.shields.io/github/v/release/blendsdk/porta-identity?sort=semver&label=version)](https://github.com/blendsdk/porta-identity/releases)
 [![License](https://img.shields.io/github/license/blendsdk/porta-identity)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%E2%89%A522-brightgreen)](https://nodejs.org/)
 
@@ -35,46 +20,39 @@ Multi-tenant OIDC provider built on [node-oidc-provider](https://github.com/panv
 
 ## 🚀 Quick Start
 
-The fastest way to try Porta — no git clone required. Just create two files and run:
-
-**1. Create a `docker-compose.yml`** ([full file in the Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart)):
-
-```yaml
-services:
-  porta:
-    image: blendsdk/porta:latest
-    ports: ['3000:3000']
-    env_file: [.env]
-    environment:
-      DATABASE_URL: postgresql://porta:porta_secret@postgres:5432/porta
-      REDIS_URL: redis://redis:6379
-    depends_on:
-      postgres: { condition: service_healthy }
-      redis: { condition: service_healthy }
-  postgres:
-    image: postgres:16-alpine
-    environment: { POSTGRES_DB: porta, POSTGRES_USER: porta, POSTGRES_PASSWORD: porta_secret }
-    volumes: [pgdata:/var/lib/postgresql/data]
-    healthcheck: { test: ['CMD-SHELL', 'pg_isready -U porta'], interval: 5s, retries: 5 }
-  redis:
-    image: redis:7-alpine
-    healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 5s, retries: 5 }
-volumes:
-  pgdata:
-```
-
-**2. Create a `.env`** file with `ISSUER_BASE_URL=http://localhost:3000`, `COOKIE_KEYS=...`, `PORTA_AUTO_MIGRATE=true` ([full template](https://blendsdk.github.io/porta-identity/guide/quickstart#docker-hub))
-
-**3. Run:**
+The fastest way to get Porta running is the interactive installer. It writes a
+`docker-compose.yml` and a `.env` with generated secrets, starts the stack, and
+applies migrations:
 
 ```bash
-docker compose up -d                                          # Start Porta + Postgres + Redis
-docker exec -it porta-app porta init                          # Bootstrap admin system
+curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/install-porta.sh | bash
+```
+
+The installer asks for your public URL and SMTP relay, scans for a free host port
+to publish, and prints an nginx reverse-proxy example. For an unattended install,
+pass flags instead (see `--help` for the full list):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/install-porta.sh \
+  | bash -s -- \
+      --issuer-url https://auth.example.com \
+      --smtp-host smtp.example.com --smtp-from noreply@example.com \
+      --bind 127.0.0.1
+```
+
+Re-running with `--force` reuses every saved answer and only asks for keys that
+are missing or empty. Use `--check` to list those values without changing
+anything, and `--fresh` to ignore the saved file and start over.
+
+After the stack is healthy, bootstrap the admin system:
+
+```bash
+docker exec -it porta-app porta init
 ```
 
 Then open [http://localhost:3000/health](http://localhost:3000/health) to verify.
-
-For source development setup, see the [Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart#source).
+For the manual file-by-file setup, the complete environment reference, and source
+development, see the [Quick Start guide](https://blendsdk.github.io/porta-identity/guide/quickstart).
 
 ### Production security essentials
 
@@ -117,7 +95,7 @@ Visit the **[Porta Documentation](https://blendsdk.github.io/porta-identity/)** 
 
 ## 🤝 Contributing
 
-Porta is currently in early development. Contributions are welcome — please open an issue to discuss before submitting a pull request.
+Contributions are welcome — please open an issue to discuss before submitting a pull request.
 
 ```bash
 # Development setup

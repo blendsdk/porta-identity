@@ -76,8 +76,10 @@ The Porta Docker image is available on [Docker Hub](https://hub.docker.com/r/ble
 docker pull blendsdk/porta:latest
 ```
 
-No git clone required — see the [Quick Start](./quickstart.md#docker-hub) for a
-standalone setup using just `docker-compose.yml` + `.env`.
+No git clone required — see the [Quick Start](./quickstart.md) for a
+standalone setup using just `docker-compose.yml` + `.env`. The
+[install-porta.sh](https://raw.githubusercontent.com/blendsdk/porta-identity/main/install-porta.sh)
+script generates both files for you.
 :::
 
 ## Production Docker Compose

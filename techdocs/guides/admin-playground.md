@@ -96,6 +96,12 @@ administrator password.
 Lifecycle mutations use a bounded kernel lock. If another `up`, `stop`, or `reset` owns it, the
 competing command fails instead of running concurrently.
 
+Add `--verbose` to any lifecycle command to print each step and the underlying failure details:
+
+```bash
+yarn admin:env up --verbose
+```
+
 ## Reset
 
 Reset is intentionally destructive only for the two owned PostgreSQL and Redis volumes:
@@ -130,6 +136,11 @@ login.
   rerun reset. Secrets are not rotated until absence is proved.
 - **No email appears:** check `yarn admin:env status`, then open the loopback MailHog URL. Reset and
   stop/start replace the disposable MailHog container; they do not publish SMTP.
+- **A lifecycle command fails or hangs:** rerun the same command with the `--verbose` flag (for
+  example `yarn admin:env up --verbose`). It prints each lifecycle step to standard error, then the
+  underlying Docker/Compose output and error stack when a step fails. The flag is diagnostic only
+  and does not change lifecycle behavior. Do not paste verbose output publicly: it can contain
+  local paths and infrastructure details from your machine.
 
 ## Packed Admin Journey
 
