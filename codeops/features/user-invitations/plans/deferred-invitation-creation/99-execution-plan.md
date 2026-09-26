@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-26 22:00
-> **Progress**: 47/68 tasks (69%)
+> **Last Updated**: 2026-09-26 22:40
+> **Progress**: 52/68 tasks (76%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -189,14 +189,14 @@ estimates)
 
 **Reference**: [03-03](03-03-contracts-cli-admin-docs.md) · AR-22
 
-- [ ] 4.1.1 Rewrite the invite API section and the status-lifecycle note — `docs/api/users.md`
-- [ ] 4.1.2 Update SDK and CLI guides — `docs/guide/sdk.md`, `docs/cli/users.md`
-- [ ] 4.1.3 Update the audit event description — `docs/api/audit.md`
-- [ ] 4.1.4 Update the invitation token data model — `techdocs/architecture/data-model.md`
-- [ ] 4.1.5 Phase verification: `yarn docs:build && yarn test:structure`
+- [x] 4.1.1 Rewrite the invite API section and the status-lifecycle note — `docs/api/users.md` ✅ (completed: 2026-09-26 22:40)
+- [x] 4.1.2 Update SDK and CLI guides — `docs/guide/sdk.md`, `docs/cli/users.md` ✅ (completed: 2026-09-26 22:40)
+- [x] 4.1.3 Update the audit event description — `docs/api/audit.md` ✅ (completed: 2026-09-26 22:40)
+- [x] 4.1.4 Update the invitation token data model — `techdocs/architecture/data-model.md` ✅ (completed: 2026-09-26 22:40)
+- [x] 4.1.5 Phase verification: `yarn docs:build && yarn test:structure` ✅ (completed: 2026-09-26 22:40)
 
 **Deliverables**:
-- [ ] Documentation matches deferred creation and the new result shape
+- [x] Documentation matches deferred creation and the new result shape ✅ (completed: 2026-09-26 22:40)
 
 **Verify**: `yarn docs:build && yarn test:structure`
 

@@ -63,7 +63,7 @@ GET /api/admin/audit
 | Action                  | Description          |
 | ----------------------- | -------------------- |
 | `user.created`          | New user created     |
-| `user.invited`          | User invitation sent |
+| `user.invited`          | Invitation created (no user record yet) |
 | `user.updated`          | User profile updated |
 | `user.deactivated`      | User deactivated     |
 | `user.activated`        | User activated       |

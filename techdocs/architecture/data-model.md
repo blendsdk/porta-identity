@@ -402,16 +402,31 @@ persists it before publishing the Redis payload and rejects cached Sessions whos
 expired, or revoked. The nullable `client_id` is informational because one Session can authorize
 several clients through its Redis payload.
 
-### Invitation Details (Migration 019)
+### `invitation_tokens`
 
-Adds invitation metadata to the `auth_tokens` table:
+An invitation is an offer, not an account: the token can exist without a `users` row, and the
+account is created only when the recipient accepts. Migration 019 added the invitation metadata,
+and migration 033 made the token email/organization-keyed with a nullable account link.
 
-| Column       | Type  | Description                                                          |
-| ------------ | ----- | -------------------------------------------------------------------- |
-| `details`    | JSONB | Pre-assignment metadata: roles, claims, personalMessage, inviterName |
-| `invited_by` | UUID  | FK → users — the admin who created the invitation                    |
+| Column            | Type                   | Description                                                                   |
+| ----------------- | ---------------------- | ----------------------------------------------------------------------------- |
+| `id`              | UUID                   | Primary key                                                                   |
+| `user_id`         | UUID, nullable         | FK → users; null until the recipient accepts and the account is created       |
+| `organization_id` | UUID                   | Tenant authority for acceptance; owns the invited address                     |
+| `email`           | CITEXT                 | Invited address; the account is created for this email at acceptance          |
+| `given_name`      | VARCHAR(255), nullable | Profile snapshot applied to the created account                               |
+| `family_name`     | VARCHAR(255), nullable | Profile snapshot applied to the created account                               |
+| `locale`          | VARCHAR(10), nullable  | Preferred locale for the invitation email                                     |
+| `token_hash`      | TEXT                   | Unique SHA-256 digest; plaintext exists only during delivery and presentation |
+| `expires_at`      | TIMESTAMPTZ            | Token expiry (invitation lifetime, default 7 days)                            |
+| `used_at`         | TIMESTAMPTZ, nullable  | Single-use marker; set inside the acceptance transaction                      |
+| `details`         | JSONB, nullable        | Pre-assignment metadata: roles, claims, personalMessage, inviterName          |
+| `invited_by`      | UUID, nullable         | FK → users — the admin who created the invitation                             |
+| `created_at`      | TIMESTAMPTZ            | Creation time                                                                 |
 
-These columns are added to the existing `auth_tokens` table (not a new table).
+A partial unique index on `(organization_id, email)` where `used_at IS NULL` allows at most one
+live invitation per address while preserving replaced and accepted history. These columns live on
+the dedicated `invitation_tokens` table (not `auth_tokens`).
 
 ## Migration Strategy
 
