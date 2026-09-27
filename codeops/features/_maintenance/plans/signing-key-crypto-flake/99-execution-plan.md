@@ -59,10 +59,10 @@ helper, no production change, no new dependency.
       [replacement snippet](#replacement-snippet-for-t-022) below; the guard assertion makes the
       tamper invariant explicit and regression-proof.
 
-- [ ] T-02.3 **Stability evidence.** Run the file once, then 100 times with
+- [x] T-02.3 **Stability evidence.** Run the file once, then 100 times with
       `for i in $(seq 1 100); do yarn workspace @portaidentity/server test:unit tests/unit/lib/signing-key-crypto.test.ts || { echo "FAILED at run $i"; exit 1; }; done`.
       Any nonzero exit aborts and is reported; record the pass count.
-- [ ] T-02.4 **Full verification.** `yarn docker:up` then `yarn verify`; all must pass.
+- [x] T-02.4 **Full verification.** `yarn docker:up` then `yarn verify`; all must pass.
 - [ ] T-02.5 **Deliver.** On branch `fix/signing-key-crypto-flake`: commit the CodeOps plan and
       roadmap artifacts first (`docs(codeops): plan the signing-key crypto flake fix`), then commit
       the test fix (`test(server): make the tampered-tag crypto assertion deterministic`), push,
