@@ -1,7 +1,7 @@
 # Task T-01: Porta Console callback URI, startup version log, and agent cleanup directive
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 0/15 tasks (0%)
+> **Progress**: 11/15 tasks (73%)
 > **Issue**: [#141](https://github.com/blendsdk/porta-identity/issues/141)
 > **Delivery**: branch `fix/141-console-callback-uri` from an up-to-date `develop`; three
 > Conventional Commits; one pull request to `develop` (closes #141).

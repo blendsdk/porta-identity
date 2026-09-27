@@ -6,8 +6,10 @@ Clean up everything you create for a task before reporting the task complete.
 
 - Tear down every container, compose project, network, volume, and image you started, and remove
   every test Porta installation you created. The machine must look as it did before the task.
-- Use the repository's owned lifecycle commands (`yarn docker:down`, `yarn harness:stop`, and the
-  assurance harness cleanup) instead of ad-hoc `docker rm` / `docker compose down`.
+- For repository-owned stacks use the owned lifecycle commands (`yarn docker:down`,
+  `yarn harness:stop`, and the cleanup built into each `yarn assurance:*` run) instead of ad-hoc
+  `docker rm` / `docker compose down`. Remove task-created scratch stacks with their own compose
+  project name (`docker compose -p <scratch> down -v`); never touch resources you did not create.
 - Give scratch stacks their own compose project name and prefer `docker run --rm`, so cleanup
   cannot touch containers or data the developer already had running. Never remove resources you
   did not create, and never run global prune commands.
@@ -163,8 +165,8 @@ explain the concrete risk and propose a secure alternative.
   session expiry, and CSRF protection on state-changing requests.
 - Enforce production HTTPS, restrictive authenticated CORS, CSP and other security headers, and
   minimal public errors. Never log or return passwords, tokens, client secrets, keys, stack traces,
-  SQL errors, internal paths, infrastructure details, or product-version fingerprints in public or
-  unauthenticated responses or headers.
+  SQL errors, internal paths, or infrastructure details. Do not return product-version fingerprints
+  in public or unauthenticated responses or headers.
 - Preserve two-factor enforcement, encrypted TOTP secrets, rate-limited email OTP delivery, and
   single-use hashed recovery codes.
 - Treat `packages/server/tests/pentest/` as a security baseline. Do not delete, skip, or weaken its

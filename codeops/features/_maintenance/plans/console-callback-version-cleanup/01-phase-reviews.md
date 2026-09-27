@@ -67,3 +67,19 @@ server typecheck; `yarn docs:build`.
 All required checks passed: constant drift cannot pass silently; the log field reaches pino output;
 no planning-artifact reference leaked into shipped code; the deployment docs claim matches the
 public surface. **No critical/major findings; Phase 2 closes reviewed.**
+
+## Phase 3 — Agent cleanup directive
+
+**Reviewed diff:** `/tmp/opencode/phase3-review.diff` (baseline tree
+`ffa5eb4b309ba881696147e27b962ace6baa8c9a`; commit `6756bcc4`)
+**Reviewer:** correctness-reviewer (docs-only diff; security/perf auditor dispatch skipped per the
+profile rule, logged here)
+**Verify evidence:** `yarn test:structure` 138 passed.
+
+| ID     | Severity | Location        | Problem                                                                                                              | Resolution                                                                                       | Decision                                  |
+| ------ | -------- | --------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------- |
+| RV-001 | 🟠 MAJOR | `AGENTS.md:166` | Sentence-final qualifier could parse as scoping all nine prohibitions, weakening password/key/stack-trace rules.       | Split into two sentences: absolute list unchanged, then a separate public-fingerprint prohibition. | ✅ Resolved — User chose Option A          |
+| RV-002 | 🟡 MINOR | `AGENTS.md:9-13` | "Use the owned commands instead of ad-hoc" conflicted with teardown of task-created volumes/images and scratch stacks. | Owned commands scoped to repository-owned stacks; task-created scratch stacks use `docker compose -p <scratch> down -v`. | ✅ Applied                                 |
+| RV-003 | 🟡 MINOR | `99-execution-plan.md:4` | Progress header was still `0/15 tasks (0%)`.                                                                    | Set to `11/15 tasks (73%)` and kept current through Phase 4.                                      | ✅ Applied                                 |
+| RV-004 | 🔵       | `AGENTS.md:10`  | "the assurance harness cleanup" was not an executable command.                                                        | Reworded to "the cleanup built into each `yarn assurance:*` run".                                 | ✅ Applied                                 |
+| RV-005 | 🔵       | `AGENTS.md` commands table | Prettier column reflow, content identical.                                                                | No action; transparency note.                                                                     | ✅ Noted                                   |
