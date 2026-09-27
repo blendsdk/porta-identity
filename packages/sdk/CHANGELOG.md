@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-09-27
+
+Added:
+- InviteUserResult now exposes invitationId instead of userId/created.
+
+Changed:
+- CLI invite output now prints the invitation fields.
+- Admin UI type and validator now accept the new shape and reject the legacy one.
+
+Fixed:
+- Updated tests to reflect changes in user invitation schema and validation.
+
 ## [1.9.0] - 2026-09-25
 
 Added:
