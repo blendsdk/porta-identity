@@ -83,3 +83,10 @@ profile rule, logged here)
 | RV-003 | 🟡 MINOR | `99-execution-plan.md:4` | Progress header was still `0/15 tasks (0%)`.                                                                    | Set to `11/15 tasks (73%)` and kept current through Phase 4.                                      | ✅ Applied                                 |
 | RV-004 | 🔵       | `AGENTS.md:10`  | "the assurance harness cleanup" was not an executable command.                                                        | Reworded to "the cleanup built into each `yarn assurance:*` run".                                 | ✅ Applied                                 |
 | RV-005 | 🔵       | `AGENTS.md` commands table | Prettier column reflow, content identical.                                                                | No action; transparency note.                                                                     | ✅ Noted                                   |
+
+### Phase 3 re-review (fix diff `0b5ad297`)
+
+All four items verified fixed: the absolute prohibition list is unchanged and the fingerprint
+qualifier is a separate sentence; owned commands apply to repository-owned stacks with scratch
+teardown via `docker compose -p <scratch> down -v`; the progress header reads `11/15 (73%)`; and
+the assurance cleanup wording names the mechanism. No new findings. **Phase 3 closes reviewed.**

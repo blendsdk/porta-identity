@@ -1,7 +1,7 @@
 # Task T-01: Porta Console callback URI, startup version log, and agent cleanup directive
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 11/15 tasks (73%)
+> **Progress**: 12/15 tasks (80%)
 > **Issue**: [#141](https://github.com/blendsdk/porta-identity/issues/141)
 > **Delivery**: branch `fix/141-console-callback-uri` from an up-to-date `develop`; three
 > Conventional Commits; one pull request to `develop` (closes #141).
@@ -196,10 +196,11 @@ for this task.
 
 ### Phase 4 — Integrated verification and delivery
 
-- [ ] T-01.12 Run `yarn docker:up`, then `yarn verify`, then `yarn docs:build`; all must pass with
+- [x] T-01.12 Run `yarn docker:up`, then `yarn verify`, then `yarn docs:build`; all must pass with
       services available. Then boot the server once against a scratch `porta_probe` installation (as
       in T-01.7) and confirm the `Server started` log entry contains the `version` field (PF-002);
       drop the scratch database afterwards.
+      ✅ (completed: 2026-09-27 22:16)
 - [ ] T-01.13 Run `yarn assurance:harness --project protocol --profile production-security` and
       record the outcome, including its exit taxonomy.
 - [ ] T-01.14 Cleanup and evidence: remove the dev stack the task started (including volumes when
