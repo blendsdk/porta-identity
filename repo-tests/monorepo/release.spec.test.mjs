@@ -152,12 +152,20 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /for attempt in \$\(seq 1 60\)/);
   assert.match(source, /sleep 15/);
   // The integrity comparison applies to the run that published; an already-published re-run
-  // verifies version and provenance because the regenerated changelog makes a repack differ, and
-  // it additionally binds the published provenance to this repository.
+  // binds the published provenance to this repository and to the published integrity digest
+  // because the regenerated changelog makes a repacked tarball differ.
   assert.match(source, /ALL_PUBLISHED: \$\{\{ steps\.published\.outputs\.all_published \}\}/);
   assert.match(source, /"\$ALL_PUBLISHED" = "true"/);
+  assert.match(source, /"\$published_integrity" = "\$expected_integrity"/);
   assert.match(source, /registry\.npmjs\.org\/-\/npm\/v1\/attestations/);
-  assert.match(source, /https:\/\/github\.com\/\$GITHUB_REPOSITORY/);
+  assert.match(source, /--connect-timeout 5 --max-time 20/);
+  assert.match(source, /Buffer\.from\(sha512Hex, 'hex'\)\.toString\('base64'\)/);
+  assert.match(source, /"\$published_by" = "https:\/\/github\.com\/\$GITHUB_REPOSITORY"/);
+  assert.match(source, /"\$published_digest" = "\$published_integrity"/);
+  assert.match(
+    source,
+    /"\$published_name" = "pkg:npm\/@portaidentity\/\$package_name@\$RELEASE_VERSION"/,
+  );
   // The release is idempotent: a re-run skips the publish when every package
   // already carries the version and skips the Docker dispatch when the image
   // already exists, so a post-publish failure can be recovered.

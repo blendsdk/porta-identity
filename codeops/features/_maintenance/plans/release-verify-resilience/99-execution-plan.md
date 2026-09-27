@@ -1,7 +1,7 @@
 # Task T-03: Make release verification resilient to registry lag and re-runs
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 3/5 tasks (60%)
+> **Progress**: 4/5 tasks (80%)
 > **Phase baseline tree**: `9fbaaaccd7446735dffa77d67bb34bcda93911ea` · scope: strict · expected
 > paths: `.github/workflows/release.yml`, `repo-tests/monorepo/release.spec.test.mjs`
 > **Evidence**: Release run
@@ -30,12 +30,12 @@ release-notes steps; product code.
 
 ## Confirmed decisions
 
-| #   | Decision                                                                                                                                                                        | Source                                                                             |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| D-1 | Widen the per-package window from 40×10s to 60×15s (15 min)                                                                                                                     | Server became visible ~7–10 min after publish                                      |
-| D-2 | Compare integrity only when this run published (`all_published != true`); otherwise require version + provenance and bind the provenance workflow repository to this repository | `CHANGELOG.md` regenerates per run; repack differs, substitution must stay blocked |
-| D-3 | Keep the same-run integrity comparison unchanged                                                                                                                                | Preserves the existing release guarantee                                           |
-| D-4 | Verify with `yarn test:structure` (release contract tests parse and pin the workflow)                                                                                           | Config-only change; no product workspace affected                                  |
+| #   | Decision                                                                                                                                                                                                                             | Source                                                                             |
+| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| D-1 | Widen the per-package window from 40×10s to 60×15s (15 min)                                                                                                                                                                          | Server became visible ~7–10 min after publish                                      |
+| D-2 | Compare integrity only when this run published (`all_published != true`); otherwise require version + provenance and bind the provenance repository, subject digest, and subject name to this repository and the published integrity | `CHANGELOG.md` regenerates per run; repack differs, substitution must stay blocked |
+| D-3 | Keep the same-run integrity comparison unchanged                                                                                                                                                                                     | Preserves the existing release guarantee                                           |
+| D-4 | Verify with `yarn test:structure` (release contract tests parse and pin the workflow)                                                                                                                                                | Config-only change; no product workspace affected                                  |
 
 ## Smallest viable design
 
@@ -51,16 +51,17 @@ later edit cannot silently weaken either behavior.
       `all_published` to gate the integrity comparison. Run `yarn test:structure` and confirm it
       fails.
 - [x] T-03.2 **Implement.** In the `Verify published packages` step of
-      `.github/workflows/release.yml`: widen the loop to 60×15s; add a `provenance_repository`
-      helper that reads the package's SLSA provenance from the registry attestations API and prints
-      its workflow repository; set `ALL_PUBLISHED: ${{ steps.published.outputs.all_published }}`;
-      require `published_integrity = expected_integrity` or, when `ALL_PUBLISHED = 'true'`, accept
-      only a provenance repository equal to `https://github.com/$GITHUB_REPOSITORY`; always
-      require `provenance = https://slsa.dev/provenance/v1`. Run `yarn test:structure` and confirm
-      green.
+      `.github/workflows/release.yml`: widen the loop to 60×15s; add a `provenance_identity`
+      helper that reads the package's SLSA provenance from the registry attestations API (with
+      connect/total timeouts) and prints its workflow repository, subject sha512 integrity, and
+      subject name; set `ALL_PUBLISHED: ${{ steps.published.outputs.all_published }}`; require
+      `published_integrity = expected_integrity` or, when `ALL_PUBLISHED = 'true'`, accept only a
+      provenance whose repository is `https://github.com/$GITHUB_REPOSITORY` and whose subject
+      digest and name match `published_integrity` and the package version; always require
+      `provenance = https://slsa.dev/provenance/v1`. Run `yarn test:structure` and confirm green.
 - [x] T-03.3 **Verify.** `yarn test:structure` passes and the workflow parses via the structure
       test's YAML loader (`readWorkflow`); record the result.
-- [ ] T-03.4 **Review.** Correctness + security review of the diff; apply findings.
+- [x] T-03.4 **Review.** Correctness + security review of the diff; apply findings.
 - [ ] T-03.5 **Deliver and recover.** Commit, push, open and merge the PR to `develop`; then
       dispatch `Release` with `--ref develop -f bump=auto` and confirm completion: `main` bumped,
       `v1.11.0` tag and GitHub Release created, Docker image dispatched, `develop` synced.
