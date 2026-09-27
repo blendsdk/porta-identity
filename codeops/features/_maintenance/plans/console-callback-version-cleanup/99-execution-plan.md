@@ -1,7 +1,7 @@
 # Task T-01: Porta Console callback URI, startup version log, and agent cleanup directive
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 14/15 tasks (93%)
+> **Progress**: 15/15 tasks (100%)
 > **Issue**: [#141](https://github.com/blendsdk/porta-identity/issues/141)
 > **Delivery**: branch `fix/141-console-callback-uri` from an up-to-date `develop`; three
 > Conventional Commits; one pull request to `develop` (closes #141).
@@ -207,7 +207,7 @@ for this task.
       the task created them) and the scratch database; confirm `docker ps -a`, `docker network ls`,
       and `docker volume ls` show nothing task-created. Never remove pre-existing developer
       resources.
-- [ ] T-01.15 Deliver with the git-commit skill in push mode: three commits —
+- [x] T-01.15 Deliver with the git-commit skill in push mode: three commits —
       `fix(init): register the Porta Console callback URI on the admin native client`,
       `feat(server): report the running version in the startup log`,
       `docs(agents): add the cleanup prime directive and scope the version-fingerprint invariant` —
