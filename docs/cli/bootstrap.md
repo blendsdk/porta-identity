@@ -14,7 +14,7 @@ porta init
 
 1. Creates the **super-admin organization** (`porta-admin`)
 2. Creates the **admin application** with granular RBAC permissions and roles
-3. Creates a **PKCE-enabled public OIDC client** for CLI authentication
+3. Creates a shared **PKCE-enabled public OIDC client** used by the `porta` CLI and the Porta Console over loopback
 4. Creates the **first admin user** (prompts for email and password)
 5. Assigns the `porta-admin` role to the first user
 
@@ -39,6 +39,19 @@ porta init --database-url postgresql://user:pass@localhost:5432/porta
 
 ::: warning
 `porta init` should only be run **once** during initial deployment. Running it again will fail if the super-admin organization already exists.
+:::
+
+::: tip Existing installations
+`porta init` registers the console callbacks only on new installations. If the server was
+initialized before the Porta Console callback existed, register it once with the admin CLI:
+
+```bash
+porta client update <client-id> --redirect-uris "http://127.0.0.1/callback,http://localhost/callback,http://127.0.0.1/auth/callback,http://127.0.0.1/api/oidc/callback,http://localhost/api/oidc/callback"
+```
+
+Read `<client-id>` from `GET /api/admin/metadata` (the `clientId` field). The `--redirect-uris`
+option replaces the complete stored list, so include any custom redirect URIs you added alongside
+the five above.
 :::
 
 ---
