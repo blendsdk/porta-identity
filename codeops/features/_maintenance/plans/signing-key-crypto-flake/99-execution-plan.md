@@ -52,9 +52,9 @@ helper, no production change, no new dependency.
 
 ## Tasks
 
-- [ ] T-02.1 **Confirm the mechanism.** With a synthetic 32-hex tag ending in `ff`, show
+- [x] T-02.1 **Confirm the mechanism.** With a synthetic 32-hex tag ending in `ff`, show
       `tag.slice(0, -2) + 'ff' === tag` (recorded evidence; no committed code).
-- [ ] T-02.2 **Fix.** Replace the tamper construction at
+- [x] T-02.2 **Fix.** Replace the tamper construction at
       `packages/server/tests/unit/lib/signing-key-crypto.test.ts:118` with the four lines in the
       [replacement snippet](#replacement-snippet-for-t-022) below; the guard assertion makes the
       tamper invariant explicit and regression-proof.
