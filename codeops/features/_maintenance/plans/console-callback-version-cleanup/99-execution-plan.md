@@ -175,7 +175,10 @@ for this task.
 
 ### Phase 3 — Agent cleanup directive
 
-- [ ] T-01.11 Edit `AGENTS.md` directly after `# Project guidance` and before the
+> **Phase baseline tree**: `ffa5eb4b309ba881696147e27b962ace6baa8c9a` · scope: strict · expected
+> paths: `AGENTS.md`
+
+- [x] T-01.11 Edit `AGENTS.md` directly after `# Project guidance` and before the
       `<!-- CODEOPS-PROJECT:START -->` marker:
       (a) add the hand-authored prime directive section headed
       `## Prime directive — leave no test infrastructure behind` (PF-006). The section requires:
@@ -189,6 +192,7 @@ for this task.
       a prohibition on public or unauthenticated responses and headers; leave every other item in
       that sentence unchanged (PF-001). Keep the `## Security invariants` heading intact
       (`repo-tests/monorepo/workspace-layout.spec.test.mjs:280`).
+      ✅ (completed: 2026-09-27 20:49)
 
 ### Phase 4 — Integrated verification and delivery
 
