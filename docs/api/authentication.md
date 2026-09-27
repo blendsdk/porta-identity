@@ -11,7 +11,7 @@ sequenceDiagram
     participant Porta
 
     CLI->>Porta: GET /api/admin/metadata
-    Porta-->>CLI: { issuer, authorization_endpoint, token_endpoint }
+    Porta-->>CLI: { issuer, orgSlug, clientId }
     CLI->>Porta: OIDC Authorization Code + PKCE flow
     Porta-->>Admin: Login page (super-admin org)
     Admin->>Porta: Submit credentials
@@ -136,8 +136,9 @@ GET /api/admin/metadata
 ```json
 {
   "issuer": "https://auth.example.com/porta-admin",
-  "authorization_endpoint": "https://auth.example.com/porta-admin/auth/authorize",
-  "token_endpoint": "https://auth.example.com/porta-admin/auth/token",
-  "end_session_endpoint": "https://auth.example.com/porta-admin/auth/end_session"
+  "orgSlug": "porta-admin",
+  "clientId": "ANjQzZOX..."
 }
 ```
+
+The returned `clientId` identifies the shared admin native client. Both the `porta` CLI and the Porta Console authenticate with it over loopback (`/callback` for the CLI, `/api/oidc/callback` for the Console); `node-oidc-provider` matches the registered loopback ports flexibly per RFC 8252 §7.3.

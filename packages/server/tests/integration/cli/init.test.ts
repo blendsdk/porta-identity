@@ -136,7 +136,13 @@ describe('Init Flow (Integration)', () => {
         clientName: 'Porta Admin CLI',
         clientType: 'public',
         applicationType: 'native',
-        redirectUris: ['http://127.0.0.1/callback', 'http://localhost/callback'],
+        redirectUris: [
+          'http://127.0.0.1/callback',
+          'http://localhost/callback',
+          'http://127.0.0.1/auth/callback',
+          'http://127.0.0.1/api/oidc/callback',
+          'http://localhost/api/oidc/callback',
+        ],
         postLogoutRedirectUris: [],
         grantTypes: ['authorization_code', 'refresh_token'],
         scope: 'openid profile email offline_access',
@@ -152,6 +158,13 @@ describe('Init Flow (Integration)', () => {
       expect(clientResult.rows).toHaveLength(1);
       expect(clientResult.rows[0].client_type).toBe('public');
       expect(clientResult.rows[0].require_pkce).toBe(true);
+      expect(clientResult.rows[0].redirect_uris).toEqual([
+        'http://127.0.0.1/callback',
+        'http://localhost/callback',
+        'http://127.0.0.1/auth/callback',
+        'http://127.0.0.1/api/oidc/callback',
+        'http://localhost/api/oidc/callback',
+      ]);
 
       // Step 8: Create admin user
       const adminUser = await createUser({

@@ -28,6 +28,13 @@ const derivedVersions = [
       return `export const CLI_VERSION = '${version}';`;
     },
   },
+  {
+    path: 'packages/server/src/version.ts',
+    expression: /export const SERVER_VERSION = '[^']+';/,
+    expected(version) {
+      return `export const SERVER_VERSION = '${version}';`;
+    },
+  },
 ];
 
 /**

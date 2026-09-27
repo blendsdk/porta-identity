@@ -29,7 +29,11 @@ import type { Organization } from '../organizations/types.js';
 
 /** Minimal user fields needed by email service */
 export interface EmailUser {
-  id: string;
+  /**
+   * Recipient account id. Optional because a deferred invitation has no account yet; when absent,
+   * the related audit row stores no user id.
+   */
+  id?: string;
   email: string;
   givenName?: string | null;
   familyName?: string | null;
@@ -255,6 +259,8 @@ export interface InvitationEmailOptions {
   personalMessage?: string;
   /** Display name of the admin who sent the invitation */
   inviterName?: string;
+  /** Invitation row id, recorded in the send audit when there is no recipient account yet */
+  invitationId?: string;
 }
 
 /**
@@ -336,6 +342,7 @@ export async function sendInvitationEmail(
       eventType: 'email.send.invitation',
       eventCategory: 'auth',
       description: `Invitation email sent to ${user.email}`,
+      metadata: options?.invitationId ? { invitationId: options.invitationId } : undefined,
     });
 
     logger.debug({ userId: user.id, email: user.email }, 'Invitation email sent');

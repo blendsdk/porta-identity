@@ -1,0 +1,7 @@
+{{!-- Invitation confirmation: a non-mutating step before the password form --}}
+<h1>{{t "invitation.confirm_title"}}</h1>
+<p class="text-muted mb-4">{{t "invitation.confirm_description" orgName=orgName}}</p>
+{{#if inviterName}}
+<p class="text-muted mb-4">{{t "invitation.confirm_inviter" inviterName=inviterName}}</p>
+{{/if}}
+<a class="btn-primary" href="/{{orgSlug}}/auth/accept-invite/{{token}}?step=password">{{t "invitation.confirm_button"}}</a>

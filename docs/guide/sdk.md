@@ -154,7 +154,8 @@ For organization-scoped users, offset pagination uses `page` and `pageSize`. Cur
 ## User Administration Contracts
 
 Create and invite calls carry `organizationId` in the input object. `users.invite()` returns the
-invitation outcome (`userId`, `email`, `created`, `invitationSent`, and `expiresAt`), not a full user.
+invitation outcome (`invitationId`, `email`, `invitationSent`, and `expiresAt`), not a full user:
+the account is created only when the recipient accepts the invitation.
 Administrators can activate and deactivate users. Account lockout and cooldown recovery are
 automatic. `users.getHistory()` returns the server's first-page history envelope with `data`,
 `hasMore`, and `nextCursor`.

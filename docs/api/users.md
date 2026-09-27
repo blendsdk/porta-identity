@@ -40,7 +40,7 @@ POST /api/admin/organizations/:orgId/users/invite
 
 **Permission:** `user:invite`
 
-Creates a user (if they don't exist) and sends an enhanced invitation email. Supports optional personal message, role/claim pre-assignment, and inviter tracking. Pre-assigned roles and claims are stored in the invitation token and automatically applied when the user accepts the invitation.
+Creates a pending invitation and sends an enhanced invitation email. No account is created at invite time; the recipient's account is created only when they accept the invitation and set a password. Supports optional personal message, role/claim pre-assignment, and inviter tracking. Pre-assigned roles and claims are stored with the invitation and automatically applied on acceptance.
 
 | Field                        | Type   | Required | Description                                                        |
 | ---------------------------- | ------ | -------- | ------------------------------------------------------------------ |
@@ -57,14 +57,13 @@ Creates a user (if they don't exist) and sends an enhanced invitation email. Sup
 | `claims[].value`             | any    | ✅       | Claim value                                                        |
 | `locale`                     | string |          | Locale for the invitation email (default: org default)             |
 
-**Response:** `201 Created` (new user) or `200 OK` (existing user re-invited).
+**Response:** `201 Created`. Returns `409 Conflict` when the email already has an account in the organization or a live invitation already exists for it.
 
 ```json
 {
   "data": {
-    "userId": "uuid",
+    "invitationId": "uuid",
     "email": "user@example.com",
-    "created": true,
     "invitationSent": true,
     "expiresAt": "2026-01-08T00:00:00.000Z"
   }
@@ -76,7 +75,7 @@ Creates a user (if they don't exist) and sends an enhanced invitation email. Sup
 - Referenced applications, roles, and claim definitions are validated at invite time
 - Pre-assignments are applied automatically when the invitation is accepted
 - If a role or claim is deleted between invitation and acceptance, that assignment is skipped (best-effort)
-- Previous pending invitation tokens for the same user are automatically invalidated
+- A new invitation replaces any live invitation for the same email address
 
 ## Preview Invitation Email
 
@@ -145,12 +144,13 @@ Email changes are not supported through this endpoint to prevent authentication 
 Users have three possible statuses (`UserStatus`): `active`, `inactive`, and
 `locked`. Administrators can activate and deactivate users. The server uses
 `locked` only for automatic failed-login lockout and cooldown recovery.
-Invitation is a token flow, not a status: a freshly invited user is created
-`active` and sets a password on accepting.
+Invitation is a pending token flow, not a status and not an account: no user
+row exists until the recipient accepts. On acceptance the account is created
+`active` and the recipient sets a password.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> active: Create / Invite
+    [*] --> active: Create / Accept invitation
     active --> inactive: Deactivate
     inactive --> active: Activate
     active --> locked: Failed-login threshold

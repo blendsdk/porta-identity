@@ -32,7 +32,7 @@ describe('client validators', () => {
     });
 
     it('should allow HTTP localhost in production', () => {
-      const result = validateRedirectUri('https://porta.local:3443/callback', true);
+      const result = validateRedirectUri('https://porta-harness.ci.portaidentity.com:3443/callback', true);
       expect(result.isValid).toBe(true);
     });
 

@@ -200,9 +200,8 @@ describe('user command', () => {
   describe('invite', () => {
     it('invites a user', async () => {
       const invitation = {
-        userId: sampleUser.id,
+        invitationId: sampleUser.id,
         email: 'bob@example.com',
-        created: true,
         invitationSent: true,
         expiresAt: '2026-09-01T12:00:00.000Z',
       };
@@ -218,9 +217,8 @@ describe('user command', () => {
 
     it('invites with JSON output', async () => {
       const invitation = {
-        userId: sampleUser.id,
+        invitationId: sampleUser.id,
         email: 'bob@example.com',
-        created: true,
         invitationSent: true,
         expiresAt: '2026-09-01T12:00:00.000Z',
       };

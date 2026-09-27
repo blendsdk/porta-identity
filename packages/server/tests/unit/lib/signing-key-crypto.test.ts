@@ -114,8 +114,11 @@ describe('signing-key-crypto', () => {
       const { privateKeyPem } = generateES256KeyPair();
       const { encrypted, iv, tag } = encryptPrivateKey(privateKeyPem, TEST_KEY);
 
-      // Flip a character in the auth tag
-      const tamperedTag = tag.slice(0, -2) + 'ff';
+      // Corrupt the final hex digit of the auth tag (guaranteed different value)
+      const lastIndex = tag.length - 1;
+      const tagDigit = parseInt(tag[lastIndex], 16);
+      const tamperedTag = tag.slice(0, lastIndex) + ((tagDigit + 1) % 16).toString(16);
+      expect(tamperedTag).not.toBe(tag);
       expect(() => decryptPrivateKey(encrypted, iv, tamperedTag, TEST_KEY)).toThrow(
         SigningKeyCryptoError,
       );

@@ -83,9 +83,8 @@ describe('user domain contracts', () => {
 
   it('preserves the invitation result returned by the API', async () => {
     const invitation = {
-      userId: 'user-2',
+      invitationId: 'invitation-2',
       email: 'invitee@example.com',
-      created: true,
       invitationSent: true,
       expiresAt: '2026-08-31T10:00:00.000Z',
     };

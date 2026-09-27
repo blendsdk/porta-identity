@@ -118,9 +118,8 @@ describe('user command SDK contract', () => {
 
   describe('invite', () => {
     const invitation = {
-      userId,
+      invitationId: 'invitation-1',
       email: 'invited@example.com',
-      created: true,
       invitationSent: false,
       expiresAt: '2026-09-01T12:00:00.000Z',
     };
@@ -134,12 +133,13 @@ describe('user command SDK contract', () => {
       });
 
       const output = presentedValues();
-      expect(output).toContain(invitation.userId);
+      expect(output).toContain(invitation.invitationId);
       expect(output).toContain(invitation.email);
-      expect(output).toContain('created');
       expect(output).toContain('invitationSent');
       expect(output).toContain(invitation.expiresAt);
       expect(output).toContain('false');
+      expect(output).not.toContain('User ID');
+      expect(output).not.toContain('userId');
     });
 
     it('prints the invitation result in JSON mode', async () => {

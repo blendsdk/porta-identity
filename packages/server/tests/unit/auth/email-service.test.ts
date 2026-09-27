@@ -244,6 +244,28 @@ describe('email-service', () => {
       );
     });
 
+    it('should send to a recipient without an account and record the invitation id', async () => {
+      await sendInvitationEmail(
+        { email: 'pending@example.com', givenName: 'Pending', familyName: 'User' },
+        TEST_ORG,
+        'https://acme.com/invite?token=inv',
+        'en',
+        { invitationId: 'invitation-123' },
+      );
+
+      expect(mockTransport.send).toHaveBeenCalledWith(
+        expect.objectContaining({ to: 'pending@example.com' }),
+      );
+
+      const audit = vi
+        .mocked(writeAuditLog)
+        .mock.calls.map((call) => call[0])
+        .find((entry) => entry.eventType === 'email.send.invitation');
+      expect(audit).toBeDefined();
+      expect(audit!.userId).toBeUndefined();
+      expect(audit!.metadata).toEqual({ invitationId: 'invitation-123' });
+    });
+
     it('should fall back to organization name when brandingCompanyName is null', async () => {
       const orgNoBranding: EmailOrganization = {
         ...TEST_ORG,
@@ -421,8 +443,8 @@ describe('email-service', () => {
       vi.mocked(resolveEffectiveBranding).mockResolvedValueOnce({
         companyName: 'Uploaded Brand',
         primaryColor: '#102030',
-        logoUrl: 'https://porta.local/acme-corp/branding/logo',
-        faviconUrl: 'https://porta.local/acme-corp/branding/favicon',
+        logoUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/logo',
+        faviconUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/favicon',
         customCss: null,
         imageSources: ["'self'"],
       });
@@ -436,8 +458,8 @@ describe('email-service', () => {
         expect.objectContaining({
           orgName: 'Uploaded Brand',
           branding: expect.objectContaining({
-            logoUrl: 'https://porta.local/acme-corp/branding/logo',
-            faviconUrl: 'https://porta.local/acme-corp/branding/favicon',
+            logoUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/logo',
+            faviconUrl: 'https://porta-harness.ci.portaidentity.com/acme-corp/branding/favicon',
           }),
         }),
       );

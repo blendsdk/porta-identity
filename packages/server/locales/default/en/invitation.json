@@ -1,6 +1,10 @@
 {
   "title": "Accept your invitation",
   "description": "You've been invited to join {{orgName}}. Set a password to activate your account.",
+  "confirm_title": "You've been invited",
+  "confirm_description": "You've been invited to join {{orgName}}. Continue to set your password and activate your account.",
+  "confirm_inviter": "{{inviterName}} invited you.",
+  "confirm_button": "Accept invitation",
   "email_label": "Email address",
   "password_label": "Password",
   "password_placeholder": "Choose a password",

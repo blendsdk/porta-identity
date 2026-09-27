@@ -570,9 +570,8 @@ describe('user administration input', () => {
     // Invitations and previews share a narrow input that cannot pre-assign authorization data.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
     const invite = vi.fn().mockResolvedValue({
-      userId,
+      invitationId: userId,
       email: 'person@example.test',
-      created: true,
       invitationSent: true,
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
@@ -597,9 +596,8 @@ describe('user administration input', () => {
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
     const create = vi.fn().mockResolvedValue(user());
     const invite = vi.fn().mockResolvedValue({
-      userId,
+      invitationId: userId,
       email: 'person@example.test',
-      created: true,
       invitationSent: true,
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
@@ -874,7 +872,7 @@ describe('fixed user operation outcomes', () => {
   it('should map malformed typed mutation success to outcome-unknown', async () => {
     // A malformed success payload cannot be treated as definite success after the mutation was sent.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const invite = vi.fn().mockResolvedValue({ userId: 'bad-id', email: 'person@example.test' });
+    const invite = vi.fn().mockResolvedValue({ invitationId: 'bad-id', email: 'person@example.test' });
     const operations = createAdminUserOperations(() => domain({ invite }));
 
     await expect(

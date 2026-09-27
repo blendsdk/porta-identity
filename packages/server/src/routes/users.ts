@@ -30,7 +30,7 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import type { InvitationEmailOptions } from '../auth/email-service.js';
 import { renderInvitationEmail, sendInvitationEmail } from '../auth/email-service.js';
-import { insertInvitationToken } from '../auth/token-repository.js';
+import { InvitationConflictError, replaceInvitation } from '../auth/token-repository.js';
 import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
@@ -451,10 +451,10 @@ export function createUserRouter(): Router {
   // POST /invite — Invite a new user
   //
   // Enhanced invitation with optional personal message, role/claim
-  // pre-assignment, and inviter tracking. Creates the user if they
-  // don't exist, generates an invitation token with pre-assignment
-  // details, and sends the invitation email. Existing organization email
-  // addresses are rejected instead of silently resending an invitation.
+  // pre-assignment, and inviter tracking. Stores an email/organization-keyed
+  // invitation token and sends the invitation email. No account is created
+  // until the recipient accepts. Existing organization email addresses are
+  // rejected instead of silently resending an invitation.
   // -------------------------------------------------------------------------
   router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
     try {
@@ -491,13 +491,6 @@ export function createUserRouter(): Router {
         return;
       }
 
-      const user = await userService.createUser({
-        organizationId: orgId,
-        email: body.email,
-        givenName: body.givenName,
-        familyName: body.familyName,
-      });
-
       // Generate a new invitation token
       const { plaintext, hash } = generateToken();
       // Existing invitations keep their absolute expiry; this policy applies to the new token only.
@@ -518,13 +511,29 @@ export function createUserRouter(): Router {
       if (body.claims?.length) details.claims = body.claims;
       details.inviterName = inviterName;
 
-      await insertInvitationToken(
-        user.id,
-        hash,
-        expiresAt,
-        Object.keys(details).length > 0 ? details : null,
-        adminUser.id,
-      );
+      // Replace any live invitation for this address, creating no account.
+      let invitationId: string;
+      try {
+        const invitation = await replaceInvitation({
+          organizationId: orgId,
+          email: body.email,
+          tokenHash: hash,
+          expiresAt,
+          givenName: body.givenName ?? null,
+          familyName: body.familyName ?? null,
+          locale: body.locale ?? null,
+          details: Object.keys(details).length > 0 ? details : null,
+          invitedBy: adminUser.id,
+        });
+        invitationId = invitation.id;
+      } catch (error) {
+        if (error instanceof InvitationConflictError) {
+          ctx.status = 409;
+          ctx.body = { error: 'A live invitation already exists for this email' };
+          return;
+        }
+        throw error;
+      }
 
       // Build the invitation URL. Prefix the trusted, configured issuerBaseUrl
       // (never a request header) so the email link is absolute and includes
@@ -532,17 +541,16 @@ export function createUserRouter(): Router {
       const inviteUrl = `${config.issuerBaseUrl}/${org.slug}/auth/accept-invite/${plaintext}`;
 
       // Send the invitation email
-      const emailOptions: InvitationEmailOptions = {};
+      const emailOptions: InvitationEmailOptions = { invitationId };
       if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
       emailOptions.inviterName = inviterName;
 
       await afterDatabaseCommit(() =>
         sendInvitationEmail(
           {
-            id: user.id,
-            email: user.email,
-            givenName: user.givenName,
-            familyName: user.familyName,
+            email: body.email,
+            givenName: body.givenName ?? null,
+            familyName: body.familyName ?? null,
           },
           org,
           inviteUrl,
@@ -551,15 +559,15 @@ export function createUserRouter(): Router {
         ),
       );
 
-      // Audit log the invitation
+      // Audit log the invitation. No account exists yet, so no user id is recorded.
       writeAuditLog({
         organizationId: orgId,
-        userId: user.id,
         actorId: adminUser.id,
         eventType: 'user.invited',
         eventCategory: 'admin',
         description: 'User invitation created',
         metadata: {
+          invitationId,
           hasPersonalMessage: !!body.personalMessage,
           preAssignedRoles: body.roles?.length ?? 0,
           preAssignedClaims: body.claims?.length ?? 0,
@@ -569,9 +577,8 @@ export function createUserRouter(): Router {
       ctx.status = 201;
       ctx.body = {
         data: {
-          userId: user.id,
-          email: user.email,
-          created: true,
+          invitationId,
+          email: body.email,
           invitationSent: true,
           expiresAt: expiresAt.toISOString(),
         },
@@ -612,9 +619,8 @@ export function createUserRouter(): Router {
           : adminUser.givenName
         : (adminUser.email ?? 'Admin');
 
-      // Build a mock user for the preview
+      // Build a mock recipient for the preview; no account exists for a pending invitation.
       const previewUser = {
-        id: '00000000-0000-0000-0000-000000000000',
         email: body.email,
         givenName: body.givenName ?? null,
         familyName: body.familyName ?? null,

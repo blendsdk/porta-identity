@@ -79,7 +79,7 @@ vi.mock('../../../src/organizations/service.js', () => ({
 }));
 vi.mock('../../../src/auth/token-repository.js', () => ({
   ensureRecoveryJobToken: boundary.ensureToken,
-  insertInvitationToken: boundary.invitationToken,
+  replaceInvitation: boundary.invitationToken,
   invalidateUserTokens: vi.fn(),
 }));
 vi.mock('../../../src/auth/email-service.js', () => ({
@@ -248,7 +248,7 @@ describe('system configuration consumer decisions', () => {
     boundary.findUser.mockResolvedValue(user());
     boundary.createUser.mockResolvedValue(user());
     boundary.ensureToken.mockResolvedValue('active');
-    boundary.invitationToken.mockResolvedValue(undefined);
+    boundary.invitationToken.mockResolvedValue({ id: 'invitation-fixture' });
     boundary.sendRecovery.mockResolvedValue(undefined);
     boundary.sendInvitation.mockResolvedValue(undefined);
     boundary.query.mockResolvedValue({ rows: [{ count: '2' }], rowCount: 2 });
@@ -286,13 +286,10 @@ describe('system configuration consumer decisions', () => {
     );
     expect(context.status).toBe(201);
     expect(boundary.numberRead).toHaveBeenCalledWith('invitation_ttl');
-    expect(
-      boundary.invitationToken.mock.calls.some((args) =>
-        args.some(
-          (value) => value instanceof Date && value.getTime() === NOW.getTime() + 1209600 * 1000,
-        ),
-      ),
-    ).toBe(true);
+    const replaced = boundary.invitationToken.mock.calls.at(-1)?.[0] as
+      | { expiresAt?: Date }
+      | undefined;
+    expect(replaced?.expiresAt?.getTime()).toBe(NOW.getTime() + 1209600 * 1000);
   });
 
   it.each([

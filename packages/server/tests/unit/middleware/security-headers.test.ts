@@ -20,7 +20,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // runs (vi.mock is hoisted above all imports by Vitest).
 // ---------------------------------------------------------------------------
 const mockConfig = vi.hoisted(() => ({
-  issuerBaseUrl: 'https://porta.local:3443',
+  issuerBaseUrl: 'https://porta-harness.ci.portaidentity.com:3443',
 }));
 vi.mock('../../../src/config/index.js', () => ({
   config: mockConfig,
@@ -103,7 +103,7 @@ async function invokeMiddleware(
 describe('security-headers middleware', () => {
   beforeEach(() => {
     // Reset to HTTP issuer for most tests (no HSTS).
-    mockConfig.issuerBaseUrl = 'https://porta.local:3443';
+    mockConfig.issuerBaseUrl = 'https://porta-harness.ci.portaidentity.com:3443';
   });
 
   // -------------------------------------------------------------------------

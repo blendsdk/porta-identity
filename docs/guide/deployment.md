@@ -722,6 +722,13 @@ Porta uses [pino](https://github.com/pinojs/pino) for structured logging:
 | `production`  | JSON (one line per entry)    | Machine-parseable, suitable for log aggregators |
 | `test`        | Silent                       | No log output                                   |
 
+At startup the `Server started` entry carries the release version, so the running build is
+identifiable from the logs; the version is never returned in a public HTTP response.
+
+```json
+{ "level": 30, "version": "1.10.0", "port": 3000, "host": "0.0.0.0", "msg": "Server started" }
+```
+
 ### PII Redaction
 
 Porta automatically redacts sensitive fields from log output to prevent personally identifiable information (PII) from leaking into log aggregators. The following fields are replaced with `[Redacted]` in all log entries:
