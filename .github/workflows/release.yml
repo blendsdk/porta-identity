@@ -230,7 +230,7 @@ jobs:
                 } catch { /* leave repository empty */ }
                 process.stdout.write(repository);
               });
-            "
+            " || true
           }
           for package_name in server sdk cli; do
             expected_integrity=$(package_integrity "release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
