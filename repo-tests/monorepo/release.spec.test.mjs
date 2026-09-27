@@ -68,9 +68,7 @@ test('should keep every publishable component on the coordinated release version
     releaseVersion,
   );
   assert.ok(
-    readRepositoryFile('packages/sdk/src/version.ts').includes(
-      `SDK_VERSION = '${releaseVersion}'`,
-    ),
+    readRepositoryFile('packages/sdk/src/version.ts').includes(`SDK_VERSION = '${releaseVersion}'`),
   );
   assert.ok(
     readRepositoryFile('packages/cli/src/commands/version.ts').includes(
@@ -83,8 +81,10 @@ test('should keep every publishable component on the coordinated release version
     ),
   );
   const serverEntry = readRepositoryFile('packages/server/src/index.ts');
-  assert.match(serverEntry, /'Server started'/);
-  assert.match(serverEntry, /version:\s*SERVER_VERSION/);
+  assert.match(
+    serverEntry,
+    /logger\.info\(\s*\{[^}]*version:\s*SERVER_VERSION[^}]*\},?\s*'Server started'/s,
+  );
   assert.ok(
     readRepositoryFile('scripts/sync-versions.js').includes('packages/server/src/version.ts'),
   );

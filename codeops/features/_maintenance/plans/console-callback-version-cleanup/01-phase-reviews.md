@@ -51,3 +51,19 @@ commit. A single scoped re-review runs on the fix diff.
 
 Re-verified commands: `porta app list` (ID column), `porta client list --app` (ID column),
 `porta client update <uuid>` (internal UUID). **No new findings. Phase 1 closes reviewed.**
+
+## Phase 2 — Startup version log
+
+**Reviewed diff:** `/tmp/opencode/phase2-review.diff` (baseline tree
+`f9769c2d1d30c52aa8fa95abeeccbfdb4207aeba`; commit `6f519b94`)
+**Reviewer:** correctness-reviewer
+**Verify evidence:** `node scripts/sync-versions.js --check`; `yarn test:structure` 138 passed;
+server typecheck; `yarn docs:build`.
+
+| ID     | Severity | Location                                              | Problem                                                                                                                                                                        | Resolution                                                                                          | Decision    |
+| ------ | -------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- | ----------- |
+| RV-001 | 🟡 MINOR | `repo-tests/monorepo/release.spec.test.mjs:86-87`      | The version field and the `'Server started'` message were pinned as two independent file-wide matches, so a regression that moved the field to another log entry would stay green. | Single co-location regex tying `logger.info`, `version: SERVER_VERSION`, and `'Server started'`.     | ✅ Applied  |
+
+All required checks passed: constant drift cannot pass silently; the log field reaches pino output;
+no planning-artifact reference leaked into shipped code; the deployment docs claim matches the
+public surface. **No critical/major findings; Phase 2 closes reviewed.**
