@@ -14,6 +14,7 @@
 import { createApp } from './server.js';
 import { config } from './config/index.js';
 import { logger } from './lib/logger.js';
+import { SERVER_VERSION } from './version.js';
 import { connectDatabase, disconnectDatabase } from './lib/database.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
 import { SigningKeyCryptoError } from './lib/signing-key-crypto.js';
@@ -57,7 +58,10 @@ async function main() {
   const app = createApp(oidcProvider);
   const server = app.listen(config.port, config.host, () => {
     startAccountRecoveryWorker(oidcProvider);
-    logger.info({ port: config.port, host: config.host }, 'Server started');
+    logger.info(
+      { version: SERVER_VERSION, port: config.port, host: config.host },
+      'Server started',
+    );
   });
   attachTransportDecisionHandler(server);
 

@@ -340,6 +340,22 @@ describe('CLI Init Command', () => {
       // Public clients have no secrets — generateSecret should not be called
       expect(generateSecret).not.toHaveBeenCalled();
     });
+
+    it('should register the CLI and Porta Console loopback redirect URIs', async () => {
+      await runInit(createArgv());
+
+      expect(createClient).toHaveBeenCalledWith(
+        expect.objectContaining({
+          redirectUris: [
+            'http://127.0.0.1/callback',
+            'http://localhost/callback',
+            'http://127.0.0.1/auth/callback',
+            'http://127.0.0.1/api/oidc/callback',
+            'http://localhost/api/oidc/callback',
+          ],
+        }),
+      );
+    });
   });
 
   // -------------------------------------------------------------------------

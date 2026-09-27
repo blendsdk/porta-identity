@@ -1,5 +1,22 @@
 # Project guidance
 
+## Prime directive — leave no test infrastructure behind
+
+Clean up everything you create for a task before reporting the task complete.
+
+- Tear down every container, compose project, network, volume, and image you started, and remove
+  every test Porta installation you created. The machine must look as it did before the task.
+- For repository-owned stacks use the owned lifecycle commands (`yarn docker:down`,
+  `yarn harness:stop`, and the cleanup built into each `yarn assurance:*` run) instead of ad-hoc
+  `docker rm` / `docker compose down`. Remove task-created scratch stacks with their own compose
+  project name (`docker compose -p <scratch> down -v`); never touch resources you did not create.
+- Give scratch stacks their own compose project name and prefer `docker run --rm`, so cleanup
+  cannot touch containers or data the developer already had running. Never remove resources you
+  did not create, and never run global prune commands.
+- Drop scratch test databases created inside a shared container as part of teardown.
+- Before finishing, confirm with `docker ps -a`, `docker network ls`, and `docker volume ls` that
+  nothing from the task remains. If cleanup cannot complete, report the exact recovery command.
+
 <!-- CODEOPS-PROJECT:START -->
 
 ## Project profile
@@ -13,21 +30,21 @@
 
 Run commands from the repository root.
 
-| Purpose             | Command                                    | Validation                                                                                                               |
-| ------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------ |
-| Install             | `yarn install --frozen-lockfile`           | Passed on 2026-08-08 in the migration worktree                                                                           |
-| Full verification   | `yarn verify`                              | Passed on 2026-09-17; counts below                                                                                      |
-| CLI verification    | `yarn workspace @portaidentity/cli verify` | Passed on 2026-09-17: lint, typecheck, 1,419 tests and build                                                             |
-| Structure tests     | `yarn test:structure`                      | Passed on 2026-09-17: 122 contracts; some spawn builds/CLI commands; no services required                                |
-| Unit tests          | `yarn test:unit`                           | Runs the server unit project                                                                                             |
-| Integration tests   | `yarn test:integration`                    | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| End-to-end tests    | `yarn test:e2e`                            | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| Penetration tests   | `yarn test:pentest`                        | Requires PostgreSQL, Redis, and MailHog                                                                                  |
-| Browser tests       | `yarn test:ui`                             | Passed on 2026-09-17: 133; requires Playwright Chromium and test infrastructure                                           |
-| OIDC harness        | `yarn harness:test`                        | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                                                 |
-| Documentation build | `yarn docs:build`                          | Passed on 2026-09-17                                                                                                    |
-| Dependency check    | `yarn deps:check`                          | Checks root and active workspaces while excluding internal workspace packages                                            |
-| Release tooling     | `yarn release:prepare`, `yarn release:preflight`, `yarn release:publish` | Declared by root scripts; not executed during this guidance refresh                                  |
+| Purpose             | Command                                                                  | Validation                                                                                |
+| ------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Install             | `yarn install --frozen-lockfile`                                         | Passed on 2026-08-08 in the migration worktree                                            |
+| Full verification   | `yarn verify`                                                            | Passed on 2026-09-17; counts below                                                        |
+| CLI verification    | `yarn workspace @portaidentity/cli verify`                               | Passed on 2026-09-17: lint, typecheck, 1,419 tests and build                              |
+| Structure tests     | `yarn test:structure`                                                    | Passed on 2026-09-17: 122 contracts; some spawn builds/CLI commands; no services required |
+| Unit tests          | `yarn test:unit`                                                         | Runs the server unit project                                                              |
+| Integration tests   | `yarn test:integration`                                                  | Requires PostgreSQL, Redis, and MailHog                                                   |
+| End-to-end tests    | `yarn test:e2e`                                                          | Requires PostgreSQL, Redis, and MailHog                                                   |
+| Penetration tests   | `yarn test:pentest`                                                      | Requires PostgreSQL, Redis, and MailHog                                                   |
+| Browser tests       | `yarn test:ui`                                                           | Passed on 2026-09-17: 133; requires Playwright Chromium and test infrastructure           |
+| OIDC harness        | `yarn harness:test`                                                      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                  |
+| Documentation build | `yarn docs:build`                                                        | Passed on 2026-09-17                                                                      |
+| Dependency check    | `yarn deps:check`                                                        | Checks root and active workspaces while excluding internal workspace packages             |
+| Release tooling     | `yarn release:prepare`, `yarn release:preflight`, `yarn release:publish` | Declared by root scripts; not executed during this guidance refresh                       |
 
 `yarn verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
 
@@ -148,7 +165,8 @@ explain the concrete risk and propose a secure alternative.
   session expiry, and CSRF protection on state-changing requests.
 - Enforce production HTTPS, restrictive authenticated CORS, CSP and other security headers, and
   minimal public errors. Never log or return passwords, tokens, client secrets, keys, stack traces,
-  SQL errors, internal paths, infrastructure details, or product-version fingerprints.
+  SQL errors, internal paths, or infrastructure details. Do not return product-version fingerprints
+  in public or unauthenticated responses or headers.
 - Preserve two-factor enforcement, encrypted TOTP secrets, rate-limited email OTP delivery, and
   single-use hashed recovery codes.
 - Treat `packages/server/tests/pentest/` as a security baseline. Do not delete, skip, or weaken its

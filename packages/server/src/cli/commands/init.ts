@@ -327,13 +327,15 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         }
 
         // -----------------------------------------------------------------
-        // Step 7: Create the admin CLI client (public, Auth Code + PKCE)
+        // Step 7: Create the shared admin native client (public, Auth Code + PKCE)
         // -----------------------------------------------------------------
-        // The client is public (no secret) because CLI tools cannot safely
-        // store secrets. PKCE provides security for the authorization code
-        // exchange. The redirect URIs use loopback addresses — per RFC 8252
-        // §7.3, node-oidc-provider allows flexible port matching for native
-        // app clients using loopback redirect URIs.
+        // The client is public (no secret) because loopback applications cannot
+        // safely store secrets. PKCE provides security for the authorization code
+        // exchange. The redirect URIs use loopback addresses — per RFC 8252 §7.3,
+        // node-oidc-provider allows flexible port matching for native app clients
+        // using loopback redirect URIs. Both loopback consumers share this client:
+        // the `porta` CLI (temporary /callback server) and the Porta Console
+        // (fixed /api/oidc/callback route).
         const { client: adminClient } = await createClient({
           organizationId: superAdminOrg.id,
           applicationId: adminApp.id,
@@ -344,6 +346,8 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
             'http://127.0.0.1/callback',
             'http://localhost/callback',
             'http://127.0.0.1/auth/callback',
+            'http://127.0.0.1/api/oidc/callback',
+            'http://localhost/api/oidc/callback',
           ],
           postLogoutRedirectUris: ['http://127.0.0.1'],
           grantTypes: ['authorization_code', 'refresh_token'],
