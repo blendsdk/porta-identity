@@ -1,7 +1,7 @@
 # Task T-03: Make release verification resilient to registry lag and re-runs
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 4/5 tasks (80%)
+> **Progress**: 5/5 tasks (100%)
 > **Phase baseline tree**: `9fbaaaccd7446735dffa77d67bb34bcda93911ea` · scope: strict · expected
 > paths: `.github/workflows/release.yml`, `repo-tests/monorepo/release.spec.test.mjs`
 > **Evidence**: Release run
@@ -62,9 +62,12 @@ later edit cannot silently weaken either behavior.
 - [x] T-03.3 **Verify.** `yarn test:structure` passes and the workflow parses via the structure
       test's YAML loader (`readWorkflow`); record the result.
 - [x] T-03.4 **Review.** Correctness + security review of the diff; apply findings.
-- [ ] T-03.5 **Deliver and recover.** Commit, push, open and merge the PR to `develop`; then
+- [x] T-03.5 **Deliver and recover.** Commit, push, open and merge the PR to `develop`; then
       dispatch `Release` with `--ref develop -f bump=auto` and confirm completion: `main` bumped,
       `v1.11.0` tag and GitHub Release created, Docker image dispatched, `develop` synced.
+      ✅ (completed: 2026-09-28 01:05) — PR #144 merged (`bfaf61db`); Release run
+      `36357391953` succeeded: `main` bump `f30986bd`, tag `v1.11.0`, GitHub Release published,
+      Docker workflow `36357469306` dispatched, `develop` synced (`f4ebe581`).
 
 **Verify**: `yarn test:structure` plus the completed release run's tag, release, Docker, and
 develop-sync evidence.
