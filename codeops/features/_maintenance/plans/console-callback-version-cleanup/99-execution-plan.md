@@ -102,31 +102,33 @@ for this task.
       `redirectUris: ['http://127.0.0.1/callback', 'http://localhost/callback', 'http://127.0.0.1/auth/callback', 'http://127.0.0.1/api/oidc/callback', 'http://localhost/api/oidc/callback']`.
       Run `yarn workspace @portaidentity/server test:unit tests/unit/cli/commands/init.test.ts` and
       confirm it fails on the missing Console URIs.
-      ✅ (completed: 2026-09-27 20:31)
+      ✅ (completed: 2026-09-27 20:28)
 - [x] T-01.2 **Implement.** Add the two Console URIs in
       `packages/server/src/cli/commands/init.ts:343-347` and rewrite the Step 7 comment to name both
       loopback consumers (CLI and Porta Console). Rerun the targeted unit command and confirm green.
-      ✅ (completed: 2026-09-27 20:33)
+      ✅ (completed: 2026-09-27 20:29)
 - [x] T-01.3 **Integration.** In `packages/server/tests/integration/cli/init.test.ts`, mirror the
       five URIs at line 139 and assert `clientResult.rows[0].redirect_uris` equals the list in the DB
       check at lines 148-154. Run
       `yarn workspace @portaidentity/server test:integration tests/integration/cli/init.test.ts`
       (requires PostgreSQL, Redis, MailHog — start them with `yarn docker:up`).
-      ✅ (completed: 2026-09-27 20:36)
+      ✅ (completed: 2026-09-27 20:29)
 - [x] T-01.4 **Docs — CLI.** Update `docs/cli/bootstrap.md`: item 3 of "What it does" names the
       shared CLI + Console client, and a `::: tip` block documents the one-time existing-install
-      command `porta client update <client-id> --redirect-uris "http://127.0.0.1/callback,http://localhost/callback,http://127.0.0.1/auth/callback,http://127.0.0.1/api/oidc/callback,http://localhost/api/oidc/callback"`
-      with `<client-id>` taken from `GET /api/admin/metadata`. State that `--redirect-uris` replaces
-      the complete stored list, so operators with custom URIs must include them alongside the five
-      from `porta init` (PF-004).
-      ✅ (completed: 2026-09-27 20:39)
+      command `porta client update <client-uuid> --redirect-uris "http://127.0.0.1/callback,http://localhost/callback,http://127.0.0.1/auth/callback,http://127.0.0.1/api/oidc/callback,http://localhost/api/oidc/callback"`
+      with `<client-uuid>` taken from the `ID` column of `porta client list --app <app-uuid>`
+      (application UUID from `porta app list`), noting that the metadata `clientId` is the public
+      OIDC identifier, not the update identifier. State that `--redirect-uris` replaces the complete
+      stored list, so operators with custom URIs must include them alongside the five from
+      `porta init` (PF-004; RV-001).
+      ✅ (completed: 2026-09-27 20:31)
 - [x] T-01.5 **Docs — API.** Update the metadata section of `docs/api/authentication.md`: state that
       the returned `clientId` is the shared admin native client used by the `porta` CLI and the
       Porta Console over loopback, and correct the stale example JSON to the actual response shape
       `{ "issuer", "orgSlug", "clientId" }` (`packages/server/src/server.ts:240-244`).
-      ✅ (completed: 2026-09-27 20:39)
+      ✅ (completed: 2026-09-27 20:31)
 - [x] T-01.6 **Structure and docs build.** Run `yarn test:structure` and `yarn docs:build`.
-      ✅ (completed: 2026-09-27 20:39)
+      ✅ (completed: 2026-09-27 20:31)
 - [x] T-01.7 **Live probe (acceptance criterion #1, PF-003).** With the dev stack running
       (`yarn docker:up`), create a fresh scratch installation:
       `docker compose -f docker/docker-compose.yml exec -T postgres createdb -U porta porta_probe`
@@ -145,6 +147,7 @@ for this task.
       with `invalid_redirect_uri`.
       Clean up immediately: stop the server, drop the `porta_probe` database, and remove only the
       Docker resources this task created.
+      ✅ (completed: 2026-09-27 20:32)
 
 ### Phase 2 — Startup version log
 

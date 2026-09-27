@@ -11,7 +11,7 @@ sequenceDiagram
     participant Porta
 
     CLI->>Porta: GET /api/admin/metadata
-    Porta-->>CLI: { issuer, authorization_endpoint, token_endpoint }
+    Porta-->>CLI: { issuer, orgSlug, clientId }
     CLI->>Porta: OIDC Authorization Code + PKCE flow
     Porta-->>Admin: Login page (super-admin org)
     Admin->>Porta: Submit credentials

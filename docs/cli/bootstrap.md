@@ -46,12 +46,15 @@ porta init --database-url postgresql://user:pass@localhost:5432/porta
 initialized before the Porta Console callback existed, register it once with the admin CLI:
 
 ```bash
-porta client update <client-id> --redirect-uris "http://127.0.0.1/callback,http://localhost/callback,http://127.0.0.1/auth/callback,http://127.0.0.1/api/oidc/callback,http://localhost/api/oidc/callback"
+porta client update <client-uuid> --redirect-uris "http://127.0.0.1/callback,http://localhost/callback,http://127.0.0.1/auth/callback,http://127.0.0.1/api/oidc/callback,http://localhost/api/oidc/callback"
 ```
 
-Read `<client-id>` from `GET /api/admin/metadata` (the `clientId` field). The `--redirect-uris`
-option replaces the complete stored list, so include any custom redirect URIs you added alongside
-the five above.
+Find `<client-uuid>` in the `ID` column of `porta client list --app <app-uuid>` for the
+`Porta Admin CLI` client; get `<app-uuid>` from the `ID` column of `porta app list` for the
+`Porta Admin` application. The `clientId` returned by `GET /api/admin/metadata` is the public OIDC
+identifier used in authorization requests, not the internal UUID that `porta client update`
+accepts. The `--redirect-uris` option replaces the complete stored list, so include any custom
+redirect URIs you added alongside the five above.
 :::
 
 ---
