@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-09-27
+
+Added:
+- Report the running version in the startup log with a new SERVER_VERSION constant.
+- Defer user creation to invitation acceptance for enhanced user flow.
+- Add migration for invitation tokens with a nullable user_id for deferred user creation.
+
+Changed:
+- Pin the startup version field to the Server started call using a co-location regex.
+- Stabilize invitation suites for deferred creation with unique addresses per test.
+- Use reserved CI loopback host in server tests to ensure consistency.
+
+Fixed:
+- Register the Porta Console callback URI on the admin native client for loopback callbacks.
+- Update tests for consistent handling of invitation enumeration, replay, and token storage.
+
 ## [1.9.0] - 2026-09-25
 
 Added:

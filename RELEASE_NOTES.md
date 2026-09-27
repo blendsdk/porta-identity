@@ -1,17 +1,19 @@
-# Release Notes — v1.9.0
+# Release Notes — v1.11.0
 
-**Released**: 2026-09-25
+**Released**: 2026-09-27
 
-We are excited to announce the release of version 1.9.0, which brings significant updates to enhance user experience and improve functionality across our platform. This release introduces new features that emphasize consent management, ensuring that users maintain control over their data and privacy settings when interacting with our services.
+We are excited to announce the release of version 1.11.0, which brings significant improvements and enhancements across our platforms. This update focuses on making the user experience smoother and providing better functionalities related to invitations and security.
 
-Highlights of this release include:
+Key Highlights:
 
-- **Enhanced Consent Management:** Users will now see a new “Require Consent” feature, allowing you to determine whether explicit consent is needed for client interactions. This option ensures clarity and compliance with privacy regulations, making it easier for users to understand and manage their consent preferences.
+1. **Enhanced Invitation Process**: We've made important changes to how invitations are handled. Now, invitations can be created and accepted in a more streamlined manner. This means users can expect a more straightforward process when inviting others to join our platform.
 
-- **Updated Consent Features for Developers:** The new consent-related options and protocols have been added for developers working with our platform, including improved tools for implementing consent requirements in client creation and updates. This encourages best practices in consent management across applications.
+2. **Improved Security Features**: The updates include enhancements to our security mechanisms. We have made crypto assertions more reliable, ensuring that user data remains secure and tamper-proof. These updates help bolster trust in our system and provide peace of mind to our users.
 
-- **Stronger Organization Scope for Invitations:** When accepting invitations within organizations, the system will now ensure that invitations are correctly scoped to the respective organization. This helps prevent unauthorized access and enhances overall security.
+3. **Better Versioning and Logging**: Users can now easily see which version of the software is running, thanks to updated startup logs. This transparency allows stakeholders to stay informed about the system’s operational status.
 
-- **Improved Invitation Audit Processes:** Enhanced audit features will monitor and record any invitation rejections, ensuring greater accountability and allowing for better tracking of user actions related to invitations.
+4. **User Invitation Management**: The latest version simplifies managing user invitations. This update allows for better oversight, enabling users to monitor the invitation process from start to finish. 
 
-These updates are designed to provide users with greater control over their interactions and reinforce our commitment to security and compliance. We appreciate your continued support and encourage you to explore these new features in version 1.9.0!
+5. **Updates Across All Platforms**: This release applies to all components of our system, ensuring unified improvements for users interacting through the CLI (Command Line Interface), SDK (Software Development Kit), and server functionalities.
+
+Overall, this release is focused on enhancing the user experience, strengthening security, and ensuring better visibility into system operations. We appreciate your continued support and feedback as we strive to make our platform even better.

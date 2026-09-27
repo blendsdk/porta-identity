@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.0] - 2026-09-27
+
+Added:
+- CLI invite output now prints the invitation fields.
+
+Changed:
+- Updated guidance to point operators at the internal UUID from `porta client list` instead of the public metadata clientId.
+- Clarified that metadata clientId is the OIDC login identifier, not the update identifier.
+- Adopted deferred invitation result shape; InviteUserResult now exposes invitationId instead of userId/created.
+- Admin UI type and validator accept the new invitation result shape and reject the legacy one.
+
+Deprecated:
+- Legacy invitation result shape is no longer supported in Admin UI.
+
+Removed:
+- None.
+
+Fixed:
+- Corrected documentation discrepancies regarding client identifier guidance. 
+
+Security:
+- None.
+
 ## [1.9.0] - 2026-09-25
 
 ## Added
