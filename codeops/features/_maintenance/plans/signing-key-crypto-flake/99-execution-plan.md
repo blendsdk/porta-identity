@@ -1,7 +1,7 @@
 # Task T-02: Make the tampered-tag signing-key crypto test deterministic
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 0/5 tasks (0%)
+> **Progress**: 4/5 tasks (80%)
 > **Phase baseline tree**: `ebaaa441bb8370b2b4761e0fc2ebbe234ddebb3b` · scope: strict · expected
 > path: `packages/server/tests/unit/lib/signing-key-crypto.test.ts`
 > **Evidence**: CI run
@@ -57,16 +57,16 @@ helper, no production change, no new dependency.
 - [x] T-02.2 **Fix.** Replace the tamper construction at
       `packages/server/tests/unit/lib/signing-key-crypto.test.ts:118` with the four lines in the
       [replacement snippet](#replacement-snippet-for-t-022) below; the guard assertion makes the
-      tamper invariant explicit and regression-proof.
+      tamper invariant explicit.
 
 - [x] T-02.3 **Stability evidence.** Run the file once, then 100 times with
       `for i in $(seq 1 100); do yarn workspace @portaidentity/server test:unit tests/unit/lib/signing-key-crypto.test.ts || { echo "FAILED at run $i"; exit 1; }; done`.
       Any nonzero exit aborts and is reported; record the pass count.
 - [x] T-02.4 **Full verification.** `yarn docker:up` then `yarn verify`; all must pass.
-- [ ] T-02.5 **Deliver.** On branch `fix/signing-key-crypto-flake`: commit the CodeOps plan and
-      roadmap artifacts first (`docs(codeops): plan the signing-key crypto flake fix`), then commit
-      the test fix (`test(server): make the tampered-tag crypto assertion deterministic`), push,
-      and open a pull request to `develop`.
+- [~] T-02.5 **Deliver.** On branch `fix/signing-key-crypto-flake`: commit the CodeOps plan and
+  roadmap artifacts first (`docs(codeops): plan the signing-key crypto flake fix`), then commit
+  the test fix (`test(server): make the tampered-tag crypto assertion deterministic`), push,
+  and open a pull request to `develop`.
 
 ### Replacement snippet for T-02.2
 

@@ -13,27 +13,27 @@
 
 ### Audit scope
 
-| Term                  | Value                                                                   |
-| --------------------- | ----------------------------------------------------------------------- |
-| Audit target          | The mini-plan file named above                                          |
-| Context documents     | `AGENTS.md`, `codeops/codeops.json`, the `_maintenance` roadmap         |
-| Modification set      | The mini-plan file only (fixes require explicit user instruction)       |
-| Product-scope mode    | Strict (no `--explore-scope`)                                           |
-| Domain lenses applied | Web application (auth-adjacent test only); no data/migration lens       |
+| Term                  | Value                                                             |
+| --------------------- | ----------------------------------------------------------------- |
+| Audit target          | The mini-plan file named above                                    |
+| Context documents     | `AGENTS.md`, `codeops/codeops.json`, the `_maintenance` roadmap   |
+| Modification set      | The mini-plan file only (fixes require explicit user instruction) |
+| Product-scope mode    | Strict (no `--explore-scope`)                                     |
+| Domain lenses applied | Web application (auth-adjacent test only); no data/migration lens |
 
 ### Codebase Context Summary
 
 **Reference verification:** 8/8 verified against `ced43f61`.
 
-| Claim                                                        | Verified evidence                                                              |
-| ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
-| Flaky construction at test line 118                          | `signing-key-crypto.test.ts:118` — `tag.slice(0, -2) + 'ff'`                    |
-| Tag is 32 hex chars / 16 bytes                               | `signing-key-crypto.ts:23` (`TAG_LENGTH = 16`), `:75` (`tag.toString('hex')`)   |
-| Ciphertext test guarantees a different value                 | `signing-key-crypto.test.ts:107-110` — `(original + 1) % 16`                    |
-| Safe tamper precedent                                        | `auth/csrf.test.ts:75` — `endsWith('A') ? 'B' : 'A'`                            |
-| No second occurrence of the same pattern                     | Repository-wide search of `packages/*/tests` — only line 118                     |
-| Flake probability 1/256                                      | Tag's final byte equals `0xff` with probability 1/256; construction is then a no-op |
-| CI failure exists and later runs passed                      | Run 36347788339 failed; subsequent branch runs succeeded                        |
+| Claim                                        | Verified evidence                                                                   |
+| -------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Flaky construction at test line 118          | `signing-key-crypto.test.ts:118` — `tag.slice(0, -2) + 'ff'`                        |
+| Tag is 32 hex chars / 16 bytes               | `signing-key-crypto.ts:23` (`TAG_LENGTH = 16`), `:75` (`tag.toString('hex')`)       |
+| Ciphertext test guarantees a different value | `signing-key-crypto.test.ts:107-110` — `(original + 1) % 16`                        |
+| Safe tamper precedent                        | `auth/csrf.test.ts:75` — `endsWith('A') ? 'B' : 'A'`                                |
+| No second occurrence of the same pattern     | Repository-wide search of `packages/*/tests` — only line 118                        |
+| Flake probability 1/256                      | Tag's final byte equals `0xff` with probability 1/256; construction is then a no-op |
+| CI failure exists and later runs passed      | Run 36347788339 failed; subsequent branch runs succeeded                            |
 
 ### Summary by Dimension
 
@@ -55,10 +55,10 @@
 
 ### Summary by Severity
 
-| Severity    | Count | Status    |
-| ----------- | ----- | --------- |
-| CRITICAL    | 0     | —         |
-| MAJOR       | 0     | —         |
+| Severity    | Count | Status      |
+| ----------- | ----- | ----------- |
+| CRITICAL    | 0     | —           |
+| MAJOR       | 0     | —           |
 | MINOR       | 2     | ✅ resolved |
 | OBSERVATION | 1     | ✅ resolved |
 
@@ -74,10 +74,10 @@ runs.
 
 **Options:**
 
-| Option | Description                                                                                          | Pros                                   | Cons             |
-| ------ | ---------------------------------------------------------------------------------------------------- | -------------------------------------- | ---------------- |
-| A      | Pin the command and failure rule, e.g. `for i in $(seq 1 100); do yarn workspace @portaidentity/server test:unit tests/unit/lib/signing-key-crypto.test.ts; done` — any nonzero exit aborts and is reported | Reproducible, auditable evidence       | Slightly longer task text |
-| B      | Keep as-is                                                                                           | Shorter                                | Evidence varies  |
+| Option | Description                                                                                                                                                                                                 | Pros                             | Cons                      |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- | ------------------------- |
+| A      | Pin the command and failure rule, e.g. `for i in $(seq 1 100); do yarn workspace @portaidentity/server test:unit tests/unit/lib/signing-key-crypto.test.ts; done` — any nonzero exit aborts and is reported | Reproducible, auditable evidence | Slightly longer task text |
+| B      | Keep as-is                                                                                                                                                                                                  | Shorter                          | Evidence varies           |
 
 **Recommendation:** Option A.
 
@@ -98,10 +98,10 @@ ride with the fix commit or a separate commit.
 
 **Options:**
 
-| Option | Description                                                                                                        | Pros                                | Cons     |
-| ------ | ------------------------------------------------------------------------------------------------------------------ | ----------------------------------- | -------- |
-| A      | Pin `branch fix/signing-key-crypto-flake` and state that the plan/roadmap artifacts are committed with the fix (or as one preceding `docs(codeops)` commit) | Unambiguous delivery, matches T-01   | One edit |
-| B      | Keep as-is                                                                                                         | No edit                              | Ambiguity |
+| Option | Description                                                                                                                                                 | Pros                               | Cons      |
+| ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | --------- |
+| A      | Pin `branch fix/signing-key-crypto-flake` and state that the plan/roadmap artifacts are committed with the fix (or as one preceding `docs(codeops)` commit) | Unambiguous delivery, matches T-01 | One edit  |
+| B      | Keep as-is                                                                                                                                                  | No edit                            | Ambiguity |
 
 **Recommendation:** Option A.
 
@@ -118,10 +118,10 @@ show the four resulting lines, so wording and the existing ciphertext-test style
 
 **Options:**
 
-| Option | Description                                                                                | Pros                              | Cons      |
-| ------ | ------------------------------------------------------------------------------------------ | --------------------------------- | --------- |
-| A      | Include the exact snippet (mirroring `signing-key-crypto.test.ts:106-110`) in T-02.2        | Removes interpretation entirely   | Slight text growth |
-| B      | Keep the prose description                                                                  | Shorter                           | Minor drift risk |
+| Option | Description                                                                          | Pros                            | Cons               |
+| ------ | ------------------------------------------------------------------------------------ | ------------------------------- | ------------------ |
+| A      | Include the exact snippet (mirroring `signing-key-crypto.test.ts:106-110`) in T-02.2 | Removes interpretation entirely | Slight text growth |
+| B      | Keep the prose description                                                           | Shorter                         | Minor drift risk   |
 
 **Recommendation:** Option A.
 
@@ -139,11 +139,11 @@ targeted run is a single Vitest project launch).
 
 ### Iteration 2 — bounded re-check (2026-09-27)
 
-| Finding | Fix applied                                                                 | Verified |
-| ------- | --------------------------------------------------------------------------- | -------- |
-| PF-001  | T-02.3 pins the exact 100× loop command and abort-on-nonzero rule            | ✅       |
-| PF-002  | T-02.5 names branch `fix/signing-key-crypto-flake` and the two-commit packaging | ✅    |
-| PF-003  | T-02.2 links the pinned `Replacement snippet for T-02.2` code block          | ✅       |
+| Finding | Fix applied                                                                     | Verified |
+| ------- | ------------------------------------------------------------------------------- | -------- |
+| PF-001  | T-02.3 pins the exact 100× loop command and abort-on-nonzero rule               | ✅       |
+| PF-002  | T-02.5 names branch `fix/signing-key-crypto-flake` and the two-commit packaging | ✅       |
+| PF-003  | T-02.2 links the pinned `Replacement snippet for T-02.2` code block             | ✅       |
 
 The corrected plan still references `signing-key-crypto.test.ts:118` (unchanged in `ced43f61`),
 and the snippet mirrors the existing ciphertext-tamper style at `:107-110`. No new ambiguity or
