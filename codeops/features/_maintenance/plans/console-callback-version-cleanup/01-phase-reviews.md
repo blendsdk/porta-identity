@@ -90,3 +90,13 @@ All four items verified fixed: the absolute prohibition list is unchanged and th
 qualifier is a separate sentence; owned commands apply to repository-owned stacks with scratch
 teardown via `docker compose -p <scratch> down -v`; the progress header reads `11/15 (73%)`; and
 the assurance cleanup wording names the mechanism. No new findings. **Phase 3 closes reviewed.**
+
+## Phase 4 — Integrated verification (T-01.12 … T-01.14)
+
+**Verify evidence:** `yarn verify` exit 0 — structure 138; server unit 3746, integration 490, E2E
+133, pentest 273; SDK 562; CLI 1435; builds pass. `yarn docs:build` exit 0.
+`yarn assurance:harness --project protocol --profile production-security` exit 0 — 15/15 protocol
+tests, owned stack cleaned up. Startup log observed `Server started` with `version: "1.10.0"`.
+Docker teardown restored the pre-task baseline: `docker ps -a`, `docker network ls`, and
+`docker volume ls` match the recorded baseline; the three task-created anonymous volumes and the
+harness-built image were removed.

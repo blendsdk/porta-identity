@@ -1,7 +1,7 @@
 # Task T-01: Porta Console callback URI, startup version log, and agent cleanup directive
 
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 12/15 tasks (80%)
+> **Progress**: 14/15 tasks (93%)
 > **Issue**: [#141](https://github.com/blendsdk/porta-identity/issues/141)
 > **Delivery**: branch `fix/141-console-callback-uri` from an up-to-date `develop`; three
 > Conventional Commits; one pull request to `develop` (closes #141).
@@ -201,9 +201,9 @@ for this task.
       in T-01.7) and confirm the `Server started` log entry contains the `version` field (PF-002);
       drop the scratch database afterwards.
       ✅ (completed: 2026-09-27 22:16)
-- [ ] T-01.13 Run `yarn assurance:harness --project protocol --profile production-security` and
+- [x] T-01.13 Run `yarn assurance:harness --project protocol --profile production-security` and
       record the outcome, including its exit taxonomy.
-- [ ] T-01.14 Cleanup and evidence: remove the dev stack the task started (including volumes when
+- [x] T-01.14 Cleanup and evidence: remove the dev stack the task started (including volumes when
       the task created them) and the scratch database; confirm `docker ps -a`, `docker network ls`,
       and `docker volume ls` show nothing task-created. Never remove pre-existing developer
       resources.
