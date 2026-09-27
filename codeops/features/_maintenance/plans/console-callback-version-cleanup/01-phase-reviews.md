@@ -40,3 +40,14 @@ value; the provider's native loopback matching was verified against
 client by the internal UUID from `porta client list --app <app-uuid>` and states that the metadata
 `clientId` is the public OIDC identifier. RV-002 and RV-003 were applied in the same follow-up
 commit. A single scoped re-review runs on the fix diff.
+
+### Phase 1 re-review (fix diff `4ecbec56`)
+
+| Finding | Verdict | Evidence |
+| ------- | ------- | -------- |
+| RV-001 = SA-001 | ✅ Fixed | `docs/cli/bootstrap.md:49-57` uses the internal UUID from `porta client list --app <app-uuid>`; metadata `clientId` documented as the OIDC login identifier |
+| RV-002 | ✅ Fixed | `docs/api/authentication.md:14` now `{ issuer, orgSlug, clientId }`, matching `packages/server/src/server.ts:240-244` |
+| RV-003 | ✅ Fixed | Plan marks match the verify-log mtimes and precede their containing commit |
+
+Re-verified commands: `porta app list` (ID column), `porta client list --app` (ID column),
+`porta client update <uuid>` (internal UUID). **No new findings. Phase 1 closes reviewed.**

@@ -151,19 +151,27 @@ for this task.
 
 ### Phase 2 — Startup version log
 
-- [ ] T-01.8 **Spec first (red).** Extend `repo-tests/monorepo/release.spec.test.mjs` with:
+> **Phase baseline tree**: `f9769c2d1d30c52aa8fa95abeeccbfdb4207aeba` · scope: strict · expected
+> paths: `packages/server/src/version.ts`, `packages/server/src/index.ts`,
+> `scripts/sync-versions.js`, `repo-tests/monorepo/release.spec.test.mjs`,
+> `docs/guide/deployment.md`
+
+- [x] T-01.8 **Spec first (red).** Extend `repo-tests/monorepo/release.spec.test.mjs` with:
       (a) `packages/server/src/version.ts` contains `SERVER_VERSION = '<coordinated version>'`,
       (b) `packages/server/src/index.ts` logs `version: SERVER_VERSION` in the `'Server started'`
       call, and (c) `scripts/sync-versions.js` registers `packages/server/src/version.ts` in its
       `derivedVersions` list (PF-005). Run `yarn test:structure` and confirm it fails because the
       constant does not exist.
-- [ ] T-01.9 **Implement.** Add `packages/server/src/version.ts` with the documented
+      ✅ (completed: 2026-09-27 20:44)
+- [x] T-01.9 **Implement.** Add `packages/server/src/version.ts` with the documented
       `SERVER_VERSION` constant, add the matching `derivedVersions` entry to
       `scripts/sync-versions.js`, and include `version: SERVER_VERSION` in the startup log call at
       `packages/server/src/index.ts:60`. Run `node scripts/sync-versions.js --check`,
       `yarn test:structure`, and `yarn workspace @portaidentity/server typecheck`; all must pass.
-- [ ] T-01.10 **Docs — deployment.** In the Logging section of `docs/guide/deployment.md`, note that
+      ✅ (completed: 2026-09-27 20:44)
+- [x] T-01.10 **Docs — deployment.** In the Logging section of `docs/guide/deployment.md`, note that
       the `Server started` entry carries the running version field.
+      ✅ (completed: 2026-09-27 20:45)
 
 ### Phase 3 — Agent cleanup directive
 

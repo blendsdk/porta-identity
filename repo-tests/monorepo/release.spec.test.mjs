@@ -77,6 +77,17 @@ test('should keep every publishable component on the coordinated release version
       `CLI_VERSION = '${releaseVersion}'`,
     ),
   );
+  assert.ok(
+    readRepositoryFile('packages/server/src/version.ts').includes(
+      `SERVER_VERSION = '${releaseVersion}'`,
+    ),
+  );
+  const serverEntry = readRepositoryFile('packages/server/src/index.ts');
+  assert.match(serverEntry, /'Server started'/);
+  assert.match(serverEntry, /version:\s*SERVER_VERSION/);
+  assert.ok(
+    readRepositoryFile('scripts/sync-versions.js').includes('packages/server/src/version.ts'),
+  );
 });
 
 test('should release from a manual dispatch that bumps, notes, tags, and publishes', () => {
