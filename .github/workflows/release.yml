@@ -190,32 +190,70 @@ jobs:
         if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' && steps.published.outputs.all_published != 'true' }}
         run: yarn release:publish
 
-      # npm view can lag the publish by minutes, so retry the version, integrity, and provenance
-      # checks for up to 400s per package instead of failing a release whose packages are already live.
+      # npm view can lag the publish by minutes (the server package has exceeded ten minutes), so
+      # retry the version and provenance checks for up to 900s per package. The integrity
+      # comparison applies to the run that published: a re-run repacks the workspace and the
+      # regenerated CHANGELOG.md makes the tarball differ, so an already-published re-run accepts
+      # the published package only when its SLSA provenance names this repository, in addition to
+      # the version and provenance-type checks, instead of failing on an unreproducible integrity
+      # value.
       - name: Verify published packages
         if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
         env:
           RELEASE_VERSION: ${{ steps.release.outputs.version }}
+          ALL_PUBLISHED: ${{ steps.published.outputs.all_published }}
         shell: bash
         run: |
           package_integrity() {
             printf 'sha512-'
             openssl dgst -sha512 -binary "$1" | openssl base64 -A
           }
+          # Reads the SLSA provenance attestation of a published package and prints the workflow
+          # repository that built it, or an empty string when no attestation can be read.
+          provenance_repository() {
+            curl -fsSL "https://registry.npmjs.org/-/npm/v1/attestations/@portaidentity%2f$1@$RELEASE_VERSION" 2>/dev/null | node -e "
+              let input = '';
+              process.stdin.on('data', (chunk) => { input += chunk; });
+              process.stdin.on('end', () => {
+                let repository = '';
+                try {
+                  const body = JSON.parse(input);
+                  for (const entry of body.attestations || []) {
+                    try {
+                      const statement = JSON.parse(Buffer.from(entry.bundle.dsseEnvelope.payload, 'base64').toString());
+                      const workflow = statement.predicateType === 'https://slsa.dev/provenance/v1'
+                        ? statement.predicate?.buildDefinition?.externalParameters?.workflow
+                        : null;
+                      if (workflow && workflow.repository) { repository = workflow.repository; break; }
+                    } catch { /* skip entries that are not readable provenance */ }
+                  }
+                } catch { /* leave repository empty */ }
+                process.stdout.write(repository);
+              });
+            "
+          }
           for package_name in server sdk cli; do
             expected_integrity=$(package_integrity "release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
             verified=false
-            for attempt in $(seq 1 40); do
+            for attempt in $(seq 1 60); do
               published=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version 2>/dev/null || true)
               if [ "$published" = "$RELEASE_VERSION" ]; then
                 published_integrity=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.integrity 2>/dev/null || true)
                 provenance=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" dist.attestations.provenance.predicateType 2>/dev/null || true)
-                if [ "$published_integrity" = "$expected_integrity" ] && [ "$provenance" = 'https://slsa.dev/provenance/v1' ]; then
+                integrity_ok=false
+                if [ "$published_integrity" = "$expected_integrity" ]; then integrity_ok=true; fi
+                if [ "$ALL_PUBLISHED" = "true" ]; then
+                  published_by=$(provenance_repository "$package_name")
+                  if [ "$published_by" = "https://github.com/$GITHUB_REPOSITORY" ]; then
+                    integrity_ok=true
+                  fi
+                fi
+                if [ "$integrity_ok" = true ] && [ "$provenance" = 'https://slsa.dev/provenance/v1' ]; then
                   verified=true
                   break
                 fi
               fi
-              if [ "$attempt" -lt 40 ]; then sleep 10; fi
+              if [ "$attempt" -lt 60 ]; then sleep 15; fi
             done
             if [ "$verified" != true ]; then
               echo "::error::@portaidentity/$package_name@$RELEASE_VERSION was not verifiable within the deadline"

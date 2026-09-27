@@ -149,8 +149,15 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /id-token:\s*write/);
   assert.match(source, /runs-on:\s*ubuntu-latest/);
   assert.match(source, /run:\s*yarn release:publish/);
-  assert.match(source, /for attempt in \$\(seq 1 40\)/);
-  assert.match(source, /sleep 10/);
+  assert.match(source, /for attempt in \$\(seq 1 60\)/);
+  assert.match(source, /sleep 15/);
+  // The integrity comparison applies to the run that published; an already-published re-run
+  // verifies version and provenance because the regenerated changelog makes a repack differ, and
+  // it additionally binds the published provenance to this repository.
+  assert.match(source, /ALL_PUBLISHED: \$\{\{ steps\.published\.outputs\.all_published \}\}/);
+  assert.match(source, /"\$ALL_PUBLISHED" = "true"/);
+  assert.match(source, /registry\.npmjs\.org\/-\/npm\/v1\/attestations/);
+  assert.match(source, /https:\/\/github\.com\/\$GITHUB_REPOSITORY/);
   // The release is idempotent: a re-run skips the publish when every package
   // already carries the version and skips the Docker dispatch when the image
   // already exists, so a post-publish failure can be recovered.
