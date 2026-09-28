@@ -48,7 +48,7 @@
     "argon2": "0.45.1",
     "chalk": "6.0.0",
     "cli-table3": "0.6.5",
-    "dotenv": "17.4.2",
+    "dotenv": "18.0.3",
     "handlebars": "4.7.9",
     "i18next": "26.3.6",
     "i18next-fs-backend": "2.6.7",
