@@ -86,11 +86,31 @@ describe('metadata', () => {
   });
 
   describe('fetchHealthStatus', () => {
-    it('returns health response on success', async () => {
-      const mockHealth = { status: 'ok', services: { database: 'ok', redis: 'ok' } };
+    it('returns the parsed body for a healthy 200 response', async () => {
+      const mockHealth = {
+        status: 'healthy',
+        checks: { server: 'ok', database: 'ok', redis: 'ok' },
+      };
 
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: true,
+        status: 200,
+        json: () => Promise.resolve(mockHealth),
+      });
+
+      const result = await fetchHealthStatus('https://porta.local:3443');
+      expect(result).toEqual(mockHealth);
+    });
+
+    it('returns the parsed body for an unhealthy 503 response', async () => {
+      const mockHealth = {
+        status: 'unhealthy',
+        checks: { server: 'ok', database: 'error', redis: 'ok' },
+      };
+
+      globalThis.fetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
         json: () => Promise.resolve(mockHealth),
       });
 
@@ -105,7 +125,7 @@ describe('metadata', () => {
       expect(result).toBeNull();
     });
 
-    it('returns null on non-OK response', async () => {
+    it('returns null on a non-health response', async () => {
       globalThis.fetch = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,

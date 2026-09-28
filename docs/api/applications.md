@@ -4,6 +4,12 @@ Manage applications (SaaS products) that clients and RBAC are scoped to.
 
 **Base path:** `/api/admin/applications`
 
+::: warning Deployment-global entities
+Applications, modules, roles, permissions, and claim definitions are shared across every
+organization. Creating, changing, or deleting them can affect all organizations that use the
+application. See the [Core ownership model](../concepts/ownership-model.md).
+:::
+
 ## Create Application
 
 ```http

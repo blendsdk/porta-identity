@@ -62,6 +62,20 @@ describe('User Repository (Integration)', () => {
     expect(found!.id).toBe(user.id);
   });
 
+  it('should persist phoneNumberVerified on insert', async () => {
+    const user = await createTestUser(orgId, {
+      phoneNumber: '+31612345678',
+      phoneNumberVerified: true,
+    });
+
+    expect(user.phoneNumberVerified).toBe(true);
+
+    const found = await findUserById(user.id);
+    expect(found).not.toBeNull();
+    expect(found!.phoneNumber).toBe('+31612345678');
+    expect(found!.phoneNumberVerified).toBe(true);
+  });
+
   // ── Email Uniqueness (CITEXT) ────────────────────────────────
 
   it('should enforce email uniqueness per org', async () => {

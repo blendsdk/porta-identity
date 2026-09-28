@@ -121,11 +121,17 @@ export async function fetchAdminMetadata(
 
 /**
  * Health check response from `GET /health`.
+ *
+ * The server reports `status: 'healthy'` with per-dependency `checks` on HTTP
+ * 200, and `status: 'unhealthy'` with the failing entries on HTTP 503. The
+ * legacy `status: 'ok'` and `services` fields are accepted for older servers.
  */
 export interface HealthResponse {
-  /** Overall status */
+  /** Overall status: `healthy`, `unhealthy`, or the legacy `ok` */
   status: string;
-  /** Individual service statuses */
+  /** Per-dependency statuses (`server`, `database`, `redis`) on current servers */
+  checks?: Record<string, string>;
+  /** Individual service statuses sent by legacy servers */
   services?: Record<string, string>;
 }
 
@@ -134,6 +140,10 @@ export interface HealthResponse {
  *
  * This is an unauthenticated endpoint — no credentials needed.
  * Used by the `doctor` command to verify server connectivity.
+ *
+ * The endpoint returns HTTP 200 for a healthy server and HTTP 503 for a
+ * degraded one; both responses carry the same JSON body, so both are parsed
+ * and returned. Any other response is not a valid health answer.
  *
  * @param server - Porta server base URL
  * @returns Health response or null if server is unreachable
@@ -144,7 +154,7 @@ export async function fetchHealthStatus(server: string): Promise<HealthResponse 
       signal: AbortSignal.timeout(5_000), // 5s timeout
     });
 
-    if (response.ok) {
+    if (response.ok || response.status === 503) {
       return response.json() as Promise<HealthResponse>;
     }
     return null;

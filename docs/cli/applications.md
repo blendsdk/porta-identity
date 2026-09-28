@@ -5,7 +5,8 @@ Manage applications, modules, roles, permissions, and claim definitions via the 
 **Mode:** HTTP (requires `porta login`)
 
 Applications are deployment-global product definitions. They are shared across organizations;
-organization-specific OIDC registrations belong under Clients instead.
+organization-specific OIDC registrations belong under Clients instead. See the
+[Core ownership model](../concepts/ownership-model.md) for the full picture.
 
 ## Interactive Admin UI
 

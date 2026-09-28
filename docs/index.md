@@ -17,6 +17,10 @@ hero:
       link: https://github.com/blendsdk/porta-identity
 
 features:
+  - icon: 🧭
+    title: Global Apps, Tenant Clients
+    details: Applications, modules, roles, and permissions are deployment-global; organizations own their clients, users, and assignments.
+    link: /concepts/ownership-model
   - icon: 🏢
     title: Multi-Tenant by Design
     details: Path-based organization isolation with per-tenant OIDC endpoints, branding, and configuration.

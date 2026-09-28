@@ -57,6 +57,7 @@ export interface InsertUserData {
   zoneinfo?: string | null;
   locale?: string | null;
   phoneNumber?: string | null;
+  phoneNumberVerified?: boolean;
 
   // Address fields
   addressStreet?: string | null;
@@ -86,12 +87,12 @@ export async function insertUserWithClient(
        organization_id, email, password_hash, email_verified,
        given_name, family_name, middle_name, nickname,
        preferred_username, profile_url, picture_url, website_url,
-       gender, birthdate, zoneinfo, locale, phone_number,
+       gender, birthdate, zoneinfo, locale, phone_number, phone_number_verified,
        address_street, address_locality, address_region,
        address_postal_code, address_country
      )
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12,
-             $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+             $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
      RETURNING *`,
     [
       data.organizationId,
@@ -111,6 +112,7 @@ export async function insertUserWithClient(
       data.zoneinfo ?? null,
       data.locale ?? null,
       data.phoneNumber ?? null,
+      data.phoneNumberVerified ?? false,
       data.addressStreet ?? null,
       data.addressLocality ?? null,
       data.addressRegion ?? null,

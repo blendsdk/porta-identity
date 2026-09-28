@@ -303,6 +303,12 @@ curl -fsSL https://raw.githubusercontent.com/blendsdk/porta-identity/main/docker
 
 ## Step 9: Configure Your Environment
 
+::: tip Before you provision applications and clients
+Applications, modules, roles, permissions, and claim definitions are deployment-global; your
+organization owns its clients, users, and assignments. Read the
+[Core ownership model](../concepts/ownership-model.md) before you create them.
+:::
+
 Open the interactive administration shell:
 
 ```bash
