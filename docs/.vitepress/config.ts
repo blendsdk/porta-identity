@@ -83,6 +83,7 @@ export default withMermaid(
           {
             text: 'Core Concepts',
             items: [
+              { text: 'Ownership Model', link: '/concepts/ownership-model' },
               { text: 'Multi-Tenancy', link: '/concepts/multi-tenancy' },
               { text: 'OIDC & Authentication', link: '/concepts/oidc' },
               {

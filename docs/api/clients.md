@@ -4,6 +4,10 @@ Manage OIDC clients. Each client belongs to an organization and an application.
 
 **Base path:** `/api/admin/clients`
 
+Each client is an organization-specific registration connected to one deployment-global
+application; the application itself is not tenant-owned. See the
+[Core ownership model](../concepts/ownership-model.md).
+
 ## Create Client
 
 ```http

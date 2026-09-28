@@ -2,6 +2,10 @@
 
 Porta is designed from the ground up as a **multi-tenant** identity provider. Every tenant is represented by an **organization**, and all OIDC endpoints, users, clients, and configuration are scoped to that organization.
 
+Not every entity is tenant-owned: applications, modules, roles, permissions, and claim definitions
+are deployment-global. See the [Core ownership model](./ownership-model.md) for how tenants connect
+to the shared application catalog.
+
 ## Path-Based Isolation
 
 Unlike subdomain-based multi-tenancy, Porta uses **URL path prefixes** to isolate tenants:

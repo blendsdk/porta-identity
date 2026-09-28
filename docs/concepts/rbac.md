@@ -29,6 +29,10 @@ assigned role keeps its application owner.
 This means two applications may both define `admin`, `viewer`, or any other role slug. Those values
 remain independent.
 
+Roles, permissions, and their application ownership are global definitions; only user-role
+assignments are tenant-specific. See the [Core ownership model](./ownership-model.md) for the full
+picture.
+
 ## Roles, permissions, and assignments
 
 A role groups authority under an application-defined claim value such as `GROUP_BILLING_ADMIN`. A
