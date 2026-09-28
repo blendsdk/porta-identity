@@ -126,6 +126,24 @@ describe('user service', () => {
       expect(insertCall.passwordHash).toBe('$argon2id$hashed');
     });
 
+    it('should forward phoneNumberVerified to the repository', async () => {
+      const user = createTestUser({ phoneNumber: '+31612345678', phoneNumberVerified: true });
+      (repo.emailExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+      (repo.insertUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+
+      const result = await createUser({
+        organizationId: 'org-uuid-1',
+        email: 'john@example.com',
+        phoneNumber: '+31612345678',
+        phoneNumberVerified: true,
+      });
+
+      expect(result.phoneNumberVerified).toBe(true);
+      const insertCall = (repo.insertUser as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(insertCall.phoneNumber).toBe('+31612345678');
+      expect(insertCall.phoneNumberVerified).toBe(true);
+    });
+
     it('should reject duplicate email in same org', async () => {
       (repo.emailExists as ReturnType<typeof vi.fn>).mockResolvedValue(true);
 

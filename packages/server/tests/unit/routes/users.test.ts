@@ -196,6 +196,24 @@ describe('user routes', () => {
       expect(ctx.body).toEqual({ data: user });
     });
 
+    it('should pass phoneNumberVerified to the service', async () => {
+      const user = createTestUser({ phoneNumberVerified: true });
+      (userService.createUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+
+      const router = createUserRouter();
+      const layer = findLayer(router, 'POST', '');
+      const ctx = createMockCtx({
+        body: { email: 'john@example.com', phoneNumberVerified: true },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(userService.createUser).toHaveBeenCalledWith(
+        expect.objectContaining({ phoneNumberVerified: true }),
+      );
+      expect(ctx.status).toBe(201);
+    });
+
     it('should return 400 for invalid email', async () => {
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '');
