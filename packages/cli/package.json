@@ -29,10 +29,10 @@
     "@portaidentity/sdk": "1.11.0",
     "chalk": "^6.0.0",
     "cli-table3": "^0.6.5",
-    "fs-ext-extra-prebuilt": "2.2.13",
-    "jose": "^6.2.8",
-    "open": "^11.0.0",
-    "yargs": "^18.1.0"
+    "fs-ext-extra-prebuilt": "2.2.14",
+    "jose": "^6.2.12",
+    "open": "^11.0.4",
+    "yargs": "^18.2.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
@@ -42,7 +42,7 @@
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "typescript-eslint": "^8.66.0",
+    "typescript-eslint": "^8.70.1",
     "vitest": "^4.1.10"
   },
   "repository": {
