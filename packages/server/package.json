@@ -75,7 +75,7 @@
     "@playwright/test": "1.62.1",
     "@types/koa": "3.0.3",
     "@types/koa-bodyparser": "4.3.13",
-    "@types/koa__router": "12.0.5",
+    "@types/koa__router": "15.0.0",
     "@types/node": "26.2.0",
     "@types/nodemailer": "8.0.1",
     "@types/oidc-provider": "9.11.1",
