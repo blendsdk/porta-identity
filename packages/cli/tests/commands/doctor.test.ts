@@ -60,7 +60,10 @@ describe('doctor command', () => {
     vi.mocked(hasCredentials).mockReturnValue(true);
     vi.mocked(loadCredentials).mockReturnValue(mockCreds);
     vi.mocked(isTokenExpired).mockReturnValue(false);
-    vi.mocked(fetchHealthStatus).mockResolvedValue({ status: 'ok' });
+    vi.mocked(fetchHealthStatus).mockResolvedValue({
+      status: 'healthy',
+      checks: { server: 'ok', database: 'ok', redis: 'ok' },
+    });
     vi.mocked(fetchAdminMetadata).mockResolvedValue({
       issuer: 'https://porta.local:3443/porta-admin',
       clientId: 'test-client-id-long',
@@ -81,7 +84,10 @@ describe('doctor command', () => {
     vi.mocked(hasCredentials).mockReturnValue(true);
     vi.mocked(loadCredentials).mockReturnValue(mockCreds);
     vi.mocked(isTokenExpired).mockReturnValue(false);
-    vi.mocked(fetchHealthStatus).mockResolvedValue({ status: 'ok' });
+    vi.mocked(fetchHealthStatus).mockResolvedValue({
+      status: 'healthy',
+      checks: { server: 'ok', database: 'ok', redis: 'ok' },
+    });
     vi.mocked(fetchAdminMetadata).mockResolvedValue({
       issuer: 'https://porta.local:3443/porta-admin',
       clientId: 'test-client-id-long',
@@ -149,7 +155,10 @@ describe('doctor command', () => {
     vi.mocked(hasCredentials).mockReturnValue(true);
     vi.mocked(loadCredentials).mockReturnValue(mockCreds);
     vi.mocked(isTokenExpired).mockReturnValue(true);
-    vi.mocked(fetchHealthStatus).mockResolvedValue({ status: 'ok' });
+    vi.mocked(fetchHealthStatus).mockResolvedValue({
+      status: 'healthy',
+      checks: { server: 'ok', database: 'ok', redis: 'ok' },
+    });
     vi.mocked(fetchAdminMetadata).mockResolvedValue({
       issuer: 'test',
       clientId: 'test-client-id-long',
