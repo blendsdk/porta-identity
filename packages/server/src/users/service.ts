@@ -133,6 +133,7 @@ export async function createUser(input: CreateUserInput, actorId?: string): Prom
     zoneinfo: input.zoneinfo,
     locale: input.locale,
     phoneNumber: input.phoneNumber,
+    phoneNumberVerified: input.phoneNumberVerified,
     addressStreet: input.address?.street,
     addressLocality: input.address?.locality,
     addressRegion: input.address?.region,

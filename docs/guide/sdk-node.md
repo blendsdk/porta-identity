@@ -117,8 +117,8 @@ const org = await porta.organizations.create({
   slug: 'acme',
 });
 
+// Create a deployment-global application (no organization scope)
 const app = await porta.applications.create({
-  organizationId: org.id,
   name: 'Main App',
   slug: 'main',
 });

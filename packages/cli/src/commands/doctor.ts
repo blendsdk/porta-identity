@@ -25,7 +25,7 @@ import {
   getCredentialsPath,
   hasCredentials,
 } from '../credential-store.js';
-import { fetchHealthStatus, fetchAdminMetadata } from '../auth/metadata.js';
+import { fetchHealthStatus, fetchAdminMetadata, type HealthResponse } from '../auth/metadata.js';
 import { printJson, success, warn, error as printError } from '../output.js';
 
 // ---------------------------------------------------------------------------
@@ -115,7 +115,24 @@ function checkTokenExpiry(): CheckResult {
 }
 
 /**
+ * Render the per-dependency status map, preferring the current `checks`
+ * field and falling back to the legacy `services` field.
+ */
+function formatHealthDetails(health: HealthResponse): string {
+  const details = health.checks ?? health.services;
+  if (!details) return '';
+  const rendered = Object.entries(details)
+    .map(([name, status]) => `${name}=${status}`)
+    .join(', ');
+  return rendered ? ` (${rendered})` : '';
+}
+
+/**
  * Check server reachability via health endpoint.
+ *
+ * The server reports `healthy` on HTTP 200 and `unhealthy` on HTTP 503, so
+ * only those statuses decide pass or fail. `ok` is accepted as a legacy alias
+ * for `healthy`, and any other status stays a warning.
  */
 async function checkServerHealth(serverUrl: string | undefined): Promise<CheckResult> {
   if (!serverUrl) {
@@ -135,23 +152,36 @@ async function checkServerHealth(serverUrl: string | undefined): Promise<CheckRe
     };
   }
 
-  if (health.status === 'ok') {
-    const services = health.services
-      ? Object.entries(health.services)
-          .map(([k, v]) => `${k}=${v}`)
-          .join(', ')
-      : '';
+  const details = formatHealthDetails(health);
+
+  if (health.status === 'healthy') {
     return {
       name: 'Server health',
       status: 'pass',
-      message: `${serverUrl} — OK${services ? ` (${services})` : ''}`,
+      message: `${serverUrl} — healthy${details}`,
+    };
+  }
+
+  if (health.status === 'ok') {
+    return {
+      name: 'Server health',
+      status: 'pass',
+      message: `${serverUrl} — OK${details}`,
+    };
+  }
+
+  if (health.status === 'unhealthy') {
+    return {
+      name: 'Server health',
+      status: 'fail',
+      message: `${serverUrl} — unhealthy${details}`,
     };
   }
 
   return {
     name: 'Server health',
     status: 'warn',
-    message: `${serverUrl} — status: ${health.status}`,
+    message: `${serverUrl} — status: ${health.status}${details}`,
   };
 }
 

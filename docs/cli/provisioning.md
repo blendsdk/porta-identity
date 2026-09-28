@@ -29,6 +29,12 @@ For a complete non-control-plane export, use `--environment` instead of `--organ
 requires a super-administrator. Existing output files require confirmation; `--yes` skips only that
 confirmation.
 
+::: info Applications are deployment-global
+Application-related categories select global application data by application slug. An organization
+scope controls which tenant data travels; it does not make applications tenant-owned. See the
+[Core ownership model](../concepts/ownership-model.md).
+:::
+
 ## Preview and Import
 
 Import always previews first:

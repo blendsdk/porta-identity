@@ -141,7 +141,9 @@ End-user accounts scoped to an organization.
 
 ### `applications`
 
-SaaS product definitions that scope clients, roles, and claims.
+Deployment-global SaaS product definitions that scope clients, roles, and claims. Applications
+have no `organization_id`: organizations connect to them through clients. See the
+[Core ownership model](../concepts/ownership-model.md).
 
 | Column        | Type          | Description            |
 | ------------- | ------------- | ---------------------- |
@@ -168,7 +170,8 @@ Logical groupings within an application.
 
 ### `clients`
 
-OIDC clients (public or confidential).
+OIDC clients (public or confidential). Each client belongs to one organization and one global
+application.
 
 | Column                       | Type      | Description                             |
 | ---------------------------- | --------- | --------------------------------------- |
