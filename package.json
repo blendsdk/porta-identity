@@ -91,7 +91,7 @@
     "koa": "^3.2.1",
     "koa-session": "^7.0.2",
     "koa-static": "^5.0.0",
-    "mermaid": "11.16.1",
+    "mermaid": "11.17.2",
     "npm": "11.15.0",
     "npm-check-updates": "23.0.2",
     "oidc-client-ts": "3.5.0",
