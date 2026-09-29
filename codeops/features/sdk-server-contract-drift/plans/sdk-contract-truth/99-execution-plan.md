@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 01:48
-> **Progress**: 48/52 tasks (92%)
+> **Last Updated**: 2026-09-30 01:52
+> **Progress**: 49/52 tasks (94%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -298,7 +298,7 @@ task-size criteria in the make-plan quality checklist)
 - [x] 4.1.2 Run `yarn test:integration`; all integration suites, including the new export and create-ETag specs, must pass. ✅ (completed: 2026-09-30 01:48; 499/499 across 57 files)
 - [x] 4.1.3 End-to-end confirmation of the issue acceptance criteria: with the dev stack running, exercise (a) `users.create` → `users.update` at the HTTP layer, reusing the created ETag, and (b) the export endpoint for a user with and without claims, through the integration specs in 4.1.2; record the evidence. If a manual curl-level proof is chosen, use a scratch database and remove it afterwards. ✅ (completed: 2026-09-30 01:48; targeted re-run 8/8 — export answers 200 with populated and empty `customClaims`; the create ETag matches the next read and is accepted as `If-Match` on update; no scratch database was needed)
 - [x] 4.1.4 Run `yarn docs:build` if it was not run in 3.4.7 after the last docs edit. ✅ (completed: 2026-09-30 01:48; the docs build ran green after the last docs edit during the phase 3 review-fix verification)
-- [ ] 4.1.5 Run the registered `tenant-admin` selector of `yarn assurance:compat` from a clean committed revision (use the selector syntax documented by the assurance CLI) and record the result. This is the mandated compatibility gate for the SDK contract change; the retained probe consumes `users.update` and must pass.
+- [x] 4.1.5 Run the registered `tenant-admin` selector of `yarn assurance:compat` from a clean committed revision (use the selector syntax documented by the assurance CLI) and record the result. This is the mandated compatibility gate for the SDK contract change; the retained probe consumes `users.update` and must pass. ✅ (completed: 2026-09-30 01:52; `yarn assurance:compat --select tenant-admin` passed on revision `360c4029` from a clean tree: packed SDK and CLI tenant list/read/update/denied-update journeys passed, `sdkDistOnly`/`cliDistOnly` true, `sdkResolutionMatchesArchive` true, the primary tree stayed unchanged, and no owned consumer residue remained. Artifact: `test-harness/.assurance-results/38931fcc-ca10-458f-a128-81c45284d078/compat/tenant-admin/result.json`)
 
 **Deliverables**:
 - [ ] `yarn verify` green
