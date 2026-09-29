@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-29 23:42
-> **Progress**: 3/52 tasks (6%)
+> **Last Updated**: 2026-09-29 23:43
+> **Progress**: 6/52 tasks (12%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -82,9 +82,9 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-01](03-01-server-gdpr-export.md) §Implementation Details · AR-1, AR-17
 **Objective**: Correct the SQL and add the missing create ETag.
 
-- [ ] 1.2.1 Fix the custom-claim query in `packages/server/src/users/gdpr.ts` to `custom_claim_values ucv JOIN custom_claim_definitions ccd ON ccd.id = ucv.claim_id` with `SELECT ccd.claim_name, ucv.value, ccd.application_id` and `ORDER BY ccd.claim_name`. Update the module JSDoc and the `exportUserData` doc comment to name the real tables (remove the stale `user_claim_values`/`claim_definitions` wording).
-- [ ] 1.2.2 Add `setETagHeader(ctx, 'user', user.id, user.updatedAt)` between the `createUser` call and the response assignment in the `POST /` handler of `packages/server/src/routes/users.ts` (around line 226).
-- [ ] 1.2.3 Verify the green phase: rerun both targeted integration commands from 1.1.3; all ST-1, ST-2, ST-3, ST-24 cases pass. If any spec test fails, fix the implementation, never the test.
+- [x] 1.2.1 Fix the custom-claim query in `packages/server/src/users/gdpr.ts` to `custom_claim_values ucv JOIN custom_claim_definitions ccd ON ccd.id = ucv.claim_id` with `SELECT ccd.claim_name, ucv.value, ccd.application_id` and `ORDER BY ccd.claim_name`. Update the module JSDoc and the `exportUserData` doc comment to name the real tables (remove the stale `user_claim_values`/`claim_definitions` wording). ✅ (completed: 2026-09-29 23:43)
+- [x] 1.2.2 Add `setETagHeader(ctx, 'user', user.id, user.updatedAt)` between the `createUser` call and the response assignment in the `POST /` handler of `packages/server/src/routes/users.ts` (around line 226). ✅ (completed: 2026-09-29 23:43)
+- [x] 1.2.3 Verify the green phase: rerun both targeted integration commands from 1.1.3; all ST-1, ST-2, ST-3, ST-24 cases pass. If any spec test fails, fix the implementation, never the test. ✅ (completed: 2026-09-29 23:43; green: 5/5 export, 3/3 create-ETag)
 
 **Deliverables**:
 - [ ] `gdpr.ts` query corrected
