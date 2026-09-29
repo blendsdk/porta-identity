@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 00:35
-> **Progress**: 25/52 tasks (48%)
+> **Last Updated**: 2026-09-30 00:37
+> **Progress**: 29/52 tasks (56%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -211,10 +211,10 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-03](03-03-sdk-organizations.md) §Implementation Details · AR-2, AR-3
 **Objective**: Correct shared parameter types and the organizations domain.
 
-- [ ] 3.2.1 Update `packages/sdk/src/types/common.ts`: rename `ListParams.sort`/`order` to `sortBy`/`sortOrder`; add `HistoryParams`; keep the index signature so entity-specific filters still compile.
-- [ ] 3.2.2 Add `SlugValidationResult` to `packages/sdk/src/types/organizations.ts`; export it plus `HistoryParams` from `packages/sdk/src/types/index.ts`. Remove the old `SlugValidation` export from `packages/sdk/src/domains/index.ts` and from the public barrel `packages/sdk/src/index.ts`.
-- [ ] 3.2.3 Update `packages/sdk/src/domains/organizations.ts`: `update` → `ETagResponse<Organization>` via `unwrapWithEtag`; `validateSlug` → `SlugValidationResult`; `getHistory` → `HistoryParams` mapped to `limit`/`after`/`event_type`, returning `HistoryResult`.
-- [ ] 3.2.4 Verify the green phase for ST-6–ST-10 and run `yarn workspace @portaidentity/sdk typecheck`; fix fallout from the renamed types in other domains before proceeding (mechanical call-site updates only).
+- [x] 3.2.1 Update `packages/sdk/src/types/common.ts`: rename `ListParams.sort`/`order` to `sortBy`/`sortOrder`; add `HistoryParams`; keep the index signature so entity-specific filters still compile. ✅ (completed: 2026-09-30 00:37)
+- [x] 3.2.2 Add `SlugValidationResult` to `packages/sdk/src/types/organizations.ts`; export it plus `HistoryParams` from `packages/sdk/src/types/index.ts`. Remove the old `SlugValidation` export from `packages/sdk/src/domains/index.ts` and from the public barrel `packages/sdk/src/index.ts`. ✅ (completed: 2026-09-30 00:37)
+- [x] 3.2.3 Update `packages/sdk/src/domains/organizations.ts`: `update` → `ETagResponse<Organization>` via `unwrapWithEtag`; `validateSlug` → `SlugValidationResult`; `getHistory` → `HistoryParams` mapped to `limit`/`after`/`event_type`, returning `HistoryResult`. ✅ (completed: 2026-09-30 00:37)
+- [x] 3.2.4 Verify the green phase for ST-6–ST-10 and run `yarn workspace @portaidentity/sdk typecheck`; fix fallout from the renamed types in other domains before proceeding (mechanical call-site updates only). ✅ (completed: 2026-09-30 00:37; organizations 19/19 green; no rename fallout — remaining typecheck errors are only the pre-planned `UserDataExport` and getHistory oracle reds owned by 3.3.1/3.3.8)
 
 **Deliverables**:
 - [ ] Shared types corrected

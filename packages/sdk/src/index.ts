@@ -43,7 +43,6 @@ export type {
   ExportsDomain,
   TwoFactorDomain,
   ImportsDomain,
-  SlugValidation,
 } from './domains/index.js';
 
 // Transport types (type-only)

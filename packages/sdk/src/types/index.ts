@@ -7,6 +7,7 @@
 // Common types (pagination, ETag, history)
 export type {
   ListParams,
+  HistoryParams,
   PaginatedResponse,
   ETagResponse,
   HistoryEntry,
@@ -21,6 +22,7 @@ export type {
   LoginMethod,
   CreateOrganizationInput,
   UpdateOrganizationInput,
+  SlugValidationResult,
 } from './organizations.js';
 
 // Applications

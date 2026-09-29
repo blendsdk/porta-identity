@@ -74,3 +74,21 @@ export interface UpdateOrganizationInput {
   defaultLoginMethods?: LoginMethod[];
   branding?: OrganizationBrandingInput;
 }
+
+// ---------------------------------------------------------------------------
+// Slug validation
+// ---------------------------------------------------------------------------
+
+/**
+ * Result of checking whether a slug can be assigned to an organization.
+ *
+ * A malformed or reserved slug is rejected with HTTP 400 before this result is
+ * produced; a well-formed but taken slug returns `isValid: false` with an error
+ * message.
+ */
+export interface SlugValidationResult {
+  /** Whether the slug passes format, reserved-word, and uniqueness checks */
+  isValid: boolean;
+  /** Human-readable reason when `isValid` is false */
+  error?: string;
+}
