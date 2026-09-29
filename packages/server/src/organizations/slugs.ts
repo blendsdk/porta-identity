@@ -46,6 +46,7 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'dashboard',
   'settings',
   'account',
+  'new', // Reserved create-action segment
 
   // Well-known files
   'favicon.ico',

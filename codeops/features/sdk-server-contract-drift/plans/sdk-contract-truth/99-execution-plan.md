@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-29 23:59
-> **Progress**: 10/52 tasks (19%)
+> **Last Updated**: 2026-09-30 00:28
+> **Progress**: 17/52 tasks (33%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -120,7 +120,8 @@ task-size criteria in the make-plan quality checklist)
 
 ## Phase 2: Server — reserved `new` slug
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: `a3f5c3ea525bd5d2f03f6626c366ac66ae97bf29`
+> **Scope**: strict · **Expected paths**: `packages/server/src/organizations/slugs.ts`, `packages/server/tests/unit/organizations/slugs.test.ts`
 > **Lenses**: [informational]
 
 ### Step 2.1: Specification Tests
@@ -128,8 +129,8 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-02](03-02-server-reserved-slug.md) §Testing Requirements · AR-11
 **Objective**: Pin the reservation and the no-false-positive rule.
 
-- [ ] 2.1.1 [spec-author] Add cases to `packages/server/tests/unit/organizations/slugs.test.ts`: ST-4 (`validateSlug('new')` → `isValid: false` with an error naming the reservation) and ST-5 (`validateSlug('new-york')` and `validateSlug('renew')` → `isValid: true`); extend the expected reserved-word list and update the `RESERVED_SLUGS.size` assertion from 22 to 23 in this task.
-- [ ] 2.1.2 Verify the red phase: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/slugs.test.ts`; ST-4 fails. Record the failure.
+- [x] 2.1.1 [spec-author] Add cases to `packages/server/tests/unit/organizations/slugs.test.ts`: ST-4 (`validateSlug('new')` → `isValid: false` with an error naming the reservation) and ST-5 (`validateSlug('new-york')` and `validateSlug('renew')` → `isValid: true`); extend the expected reserved-word list and update the `RESERVED_SLUGS.size` assertion from 22 to 23 in this task. ✅ (completed: 2026-09-30 00:00)
+- [x] 2.1.2 Verify the red phase: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/slugs.test.ts`; ST-4 fails. Record the failure. ✅ (completed: 2026-09-30 00:00; red: 3 failed — `new` accepted pre-change, expected word list missing `new`, size 22≠23; ST-5 pinning passed as expected)
 
 **Deliverables**:
 - [ ] New unit cases present and failing for the expected reason
@@ -143,9 +144,9 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-02](03-02-server-reserved-slug.md) §Changed Constant · AR-11
 **Objective**: Reserve the word.
 
-- [ ] 2.2.1 Add `'new'` to the "Application paths" group in `RESERVED_SLUGS` (`packages/server/src/organizations/slugs.ts`) with a one-line comment explaining that `new` is a reserved create-action segment. Update the module JSDoc example list if needed.
-- [ ] 2.2.2 Verify the green phase: rerun the targeted unit command; ST-4 and ST-5 pass.
-- [ ] 2.2.3 Regression sweep: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/` and confirm no existing slug or service test regresses.
+- [x] 2.2.1 Add `'new'` to the "Application paths" group in `RESERVED_SLUGS` (`packages/server/src/organizations/slugs.ts`) with a one-line comment explaining that `new` is a reserved create-action segment. Update the module JSDoc example list if needed. ✅ (completed: 2026-09-30 00:00)
+- [x] 2.2.2 Verify the green phase: rerun the targeted unit command; ST-4 and ST-5 pass. ✅ (completed: 2026-09-30 00:00)
+- [x] 2.2.3 Regression sweep: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/` and confirm no existing slug or service test regresses. ✅ (completed: 2026-09-30 00:00; 105/105 organization unit tests pass)
 
 **Deliverables**:
 - [ ] Reserved word added
@@ -160,8 +161,8 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-02](03-02-server-reserved-slug.md) §Error Handling · AR-11
 **Objective**: Cover the API-level boundary where the slug is submitted.
 
-- [ ] 2.3.1 Add or extend an integration/unit case that exercises `organizationSlugSchema` (or the create route) with `slug: 'new'` answering `400`. Place it with the existing organization validator tests; if none exists, add it to `packages/server/tests/unit/organizations/slugs.test.ts` through `organizationSlugSchema.safeParse`. Mark this as the implementation test.
-- [ ] 2.3.2 Full server verification: `yarn workspace @portaidentity/server verify`.
+- [x] 2.3.1 Add or extend an integration/unit case that exercises `organizationSlugSchema` (or the create route) with `slug: 'new'` answering `400`. Place it with the existing organization validator tests; if none exists, add it to `packages/server/tests/unit/organizations/slugs.test.ts` through `organizationSlugSchema.safeParse`. Mark this as the implementation test. ✅ (completed: 2026-09-30 00:28; no existing validator test file, added to slugs.test.ts)
+- [x] 2.3.2 Full server verification: `yarn workspace @portaidentity/server verify`. ✅ (completed: 2026-09-30 00:28; unit 3753, integration 499, e2e 133, pentest 273. Note: the first run flaked once on the magic-link timing-ratio pentest at 0.5005 vs < 0.5; the isolated file then passed twice and the full verify passed, so the phase result is green with the flake recorded, not retried away.)
 
 **Deliverables**:
 - [ ] Boundary case passing
