@@ -588,16 +588,6 @@ async function workspaceVoidMutation(
 }
 
 /**
- * Creates the direct SDK adapter used only by the selected-organization workspace.
- *
- * @param domains - Lazy access to the verified session's existing SDK domains.
- * @returns Validated operations that expose only fixed safe outcomes.
- * @example
- * ```ts
- * const operations = createAdminOrganizationWorkspaceOperations(domains);
- * ```
- */
-/**
  * Extract the `data` field from an SDK `{ data, etag }` write response.
  *
  * @param value - Raw SDK response
@@ -607,6 +597,16 @@ function dataField(value: unknown): unknown {
   return value && typeof value === 'object' ? (value as Record<string, unknown>).data : undefined;
 }
 
+/**
+ * Creates the direct SDK adapter used only by the selected-organization workspace.
+ *
+ * @param domains - Lazy access to the verified session's existing SDK domains.
+ * @returns Validated operations that expose only fixed safe outcomes.
+ * @example
+ * ```ts
+ * const operations = createAdminOrganizationWorkspaceOperations(domains);
+ * ```
+ */
 export function createAdminOrganizationWorkspaceOperations(
   domains: AdminOrganizationWorkspaceDomains,
 ): AdminOrganizationWorkspaceOperations {

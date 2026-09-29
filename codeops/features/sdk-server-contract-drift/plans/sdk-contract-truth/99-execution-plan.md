@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 01:13
+> **Last Updated**: 2026-09-30 01:23
 > **Progress**: 44/52 tasks (85%)
 > **CodeOps Artifact Schema**: 1
 
@@ -266,6 +266,19 @@ task-size criteria in the make-plan quality checklist)
 - [ ] Changelog and docs updated; docs build passes
 
 **Verify**: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify && yarn docs:build`
+
+> **Phase 3 quality review** (2026-09-30 01:23): independent correctness review (lenses:
+> correctness, maintainability, standards, api-surface) found six 🟡 MINOR defects — all fixed in
+> a follow-up commit: stale agent `returns` metadata for `organizations.update` and
+> `twoFactor.setPolicy` (now `{ data, etag }`, with the `etag` tool parameter exposed), the
+> README's missing `usersById` row, the SDK guide's `userRoles` row, a displaced `dataField` JSDoc
+> in the admin organization service, the compatibility-oracle header, and a plan-ID reference in
+> the shipped two-factor types comment. Independent security audit found one 🟡 MINOR,
+> report-only observation (SA-001): the required `--org` flag on `porta user claims` is not
+> transmitted because the server resolves claim values by user and claim ID; it is kept to match
+> the plan's command shape (ST-25–ST-27 pass `--org`) and no server-side check is weakened.
+> No 🔴/🟠 findings; fix verification: SDK 580, CLI 1444, docs build green. Review diff: phase
+> baseline `1f78a791159c9aee1fa4385b6defe2e80aff8761` → HEAD.
 
 ---
 

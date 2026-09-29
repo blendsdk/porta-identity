@@ -6,13 +6,17 @@
  * The SDK defines the same entities with `string` for timestamp fields.
  *
  * These tests verify that, after Date→string conversion, the server and SDK
- * entity types are structurally equivalent. If a field is added, removed, or
+ * entity types stay structurally compatible. If a field is added, removed, or
  * changed on either side without a matching update, TypeScript compilation fails.
  *
  * Strategy per entity type:
  *   1. DateToString<ServerType> → SdkType  (server response fits SDK shape)
  *   2. SdkType → DateToString<ServerType>  (SDK shape fits server response)
  * If both pass → types are structurally equivalent.
+ *
+ * `Client` is asserted in the SDK→response direction only: the SDK deliberately
+ * narrows the server's unconstrained string fields to closed unions and includes
+ * the route-level `effectiveLoginMethods` decoration (see the Client block).
  *
  * @module tests/type-compatibility
  */

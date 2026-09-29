@@ -113,7 +113,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
       OBJ('input', 'UpdateOrganizationInput'),
       OPT_STR('etag', 'ETag for concurrency'),
     ],
-    returns: 'Organization',
+    returns: '{ data: Organization, etag: string | null }',
   },
   {
     name: 'organizations.suspend',
@@ -582,8 +582,9 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     parameters: [
       ID('orgId', 'Organization ID'),
       ID('policy', '2FA policy (optional|required_email|required_totp|required_any)'),
+      OPT_STR('etag', 'ETag for concurrency'),
     ],
-    returns: 'TwoFactorPolicyResult',
+    returns: '{ data: TwoFactorPolicyResult, etag: string | null }',
   },
   {
     name: 'twoFactor.getSummary',

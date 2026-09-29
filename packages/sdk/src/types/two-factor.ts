@@ -9,7 +9,7 @@ export type TwoFactorMethod = 'email' | 'totp';
 /**
  * A user's current 2FA status — mirrors the server `TwoFactorStatus`
  * (src/two-factor/types.ts). The old `userId`/`emailEnabled`/`totpEnabled`/
- * `enforcedBy` fields were SDK drift (AR-18) and have been removed.
+ * `enforcedBy` fields described fields the server never sent and were removed.
  */
 export interface TwoFactorStatus {
   /** Whether 2FA is enabled for the user */

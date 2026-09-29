@@ -124,6 +124,7 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 | `applications`  | 13      | CRUD, status, module management, history              |
 | `clients`       | 12      | CRUD, status, secret management, history              |
 | `users`         | 19      | CRUD, status transitions, password, email, and export |
+| `usersById`     | 8       | Org-less get/update, password, email, and history     |
 | `roles`         | 9       | CRUD and permission assignment                        |
 | `permissions`   | 6       | CRUD                                                  |
 | `userRoles`     | 4       | List, assign, remove, and resolve effective permissions |
