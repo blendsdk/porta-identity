@@ -5,7 +5,7 @@ Universal TypeScript SDK for the Porta Admin API — works in **browsers**, **No
 ## Features
 
 - **Transport abstraction** — `BrowserTransport` (CSRF cookies) and `NodeTransport` (Bearer tokens) with pluggable auth
-- **19 domain namespaces** — Organizations, Applications, Clients, Users, Roles, Permissions, Custom Claims, Config, Keys, Audit, Stats, Sessions, Bulk, Branding, Exports, Two-Factor, Imports, User Roles, User Claims
+- **19 domain namespaces** — Organizations, Applications, Clients, Users, UsersById, Roles, Permissions, Custom Claims, Config, Keys, Audit, Stats, Sessions, Bulk, Branding, Exports, Two-Factor, Imports, User Roles
 - **Full TypeScript types** — SDK-owned type definitions for all entities, inputs, and responses
 - **Pagination helpers** — `listAll()` auto-pagination and cursor-based support
 - **Error hierarchy** — Typed errors (`PortaNotFoundError`, `PortaConflictError`, etc.) with HTTP status mapping
@@ -126,9 +126,8 @@ const result = await executeTool(client, 'organizations.list', { page: 1 });
 | `users`         | 19      | CRUD, status transitions, password, email, and export |
 | `roles`         | 9       | CRUD and permission assignment                        |
 | `permissions`   | 6       | CRUD                                                  |
-| `userRoles`     | 3       | List, assign, remove role assignments                 |
-| `userClaims`    | 3       | List, set, remove claim values                        |
-| `customClaims`  | 6       | Claim definition CRUD                                 |
+| `userRoles`     | 4       | List, assign, remove, and resolve effective permissions |
+| `customClaims`  | 10      | Claim definition CRUD and user claim values           |
 | `config`        | 3       | System configuration get/set/list                     |
 | `keys`          | 3       | Signing key list/generate/rotate                      |
 | `audit`         | 1       | Audit log listing with filters                        |

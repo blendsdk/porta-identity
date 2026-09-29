@@ -1,5 +1,5 @@
 /**
- * PortaClient factory — creates a client instance with all 18 domain namespaces.
+ * PortaClient factory — creates a client instance with all 19 domain namespaces.
  *
  * @module client
  */
