@@ -136,7 +136,7 @@ describe('domains/users', () => {
         hasMore: true,
         nextCursor: 'n1',
       };
-      transport = mockTransport({ body: { data: history } });
+      transport = mockTransport({ body: history });
       const users = createUsersDomain(transport);
       const result = await users.getHistory('org-1', 'u1', {
         limit: 10,
@@ -153,7 +153,7 @@ describe('domains/users', () => {
     });
 
     it('should omit the history event type when no params are given', async () => {
-      transport = mockTransport({ body: { data: { data: [], hasMore: false, nextCursor: null } } });
+      transport = mockTransport({ body: { data: [], hasMore: false, nextCursor: null } });
       const users = createUsersDomain(transport);
       await users.getHistory('org-1', 'u1');
 

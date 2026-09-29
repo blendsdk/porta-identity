@@ -5,8 +5,9 @@
  */
 
 import type { HttpTransport } from '../transport/types.js';
-import type { Role, UserRoleRemovalResult } from '../types/index.js';
+import type { Permission, Role, UserRoleRemovalResult } from '../types/index.js';
 import { isRecord, requireData } from './helpers.js';
+import { isPermission } from './permissions.js';
 
 /** Validate one role returned by the Admin API. */
 function isRole(value: unknown): value is Role {
@@ -35,6 +36,8 @@ export interface UserRolesDomain {
   assign(orgId: string, userId: string, roleIds: string[]): Promise<void>;
   /** Remove one or more roles and report whether the caller must authenticate again. */
   remove(orgId: string, userId: string, roleIds: string[]): Promise<UserRoleRemovalResult>;
+  /** Resolve the deduplicated permissions granted by all roles assigned to a user. */
+  getEffectivePermissions(orgId: string, userId: string): Promise<Permission[]>;
 }
 
 /** Create user-role operations backed by one HTTP transport. */
@@ -66,6 +69,16 @@ export function createUserRolesDomain(transport: HttpTransport): UserRolesDomain
         body: { roleIds },
       });
       return requireData(res.body, isUserRoleRemovalResult);
+    },
+    async getEffectivePermissions(orgId, userId) {
+      const res = await transport.request({
+        method: 'GET',
+        path: `${base(orgId, userId)}/permissions`,
+      });
+      return requireData(
+        res.body,
+        (value): value is Permission[] => Array.isArray(value) && value.every(isPermission),
+      );
     },
   };
 }

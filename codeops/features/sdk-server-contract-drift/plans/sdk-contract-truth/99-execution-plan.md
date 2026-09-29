@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 00:37
-> **Progress**: 29/52 tasks (56%)
+> **Last Updated**: 2026-09-30 00:46
+> **Progress**: 37/52 tasks (71%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -229,14 +229,14 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-04](03-04-sdk-users-claims-roles.md) §Implementation Details · AR-5, AR-6, AR-7, AR-8, AR-9, AR-15, AR-17
 **Objective**: Correct the user, claim, roles, and export surfaces and remove the phantom domain.
 
-- [ ] 3.3.1 Update `packages/sdk/src/domains/users.ts`: create/update return `ETagResponse<User>`; org-scoped `getHistory` accepts `HistoryParams`; `exportData` returns `UserDataExport` and the old `UserExportData` alias is removed. Add `UserDataExport` to `packages/sdk/src/types/users.ts`.
-- [ ] 3.3.2 Replace `packages/sdk/src/types/user-claims.ts` with `UserClaimValue` and `UserClaimWithDefinition`; update `packages/sdk/src/types/custom-claims.ts` to `CustomClaimDefinition`/`CreateCustomClaimInput`/`UpdateCustomClaimInput` and remove the stale same-named `UserClaimValue`/`SetUserClaimInput`; export all through `types/index.ts`. Tasks 3.3.2–3.3.5 are one atomic edit — do not run an intermediate gate between them.
-- [ ] 3.3.3 Update `packages/sdk/src/domains/custom-claims.ts`: adopt the new definition types and add the four value methods with the exact routes and `applicationId` signatures from 03-04.
-- [ ] 3.3.4 Add `getEffectivePermissions` to `packages/sdk/src/domains/user-roles.ts`.
-- [ ] 3.3.5 Delete `packages/sdk/src/domains/user-claims.ts` and its test file; remove `UserClaimsDomain`/`createUserClaimsDomain`/`UserClaimEntry`/`SetUserClaimValueInput` from `domains/index.ts`, `types/index.ts`, `packages/sdk/src/client.ts`, and the public barrel `packages/sdk/src/index.ts`; refresh the `client.ts` module docstring namespace count.
-- [ ] 3.3.6 Update `packages/sdk/src/agent.ts`: `users.create` → `ETagResponse<User>`, `users.exportData` → `UserDataExport`, `customClaims.*` types, and add `customClaims.getValuesForUser`/`setValue`/`deleteValue` and `userRoles.getEffectivePermissions` entries.
-- [ ] 3.3.7 Verify the green phase for ST-11–ST-21 and ST-23: `yarn workspace @portaidentity/sdk test`; then `yarn workspace @portaidentity/sdk typecheck`.
-- [ ] 3.3.8 Refresh any type-contract oracles that pin changed keys (`packages/sdk/tests/type-contracts/`) and the `client.test.ts` namespace list that must no longer contain `userClaims`. Repair `packages/sdk/tests/type-compatibility/types.test.ts` (server import paths into `packages/server/src`, renamed `CustomClaimDefinition`) and register it in a typechecked program — either add it to `packages/sdk/tests/type-contracts/tsconfig.json` or move its comparison there — then confirm with `yarn workspace @portaidentity/sdk typecheck` that the comparison actually compiles.
+- [x] 3.3.1 Update `packages/sdk/src/domains/users.ts`: create/update return `ETagResponse<User>`; org-scoped `getHistory` accepts `HistoryParams`; `exportData` returns `UserDataExport` and the old `UserExportData` alias is removed. Add `UserDataExport` to `packages/sdk/src/types/users.ts`. ✅ (completed: 2026-09-30 00:46)
+- [x] 3.3.2 Replace `packages/sdk/src/types/user-claims.ts` with `UserClaimValue` and `UserClaimWithDefinition`; update `packages/sdk/src/types/custom-claims.ts` to `CustomClaimDefinition`/`CreateCustomClaimInput`/`UpdateCustomClaimInput` and remove the stale same-named `UserClaimValue`/`SetUserClaimInput`; export all through `types/index.ts`. Tasks 3.3.2–3.3.5 are one atomic edit — do not run an intermediate gate between them. ✅ (completed: 2026-09-30 00:46)
+- [x] 3.3.3 Update `packages/sdk/src/domains/custom-claims.ts`: adopt the new definition types and add the four value methods with the exact routes and `applicationId` signatures from 03-04. ✅ (completed: 2026-09-30 00:46)
+- [x] 3.3.4 Add `getEffectivePermissions` to `packages/sdk/src/domains/user-roles.ts`. ✅ (completed: 2026-09-30 00:46)
+- [x] 3.3.5 Delete `packages/sdk/src/domains/user-claims.ts` and its test file; remove `UserClaimsDomain`/`createUserClaimsDomain`/`UserClaimEntry`/`SetUserClaimValueInput` from `domains/index.ts`, `types/index.ts`, `packages/sdk/src/client.ts`, and the public barrel `packages/sdk/src/index.ts`; refresh the `client.ts` module docstring namespace count. ✅ (completed: 2026-09-30 00:46)
+- [x] 3.3.6 Update `packages/sdk/src/agent.ts`: `users.create` → `ETagResponse<User>`, `users.exportData` → `UserDataExport`, `customClaims.*` types, and add `customClaims.getValuesForUser`/`setValue`/`deleteValue` and `userRoles.getEffectivePermissions` entries. ✅ (completed: 2026-09-30 00:46)
+- [x] 3.3.7 Verify the green phase for ST-11–ST-21 and ST-23: `yarn workspace @portaidentity/sdk test`; then `yarn workspace @portaidentity/sdk typecheck`. ✅ (completed: 2026-09-30 00:46; SDK 578 passed, only the two ST-22 2FA cases red and owned by 3.4.2; typecheck green after the 3.3.8 oracle refresh. Mechanical correction recorded: the org-scoped user history spec mock wrapped the envelope once too many — the route sends `HistoryResult` directly (`packages/server/src/routes/users.ts:435-447`) — so the mock was corrected with the expectation unchanged.)
+- [x] 3.3.8 Refresh any type-contract oracles that pin changed keys (`packages/sdk/tests/type-contracts/`) and the `client.test.ts` namespace list that must no longer contain `userClaims`. Repair `packages/sdk/tests/type-compatibility/types.test.ts` (server import paths into `packages/server/src`, renamed `CustomClaimDefinition`) and register it in a typechecked program — either add it to `packages/sdk/tests/type-contracts/tsconfig.json` or move its comparison there — then confirm with `yarn workspace @portaidentity/sdk typecheck` that the comparison actually compiles. ✅ (completed: 2026-09-30 00:46; refreshed `UsersDomain['getHistory']` with `HistoryParams`, added `getEffectivePermissions` to the RBAC oracle, updated `client.test.ts` to 18 namespaces, registered the repaired compatibility file in the type-contracts program with `rootDir` widened, and applied AR-18 to the `Client` comparison; typecheck green)
 
 **Deliverables**:
 - [ ] User/claims/roles/export corrections complete

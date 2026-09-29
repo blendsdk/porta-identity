@@ -1,7 +1,7 @@
 # Ambiguity Register: SDK–Server Contract Truth
 
-> **Status**: ✅ GATE PASSED — all 17 items resolved
-> **Last Updated**: 2026-09-29 22:45
+> **Status**: ✅ GATE PASSED — all 17 planned items resolved; 1 runtime item resolved during execution
+> **Last Updated**: 2026-09-30 00:45
 
 | # | Category | Ambiguity / Gap | Options Presented | User Decision | Status |
 |---|----------|-----------------|-------------------|---------------|--------|
@@ -22,6 +22,7 @@
 | AR-15 | Naming | Names for the merged claim value types | (A) `UserClaimValue` (stored record) + `UserClaimWithDefinition` (`{ definition, value }` list item); (B) flat `UserClaimEntry` | (A) — mirrors the server's `CustomClaimValue` / `CustomClaimWithValue`; replaces the flat type that never matched any response | ✅ Resolved |
 | AR-16 | Technical | Verify commands for this plan | (A) `yarn verify`, `yarn test:structure`, server integration with `yarn docker:up`, plus the registered `yarn assurance:compat` tenant-admin selector for the SDK contract change; (B) add a new assurance harness profile | (A) — existing commands from `AGENTS.md` cover the touched workspaces (server, SDK, CLI), including the mandated compatibility gate | ✅ Resolved |
 | AR-17 | Behavioral | Issue #160 states `POST /organizations/:orgId/users` sets an `ETag`, but the route sets none (`packages/server/src/routes/users.ts:220-232`); its cited evidence is the `GET` handler's header at line 279 | (A) Add one `setETagHeader(ctx, 'user', user.id, user.updatedAt)` line to the create route so `users.create` can return `ETagResponse<User>` as the issue's acceptance criteria require; (B) return a bare `User` from `users.create` and correct the issue text | (A) — consistent with every other create/update path for the same entity and preserves the issue's acceptance criterion (a write exposes the fresh ETag); no permission, validation, or payload change | ✅ Resolved |
+| AR-18 | Technical (runtime) | The revived Server↔SDK type oracle fails only on `Client`: the server domain type uses unconstrained `string`/`string[]` fields and omits the route-level `effectiveLoginMethods` decoration (`packages/server/src/clients/types.ts:55`, `packages/server/src/routes/clients.ts:189-213`), while the SDK narrows the unions and includes that field (`packages/sdk/src/types/clients.ts:20-68`) | (A) Keep the Client comparison live but assert only SDK→decorated-server-response, with a comment naming the intentional narrowing; (B) remove the Client comparison and file a follow-up; (C) widen the SDK Client types now | (A) — user decision 2026-09-30: no product type changes; the one-directional check is the meaningful contract, while every other entity keeps both directions | ✅ Resolved (runtime) |
 
 ## Resolution Notes
 
@@ -58,6 +59,8 @@
 **AR-16:** Detected commands: `yarn verify` (root; structure tests plus Turbo verify for server, SDK, and CLI) and `yarn test:integration` (needs PostgreSQL, Redis, MailHog via `yarn docker:up`). `yarn test:structure` runs standalone. No new harness profile is added; the retained tenant-admin compatibility probe is updated with the SDK contract and the registered `yarn assurance:compat` tenant-admin selector runs in Phase 4 from a clean committed revision.
 
 **AR-17:** Verification showed the create handler assigns `ctx.body` without calling `setETagHeader`; the issue's cited line 279 belongs to the `GET /:userId` handler. Adding the emission line is a one-line change that reuses the existing helper and matches the adjacent `PUT` handler (`packages/server/src/routes/users.ts:301`). It introduces no new machinery and no data change.
+
+**AR-18 (runtime):** The revived type-compatibility oracle was dead before this plan (excluded from every typecheck program), so the Client mismatch went unnoticed. The SDK's narrower unions are deliberate consumer ergonomics, and the server route decorates client responses with `effectiveLoginMethods` (`packages/server/src/routes/clients.ts:189-213`), which the server domain `Client` type does not model. The oracle compares `Client` in the SDK→decorated-response direction only; the reverse cannot hold while the server keeps unconstrained strings, and changing either product type is out of this plan's scope. All other entity comparisons keep both directions.
 
 ## Complexity Escalation Review
 

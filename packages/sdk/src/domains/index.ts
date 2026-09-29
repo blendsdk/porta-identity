@@ -40,10 +40,6 @@ export type { CustomClaimsDomain } from './custom-claims.js';
 export { createUserRolesDomain } from './user-roles.js';
 export type { UserRolesDomain } from './user-roles.js';
 
-// User Claims
-export { createUserClaimsDomain } from './user-claims.js';
-export type { UserClaimsDomain } from './user-claims.js';
-
 // Config
 export { createConfigDomain } from './config.js';
 export type { ConfigDomain } from './config.js';

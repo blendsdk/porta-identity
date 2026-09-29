@@ -4,6 +4,7 @@ import type {
   AddressInput,
   CreateUserInput,
   HistoryEntry,
+  HistoryParams,
   HistoryResult,
   InviteUserInput,
   InviteUserResult,
@@ -324,7 +325,7 @@ describe('user type contracts', () => {
       (organizationId: string, userId: string) => Promise<void>
     >();
     expectTypeOf<UsersDomain['getHistory']>().toEqualTypeOf<
-      (organizationId: string, userId: string) => Promise<HistoryResult>
+      (organizationId: string, userId: string, params?: HistoryParams) => Promise<HistoryResult>
     >();
     expectTypeOf<UsersDomain['exportData']>().toEqualTypeOf<
       (organizationId: string, userId: string) => Promise<UserDataExport>

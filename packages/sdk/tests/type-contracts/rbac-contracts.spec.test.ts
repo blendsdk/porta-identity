@@ -63,6 +63,7 @@ type ExpectedUserRolesDomain = {
   list(orgId: string, userId: string): Promise<Role[]>;
   assign(orgId: string, userId: string, roleIds: string[]): Promise<void>;
   remove(orgId: string, userId: string, roleIds: string[]): Promise<ReductionResult>;
+  getEffectivePermissions(orgId: string, userId: string): Promise<Permission[]>;
 };
 
 describe('RBAC SDK type contracts', () => {

@@ -4,14 +4,26 @@
  * @module types/user-claims
  */
 
-export interface UserClaimEntry {
-  claimDefinitionId: string;
-  claimName: string;
-  claimSlug: string;
+import type { CustomClaimDefinition } from './custom-claims.js';
+
+/**
+ * Stored custom claim value for one user and one claim definition.
+ * Mirrors the server's `CustomClaimValue` record.
+ */
+export interface UserClaimValue {
+  id: string;
+  userId: string;
+  claimId: string;
   value: unknown;
+  createdAt: string;
   updatedAt: string;
 }
 
-export interface SetUserClaimValueInput {
-  value: unknown;
+/**
+ * A claim definition joined with the user's stored value.
+ * Returned when listing all claim values for a user.
+ */
+export interface UserClaimWithDefinition {
+  definition: CustomClaimDefinition;
+  value: UserClaimValue;
 }

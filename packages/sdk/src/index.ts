@@ -32,7 +32,6 @@ export type {
   PermissionsDomain,
   CustomClaimsDomain,
   UserRolesDomain,
-  UserClaimsDomain,
   ConfigDomain,
   KeysDomain,
   AuditDomain,

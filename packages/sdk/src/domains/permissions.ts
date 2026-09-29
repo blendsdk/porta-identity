@@ -21,7 +21,7 @@ interface AuthorityReductionResult {
 }
 
 /** Validate one permission returned by the Admin API. */
-function isPermission(value: unknown): value is Permission {
+export function isPermission(value: unknown): value is Permission {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&

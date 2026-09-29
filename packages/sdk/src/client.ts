@@ -1,5 +1,5 @@
 /**
- * PortaClient factory — creates a client instance with all 19 domain namespaces.
+ * PortaClient factory — creates a client instance with all 18 domain namespaces.
  *
  * @module client
  */
@@ -16,7 +16,6 @@ import {
   createPermissionsDomain,
   createCustomClaimsDomain,
   createUserRolesDomain,
-  createUserClaimsDomain,
   createConfigDomain,
   createKeysDomain,
   createAuditDomain,
@@ -39,7 +38,6 @@ import type {
   PermissionsDomain,
   CustomClaimsDomain,
   UserRolesDomain,
-  UserClaimsDomain,
   ConfigDomain,
   KeysDomain,
   AuditDomain,
@@ -70,7 +68,6 @@ export interface PortaClient {
   usersById: StandaloneUsersDomain;
   userRoles: UserRolesDomain;
 
-  userClaims: UserClaimsDomain;
   roles: RolesDomain;
   permissions: PermissionsDomain;
   customClaims: CustomClaimsDomain;
@@ -119,7 +116,6 @@ export function createPortaClient(options: PortaClientOptions): PortaClient {
     usersById: createStandaloneUsersDomain(transport),
     userRoles: createUserRolesDomain(transport),
 
-    userClaims: createUserClaimsDomain(transport),
     roles: createRolesDomain(transport),
     permissions: createPermissionsDomain(transport),
     customClaims: createCustomClaimsDomain(transport),

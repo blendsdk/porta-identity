@@ -7,7 +7,7 @@ function mockTransport(): HttpTransport {
 }
 
 describe('createPortaClient', () => {
-  it('returns an object with all 19 domain namespaces', () => {
+  it('returns an object with all 18 domain namespaces', () => {
     const client = createPortaClient({ transport: mockTransport() });
     const expectedDomains = [
       'organizations',
@@ -15,7 +15,6 @@ describe('createPortaClient', () => {
       'clients',
       'users',
       'userRoles',
-      'userClaims',
       'roles',
       'permissions',
       'customClaims',

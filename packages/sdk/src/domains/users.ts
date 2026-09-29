@@ -9,6 +9,7 @@ import type { HttpTransport } from '../transport/types.js';
 import type {
   CreateUserInput,
   ETagResponse,
+  HistoryParams,
   HistoryResult,
   InviteUserInput,
   InviteUserResult,
@@ -16,6 +17,7 @@ import type {
   SetPasswordInput,
   UpdateUserInput,
   User,
+  UserDataExport,
   UserListParams,
 } from '../types/index.js';
 import { etagHeaders, unwrapData, unwrapWithEtag } from './helpers.js';
@@ -61,9 +63,9 @@ export interface UsersDomain {
   /** Fetch one user and its current ETag. */
   get(orgId: string, userId: string): Promise<ETagResponse<User>>;
   /** Create a user in the organization named by the input. */
-  create(input: CreateUserInput): Promise<User>;
+  create(input: CreateUserInput): Promise<ETagResponse<User>>;
   /** Update mutable profile fields, optionally using optimistic concurrency. */
-  update(orgId: string, userId: string, input: UpdateUserInput, etag?: string): Promise<User>;
+  update(orgId: string, userId: string, input: UpdateUserInput, etag?: string): Promise<ETagResponse<User>>;
   /** Invite a user and return the invitation outcome. */
   invite(input: InviteUserInput): Promise<InviteUserResult>;
   /** Preview the invitation email without sending — POST .../invite/preview */
@@ -74,15 +76,15 @@ export interface UsersDomain {
   /** Mark a user's email as verified — POST .../:userId/verify-email */
   verifyEmail(orgId: string, userId: string): Promise<void>;
   /** GDPR data export (Article 20) — GET .../:userId/export */
-  exportData(orgId: string, userId: string): Promise<UserExportData>;
+  exportData(orgId: string, userId: string): Promise<UserDataExport>;
   /** Permanently delete a user and their owned identity data. */
   delete(orgId: string, userId: string): Promise<void>;
   /** Deactivate an active user. */
   deactivate(orgId: string, userId: string): Promise<void>;
   /** Activate an inactive user. */
   activate(orgId: string, userId: string): Promise<void>;
-  /** Fetch the first page of user history. */
-  getHistory(orgId: string, userId: string): Promise<HistoryResult>;
+  /** Read one page of the user's change history. */
+  getHistory(orgId: string, userId: string, params?: HistoryParams): Promise<HistoryResult>;
 }
 
 /** Rendered invitation email returned by `invitePreview()`. */
@@ -92,8 +94,7 @@ export interface InvitePreviewResult {
   subject: string;
 }
 
-/** GDPR export payload returned by `exportData()` (shape determined by the server). */
-export type UserExportData = Record<string, unknown>;
+
 
 /**
  * Create organization-scoped user operations over an authenticated transport.
@@ -140,7 +141,7 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
         path: userBase(input.organizationId),
         body: input,
       });
-      return unwrapData<User>(res.body);
+      return unwrapWithEtag<User>(res);
     },
 
     async update(orgId, userId, input, etag?) {
@@ -150,7 +151,7 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
         body: input,
         headers: etagHeaders(etag),
       });
-      return unwrapData<User>(res.body);
+      return unwrapWithEtag<User>(res);
     },
 
     async invite(input) {
@@ -195,7 +196,7 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
         method: 'GET',
         path: `${userBase(orgId)}/${userId}/export`,
       });
-      return unwrapData<UserExportData>(res.body);
+      return unwrapData<UserDataExport>(res.body);
     },
 
     async delete(orgId, userId) {
@@ -210,11 +211,15 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
       await transport.request({ method: 'POST', path: `${userBase(orgId)}/${userId}/activate` });
     },
 
-    async getHistory(orgId, userId) {
+    async getHistory(orgId, userId, params?) {
+      const query: Record<string, string | number> = {};
+      if (params?.limit !== undefined) query.limit = params.limit;
+      if (params?.after !== undefined) query.after = params.after;
+      if (params?.eventType !== undefined) query.event_type = params.eventType;
       const res = await transport.request({
         method: 'GET',
         path: `${userBase(orgId)}/${userId}/history`,
-        params: undefined,
+        params: Object.keys(query).length > 0 ? query : undefined,
       });
       return res.body as HistoryResult;
     },
@@ -235,7 +240,7 @@ export interface StandaloneUsersDomain {
   /** Get a user by ID — GET /users/:userId */
   get(userId: string): Promise<ETagResponse<User>>;
   /** Update a user profile — PUT /users/:userId */
-  update(userId: string, input: UpdateUserInput, etag?: string): Promise<User>;
+  update(userId: string, input: UpdateUserInput, etag?: string): Promise<ETagResponse<User>>;
   /** Set a user's password — POST /users/:userId/password */
   setPassword(userId: string, input: SetPasswordInput): Promise<void>;
   /** Clear a user's password — DELETE /users/:userId/password */
@@ -272,7 +277,7 @@ export function createStandaloneUsersDomain(transport: HttpTransport): Standalon
         body: input,
         headers: etagHeaders(etag),
       });
-      return unwrapData<User>(res.body);
+      return unwrapWithEtag<User>(res);
     },
 
     async setPassword(userId, input) {

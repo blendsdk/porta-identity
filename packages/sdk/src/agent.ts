@@ -241,7 +241,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'users.create',
     description: 'Create a new user',
     parameters: [OBJ('input', 'CreateUserInput')],
-    returns: 'User',
+    returns: '{ data: User, etag: string | null }',
   },
   {
     name: 'users.invite',
@@ -283,7 +283,7 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     name: 'users.exportData',
     description: 'GDPR data export for a user',
     parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
-    returns: 'UserExportData',
+    returns: 'UserDataExport',
   },
   {
     name: 'users.delete',
@@ -387,24 +387,57 @@ const TOOL_DEFINITIONS: ToolDefinition[] = [
     ],
     returns: '{ reauthenticationRequired: boolean }',
   },
+  {
+    name: 'userRoles.getEffectivePermissions',
+    description: 'Resolve the permissions granted by all roles assigned to a user',
+    parameters: [ID('orgId', 'Organization ID'), ID('userId', 'User ID')],
+    returns: 'Permission[]',
+  },
 
   // Custom Claims
   {
     name: 'customClaims.list',
     description: 'List claim definitions for an application',
     parameters: [ID('appId', 'Application ID'), ...LIST_PARAMS],
-    returns: 'PaginatedResponse<ClaimDefinition>',
+    returns: 'PaginatedResponse<CustomClaimDefinition>',
   },
   {
     name: 'customClaims.create',
     description: 'Create a claim definition',
-    parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateClaimDefinitionInput')],
-    returns: 'ClaimDefinition',
+    parameters: [ID('appId', 'Application ID'), OBJ('input', 'CreateCustomClaimInput')],
+    returns: 'CustomClaimDefinition',
   },
   {
     name: 'customClaims.delete',
     description: 'Permanently delete a claim definition',
     parameters: [ID('appId', 'Application ID'), ID('claimId', 'Claim definition ID')],
+    returns: 'void',
+  },
+  {
+    name: 'customClaims.getValuesForUser',
+    description: 'List every claim value stored for a user',
+    parameters: [ID('appId', 'Application ID'), ID('userId', 'User ID')],
+    returns: 'UserClaimWithDefinition[]',
+  },
+  {
+    name: 'customClaims.setValue',
+    description: 'Create or replace one claim value for a user',
+    parameters: [
+      ID('appId', 'Application ID'),
+      ID('claimId', 'Claim definition ID'),
+      ID('userId', 'User ID'),
+      param('value', 'number|string', 'Claim value (string, number, boolean, or JSON object)'),
+    ],
+    returns: 'UserClaimValue',
+  },
+  {
+    name: 'customClaims.deleteValue',
+    description: 'Delete one stored claim value for a user',
+    parameters: [
+      ID('appId', 'Application ID'),
+      ID('claimId', 'Claim definition ID'),
+      ID('userId', 'User ID'),
+    ],
     returns: 'void',
   },
 
