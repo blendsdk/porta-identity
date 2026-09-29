@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-29 23:43
-> **Progress**: 6/52 tasks (12%)
+> **Last Updated**: 2026-09-29 23:57
+> **Progress**: 10/52 tasks (19%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -100,10 +100,10 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-01](03-01-server-gdpr-export.md) §Testing Requirements · AR-1
 **Objective**: Keep the failure-path contract and prove no stale table names remain.
 
-- [ ] 1.3.1 Keep the mapping tests in `packages/server/tests/unit/users/gdpr.test.ts` passing and add the failure-path case: make one `mockQuery` call reject and assert `exportUserData` propagates the error. If the mock asserts the old SQL text, update only the SQL-string expectation (not behavior expectations) and note it.
-- [ ] 1.3.2 Record the RD-02 R2 disposition: the repository review confirmed that only `packages/server/src/users/gdpr.ts` used the old table names and that all portability hits are manifest JSON keys, not SQL. No mechanical source scan is added; R2 is covered by the corrected query plus the passing real-schema test (ST-1).
-- [ ] 1.3.3 Run `yarn workspace @portaidentity/server test:unit tests/unit/users/gdpr.test.ts` and the two targeted integration files; all pass.
-- [ ] 1.3.4 Full server verification: `yarn workspace @portaidentity/server verify`.
+- [x] 1.3.1 Keep the mapping tests in `packages/server/tests/unit/users/gdpr.test.ts` passing and add the failure-path case: make one `mockQuery` call reject and assert `exportUserData` propagates the error. If the mock asserts the old SQL text, update only the SQL-string expectation (not behavior expectations) and note it. ✅ (completed: 2026-09-29 23:43; no SQL-text expectation existed; 5/5 unit tests pass)
+- [x] 1.3.2 Record the RD-02 R2 disposition: the repository review confirmed that only `packages/server/src/users/gdpr.ts` used the old table names and that all portability hits are manifest JSON keys, not SQL. No mechanical source scan is added; R2 is covered by the corrected query plus the passing real-schema test (ST-1). ✅ (completed: 2026-09-29 23:43; disposition recorded here: corrected query + real-schema ST-1 cover R2; no scanner added)
+- [x] 1.3.3 Run `yarn workspace @portaidentity/server test:unit tests/unit/users/gdpr.test.ts` and the two targeted integration files; all pass. ✅ (completed: 2026-09-29 23:43; unit 5/5, integration 8/8)
+- [x] 1.3.4 Full server verification: `yarn workspace @portaidentity/server verify`. ✅ (completed: 2026-09-29 23:57; unit 3749, integration 499, e2e 133, pentest 273)
 
 **Deliverables**:
 - [ ] Failure-path unit test passing
