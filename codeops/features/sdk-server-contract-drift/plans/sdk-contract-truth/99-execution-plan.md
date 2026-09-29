@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 01:23
-> **Progress**: 44/52 tasks (85%)
+> **Last Updated**: 2026-09-30 01:48
+> **Progress**: 48/52 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -284,7 +284,8 @@ task-size criteria in the make-plan quality checklist)
 
 ## Phase 4: Integrated verification and delivery
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: `b5b010e5f61361648d7d72e03cd6829f43fcf6c3`
+> **Scope**: strict
 > **Lenses**: [informational]
 
 ### Step 4.1: Cross-workspace verification
@@ -293,10 +294,10 @@ task-size criteria in the make-plan quality checklist)
 [RD-02](../../requirements/RD-02-gdpr-export-schema-repair.md) · AR-16
 **Objective**: Prove the three workspaces agree and nothing regressed.
 
-- [ ] 4.1.1 Run `yarn docker:up`, then `yarn verify`; all structure tests and Turbo verification for server, SDK, and CLI must pass.
-- [ ] 4.1.2 Run `yarn test:integration`; all integration suites, including the new export and create-ETag specs, must pass.
-- [ ] 4.1.3 End-to-end confirmation of the issue acceptance criteria: with the dev stack running, exercise (a) `users.create` → `users.update` at the HTTP layer, reusing the created ETag, and (b) the export endpoint for a user with and without claims, through the integration specs in 4.1.2; record the evidence. If a manual curl-level proof is chosen, use a scratch database and remove it afterwards.
-- [ ] 4.1.4 Run `yarn docs:build` if it was not run in 3.4.7 after the last docs edit.
+- [x] 4.1.1 Run `yarn docker:up`, then `yarn verify`; all structure tests and Turbo verification for server, SDK, and CLI must pass. ✅ (completed: 2026-09-30 01:48; structure 138/138; Turbo 4/4 successful including the server verify at 940s. Mechanical correction: the retained server test-file inventory was updated from 347 to 349 for the two new spec files, committed separately.)
+- [x] 4.1.2 Run `yarn test:integration`; all integration suites, including the new export and create-ETag specs, must pass. ✅ (completed: 2026-09-30 01:48; 499/499 across 57 files)
+- [x] 4.1.3 End-to-end confirmation of the issue acceptance criteria: with the dev stack running, exercise (a) `users.create` → `users.update` at the HTTP layer, reusing the created ETag, and (b) the export endpoint for a user with and without claims, through the integration specs in 4.1.2; record the evidence. If a manual curl-level proof is chosen, use a scratch database and remove it afterwards. ✅ (completed: 2026-09-30 01:48; targeted re-run 8/8 — export answers 200 with populated and empty `customClaims`; the create ETag matches the next read and is accepted as `If-Match` on update; no scratch database was needed)
+- [x] 4.1.4 Run `yarn docs:build` if it was not run in 3.4.7 after the last docs edit. ✅ (completed: 2026-09-30 01:48; the docs build ran green after the last docs edit during the phase 3 review-fix verification)
 - [ ] 4.1.5 Run the registered `tenant-admin` selector of `yarn assurance:compat` from a clean committed revision (use the selector syntax documented by the assurance CLI) and record the result. This is the mandated compatibility gate for the SDK contract change; the retained probe consumes `users.update` and must pass.
 
 **Deliverables**:
