@@ -89,16 +89,32 @@ describe('domains/two-factor', () => {
 
   // ── setPolicy ───────────────────────────────────────────────
   describe('setPolicy', () => {
-    it('calls PUT .../two-factor/policy with { twoFactorPolicy } body', async () => {
+    it('should PUT .../two-factor/policy and resolve the policy with the response ETag', async () => {
       const policy = { twoFactorPolicy: 'required_totp', validPolicies: ['optional', 'required_email', 'required_totp', 'required_any'] };
-      transport = mockTransport({ body: { data: policy } });
+      transport = mockTransport({ body: { data: policy }, headers: { etag: '"v2"' } });
       const twoFactor = createTwoFactorDomain(transport);
       const result = await twoFactor.setPolicy(orgId, 'required_totp');
       expect(transport.request).toHaveBeenCalledWith({
         method: 'PUT', path: '/organizations/org-1/two-factor/policy',
         body: { twoFactorPolicy: 'required_totp' },
       });
-      expect(result).toEqual(policy);
+      expect(result).toEqual({ data: policy, etag: '"v2"' });
+    });
+
+    it('should forward the returned ETag as If-Match on the next policy update', async () => {
+      const policy = { twoFactorPolicy: 'required_totp', validPolicies: ['optional', 'required_email', 'required_totp', 'required_any'] };
+      transport = mockTransport({ body: { data: policy }, headers: { etag: '"v2"' } });
+      const twoFactor = createTwoFactorDomain(transport);
+      const first = await twoFactor.setPolicy(orgId, 'required_totp');
+      await twoFactor.setPolicy(orgId, 'required_email', first.etag ?? undefined);
+
+      expect(transport.request).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          method: 'PUT', path: '/organizations/org-1/two-factor/policy',
+          headers: { 'If-Match': '"v2"' },
+          body: { twoFactorPolicy: 'required_email' },
+        }),
+      );
     });
   });
 

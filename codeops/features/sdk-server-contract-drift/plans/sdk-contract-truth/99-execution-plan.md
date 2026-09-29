@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 00:29
-> **Progress**: 17/52 tasks (33%)
+> **Last Updated**: 2026-09-30 00:35
+> **Progress**: 25/52 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -179,7 +179,8 @@ task-size criteria in the make-plan quality checklist)
 
 ## Phase 3: SDK contract alignment + CLI + docs
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: `1f78a791159c9aee1fa4385b6defe2e80aff8761`
+> **Scope**: strict · **Expected paths**: `packages/sdk/src/**`, `packages/sdk/tests/**`, `packages/sdk/CHANGELOG.md`, `packages/sdk/README.md`, `packages/cli/src/commands/*.ts`, `packages/cli/src/admin/*.ts`, `packages/cli/tests/**`, `docs/guide/sdk.md`, `docs/guide/sdk-agent.md`, `docs/api/organizations.md`, `docs/cli/users.md`, `docs/cli/applications.md`, `docs/concepts/custom-claims.md`, `test-harness/consumers/tenant-admin-sdk-probe.mjs`
 > **Lenses**: [informational]
 
 ### Step 3.1: Specification Tests
@@ -188,14 +189,14 @@ task-size criteria in the make-plan quality checklist)
 [03-05](03-05-sdk-history-two-factor-cli.md) · AR-2…AR-10, AR-12, AR-14, AR-15
 **Objective**: Pin every corrected SDK and CLI contract before code changes.
 
-- [ ] 3.1.1 [spec-author] Organizations cases ST-6–ST-10 — `packages/sdk/tests/domains/organizations.test.ts`: slug result shape, 400 error path, `sortBy`/`sortOrder` forwarding, update ETag, history parameters and envelope. Add the type-level red oracles for `SlugValidationResult` and the renamed `ListParams` keys in `packages/sdk/tests/type-contracts/common-contract.spec.test.ts` and list that file in `packages/sdk/tests/type-contracts/tsconfig.json`.
-- [ ] 3.1.2 [spec-author] Users cases ST-11, ST-12, ST-14 — `packages/sdk/tests/domains/users.test.ts`: create/update ETag wrappers, history parameter mapping.
-- [ ] 3.1.3 [spec-author] Standalone users cases ST-13, ST-15 — `packages/sdk/tests/domains/standalone-users.test.ts`: update ETag, history envelope unwrap (ST-15 is reclassified as a pinning test; it already passes pre-change).
-- [ ] 3.1.4 [spec-author] 2FA case ST-22 — `packages/sdk/tests/domains/two-factor.test.ts`: policy ETag plus a second call forwarding the returned token as `If-Match`. ST-16/ST-17 are withdrawn with the application/client deferral; no app/client spec tests are written.
-- [ ] 3.1.5 [spec-author] Claims and roles cases ST-18–ST-21 and ST-28 — `packages/sdk/tests/domains/custom-claims.test.ts`, `packages/sdk/tests/domains/user-roles.test.ts`: value routes (including `getValue`), definition types, effective permissions, and the documented non-filtering of `getValuesForUser`.
-- [ ] 3.1.6 [spec-author] Export typing case ST-23 — `packages/sdk/tests/type-contracts/users-contract.spec.test.ts` (extend the exact-type oracle for `UserDataExport`).
-- [ ] 3.1.7 [spec-author] CLI cases ST-25–ST-27 — `packages/cli/tests/commands/user.test.ts`: rewrite the `claims` block to the `customClaims` surface and required `--app`.
-- [ ] 3.1.8 Verify the red phase: `yarn workspace @portaidentity/sdk test`, `yarn workspace @portaidentity/sdk typecheck`, and `yarn workspace @portaidentity/cli test tests/commands/user.test.ts`; record which cases fail. The type-level oracles are red under typecheck (the new types do not exist yet); runtime pinning cases (ST-5, ST-7, ST-15) are expected green and are recorded as such; the CLI/typecheck failures are expected (removed types still present pre-change). Do not implement yet.
+- [x] 3.1.1 [spec-author] Organizations cases ST-6–ST-10 — `packages/sdk/tests/domains/organizations.test.ts`: slug result shape, 400 error path, `sortBy`/`sortOrder` forwarding, update ETag, history parameters and envelope. Add the type-level red oracles for `SlugValidationResult` and the renamed `ListParams` keys in `packages/sdk/tests/type-contracts/common-contract.spec.test.ts` and list that file in `packages/sdk/tests/type-contracts/tsconfig.json`. ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.2 [spec-author] Users cases ST-11, ST-12, ST-14 — `packages/sdk/tests/domains/users.test.ts`: create/update ETag wrappers, history parameter mapping. ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.3 [spec-author] Standalone users cases ST-13, ST-15 — `packages/sdk/tests/domains/standalone-users.test.ts`: update ETag, history envelope unwrap (ST-15 is reclassified as a pinning test; it already passes pre-change). ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.4 [spec-author] 2FA case ST-22 — `packages/sdk/tests/domains/two-factor.test.ts`: policy ETag plus a second call forwarding the returned token as `If-Match`. ST-16/ST-17 are withdrawn with the application/client deferral; no app/client spec tests are written. ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.5 [spec-author] Claims and roles cases ST-18–ST-21 and ST-28 — `packages/sdk/tests/domains/custom-claims.test.ts`, `packages/sdk/tests/domains/user-roles.test.ts`: value routes (including `getValue`), definition types, effective permissions, and the documented non-filtering of `getValuesForUser`. ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.6 [spec-author] Export typing case ST-23 — `packages/sdk/tests/type-contracts/users-contract.spec.test.ts` (extend the exact-type oracle for `UserDataExport`). ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.7 [spec-author] CLI cases ST-25–ST-27 — `packages/cli/tests/commands/user.test.ts`: rewrite the `claims` block to the `customClaims` surface and required `--app`. ✅ (completed: 2026-09-30 00:35)
+- [x] 3.1.8 Verify the red phase: `yarn workspace @portaidentity/sdk test`, `yarn workspace @portaidentity/sdk typecheck`, and `yarn workspace @portaidentity/cli test tests/commands/user.test.ts`; record which cases fail. The type-level oracles are red under typecheck (the new types do not exist yet); runtime pinning cases (ST-5, ST-7, ST-15) are expected green and are recorded as such; the CLI/typecheck failures are expected (removed types still present pre-change). Do not implement yet. ✅ (completed: 2026-09-30 00:35; red: SDK 16 failed/568 passed — ETag wrappers, history mapping, claim value methods, effective permissions; typecheck 9 errors — missing `HistoryParams`/`SlugValidationResult`/`UserDataExport`, widened `sortBy`/`sortOrder`, old `update`/`getHistory` signatures; CLI 5 failed/37 passed — claims block on the removed `userClaims` surface; pinning cases ST-6/7/8/15 passed as expected)
 
 **Deliverables**:
 - [ ] Spec cases added across SDK and CLI suites

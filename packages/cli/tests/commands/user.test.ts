@@ -26,17 +26,17 @@ const mockUserRoles = {
   remove: vi.fn(),
 };
 
-const mockUserClaims = {
-  list: vi.fn(),
-  set: vi.fn(),
-  remove: vi.fn(),
+const mockCustomClaims = {
+  getValuesForUser: vi.fn(),
+  setValue: vi.fn(),
+  deleteValue: vi.fn(),
 };
 
 vi.mock('../../src/client-factory.js', () => ({
   createClient: vi.fn(() => ({
     users: mockUsers,
     userRoles: mockUserRoles,
-    userClaims: mockUserClaims,
+    customClaims: mockCustomClaims,
   })),
 }));
 
@@ -93,6 +93,30 @@ const sampleRole = {
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z',
 };
+
+const sampleClaimDefinition = {
+  id: 'claim-uuid',
+  applicationId: 'app-uuid',
+  claimName: 'department',
+  claimType: 'string',
+  description: null,
+  includeInIdToken: true,
+  includeInAccessToken: false,
+  includeInUserinfo: true,
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-02T00:00:00Z',
+};
+
+const sampleClaimValue = {
+  id: 'claim-value-uuid',
+  userId: 'user-uuid-1234',
+  claimId: 'claim-uuid',
+  value: 'Engineering',
+  createdAt: '2024-01-01T00:00:00Z',
+  updatedAt: '2024-01-02T00:00:00Z',
+};
+
+const sampleUserClaim = { definition: sampleClaimDefinition, value: sampleClaimValue };
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -592,25 +616,32 @@ describe('user command', () => {
 
   describe('claims', () => {
     describe('list', () => {
-      it('lists custom claims', async () => {
-        mockUserClaims.list.mockResolvedValue([
-          { claimDefinitionId: 'claim-uuid', claimName: 'department', value: 'Engineering' },
-        ]);
-
-        await invokeSubcommand('claims list', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
-
-        expect(mockUserClaims.list).toHaveBeenCalledWith('org-uuid', 'user-uuid-1234');
-        expect(printTable).toHaveBeenCalled();
-      });
-
-      it('lists claims in JSON', async () => {
-        const claims = [
-          { claimDefinitionId: 'claim-uuid', claimName: 'department', value: 'Engineering' },
-        ];
-        mockUserClaims.list.mockResolvedValue(claims);
+      it('should list claim values through the application and user route', async () => {
+        mockCustomClaims.getValuesForUser.mockResolvedValue([sampleUserClaim]);
 
         await invokeSubcommand('claims list', {
           org: 'org-uuid',
+          app: sampleClaimDefinition.applicationId,
+          _pos_: 'user-uuid-1234',
+        });
+
+        expect(mockCustomClaims.getValuesForUser).toHaveBeenCalledWith(
+          sampleClaimDefinition.applicationId,
+          'user-uuid-1234',
+        );
+        expect(printTable).toHaveBeenCalledWith(
+          ['Claim ID', 'Claim Name', 'Value'],
+          [[sampleClaimDefinition.id, sampleClaimDefinition.claimName, sampleClaimValue.value]],
+        );
+      });
+
+      it('should list claims in JSON', async () => {
+        const claims = [sampleUserClaim];
+        mockCustomClaims.getValuesForUser.mockResolvedValue(claims);
+
+        await invokeSubcommand('claims list', {
+          org: 'org-uuid',
+          app: sampleClaimDefinition.applicationId,
           _pos_: 'user-uuid-1234',
           json: true,
         });
@@ -618,61 +649,95 @@ describe('user command', () => {
         expect(printJson).toHaveBeenCalledWith(claims);
       });
 
-      it('shows warning when no claims set', async () => {
-        mockUserClaims.list.mockResolvedValue([]);
+      it('should warn when no claim values are set', async () => {
+        mockCustomClaims.getValuesForUser.mockResolvedValue([]);
 
-        await invokeSubcommand('claims list', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
+        await invokeSubcommand('claims list', {
+          org: 'org-uuid',
+          app: sampleClaimDefinition.applicationId,
+          _pos_: 'user-uuid-1234',
+        });
 
         expect(warn).toHaveBeenCalledWith('No custom claims set');
+      });
+
+      it('should require --app before calling the SDK', async () => {
+        await invokeSubcommand('claims list', { org: 'org-uuid', _pos_: 'user-uuid-1234' });
+
+        expect(mockCustomClaims.getValuesForUser).not.toHaveBeenCalled();
       });
     });
 
     describe('set', () => {
-      it('sets a claim value', async () => {
+      it('should set a claim value through the application and user route', async () => {
         await invokeSubcommand('claims set', {
           org: 'org-uuid',
+          app: sampleClaimDefinition.applicationId,
           _pos_: 'user-uuid-1234',
-          claim: 'claim-uuid',
-          value: 'Engineering',
+          claim: sampleClaimDefinition.id,
+          value: sampleClaimValue.value,
         });
 
-        expect(mockUserClaims.set).toHaveBeenCalledWith(
-          'org-uuid',
+        expect(mockCustomClaims.setValue).toHaveBeenCalledWith(
+          sampleClaimDefinition.applicationId,
+          sampleClaimDefinition.id,
           'user-uuid-1234',
-          'claim-uuid',
-          'Engineering',
+          sampleClaimValue.value,
         );
         expect(success).toHaveBeenCalledWith(expect.stringContaining('set'));
       });
 
-      it('handles set errors', async () => {
-        mockUserClaims.set.mockRejectedValue(new Error('Invalid value'));
+      it('should handle set errors', async () => {
+        mockCustomClaims.setValue.mockRejectedValue(new Error('Invalid value'));
 
         await invokeSubcommand('claims set', {
           org: 'org-uuid',
+          app: sampleClaimDefinition.applicationId,
           _pos_: 'user-uuid-1234',
-          claim: 'claim-uuid',
+          claim: sampleClaimDefinition.id,
           value: 'bad',
         });
 
         expect(handleError).toHaveBeenCalled();
       });
+
+      it('should require --app before calling the SDK', async () => {
+        await invokeSubcommand('claims set', {
+          org: 'org-uuid',
+          _pos_: 'user-uuid-1234',
+          claim: sampleClaimDefinition.id,
+          value: sampleClaimValue.value,
+        });
+
+        expect(mockCustomClaims.setValue).not.toHaveBeenCalled();
+      });
     });
 
     describe('remove', () => {
-      it('removes a claim value', async () => {
+      it('should remove a claim value through the application and user route', async () => {
+        await invokeSubcommand('claims remove', {
+          org: 'org-uuid',
+          app: sampleClaimDefinition.applicationId,
+          _pos_: 'user-uuid-1234',
+          claim: sampleClaimDefinition.id,
+        });
+
+        expect(mockCustomClaims.deleteValue).toHaveBeenCalledWith(
+          sampleClaimDefinition.applicationId,
+          sampleClaimDefinition.id,
+          'user-uuid-1234',
+        );
+        expect(success).toHaveBeenCalledWith(expect.stringContaining('removed'));
+      });
+
+      it('should require --app before calling the SDK', async () => {
         await invokeSubcommand('claims remove', {
           org: 'org-uuid',
           _pos_: 'user-uuid-1234',
-          claim: 'claim-uuid',
+          claim: sampleClaimDefinition.id,
         });
 
-        expect(mockUserClaims.remove).toHaveBeenCalledWith(
-          'org-uuid',
-          'user-uuid-1234',
-          'claim-uuid',
-        );
-        expect(success).toHaveBeenCalledWith(expect.stringContaining('removed'));
+        expect(mockCustomClaims.deleteValue).not.toHaveBeenCalled();
       });
     });
   });

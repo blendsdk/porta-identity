@@ -11,6 +11,7 @@
   "exclude": [],
   "include": [
     "config.spec.test.ts",
+    "common-contract.spec.test.ts",
     "users-contract.spec.test.ts",
     "client-secret-expiry-contract.spec.test.ts",
     "rbac-contracts.spec.test.ts",
