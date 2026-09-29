@@ -1,12 +1,14 @@
 /**
  * CLI user custom claim value subcommands.
  *
- * Manages custom claim values for users within an organization.
+ * Manages custom claim values for users within an organization. Every
+ * subcommand requires the application that owns the claim definition because
+ * the Admin API addresses claim values under the application path.
  *
  * Usage:
- *   porta user claims list --org <org-id> <user-id>
- *   porta user claims set --org <org-id> <user-id> --claim <claim-id> --value <value>
- *   porta user claims remove --org <org-id> <user-id> --claim <claim-id>
+ *   porta user claims list --org <org-id> --app <app-id> <user-id>
+ *   porta user claims set --org <org-id> --app <app-id> <user-id> --claim <claim-id> --value <value>
+ *   porta user claims remove --org <org-id> --app <app-id> <user-id> --claim <claim-id>
  *
  * @module commands/user-claim
  */
@@ -24,6 +26,7 @@ import { printTable, printJson, success, warn, info } from '../output.js';
 
 interface ClaimListArgs extends GlobalOptions {
   org: string;
+  app: string;
   'user-id': string;
 }
 
@@ -62,11 +65,19 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 type: 'string',
                 demandOption: true,
                 description: 'Organization UUID',
+              })
+              .option('app', {
+                type: 'string',
+                demandOption: true,
+                description: 'Application UUID that owns the claim definition',
               }),
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              const claims = await sdkClient.userClaims.list(argv.org, argv['user-id']);
+              const claims = await sdkClient.customClaims.getValuesForUser(
+                argv.app,
+                argv['user-id'],
+              );
 
               if (claims.length === 0) {
                 warn('No custom claims set');
@@ -78,7 +89,11 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               } else {
                 printTable(
                   ['Claim ID', 'Claim Name', 'Value'],
-                  claims.map((c) => [c.claimDefinitionId, c.claimName ?? '—', String(c.value)]),
+                  claims.map((c) => [
+                    c.definition.id,
+                    c.definition.claimName,
+                    String(c.value.value),
+                  ]),
                 );
                 info(`Total: ${claims.length} claims`);
               }
@@ -104,6 +119,11 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 demandOption: true,
                 description: 'Organization UUID',
               })
+              .option('app', {
+                type: 'string',
+                demandOption: true,
+                description: 'Application UUID that owns the claim definition',
+              })
               .option('claim', {
                 type: 'string',
                 demandOption: true,
@@ -117,7 +137,12 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.userClaims.set(argv.org, argv['user-id'], argv.claim, argv.value);
+              await sdkClient.customClaims.setValue(
+                argv.app,
+                argv.claim,
+                argv['user-id'],
+                argv.value,
+              );
               success(`Claim ${argv.claim} set for user ${argv['user-id']}`);
             } catch (err) {
               handleError(err, argv.verbose);
@@ -141,6 +166,11 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 demandOption: true,
                 description: 'Organization UUID',
               })
+              .option('app', {
+                type: 'string',
+                demandOption: true,
+                description: 'Application UUID that owns the claim definition',
+              })
               .option('claim', {
                 type: 'string',
                 demandOption: true,
@@ -149,7 +179,7 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              await sdkClient.userClaims.remove(argv.org, argv['user-id'], argv.claim);
+              await sdkClient.customClaims.deleteValue(argv.app, argv.claim, argv['user-id']);
               success(`Claim ${argv.claim} removed from user ${argv['user-id']}`);
             } catch (err) {
               handleError(err, argv.verbose);

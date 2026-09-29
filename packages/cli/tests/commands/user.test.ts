@@ -169,7 +169,7 @@ describe('user command', () => {
 
   describe('create', () => {
     it('creates a user and shows table output', async () => {
-      mockUsers.create.mockResolvedValue(sampleUser);
+      mockUsers.create.mockResolvedValue({ data: sampleUser, etag: null });
 
       await invokeSubcommand('create', { org: 'org-uuid', email: 'alice@example.com' });
 
@@ -181,7 +181,7 @@ describe('user command', () => {
     });
 
     it('creates a user with JSON output', async () => {
-      mockUsers.create.mockResolvedValue(sampleUser);
+      mockUsers.create.mockResolvedValue({ data: sampleUser, etag: null });
 
       await invokeSubcommand('create', { org: 'org-uuid', email: 'alice@example.com', json: true });
 
@@ -189,7 +189,7 @@ describe('user command', () => {
     });
 
     it('passes name and password when provided', async () => {
-      mockUsers.create.mockResolvedValue(sampleUser);
+      mockUsers.create.mockResolvedValue({ data: sampleUser, etag: null });
 
       await invokeSubcommand('create', {
         org: 'org-uuid',
@@ -353,9 +353,12 @@ describe('user command', () => {
     it('updates user name (split into given/family)', async () => {
       mockUsers.get.mockResolvedValue({ data: sampleUser, etag: 'etag-1' });
       mockUsers.update.mockResolvedValue({
-        ...sampleUser,
-        givenName: 'Alice',
-        familyName: 'Updated',
+        data: {
+          ...sampleUser,
+          givenName: 'Alice',
+          familyName: 'Updated',
+        },
+        etag: 'etag-2',
       });
 
       await invokeSubcommand('update', {
@@ -375,7 +378,7 @@ describe('user command', () => {
 
     it('outputs JSON on update', async () => {
       mockUsers.get.mockResolvedValue({ data: sampleUser, etag: 'etag-1' });
-      mockUsers.update.mockResolvedValue(sampleUser);
+      mockUsers.update.mockResolvedValue({ data: sampleUser, etag: 'etag-2' });
 
       await invokeSubcommand('update', {
         org: 'org-uuid',

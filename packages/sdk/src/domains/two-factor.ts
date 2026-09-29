@@ -10,13 +10,14 @@
 
 import type { HttpTransport } from '../transport/types.js';
 import type {
+  ETagResponse,
   TwoFactorStatus,
   TwoFactorPolicy,
   TwoFactorPolicyResult,
   TwoFactorSummary,
   RegenerateRecoveryCodesResult,
 } from '../types/index.js';
-import { unwrapData } from './helpers.js';
+import { etagHeaders, unwrapData, unwrapWithEtag } from './helpers.js';
 
 export interface TwoFactorDomain {
   /** Get a user's 2FA status — GET .../users/:userId/two-factor/status */
@@ -30,7 +31,11 @@ export interface TwoFactorDomain {
   /** Get the org 2FA policy — GET .../organizations/:orgId/two-factor/policy */
   getPolicy(orgId: string): Promise<TwoFactorPolicyResult>;
   /** Set the org 2FA policy — PUT .../organizations/:orgId/two-factor/policy */
-  setPolicy(orgId: string, policy: TwoFactorPolicy): Promise<TwoFactorPolicyResult>;
+  setPolicy(
+    orgId: string,
+    policy: TwoFactorPolicy,
+    etag?: string,
+  ): Promise<ETagResponse<TwoFactorPolicyResult>>;
   /** Get the org 2FA enrollment summary — GET .../organizations/:orgId/two-factor/summary */
   getSummary(orgId: string): Promise<TwoFactorSummary>;
 }
@@ -69,11 +74,14 @@ export function createTwoFactorDomain(transport: HttpTransport): TwoFactorDomain
       return unwrapData<TwoFactorPolicyResult>(res.body);
     },
 
-    async setPolicy(orgId, policy) {
+    async setPolicy(orgId, policy, etag?) {
       const res = await transport.request({
-        method: 'PUT', path: `${orgBase(orgId)}/policy`, body: { twoFactorPolicy: policy },
+        method: 'PUT',
+        path: `${orgBase(orgId)}/policy`,
+        body: { twoFactorPolicy: policy },
+        ...(etag ? { headers: etagHeaders(etag) } : {}),
       });
-      return unwrapData<TwoFactorPolicyResult>(res.body);
+      return unwrapWithEtag<TwoFactorPolicyResult>(res);
     },
 
     async getSummary(orgId) {

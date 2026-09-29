@@ -20,7 +20,6 @@ import { confirm } from '../prompt.js';
 interface ClaimCreateArgs extends GlobalOptions {
   'app-id': string;
   name: string;
-  slug?: string;
   type: string;
   description?: string;
 }
@@ -61,7 +60,6 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               description: 'Application ID',
             })
             .option('name', { type: 'string', demandOption: true, description: 'Claim name' })
-            .option('slug', { type: 'string', description: 'Claim slug' })
             .option('type', {
               type: 'string',
               demandOption: true,
@@ -73,24 +71,21 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           try {
             const client = createClient(argv);
             const claim = await client.customClaims.create(argv['app-id'], {
-              applicationId: argv['app-id'],
-              name: argv.name,
-              slug: argv.slug,
-              valueType: argv.type as ClaimValueType,
+              claimName: argv.name,
+              claimType: argv.type as ClaimValueType,
               description: argv.description,
             });
 
             if (argv.json) {
               printJson(claim);
             } else {
-              success(`Claim created: ${claim.name} (${claim.slug})`);
+              success(`Claim created: ${claim.claimName} (${claim.claimType})`);
               printTable(
                 ['Field', 'Value'],
                 [
                   ['ID', claim.id],
-                  ['Name', claim.name],
-                  ['Slug', claim.slug],
-                  ['Type', claim.valueType],
+                  ['Name', claim.claimName],
+                  ['Type', claim.claimType],
                   ['Created', formatDate(claim.createdAt)],
                 ],
               );
@@ -130,12 +125,11 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               printJson(result);
             } else {
               printTable(
-                ['ID', 'Name', 'Slug', 'Type', 'Created'],
+                ['ID', 'Name', 'Type', 'Created'],
                 result.data.map((c) => [
                   c.id,
-                  c.name,
-                  c.slug,
-                  c.valueType,
+                  c.claimName,
+                  c.claimType,
                   formatDate(c.createdAt),
                 ]),
               );
@@ -174,9 +168,8 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 ['Field', 'Value'],
                 [
                   ['ID', claim.id],
-                  ['Name', claim.name],
-                  ['Slug', claim.slug],
-                  ['Type', claim.valueType],
+                  ['Name', claim.claimName],
+                  ['Type', claim.claimType],
                   ['Description', claim.description ?? '—'],
                   ['Created', formatDate(claim.createdAt)],
                   ['Updated', formatDate(claim.updatedAt)],
@@ -209,14 +202,14 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const client = createClient(argv);
               const claim = await client.customClaims.get(argv['app-id'], argv['claim-id']);
               const confirmed = await confirm(
-                `Keep claim "${claim.name}" (${claim.slug}), or Delete ${claim.name}? This permanently deletes its user values.`,
+                `Keep claim "${claim.claimName}" (${claim.claimType}), or Delete ${claim.claimName}? This permanently deletes its user values.`,
               );
               if (!confirmed) {
                 warn('Operation cancelled');
                 return;
               }
               await client.customClaims.delete(argv['app-id'], argv['claim-id']);
-              success(`Claim definition deleted: ${claim.name} (${claim.slug})`);
+              success(`Claim definition deleted: ${claim.claimName} (${claim.claimType})`);
           } catch (err) {
             handleError(err, argv.verbose);
           }

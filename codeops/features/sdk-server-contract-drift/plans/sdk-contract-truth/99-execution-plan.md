@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 00:46
-> **Progress**: 37/52 tasks (71%)
+> **Last Updated**: 2026-09-30 01:13
+> **Progress**: 44/52 tasks (85%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -252,13 +252,13 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-05](03-05-sdk-history-two-factor-cli.md) §Implementation Details · AR-4, AR-10, AR-12, AR-14
 **Objective**: Finish the history and 2FA contracts, fix the CLI, and document the migration.
 
-- [ ] 3.4.1 Do not change `packages/sdk/src/domains/applications.ts` or `clients.ts`: application/client history is deferred to a separate server defect (their routes answer `500`). Confirm no spec test pins them.
-- [ ] 3.4.2 Update `packages/sdk/src/domains/two-factor.ts`: `setPolicy(orgId, policy, etag?)` returns `ETagResponse<TwoFactorPolicyResult>` via `unwrapWithEtag` and sends `etagHeaders(etag)`.
-- [ ] 3.4.3 CLI consumer alignment: (a) `user-claim.ts` — required `--app`, `customClaims.getValuesForUser`/`getValue`/`setValue`/`deleteValue`, print `definition.id`/`definition.claimName`/`value.value`; (b) `app-claim.ts` — `--name`→`claimName`, `--type`→`claimType`, drop `--slug`/`applicationId`, print `claimName`/`claimType`; (c) `org.ts`/`user.ts` — unwrap `ETagResponse` from update/create; (d) `org.ts`/`client.ts`/`app.ts` — adapt history output to `HistoryResult`; (e) `admin/user-service.ts` and `admin/organization-service.ts` — unwrap `.data` for user create/update, organization update, and 2FA policy; (f) `test-harness/consumers/tenant-admin-sdk-probe.mjs` — read `.data.id` from `users.update`.
-- [ ] 3.4.4 Verify the green phase: `yarn workspace @portaidentity/sdk test`, `yarn workspace @portaidentity/cli test tests/commands/`, then `yarn workspace @portaidentity/cli typecheck`.
-- [ ] 3.4.5 Update `packages/sdk/CHANGELOG.md` under `Unreleased` with the changed/removed/added list and a short migration example (per AR-10). Do not touch version constants.
-- [ ] 3.4.6 Update `docs/guide/sdk.md`: sort parameter names, history parameters/envelope for the supported methods, write-ETag behavior (including the 2FA `etag` argument), the `customClaims` value methods and their documented non-filtering, and the removed `userClaims`/old type names. Update the tool counts in `docs/guide/sdk-agent.md` and `packages/sdk/README.md`, and add the required `--app` to `docs/cli/users.md` and `docs/concepts/custom-claims.md`.
-- [ ] 3.4.7 Update `docs/api/organizations.md`: add the slug-validation section (400 vs 200 semantics), the reserved `new` word, UUID access for an existing tenant, and the direct-database slug-change note. Update `docs/cli/applications.md` for the claim-definition fields. Run `yarn docs:build`.
+- [x] 3.4.1 Do not change `packages/sdk/src/domains/applications.ts` or `clients.ts`: application/client history is deferred to a separate server defect (their routes answer `500`). Confirm no spec test pins them. ✅ (completed: 2026-09-30 01:10; confirmed — no spec test pins application/client history; those files were not modified)
+- [x] 3.4.2 Update `packages/sdk/src/domains/two-factor.ts`: `setPolicy(orgId, policy, etag?)` returns `ETagResponse<TwoFactorPolicyResult>` via `unwrapWithEtag` and sends `etagHeaders(etag)`. ✅ (completed: 2026-09-30 01:10; conditional header keeps the no-If-Match contract when no etag is passed; ST-22 8/8 green)
+- [x] 3.4.3 CLI consumer alignment: (a) `user-claim.ts` — required `--app`, `customClaims.getValuesForUser`/`getValue`/`setValue`/`deleteValue`, print `definition.id`/`definition.claimName`/`value.value`; (b) `app-claim.ts` — `--name`→`claimName`, `--type`→`claimType`, drop `--slug`/`applicationId`, print `claimName`/`claimType`; (c) `org.ts`/`user.ts` — unwrap `ETagResponse` from update/create; (d) `org.ts`/`client.ts`/`app.ts` — adapt history output to `HistoryResult`; (e) `admin/user-service.ts` and `admin/organization-service.ts` — unwrap `.data` for user create/update, organization update, and 2FA policy; (f) `test-harness/consumers/tenant-admin-sdk-probe.mjs` — read `.data.id` from `users.update`. ✅ (completed: 2026-09-30 01:10; mechanical reconciliation: (d) applies to `org.ts` only — `client.ts`/`app.ts` history stays the array contract because their domains are deferred per 3.4.1; consumer tests (`app.test.ts`, `org.test.ts`, `user.test.ts`, `resource-deletion.spec.test.ts`) updated to the new mock shapes)
+- [x] 3.4.4 Verify the green phase: `yarn workspace @portaidentity/sdk test`, `yarn workspace @portaidentity/cli test tests/commands/`, then `yarn workspace @portaidentity/cli typecheck`. ✅ (completed: 2026-09-30 01:10; SDK 580/580, CLI 1444/1444, CLI typecheck green after rebuilding the SDK dist)
+- [x] 3.4.5 Update `packages/sdk/CHANGELOG.md` under `Unreleased` with the changed/removed/added list and a short migration example (per AR-10). Do not touch version constants. ✅ (completed: 2026-09-30 01:13; version constants untouched)
+- [x] 3.4.6 Update `docs/guide/sdk.md`: sort parameter names, history parameters/envelope for the supported methods, write-ETag behavior (including the 2FA `etag` argument), the `customClaims` value methods and their documented non-filtering, and the removed `userClaims`/old type names. Update the tool counts in `docs/guide/sdk-agent.md` and `packages/sdk/README.md`, and add the required `--app` to `docs/cli/users.md` and `docs/concepts/custom-claims.md`. ✅ (completed: 2026-09-30 01:13; sdk.md now 19 namespaces with a Custom Claims section and write-ETag/history guidance; agent docs 75 tools; README namespace list and changed rows updated; CLI claim examples require `--app`)
+- [x] 3.4.7 Update `docs/api/organizations.md`: add the slug-validation section (400 vs 200 semantics), the reserved `new` word, UUID access for an existing tenant, and the direct-database slug-change note. Update `docs/cli/applications.md` for the claim-definition fields. Run `yarn docs:build`. ✅ (completed: 2026-09-30 01:13; docs build green)
 
 **Deliverables**:
 - [ ] Application/client history and 2FA policy contracts corrected

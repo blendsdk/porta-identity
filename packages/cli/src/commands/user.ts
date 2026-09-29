@@ -151,7 +151,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const sdkClient = createClient(argv);
-              const user = await sdkClient.users.create({
+              const { data: user } = await sdkClient.users.create({
                 organizationId: argv.org,
                 email: argv.email,
                 ...splitName(argv.name),
@@ -357,7 +357,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const sdkClient = createClient(argv);
               const { etag } = await sdkClient.users.get(argv.org, argv['user-id']);
 
-              const updated = await sdkClient.users.update(
+              const { data: updated } = await sdkClient.users.update(
                 argv.org,
                 argv['user-id'],
                 {

@@ -179,6 +179,10 @@ reports when the current admin must authenticate again.
 
 Claim definitions scoped to an application. See also [CLI: Users](/cli/users) for setting user claim values.
 
+A definition exposes `claimName`, `claimType` (`string`, `number`, `boolean`, or `json`),
+`description`, and the `includeInIdToken`, `includeInAccessToken`, and `includeInUserinfo`
+token-inclusion flags. `claimName` and `claimType` are immutable after creation.
+
 ### `porta app claim create`
 
 ```bash

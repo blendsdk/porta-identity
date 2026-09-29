@@ -597,6 +597,16 @@ async function workspaceVoidMutation(
  * const operations = createAdminOrganizationWorkspaceOperations(domains);
  * ```
  */
+/**
+ * Extract the `data` field from an SDK `{ data, etag }` write response.
+ *
+ * @param value - Raw SDK response
+ * @returns The unwrapped payload, or undefined for a non-object response
+ */
+function dataField(value: unknown): unknown {
+  return value && typeof value === 'object' ? (value as Record<string, unknown>).data : undefined;
+}
+
 export function createAdminOrganizationWorkspaceOperations(
   domains: AdminOrganizationWorkspaceDomains,
 ): AdminOrganizationWorkspaceOperations {
@@ -608,7 +618,7 @@ export function createAdminOrganizationWorkspaceOperations(
       }
       try {
         const organization = validateOrganizationSettings(
-          await domains.organizations().update(organizationId, input),
+          dataField(await domains.organizations().update(organizationId, input)),
         );
         return organization ? { kind: 'success' } : { kind: 'outcome-unknown' };
       } catch (error) {
@@ -636,9 +646,11 @@ export function createAdminOrganizationWorkspaceOperations(
       }
       try {
         const organization = validateOrganizationSettings(
-          await domains.organizations().update(organizationId, {
-            defaultLoginMethods: [...validated],
-          }),
+          dataField(
+            await domains.organizations().update(organizationId, {
+              defaultLoginMethods: [...validated],
+            }),
+          ),
         );
         return organization ? { kind: 'success' } : { kind: 'outcome-unknown' };
       } catch (error) {
@@ -663,7 +675,9 @@ export function createAdminOrganizationWorkspaceOperations(
         return { kind: 'failure', failure: 'validation' };
       }
       try {
-        const value: unknown = await domains.twoFactor().setPolicy(organizationId, policy);
+        const value: unknown = dataField(
+          await domains.twoFactor().setPolicy(organizationId, policy),
+        );
         const candidate =
           value && typeof value === 'object' ? (value as Record<string, unknown>) : undefined;
         return candidate && candidate.twoFactorPolicy === policy

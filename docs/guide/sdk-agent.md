@@ -38,7 +38,7 @@ const porta = createPortaClient({
 
 // 2. Get tool definitions for the AI model
 const tools = getToolDefinitions();
-// → 69 tool definitions with name, description, parameters, returns
+// → 75 tool definitions with name, description, parameters, returns
 
 // 3. Execute a tool from AI agent output
 const result = await executeTool(porta, 'organizations.list', { pageSize: 10 });
@@ -209,8 +209,8 @@ for (const toolCall of response.choices[0].message.tool_calls ?? []) {
 | `users`         | 12    | User CRUD, invite, password, status             |
 | `roles`         | 5     | Application roles and assigned-permission reads |
 | `permissions`   | 4     | Application permission CRUD                     |
-| `userRoles`     | 3     | User-role assignments                           |
-| `customClaims`  | 3     | Claim definitions                               |
+| `userRoles`     | 4     | User-role assignments and effective permissions |
+| `customClaims`  | 6     | Claim definitions and user claim values         |
 | `config`        | 3     | System configuration                            |
 | `keys`          | 3     | Signing key management                          |
 | `audit`         | 1     | Audit log                                       |
