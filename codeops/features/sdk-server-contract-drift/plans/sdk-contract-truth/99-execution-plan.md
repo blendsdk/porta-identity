@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-29 22:45
-> **Progress**: 0/52 tasks (0%)
+> **Last Updated**: 2026-09-29 23:42
+> **Progress**: 3/52 tasks (6%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -56,8 +56,8 @@ task-size criteria in the make-plan quality checklist)
 
 ## Phase 1: Server — GDPR export and user-create ETag
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill from a temporary-index snapshot of
-> committed, staged, unstaged, and untracked phase-start state)_
+> **Phase baseline tree**: `80c171f3c55cd23a244e969e03c58a676e7d24af`
+> **Scope**: strict · **Expected paths**: `packages/server/src/users/gdpr.ts`, `packages/server/src/routes/users.ts`, `packages/server/tests/integration/admin/{gdpr-user-export,users-create-etag}.spec.test.ts` (new), `packages/server/tests/unit/users/gdpr.test.ts`
 > **Lenses**: [add-on lenses — informational; activation stays profile-driven]
 
 ### Step 1.1: Specification Tests
@@ -65,9 +65,9 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: [03-01](03-01-server-gdpr-export.md) §Changed Query, §Changed Handler · AR-1, AR-17
 **Objective**: Pin the real-schema export behavior and the create ETag before changing code.
 
-- [ ] 1.1.1 [spec-author] Write specification tests from ST-1, ST-2, ST-3 — `packages/server/tests/integration/admin/gdpr-user-export.spec.test.ts`. Use `truncateAllTables`, `seedBaseData`, `createTestOrganization`, `createTestApplication`, `createTestUser`, `createTestClaimDefinition`, and the custom-claims service/repository `setValue`/`upsertValue` helper. Cover ST-3 through the real admin router, following the router pattern in `packages/server/tests/integration/admin/system-config-api.spec.test.ts`.
-- [ ] 1.1.2 [spec-author] Write the create-ETag spec test from ST-24 — `packages/server/tests/integration/admin/users-create-etag.spec.test.ts`, following the router pattern in `packages/server/tests/integration/admin/system-config-api.spec.test.ts` (substituted admin authority, real PostgreSQL).
-- [ ] 1.1.3 Verify the red phase. Run `yarn docker:up`, then `yarn workspace @portaidentity/server test:integration tests/integration/admin/gdpr-user-export.spec.test.ts` and confirm ST-1/ST-3 fail with `relation "user_claim_values" does not exist`; run `yarn workspace @portaidentity/server test:integration tests/integration/admin/users-create-etag.spec.test.ts` and confirm ST-24 fails on the missing header. Record both failures in the task marks.
+- [x] 1.1.1 [spec-author] Write specification tests from ST-1, ST-2, ST-3 — `packages/server/tests/integration/admin/gdpr-user-export.spec.test.ts`. Use `truncateAllTables`, `seedBaseData`, `createTestOrganization`, `createTestApplication`, `createTestUser`, `createTestClaimDefinition`, and the custom-claims service/repository `setValue`/`upsertValue` helper. Cover ST-3 through the real admin router, following the router pattern in `packages/server/tests/integration/admin/system-config-api.spec.test.ts`. ✅ (completed: 2026-09-29 23:42)
+- [x] 1.1.2 [spec-author] Write the create-ETag spec test from ST-24 — `packages/server/tests/integration/admin/users-create-etag.spec.test.ts`, following the router pattern in `packages/server/tests/integration/admin/system-config-api.spec.test.ts` (substituted admin authority, real PostgreSQL). ✅ (completed: 2026-09-29 23:42)
+- [x] 1.1.3 Verify the red phase. Run `yarn docker:up`, then `yarn workspace @portaidentity/server test:integration tests/integration/admin/gdpr-user-export.spec.test.ts` and confirm ST-1/ST-3 fail with `relation "user_claim_values" does not exist`; run `yarn workspace @portaidentity/server test:integration tests/integration/admin/users-create-etag.spec.test.ts` and confirm ST-24 fails on the missing header. Record both failures in the task marks. ✅ (completed: 2026-09-29 23:42; red: 5/5 export failures with `relation "user_claim_values" does not exist`; 3/3 create failures with missing `ETag` header)
 
 **Deliverables**:
 - [ ] New spec files exist and fail for the expected reason
