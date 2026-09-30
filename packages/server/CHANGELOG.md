@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-09-30
+
+### Changed
+- Updated nodemailer to 10.0.13 and adapted the SMTP transport to its named type exports.
+
+### Fixed
+- Remediated production audit findings related to nodemailer.
+- Reserved the new organization slug "new" in the application-paths group.
+- Queried the real custom-claim tables in the GDPR export to retrieve claim name and application.
+- Persisted phoneNumberVerified during user creation to the repository.
+
+### Test
+- Covered the GDPR export failure path with a unit case that checks the export service's propagation of database errors.
+- Extended the slug unit suite with reservation cases and similar-word pinning.
+- Pinned GDPR export and user-create ETag contracts with real-schema specification tests.
+- Added create-ETag tests covering the weak ETag format.
+
 ## [1.11.0] - 2026-09-27
 
 Added:

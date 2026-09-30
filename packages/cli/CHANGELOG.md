@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-09-30
+
+Changed:
+- Aligned the doctor health check with the server /health contract, treating `status: healthy` (HTTP 200) as a pass and rendering `checks` details.
+- Modified the health check to parse HTTP 503 `status: unhealthy` bodies, failing the check and naming degraded dependencies.
+
+Fixed:
+- Resolved issues in the health check process within the doctor command to ensure accurate reporting of service health.
+
 ## [1.11.0] - 2026-09-27
 
 Added:

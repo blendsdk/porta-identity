@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.11.1] - 2026-09-30
+
+Added  
+- Exposed the optional etag parameter in organizations.update and twoFactor.setPolicy in the agent catalog.  
+- Added usersById row to the README table.
+
+Changed  
+- Updated the client factory docstring and README to reflect 19 remaining domain namespaces after userClaims removal.  
+- Revised twoFactor.setPolicy to accept an optional If-Match token and resolve the { data, etag } wrapper.  
+- Aligned the shared params and organizations domain with the API by renaming ListParams sort/order to sortBy/sortOrder.  
+- Updated slug validations and renamed sorting parameters to match the server changes across relevant domains.
+
+Fixed  
+- Adjusted user create/update to return response ETag for org-scoped and standalone.  
+- Resolved alignment issues with the users, claims, and roles according to the server API.  
+- Corrected history parameter mappings to limit/after/event_type.  
+- Ensured the two-factor service aligns with CLI contract requirements and properly handles claims via the customClaims surface.  
+- Fixed type exports for exportData to correspond with the UserDataExport document.
+
+Deprecated  
+- Dropped the legacy SlugValidationResult type in favor of the public variant.
+
 ## [Unreleased]
 
 Added:
