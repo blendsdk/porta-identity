@@ -23,7 +23,7 @@ try {
     const updated = await client.users.update(input.organizationId, input.userId, {
       givenName: input.givenName,
     });
-    targetIds = [updated.id];
+    targetIds = [updated.data.id];
   }
   process.stdout.write(`${JSON.stringify({ status: 200, targetIds })}\n`);
 } catch (error) {

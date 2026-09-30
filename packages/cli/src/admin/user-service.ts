@@ -618,7 +618,9 @@ export function createAdminUserOperations(
       const payload = createInput(organizationId, input);
       if (!payload) return { kind: 'failure', failure: 'validation' };
       try {
-        const value = userListItem(await domain().create(payload), organizationId);
+        const response: unknown = await domain().create(payload);
+        const wrapper = objectValue(response);
+        const value = wrapper ? userListItem(wrapper.data, organizationId) : undefined;
         return value ? { kind: 'success', value } : { kind: 'outcome-unknown' };
       } catch (error) {
         return mutationError(error);
@@ -641,10 +643,9 @@ export function createAdminUserOperations(
       if (!UUID.test(organizationId) || !UUID.test(userId) || !payload)
         return { kind: 'failure', failure: 'validation' };
       try {
-        const value = userListItem(
-          await domain().update(organizationId, userId, payload, etag),
-          organizationId,
-        );
+        const response: unknown = await domain().update(organizationId, userId, payload, etag);
+        const wrapper = objectValue(response);
+        const value = wrapper ? userListItem(wrapper.data, organizationId) : undefined;
         return value && value.id === userId
           ? { kind: 'success', value }
           : { kind: 'outcome-unknown' };

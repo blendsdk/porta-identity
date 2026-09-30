@@ -7,6 +7,7 @@
 // Common types (pagination, ETag, history)
 export type {
   ListParams,
+  HistoryParams,
   PaginatedResponse,
   ETagResponse,
   HistoryEntry,
@@ -21,6 +22,7 @@ export type {
   LoginMethod,
   CreateOrganizationInput,
   UpdateOrganizationInput,
+  SlugValidationResult,
 } from './organizations.js';
 
 // Applications
@@ -62,6 +64,7 @@ export type {
   InviteUserResult,
   SetPasswordInput,
   UserListParams,
+  UserDataExport,
 } from './users.js';
 
 // Roles
@@ -72,12 +75,10 @@ export type { Permission, CreatePermissionInput, UpdatePermissionInput } from '.
 
 // Custom Claims
 export type {
-  ClaimDefinition,
+  CustomClaimDefinition,
   ClaimValueType,
-  CreateClaimDefinitionInput,
-  UpdateClaimDefinitionInput,
-  UserClaimValue,
-  SetUserClaimInput,
+  CreateCustomClaimInput,
+  UpdateCustomClaimInput,
 } from './custom-claims.js';
 
 // Config
@@ -160,4 +161,4 @@ export type * from './imports.js';
 export type { UserRoleRemovalResult } from './user-roles.js';
 
 // User Claims
-export type { UserClaimEntry, SetUserClaimValueInput } from './user-claims.js';
+export type { UserClaimValue, UserClaimWithDefinition } from './user-claims.js';

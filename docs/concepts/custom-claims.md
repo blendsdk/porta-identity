@@ -122,11 +122,11 @@ porta app claim create --app-id <id> --name "department" \
   --type string --description "Employee department"
 
 # Set a user's claim value
-porta user claims set --org-id <id> --user-id <id> \
-  --claim-id <id> --value "Engineering"
+porta user claims set --org <org-id> --app <app-id> <user-id> \
+  --claim <claim-id> --value "Engineering"
 
 # List a user's claim values
-porta user claims list --org-id <id> --user-id <id>
+porta user claims list --org <org-id> --app <app-id> <user-id>
 ```
 
 ## Caching

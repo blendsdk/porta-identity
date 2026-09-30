@@ -5,6 +5,50 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+Added:
+- `customClaims.getValuesForUser`, `customClaims.getValue`, `customClaims.setValue`, and
+  `customClaims.deleteValue` for the application-prefixed claim value routes. The server does not
+  filter values by application; the methods document that behavior.
+- `userRoles.getEffectivePermissions` resolves the deduplicated permissions granted by all roles
+  assigned to a user.
+- Public types `SlugValidationResult`, `HistoryParams`, `UserDataExport`,
+  `CustomClaimDefinition`, `CreateCustomClaimInput`, `UpdateCustomClaimInput`, `UserClaimValue`,
+  and `UserClaimWithDefinition`.
+
+Changed:
+- `ListParams.sort` and `ListParams.order` are renamed to `sortBy` and `sortOrder` to match the
+  Admin API query names. A misspelled sort silently falls back to the resource default.
+- `users.create`, `users.update`, `usersById.update`, `organizations.update`, and
+  `twoFactor.setPolicy` now resolve `ETagResponse<T>` (`{ data, etag }`) instead of the bare
+  entity so callers can send the returned token back as `If-Match`.
+- `organizations.getHistory` and `users.getHistory` accept `HistoryParams`
+  (`{ limit, after, eventType }`) and return the full `HistoryResult` envelope.
+- `users.exportData` resolves the typed `UserDataExport` document.
+- `organizations.validateSlug` resolves `SlugValidationResult` (`{ isValid, error? }`), matching
+  the server; malformed or reserved slugs reject with `PortaValidationError` (`400`).
+
+Removed:
+- The `userClaims` client namespace and its types (`UserClaimEntry`, `SetUserClaimValueInput`);
+  claim value operations now live on `customClaims`.
+- The legacy `SlugValidation`, `ClaimDefinition`, `CreateClaimDefinitionInput`,
+  `UpdateClaimDefinitionInput`, `SetUserClaimInput`, and `UserExportData` type names.
+
+Migration:
+```ts
+// ETag-aware writes
+const { data: user, etag } = await porta.users.update(orgId, userId, input, currentEtag);
+await porta.users.update(orgId, userId, input, etag ?? undefined);
+
+// Claim values
+const values = await porta.customClaims.getValuesForUser(appId, userId);
+await porta.customClaims.setValue(appId, claimId, userId, 'engineering');
+
+// History pagination
+const page = await porta.organizations.getHistory(orgId, { limit: 50, eventType: 'org.' });
+```
+
 ## [1.11.0] - 2026-09-27
 
 Added:

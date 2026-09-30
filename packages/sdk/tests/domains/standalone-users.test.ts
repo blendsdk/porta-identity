@@ -49,6 +49,16 @@ describe('domains/standaloneUsers', () => {
     );
   });
 
+  it('should resolve the updated user with the response ETag', async () => {
+    transport = mockTransport({
+      body: { data: { id: 'u1', email: 'a@b.com' } },
+      headers: { etag: '"v2"' },
+    });
+    const users = createStandaloneUsersDomain(transport);
+    const result = await users.update('u1', { givenName: 'Bob' });
+    expect(result).toEqual({ data: { id: 'u1', email: 'a@b.com' }, etag: '"v2"' });
+  });
+
   it('activate calls POST /users/:userId/activate', async () => {
     const users = createStandaloneUsersDomain(transport);
     await users.activate('u1');

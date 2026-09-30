@@ -83,6 +83,50 @@ export interface User {
 }
 
 // ---------------------------------------------------------------------------
+// GDPR export
+// ---------------------------------------------------------------------------
+
+/**
+ * GDPR Article 20 export document for one user.
+ * Mirrors the server's `UserDataExport`; treat unknown future fields as additive.
+ */
+export interface UserDataExport {
+  exportedAt: string;
+  user: {
+    id: string;
+    email: string;
+    givenName: string | null;
+    familyName: string | null;
+    middleName: string | null;
+    nickname: string | null;
+    preferredUsername: string | null;
+    locale: string | null;
+    phoneNumber: string | null;
+    status: string;
+    createdAt: string;
+    lastLoginAt: string | null;
+  };
+  organization: { id: string; name: string; slug: string };
+  roles: Array<{
+    roleId: string;
+    roleName: string;
+    roleSlug: string;
+    applicationId: string;
+    assignedAt: string;
+  }>;
+  customClaims: Array<{ claimName: string; value: unknown; applicationId: string }>;
+  auditLog: Array<{
+    id: string;
+    eventType: string;
+    eventCategory: string;
+    description: string | null;
+    createdAt: string;
+  }>;
+  twoFactor: { enabled: boolean; method: string | null };
+  oidcSessions: number;
+}
+
+// ---------------------------------------------------------------------------
 // Inputs
 // ---------------------------------------------------------------------------
 

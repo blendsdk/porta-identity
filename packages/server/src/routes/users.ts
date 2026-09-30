@@ -224,6 +224,7 @@ export function createUserRouter(): Router {
         organizationId: ctx.params.orgId,
         ...body,
       });
+      setETagHeader(ctx, 'user', user.id, user.updatedAt);
       ctx.status = 201;
       ctx.body = { data: user };
     } catch (err) {

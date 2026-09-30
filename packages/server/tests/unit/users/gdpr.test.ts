@@ -127,4 +127,15 @@ describe('user data export', () => {
     expect(result.user.createdAt).toBe('2026-01-01T00:00:00.000Z');
     expect(result.user.lastLoginAt).toBe('2026-04-20T10:00:00.000Z');
   });
+
+  it('propagates the database error when a related query fails', async () => {
+    mockQuery.mockReset();
+    mockQuery
+      .mockResolvedValueOnce({ rows: [{ id: 'org-456', name: 'Acme', slug: 'acme' }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockRejectedValueOnce(new Error('connection terminated'))
+      .mockResolvedValue({ rows: [] });
+
+    await expect(exportUserData(createTestUser())).rejects.toThrow('connection terminated');
+  });
 });

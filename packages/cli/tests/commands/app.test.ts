@@ -119,10 +119,12 @@ const samplePerm = {
 const sampleClaim = {
   id: 'claim-uuid-1234',
   applicationId: 'app-uuid-1234',
-  name: 'Department',
-  slug: 'department',
-  valueType: 'string',
+  claimName: 'Department',
+  claimType: 'string',
   description: null,
+  includeInIdToken: false,
+  includeInAccessToken: false,
+  includeInUserinfo: false,
   createdAt: '2024-01-01T00:00:00Z',
   updatedAt: '2024-01-02T00:00:00Z',
 };
@@ -421,7 +423,7 @@ describe('app claim command', () => {
     await invokeSubcommand(['claim', 'create', 'app-1'], { name: 'Department', type: 'string' });
     expect(mockCustomClaims.create).toHaveBeenCalledWith(
       'app-1',
-      expect.objectContaining({ name: 'Department' }),
+      expect.objectContaining({ claimName: 'Department' }),
     );
   });
 
