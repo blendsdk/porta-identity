@@ -20,7 +20,7 @@
  */
 
 import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+import type { Transporter, TransportOptions } from 'nodemailer';
 import { config } from '../config/index.js';
 import { logger } from '../lib/logger.js';
 
@@ -80,7 +80,7 @@ export interface EmailTransport {
  */
 export function createSmtpTransport(): EmailTransport {
   // Build Nodemailer transport options from config
-  const transportOptions: nodemailer.TransportOptions & {
+  const transportOptions: TransportOptions & {
     host: string;
     port: number;
     secure: boolean;
