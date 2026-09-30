@@ -1,7 +1,7 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-09-29 23:30
+> **Last Updated**: 2026-09-30 01:53
 > **Features**: 0 / 0 done
 > **CodeOps Artifact Schema**: 1
 
@@ -17,7 +17,7 @@
 | admin-ui             | [→](features/admin-ui/00-roadmap.md)             | Authentication gate planned; foundation and organization context complete | 86 / 90 (96%)  | 🔄     | 2026-08-29 11:46 |
 | monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration, publishing, and automated release complete                     | 75 / 75 (100%) | ✅     | 2026-09-25 15:21 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |
-| sdk-server-contract-drift | [→](features/sdk-server-contract-drift/00-roadmap.md) | SDK admin contract alignment and GDPR export repair preflighted | 0 / 2 (0%) | 🔄 | 2026-09-29 23:30 |
+| sdk-server-contract-drift | [→](features/sdk-server-contract-drift/00-roadmap.md) | SDK admin contract alignment and GDPR export repair complete; PR #162 open | 2 / 2 (100%) | ✅ | 2026-09-30 01:53 |
 | test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-8 and the ST-46 correction complete     | 66 / 66 (100%) | 🔄     | 2026-09-25 01:30 |
 | user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred invitation creation merged to develop; gated release pending     | 0 / 1 (0%)     | 🔄     | 2026-09-27 00:35 |
 

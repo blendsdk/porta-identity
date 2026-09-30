@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-30 01:52
-> **Progress**: 49/52 tasks (94%)
+> **Last Updated**: 2026-09-30 01:53
+> **Progress**: 52/52 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -70,8 +70,8 @@ task-size criteria in the make-plan quality checklist)
 - [x] 1.1.3 Verify the red phase. Run `yarn docker:up`, then `yarn workspace @portaidentity/server test:integration tests/integration/admin/gdpr-user-export.spec.test.ts` and confirm ST-1/ST-3 fail with `relation "user_claim_values" does not exist`; run `yarn workspace @portaidentity/server test:integration tests/integration/admin/users-create-etag.spec.test.ts` and confirm ST-24 fails on the missing header. Record both failures in the task marks. ✅ (completed: 2026-09-29 23:42; red: 5/5 export failures with `relation "user_claim_values" does not exist`; 3/3 create failures with missing `ETag` header)
 
 **Deliverables**:
-- [ ] New spec files exist and fail for the expected reason
-- [ ] Red-phase evidence recorded
+- [x] New spec files exist and fail for the expected reason
+- [x] Red-phase evidence recorded
 
 **Verify**: targeted integration commands above (services running)
 
@@ -87,9 +87,9 @@ task-size criteria in the make-plan quality checklist)
 - [x] 1.2.3 Verify the green phase: rerun both targeted integration commands from 1.1.3; all ST-1, ST-2, ST-3, ST-24 cases pass. If any spec test fails, fix the implementation, never the test. ✅ (completed: 2026-09-29 23:43; green: 5/5 export, 3/3 create-ETag)
 
 **Deliverables**:
-- [ ] `gdpr.ts` query corrected
-- [ ] Create route emits the ETag
-- [ ] Targeted integration tests green
+- [x] `gdpr.ts` query corrected
+- [x] Create route emits the ETag
+- [x] Targeted integration tests green
 
 **Verify**: targeted integration commands above
 
@@ -106,8 +106,8 @@ task-size criteria in the make-plan quality checklist)
 - [x] 1.3.4 Full server verification: `yarn workspace @portaidentity/server verify`. ✅ (completed: 2026-09-29 23:57; unit 3749, integration 499, e2e 133, pentest 273)
 
 **Deliverables**:
-- [ ] Failure-path unit test passing
-- [ ] Server verification passing
+- [x] Failure-path unit test passing
+- [x] Server verification passing
 
 **Verify**: `yarn workspace @portaidentity/server verify`
 
@@ -133,7 +133,7 @@ task-size criteria in the make-plan quality checklist)
 - [x] 2.1.2 Verify the red phase: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/slugs.test.ts`; ST-4 fails. Record the failure. ✅ (completed: 2026-09-30 00:00; red: 3 failed — `new` accepted pre-change, expected word list missing `new`, size 22≠23; ST-5 pinning passed as expected)
 
 **Deliverables**:
-- [ ] New unit cases present and failing for the expected reason
+- [x] New unit cases present and failing for the expected reason
 
 **Verify**: targeted unit command above
 
@@ -149,8 +149,8 @@ task-size criteria in the make-plan quality checklist)
 - [x] 2.2.3 Regression sweep: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/` and confirm no existing slug or service test regresses. ✅ (completed: 2026-09-30 00:00; 105/105 organization unit tests pass)
 
 **Deliverables**:
-- [ ] Reserved word added
-- [ ] Organization unit suite green
+- [x] Reserved word added
+- [x] Organization unit suite green
 
 **Verify**: `yarn workspace @portaidentity/server test:unit tests/unit/organizations/`
 
@@ -165,8 +165,8 @@ task-size criteria in the make-plan quality checklist)
 - [x] 2.3.2 Full server verification: `yarn workspace @portaidentity/server verify`. ✅ (completed: 2026-09-30 00:28; unit 3753, integration 499, e2e 133, pentest 273. Note: the first run flaked once on the magic-link timing-ratio pentest at 0.5005 vs < 0.5; the isolated file then passed twice and the full verify passed, so the phase result is green with the flake recorded, not retried away.)
 
 **Deliverables**:
-- [ ] Boundary case passing
-- [ ] Server verification passing
+- [x] Boundary case passing
+- [x] Server verification passing
 
 **Verify**: `yarn workspace @portaidentity/server verify`
 
@@ -199,8 +199,8 @@ task-size criteria in the make-plan quality checklist)
 - [x] 3.1.8 Verify the red phase: `yarn workspace @portaidentity/sdk test`, `yarn workspace @portaidentity/sdk typecheck`, and `yarn workspace @portaidentity/cli test tests/commands/user.test.ts`; record which cases fail. The type-level oracles are red under typecheck (the new types do not exist yet); runtime pinning cases (ST-5, ST-7, ST-15) are expected green and are recorded as such; the CLI/typecheck failures are expected (removed types still present pre-change). Do not implement yet. ✅ (completed: 2026-09-30 00:35; red: SDK 16 failed/568 passed — ETag wrappers, history mapping, claim value methods, effective permissions; typecheck 9 errors — missing `HistoryParams`/`SlugValidationResult`/`UserDataExport`, widened `sortBy`/`sortOrder`, old `update`/`getHistory` signatures; CLI 5 failed/37 passed — claims block on the removed `userClaims` surface; pinning cases ST-6/7/8/15 passed as expected)
 
 **Deliverables**:
-- [ ] Spec cases added across SDK and CLI suites
-- [ ] Red-phase evidence recorded
+- [x] Spec cases added across SDK and CLI suites
+- [x] Red-phase evidence recorded
 
 **Verify**: `yarn workspace @portaidentity/sdk test` (expected red)
 
@@ -217,8 +217,8 @@ task-size criteria in the make-plan quality checklist)
 - [x] 3.2.4 Verify the green phase for ST-6–ST-10 and run `yarn workspace @portaidentity/sdk typecheck`; fix fallout from the renamed types in other domains before proceeding (mechanical call-site updates only). ✅ (completed: 2026-09-30 00:37; organizations 19/19 green; no rename fallout — remaining typecheck errors are only the pre-planned `UserDataExport` and getHistory oracle reds owned by 3.3.1/3.3.8)
 
 **Deliverables**:
-- [ ] Shared types corrected
-- [ ] Organizations domain green and typechecking
+- [x] Shared types corrected
+- [x] Organizations domain green and typechecking
 
 **Verify**: `yarn workspace @portaidentity/sdk test tests/domains/organizations.test.ts && yarn workspace @portaidentity/sdk typecheck`
 
@@ -239,9 +239,9 @@ task-size criteria in the make-plan quality checklist)
 - [x] 3.3.8 Refresh any type-contract oracles that pin changed keys (`packages/sdk/tests/type-contracts/`) and the `client.test.ts` namespace list that must no longer contain `userClaims`. Repair `packages/sdk/tests/type-compatibility/types.test.ts` (server import paths into `packages/server/src`, renamed `CustomClaimDefinition`) and register it in a typechecked program — either add it to `packages/sdk/tests/type-contracts/tsconfig.json` or move its comparison there — then confirm with `yarn workspace @portaidentity/sdk typecheck` that the comparison actually compiles. ✅ (completed: 2026-09-30 00:46; refreshed `UsersDomain['getHistory']` with `HistoryParams`, added `getEffectivePermissions` to the RBAC oracle, updated `client.test.ts` to 18 namespaces, registered the repaired compatibility file in the type-contracts program with `rootDir` widened, and applied AR-18 to the `Client` comparison; typecheck green)
 
 **Deliverables**:
-- [ ] User/claims/roles/export corrections complete
-- [ ] Phantom domain removed
-- [ ] SDK test suite and typecheck green
+- [x] User/claims/roles/export corrections complete
+- [x] Phantom domain removed
+- [x] SDK test suite and typecheck green
 
 **Verify**: `yarn workspace @portaidentity/sdk verify`
 
@@ -261,9 +261,9 @@ task-size criteria in the make-plan quality checklist)
 - [x] 3.4.7 Update `docs/api/organizations.md`: add the slug-validation section (400 vs 200 semantics), the reserved `new` word, UUID access for an existing tenant, and the direct-database slug-change note. Update `docs/cli/applications.md` for the claim-definition fields. Run `yarn docs:build`. ✅ (completed: 2026-09-30 01:13; docs build green)
 
 **Deliverables**:
-- [ ] Application/client history and 2FA policy contracts corrected
-- [ ] CLI operational against real routes
-- [ ] Changelog and docs updated; docs build passes
+- [x] Application/client history and 2FA policy contracts corrected
+- [x] CLI operational against real routes
+- [x] Changelog and docs updated; docs build passes
 
 **Verify**: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify && yarn docs:build`
 
@@ -301,10 +301,10 @@ task-size criteria in the make-plan quality checklist)
 - [x] 4.1.5 Run the registered `tenant-admin` selector of `yarn assurance:compat` from a clean committed revision (use the selector syntax documented by the assurance CLI) and record the result. This is the mandated compatibility gate for the SDK contract change; the retained probe consumes `users.update` and must pass. ✅ (completed: 2026-09-30 01:52; `yarn assurance:compat --select tenant-admin` passed on revision `360c4029` from a clean tree: packed SDK and CLI tenant list/read/update/denied-update journeys passed, `sdkDistOnly`/`cliDistOnly` true, `sdkResolutionMatchesArchive` true, the primary tree stayed unchanged, and no owned consumer residue remained. Artifact: `test-harness/.assurance-results/38931fcc-ca10-458f-a128-81c45284d078/compat/tenant-admin/result.json`)
 
 **Deliverables**:
-- [ ] `yarn verify` green
-- [ ] `yarn test:integration` green
-- [ ] Docs build green
-- [ ] Registered `yarn assurance:compat` tenant-admin selector green
+- [x] `yarn verify` green
+- [x] `yarn test:integration` green
+- [x] Docs build green
+- [x] Registered `yarn assurance:compat` tenant-admin selector green
 
 **Verify**: `yarn docker:up && yarn verify && yarn test:integration && yarn docs:build && yarn assurance:compat`
 
@@ -315,13 +315,13 @@ task-size criteria in the make-plan quality checklist)
 **Reference**: `AGENTS.md` prime directive · AR-16
 **Objective**: Leave the machine clean and deliver the change.
 
-- [ ] 4.2.1 Cleanup: stop the development stack with `yarn docker:down` (only if this session started it), drop any scratch database created for acceptance evidence, and confirm `docker ps -a`, `docker network ls`, and `docker volume ls` show nothing task-created. Never remove resources the session did not create.
-- [ ] 4.2.2 Deliver through the **git-commit skill in push mode** with three Conventional Commits — for example `fix(server): query the real custom-claim tables in the GDPR export`, `fix(sdk): align admin domain contracts with the server API`, and `docs(sdk): document the contract corrections and reserve the new slug` (the executor may split the SDK and CLI changes differently as long as each commit is coherent and verified). Open a pull request to `develop` that closes #159, #160, and #161.
-- [ ] 4.2.3 Post-completion: open the follow-up server defect for application/client history (their routes answer `500`; the SDK guards also drop pagination metadata), update the feature roadmap row to Done, and confirm the issue closures; the exec-plan skill owns the post-completion re-analysis.
+- [x] 4.2.1 Cleanup: stop the development stack with `yarn docker:down` (only if this session started it), drop any scratch database created for acceptance evidence, and confirm `docker ps -a`, `docker network ls`, and `docker volume ls` show nothing task-created. Never remove resources the session did not create. ✅ (completed: 2026-09-30 01:53; `yarn docker:down` removed the compose containers and the `docker_default` network; no scratch database was created; `docker ps -a` shows only pre-existing unrelated containers; the `docker_postgres_data` volume is the repo stack's persistent dev data that the owned lifecycle command intentionally retains)
+- [x] 4.2.2 Deliver through the **git-commit skill in push mode** with three Conventional Commits — for example `fix(server): query the real custom-claim tables in the GDPR export`, `fix(sdk): align admin domain contracts with the server API`, and `docs(sdk): document the contract corrections and reserve the new slug` (the executor may split the SDK and CLI changes differently as long as each commit is coherent and verified). Open a pull request to `develop` that closes #159, #160, and #161. ✅ (completed: 2026-09-30 01:53; delivered as 17 coherent verified per-task commits under the auto-commit mode, each pushed; PR https://github.com/blendsdk/porta-identity/pull/162 targets `develop` and references #159, #160, #161. Because the PR targets `develop` (not the default branch), GitHub does not auto-close those issues; they require manual closure after the integration lands)
+- [x] 4.2.3 Post-completion: open the follow-up server defect for application/client history (their routes answer `500`; the SDK guards also drop pagination metadata), update the feature roadmap row to Done, and confirm the issue closures; the exec-plan skill owns the post-completion re-analysis. ✅ (completed: 2026-09-30 01:53; follow-up defect https://github.com/blendsdk/porta-identity/issues/163 records the route 500 and the SDK envelope gap; the feature roadmap marks both RDs Done; PR #162 references the three issues, which need manual closure after the `develop` integration because a non-default-base PR does not auto-close them)
 
 **Deliverables**:
-- [ ] Clean environment evidence recorded
-- [ ] Pull request to `develop` opened with the three issue references
+- [x] Clean environment evidence recorded
+- [x] Pull request to `develop` opened with the three issue references
 
 **Verify**: cleanup evidence + PR link in the execution marks
 
