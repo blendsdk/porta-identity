@@ -9,7 +9,7 @@ export { unwrapData, unwrapWithEtag, etagHeaders, toQueryParams } from './helper
 
 // Organizations
 export { createOrganizationsDomain } from './organizations.js';
-export type { OrganizationsDomain, SlugValidation } from './organizations.js';
+export type { OrganizationsDomain } from './organizations.js';
 
 // Applications
 export { createApplicationsDomain } from './applications.js';
@@ -39,10 +39,6 @@ export type { CustomClaimsDomain } from './custom-claims.js';
 // User Roles
 export { createUserRolesDomain } from './user-roles.js';
 export type { UserRolesDomain } from './user-roles.js';
-
-// User Claims
-export { createUserClaimsDomain } from './user-claims.js';
-export type { UserClaimsDomain } from './user-claims.js';
 
 // Config
 export { createConfigDomain } from './config.js';

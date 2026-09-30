@@ -44,6 +44,27 @@ POST /api/admin/organizations
 }
 ```
 
+## Validate Slug
+
+Check whether a slug can be assigned before creating an organization.
+
+```http
+GET /api/admin/organizations/validate-slug?slug=acme-corp
+```
+
+| Input | Result |
+| ----- | ------ |
+| Well-formed and available | `200 { "isValid": true }` |
+| Well-formed but taken | `200 { "isValid": false, "error": "Slug already in use" }` |
+| Malformed or reserved | `400` with the standard validation error |
+
+`new` is reserved as a create-action segment and is rejected with `400`. Only the exact word is
+reserved, so slugs such as `new-york` and `renew` remain valid.
+
+An organization that already uses a reserved word as its slug keeps its data and remains
+reachable by UUID. The Admin API does not rename slugs; an operator can change the slug directly
+in the database when needed.
+
 ## List Organizations
 
 ```http

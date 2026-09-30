@@ -86,7 +86,7 @@ const oidcClient = {
 };
 const role = { id: ROLE_ID, name: 'Administrator', slug: 'administrator' };
 const permission = { id: PERMISSION_ID, name: 'Read invoices', slug: 'read-invoices' };
-const claim = { id: CLAIM_ID, name: 'Cost centre', slug: 'cost-centre' };
+const claim = { id: CLAIM_ID, claimName: 'Cost centre', claimType: 'string' };
 const user = {
   id: USER_ID,
   organizationId: ORGANIZATION_ID,
@@ -225,7 +225,7 @@ const deletionCases: DeletionCase[] = [
     label: 'claim',
     family: 'app',
     command: ['claim', 'delete', APPLICATION_ID, CLAIM_ID],
-    name: claim.name,
+    name: claim.claimName,
     remove: customClaims.delete,
     expectedArgs: [APPLICATION_ID, CLAIM_ID],
   },

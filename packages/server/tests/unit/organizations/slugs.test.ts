@@ -4,6 +4,7 @@ import {
   validateSlug,
   RESERVED_SLUGS,
 } from '../../../src/organizations/slugs.js';
+import { organizationSlugSchema } from '../../../src/organizations/validators.js';
 
 describe('slugs', () => {
   // -------------------------------------------------------------------------
@@ -104,6 +105,17 @@ describe('slugs', () => {
       expect(result.error).toContain('reserved');
     });
 
+    it('should reject reserved word "new"', () => {
+      const result = validateSlug('new');
+      expect(result.isValid).toBe(false);
+      expect(result.error).toContain('reserved');
+    });
+
+    it('should accept slugs that merely contain "new"', () => {
+      expect(validateSlug('new-york')).toEqual({ isValid: true });
+      expect(validateSlug('renew')).toEqual({ isValid: true });
+    });
+
     it('should reject slugs with uppercase letters', () => {
       const result = validateSlug('Acme-Corp');
       expect(result.isValid).toBe(false);
@@ -149,7 +161,7 @@ describe('slugs', () => {
         'admin', 'api', 'health', 'static', '.well-known',
         'login', 'logout', 'callback', 'register', 'signup',
         'auth', 'oauth', 'oidc', 'token', 'jwks',
-        'portal', 'dashboard', 'settings', 'account',
+        'portal', 'dashboard', 'settings', 'account', 'new',
         'favicon.ico', 'robots.txt', 'sitemap.xml',
       ];
       for (const word of expected) {
@@ -161,7 +173,23 @@ describe('slugs', () => {
       // ReadonlySet doesn't expose add/delete at the type level,
       // but at runtime Set.prototype.add still exists — we just
       // verify the set has the expected size to confirm it's populated
-      expect(RESERVED_SLUGS.size).toBe(22);
+      expect(RESERVED_SLUGS.size).toBe(23);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // organizationSlugSchema (API boundary)
+  // -------------------------------------------------------------------------
+
+  describe('organizationSlugSchema', () => {
+    it('should reject the reserved word "new" at the API boundary', () => {
+      const result = organizationSlugSchema.safeParse('new');
+      expect(result.success).toBe(false);
+    });
+
+    it('should accept a normal slug at the API boundary', () => {
+      const result = organizationSlugSchema.safeParse('acme-corp');
+      expect(result.success).toBe(true);
     });
   });
 });

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { HttpTransport, TransportResponse } from '../../src/transport/types.js';
 import { createOrganizationsDomain } from '../../src/domains/organizations.js';
+import { PortaServerError, PortaValidationError } from '../../src/errors/index.js';
 
 function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport {
   return {
@@ -11,6 +12,10 @@ function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport
       ...response,
     }),
   };
+}
+
+function mockRejectedTransport(error: unknown): HttpTransport {
+  return { request: vi.fn().mockRejectedValue(error) };
 }
 
 describe('domains/organizations', () => {
@@ -45,6 +50,15 @@ describe('domains/organizations', () => {
       const orgs = createOrganizationsDomain(transport);
       const result = await orgs.list();
       expect(result).toEqual(body);
+    });
+
+    it('should forward the renamed sort parameters to the transport', async () => {
+      const orgs = createOrganizationsDomain(transport);
+      await orgs.list({ sortBy: 'name', sortOrder: 'asc' });
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'GET', path: '/organizations',
+        params: expect.objectContaining({ sortBy: 'name', sortOrder: 'asc' }),
+      });
     });
   });
 
@@ -85,14 +99,15 @@ describe('domains/organizations', () => {
 
   // ── update ──────────────────────────────────────────────────
   describe('update', () => {
-    it('calls PUT /organizations/:id with input', async () => {
+    it('should send the update body and resolve the envelope with a null etag', async () => {
       transport = mockTransport({ body: { data: { id: '1', name: 'Updated' } } });
       const orgs = createOrganizationsDomain(transport);
-      const result = await orgs.update('org-1', { name: 'Updated' });
+      const input = { name: 'Updated' };
+      const result = await orgs.update('org-1', input);
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'PUT', path: '/organizations/org-1', body: { name: 'Updated' }, headers: {},
+        method: 'PUT', path: '/organizations/org-1', body: input, headers: {},
       });
-      expect(result).toEqual({ id: '1', name: 'Updated' });
+      expect(result).toEqual({ data: { id: '1', name: 'Updated' }, etag: null });
     });
 
     it('sends If-Match header when etag provided', async () => {
@@ -102,6 +117,20 @@ describe('domains/organizations', () => {
       expect(transport.request).toHaveBeenCalledWith(
         expect.objectContaining({ headers: { 'If-Match': '"v1"' } }),
       );
+    });
+
+    it('should resolve the response etag alongside the updated organization', async () => {
+      transport = mockTransport({
+        body: { data: { id: '1', name: 'Updated' } },
+        headers: { etag: 'W/"abc"' },
+      });
+      const orgs = createOrganizationsDomain(transport);
+      const input = { name: 'Updated' };
+      const result = await orgs.update('org-1', input);
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'PUT', path: '/organizations/org-1', body: input, headers: {},
+      });
+      expect(result).toEqual({ data: { id: '1', name: 'Updated' }, etag: 'W/"abc"' });
     });
   });
 
@@ -136,27 +165,68 @@ describe('domains/organizations', () => {
 
   // ── validateSlug ────────────────────────────────────────────
   describe('validateSlug', () => {
-    it('calls GET /organizations/validate-slug with slug param', async () => {
-      transport = mockTransport({ body: { available: true, slug: 'my-org' } });
+    it('should validate a slug through the validation endpoint', async () => {
+      transport = mockTransport({ body: { isValid: true } });
       const orgs = createOrganizationsDomain(transport);
       const result = await orgs.validateSlug('my-org');
       expect(transport.request).toHaveBeenCalledWith({
         method: 'GET', path: '/organizations/validate-slug', params: { slug: 'my-org' },
       });
-      expect(result).toEqual({ available: true, slug: 'my-org' });
+      expect(result).toEqual({ isValid: true });
+    });
+
+    it('should resolve a taken slug exactly as the server reports it', async () => {
+      transport = mockTransport({ body: { isValid: false, error: 'Slug already in use' } });
+      const orgs = createOrganizationsDomain(transport);
+      const result = await orgs.validateSlug('taken-slug');
+      expect(result).toEqual({ isValid: false, error: 'Slug already in use' });
+      expect(result).not.toHaveProperty('available');
+    });
+
+    it('should surface a malformed or reserved slug as a validation error', async () => {
+      const failure = new PortaValidationError({ error: 'Slug is reserved' });
+      transport = mockRejectedTransport(failure);
+      const orgs = createOrganizationsDomain(transport);
+      await expect(orgs.validateSlug('new')).rejects.toBeInstanceOf(PortaValidationError);
     });
   });
 
   // ── getHistory ──────────────────────────────────────────────
   describe('getHistory', () => {
-    it('calls GET /organizations/:id/history', async () => {
-      transport = mockTransport({ body: { data: [{ id: 'h1', action: 'created' }] } });
+    it('should request the history page without an event type filter', async () => {
+      const body = { data: [{ id: 'h1', action: 'created' }], hasMore: false, nextCursor: null };
+      const request = vi.fn().mockResolvedValue({ status: 200, headers: {}, body });
+      transport = { request };
       const orgs = createOrganizationsDomain(transport);
       const result = await orgs.getHistory('org-1');
+      expect(request).toHaveBeenCalledWith(expect.objectContaining({
+        method: 'GET', path: '/organizations/org-1/history',
+      }));
+      const params = request.mock.calls[0]?.[0]?.params;
+      expect(params ?? {}).not.toHaveProperty('event_type');
+      expect(result).toEqual(body);
+    });
+
+    it('should map history parameters to server names and resolve the page envelope', async () => {
+      const body = { data: [{ id: 'h1', action: 'updated' }], hasMore: true, nextCursor: 'n2' };
+      transport = mockTransport({ body });
+      const orgs = createOrganizationsDomain(transport);
+      const result = await orgs.getHistory('org-1', { limit: 50, after: 'cur', eventType: 'org.' });
       expect(transport.request).toHaveBeenCalledWith({
-        method: 'GET', path: '/organizations/org-1/history', params: undefined,
+        method: 'GET', path: '/organizations/org-1/history',
+        params: { limit: 50, after: 'cur', event_type: 'org.' },
       });
-      expect(result).toEqual([{ id: 'h1', action: 'created' }]);
+      expect(result).toEqual(body);
+      expect(result.nextCursor).toBe('n2');
+    });
+
+    it('should surface a malformed history cursor as a server error', async () => {
+      const failure = new PortaServerError(500, { error: 'Invalid history cursor' });
+      transport = mockRejectedTransport(failure);
+      const orgs = createOrganizationsDomain(transport);
+      await expect(
+        orgs.getHistory('org-1', { after: 'not-a-cursor' }),
+      ).rejects.toBeInstanceOf(PortaServerError);
     });
   });
 });

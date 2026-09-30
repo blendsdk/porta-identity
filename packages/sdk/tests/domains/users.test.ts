@@ -58,8 +58,11 @@ describe('domains/users', () => {
   });
 
   describe('create', () => {
-    it('calls POST /organizations/:orgId/users with input', async () => {
-      transport = mockTransport({ body: { data: { id: 'u1', email: 'a@b.com' } } });
+    it('should POST /organizations/:orgId/users and resolve the user with the response ETag', async () => {
+      transport = mockTransport({
+        body: { data: { id: 'u1', email: 'a@b.com' } },
+        headers: { etag: '"v1"' },
+      });
       const users = createUsersDomain(transport);
       const input = { organizationId: 'org-1', email: 'a@b.com', givenName: 'Alice' };
       const result = await users.create(input);
@@ -69,7 +72,15 @@ describe('domains/users', () => {
         path: '/organizations/org-1/users',
         body: input,
       });
-      expect(result).toEqual({ id: 'u1', email: 'a@b.com' });
+      expect(result).toEqual({ data: { id: 'u1', email: 'a@b.com' }, etag: '"v1"' });
+    });
+
+    it('should resolve a null ETag when the create response omits the ETag header', async () => {
+      transport = mockTransport({ body: { data: { id: 'u1', email: 'a@b.com' } } });
+      const users = createUsersDomain(transport);
+      const result = await users.create({ organizationId: 'org-1', email: 'a@b.com' });
+
+      expect(result).toEqual({ data: { id: 'u1', email: 'a@b.com' }, etag: null });
     });
   });
 
@@ -88,7 +99,7 @@ describe('domains/users', () => {
   });
 
   describe('update', () => {
-    it('sends If-Match header when etag provided', async () => {
+    it('should send the If-Match header when an ETag argument is provided', async () => {
       transport = mockTransport({ body: { data: { id: 'u1' } } });
       const users = createUsersDomain(transport);
       await users.update('org-1', 'u1', { givenName: 'Bob' }, '"v1"');
@@ -96,6 +107,58 @@ describe('domains/users', () => {
       expect(transport.request).toHaveBeenCalledWith(
         expect.objectContaining({ headers: { 'If-Match': '"v1"' } }),
       );
+    });
+
+    it('should resolve the updated user with the response ETag', async () => {
+      transport = mockTransport({
+        body: { data: { id: 'u1', email: 'a@b.com' } },
+        headers: { etag: '"v2"' },
+      });
+      const users = createUsersDomain(transport);
+      const result = await users.update('org-1', 'u1', { givenName: 'Bob' });
+
+      expect(result).toEqual({ data: { id: 'u1', email: 'a@b.com' }, etag: '"v2"' });
+    });
+  });
+
+  describe('getHistory', () => {
+    it('should map history params to server query names and resolve the history envelope', async () => {
+      const history = {
+        data: [
+          {
+            id: 'h1',
+            eventType: 'user.login',
+            actorId: null,
+            metadata: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        hasMore: true,
+        nextCursor: 'n1',
+      };
+      transport = mockTransport({ body: history });
+      const users = createUsersDomain(transport);
+      const result = await users.getHistory('org-1', 'u1', {
+        limit: 10,
+        after: 'c',
+        eventType: 'user.login',
+      });
+
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/organizations/org-1/users/u1/history',
+        params: { limit: 10, after: 'c', event_type: 'user.login' },
+      });
+      expect(result).toEqual(history);
+    });
+
+    it('should omit the history event type when no params are given', async () => {
+      transport = mockTransport({ body: { data: [], hasMore: false, nextCursor: null } });
+      const users = createUsersDomain(transport);
+      await users.getHistory('org-1', 'u1');
+
+      const request = vi.mocked(transport.request).mock.calls[0]?.[0];
+      expect(request?.params?.event_type).toBeUndefined();
     });
   });
 
@@ -167,15 +230,54 @@ describe('domains/users', () => {
       });
     });
 
-    it('exportData calls GET .../export and unwraps data', async () => {
-      transport = mockTransport({ body: { data: { user: { id: 'u1' } } } });
+    it('should call GET .../export and resolve the export document as-is', async () => {
+      const exportDocument = {
+        exportedAt: '2026-01-01T00:00:00.000Z',
+        user: {
+          id: 'u1',
+          email: 'a@b.com',
+          givenName: 'Alice',
+          familyName: null,
+          middleName: null,
+          nickname: null,
+          preferredUsername: null,
+          locale: null,
+          phoneNumber: null,
+          status: 'active',
+          createdAt: '2026-01-01T00:00:00.000Z',
+          lastLoginAt: null,
+        },
+        organization: { id: 'org-1', name: 'Acme', slug: 'acme' },
+        roles: [
+          {
+            roleId: 'role-1',
+            roleName: 'Administrator',
+            roleSlug: 'administrator',
+            applicationId: 'app-1',
+            assignedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        customClaims: [{ claimName: 'department', value: 'sales', applicationId: 'app-1' }],
+        auditLog: [
+          {
+            id: 'audit-1',
+            eventType: 'user.created',
+            eventCategory: 'user',
+            description: null,
+            createdAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+        twoFactor: { enabled: true, method: 'totp' },
+        oidcSessions: 2,
+      };
+      transport = mockTransport({ body: exportDocument });
       const users = createUsersDomain(transport);
       const result = await users.exportData('org-1', 'u1');
       expect(transport.request).toHaveBeenCalledWith({
         method: 'GET',
         path: '/organizations/org-1/users/u1/export',
       });
-      expect(result).toEqual({ user: { id: 'u1' } });
+      expect(result).toEqual(exportDocument);
     });
 
     it('delete calls DELETE /organizations/:orgId/users/:userId', async () => {

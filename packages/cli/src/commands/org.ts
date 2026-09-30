@@ -255,7 +255,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const client = createClient(argv);
               const { data: current, etag } = await client.organizations.get(argv['id-or-slug']);
 
-              const updated = await client.organizations.update(
+              const { data: updated } = await client.organizations.update(
                 current.id,
                 {
                   name: argv.name,
@@ -376,7 +376,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const client = createClient(argv);
               const history = await client.organizations.getHistory(argv['id-or-slug']);
 
-              if (history.length === 0) {
+              if (history.data.length === 0) {
                 warn('No history entries found');
                 return;
               }
@@ -386,7 +386,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               } else {
                 printTable(
                   ['Date', 'Event', 'Actor', 'Metadata'],
-                  history.map((h) => [
+                  history.data.map((h) => [
                     formatDate(h.createdAt),
                     h.eventType,
                     h.actorId ?? '—',

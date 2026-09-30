@@ -4,12 +4,14 @@ import type {
   AddressInput,
   CreateUserInput,
   HistoryEntry,
+  HistoryParams,
   HistoryResult,
   InviteUserInput,
   InviteUserResult,
   PaginatedResponse,
   UpdateUserInput,
   User,
+  UserDataExport,
   UserListParams,
   UserStatus,
 } from '../../src/types/index.js';
@@ -81,6 +83,53 @@ type ExpectedUserListParams = {
   status?: UserStatus;
   sortBy?: 'email' | 'given_name' | 'family_name' | 'created_at' | 'last_login_at';
   sortOrder?: 'asc' | 'desc';
+};
+
+type ExpectedUserDataExport = {
+  exportedAt: string;
+  user: {
+    id: string;
+    email: string;
+    givenName: string | null;
+    familyName: string | null;
+    middleName: string | null;
+    nickname: string | null;
+    preferredUsername: string | null;
+    locale: string | null;
+    phoneNumber: string | null;
+    status: string;
+    createdAt: string;
+    lastLoginAt: string | null;
+  };
+  organization: {
+    id: string;
+    name: string;
+    slug: string;
+  };
+  roles: Array<{
+    roleId: string;
+    roleName: string;
+    roleSlug: string;
+    applicationId: string;
+    assignedAt: string;
+  }>;
+  customClaims: Array<{
+    claimName: string;
+    value: unknown;
+    applicationId: string;
+  }>;
+  auditLog: Array<{
+    id: string;
+    eventType: string;
+    eventCategory: string;
+    description: string | null;
+    createdAt: string;
+  }>;
+  twoFactor: {
+    enabled: boolean;
+    method: string | null;
+  };
+  oidcSessions: number;
 };
 
 describe('user type contracts', () => {
@@ -216,6 +265,52 @@ describe('user type contracts', () => {
     expectTypeOf(arbitraryListKey).toBeObject();
   });
 
+  it('should expose the exact user data export document shape', () => {
+    expectTypeOf<UserDataExport>().toEqualTypeOf<ExpectedUserDataExport>();
+
+    const exportDocument: UserDataExport = {
+      exportedAt: '2026-01-01T00:00:00.000Z',
+      user: {
+        id: 'user-1',
+        email: 'ada@example.com',
+        givenName: 'Ada',
+        familyName: 'Lovelace',
+        middleName: null,
+        nickname: null,
+        preferredUsername: 'ada',
+        locale: 'en-GB',
+        phoneNumber: null,
+        status: 'active',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        lastLoginAt: null,
+      },
+      organization: { id: 'org-1', name: 'Acme', slug: 'acme' },
+      roles: [
+        {
+          roleId: 'role-1',
+          roleName: 'Administrator',
+          roleSlug: 'administrator',
+          applicationId: 'app-1',
+          assignedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      customClaims: [{ claimName: 'department', value: 'sales', applicationId: 'app-1' }],
+      auditLog: [
+        {
+          id: 'audit-1',
+          eventType: 'user.created',
+          eventCategory: 'user',
+          description: null,
+          createdAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      twoFactor: { enabled: true, method: 'totp' },
+      oidcSessions: 2,
+    };
+
+    expectTypeOf(exportDocument).toMatchTypeOf<UserDataExport>();
+  });
+
   it('exposes domain method signatures that preserve user contracts', () => {
     expectTypeOf<UsersDomain['list']>().toEqualTypeOf<
       (organizationId: string, params?: UserListParams) => Promise<PaginatedResponse<User>>
@@ -230,7 +325,10 @@ describe('user type contracts', () => {
       (organizationId: string, userId: string) => Promise<void>
     >();
     expectTypeOf<UsersDomain['getHistory']>().toEqualTypeOf<
-      (organizationId: string, userId: string) => Promise<HistoryResult>
+      (organizationId: string, userId: string, params?: HistoryParams) => Promise<HistoryResult>
+    >();
+    expectTypeOf<UsersDomain['exportData']>().toEqualTypeOf<
+      (organizationId: string, userId: string) => Promise<UserDataExport>
     >();
     expectTypeOf<StandaloneUsersDomain['deactivate']>().toEqualTypeOf<
       (userId: string) => Promise<void>

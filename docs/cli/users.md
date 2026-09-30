@@ -128,25 +128,26 @@ required.
 
 ## User Custom Claims
 
-Set and manage custom claim values for a user.
+Set and manage custom claim values for a user. Each subcommand requires the application that owns
+the claim definition; the server addresses values through the application path.
 
 ### `porta user claims set`
 
 ```bash
-porta user claims set --org-id <id> --user-id <id> \
-  --claim-id <id> --value "Engineering"
+porta user claims set --org <org-id> --app <app-id> <user-id> \
+  --claim <claim-id> --value "Engineering"
 ```
 
 ### `porta user claims remove`
 
 ```bash
-porta user claims remove --org-id <id> --user-id <id> --claim-id <id>
+porta user claims remove --org <org-id> --app <app-id> <user-id> --claim <claim-id>
 ```
 
 ### `porta user claims list`
 
 ```bash
-porta user claims list --org-id <id> --user-id <id>
+porta user claims list --org <org-id> --app <app-id> <user-id>
 ```
 
 ---

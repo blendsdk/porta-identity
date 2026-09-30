@@ -246,7 +246,10 @@ describe('org command', () => {
   describe('update', () => {
     it('updates organization with ETag', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-      mockOrganizations.update.mockResolvedValue({ ...sampleOrg, name: 'New Name' });
+      mockOrganizations.update.mockResolvedValue({
+        data: { ...sampleOrg, name: 'New Name' },
+        etag: '"v2"',
+      });
 
       await invokeSubcommand('update', { _pos_: 'acme-corp', name: 'New Name' });
 
@@ -260,7 +263,7 @@ describe('org command', () => {
 
     it('updates with login-methods', async () => {
       mockOrganizations.get.mockResolvedValue({ data: sampleOrg, etag: '"v1"' });
-      mockOrganizations.update.mockResolvedValue(sampleOrg);
+      mockOrganizations.update.mockResolvedValue({ data: sampleOrg, etag: '"v2"' });
 
       await invokeSubcommand('update', {
         _pos_: 'acme-corp',
@@ -352,7 +355,11 @@ describe('org command', () => {
           createdAt: '2024-01-01T00:00:00Z',
         },
       ];
-      mockOrganizations.getHistory.mockResolvedValue(history);
+      mockOrganizations.getHistory.mockResolvedValue({
+        data: history,
+        hasMore: false,
+        nextCursor: null,
+      });
 
       await invokeSubcommand('history', { _pos_: 'acme-corp' });
 
@@ -370,15 +377,16 @@ describe('org command', () => {
           createdAt: '2024-01-02T00:00:00Z',
         },
       ];
-      mockOrganizations.getHistory.mockResolvedValue(history);
+      const page = { data: history, hasMore: false, nextCursor: null };
+      mockOrganizations.getHistory.mockResolvedValue(page);
 
       await invokeSubcommand('history', { _pos_: 'acme-corp', json: true });
 
-      expect(printJson).toHaveBeenCalledWith(history);
+      expect(printJson).toHaveBeenCalledWith(page);
     });
 
     it('warns when no history found', async () => {
-      mockOrganizations.getHistory.mockResolvedValue([]);
+      mockOrganizations.getHistory.mockResolvedValue({ data: [], hasMore: false, nextCursor: null });
 
       await invokeSubcommand('history', { _pos_: 'acme-corp' });
 

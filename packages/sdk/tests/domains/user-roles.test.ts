@@ -14,6 +14,16 @@ const role = {
   updatedAt: '2026-09-10T00:00:00.000Z',
 };
 
+const permission = {
+  id: 'permission-1',
+  applicationId: 'app-1',
+  moduleId: null,
+  name: 'Read invoices',
+  slug: 'billing:invoice:read',
+  description: null,
+  createdAt: '2026-09-10T00:00:00.000Z',
+};
+
 /** Build a deterministic transport for one domain implementation case. */
 function mockTransport(response: Partial<TransportResponse> = {}): HttpTransport {
   return {
@@ -60,6 +70,18 @@ describe('domains/user-roles request serialization', () => {
       method: 'DELETE',
       path: '/organizations/org-1/users/user-1/roles',
       body: { roleIds: ['role-1', 'role-2'] },
+    });
+  });
+
+  it('should resolve effective permissions through the organization and user route', async () => {
+    const transport = mockTransport({ body: { data: [permission] } });
+
+    await expect(
+      createUserRolesDomain(transport).getEffectivePermissions(orgId, userId),
+    ).resolves.toEqual([permission]);
+    expect(transport.request).toHaveBeenCalledWith({
+      method: 'GET',
+      path: '/organizations/org-1/users/user-1/roles/permissions',
     });
   });
 });

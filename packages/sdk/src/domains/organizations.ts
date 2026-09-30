@@ -10,30 +10,33 @@ import type {
   CreateOrganizationInput,
   UpdateOrganizationInput,
   ListParams,
+  HistoryParams,
+  HistoryResult,
   PaginatedResponse,
   ETagResponse,
-  HistoryEntry,
+  SlugValidationResult,
 } from '../types/index.js';
 import { listAll } from '../pagination/index.js';
 import { unwrapData, unwrapWithEtag, etagHeaders, toQueryParams } from './helpers.js';
-
-export interface SlugValidation {
-  available: boolean;
-  slug: string;
-}
 
 export interface OrganizationsDomain {
   list(params?: ListParams): Promise<PaginatedResponse<Organization>>;
   listAll(params?: Omit<ListParams, 'page' | 'cursor'>): Promise<Organization[]>;
   get(idOrSlug: string): Promise<ETagResponse<Organization>>;
   create(input: CreateOrganizationInput): Promise<Organization>;
-  update(idOrSlug: string, input: UpdateOrganizationInput, etag?: string): Promise<Organization>;
+  update(
+    idOrSlug: string,
+    input: UpdateOrganizationInput,
+    etag?: string,
+  ): Promise<ETagResponse<Organization>>;
   suspend(idOrSlug: string): Promise<void>;
   activate(idOrSlug: string): Promise<void>;
   /** Permanently delete an organization and its owned data. */
   delete(idOrSlug: string): Promise<void>;
-  validateSlug(slug: string): Promise<SlugValidation>;
-  getHistory(idOrSlug: string, params?: ListParams): Promise<HistoryEntry[]>;
+  /** Check whether a slug is available, mirroring the server's validation rules. */
+  validateSlug(slug: string): Promise<SlugValidationResult>;
+  /** Read one page of the organization's change history. */
+  getHistory(idOrSlug: string, params?: HistoryParams): Promise<HistoryResult>;
 }
 
 export function createOrganizationsDomain(transport: HttpTransport): OrganizationsDomain {
@@ -66,7 +69,7 @@ export function createOrganizationsDomain(transport: HttpTransport): Organizatio
         body: input,
         headers: etagHeaders(etag),
       });
-      return unwrapData<Organization>(res.body);
+      return unwrapWithEtag<Organization>(res);
     },
 
     async suspend(idOrSlug) {
@@ -83,16 +86,20 @@ export function createOrganizationsDomain(transport: HttpTransport): Organizatio
 
     async validateSlug(slug) {
       const res = await transport.request({ method: 'GET', path: `${base}/validate-slug`, params: { slug } });
-      return res.body as SlugValidation;
+      return res.body as SlugValidationResult;
     },
 
     async getHistory(idOrSlug, params?) {
+      const query: Record<string, string | number> = {};
+      if (params?.limit !== undefined) query.limit = params.limit;
+      if (params?.after !== undefined) query.after = params.after;
+      if (params?.eventType !== undefined) query.event_type = params.eventType;
       const res = await transport.request({
         method: 'GET',
         path: `${base}/${idOrSlug}/history`,
-        params: toQueryParams(params),
+        params: Object.keys(query).length > 0 ? query : undefined,
       });
-      return unwrapData<HistoryEntry[]>(res.body);
+      return res.body as HistoryResult;
     },
   };
 }

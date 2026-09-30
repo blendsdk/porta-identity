@@ -9,7 +9,11 @@
 // ---------------------------------------------------------------------------
 
 /**
- * Standard paginated list parameters accepted by all `list()` methods.
+ * Standard paginated list parameters accepted by `list()` methods.
+ *
+ * Sort field names mirror the Admin API (`sortBy`, `sortOrder`). The server
+ * ignores unknown parameter names, so a misspelled sort silently falls back to
+ * the resource default.
  */
 export interface ListParams {
   /** Page number (1-based, offset pagination) */
@@ -21,11 +25,28 @@ export interface ListParams {
   /** Search query (searches name/email/slug depending on entity) */
   search?: string;
   /** Sort field (entity-specific) */
-  sort?: string;
+  sortBy?: string;
   /** Sort direction */
-  order?: 'asc' | 'desc';
+  sortOrder?: 'asc' | 'desc';
   /** Additional filter parameters */
   [key: string]: string | number | boolean | undefined | null;
+}
+
+/**
+ * Cursor pagination parameters accepted by entity history endpoints.
+ *
+ * The server reads `limit`, `after`, and `event_type`; the SDK exposes the
+ * third as `eventType` and performs the mapping. The `after` cursor is opaque:
+ * an invalid value surfaces as a `PortaServerError`; the SDK does not decode
+ * or validate it.
+ */
+export interface HistoryParams {
+  /** Maximum entries returned in one page (server default applies when omitted) */
+  limit?: number;
+  /** Opaque cursor from a previous page's `nextCursor` */
+  after?: string;
+  /** Event-type prefix filter (for example `user.` for all user events) */
+  eventType?: string;
 }
 
 /**

@@ -73,8 +73,8 @@ export interface UserDataExport {
  * Export all data Porta holds for a user as a structured JSON document.
  *
  * Collects data from: users, organizations, user_roles + roles,
- * user_claim_values + claim_definitions, audit_log, user 2FA columns,
- * and oidc_payloads. Does NOT export TOTP secrets or recovery codes
+ * custom_claim_values + custom_claim_definitions, audit_log, user 2FA
+ * columns, and oidc_payloads. Does NOT export TOTP secrets or recovery codes
  * (security-sensitive material).
  *
  * @param user - The user to export data for (must be a full User object)
@@ -113,11 +113,11 @@ export async function exportUserData(user: User): Promise<UserDataExport> {
       value: unknown;
       application_id: string;
     }>(
-      `SELECT cd.claim_name, ucv.value, cd.application_id
-       FROM user_claim_values ucv
-       JOIN claim_definitions cd ON cd.id = ucv.definition_id
+      `SELECT ccd.claim_name, ucv.value, ccd.application_id
+       FROM custom_claim_values ucv
+       JOIN custom_claim_definitions ccd ON ccd.id = ucv.claim_id
        WHERE ucv.user_id = $1
-       ORDER BY cd.claim_name`,
+       ORDER BY ccd.claim_name`,
       [user.id],
     ),
 

@@ -95,7 +95,7 @@ const auth = createCliAuth({
 
 ## Domain Namespaces
 
-The `PortaClient` provides 20 domain namespaces:
+The `PortaClient` provides 19 domain namespaces:
 
 | Namespace       | Description                                        | Key Methods                                                                                                                                                                    |
 | --------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -106,9 +106,8 @@ The `PortaClient` provides 20 domain namespaces:
 | `usersById`     | Organization-independent user operations           | `get`, `update`, `activate`, `deactivate`, `verifyEmail`, `getHistory`                                                                                                         |
 | `roles`         | Application roles, permission mapping              | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission`                                                                                                      |
 | `permissions`   | Application permissions                            | `list`, `listAll`, `get`, `create`, `delete`                                                                                                                                   |
-| `userRoles`     | User-role assignments                              | `list`, `assign`, `remove`                                                                                                                                                     |
-| `customClaims`  | Claim definitions                                  | `list`, `listAll`, `get`, `create`, `update`, `delete`                                                                                                                         |
-| `userClaims`    | User claim values                                  | `list`, `set`, `remove`                                                                                                                                                        |
+| `userRoles`     | User-role assignments and effective permissions     | `list`, `assign`, `remove`, `getEffectivePermissions`                                                                                                                          |
+| `customClaims`  | Claim definitions and user claim values            | `list`, `listAll`, `get`, `create`, `update`, `delete`, `getValuesForUser`, `getValue`, `setValue`, `deleteValue`                                                              |
 | `config`        | System configuration                               | `list`, `get`, `set`                                                                                                                                                           |
 | `keys`          | Signing key management                             | `list`, `generate`, `rotate`                                                                                                                                                   |
 | `audit`         | Audit log                                          | `list`, `listAll`                                                                                                                                                              |
@@ -127,11 +126,25 @@ the system-wide `StatsOverview` (`GET /stats/overview`), and
 
 ## ETag / Optimistic Concurrency
 
-The `get()` method on core entities returns `{ data, etag }`. Pass the etag to `update()` for safe concurrent writes:
+`get()` on core entities and the write methods that change them return `{ data, etag }`. Pass the
+etag to the next write for safe concurrent updates:
 
 ```typescript
 const { data: org, etag } = await porta.organizations.get('my-org');
-const updated = await porta.organizations.update('my-org', { name: 'New Name' }, etag);
+const { data: updated, etag: next } = await porta.organizations.update(
+  'my-org',
+  { name: 'New Name' },
+  etag ?? undefined,
+);
+```
+
+The writes that expose the response ETag are `organizations.update`, `users.create`,
+`users.update`, `usersById.update`, and `twoFactor.setPolicy`. The 2FA policy update accepts the
+token as its third argument:
+
+```typescript
+const { etag } = await porta.twoFactor.setPolicy(orgId, 'required_totp');
+await porta.twoFactor.setPolicy(orgId, 'required_email', etag ?? undefined);
 ```
 
 If the entity was modified since you read it, a `PortaConflictError` (HTTP 409) is thrown.
@@ -157,8 +170,35 @@ Create and invite calls carry `organizationId` in the input object. `users.invit
 invitation outcome (`invitationId`, `email`, `invitationSent`, and `expiresAt`), not a full user:
 the account is created only when the recipient accepts the invitation.
 Administrators can activate and deactivate users. Account lockout and cooldown recovery are
-automatic. `users.getHistory()` returns the server's first-page history envelope with `data`,
-`hasMore`, and `nextCursor`.
+automatic. `organizations.getHistory()` and `users.getHistory()` accept
+`{ limit, after, eventType }` and return the full `HistoryResult` envelope (`data`, `hasMore`,
+`nextCursor`). The `after` cursor is opaque; an invalid value surfaces as a `PortaServerError`.
+`usersById.getHistory()` returns the same envelope without parameters.
+
+## Custom Claims
+
+Claim definitions are managed per application through `customClaims`. Claim values for a user use
+the same application path:
+
+```typescript
+// Definitions
+const definition = await porta.customClaims.create(appId, {
+  claimName: 'department',
+  claimType: 'string',
+});
+
+// Values for one user
+const values = await porta.customClaims.getValuesForUser(appId, userId);
+await porta.customClaims.setValue(appId, definition.id, userId, 'engineering');
+await porta.customClaims.deleteValue(appId, definition.id, userId);
+```
+
+The server does not filter claim values by the `appId` path segment: `getValuesForUser` returns
+the user's values across applications, and the single-value routes resolve by claim ID plus user
+ID. The SDK documents this instead of implying application scoping.
+
+The previous `userClaims` namespace and the legacy `ClaimDefinition` / `UserClaimEntry` type
+names are removed; the package changelog lists the replacements.
 
 ## Error Handling
 
@@ -209,7 +249,7 @@ The SDK uses a layered architecture:
 
 1. **Transport layer** — HTTP abstraction (Node.js `http`/`https` or browser `fetch`)
 2. **Auth layer** — Pluggable authentication providers (token, client credentials, CLI)
-3. **Domain layer** — 20 domain namespaces mapping to Admin API endpoints
+3. **Domain layer** — 19 domain namespaces mapping to Admin API endpoints
 4. **Client factory** — Composes transport + domains into a single `PortaClient`
 5. **Agent layer** — Tool definitions + executor for AI integration
 
