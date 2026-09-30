@@ -261,7 +261,7 @@ task-size criteria in the make-plan quality checklist)
 - [x] 3.4.7 Update `docs/api/organizations.md`: add the slug-validation section (400 vs 200 semantics), the reserved `new` word, UUID access for an existing tenant, and the direct-database slug-change note. Update `docs/cli/applications.md` for the claim-definition fields. Run `yarn docs:build`. ✅ (completed: 2026-09-30 01:13; docs build green)
 
 **Deliverables**:
-- [x] Application/client history and 2FA policy contracts corrected
+- [x] History scope resolved (application/client history deferred to issue #163) and 2FA policy contract corrected
 - [x] CLI operational against real routes
 - [x] Changelog and docs updated; docs build passes
 
