@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.12.0] - 2026-10-23
+
+Added  
+- Updated documentation to clarify that /api/admin requires account-bound opaque access tokens.
+
+Changed  
+- Removed client-credentials examples for Admin API automation.  
+- Corrected signatures for createTokenAuth and createCliAuth to adhere to the BFF pattern.  
+
+Fixed  
+- Updated authentication guidance in docs/api/authentication.md and several guide files to reflect accurate information.
+
 ## [1.11.1] - 2026-09-30
 
 Added  

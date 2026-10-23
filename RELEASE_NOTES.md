@@ -1,19 +1,15 @@
-# Release Notes — v1.11.1
+# Release Notes — v1.12.0
 
-**Released**: 2026-09-30
+**Released**: 2026-10-23
 
-We are excited to announce the release of version 1.11.1, which brings several important updates that enhance the functionality and security of our platform. This version focuses on improving user experience, aligning various components of our system, and addressing important compliance measures.
+We are excited to announce the release of version 1.12.0, which brings several enhancements to improve your user experience. This update focuses on streamlining user management and ensuring security in our system, making it easier for you to manage invitations and access while keeping everything secure and compliant.
 
-In this release, we made significant improvements to our command-line interface, ensuring that health checks are now in sync with our server's protocols. This means that users can expect more reliable information when they run health checks, helping to identify issues more quickly.
+Highlights of this release include:
 
-We also addressed crucial feedback from our recent phase 3 review. These adjustments ensure that the documentation and features align better with user needs, providing clearer guidance and a more consistent experience.
+- **Simplified User Invitations**: When inviting new users, the process is now more efficient as roles are pre-assigned automatically. This means you can spend less time setting up user permissions and more time focusing on your core tasks.
 
-Security and compliance are paramount, and we've taken steps to enhance the platform in these areas. Notably, we have corrected how we handle user information, including verifying phone numbers during user creation. Additionally, we've ensured that our processes comply with GDPR regulations, reinforcing our commitment to user privacy and data integrity.
+- **Clarified Authentication Guidance**: We've updated the instructions for accessing the Admin API, ensuring you have clear and accurate guidance for securely connecting to our services. This enhancement is designed to reduce potential confusion and make setup smoother.
 
-Overall, this update improves the overall performance and security of the platform, resulting in a smoother and safer experience for our users. We appreciate your continued support and feedback as we strive to enhance our services. Thank you for being a part of our community! 
+- **Enhanced Security Measures**: Our team has taken important steps to strengthen the security of our platform by addressing recent production audit advisories. This means we are actively working to protect your data and ensuring our services remain fully compliant with the latest security standards.
 
-Highlights:
-- Improved reliability in health checks for our command-line tool.
-- Enhancements based on phase 3 review feedback.
-- Strengthened security measures, including phone number verification.
-- Compliance improvements to align with GDPR regulations.
+We believe these improvements will greatly enhance your experience with our platform, making it more user-friendly and secure. As always, we appreciate your feedback and support as we continue to refine and enhance our services.
