@@ -169,6 +169,14 @@ plaintext is shown once and is never retained in the workspace.
 | `porta user activate <org-id> <user-id>`   | Activate a user               |
 | `porta user delete <org-id> <user-id>`     | Permanently delete a user     |
 
+`porta user invite` also accepts:
+
+| Flag                                | Description                              |
+| ----------------------------------- | ---------------------------------------- |
+| `--role <application-id>:<role-id>` | Pre-assign a role; repeat for more roles |
+| `--locale <code>`                   | Invitation locale                        |
+| `--personal-message <text>`         | Personal message in the invitation email |
+
 **Nested: Roles** (`porta user role ...`)
 
 | Command                                               | Description                  |
