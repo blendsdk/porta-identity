@@ -87,7 +87,7 @@
     "dotenv": "17.4.2",
     "eslint": "10.8.1",
     "eslint-config-prettier": "10.1.8",
-    "fs-ext-extra-prebuilt": "2.2.15",
+    "fs-ext-extra-prebuilt": "2.2.13",
     "koa": "^3.2.1",
     "koa-session": "^7.0.2",
     "koa-static": "^5.0.0",

@@ -4128,10 +4128,10 @@ fresh@~0.5.2:
   resolved "https://registry.yarnpkg.com/fresh/-/fresh-0.5.2.tgz#3d8cadd90d976569fa835ab1f8e4b23a105605a7"
   integrity sha512-zJ2mQYM18rEFOudeV4GShTGIQ7RbzA7ozbU9I/XBpm7kqgMywgmylMwXHxZJmkVoYkna9d2pVXVXPdYTP9ej8Q==
 
-fs-ext-extra-prebuilt@2.2.15:
-  version "2.2.15"
-  resolved "https://registry.yarnpkg.com/fs-ext-extra-prebuilt/-/fs-ext-extra-prebuilt-2.2.15.tgz#84ed39bbe07ba97d32f4f13435dbc185cd8f8a1e"
-  integrity sha512-6F2atlrx0lajmNDHwhXQaD44Y3EVfCC5j+t/IJUSne3XrUQUvgPH44ajPaT3GYSywE40NHf1ZvcIXvbIYcWaTQ==
+fs-ext-extra-prebuilt@2.2.13:
+  version "2.2.13"
+  resolved "https://registry.yarnpkg.com/fs-ext-extra-prebuilt/-/fs-ext-extra-prebuilt-2.2.13.tgz#199c75e15089dd868dbf7ed6426c6ff9cbb104be"
+  integrity sha512-mVSm+UDKvftEMHljOThNW3NtI8/gX7f1z9U1WGRbBf6JXQTFbS8Wv+qPVpZhYH6zCj1rXV/XnhQMek3tEn41Pg==
   dependencies:
     nan "^2.27.0"
 
