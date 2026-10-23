@@ -11,6 +11,7 @@ import {
   parseLoginMethodsFlag,
   parseCommaSeparated,
   parseKeyValue,
+  parseRoleAssignments,
 } from '../src/parsers.js';
 
 describe('parsers', () => {
@@ -121,6 +122,72 @@ describe('parsers', () => {
     it('throws on empty string', () => {
       expect(() => parseLoginMethodsFlag('', true)).toThrow('must not be empty');
       expect(() => parseLoginMethodsFlag('  ', false)).toThrow('must not be empty');
+    });
+  });
+
+  describe('parseRoleAssignments', () => {
+    const applicationId = '11111111-1111-4111-8111-111111111111';
+    const secondApplicationId = '22222222-2222-4222-8222-222222222222';
+    const roleId = '33333333-3333-4333-8333-333333333333';
+    const secondRoleId = '44444444-4444-4444-8444-444444444444';
+
+    it('returns undefined when the flag is absent or empty', () => {
+      expect(parseRoleAssignments(undefined)).toBeUndefined();
+      expect(parseRoleAssignments([])).toBeUndefined();
+    });
+
+    it('parses one pair', () => {
+      expect(parseRoleAssignments([`${applicationId}:${roleId}`])).toEqual([
+        { applicationId, roleId },
+      ]);
+    });
+
+    it('parses repeated pairs in order', () => {
+      expect(
+        parseRoleAssignments([
+          `${applicationId}:${roleId}`,
+          `${secondApplicationId}:${secondRoleId}`,
+        ]),
+      ).toEqual([
+        { applicationId, roleId },
+        { applicationId: secondApplicationId, roleId: secondRoleId },
+      ]);
+    });
+
+    it('trims surrounding whitespace', () => {
+      expect(parseRoleAssignments([` ${applicationId} : ${roleId} `])).toEqual([
+        { applicationId, roleId },
+      ]);
+    });
+
+    it('accepts uppercase UUIDs without changing their case', () => {
+      const upperApplicationId = applicationId.toUpperCase();
+      const upperRoleId = roleId.toUpperCase();
+
+      expect(parseRoleAssignments([`${upperApplicationId}:${upperRoleId}`])).toEqual([
+        { applicationId: upperApplicationId, roleId: upperRoleId },
+      ]);
+    });
+
+    it('rejects a value without the separator', () => {
+      expect(() => parseRoleAssignments(['not-a-pair'])).toThrow(
+        'must be "<application-id>:<role-id>"',
+      );
+    });
+
+    it('rejects a value with more than one separator', () => {
+      expect(() => parseRoleAssignments([`${applicationId}:${roleId}:extra`])).toThrow(
+        'must be "<application-id>:<role-id>"',
+      );
+    });
+
+    it.each([
+      `:${roleId}`,
+      `${applicationId}:`,
+      `not-a-uuid:${roleId}`,
+      `${applicationId}:not-a-uuid`,
+    ])('rejects an invalid pair %s', (value) => {
+      expect(() => parseRoleAssignments([value])).toThrow('two valid UUIDs');
     });
   });
 });

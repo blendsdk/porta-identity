@@ -20,7 +20,7 @@ import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const transport = createNodeTransport({
   baseUrl: 'https://porta.local:3443/api/admin',
-  auth: createTokenAuth('your-bearer-token'),
+  auth: createTokenAuth({ token: 'opaque-access-token' }),
 });
 
 const porta = createPortaClient({ transport });
@@ -46,7 +46,7 @@ import { createBrowserTransport, createTokenAuth } from '@portaidentity/sdk/brow
 
 const transport = createBrowserTransport({
   baseUrl: '/api/admin',
-  auth: createTokenAuth(sessionToken),
+  auth: createTokenAuth({ token: sessionToken }),
 });
 
 const porta = createPortaClient({ transport });
@@ -68,30 +68,41 @@ const stats = await porta.stats.get();
 
 ```typescript
 import { createTokenAuth } from '@portaidentity/sdk/node';
-const auth = createTokenAuth('your-token');
+const auth = createTokenAuth({ token: 'opaque-access-token' });
 ```
+
+The token must be an account-bound Admin API access token from an active admin user.
 
 ### Client Credentials (M2M)
 
 ```typescript
 import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 const auth = createClientCredentialsAuth({
-  tokenEndpoint: 'https://porta.local:3443/super-admin/token',
+  tokenEndpoint: 'https://porta.example.com/super-admin/token',
   clientId: 'my-client-id',
   clientSecret: 'my-client-secret',
 });
 ```
+
+Client-credentials tokens carry no user account identity. They are **not accepted by
+`/api/admin/*`**, which requires an `accountId` on the access token. Use this provider
+only for OIDC-protected APIs that accept machine tokens.
 
 ### CLI Auth (stored credentials)
 
 ```typescript
 import { createCliAuth } from '@portaidentity/sdk/node';
 const auth = createCliAuth({
-  credentialsPath: '~/.porta/credentials.json',
-  refreshEndpoint: 'https://porta.local:3443/super-admin/token',
-  clientId: 'porta-admin-cli',
+  credentialsPath: `${process.env.HOME}/.porta/credentials.json`,
 });
 ```
+
+### Admin API from a BFF
+
+Use an account-bound token. Either run as a dedicated control-plane user with a
+refresh token stored in a secret manager, or obtain a short-lived token through
+`porta login` or Authorization Code + PKCE and pass it to `createTokenAuth`.
+Service accounts for `/api/admin` are not available yet.
 
 ## Domain Namespaces
 
@@ -106,7 +117,7 @@ The `PortaClient` provides 19 domain namespaces:
 | `usersById`     | Organization-independent user operations           | `get`, `update`, `activate`, `deactivate`, `verifyEmail`, `getHistory`                                                                                                         |
 | `roles`         | Application roles, permission mapping              | `list`, `get`, `create`, `update`, `assignPermission`, `removePermission`                                                                                                      |
 | `permissions`   | Application permissions                            | `list`, `listAll`, `get`, `create`, `delete`                                                                                                                                   |
-| `userRoles`     | User-role assignments and effective permissions     | `list`, `assign`, `remove`, `getEffectivePermissions`                                                                                                                          |
+| `userRoles`     | User-role assignments and effective permissions    | `list`, `assign`, `remove`, `getEffectivePermissions`                                                                                                                          |
 | `customClaims`  | Claim definitions and user claim values            | `list`, `listAll`, `get`, `create`, `update`, `delete`, `getValuesForUser`, `getValue`, `setValue`, `deleteValue`                                                              |
 | `config`        | System configuration                               | `list`, `get`, `set`                                                                                                                                                           |
 | `keys`          | Signing key management                             | `list`, `generate`, `rotate`                                                                                                                                                   |

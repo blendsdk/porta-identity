@@ -21,18 +21,14 @@ The agent layer provides:
 
 ```typescript
 import { createPortaClient } from '@portaidentity/sdk';
-import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
-// 1. Create an authenticated client
+// 1. Create an authenticated client with a short-lived Admin API token
 const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: 'https://porta.local:3443/api/admin',
-    auth: createClientCredentialsAuth({
-      tokenEndpoint: 'https://porta.local:3443/super-admin/token',
-      clientId: process.env.PORTA_CLIENT_ID!,
-      clientSecret: process.env.PORTA_CLIENT_SECRET!,
-    }),
+    auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
   }),
 });
 
@@ -123,17 +119,14 @@ To build an MCP server that exposes Porta tools:
 ```typescript
 import { McpServer } from '@anthropic-ai/mcp-sdk';
 import { createPortaClient } from '@portaidentity/sdk';
-import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 
 const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: process.env.PORTA_API_URL!,
-    auth: createClientCredentialsAuth({
-      tokenEndpoint: process.env.PORTA_TOKEN_ENDPOINT!,
-      clientId: process.env.PORTA_CLIENT_ID!,
-      clientSecret: process.env.PORTA_CLIENT_SECRET!,
-    }),
+    // Obtain a short-lived Admin API token through the Authorization Code flow.
+    auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
   }),
 });
 

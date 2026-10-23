@@ -27,16 +27,23 @@ yarn add @portaidentity/sdk
 ### Browser
 
 ```typescript
-import { createPortaClient, createBrowserTransport } from '@portaidentity/sdk/browser';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createBrowserTransport } from '@portaidentity/sdk/browser';
+
+let csrfToken: string | null = null;
 
 const transport = createBrowserTransport({
   baseUrl: '/api/admin', // BFF proxy path
-  csrfCookieName: '_csrf', // CSRF cookie name
-  csrfHeaderName: 'x-csrf-token',
-  on401: () => (window.location.href = '/login'),
+  getCsrfToken: () => csrfToken,
+  setCsrfToken: (token) => {
+    csrfToken = token;
+  },
+  onUnauthorized: () => {
+    window.location.href = '/login';
+  },
 });
 
-const client = createPortaClient(transport);
+const client = createPortaClient({ transport });
 
 // List organizations
 const orgs = await client.organizations.list({ page: 1, pageSize: 20 });
@@ -53,16 +60,15 @@ const user = await client.users.create({
 ### Node.js (Automation / CLI)
 
 ```typescript
-import { createPortaClient, createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
-
-const auth = createTokenAuth('your-bearer-token');
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const transport = createNodeTransport({
   baseUrl: 'https://porta.local:3443/api/admin',
-  auth,
+  auth: createTokenAuth({ token: 'opaque-access-token' }),
 });
 
-const client = createPortaClient(transport);
+const client = createPortaClient({ transport });
 
 // List all organizations (auto-pagination)
 const allOrgs = await client.organizations.listAll();
@@ -71,37 +77,40 @@ const allOrgs = await client.organizations.listAll();
 await client.users.deactivate('org-id', 'user-id');
 
 // Assign a role
-await client.userRoles.assign('org-id', 'user-id', { roleId: 'role-id' });
+await client.userRoles.assign('org-id', 'user-id', ['role-id']);
 ```
 
-### Client Credentials (Server-to-Server)
+### Admin API from a BFF (Server-to-Server)
+
+The Admin API requires an opaque access token bound to an active user in the
+super-admin organization with a recognized admin role. Use one of these patterns:
+
+1. **Dedicated control-plane user** — Authorization Code + PKCE once, then store the
+   refresh token in a secret manager and persist each rotation.
+2. **Short-lived token** — obtain an access token through `porta login` or the
+   Authorization Code flow and pass it to `createTokenAuth`.
 
 ```typescript
-import {
-  createPortaClient,
-  createNodeTransport,
-  createClientCredentialsAuth,
-} from '@portaidentity/sdk/node';
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
-const auth = createClientCredentialsAuth({
-  tokenUrl: 'https://porta.local:3443/super-admin/token',
-  clientId: 'my-service',
-  clientSecret: 'my-secret',
-  scope: 'openid',
+const client = createPortaClient({
+  transport: createNodeTransport({
+    baseUrl: 'https://porta.example.com/api/admin',
+    auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
+  }),
 });
-
-const transport = createNodeTransport({
-  baseUrl: 'https://porta.local:3443/api/admin',
-  auth,
-});
-
-const client = createPortaClient(transport);
 ```
+
+Client-credentials tokens carry no account identity and are rejected by `/api/admin/*`.
+Do not use `createClientCredentialsAuth` for Admin API automation until service
+accounts are supported.
 
 ### AI Agent Integration
 
 ```typescript
-import { createPortaClient, getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
+import { createPortaClient } from '@portaidentity/sdk';
+import { getToolDefinitions, executeTool } from '@portaidentity/sdk/agent';
 import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 // Get tool definitions for LLM function calling
@@ -109,36 +118,39 @@ const tools = getToolDefinitions();
 // → [{ name: 'organizations.list', description: '...', parameters: [...] }, ...]
 
 // Execute a tool call from an AI agent
-const client = createPortaClient(
-  createNodeTransport({ baseUrl: '...', auth: createTokenAuth('...') }),
-);
+const client = createPortaClient({
+  transport: createNodeTransport({
+    baseUrl: 'https://porta.example.com/api/admin',
+    auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
+  }),
+});
 
 const result = await executeTool(client, 'organizations.list', { page: 1 });
 ```
 
 ## Domain Namespaces
 
-| Namespace       | Methods | Description                                           |
-| --------------- | ------- | ----------------------------------------------------- |
-| `organizations` | 10      | CRUD, status lifecycle, slug validation, history      |
-| `applications`  | 13      | CRUD, status, module management, history              |
-| `clients`       | 12      | CRUD, status, secret management, history              |
-| `users`         | 19      | CRUD, status transitions, password, email, and export |
-| `usersById`     | 8       | Org-less get/update, password, email, and history     |
-| `roles`         | 9       | CRUD and permission assignment                        |
-| `permissions`   | 6       | CRUD                                                  |
+| Namespace       | Methods | Description                                             |
+| --------------- | ------- | ------------------------------------------------------- |
+| `organizations` | 10      | CRUD, status lifecycle, slug validation, history        |
+| `applications`  | 13      | CRUD, status, module management, history                |
+| `clients`       | 12      | CRUD, status, secret management, history                |
+| `users`         | 19      | CRUD, status transitions, password, email, and export   |
+| `usersById`     | 8       | Org-less get/update, password, email, and history       |
+| `roles`         | 9       | CRUD and permission assignment                          |
+| `permissions`   | 6       | CRUD                                                    |
 | `userRoles`     | 4       | List, assign, remove, and resolve effective permissions |
-| `customClaims`  | 10      | Claim definition CRUD and user claim values           |
-| `config`        | 3       | System configuration get/set/list                     |
-| `keys`          | 3       | Signing key list/generate/rotate                      |
-| `audit`         | 1       | Audit log listing with filters                        |
-| `stats`         | 1       | Dashboard statistics                                  |
-| `sessions`      | 3       | Session listing and revocation                        |
-| `bulk`          | 1       | Bulk status operations                                |
-| `branding`      | 5       | Org branding settings and asset management            |
-| `exports`       | 2       | CSV/JSON reports and selective manifest export        |
-| `twoFactor`     | 3       | 2FA status, disable, reset                            |
-| `imports`       | 2       | Manifest preview and atomic import                    |
+| `customClaims`  | 10      | Claim definition CRUD and user claim values             |
+| `config`        | 3       | System configuration get/set/list                       |
+| `keys`          | 3       | Signing key list/generate/rotate                        |
+| `audit`         | 1       | Audit log listing with filters                          |
+| `stats`         | 1       | Dashboard statistics                                    |
+| `sessions`      | 3       | Session listing and revocation                          |
+| `bulk`          | 1       | Bulk status operations                                  |
+| `branding`      | 5       | Org branding settings and asset management              |
+| `exports`       | 2       | CSV/JSON reports and selective manifest export          |
+| `twoFactor`     | 3       | 2FA status, disable, reset                              |
+| `imports`       | 2       | Manifest preview and atomic import                      |
 
 ## Environment Portability
 

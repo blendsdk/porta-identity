@@ -49,7 +49,7 @@
     "chalk": "6.0.0",
     "cli-table3": "0.6.5",
     "dotenv": "17.4.2",
-    "handlebars": "4.7.9",
+    "handlebars": "4.7.10",
     "i18next": "26.3.6",
     "i18next-fs-backend": "2.6.7",
     "ioredis": "6.0.0",
