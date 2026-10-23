@@ -1,6 +1,6 @@
 # Admin API Authentication
 
-The Admin API uses **JWT Bearer token authentication** with ES256-signed tokens. Tokens are issued by Porta itself through the super-admin organization's OIDC endpoints (self-authentication).
+The Admin API uses **opaque Bearer access tokens** issued by Porta's OIDC provider through the super-admin organization (self-authentication). The OIDC token store is authoritative for these tokens; the Admin API does not verify a JWT signature for them.
 
 ## How It Works
 
@@ -27,15 +27,32 @@ sequenceDiagram
 
 When a request reaches an Admin API endpoint, the `admin-auth` middleware performs these checks:
 
-1. **Extract token** — parse `Authorization: Bearer <token>` header
-2. **Verify signature** — validate ES256 signature against Porta's active signing keys
-3. **Check issuer** — verify the token's `iss` claim matches the super-admin organization's OIDC issuer
-4. **Load user** — look up the user by `sub` claim
-5. **Check user status** — verify the user is `active`
-6. **Check organization** — verify the user belongs to the super-admin organization
-7. **Check RBAC role** — verify the user has the `porta-admin` role
+1. **Extract token** — parse the `Authorization: Bearer <token>` header.
+2. **Find the access token** — look it up with `provider.AccessToken.find()`. The token store applies expiry and revocation.
+3. **Require an account** — reject a token without a non-empty `accountId`.
+4. **Load the user** — resolve the account and require an `active` user.
+5. **Check organization** — require membership in the super-admin organization.
+6. **Check RBAC** — require at least one recognized role from the canonical admin application, then resolve its permissions.
+7. **Authorize the route** — route-level permission checks use the resolved permission set.
 
-If any check fails, the middleware returns `401 Unauthorized`.
+If any check fails, the middleware returns `401 Unauthorized` or `403 Forbidden`.
+
+### Client credentials are not supported
+
+Client-credentials tokens carry no `accountId`, so they never pass step 3 and every
+`/api/admin/*` request returns `401`. A service account for the Admin API is not
+available yet. Use a dedicated admin user with a refresh token, or a short-lived
+access token for batch jobs.
+
+The supported patterns are:
+
+1. **Dedicated control-plane user** — complete Authorization Code + PKCE once as a
+   dedicated admin user with the narrowest role that fits. Store the refresh token in a
+   secret manager, refresh before expiry, and persist the rotated token.
+2. **Short-lived token** — obtain an access token through `porta login` or the
+   Authorization Code flow and complete the work within its lifetime.
+
+Do not store a long-lived admin session in a public web application.
 
 ## Authenticated Context
 
@@ -47,6 +64,7 @@ interface AdminUser {
   email: string;
   organizationId: string;
   roles: string[];
+  permissions: string[];
 }
 ```
 
@@ -109,6 +127,10 @@ For programmatic access, perform the standard OIDC Authorization Code + PKCE flo
    client_id={admin-client-id}&
    code_verifier={verifier}
    ```
+
+The resulting access token is bound to the authenticated admin account and is
+accepted by `/api/admin/*`. The token endpoint does not issue Admin API credentials
+for the client-credentials grant.
 
 ## Token Refresh
 

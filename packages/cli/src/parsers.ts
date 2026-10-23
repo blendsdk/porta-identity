@@ -119,6 +119,66 @@ export function parseLoginMethodsFlag(
 }
 
 // ---------------------------------------------------------------------------
+// Role Pre-Assignment Parser
+// ---------------------------------------------------------------------------
+
+/** Canonical UUID shape accepted by the Admin API for role references. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** One role pre-assignment accepted by `users.invite`. */
+export interface RolePreAssignment {
+  /** Application that owns the role. */
+  applicationId: string;
+  /** Role to assign when the invitation is accepted. */
+  roleId: string;
+}
+
+/**
+ * Parse repeatable `--role <application-id>:<role-id>` values.
+ *
+ * UUIDs never contain `:`, so the first colon is the only valid separator.
+ * Every pair is validated before the caller reaches the SDK, which keeps
+ * malformed input from producing a misleading server error.
+ *
+ * @param values - Raw `--role` values; `undefined` when the flag was omitted
+ * @returns Validated pairs in flag order, or `undefined` when no flag was given
+ * @throws Error when a value is not exactly one `<application-id>:<role-id>` pair
+ *
+ * @example
+ * ```typescript
+ * parseRoleAssignments([
+ *   '11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222',
+ * ]);
+ * // Returns: [{ applicationId: '11111111-...', roleId: '22222222-...' }]
+ * ```
+ */
+export function parseRoleAssignments(values?: string[]): RolePreAssignment[] | undefined {
+  if (!values || values.length === 0) return undefined;
+
+  return values.map((value, index) => {
+    const position = index + 1;
+    const separator = value.indexOf(':');
+
+    if (separator === -1 || value.indexOf(':', separator + 1) !== -1) {
+      throw new Error(
+        `--role ${position} must be "<application-id>:<role-id>" (received "${value}").`,
+      );
+    }
+
+    const applicationId = value.slice(0, separator).trim();
+    const roleId = value.slice(separator + 1).trim();
+
+    if (!UUID.test(applicationId) || !UUID.test(roleId)) {
+      throw new Error(
+        `--role ${position} must contain two valid UUIDs in "<application-id>:<role-id>" form.`,
+      );
+    }
+
+    return { applicationId, roleId };
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Generic Parsers
 // ---------------------------------------------------------------------------
 

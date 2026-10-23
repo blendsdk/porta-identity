@@ -23,7 +23,11 @@ porta user create --org <id> --email alice@example.com \
 ### `porta user invite`
 
 ```bash
-porta user invite --org <id> --email bob@example.com [--name "Bob Jones"]
+porta user invite --org <id> --email bob@example.com \
+  [--name "Bob Jones"] \
+  [--role <application-id>:<role-id>] ... \
+  [--locale nl] \
+  [--personal-message "Welcome to the team"]
 ```
 
 Sends an invitation email. No account is created yet: the recipient's account
@@ -31,6 +35,19 @@ is created only when they accept the invitation and set a password. The
 `--name` value is split into OIDC `givenName`/`familyName` on the first space
 (same behavior as `create`). The command prints the invitation outcome:
 `invitationId`, `email`, `invitationSent`, and `expiresAt`.
+
+| Flag                 | Required | Description                                                                                                                                                                                            |
+| -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `--org`              | ✅       | Organization ID                                                                                                                                                                                        |
+| `--email`            | ✅       | Email address                                                                                                                                                                                          |
+| `--name`             |          | Display name, split into `givenName`/`familyName` on the first space                                                                                                                                   |
+| `--role`             |          | Role to pre-assign as `<application-id>:<role-id>`. Repeat for more roles. Use `porta app list` and `porta app role list <app-id>` to find the IDs. Roles are applied when the invitation is accepted. |
+| `--locale`           |          | Locale forwarded with the invitation (default: organization default). The shipped email templates are English; localized content requires deployment templates.                                        |
+| `--personal-message` |          | Personal message included in the invitation email (max 500 characters)                                                                                                                                 |
+
+The deferred result shape is deliberate: no user exists until the invitation is
+accepted, so the command does not return a user ID. Assign additional roles after
+acceptance with `porta user roles assign`.
 
 ### `porta user list`
 

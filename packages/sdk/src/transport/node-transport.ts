@@ -55,7 +55,7 @@ export interface NodeTransportOptions {
  * ```typescript
  * const transport = createNodeTransport({
  *   baseUrl: 'https://porta.example.com',
- *   auth: createTokenAuth('my-access-token'),
+ *   auth: createTokenAuth({ token: 'my-access-token' }),
  * });
  * ```
  */

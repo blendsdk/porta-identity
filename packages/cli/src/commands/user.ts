@@ -7,7 +7,8 @@
  *
  * Usage:
  *   porta user create --org <id> --email <email> [--name "..."] [--password "..."]
- *   porta user invite --org <id> --email <email> [--name "..."]
+ *   porta user invite --org <id> --email <email> [--name "..."] \
+ *     [--role <application-id>:<role-id>] [--locale <code>] [--personal-message "..."]
  *   porta user list --org <id> [--status active|invited|...] [--search "..."]
  *   porta user show --org <id> <user-id>
  *   porta user update --org <id> <user-id> [--name "..."]
@@ -27,6 +28,7 @@ import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { formatDate, info, printJson, printTable, success, warn } from '../output.js';
+import { parseRoleAssignments } from '../parsers.js';
 import { confirm } from '../prompt.js';
 import { userClaimsCommand } from './user-claim.js';
 import { userRolesCommand } from './user-role.js';
@@ -80,6 +82,9 @@ interface UserCreateArgs extends OrgScopedArgs {
 interface UserInviteArgs extends OrgScopedArgs {
   email: string;
   name?: string;
+  role?: string[];
+  locale?: string;
+  'personal-message'?: string;
 }
 
 interface UserListArgs extends OrgScopedArgs {
@@ -193,14 +198,35 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               .option('name', {
                 type: 'string',
                 description: 'Invitee full name (auto-split into given/family)',
+              })
+              .option('role', {
+                type: 'string',
+                array: true,
+                description:
+                  'Role to pre-assign as <application-id>:<role-id>; repeat for more roles',
+              })
+              .option('locale', {
+                type: 'string',
+                description: 'Invitation locale (defaults to the organization default)',
+              })
+              .option('personal-message', {
+                type: 'string',
+                description: 'Personal message included in the invitation email (max 500 chars)',
               }),
           async (argv) => {
             try {
+              const roles = parseRoleAssignments(argv.role);
+              const locale = argv.locale?.trim();
+              const personalMessage = argv['personal-message'];
               const sdkClient = createClient(argv);
+
               const invitation = await sdkClient.users.invite({
                 organizationId: argv.org,
                 email: argv.email,
                 ...splitName(argv.name),
+                ...(roles ? { roles } : {}),
+                ...(locale ? { locale } : {}),
+                ...(personalMessage ? { personalMessage } : {}),
               });
 
               if (argv.json) {

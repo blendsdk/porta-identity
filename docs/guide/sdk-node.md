@@ -18,7 +18,7 @@ import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const transport = createNodeTransport({
   baseUrl: 'https://porta.local:3443/api/admin',
-  auth: createTokenAuth('your-bearer-token'),
+  auth: createTokenAuth({ token: 'opaque-access-token' }),
 });
 
 const porta = createPortaClient({ transport });
@@ -30,37 +30,42 @@ The Node.js entrypoint provides three authentication strategies.
 
 ### Bearer Token (Simple)
 
-Use a pre-obtained token. Best for scripts and one-off automation:
+Use a pre-obtained Admin API access token. Best for scripts and one-off automation:
 
 ```typescript
 import { createTokenAuth } from '@portaidentity/sdk/node';
 
-const auth = createTokenAuth('eyJhbGciOiJFUzI1NiIs...');
+const auth = createTokenAuth({ token: 'opaque-access-token' });
 ```
 
 - ✅ Simplest setup
 - ❌ No automatic refresh — when the token expires, requests fail
 
+The token must be an account-bound access token from an active admin user. See
+[Admin API authentication](../api/authentication.md).
+
 ### Client Credentials (Machine-to-Machine)
 
-Use OIDC client credentials grant for server-to-server communication. Best for long-running services:
+`createClientCredentialsAuth` obtains tokens with the OIDC client credentials grant:
 
 ```typescript
 import { createClientCredentialsAuth } from '@portaidentity/sdk/node';
 
 const auth = createClientCredentialsAuth({
-  tokenEndpoint: 'https://porta.local:3443/super-admin/token',
+  tokenEndpoint: 'https://porta.example.com/super-admin/token',
   clientId: 'my-service-client-id',
   clientSecret: 'my-service-client-secret',
 });
 ```
 
-Features:
+::: warning Not accepted by the Admin API
+Client-credentials tokens carry no user account identity. `/api/admin/*` requires an
+`accountId` on the access token, so every Admin API request made with this provider
+returns `401`. Use it only for OIDC-protected APIs that accept machine tokens.
 
-- ✅ Automatic token fetching and caching
-- ✅ Automatic refresh when token expires
-- ✅ Concurrent request deduplication (avoids thundering herd)
-- ✅ No user interaction required
+Service-account support for the Admin API is not available yet. Use the BFF pattern
+below instead.
+:::
 
 ### CLI Auth (Stored Credentials)
 
@@ -70,25 +75,43 @@ Reads credentials from `~/.porta/credentials.json`, written by `porta login`. Be
 import { createCliAuth } from '@portaidentity/sdk/node';
 
 const auth = createCliAuth({
-  credentialsPath: '~/.porta/credentials.json',
-  refreshEndpoint: 'https://porta.local:3443/super-admin/token',
-  clientId: 'porta-admin-cli',
+  credentialsPath: `${process.env.HOME}/.porta/credentials.json`,
 });
 ```
 
 Features:
 
-- ✅ Reads from `porta login` credential file
-- ✅ Automatic token refresh via refresh_token grant
+- ✅ Reads from the `porta login` credential file
+- ✅ Refreshes an expired access token with the stored refresh token
 - ✅ No manual credential handling
+
+Without a `credentialPersistence` implementation, a rotated refresh token is kept in
+memory only. A long-running service should persist rotation or use the dedicated-user
+pattern below.
+
+### Admin API from a BFF
+
+`/api/admin/*` requires an opaque access token bound to an active user in the
+super-admin organization with a recognized admin role. Two supported patterns:
+
+1. **Dedicated control-plane user** — complete Authorization Code + PKCE once as a
+   dedicated admin user with the narrowest role that fits. Store the refresh token in a
+   secret manager, refresh before expiry, and persist the rotated token. Use the
+   `AuthProvider` interface to supply the access token.
+2. **Short-lived token for a batch job** — obtain an access token through `porta login`
+   or the Authorization Code flow, pass it to `createTokenAuth`, and finish the work
+   within the token lifetime.
+
+Do not store a long-lived admin session in a public web application. Run the BFF or
+batch job in a separate internal service or on an operator workstation.
 
 ## 401 Handling & Token Refresh
 
 The `NodeTransport` automatically handles 401 responses:
 
-1. On 401, it calls `auth.refresh()` to get a new token
+1. On 401, it calls `auth.refreshToken()` when the provider implements it
 2. Retries the original request with the new token
-3. If refresh also fails, throws `PortaAuthenticationError`
+3. If no refresh is available or it fails, throws `PortaAuthenticationError`
 
 This happens transparently — you don't need to handle 401s in your code.
 
@@ -98,16 +121,13 @@ This happens transparently — you don't need to handle 401s in your code.
 
 ```typescript
 import { createPortaClient } from '@portaidentity/sdk';
-import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: 'https://porta.example.com/api/admin',
-    auth: createClientCredentialsAuth({
-      tokenEndpoint: 'https://porta.example.com/super-admin/token',
-      clientId: process.env.PORTA_CLIENT_ID!,
-      clientSecret: process.env.PORTA_CLIENT_SECRET!,
-    }),
+    // Obtain a short-lived token through `porta login` or Authorization Code + PKCE.
+    auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
   }),
 });
 
@@ -258,11 +278,8 @@ CMD ["node", "dist/index.js"]
 const porta = createPortaClient({
   transport: createNodeTransport({
     baseUrl: process.env.PORTA_API_URL!,
-    auth: createClientCredentialsAuth({
-      tokenEndpoint: process.env.PORTA_TOKEN_ENDPOINT!,
-      clientId: process.env.PORTA_CLIENT_ID!,
-      clientSecret: process.env.PORTA_CLIENT_SECRET!,
-    }),
+    // Obtain a short-lived Admin API token through the Authorization Code flow.
+    auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
   }),
 });
 ```
