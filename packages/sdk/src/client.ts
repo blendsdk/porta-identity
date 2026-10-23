@@ -12,7 +12,6 @@ import {
   createUsersDomain,
   createStandaloneUsersDomain,
   createRolesDomain,
-
   createPermissionsDomain,
   createCustomClaimsDomain,
   createUserRolesDomain,
@@ -34,7 +33,6 @@ import type {
   UsersDomain,
   StandaloneUsersDomain,
   RolesDomain,
-
   PermissionsDomain,
   CustomClaimsDomain,
   UserRolesDomain,
@@ -98,7 +96,7 @@ export interface PortaClient {
  *
  * const transport = createNodeTransport({
  *   baseUrl: 'https://porta.local:3443/api/admin',
- *   auth: createTokenAuth('my-bearer-token'),
+ *   auth: createTokenAuth({ token: 'my-bearer-token' }),
  * });
  *
  * const porta = createPortaClient({ transport });
