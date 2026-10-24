@@ -42,6 +42,7 @@ import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
 import { createUserRouter, createStandaloneUserRouter } from './routes/users.js';
+import { createTenantInviteRouter } from './routes/tenant-invitations.js';
 import { createInteractionRouter } from './routes/interactions.js';
 import { createMagicLinkRouter } from './routes/magic-link.js';
 import { createPasswordResetRouter } from './routes/password-reset.js';
@@ -289,6 +290,12 @@ export function createApp(oidcProvider?: Provider): Koa {
   const userRouter = createUserRouter();
   app.use(userRouter.routes());
   app.use(userRouter.allowedMethods());
+
+  // Tenant-scoped invitation API — accepts a tenant service client or tenant
+  // user token and is deliberately separate from the control-plane admin API.
+  const tenantInviteRouter = createTenantInviteRouter(oidcProvider);
+  app.use(tenantInviteRouter.routes());
+  app.use(tenantInviteRouter.allowedMethods());
 
   // Standalone user admin API — non-org-scoped user access by userId
   // Mounted at /api/admin/users/:userId (see routes/users.ts)
