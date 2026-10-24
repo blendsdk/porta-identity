@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-10-24
+
+## Added
+- Add tenant-scoped user invitations, including a tenant invite route for service clients and tenant users.
+
+## Changed
+- Keep the server dependency pin aligned with the audited lockfile.
+- Keep the exact version pins aligned across the root and server workspace.
+
+## Fixed
+- Upgrade nodemailer to the patched 10.1.4 release to resolve remaining moderate production audit advisories.
+- Upgrade zod to the patched 4.6.6 release to resolve high-severity production audit advisory.
+
 ## [1.12.0] - 2026-10-23
 
 Fixed:

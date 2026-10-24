@@ -1,15 +1,15 @@
-# Release Notes — v1.12.0
+# Release Notes — v1.13.0
 
-**Released**: 2026-10-23
+**Released**: 2026-10-24
 
-We are excited to announce the release of version 1.12.0, which brings several enhancements to improve your user experience. This update focuses on streamlining user management and ensuring security in our system, making it easier for you to manage invitations and access while keeping everything secure and compliant.
+We are excited to announce the release of version 1.13.0, which brings important updates and enhancements aimed at improving your experience with our services. This version focuses on performance improvements, increased functionality, and enhanced security, ensuring that you have a reliable and user-friendly platform.
 
 Highlights of this release include:
 
-- **Simplified User Invitations**: When inviting new users, the process is now more efficient as roles are pre-assigned automatically. This means you can spend less time setting up user permissions and more time focusing on your core tasks.
+- **Enhanced Email Delivery:** We have upgraded our email handling system with the latest security patches. This means your communications will be safer and more reliable, reducing the chances of email delivery issues. Users can expect smoother, faster email interactions.
 
-- **Clarified Authentication Guidance**: We've updated the instructions for accessing the Admin API, ensuring you have clear and accurate guidance for securely connecting to our services. This enhancement is designed to reduce potential confusion and make setup smoother.
+- **Improved Data Validation:** With the latest update to our data validation tools, you can be confident that the information being processed is accurate and secure. This enhances the overall user experience by minimizing errors and ensuring data integrity throughout the platform.
 
-- **Enhanced Security Measures**: Our team has taken important steps to strengthen the security of our platform by addressing recent production audit advisories. This means we are actively working to protect your data and ensuring our services remain fully compliant with the latest security standards.
+- **Tenant-Scoped User Invitations:** We have added a new feature that allows for tenant-scoped user invitations. This means that you can now manage invitations more effectively, inviting users specific to your tenant, which enhances collaboration and usability within your teams.
 
-We believe these improvements will greatly enhance your experience with our platform, making it more user-friendly and secure. As always, we appreciate your feedback and support as we continue to refine and enhance our services.
+These updates reflect our commitment to continuously improving our platform based on your feedback and the latest technological advancements. We appreciate your continued support and look forward to hearing your thoughts on these new features. Thank you for using our services!

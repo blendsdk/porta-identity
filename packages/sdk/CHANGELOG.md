@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.13.0] - 2026-10-24
+
+Changed: Updated README.md to reflect recent changes in usage and examples.  
+Changed: Refactored client.ts for improved performance and enhanced API consistency.  
+Changed: Optimized browser-transport.ts for better handling of network requests.  
+Changed: Enhanced node-transport.ts to support additional transport methods.  
+Changed: Improved type definitions in types.ts for better type safety.  
+Changed: Streamlined utility functions in utils.ts for cleaner code.  
+Changed: Updated tests in browser-transport.test.ts and node-transport.test.ts for better coverage.
+
 ## [1.12.0] - 2026-10-23
 
 Added  
