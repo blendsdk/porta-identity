@@ -38,7 +38,7 @@ POST /api/admin/organizations/:orgId/users
 POST /api/admin/organizations/:orgId/users/invite
 ```
 
-**Permission:** `user:invite`
+**Permission:** `admin:user:invite`
 
 Creates a pending invitation and sends an enhanced invitation email. No account is created at invite time; the recipient's account is created only when they accept the invitation and set a password. Supports optional personal message, role/claim pre-assignment, and inviter tracking. Pre-assigned roles and claims are stored with the invitation and automatically applied on acceptance.
 
@@ -77,13 +77,47 @@ Creates a pending invitation and sends an enhanced invitation email. No account 
 - If a role or claim is deleted between invitation and acceptance, that assignment is skipped (best-effort)
 - A new invitation replaces any live invitation for the same email address
 
+## Tenant-Scoped Invite User
+
+```http
+POST /api/organizations/:orgId/users/invite
+```
+
+This is the BFF-facing route. It does not require a control-plane administrator.
+
+**Caller authority — exactly one of:**
+
+| Caller         | Token                             | Requirement                                                                                                     |
+| -------------- | --------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Tenant service | `client_credentials` access token | Client is active and confidential, belongs to `:orgId`, and has the registered `org:user:invite` scope          |
+| Tenant user    | User access token                 | User is active, belongs to `:orgId`, and has the `org:user:invite` permission in the token client's application |
+
+The request body uses the same fields as the admin invite route, except that
+custom claim pre-assignment is not accepted on this route. Additional rules:
+
+- Every pre-assigned role must belong to the token client's application.
+- Custom claim pre-assignment is not accepted on this route in this iteration.
+- Canonical `porta-admin` roles are rejected.
+- A tenant user cannot pre-assign a role whose permissions exceed the user's own permissions.
+- The route rejects control-plane clients and the super-admin organization.
+- Audit records the tenant user ID or service client ID as the actor.
+
+A successful response has the same `201 Created` shape as the admin route. The
+route returns `403` for cross-organization callers or insufficient authority,
+and `409` when the email already exists.
+
+The tenant service client must be configured with `clientType: confidential`,
+`grantTypes: ['client_credentials']`, `scope: 'org:user:invite'`, and
+`tokenEndpointAuthMethod: 'client_secret_post'`. The SDK client-credentials
+provider sends the secret in the form body.
+
 ## Preview Invitation Email
 
 ```http
 POST /api/admin/organizations/:orgId/users/invite/preview
 ```
 
-**Permission:** `user:invite`
+**Permission:** `admin:user:invite`
 
 Renders the invitation email without sending it. Returns the HTML, plain text, and subject line for admin review before sending.
 

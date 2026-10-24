@@ -25,7 +25,7 @@ export interface TransportRequest {
 
   /**
    * Resource path (e.g., '/organizations', '/users/123').
-   * The transport prepends `baseUrl + '/api/admin'` to this path.
+   * The transport prepends the configured API prefix (default `/api/admin`).
    */
   path: string;
 

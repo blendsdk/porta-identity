@@ -29,24 +29,28 @@
 import Router from '@koa/router';
 import { z } from 'zod';
 import type { InvitationEmailOptions } from '../auth/email-service.js';
-import { renderInvitationEmail, sendInvitationEmail } from '../auth/email-service.js';
-import { InvitationConflictError, replaceInvitation } from '../auth/token-repository.js';
-import { generateToken } from '../auth/tokens.js';
+import { renderInvitationEmail } from '../auth/email-service.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
-import { writeAuditLog } from '../lib/audit-log.js';
-import { afterDatabaseCommit, getPool } from '../lib/database.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
 import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-protection.js';
-import { getSystemConfigNumber } from '../lib/system-config.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
+import { RoleDelegationError } from '../rbac/errors.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData } from '../users/gdpr.js';
+import {
+  InviteConflictError,
+  InviteOrganizationNotFoundError,
+  InvitePreAssignmentError,
+  InviteUserExistsError,
+  inviteUser,
+  inviteUserSchema,
+} from '../users/invite-service.js';
 import * as userService from '../users/service.js';
 import {
   userBirthdateSchema,
@@ -174,6 +178,29 @@ function handleError(
   err: unknown,
 ): never {
   if (err instanceof SuperAdminProtectionError) {
+    ctx.status = 403;
+    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
+    return undefined as never;
+  }
+  if (err instanceof InviteOrganizationNotFoundError) {
+    ctx.throw(404, 'Organization not found');
+  }
+  if (err instanceof InviteUserExistsError) {
+    ctx.status = 409;
+    ctx.body = { error: 'User already exists in this organization' };
+    return undefined as never;
+  }
+  if (err instanceof InviteConflictError) {
+    ctx.status = 409;
+    ctx.body = { error: 'A live invitation already exists for this email' };
+    return undefined as never;
+  }
+  if (err instanceof InvitePreAssignmentError) {
+    ctx.status = 400;
+    ctx.body = { error: 'User request is invalid' };
+    return undefined as never;
+  }
+  if (err instanceof RoleDelegationError) {
     ctx.status = 403;
     ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
     return undefined as never;
@@ -460,130 +487,24 @@ export function createUserRouter(): Router {
   router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
     try {
       const body = inviteUserSchema.parse(ctx.request.body);
-      const orgId = ctx.params.orgId;
-      const adminUser = ctx.state.adminUser as {
-        id: string;
-        givenName?: string;
-        familyName?: string;
-        email?: string;
-      };
-
-      // Resolve the organization for branding and slug
-      const org = await getOrganizationById(orgId);
-      if (!org) {
-        ctx.throw(404, 'Organization not found');
+      const adminUser = ctx.state.adminUser;
+      if (!adminUser) {
+        ctx.throw(401, 'Authentication required');
         return;
       }
 
-      // Validate referenced applicationIds, roleIds, claimDefinitionIds exist
-      if (body.roles?.length || body.claims?.length) {
-        const preAssignmentErrors = await validatePreAssignments(body.roles, body.claims);
-        if (preAssignmentErrors.length > 0) {
-          ctx.status = 400;
-          ctx.body = { error: 'User request is invalid' };
-          return;
-        }
-      }
-
-      const existingUser = await userService.getUserByEmail(orgId, body.email);
-      if (existingUser) {
-        ctx.status = 409;
-        ctx.body = { error: 'User already exists in this organization' };
-        return;
-      }
-
-      // Generate a new invitation token
-      const { plaintext, hash } = generateToken();
-      // Existing invitations keep their absolute expiry; this policy applies to the new token only.
-      const invitationTtl = await getSystemConfigNumber('invitation_ttl');
-      const expiresAt = new Date(Date.now() + invitationTtl * 1000);
-
-      // Build inviter display name
-      const inviterName = adminUser.givenName
-        ? adminUser.familyName
-          ? `${adminUser.givenName} ${adminUser.familyName}`
-          : adminUser.givenName
-        : (adminUser.email ?? 'Admin');
-
-      // Store pre-assignment details in the token
-      const details: Record<string, unknown> = {};
-      if (body.personalMessage) details.personalMessage = body.personalMessage;
-      if (body.roles?.length) details.roles = body.roles;
-      if (body.claims?.length) details.claims = body.claims;
-      details.inviterName = inviterName;
-
-      // Replace any live invitation for this address, creating no account.
-      let invitationId: string;
-      try {
-        const invitation = await replaceInvitation({
-          organizationId: orgId,
-          email: body.email,
-          tokenHash: hash,
-          expiresAt,
-          givenName: body.givenName ?? null,
-          familyName: body.familyName ?? null,
-          locale: body.locale ?? null,
-          details: Object.keys(details).length > 0 ? details : null,
-          invitedBy: adminUser.id,
-        });
-        invitationId = invitation.id;
-      } catch (error) {
-        if (error instanceof InvitationConflictError) {
-          ctx.status = 409;
-          ctx.body = { error: 'A live invitation already exists for this email' };
-          return;
-        }
-        throw error;
-      }
-
-      // Build the invitation URL. Prefix the trusted, configured issuerBaseUrl
-      // (never a request header) so the email link is absolute and includes
-      // the server origin — matching the password-reset / magic-link pattern.
-      const inviteUrl = `${config.issuerBaseUrl}/${org.slug}/auth/accept-invite/${plaintext}`;
-
-      // Send the invitation email
-      const emailOptions: InvitationEmailOptions = { invitationId };
-      if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
-      emailOptions.inviterName = inviterName;
-
-      await afterDatabaseCommit(() =>
-        sendInvitationEmail(
-          {
-            email: body.email,
-            givenName: body.givenName ?? null,
-            familyName: body.familyName ?? null,
-          },
-          org,
-          inviteUrl,
-          body.locale ?? org.defaultLocale ?? 'en',
-          emailOptions,
-        ),
-      );
-
-      // Audit log the invitation. No account exists yet, so no user id is recorded.
-      writeAuditLog({
-        organizationId: orgId,
-        actorId: adminUser.id,
-        eventType: 'user.invited',
-        eventCategory: 'admin',
-        description: 'User invitation created',
-        metadata: {
-          invitationId,
-          hasPersonalMessage: !!body.personalMessage,
-          preAssignedRoles: body.roles?.length ?? 0,
-          preAssignedClaims: body.claims?.length ?? 0,
+      const result = await inviteUser({
+        organizationId: ctx.params.orgId,
+        input: body,
+        actor: {
+          kind: 'admin',
+          userId: adminUser.id,
+          displayName: adminUser.email ?? 'Admin',
         },
       });
 
       ctx.status = 201;
-      ctx.body = {
-        data: {
-          invitationId,
-          email: body.email,
-          invitationSent: true,
-          expiresAt: expiresAt.toISOString(),
-        },
-      };
+      ctx.body = { data: result };
     } catch (err) {
       handleError(ctx, err);
     }
@@ -655,32 +576,6 @@ export function createUserRouter(): Router {
 // Invitation schemas
 // ---------------------------------------------------------------------------
 
-/** Schema for the enhanced invitation request */
-const inviteUserSchema = z.object({
-  email: z.string().email(),
-  givenName: z.string().min(1).max(255).optional(),
-  familyName: z.string().min(1).max(255).optional(),
-  personalMessage: z.string().max(500).optional(),
-  roles: z
-    .array(
-      z.object({
-        applicationId: z.string().uuid(),
-        roleId: z.string().uuid(),
-      }),
-    )
-    .optional(),
-  claims: z
-    .array(
-      z.object({
-        applicationId: z.string().uuid(),
-        claimDefinitionId: z.string().uuid(),
-        value: z.unknown(),
-      }),
-    )
-    .optional(),
-  locale: z.string().max(10).optional(),
-});
-
 /** Schema for the invitation preview request */
 const invitePreviewSchema = z.object({
   email: z.string().email(),
@@ -689,77 +584,6 @@ const invitePreviewSchema = z.object({
   personalMessage: z.string().max(500).optional(),
   locale: z.string().max(10).optional(),
 });
-
-// ---------------------------------------------------------------------------
-// Pre-assignment validation helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Validate that referenced roles and claims exist in the database.
- *
- * Checks that all deployment-global applicationIds exist, all roleIds
- * belong to their specified application, and all claimDefinitionIds
- * belong to their specified application.
- *
- * @param roles - Array of role pre-assignments to validate
- * @param claims - Array of claim pre-assignments to validate
- * @returns Validation errors; an empty array means every reference is valid
- */
-async function validatePreAssignments(
-  roles?: Array<{ applicationId: string; roleId: string }>,
-  claims?: Array<{ applicationId: string; claimDefinitionId: string; value: unknown }>,
-): Promise<string[]> {
-  const pool = getPool();
-  const errors: string[] = [];
-
-  // Collect unique applicationIds from both roles and claims
-  const appIds = new Set<string>();
-  roles?.forEach((r) => appIds.add(r.applicationId));
-  claims?.forEach((c) => appIds.add(c.applicationId));
-
-  // Applications are deployment-global definitions and are not organization-scoped.
-  if (appIds.size > 0) {
-    const appResult = await pool.query(`SELECT id FROM applications WHERE id = ANY($1::uuid[])`, [
-      Array.from(appIds),
-    ]);
-    const foundIds = new Set(appResult.rows.map((r: { id: string }) => r.id));
-    for (const appId of appIds) {
-      if (!foundIds.has(appId)) {
-        errors.push(`Application ${appId} not found`);
-      }
-    }
-  }
-
-  // Verify all roles exist within their application
-  if (roles?.length) {
-    for (const role of roles) {
-      const result = await pool.query(
-        `SELECT id FROM roles WHERE id = $1 AND application_id = $2`,
-        [role.roleId, role.applicationId],
-      );
-      if (result.rows.length === 0) {
-        errors.push(`Role ${role.roleId} not found in application ${role.applicationId}`);
-      }
-    }
-  }
-
-  // Verify all claim definitions exist within their application
-  if (claims?.length) {
-    for (const claim of claims) {
-      const result = await pool.query(
-        `SELECT id FROM custom_claim_definitions WHERE id = $1 AND application_id = $2`,
-        [claim.claimDefinitionId, claim.applicationId],
-      );
-      if (result.rows.length === 0) {
-        errors.push(
-          `Claim definition ${claim.claimDefinitionId} not found in application ${claim.applicationId}`,
-        );
-      }
-    }
-  }
-
-  return errors;
-}
 
 // ---------------------------------------------------------------------------
 // Standalone user router (non-org-scoped)

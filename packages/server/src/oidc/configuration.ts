@@ -32,6 +32,7 @@ import { getUserById } from '../users/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
 import { clearSessionCookies } from '../middleware/prompt-login-reset.js';
+import { TENANT_INVITE_SCOPE } from './scopes.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -544,8 +545,18 @@ export function buildProviderConfiguration(
     // Enable refresh token rotation — each refresh generates a new token
     rotateRefreshToken: true,
 
-    // Standard OIDC scopes
-    scopes: ['openid', 'profile', 'email', 'address', 'phone', 'offline_access'],
+    // Standard OIDC scopes plus the tenant application scope used by the
+    // tenant-scoped BFF invitation API. Supported scopes must be registered
+    // here before a client may carry them in its metadata.
+    scopes: [
+      'openid',
+      'profile',
+      'email',
+      'address',
+      'phone',
+      'offline_access',
+      TENANT_INVITE_SCOPE,
+    ],
 
     // OIDC claims mapping per scope.
     // Standard claims follow OpenID Connect Core §5.4.

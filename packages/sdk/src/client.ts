@@ -95,7 +95,7 @@ export interface PortaClient {
  * import { createTokenAuth } from '@portaidentity/sdk/node';
  *
  * const transport = createNodeTransport({
- *   baseUrl: 'https://porta.local:3443/api/admin',
+ *   baseUrl: 'https://porta.local:3443',
  *   auth: createTokenAuth({ token: 'my-bearer-token' }),
  * });
  *
