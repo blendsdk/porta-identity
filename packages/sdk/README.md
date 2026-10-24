@@ -33,7 +33,7 @@ import { createBrowserTransport } from '@portaidentity/sdk/browser';
 let csrfToken: string | null = null;
 
 const transport = createBrowserTransport({
-  baseUrl: '/api/admin', // BFF proxy path
+  baseUrl: '', // same-origin BFF; the SDK adds the API prefix
   getCsrfToken: () => csrfToken,
   setCsrfToken: (token) => {
     csrfToken = token;
@@ -64,7 +64,7 @@ import { createPortaClient } from '@portaidentity/sdk';
 import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const transport = createNodeTransport({
-  baseUrl: 'https://porta.local:3443/api/admin',
+  baseUrl: 'https://porta.local:3443',
   auth: createTokenAuth({ token: 'opaque-access-token' }),
 });
 
@@ -96,7 +96,7 @@ import { createNodeTransport, createTokenAuth } from '@portaidentity/sdk/node';
 
 const client = createPortaClient({
   transport: createNodeTransport({
-    baseUrl: 'https://porta.example.com/api/admin',
+    baseUrl: 'https://porta.example.com',
     auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
   }),
 });
@@ -105,6 +105,71 @@ const client = createPortaClient({
 Client-credentials tokens carry no account identity and are rejected by `/api/admin/*`.
 Do not use `createClientCredentialsAuth` for Admin API automation until service
 accounts are supported.
+
+### Tenant-scoped invitations from a BFF
+
+Tenant applications can invite users without a control-plane service account.
+The tenant route accepts either a confidential client using `client_credentials`
+with the `org:user:invite` scope, or a tenant user's access token with the
+`org:user:invite` permission in the token client's application.
+
+Use `apiPrefix: '/api'` for the tenant route:
+
+```typescript
+import { createPortaClient } from '@portaidentity/sdk';
+import {
+  createClientCredentialsAuth,
+  createNodeTransport,
+  createTokenAuth,
+} from '@portaidentity/sdk/node';
+
+// Background jobs: one tenant client, no refresh token or local credentials file.
+const serviceClient = createPortaClient({
+  transport: createNodeTransport({
+    baseUrl: 'https://porta.example.com',
+    apiPrefix: '/api',
+    auth: createClientCredentialsAuth({
+      tokenEndpoint: 'https://porta.example.com/acme/token',
+      clientId: process.env.PORTA_TENANT_CLIENT_ID!,
+      clientSecret: process.env.PORTA_TENANT_CLIENT_SECRET!,
+      scope: 'org:user:invite',
+    }),
+  }),
+});
+
+// Interactive requests: forward the caller's Porta access token.
+const userClient = createPortaClient({
+  transport: createNodeTransport({
+    baseUrl: 'https://porta.example.com',
+    apiPrefix: '/api',
+    auth: createTokenAuth({ token: userPortaAccessToken }),
+  }),
+});
+
+await (interactive ? userClient : serviceClient).users.invite({
+  organizationId: process.env.PORTA_TENANT_ORG_ID!,
+  email: 'new.user@example.com',
+  roles: [{ applicationId: process.env.PORTA_APP_ID!, roleId: roleId }],
+});
+```
+
+The tenant route only allows roles owned by the token client's application.
+Custom claim pre-assignment remains a control-plane capability in this
+iteration. A tenant user cannot grant a role that exceeds their own live
+permissions.
+
+The service client must be configured with:
+
+| Field                     | Value                    |
+| ------------------------- | ------------------------ |
+| `clientType`              | `confidential`           |
+| `applicationType`         | `web`                    |
+| `grantTypes`              | `['client_credentials']` |
+| `scope`                   | `org:user:invite`        |
+| `tokenEndpointAuthMethod` | `client_secret_post`     |
+
+`createClientCredentialsAuth` sends the client secret in the form body, so the
+client must allow `client_secret_post`.
 
 ### AI Agent Integration
 
@@ -120,7 +185,7 @@ const tools = getToolDefinitions();
 // Execute a tool call from an AI agent
 const client = createPortaClient({
   transport: createNodeTransport({
-    baseUrl: 'https://porta.example.com/api/admin',
+    baseUrl: 'https://porta.example.com',
     auth: createTokenAuth({ token: process.env.PORTA_ACCESS_TOKEN! }),
   }),
 });

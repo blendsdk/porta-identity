@@ -89,6 +89,18 @@ describe('BrowserTransport', () => {
       );
     });
 
+    it('should use the configured tenant API prefix', async () => {
+      mockFetch.mockResolvedValue(createMockResponse(200, { data: [] }));
+      const transport = createTransport({ apiPrefix: '/api' });
+
+      await transport.request({ method: 'GET', path: '/organizations' });
+
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://porta.example.com/api/organizations',
+        expect.any(Object),
+      );
+    });
+
     it('should append query params to URL', async () => {
       mockFetch.mockResolvedValue(createMockResponse(200, { data: [] }));
       const transport = createTransport();

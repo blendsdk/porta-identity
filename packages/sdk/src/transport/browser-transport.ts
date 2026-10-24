@@ -53,6 +53,14 @@ export interface BrowserTransportOptions {
    * Provide a custom handler to override (e.g., show a login modal).
    */
   onUnauthorized?: () => void;
+
+  /**
+   * API mount prefix.
+   *
+   * Defaults to `/api/admin` for the control-plane Admin API. Tenant-scoped
+   * calls use `/api`.
+   */
+  apiPrefix?: string;
 }
 
 /**
@@ -75,12 +83,12 @@ export interface BrowserTransportOptions {
  * ```
  */
 export function createBrowserTransport(options: BrowserTransportOptions): HttpTransport {
-  const { baseUrl, getCsrfToken, setCsrfToken, onUnauthorized } = options;
+  const { baseUrl, getCsrfToken, setCsrfToken, onUnauthorized, apiPrefix } = options;
 
   return {
     async request(req: TransportRequest): Promise<TransportResponse> {
-      // Build full URL with /api/admin prefix and query params
-      const url = buildRequestUrl(baseUrl, req.path, req.params);
+      // Build full URL with the configured API prefix and query params
+      const url = buildRequestUrl(baseUrl, req.path, req.params, apiPrefix);
 
       // Build common headers (Accept, Content-Type, SDK version)
       const headers = buildCommonHeaders(req);
@@ -136,7 +144,12 @@ export function createBrowserTransport(options: BrowserTransportOptions): HttpTr
 
       // 2xx + raw — return with native Response for binary streaming
       if (req.responseType === 'raw') {
-        return { status: response.status, headers: responseHeaders, body: undefined, raw: response };
+        return {
+          status: response.status,
+          headers: responseHeaders,
+          body: undefined,
+          raw: response,
+        };
       }
 
       // 2xx + json — parse body and return

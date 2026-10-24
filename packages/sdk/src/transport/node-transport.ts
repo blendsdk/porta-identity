@@ -38,6 +38,14 @@ export interface NodeTransportOptions {
    * a token refresh and one automatic retry.
    */
   auth: AuthProvider;
+
+  /**
+   * API mount prefix.
+   *
+   * Defaults to `/api/admin` for the control-plane Admin API. Tenant-scoped
+   * BFF calls use `/api`.
+   */
+  apiPrefix?: string;
 }
 
 /**
@@ -60,7 +68,7 @@ export interface NodeTransportOptions {
  * ```
  */
 export function createNodeTransport(options: NodeTransportOptions): HttpTransport {
-  const { baseUrl, auth } = options;
+  const { baseUrl, auth, apiPrefix } = options;
 
   return {
     async request(req: TransportRequest): Promise<TransportResponse> {
@@ -68,12 +76,12 @@ export function createNodeTransport(options: NodeTransportOptions): HttpTranspor
       const token = await auth.getToken();
 
       // Execute the initial request
-      const response = await executeRequest(baseUrl, req, token);
+      const response = await executeRequest(baseUrl, req, token, apiPrefix);
 
       // 401 + refreshToken available → attempt token refresh and retry once
       if (response.status === 401 && auth.refreshToken) {
         const newToken = await auth.refreshToken();
-        const retryResponse = await executeRequest(baseUrl, req, newToken);
+        const retryResponse = await executeRequest(baseUrl, req, newToken, apiPrefix);
         return processResponse(retryResponse, req);
       }
 
@@ -93,15 +101,17 @@ export function createNodeTransport(options: NodeTransportOptions): HttpTranspor
  * @param baseUrl - Base URL of the Porta instance
  * @param req - The transport request to execute
  * @param token - Bearer access token
+ * @param apiPrefix - API mount prefix
  * @returns The raw fetch Response
  */
 async function executeRequest(
   baseUrl: string,
   req: TransportRequest,
   token: string,
+  apiPrefix?: string,
 ): Promise<Response> {
-  // Build full URL with /api/admin prefix and query params
-  const url = buildRequestUrl(baseUrl, req.path, req.params);
+  // Build full URL with the configured API prefix and query params
+  const url = buildRequestUrl(baseUrl, req.path, req.params, apiPrefix);
 
   // Build common headers (Accept, Content-Type, SDK version)
   const headers = buildCommonHeaders(req);

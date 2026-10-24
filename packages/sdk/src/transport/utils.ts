@@ -20,14 +20,17 @@ import { SDK_VERSION } from '../version.js';
  * @param baseUrl - Base URL (e.g., 'https://porta.example.com' or '' for same-origin)
  * @param path - Resource path (e.g., '/organizations', '/users/123')
  * @param params - Optional query parameters (null/undefined values are skipped)
+ * @param apiPrefix - API mount prefix; defaults to '/api/admin'
  * @returns Complete URL string with query parameters
  */
 export function buildRequestUrl(
   baseUrl: string,
   path: string,
   params?: Record<string, string | number | boolean | undefined | null>,
+  apiPrefix = '/api/admin',
 ): string {
-  const url = `${baseUrl}/api/admin${path}`;
+  const prefix = apiPrefix.replace(/\/+$/, '');
+  const url = `${baseUrl}${prefix}${path}`;
 
   if (!params) return url;
 
@@ -81,7 +84,7 @@ export function buildCommonHeaders(req: {
   headers?: Record<string, string>;
 }): Record<string, string> {
   const headers: Record<string, string> = {
-    'Accept': 'application/json',
+    Accept: 'application/json',
     'X-Porta-SDK-Version': SDK_VERSION,
   };
 
