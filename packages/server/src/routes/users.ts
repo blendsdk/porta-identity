@@ -19,11 +19,15 @@
  *   GET    /:userId/export       — GDPR data export (Article 20)
  *   DELETE /:userId              — Delete user
  *
- * Error mapping:
+ * Error mapping (shared with the tenant and standalone routers):
  *   UserNotFoundError → 404
+ *   UserEmailConflictError → 400 (Admin only; tenant uses 409)
  *   UserValidationError → 400
- *   SuperAdminProtectionError → 403
- *   ZodError → 400 with validation details
+ *   InviteOrganizationNotFoundError → 404
+ *   InviteUserExistsError / InviteConflictError → 409
+ *   InvitePreAssignmentError / RbacValidationError / ZodError → 400
+ *   RoleDelegationError / SuperAdminProtectionError → 403
+ *   RoleNotFoundError → 404
  */
 
 import Router from '@koa/router';
@@ -522,7 +526,12 @@ export function createStandaloneUserRouter(): Router {
       const current = await userService.getUserById(ctx.params.userId);
       if (current && !checkIfMatch(ctx, 'user', current.id, current.updatedAt, current)) return;
       const input = { ...body, address: body.address ?? undefined };
-      const user = await userService.updateUser(ctx.params.userId, input);
+      const user = await userService.updateUser(
+        ctx.params.userId,
+        input,
+        adminAuditActor(ctx),
+        auditContext(ctx),
+      );
       setETagHeader(ctx, 'user', user.id, user.updatedAt);
       ctx.body = { data: user };
     } catch (err) {

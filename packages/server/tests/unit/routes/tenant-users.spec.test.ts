@@ -600,6 +600,24 @@ describe('tenant user CRUD routes', () => {
     expect(service.updateUser).not.toHaveBeenCalled();
   });
 
+  it('rejects clearing a phone while the stored verification flag remains true', async () => {
+    service.getUserById.mockResolvedValue(
+      testUser({ phoneNumber: '+15555550123', phoneNumberVerified: true }),
+    );
+    const ctx = createMockCtx({ phoneNumber: null });
+
+    await expect(
+      executeRoute(
+        createTenantUsersRouter(),
+        'PUT',
+        '/api/organizations/:orgId/users/:userId',
+        ctx,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+
+    expect(service.updateUser).not.toHaveBeenCalled();
+  });
+
   it('ST-25 returns the existing Admin conflict response for a stale If-Match', async () => {
     const ctx = createMockCtx({ givenName: 'Stale' });
     ctx.set('If-Match', 'W/"0000000000000000"');

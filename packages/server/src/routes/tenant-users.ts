@@ -240,7 +240,11 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
 
         const effectivePhone =
           body.phoneNumber !== undefined ? body.phoneNumber : current.phoneNumber;
-        if (body.phoneNumberVerified === true && !effectivePhone) {
+        const effectiveVerified =
+          body.phoneNumberVerified !== undefined
+            ? body.phoneNumberVerified
+            : current.phoneNumberVerified;
+        if (effectiveVerified && !effectivePhone) {
           throw new UserValidationError('A phone number is required when phoneNumberVerified is true');
         }
 

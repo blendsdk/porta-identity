@@ -81,7 +81,10 @@ vi.mock('../../../src/lib/entity-history.js', () => ({
 import * as userService from '../../../src/users/service.js';
 import * as emailService from '../../../src/auth/email-service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
-import { createUserRouter } from '../../../src/routes/users.js';
+import {
+  createStandaloneUserRouter,
+  createUserRouter,
+} from '../../../src/routes/users.js';
 
 /** Standard test user */
 function createTestUser(overrides: Partial<User> = {}): User {
@@ -501,6 +504,31 @@ describe('user routes', () => {
   // The invite and preview URLs must be absolute — prefixed with the trusted
   // config.issuerBaseUrl — so the email link includes the server origin.
   // -------------------------------------------------------------------------
+
+  describe('standalone Admin update actor', () => {
+    it('should attribute the standalone update to the authenticated administrator', async () => {
+      const user = createTestUser({ givenName: 'Jane' });
+      (userService.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      const router = createStandaloneUserRouter();
+      const layer = router.stack.find(
+        (candidate) =>
+          candidate.methods.includes('PUT') && candidate.path === '/api/admin/users/:userId',
+      );
+      const ctx = createMockCtx({
+        params: { userId: 'user-uuid-1' },
+        body: { givenName: 'Jane' },
+      });
+
+      await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+      expect(userService.updateUser).toHaveBeenCalledWith(
+        'user-uuid-1',
+        expect.objectContaining({ givenName: 'Jane' }),
+        { kind: 'user', userId: 'admin-uuid-1' },
+        expect.objectContaining({ ipAddress: '127.0.0.1' }),
+      );
+    });
+  });
 
   describe('Specification: Invitation URL', () => {
     const mockOrg = {

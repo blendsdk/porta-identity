@@ -18,6 +18,7 @@
 - Test names state behavior: `should [expected behavior] when [condition]`.
 - Integration tests exercise real PostgreSQL, Redis, and the tenant client credentials flow.
 - Browser E2E is `N/A`: this change adds an authenticated M2M API and CLI display, with no browser or OIDC interaction changes. Integration and pentest cover the new surface.
+- The Phase 2 route-level live suite substitutes the provider token lookup to isolate route behavior. The Phase 5 handoff runs one real tenant `client_credentials` create/update/delete cycle.
 - Browser UI tests are `N/A` for the same reason; the Admin UI is the embedded terminal application, and its audit/history display is covered by CLI tests.
 
 ## 🚨 Specification Test Cases (MANDATORY — NON-NEGOTIABLE)

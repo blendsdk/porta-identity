@@ -34,6 +34,7 @@ interface RequestOptions {
   readonly path: string;
   readonly body?: unknown;
   readonly headers?: Readonly<Record<string, string>>;
+  readonly authToken?: string;
 }
 
 /**
@@ -47,7 +48,7 @@ async function request(fixture: Fixture, options: RequestOptions) {
   const incoming = new IncomingMessage(new Socket());
   incoming.method = options.method;
   incoming.url = options.path;
-  incoming.headers.authorization = 'Bearer tenant-token';
+  incoming.headers.authorization = `Bearer ${options.authToken ?? 'tenant-token'}`;
   for (const [name, value] of Object.entries(options.headers ?? {})) {
     incoming.headers[name.toLowerCase()] = value;
   }
@@ -115,12 +116,17 @@ beforeEach(async () => {
 
   const provider: TenantTokenProvider = {
     ClientCredentials: {
-      find: async (token) =>
-        token === 'tenant-token' ? { clientId: client.clientId, scopes: new Set([
-          'org:user:read',
-          'org:user:write',
-          'org:user:delete',
-        ]) } : undefined,
+      find: async (token) => {
+        if (token === 'read-only-token') {
+          return { clientId: client.clientId, scopes: new Set(['org:user:read']) };
+        }
+        return token === 'tenant-token'
+          ? {
+              clientId: client.clientId,
+              scopes: new Set(['org:user:read', 'org:user:write', 'org:user:delete']),
+            }
+          : undefined;
+      },
     },
     AccessToken: { find: async () => undefined },
   };
@@ -246,6 +252,54 @@ describe('tenant user API', () => {
     });
     expect(hidden.status).toBe(404);
     expect(hidden.body).toEqual({ error: 'User not found' });
+  });
+
+  it('ST-14/ST-26 rejects write and update with a read-only token', async () => {
+    const create = await request(fixture, {
+      method: 'POST',
+      path: `/api/organizations/${fixture.organizationId}/users`,
+      authToken: 'read-only-token',
+      body: { email: `read-only-${randomUUID()}@example.test` },
+    });
+    expect(create.status).toBe(403);
+
+    const user = await createTestUser(fixture.organizationId, {
+      email: `read-only-target-${randomUUID()}@example.test`,
+    });
+    const update = await request(fixture, {
+      method: 'PUT',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}`,
+      authToken: 'read-only-token',
+      body: { nickname: 'blocked' },
+    });
+    expect(update.status).toBe(403);
+
+    const read = await request(fixture, {
+      method: 'GET',
+      path: `/api/organizations/${fixture.organizationId}/users`,
+      authToken: 'read-only-token',
+    });
+    expect(read.status).toBe(200);
+  });
+
+  it('ST-23 returns 404 for an update targeting a foreign user', async () => {
+    const other = await createTestOrganization();
+    const foreign = await createTestUser(other.id, {
+      email: `foreign-update-${randomUUID()}@example.test`,
+    });
+
+    const update = await request(fixture, {
+      method: 'PUT',
+      path: `/api/organizations/${fixture.organizationId}/users/${foreign.id}`,
+      body: { nickname: 'blocked' },
+    });
+    expect(update.status).toBe(404);
+
+    const row = await getPool().query<{ nickname: string | null }>(
+      'SELECT nickname FROM users WHERE id = $1',
+      [foreign.id],
+    );
+    expect(row.rows[0]?.nickname).toBeNull();
   });
 
   it('ST-21/ST-25 updates a user and preserves the Admin stale-If-Match response', async () => {

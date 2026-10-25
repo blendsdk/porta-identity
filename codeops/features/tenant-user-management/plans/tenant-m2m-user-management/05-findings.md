@@ -16,3 +16,13 @@
 | SA-005 | 1 | MINOR | tests | fixed |
 | SA-006 | 1 | MINOR | invite | fixed |
 | RV-008 | 1 | MINOR | audit | fixed |
+| RV-001 | 2 | MAJOR | admin-actor | fixed |
+| RV-002 | 2 | MINOR | phone | fixed |
+| RV-003 | 2 | MINOR | tests | fixed |
+| RV-004 | 2 | MINOR | integration-token | accepted |
+| RV-005 | 2 | MINOR | dead-code | fixed |
+| RV-006 | 2 | MINOR | docs | fixed |
+| SA-007 | 2 | MAJOR | admin-actor | fixed |
+| SA-008 | 2 | MINOR | audit | fixed |
+| SA-009 | 2 | MINOR | phone | fixed |
+| SA-010 | 2 | MINOR | tests | fixed |

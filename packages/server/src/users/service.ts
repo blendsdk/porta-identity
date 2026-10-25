@@ -115,16 +115,18 @@ export interface PasswordFailureDependencies {
 /**
  * Create a new user in an organization.
  *
- * 1. Validates email uniqueness within the organization
- * 2. Validates and hashes password if provided
- * 3. Inserts user via repository
- * 4. Caches the new user
- * 5. Writes audit log entry
+ * 1. Validates and hashes the password if provided
+ * 2. Opens the service-owned transaction and validates email uniqueness
+ * 3. Inserts the user through the transaction
+ * 4. Writes the transaction-bound audit row
+ * 5. Caches the new user after commit
  *
  * @param input - User creation data (password is plaintext, will be hashed)
- * @param actorId - UUID of the user performing the action (for audit)
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @returns Created user
- * @throws UserValidationError if email exists or password invalid
+ * @throws UserEmailConflictError if the email already exists in the organization
+ * @throws UserValidationError if the password is invalid
  */
 export async function createUser(
   input: CreateUserInput,
@@ -246,10 +248,11 @@ export async function getUserByEmail(orgId: string, email: string): Promise<User
  *
  * @param id - User UUID
  * @param input - Fields to update
- * @param actorId - UUID of the user performing the action
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @returns Updated user
- * @throws UserNotFoundError if user not found
- * @throws UserValidationError if new email already exists in org
+ * @throws UserNotFoundError if the user does not exist
+ * @throws UserEmailConflictError if a new email already exists in the organization
  */
 export async function updateUser(
   id: string,
@@ -313,7 +316,16 @@ export async function updateUser(
       ...auditFields(actor, auditContext),
       eventType: 'user.updated',
       eventCategory: 'admin',
-      metadata: { userId: user.id, fields: Object.keys(updateData) },
+      metadata: {
+        userId: user.id,
+        fields: Object.keys(updateData),
+        ...(updateData.emailVerified === undefined
+          ? {}
+          : { emailVerified: updateData.emailVerified }),
+        ...(updateData.phoneNumberVerified === undefined
+          ? {}
+          : { phoneNumberVerified: updateData.phoneNumberVerified }),
+      },
     });
 
     await afterDatabaseCommit(async () => {
@@ -372,7 +384,8 @@ async function loadUserForStatusChange(id: string): Promise<User> {
  * Deactivate a user (active → inactive).
  *
  * @param id - User UUID
- * @param actorId - UUID of the user performing the action
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently active
  */
@@ -407,7 +420,8 @@ export async function deactivateUser(
  * Activate a user (inactive → active).
  *
  * @param id - User UUID
- * @param actorId - UUID of the user performing the action
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently inactive
  */
@@ -777,7 +791,8 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
  *
  * @param organizationId - Owning organization UUID.
  * @param userId - User UUID.
- * @param actorId - Actor identifier available for audit attribution.
+ * @param actor - Audit actor, or system when omitted.
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row.
  * @returns The graph captured before PostgreSQL applied its cascade.
  * @throws UserNotFoundError for a missing or mismatched user.
  * @throws UserValidationError when the last active exact super administrator is protected.

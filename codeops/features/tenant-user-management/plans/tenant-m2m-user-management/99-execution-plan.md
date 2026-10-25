@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 19:23
+> **Last Updated**: 2026-10-25 19:35
 > **Progress**: 25/56 tasks (45%)
 > **CodeOps Artifact Schema**: 1
 
@@ -123,6 +123,8 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 **Verification**: Passed — typecheck; 84 focused unit tests; 6 live tenant API tests; 138 structure tests. Full unit 237 files / 3,845 tests and full integration 61 files / 508 tests also pass.
 
+**Review**: Passed after fixes — 9 findings fixed (RV-001, RV-002, RV-003, RV-005, RV-006, SA-007–SA-010); RV-004 accepted as a Phase 5 handoff gate (the route-level live spec substitutes token lookup; one real tenant `client_credentials` cycle remains). Independent re-review resolved; evidence in [05-findings.md](05-findings.md).
+
 ---
 
 ## Phase 3: Delete, lifecycle, and roles
@@ -222,7 +224,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [ ] 5.1.5 Run `yarn docs:build` and `yarn test:structure`; update `repo-tests/monorepo/server-package.spec.test.mjs` and any asserted test-inventory counts if the new test-file inventory changes their expectations, then re-run both gates
 - [ ] 5.1.6 Run `yarn verify`; confirm lint, typecheck, unit, integration, E2E, pentest, SDK, CLI, and structure all pass
 - [ ] 5.1.7 Review findings, update documentation and the ambiguity register if a new decision surfaced, remove temporary artifacts, stop task-owned Docker services, and write the handoff summary with deployment steps
-- [ ] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, full-stop/upgrade ordering for every instance, migration result, and post-migration audit verification.
+- [ ] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one real `client_credentials` create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, full-stop/upgrade ordering for every instance, migration result, and post-migration audit verification.
 
 **Deliverables**:
 - [ ] All security and compatibility gates recorded, including the accepted harness baseline

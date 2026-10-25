@@ -173,6 +173,16 @@ describe('tenant user service implementation', () => {
     expect(repo.insertUser).not.toHaveBeenCalled();
   });
 
+  it('maps a concurrent create unique violation to the typed email conflict', async () => {
+    (repo.insertUser as ReturnType<typeof vi.fn>).mockRejectedValue(
+      Object.assign(new Error('duplicate key'), { code: '23505' }),
+    );
+
+    await expect(
+      createUser({ organizationId: 'org-1', email: 'user@example.test' }),
+    ).rejects.toBeInstanceOf(UserEmailConflictError);
+  });
+
   it('maps a concurrent update unique violation to the typed email conflict', async () => {
     (repo.updateUser as ReturnType<typeof vi.fn>).mockRejectedValue(
       Object.assign(new Error('duplicate key'), { code: '23505' }),
@@ -182,6 +192,25 @@ describe('tenant user service implementation', () => {
       updateUser('user-1', { givenName: 'Updated' }),
     ).rejects.toBeInstanceOf(UserEmailConflictError);
     expect(cache.cacheUser).not.toHaveBeenCalled();
+  });
+
+  it('records explicit verification assertions in the update audit metadata', async () => {
+    await updateUser(
+      'user-1',
+      { emailVerified: true, phoneNumberVerified: false },
+      { kind: 'service', clientId: 'bff-client', clientName: 'Tenant BFF' },
+    );
+
+    expect(writeAuditLogInTransaction).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: 'user.updated',
+        metadata: expect.objectContaining({
+          emailVerified: true,
+          phoneNumberVerified: false,
+        }),
+      }),
+    );
   });
 
   it('keeps the user-not-found mapping for an update', async () => {

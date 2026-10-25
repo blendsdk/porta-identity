@@ -3,7 +3,7 @@
  *
  * The limiter runs after tenant authentication so the counter is keyed by the
  * authenticated organization and service client. Reads are not limited in this
- * slice; writes and permanent deletes have separate budgets.
+ * slice; create, update, and lifecycle writes share the write budget.
  *
  * @module middleware/tenant-user-rate-limiter
  */
@@ -20,15 +20,9 @@ export const TENANT_USER_WRITE_RATE_LIMIT: RateLimitConfig = {
   windowSeconds: 3600,
 };
 
-/** Permanent-delete budget for one client and organization per hour. */
-export const TENANT_USER_DELETE_RATE_LIMIT: RateLimitConfig = {
-  max: 60,
-  windowSeconds: 3600,
-};
-
 /** Build the Redis key for one limiter bucket. */
 function rateLimitKey(
-  bucket: 'write' | 'delete',
+  bucket: 'write',
   actor: Extract<TenantActor, { kind: 'service' | 'user' }>,
 ): string {
   return actor.kind === 'service'
@@ -37,7 +31,7 @@ function rateLimitKey(
 }
 
 /** Create one tenant user limiter for the requested bucket. */
-function createLimiter(bucket: 'write' | 'delete', config: RateLimitConfig): Middleware {
+function createLimiter(bucket: 'write', config: RateLimitConfig): Middleware {
   return async function tenantUserRateLimiterMiddleware(ctx, next) {
     const actor = ctx.state.tenantActor;
     if (!actor) return next();
@@ -69,9 +63,4 @@ function createLimiter(bucket: 'write' | 'delete', config: RateLimitConfig): Mid
 /** Limit tenant user create, update, lifecycle, and role writes. */
 export function tenantUserWriteRateLimiter(): Middleware {
   return createLimiter('write', TENANT_USER_WRITE_RATE_LIMIT);
-}
-
-/** Limit permanent tenant user deletes. */
-export function tenantUserDeleteRateLimiter(): Middleware {
-  return createLimiter('delete', TENANT_USER_DELETE_RATE_LIMIT);
 }
