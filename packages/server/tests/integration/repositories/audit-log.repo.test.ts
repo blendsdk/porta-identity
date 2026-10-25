@@ -166,13 +166,13 @@ describe('Audit Log Repository (Integration)', () => {
 
     // Insert entries with controlled timestamps
     await pool.query(
-      `INSERT INTO audit_log (organization_id, event_type, event_category, created_at)
-       VALUES ($1, 'old.event', 'test', NOW() - INTERVAL '2 days')`,
+      `INSERT INTO audit_log (organization_id, actor_type, event_type, event_category, created_at)
+       VALUES ($1, 'system', 'old.event', 'test', NOW() - INTERVAL '2 days')`,
       [orgId],
     );
     await pool.query(
-      `INSERT INTO audit_log (organization_id, event_type, event_category, created_at)
-       VALUES ($1, 'recent.event', 'test', NOW())`,
+      `INSERT INTO audit_log (organization_id, actor_type, event_type, event_category, created_at)
+       VALUES ($1, 'system', 'recent.event', 'test', NOW())`,
       [orgId],
     );
 

@@ -648,10 +648,10 @@ export async function consumeAuthorizedMagicLink(
 
     await client.query(
       `INSERT INTO audit_log (
-         organization_id, user_id, event_type, event_category, description,
-         metadata, ip_address
+         organization_id, user_id, actor_id, actor_type,
+         event_type, event_category, description, metadata, ip_address
        )
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       VALUES ($1, $2, $2, 'user', $3, $4, $5, $6, $7)`,
       [
         input.organizationId,
         token.userId,

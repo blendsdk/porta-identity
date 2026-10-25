@@ -238,8 +238,8 @@ async function writeExportAudit(
   if (options.actorId === undefined) return;
   await client.query(
     `INSERT INTO audit_log (
-       organization_id, actor_id, event_type, event_category, metadata
-     ) VALUES ($1, $2, 'admin.export', 'admin', $3)`,
+       organization_id, actor_id, actor_type, event_type, event_category, metadata
+     ) VALUES ($1, $2, 'user', 'admin.export', 'admin', $3)`,
     [
       options.organizationId ?? null,
       options.actorId,
