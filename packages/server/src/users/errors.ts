@@ -30,3 +30,16 @@ export class UserValidationError extends Error {
     this.name = 'UserValidationError';
   }
 }
+
+/**
+ * Thrown when a create would duplicate an email already owned by the organization.
+ *
+ * The Admin route keeps its historical `400` response; the tenant route maps
+ * this conflict to `409`.
+ */
+export class UserEmailConflictError extends Error {
+  constructor() {
+    super('Email already exists in this organization');
+    this.name = 'UserEmailConflictError';
+  }
+}

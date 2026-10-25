@@ -127,7 +127,7 @@ Porta uses [pino](https://github.com/pinojs/pino) for structured logging:
 | `production`  | JSON (one line per entry)    | Machine-parseable for log aggregators |
 | `test`        | Silent                       | No log output                         |
 
-Covered administrative and public-authentication requests also emit one terminal
+Covered administrative, tenant, and public-authentication requests also emit one terminal
 `security.decision.v1` record. It contains a server-generated request ID, normalized route
 template, final status/outcome, and a closed decision reason. Raw paths, query strings, request
 bodies, credentials, cookies, email addresses, network addresses, user agents, and error details

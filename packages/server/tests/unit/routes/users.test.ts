@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { User } from '../../../src/users/types.js';
-import { UserNotFoundError, UserValidationError } from '../../../src/users/errors.js';
+import { UserEmailConflictError, UserNotFoundError } from '../../../src/users/errors.js';
 
 // Mock all dependencies before importing the module under test
 vi.mock('../../../src/users/service.js', () => ({
@@ -42,6 +42,20 @@ vi.mock('../../../src/organizations/service.js', () => ({
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
+  inviteActorToAuditActor: () => ({ kind: 'system' }),
+  auditActorColumns: () => ({
+    actorType: 'system',
+    actorClientId: null,
+    actorClientName: null,
+  }),
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: vi.fn(() => ({ query: vi.fn().mockResolvedValue({ rows: [] }) })),
+  afterDatabaseCommit: (fn: () => Promise<void> | void) => fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
 }));
 
 // Mock config so the invite URL uses a deterministic, trusted base URL.
@@ -67,7 +81,10 @@ vi.mock('../../../src/lib/entity-history.js', () => ({
 import * as userService from '../../../src/users/service.js';
 import * as emailService from '../../../src/auth/email-service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
-import { createUserRouter } from '../../../src/routes/users.js';
+import {
+  createStandaloneUserRouter,
+  createUserRouter,
+} from '../../../src/routes/users.js';
 
 /** Standard test user */
 function createTestUser(overrides: Partial<User> = {}): User {
@@ -118,11 +135,19 @@ function createMockCtx(
 ) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
+  const headers: Record<string, string> = {};
 
   const ctx = {
     params: { orgId: 'org-uuid-1', ...(overrides.params ?? {}) },
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
+    ip: '127.0.0.1',
+    get(field: string) {
+      return headers[field.toLowerCase()] ?? '';
+    },
+    set(field: string, value: string) {
+      headers[field.toLowerCase()] = value;
+    },
     get status() {
       return statusCode;
     },
@@ -203,13 +228,19 @@ describe('user routes', () => {
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '');
       const ctx = createMockCtx({
-        body: { email: 'john@example.com', phoneNumberVerified: true },
+        body: {
+          email: 'john@example.com',
+          phoneNumber: '+15555550123',
+          phoneNumberVerified: true,
+        },
       });
 
       await exec(layer!, ctx);
 
       expect(userService.createUser).toHaveBeenCalledWith(
         expect.objectContaining({ phoneNumberVerified: true }),
+        { kind: 'user', userId: 'admin-uuid-1' },
+        expect.objectContaining({ ipAddress: '127.0.0.1' }),
       );
       expect(ctx.status).toBe(201);
     });
@@ -227,14 +258,16 @@ describe('user routes', () => {
 
     it('should return 400 for duplicate email', async () => {
       (userService.createUser as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new UserValidationError('Email already exists in this organization'),
+        new UserEmailConflictError(),
       );
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '');
       const ctx = createMockCtx({ body: { email: 'john@example.com' } });
 
-      await expect(exec(layer!, ctx)).rejects.toThrow('User request is invalid');
+      await exec(layer!, ctx);
+      expect(ctx.status).toBe(400);
+      expect(ctx.body).toEqual({ error: 'User already exists in this organization' });
     });
   });
 
@@ -390,7 +423,11 @@ describe('user routes', () => {
 
       await exec(layer!, ctx);
 
-      expect(userService.activateUser).toHaveBeenCalledWith('user-uuid-1');
+      expect(userService.activateUser).toHaveBeenCalledWith(
+        'user-uuid-1',
+        { kind: 'user', userId: 'admin-uuid-1' },
+        expect.objectContaining({ ipAddress: '127.0.0.1' }),
+      );
       expect(ctx.status).toBe(204);
     });
   });
@@ -467,6 +504,31 @@ describe('user routes', () => {
   // The invite and preview URLs must be absolute — prefixed with the trusted
   // config.issuerBaseUrl — so the email link includes the server origin.
   // -------------------------------------------------------------------------
+
+  describe('standalone Admin update actor', () => {
+    it('should attribute the standalone update to the authenticated administrator', async () => {
+      const user = createTestUser({ givenName: 'Jane' });
+      (userService.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      const router = createStandaloneUserRouter();
+      const layer = router.stack.find(
+        (candidate) =>
+          candidate.methods.includes('PUT') && candidate.path === '/api/admin/users/:userId',
+      );
+      const ctx = createMockCtx({
+        params: { userId: 'user-uuid-1' },
+        body: { givenName: 'Jane' },
+      });
+
+      await layer!.stack[layer!.stack.length - 1](ctx as never, vi.fn());
+
+      expect(userService.updateUser).toHaveBeenCalledWith(
+        'user-uuid-1',
+        expect.objectContaining({ givenName: 'Jane' }),
+        { kind: 'user', userId: 'admin-uuid-1' },
+        expect.objectContaining({ ipAddress: '127.0.0.1' }),
+      );
+    });
+  });
 
   describe('Specification: Invitation URL', () => {
     const mockOrg = {

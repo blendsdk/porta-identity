@@ -19,13 +19,18 @@ vi.mock('../../../src/rbac/mapping-repository.js', () => ({
   lockUserRoleTargets: vi.fn(),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: vi.fn(),
-  writeAuditLogInTransaction: vi.fn(),
-}));
+vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/audit-log.js')>();
+  return {
+    ...actual,
+    writeAuditLog: vi.fn(),
+    writeAuditLogInTransaction: vi.fn(),
+  };
+});
 
 vi.mock('../../../src/lib/database.js', () => ({
   getDatabaseTransactionClient: vi.fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
 }));
 
 vi.mock('../../../src/lib/deletion-cleanup.js', () => ({
@@ -55,7 +60,6 @@ import {
   getPermissionsForOrganizationUser as mockGetOrganizationPermissions,
   lockUserRoleTargets as mockLockTargets,
 } from '../../../src/rbac/mapping-repository.js';
-import { writeAuditLog as mockAuditLog } from '../../../src/lib/audit-log.js';
 import { writeAuditLogInTransaction as mockTransactionalAudit } from '../../../src/lib/audit-log.js';
 import { getDatabaseTransactionClient } from '../../../src/lib/database.js';
 import { registerAuthorityCleanup as mockAuthorityCleanup } from '../../../src/lib/deletion-cleanup.js';
@@ -115,7 +119,6 @@ beforeEach(() => {
   // Reset default mock return values
   vi.mocked(mockRepoAssign).mockResolvedValue(['role-uuid-1']);
   vi.mocked(mockRepoRemove).mockResolvedValue(['role-uuid-1']);
-  vi.mocked(mockAuditLog).mockResolvedValue(undefined);
   vi.mocked(mockTransactionalAudit).mockResolvedValue(undefined);
   vi.mocked(getDatabaseTransactionClient).mockReturnValue({ query: vi.fn() } as never);
   vi.mocked(mockAuthorityCleanup).mockResolvedValue(undefined);
@@ -143,7 +146,12 @@ describe('assignRolesToUser', () => {
       assignedRoleIds: [],
     });
     vi.mocked(mockRepoAssign).mockResolvedValue(['role-1', 'role-2']);
-    await assignRolesToUser('org-1', 'user-1', ['role-1', 'role-2'], 'admin-1');
+    await assignRolesToUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-1', 'role-2'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockRepoAssign).toHaveBeenCalledWith('org-1', 'user-1', ['role-1', 'role-2'], 'admin-1');
     expect(mockAuthorityCleanup).toHaveBeenCalledWith({
@@ -155,17 +163,29 @@ describe('assignRolesToUser', () => {
   });
 
   it('should do nothing when roleIds is empty', async () => {
-    await assignRolesToUser('org-1', 'user-1', [], 'admin-1');
+    await assignRolesToUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: [],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockRepoAssign).not.toHaveBeenCalled();
     expect(mockAuthorityCleanup).not.toHaveBeenCalled();
   });
 
   it('should write audit log with userId and actorId', async () => {
-    await assignRolesToUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+    await assignRolesToUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-uuid-1'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
-    expect(mockAuditLog).toHaveBeenCalledWith(
+    expect(mockTransactionalAudit).toHaveBeenCalledWith(
+      expect.anything(),
       expect.objectContaining({
+        organizationId: 'org-1',
         eventType: 'user.roles.assigned',
         eventCategory: 'admin',
         userId: 'user-1',
@@ -177,16 +197,26 @@ describe('assignRolesToUser', () => {
   it('should not schedule cleanup or audit for an existing assignment', async () => {
     vi.mocked(mockRepoAssign).mockResolvedValue([]);
 
-    await assignRolesToUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+    await assignRolesToUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-uuid-1'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockAuthorityCleanup).not.toHaveBeenCalled();
-    expect(mockAuditLog).not.toHaveBeenCalled();
+    expect(mockTransactionalAudit).not.toHaveBeenCalled();
   });
 });
 
 describe('removeRolesFromUser', () => {
   it('locks the control-plane organization before the target user and roles', async () => {
-    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+    await removeRolesFromUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-uuid-1'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockLockControlPlaneOrganization).toHaveBeenCalledWith('org-1');
     expect(mockLockControlPlaneOrganization.mock.invocationCallOrder[0]).toBeLessThan(
@@ -195,7 +225,12 @@ describe('removeRolesFromUser', () => {
   });
 
   it('should remove roles and revoke only the affected user', async () => {
-    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+    await removeRolesFromUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-uuid-1'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockRevokeAuthority).toHaveBeenCalledWith(['user-1']);
     expect(mockRepoRemove).toHaveBeenCalledWith('org-1', 'user-1', ['role-uuid-1']);
@@ -205,18 +240,29 @@ describe('removeRolesFromUser', () => {
   });
 
   it('should do nothing when roleIds is empty', async () => {
-    await removeRolesFromUser('org-1', 'user-1', [], 'admin-1');
+    await removeRolesFromUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: [],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockRepoRemove).not.toHaveBeenCalled();
     expect(mockAuthorityCleanup).not.toHaveBeenCalled();
   });
 
   it('should write audit log', async () => {
-    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+    await removeRolesFromUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-uuid-1'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockTransactionalAudit).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        organizationId: 'org-1',
         eventType: 'user.roles.removed',
         userId: 'user-1',
         actorId: 'admin-1',
@@ -232,7 +278,12 @@ describe('removeRolesFromUser', () => {
     });
 
     await expect(
-      removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1'),
+      removeRolesFromUser({
+        organizationId: 'org-1',
+        userId: 'user-1',
+        roleIds: ['role-uuid-1'],
+        actor: { kind: 'user', userId: 'admin-1' },
+      }),
     ).resolves.toEqual({ reauthenticationRequired: false });
     expect(mockRevokeAuthority).not.toHaveBeenCalled();
     expect(mockRepoRemove).not.toHaveBeenCalled();
@@ -254,7 +305,12 @@ describe('removeRolesFromUser', () => {
       assignedRoleIds: ['role-uuid-1'],
     });
 
-    await removeRolesFromUser('org-1', 'user-1', ['role-uuid-1'], 'admin-1');
+    await removeRolesFromUser({
+      organizationId: 'org-1',
+      userId: 'user-1',
+      roleIds: ['role-uuid-1'],
+      actor: { kind: 'user', userId: 'admin-1' },
+    });
 
     expect(mockRequireSurvivor).toHaveBeenCalledWith('org-1', 'user-1');
     expect(mockRequireSurvivor.mock.invocationCallOrder[0]).toBeLessThan(

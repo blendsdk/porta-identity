@@ -42,6 +42,8 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(() => ({ query: poolQuery })),
   afterDatabaseCommit: (fn: () => Promise<void> | void) => fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: poolQuery }),
 }));
 
 vi.mock('../../../src/auth/i18n.js', () => ({
@@ -72,7 +74,41 @@ vi.mock('../../../src/users/password.js', () => ({
   validatePassword: vi.fn().mockReturnValue({ isValid: true }),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({ writeAuditLog: vi.fn() }));
+vi.mock('../../../src/lib/audit-log.js', () => ({
+  writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
+  inviteActorToAuditActor: (actor: {
+    kind: 'admin' | 'user' | 'service';
+    userId?: string;
+    clientId?: string;
+    displayName: string;
+  }) =>
+    actor.kind === 'service' && actor.clientId
+      ? { kind: 'service', clientId: actor.clientId, clientName: actor.displayName }
+      : actor.userId
+        ? { kind: 'user', userId: actor.userId }
+        : { kind: 'system' },
+  auditActorColumns: (actor: {
+    kind: 'user' | 'service' | 'system';
+    userId?: string;
+    clientId?: string;
+    clientName?: string;
+  }) =>
+    actor.kind === 'service'
+      ? {
+          actorType: 'client',
+          actorClientId: actor.clientId,
+          actorClientName: actor.clientName,
+        }
+      : actor.kind === 'user'
+        ? {
+            actorId: actor.userId,
+            actorType: 'user',
+            actorClientId: null,
+            actorClientName: null,
+          }
+        : { actorType: 'system', actorClientId: null, actorClientName: null },
+}));
 
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -310,8 +346,8 @@ describe('deferred invitation routes', () => {
       await exec(inviteLayer()!, ctx);
 
       const invitedCall = vi
-        .mocked(auditLog.writeAuditLog)
-        .mock.calls.map((call) => call[0])
+        .mocked(auditLog.writeAuditLogInTransaction)
+        .mock.calls.map((call) => call[1])
         .find((entry) => entry.eventType === 'user.invited');
       expect(invitedCall).toBeDefined();
       expect(invitedCall).toMatchObject({

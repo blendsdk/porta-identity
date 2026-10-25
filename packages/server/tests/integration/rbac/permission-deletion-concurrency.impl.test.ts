@@ -62,7 +62,12 @@ describe('permission deletion capture locking', () => {
         'SELECT pg_backend_pid() AS "processId"',
       );
       assignmentBackend.resolve(process.rows[0]!.processId);
-      await assignRolesToUser(organization.id, user.id, [role.id], user.id);
+      await assignRolesToUser({
+        organizationId: organization.id,
+        userId: user.id,
+        roleIds: [role.id],
+        actor: { kind: 'user', userId: user.id },
+      });
     });
 
     try {

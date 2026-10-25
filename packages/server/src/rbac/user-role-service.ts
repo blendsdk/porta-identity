@@ -22,10 +22,10 @@ import {
   getPermissionsForOrganizationUser,
   lockUserRoleTargets,
 } from './mapping-repository.js';
-import { writeAuditLog } from '../lib/audit-log.js';
+import { auditFields, writeAuditLogInTransaction } from '../lib/audit-log.js';
+import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import type { Role, Permission, UserRole } from './types.js';
-import { getDatabaseTransactionClient } from '../lib/database.js';
-import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
 import { registerAuthorityCleanup } from '../lib/deletion-cleanup.js';
 import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
 import { getApplicationBySlug } from '../applications/service.js';
@@ -34,7 +34,7 @@ import {
   getPermissionsForAdminRole,
   resolvePermissionsFromRoles,
 } from '../lib/admin-permissions.js';
-import { RoleDelegationError, RoleNotFoundError } from './errors.js';
+import { RoleApplicationBoundaryError, RoleDelegationError, RoleNotFoundError } from './errors.js';
 import { UserNotFoundError } from '../users/errors.js';
 import {
   lockControlPlaneOrganization,
@@ -43,6 +43,40 @@ import {
 
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
 
+/** Inputs for one user-role mutation. */
+export interface UserRoleMutationOptions {
+  /** Authoritative organization UUID. */
+  readonly organizationId: string;
+  /** Target user UUID. */
+  readonly userId: string;
+  /** Requested role UUIDs. */
+  readonly roleIds: readonly string[];
+  /** Audit actor requesting the mutation. */
+  readonly actor: AuditActor;
+  /** Tenant application boundary; absent for Admin and internal callers. */
+  readonly allowedApplicationId?: string;
+  /** Trusted request metadata for the audit row. */
+  readonly auditContext?: AuditRequestContext;
+}
+
+/** Reject a system actor and enforce the tenant application boundary. */
+function requireRoleActorBoundary(
+  actor: AuditActor,
+  targets: ValidatedUserRoleTargets,
+  allowedApplicationId: string | undefined,
+): void {
+  if (actor.kind === 'system') throw new RoleDelegationError();
+  if (!allowedApplicationId) return;
+  for (const role of targets.roles) {
+    if (
+      role.applicationId !== allowedApplicationId ||
+      role.applicationId === targets.adminApplicationId
+    ) {
+      throw new RoleApplicationBoundaryError();
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Assignment management
 // ---------------------------------------------------------------------------
@@ -50,101 +84,109 @@ const ADMIN_APPLICATION_SLUG = 'porta-admin';
 /**
  * Assign roles to a user (bulk).
  *
- * Uses ON CONFLICT DO NOTHING for idempotent assignment. Invalidates
- * the user's RBAC cache since their effective permissions may change.
+ * Uses ON CONFLICT DO NOTHING for idempotent assignment. The service owns
+ * the transaction so the assignment and audit row commit together. Admin
+ * callers keep the delegation ceiling; tenant service actors are bounded to
+ * their application and write `assigned_by = NULL`.
  *
- * @param organizationId - Authoritative organization UUID
- * @param userId - User UUID
- * @param roleIds - Array of role UUIDs to assign
- * @param assignedBy - UUID of the admin performing the assignment
+ * @param options - Organization, target user, roles, actor, and tenant boundary
  */
-export async function assignRolesToUser(
-  organizationId: string,
-  userId: string,
-  roleIds: string[],
-  assignedBy: string,
-): Promise<void> {
-  if (roleIds.length === 0) return;
-  if (!getDatabaseTransactionClient()) {
-    throw new Error('User role assignment requires an active database transaction');
-  }
-  const targets = await requireUserRoleTargets(organizationId, userId, roleIds);
-  await requireDelegableRoles(targets.roles, assignedBy, targets.adminApplicationId);
+export async function assignRolesToUser(options: UserRoleMutationOptions): Promise<void> {
+  const { organizationId, userId, roleIds, actor, allowedApplicationId, auditContext } = options;
+  const requestedRoleIds = [...new Set(roleIds)];
+  if (requestedRoleIds.length === 0) return;
 
-  const insertedRoleIds = await repoAssignRoles(organizationId, userId, roleIds, assignedBy);
-  if (insertedRoleIds.length === 0) return;
-  await registerAuthorityCleanup({
-    userIds: [userId],
-    grantIds: [],
-    roleIds: [],
-    revokeOidcState: false,
-  });
+  await runDatabaseTransaction(async () => {
+    const targets = await requireUserRoleTargets(organizationId, userId, requestedRoleIds);
+    requireRoleActorBoundary(actor, targets, allowedApplicationId);
+    if (actor.kind === 'user' && !allowedApplicationId) {
+      await requireDelegableRoles(targets.roles, actor.userId, targets.adminApplicationId);
+    }
 
-  // Audit log (fire-and-forget)
-  void writeAuditLog({
-    eventType: 'user.roles.assigned',
-    eventCategory: 'admin',
-    userId,
-    actorId: assignedBy,
-    metadata: { organizationId, roleIds: insertedRoleIds },
+    const assignedBy = actor.kind === 'user' ? actor.userId : undefined;
+    const insertedRoleIds = await repoAssignRoles(
+      organizationId,
+      userId,
+      requestedRoleIds,
+      assignedBy,
+    );
+    if (insertedRoleIds.length === 0) return;
+
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('User role assignment requires an active transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId,
+      eventType: 'user.roles.assigned',
+      eventCategory: 'admin',
+      userId,
+      ...auditFields(actor, auditContext),
+      metadata: { organizationId, roleIds: insertedRoleIds },
+    });
+    await registerAuthorityCleanup({
+      userIds: [userId],
+      grantIds: [],
+      roleIds: [],
+      revokeOidcState: false,
+    });
   });
 }
 
 /**
  * Remove roles from a user (bulk).
  *
- * Invalidates the user's RBAC cache since their effective permissions
- * may change.
+ * Owns the transaction so the removal and audit row commit together.
+ * Tenant service actors are bounded to their application; Admin user actors
+ * keep the canonical survivor guard.
  *
- * @param organizationId - Authoritative organization UUID
- * @param userId - User UUID
- * @param roleIds - Array of role UUIDs to remove
- * @param actorId - UUID of the admin performing the action
+ * @param options - Organization, target user, roles, actor, and tenant boundary
  * @returns Whether the actor must authenticate again
  */
 export async function removeRolesFromUser(
-  organizationId: string,
-  userId: string,
-  roleIds: string[],
-  actorId: string,
+  options: UserRoleMutationOptions,
 ): Promise<{ reauthenticationRequired: boolean }> {
+  const { organizationId, userId, roleIds, actor, allowedApplicationId, auditContext } = options;
   if (roleIds.length === 0) return { reauthenticationRequired: false };
-  const transaction = getDatabaseTransactionClient();
-  if (!transaction) {
-    throw new Error('User role removal requires an active database transaction');
-  }
-  await lockControlPlaneOrganization(organizationId);
-  const targets = await requireUserRoleTargets(organizationId, userId, roleIds);
-  if (targets.assignedRoleIds.length === 0) return { reauthenticationRequired: false };
 
-  const removesExactSuperAdmin = targets.roles.some(
-    (role) =>
-      targets.assignedRoleIds.includes(role.id) &&
-      role.applicationId === targets.adminApplicationId &&
-      role.slug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
-  );
-  if (targets.user.status === 'active' && removesExactSuperAdmin) {
-    await requireActiveSuperAdminSurvivor(organizationId, userId);
-  }
+  return runDatabaseTransaction(async () => {
+    await lockControlPlaneOrganization(organizationId);
+    const targets = await requireUserRoleTargets(organizationId, userId, [...roleIds]);
+    requireRoleActorBoundary(actor, targets, allowedApplicationId);
+    if (targets.assignedRoleIds.length === 0) return { reauthenticationRequired: false };
 
-  const revoked = await revokeAffectedAuthorityInTransaction([userId]);
-  const removedRoleIds = await repoRemoveRoles(organizationId, userId, [
-    ...targets.assignedRoleIds,
-  ]);
-  await writeAuditLogInTransaction(transaction, {
-    eventType: 'user.roles.removed',
-    eventCategory: 'admin',
-    userId,
-    actorId,
-    metadata: { organizationId, roleIds: removedRoleIds },
+    const removesExactSuperAdmin = targets.roles.some(
+      (role) =>
+        targets.assignedRoleIds.includes(role.id) &&
+        role.applicationId === targets.adminApplicationId &&
+        role.slug === ADMIN_ROLE_DEFINITIONS.SUPER_ADMIN.slug,
+    );
+    if (targets.user.status === 'active' && removesExactSuperAdmin) {
+      await requireActiveSuperAdminSurvivor(organizationId, userId);
+    }
+
+    const revoked = await revokeAffectedAuthorityInTransaction([userId]);
+    const removedRoleIds = await repoRemoveRoles(organizationId, userId, [
+      ...targets.assignedRoleIds,
+    ]);
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('User role removal requires an active transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId,
+      eventType: 'user.roles.removed',
+      eventCategory: 'admin',
+      userId,
+      ...auditFields(actor, auditContext),
+      metadata: { organizationId, roleIds: removedRoleIds },
+    });
+    await registerAuthorityCleanup({
+      userIds: [userId],
+      grantIds: revoked.grantIds,
+      roleIds: [],
+      revokeOidcState: true,
+    });
+    return {
+      reauthenticationRequired: actor.kind === 'user' && actor.userId === userId,
+    };
   });
-  await registerAuthorityCleanup({
-    userIds: [userId],
-    grantIds: revoked.grantIds,
-    roleIds: [],
-    revokeOidcState: true,
-  });
-  return { reauthenticationRequired: actorId === userId };
 }
 
 // ---------------------------------------------------------------------------
@@ -156,10 +198,17 @@ export async function removeRolesFromUser(
  *
  * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
+ * @param applicationId - Optional application filter; omit to return every application
  * @returns Array of Role objects
  */
-export async function getUserRoles(organizationId: string, userId: string): Promise<Role[]> {
-  return getRolesForOrganizationUser(organizationId, userId);
+export async function getUserRoles(
+  organizationId: string,
+  userId: string,
+  applicationId?: string,
+): Promise<Role[]> {
+  return applicationId
+    ? getRolesForOrganizationUser(organizationId, userId, applicationId)
+    : getRolesForOrganizationUser(organizationId, userId);
 }
 
 /** Read all roles for internal authority resolution without a route parent. */
@@ -172,13 +221,17 @@ export async function getUserRolesForAuthority(userId: string): Promise<Role[]> 
  *
  * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
+ * @param applicationId - Optional application filter; omit to return every application
  * @returns Deduplicated array of Permission objects
  */
 export async function getUserPermissions(
   organizationId: string,
   userId: string,
+  applicationId?: string,
 ): Promise<Permission[]> {
-  return getPermissionsForOrganizationUser(organizationId, userId);
+  return applicationId
+    ? getPermissionsForOrganizationUser(organizationId, userId, applicationId)
+    : getPermissionsForOrganizationUser(organizationId, userId);
 }
 
 /**

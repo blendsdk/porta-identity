@@ -18,11 +18,12 @@
  *   - automatic lockout: active → locked → active after the configured cooldown
  */
 
-import { writeAuditLog } from '../lib/audit-log.js';
+import { auditFields, writeAuditLog } from '../lib/audit-log.js';
+import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { cacheUser, getCachedUserById, invalidateUserCache } from './cache.js';
-import { UserNotFoundError, UserValidationError } from './errors.js';
+import { UserEmailConflictError, UserNotFoundError, UserValidationError } from './errors.js';
 import {
   ensureDummyPasswordHash,
   hashPassword,
@@ -48,7 +49,11 @@ import {
   deleteCapturedUser,
 } from './repository.js';
 import type { UserDeletionCapture } from './repository.js';
-import { getDatabaseTransactionClient } from '../lib/database.js';
+import {
+  afterDatabaseCommit,
+  getDatabaseTransactionClient,
+  runDatabaseTransaction,
+} from '../lib/database.js';
 import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 import type {
@@ -61,6 +66,16 @@ import type {
 
 /** Fixed UUID that can never identify a persisted account. */
 const NON_ACCOUNT_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+/** Return whether a PostgreSQL error is a unique-constraint violation. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code?: unknown }).code === '23505'
+  );
+}
 
 /** Production boundaries used by fixed-shape password verification. */
 export interface LoginPasswordVerificationDependencies {
@@ -87,25 +102,24 @@ export interface PasswordFailureDependencies {
 /**
  * Create a new user in an organization.
  *
- * 1. Validates email uniqueness within the organization
- * 2. Validates and hashes password if provided
- * 3. Inserts user via repository
- * 4. Caches the new user
- * 5. Writes audit log entry
+ * 1. Validates and hashes the password if provided
+ * 2. Opens the service-owned transaction and validates email uniqueness
+ * 3. Inserts the user through the transaction
+ * 4. Writes the transaction-bound audit row
+ * 5. Caches the new user after commit
  *
  * @param input - User creation data (password is plaintext, will be hashed)
- * @param actorId - UUID of the user performing the action (for audit)
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @returns Created user
- * @throws UserValidationError if email exists or password invalid
+ * @throws UserEmailConflictError if the email already exists in the organization
+ * @throws UserValidationError if the password is invalid
  */
-export async function createUser(input: CreateUserInput, actorId?: string): Promise<User> {
-  // Check for duplicate email in the organization
-  const exists = await emailExists(input.organizationId, input.email);
-  if (exists) {
-    throw new UserValidationError('Email already exists in this organization');
-  }
-
-  // Hash password if provided
+export async function createUser(
+  input: CreateUserInput,
+  actor?: AuditActor,
+  auditContext?: AuditRequestContext,
+): Promise<User> {
   let passwordHash: string | null = null;
   if (input.password) {
     const validation = validatePassword(input.password);
@@ -115,45 +129,61 @@ export async function createUser(input: CreateUserInput, actorId?: string): Prom
     passwordHash = await hashPassword(input.password);
   }
 
-  // Insert into database
-  const user = await insertUser({
-    organizationId: input.organizationId,
-    email: input.email,
-    passwordHash,
-    givenName: input.givenName,
-    familyName: input.familyName,
-    middleName: input.middleName,
-    nickname: input.nickname,
-    preferredUsername: input.preferredUsername,
-    profileUrl: input.profileUrl,
-    pictureUrl: input.pictureUrl,
-    websiteUrl: input.websiteUrl,
-    gender: input.gender,
-    birthdate: input.birthdate,
-    zoneinfo: input.zoneinfo,
-    locale: input.locale,
-    phoneNumber: input.phoneNumber,
-    phoneNumberVerified: input.phoneNumberVerified,
-    addressStreet: input.address?.street,
-    addressLocality: input.address?.locality,
-    addressRegion: input.address?.region,
-    addressPostalCode: input.address?.postalCode,
-    addressCountry: input.address?.country,
+  return runDatabaseTransaction(async () => {
+    const exists = await emailExists(input.organizationId, input.email);
+    if (exists) throw new UserEmailConflictError();
+
+    let user: User;
+    try {
+      user = await insertUser({
+        organizationId: input.organizationId,
+        email: input.email,
+        passwordHash,
+        emailVerified: input.emailVerified,
+        givenName: input.givenName,
+        familyName: input.familyName,
+        middleName: input.middleName,
+        nickname: input.nickname,
+        preferredUsername: input.preferredUsername,
+        profileUrl: input.profileUrl,
+        pictureUrl: input.pictureUrl,
+        websiteUrl: input.websiteUrl,
+        gender: input.gender,
+        birthdate: input.birthdate,
+        zoneinfo: input.zoneinfo,
+        locale: input.locale,
+        phoneNumber: input.phoneNumber,
+        phoneNumberVerified: input.phoneNumberVerified,
+        addressStreet: input.address?.street,
+        addressLocality: input.address?.locality,
+        addressRegion: input.address?.region,
+        addressPostalCode: input.address?.postalCode,
+        addressCountry: input.address?.country,
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new UserEmailConflictError();
+      throw error;
+    }
+
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('User creation requires an active database transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId: user.organizationId,
+      userId: user.id,
+      ...auditFields(actor, auditContext),
+      eventType: 'user.created',
+      eventCategory: 'admin',
+      metadata: {
+        userId: user.id,
+        email: user.email,
+        emailVerified: user.emailVerified,
+        phoneNumberVerified: user.phoneNumberVerified,
+      },
+    });
+
+    await afterDatabaseCommit(() => cacheUser(user));
+    return user;
   });
-
-  // Cache the new user
-  await cacheUser(user);
-
-  // Audit log (fire-and-forget)
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.created',
-    eventCategory: 'admin',
-    metadata: { userId: user.id, email: user.email },
-  });
-
-  return user;
 }
 
 // ---------------------------------------------------------------------------
@@ -205,29 +235,18 @@ export async function getUserByEmail(orgId: string, email: string): Promise<User
  *
  * @param id - User UUID
  * @param input - Fields to update
- * @param actorId - UUID of the user performing the action
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @returns Updated user
- * @throws UserNotFoundError if user not found
- * @throws UserValidationError if new email already exists in org
+ * @throws UserNotFoundError if the user does not exist
+ * @throws UserEmailConflictError if a new email already exists in the organization
  */
 export async function updateUser(
   id: string,
   input: UpdateUserInput,
-  actorId?: string,
+  actor?: AuditActor,
+  auditContext?: AuditRequestContext,
 ): Promise<User> {
-  // If email is being changed, verify uniqueness
-  if (input.email !== undefined) {
-    // We need the current user to know the org ID
-    const current = await repoFindById(id);
-    if (!current) throw new UserNotFoundError(id);
-
-    const taken = await emailExists(current.organizationId, input.email, id);
-    if (taken) {
-      throw new UserValidationError('Email already exists in this organization');
-    }
-  }
-
-  // Build update data from input
   const updateData: UpdateUserData = {};
   if (input.email !== undefined) updateData.email = input.email;
   if (input.emailVerified !== undefined) updateData.emailVerified = input.emailVerified;
@@ -247,7 +266,6 @@ export async function updateUser(
   if (input.phoneNumberVerified !== undefined)
     updateData.phoneNumberVerified = input.phoneNumberVerified;
 
-  // Flatten address fields from nested input
   if (input.address) {
     if (input.address.street !== undefined) updateData.addressStreet = input.address.street;
     if (input.address.locality !== undefined) updateData.addressLocality = input.address.locality;
@@ -257,30 +275,52 @@ export async function updateUser(
     if (input.address.country !== undefined) updateData.addressCountry = input.address.country;
   }
 
-  let user: User;
-  try {
-    user = await repoUpdate(id, updateData);
-  } catch (err) {
-    if (err instanceof Error && err.message === 'User not found') {
-      throw new UserNotFoundError(id);
+  return runDatabaseTransaction(async () => {
+    if (input.email !== undefined) {
+      const current = await repoFindById(id);
+      if (!current) throw new UserNotFoundError(id);
+
+      const taken = await emailExists(current.organizationId, input.email, id);
+      if (taken) throw new UserEmailConflictError();
     }
-    throw err;
-  }
 
-  // Invalidate old cache and re-cache the updated version
-  await invalidateUserCache(user.id);
-  await cacheUser(user);
+    let user: User;
+    try {
+      user = await repoUpdate(id, updateData);
+    } catch (error) {
+      if (isUniqueViolation(error)) throw new UserEmailConflictError();
+      if (error instanceof Error && error.message === 'User not found') {
+        throw new UserNotFoundError(id);
+      }
+      throw error;
+    }
 
-  // Audit log (fire-and-forget)
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.updated',
-    eventCategory: 'admin',
-    metadata: { userId: user.id, fields: Object.keys(updateData) },
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('User update requires an active database transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId: user.organizationId,
+      userId: user.id,
+      ...auditFields(actor, auditContext),
+      eventType: 'user.updated',
+      eventCategory: 'admin',
+      metadata: {
+        userId: user.id,
+        fields: Object.keys(updateData),
+        ...(updateData.emailVerified === undefined
+          ? {}
+          : { emailVerified: updateData.emailVerified }),
+        ...(updateData.phoneNumberVerified === undefined
+          ? {}
+          : { phoneNumberVerified: updateData.phoneNumberVerified }),
+      },
+    });
+
+    await afterDatabaseCommit(async () => {
+      await invalidateUserCache(user.id);
+      await cacheUser(user);
+    });
+    return user;
   });
-
-  return user;
 }
 
 // ---------------------------------------------------------------------------
@@ -331,26 +371,35 @@ async function loadUserForStatusChange(id: string): Promise<User> {
  * Deactivate a user (active → inactive).
  *
  * @param id - User UUID
- * @param actorId - UUID of the user performing the action
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently active
  */
-export async function deactivateUser(id: string, actorId?: string): Promise<void> {
-  const user = await loadUserForStatusChange(id);
+export async function deactivateUser(
+  id: string,
+  actor?: AuditActor,
+  auditContext?: AuditRequestContext,
+): Promise<void> {
+  return runDatabaseTransaction(async () => {
+    const user = await loadUserForStatusChange(id);
 
-  if (user.status !== 'active') {
-    throw new UserValidationError(`Cannot deactivate user from status: ${user.status}`);
-  }
+    if (user.status !== 'active') {
+      throw new UserValidationError(`Cannot deactivate user from status: ${user.status}`);
+    }
 
-  await repoUpdate(id, { status: 'inactive' });
-  await invalidateUserCache(id);
-
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.deactivated',
-    eventCategory: 'admin',
-    metadata: { userId: id },
+    await repoUpdate(id, { status: 'inactive' });
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('User deactivation requires an active database transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId: user.organizationId,
+      userId: id,
+      ...auditFields(actor, auditContext),
+      eventType: 'user.deactivated',
+      eventCategory: 'admin',
+      metadata: { userId: id },
+    });
+    await afterDatabaseCommit(() => invalidateUserCache(id));
   });
 }
 
@@ -358,26 +407,35 @@ export async function deactivateUser(id: string, actorId?: string): Promise<void
  * Activate a user (inactive → active).
  *
  * @param id - User UUID
- * @param actorId - UUID of the user performing the action
+ * @param actor - Audit actor, or system when omitted
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row
  * @throws UserNotFoundError if not found
  * @throws UserValidationError if not currently inactive
  */
-export async function activateUser(id: string, actorId?: string): Promise<void> {
-  const user = await loadUserForStatusChange(id);
+export async function activateUser(
+  id: string,
+  actor?: AuditActor,
+  auditContext?: AuditRequestContext,
+): Promise<void> {
+  return runDatabaseTransaction(async () => {
+    const user = await loadUserForStatusChange(id);
 
-  if (user.status !== 'inactive') {
-    throw new UserValidationError(`Cannot activate user from status: ${user.status}`);
-  }
+    if (user.status !== 'inactive') {
+      throw new UserValidationError(`Cannot activate user from status: ${user.status}`);
+    }
 
-  await repoUpdate(id, { status: 'active' });
-  await invalidateUserCache(id);
-
-  await writeAuditLog({
-    organizationId: user.organizationId,
-    actorId,
-    eventType: 'user.activated',
-    eventCategory: 'admin',
-    metadata: { userId: id },
+    await repoUpdate(id, { status: 'active' });
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('User activation requires an active database transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId: user.organizationId,
+      userId: id,
+      ...auditFields(actor, auditContext),
+      eventType: 'user.activated',
+      eventCategory: 'admin',
+      metadata: { userId: id },
+    });
+    await afterDatabaseCommit(() => invalidateUserCache(id));
   });
 }
 
@@ -720,7 +778,8 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
  *
  * @param organizationId - Owning organization UUID.
  * @param userId - User UUID.
- * @param actorId - Actor identifier available for audit attribution.
+ * @param actor - Audit actor, or system when omitted.
+ * @param auditContext - Trusted IP and user-agent metadata for the audit row.
  * @returns The graph captured before PostgreSQL applied its cascade.
  * @throws UserNotFoundError for a missing or mismatched user.
  * @throws UserValidationError when the last active exact super administrator is protected.
@@ -728,51 +787,54 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
 export async function deleteUser(
   organizationId: string,
   userId: string,
-  actorId?: string,
+  actor?: AuditActor,
+  auditContext?: AuditRequestContext,
 ): Promise<UserDeletionCapture> {
-  // The repository performs the locked exact `porta-super-admin` survivor check;
-  // this service deliberately cannot bypass that control-plane guard.
-  const client = getDatabaseTransactionClient();
-  if (!client) throw new Error('User deletion requires an active database transaction');
-  const capture = await deleteUserCapture(organizationId, userId);
-  if (!capture) throw new UserNotFoundError(userId);
-  await client.query(
-    `UPDATE admin_sessions SET revoked_at = NOW()
-     WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
-    [capture.userIds],
-  );
-  await client.query(
-    `DELETE FROM oidc_payloads
-     WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
-       OR payload->>'accountId' = ANY($2::text[])`,
-    [capture.grantIds, capture.userIds],
-  );
-  await writeAuditLogInTransaction(client, {
-    organizationId,
-    userId,
-    actorId,
-    eventType: 'user.deleted',
-    eventCategory: 'admin',
-    metadata: {
+  return runDatabaseTransaction(async () => {
+    // The repository performs the locked exact `porta-super-admin` survivor check;
+    // this service deliberately cannot bypass that control-plane guard.
+    const client = getDatabaseTransactionClient();
+    if (!client) throw new Error('User deletion requires an active database transaction');
+    const capture = await deleteUserCapture(organizationId, userId);
+    if (!capture) throw new UserNotFoundError(userId);
+    await client.query(
+      `UPDATE admin_sessions SET revoked_at = NOW()
+       WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
+      [capture.userIds],
+    );
+    await client.query(
+      `DELETE FROM oidc_payloads
+       WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])
+         OR payload->>'accountId' = ANY($2::text[])`,
+      [capture.grantIds, capture.userIds],
+    );
+    await writeAuditLogInTransaction(client, {
       organizationId,
       userId,
-      email: capture.user.email,
-      status: capture.user.status,
-    },
+      ...auditFields(actor, auditContext),
+      eventType: 'user.deleted',
+      eventCategory: 'admin',
+      metadata: {
+        organizationId,
+        userId,
+        email: capture.user.email,
+        status: capture.user.status,
+      },
+    });
+    await deleteCapturedUser(organizationId, userId);
+    await registerDeletionCleanup({
+      resource: 'user',
+      targetId: userId,
+      parentId: organizationId,
+      userIds: capture.userIds,
+      clientIds: [],
+      publicClientIds: [],
+      grantIds: capture.grantIds,
+      roleIds: capture.roleIds,
+      permissionIds: [],
+      claimIds: capture.claimIds,
+      applicationIds: capture.applicationIds,
+    });
+    return capture;
   });
-  await deleteCapturedUser(organizationId, userId);
-  await registerDeletionCleanup({
-    resource: 'user',
-    targetId: userId,
-    parentId: organizationId,
-    userIds: capture.userIds,
-    clientIds: [],
-    publicClientIds: [],
-    grantIds: capture.grantIds,
-    roleIds: capture.roleIds,
-    permissionIds: [],
-    claimIds: capture.claimIds,
-    applicationIds: capture.applicationIds,
-  });
-  return capture;
 }

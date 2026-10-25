@@ -23,7 +23,14 @@ import { getPool } from './database.js';
 export interface HistoryEntry {
   id: string;
   eventType: string;
+  /** Porta user identifier for a user actor. */
   actorId: string | null;
+  /** Actor class: a Porta user, an OAuth service client, or the system. */
+  actorType: 'user' | 'client' | 'system';
+  /** OAuth client identifier for a client actor. */
+  actorClientId: string | null;
+  /** OAuth client name captured at event time for a client actor. */
+  actorClientName: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
 }
@@ -160,10 +167,14 @@ export async function getEntityHistory(
     id: string;
     event_type: string;
     actor_id: string | null;
+    actor_type: 'user' | 'client' | 'system';
+    actor_client_id: string | null;
+    actor_client_name: string | null;
     metadata: Record<string, unknown> | null;
     created_at: Date;
   }>(
-    `SELECT id, event_type, actor_id, metadata, created_at
+    `SELECT id, event_type, actor_id, actor_type, actor_client_id, actor_client_name,
+            metadata, created_at
      FROM audit_log
      WHERE ${conditions.join(' AND ')}
      ORDER BY created_at DESC, id DESC
@@ -176,6 +187,9 @@ export async function getEntityHistory(
     id: row.id,
     eventType: row.event_type,
     actorId: row.actor_id,
+    actorType: row.actor_type,
+    actorClientId: row.actor_client_id,
+    actorClientName: row.actor_client_name,
     metadata: row.metadata,
     createdAt: row.created_at,
   }));

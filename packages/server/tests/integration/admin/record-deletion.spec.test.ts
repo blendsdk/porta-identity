@@ -428,8 +428,8 @@ describe('immutable record deletion integration contract', () => {
     const unrelated = await createTestUser(org.id);
     const unrelatedSession = await track(unrelated.id, org.id);
     await getPool().query(
-      `INSERT INTO audit_log (organization_id, user_id, actor_id, event_type, event_category, metadata)
-       VALUES ($1, $2, $2, 'user.updated', 'admin', $3::jsonb)`,
+      `INSERT INTO audit_log (organization_id, user_id, actor_id, actor_type, event_type, event_category, metadata)
+       VALUES ($1, $2, $2, 'user', 'user.updated', 'admin', $3::jsonb)`,
       [org.id, user.id, JSON.stringify({ email: user.email })],
     );
 

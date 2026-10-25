@@ -383,7 +383,13 @@ describe('committed RBAC mutation results', () => {
     await executeLayer(layerFor(createUserRoleRouter, 'DELETE', '/roles'), ctx);
 
     expect(mocks.guardSuperAdmin).not.toHaveBeenCalled();
-    expect(mocks.userRoleRemove).toHaveBeenCalledWith(ORG_ID, USER_ID, [ROLE_ID], ACTOR_ID);
+    expect(mocks.userRoleRemove).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: USER_ID,
+      roleIds: [ROLE_ID],
+      actor: { kind: 'user', userId: ACTOR_ID },
+      auditContext: expect.any(Object),
+    });
   });
 
   // Removing an absent mapping commits successfully without requesting reauthentication.
@@ -420,7 +426,7 @@ describe('committed RBAC mutation results', () => {
 
     expect(ctx.status).toBe(200);
     expect(ctx.body).toEqual({ data: { reauthenticationRequired: false } });
-    expect(testCase.service).toHaveBeenCalledWith(...testCase.expected);
+    expect(testCase.service).toHaveBeenCalledWith(...expectedServiceArgs(testCase));
   });
 
   // A committed reduction reports when the authenticated actor lost effective authority.
@@ -435,9 +441,36 @@ describe('committed RBAC mutation results', () => {
 
     expect(ctx.status).toBe(200);
     expect(ctx.body).toEqual({ data: { reauthenticationRequired: true } });
-    expect(mocks.userRoleRemove).toHaveBeenCalledWith(ORG_ID, ACTOR_ID, [ROLE_ID], ACTOR_ID);
+    expect(mocks.userRoleRemove).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: ACTOR_ID,
+      roleIds: [ROLE_ID],
+      actor: { kind: 'user', userId: ACTOR_ID },
+      auditContext: expect.any(Object),
+    });
   });
 });
+
+function expectedServiceArgs(testCase: MutationCase): unknown[] {
+  if (testCase.service === mocks.userRoleAssign || testCase.service === mocks.userRoleRemove) {
+    const [organizationId, userId, roleIds, actorId] = testCase.expected as [
+      string,
+      string,
+      string[],
+      string,
+    ];
+    return [
+      {
+        organizationId,
+        userId,
+        roleIds,
+        actor: { kind: 'user', userId: actorId },
+        auditContext: expect.any(Object),
+      },
+    ];
+  }
+  return testCase.expected;
+}
 
 type MutationCase = {
   name: string;
@@ -595,7 +628,7 @@ describe('RBAC mutation authorization and actor provenance', () => {
 
     await executeLayer(layerFor(testCase.factory, testCase.method, testCase.suffix), ctx);
 
-    expect(testCase.service).toHaveBeenCalledWith(...testCase.expected);
+    expect(testCase.service).toHaveBeenCalledWith(...expectedServiceArgs(testCase));
   });
 
   // Each mutation requires its exact static capability before any service work begins.

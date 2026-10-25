@@ -43,6 +43,8 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(() => ({ query: poolQuery })),
   afterDatabaseCommit: (fn: () => Promise<void> | void) => fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: poolQuery }),
 }));
 
 vi.mock('../../../src/auth/i18n.js', () => ({
@@ -73,7 +75,41 @@ vi.mock('../../../src/users/password.js', () => ({
   validatePassword: vi.fn().mockReturnValue({ isValid: true }),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({ writeAuditLog: vi.fn() }));
+vi.mock('../../../src/lib/audit-log.js', () => ({
+  writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
+  inviteActorToAuditActor: (actor: {
+    kind: 'admin' | 'user' | 'service';
+    userId?: string;
+    clientId?: string;
+    displayName: string;
+  }) =>
+    actor.kind === 'service' && actor.clientId
+      ? { kind: 'service', clientId: actor.clientId, clientName: actor.displayName }
+      : actor.userId
+        ? { kind: 'user', userId: actor.userId }
+        : { kind: 'system' },
+  auditActorColumns: (actor: {
+    kind: 'user' | 'service' | 'system';
+    userId?: string;
+    clientId?: string;
+    clientName?: string;
+  }) =>
+    actor.kind === 'service'
+      ? {
+          actorType: 'client',
+          actorClientId: actor.clientId,
+          actorClientName: actor.clientName,
+        }
+      : actor.kind === 'user'
+        ? {
+            actorId: actor.userId,
+            actorType: 'user',
+            actorClientId: null,
+            actorClientName: null,
+          }
+        : { actorType: 'system', actorClientId: null, actorClientName: null },
+}));
 
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -355,7 +391,12 @@ describe('invitation enumeration resistance and token secrecy', () => {
 
       await exec(inviteLayer()!, ctx);
 
-      expect(JSON.stringify(vi.mocked(auditLog.writeAuditLog).mock.calls)).not.toContain(
+      expect(
+        JSON.stringify([
+          ...vi.mocked(auditLog.writeAuditLog).mock.calls,
+          ...vi.mocked(auditLog.writeAuditLogInTransaction).mock.calls,
+        ]),
+      ).not.toContain(
         'token-plaintext',
       );
       const loggerCalls = [

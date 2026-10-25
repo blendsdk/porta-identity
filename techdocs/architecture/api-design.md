@@ -93,6 +93,7 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `applications.ts`  | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
 | `clients.ts`       | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
 | `users.ts`         | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
+| `tenant-users.ts`  | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
 | `roles.ts`         | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
 | `permissions.ts`   | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
 | `user-roles.ts`    | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
@@ -106,6 +107,28 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
 | `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
 | `imports.ts`       | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
+
+### Tenant-scoped M2M user API
+
+`routes/tenant-users.ts` mounts the BFF-facing user surface at
+`/api/organizations/:orgId/users`. It reuses the Admin resource shapes but not
+the Admin authentication boundary.
+
+- CRUD and lifecycle accept service clients only; invitation accepts a service
+  client or tenant user.
+- The service client must be active, confidential, belong to the route
+  organization, carry the required scope in the token and client metadata, and
+  pass the canonical admin/super-admin boundary.
+- Scopes are `org:user:read`, `org:user:write`, `org:user:delete`, plus the
+  existing `org:user:invite`.
+- Target-user routes run `requireUserOrganization` before the handler; foreign
+  and missing users share the same `404`.
+- Role reads and mutations are filtered to the token client's application.
+  Canonical `porta-admin` roles and other applications return `400`.
+- Writes and deletes use Redis-backed 300/hour and 60/hour budgets respectively;
+  invites keep the existing 30/hour budget.
+- Mutation audit is transaction-bound with first-class client actor columns.
+  Reads write best-effort `user.read`/`user.listed` rows.
 
 ### Organization branding assets
 

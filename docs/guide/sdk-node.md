@@ -105,6 +105,16 @@ super-admin organization with a recognized admin role. Two supported patterns:
 Do not store a long-lived admin session in a public web application. Run the BFF or
 batch job in a separate internal service or on an operator workstation.
 
+### Tenant user management from a BFF
+
+A tenant BFF can manage users with a confidential `client_credentials` client
+and `apiPrefix: '/api'`. Configure the client with `org:user:read`,
+`org:user:write`, and `org:user:delete` (add `org:user:invite` if needed).
+Tenant create accepts no password; use the existing login, magic-link, or reset
+flow. Role assignment is limited to the client application, and permanent
+delete requires the separate delete scope. See
+[Users API](../api/users.md#tenant-scoped-m2m-user-management).
+
 ## 401 Handling & Token Refresh
 
 The `NodeTransport` automatically handles 401 responses:

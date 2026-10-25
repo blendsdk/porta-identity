@@ -283,12 +283,13 @@ describe('canonical Porta Admin authority boundary', () => {
 
     expect(ctx.status).toBe(204);
     expect(mocks.assignRolesToUser).toHaveBeenCalledOnce();
-    expect(mocks.assignRolesToUser).toHaveBeenCalledWith(
-      ADMIN_ORG_ID,
-      TARGET_USER_ID,
-      [USER_ROLE_ID],
-      ACTOR_ID,
-    );
+    expect(mocks.assignRolesToUser).toHaveBeenCalledWith({
+      organizationId: ADMIN_ORG_ID,
+      userId: TARGET_USER_ID,
+      roleIds: [USER_ROLE_ID],
+      actor: { kind: 'user', userId: ACTOR_ID },
+      auditContext: expect.any(Object),
+    });
   });
 
   // Generic CRUD cannot alter built-in role, permission, or role-permission records.

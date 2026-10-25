@@ -12,6 +12,10 @@ const pool = vi.hoisted(() => ({
   query: vi.fn(),
 }));
 
+const transaction = vi.hoisted(() => ({
+  query: vi.fn(),
+}));
+
 const dependencies = vi.hoisted(() => ({
   getOrganizationById: vi.fn(),
   getUserByEmail: vi.fn(),
@@ -19,7 +23,7 @@ const dependencies = vi.hoisted(() => ({
   replaceInvitation: vi.fn(),
   sendInvitationEmail: vi.fn(),
   getSystemConfigNumber: vi.fn(),
-  writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
   getPermissionsForRole: vi.fn(),
 }));
 
@@ -49,12 +53,51 @@ vi.mock('../../../src/lib/system-config.js', () => ({
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: dependencies.writeAuditLog,
+  inviteActorToAuditActor: (actor: {
+    kind: 'admin' | 'user' | 'service';
+    userId?: string;
+    clientId?: string;
+    displayName: string;
+  }) =>
+    actor.kind === 'service' && actor.clientId
+      ? { kind: 'service', clientId: actor.clientId, clientName: actor.displayName }
+      : actor.userId
+        ? { kind: 'user', userId: actor.userId }
+        : { kind: 'system' },
+  auditActorColumns: (actor: {
+    kind: 'user' | 'service' | 'system';
+    userId?: string;
+    clientId?: string;
+    clientName?: string;
+  }) =>
+    actor.kind === 'service'
+      ? {
+          actorId: undefined,
+          actorType: 'client',
+          actorClientId: actor.clientId,
+          actorClientName: actor.clientName,
+        }
+      : actor.kind === 'user'
+        ? {
+            actorId: actor.userId,
+            actorType: 'user',
+            actorClientId: null,
+            actorClientName: null,
+          }
+        : {
+            actorId: undefined,
+            actorType: 'system',
+            actorClientId: null,
+            actorClientName: null,
+          },
+  writeAuditLogInTransaction: dependencies.writeAuditLogInTransaction,
 }));
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: () => pool,
   afterDatabaseCommit: async (callback: () => Promise<void>) => callback(),
+  getDatabaseTransactionClient: () => transaction,
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
 }));
 
 vi.mock('../../../src/rbac/role-service.js', () => ({
@@ -105,7 +148,7 @@ beforeEach(() => {
   dependencies.replaceInvitation.mockResolvedValue({ id: 'invitation-1' });
   dependencies.sendInvitationEmail.mockResolvedValue(undefined);
   dependencies.getSystemConfigNumber.mockResolvedValue(3600);
-  dependencies.writeAuditLog.mockResolvedValue(undefined);
+  dependencies.writeAuditLogInTransaction.mockResolvedValue(undefined);
   dependencies.getPermissionsForRole.mockResolvedValue([]);
   pool.query.mockImplementation(async (sql: string) => {
     if (sql.includes('FROM applications')) return { rows: [{ id: APP_ID }] };
@@ -136,8 +179,13 @@ describe('inviteUser', () => {
         invitedBy: USER_ID,
       }),
     );
-    expect(dependencies.writeAuditLog).toHaveBeenCalledWith(
-      expect.objectContaining({ actorId: USER_ID, eventType: 'user.invited' }),
+    expect(dependencies.writeAuditLogInTransaction).toHaveBeenCalledWith(
+      transaction,
+      expect.objectContaining({
+        actorId: USER_ID,
+        actorType: 'user',
+        eventType: 'user.invited',
+      }),
     );
     expect(dependencies.sendInvitationEmail).toHaveBeenCalledWith(
       expect.objectContaining({ email: 'new.user@example.com' }),
@@ -158,15 +206,33 @@ describe('inviteUser', () => {
     expect(dependencies.replaceInvitation).toHaveBeenCalledWith(
       expect.objectContaining({ invitedBy: null }),
     );
-    expect(dependencies.writeAuditLog).toHaveBeenCalledWith(
+    expect(dependencies.writeAuditLogInTransaction).toHaveBeenCalledWith(
+      transaction,
       expect.objectContaining({
         actorId: undefined,
+        actorType: 'client',
+        actorClientId: 'bff-client',
+        actorClientName: 'Tenant BFF',
         metadata: expect.objectContaining({
           actorKind: 'service',
           serviceClientId: 'bff-client',
         }),
       }),
     );
+  });
+
+  it('does not schedule the invitation email when the durable audit insert fails', async () => {
+    dependencies.writeAuditLogInTransaction.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(
+      inviteUser({
+        organizationId: ORG_ID,
+        input: { email: 'new.user@example.com' },
+        actor: ADMIN_ACTOR,
+      }),
+    ).rejects.toThrow('audit unavailable');
+
+    expect(dependencies.sendInvitationEmail).not.toHaveBeenCalled();
   });
 
   it('rejects an email that already belongs to the organization', async () => {

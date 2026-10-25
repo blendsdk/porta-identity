@@ -46,12 +46,15 @@ describe('audit-log', () => {
       expect(params[0]).toBe('org-1'); // organization_id
       expect(params[1]).toBe('user-1'); // user_id
       expect(params[2]).toBe('actor-1'); // actor_id
-      expect(params[3]).toBe('org.created'); // event_type
-      expect(params[4]).toBe('admin'); // event_category
-      expect(params[5]).toBe('Created organization'); // description
-      expect(params[6]).toBe('{"slug":"acme-corp"}'); // metadata JSON
-      expect(params[7]).toBe('192.168.1.1'); // ip_address
-      expect(params[8]).toBe('Mozilla/5.0'); // user_agent
+      expect(params[3]).toBe('user'); // actor_type
+      expect(params[4]).toBeNull(); // actor_client_id
+      expect(params[5]).toBeNull(); // actor_client_name
+      expect(params[6]).toBe('org.created'); // event_type
+      expect(params[7]).toBe('admin'); // event_category
+      expect(params[8]).toBe('Created organization'); // description
+      expect(params[9]).toBe('{"slug":"acme-corp"}'); // metadata JSON
+      expect(params[10]).toBe('192.168.1.1'); // ip_address
+      expect(params[11]).toBe('Mozilla/5.0'); // user_agent
     });
 
     it('should set null for optional fields when not provided', async () => {
@@ -66,10 +69,13 @@ describe('audit-log', () => {
       expect(params[0]).toBeNull(); // organization_id
       expect(params[1]).toBeNull(); // user_id
       expect(params[2]).toBeNull(); // actor_id
-      expect(params[5]).toBeNull(); // description
-      expect(params[6]).toBe('{}'); // metadata defaults to empty object
-      expect(params[7]).toBeNull(); // ip_address
-      expect(params[8]).toBeNull(); // user_agent
+      expect(params[3]).toBe('system'); // actor_type
+      expect(params[4]).toBeNull(); // actor_client_id
+      expect(params[5]).toBeNull(); // actor_client_name
+      expect(params[8]).toBeNull(); // description
+      expect(params[9]).toBe('{}'); // metadata defaults to empty object
+      expect(params[10]).toBeNull(); // ip_address
+      expect(params[11]).toBeNull(); // user_agent
     });
 
     it('should serialize metadata as JSON string', async () => {
@@ -82,7 +88,7 @@ describe('audit-log', () => {
       });
 
       const params = mockQuery.mock.calls[0][1] as unknown[];
-      expect(params[6]).toBe('{"key":"value","nested":{"a":1}}');
+      expect(params[9]).toBe('{"key":"value","nested":{"a":1}}');
     });
 
     it('should not throw on database error (fire-and-forget)', async () => {
@@ -117,7 +123,26 @@ describe('audit-log', () => {
       });
 
       const params = mockQuery.mock.calls[0][1] as unknown[];
-      expect(params[6]).toBe('{}');
+      expect(params[9]).toBe('{}');
+    });
+
+    it('should write first-class client actor columns', async () => {
+      const mockQuery = mockPool();
+
+      await writeAuditLog({
+        organizationId: 'org-1',
+        actorType: 'client',
+        actorClientId: 'bff-client',
+        actorClientName: 'Acme BFF',
+        eventType: 'user.created',
+        eventCategory: 'admin',
+      });
+
+      const params = mockQuery.mock.calls[0][1] as unknown[];
+      expect(params[2]).toBeNull();
+      expect(params[3]).toBe('client');
+      expect(params[4]).toBe('bff-client');
+      expect(params[5]).toBe('Acme BFF');
     });
   });
 });

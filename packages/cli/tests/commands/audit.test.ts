@@ -29,6 +29,7 @@ vi.mock('../../src/output.js', () => ({
   info: vi.fn(),
   formatDate: vi.fn((d: string) => d ?? 'N/A'),
   truncate: vi.fn((s: string) => s.slice(0, 8)),
+  sanitizeTerminalText: vi.fn((s: string) => s),
 }));
 
 import { handleError } from '../../src/error-handler.js';
@@ -160,6 +161,28 @@ describe('audit command', () => {
           since: '2024-01-01',
         }),
       );
+    });
+
+    it('renders a client actor name and ID in the table', async () => {
+      mockAudit.list.mockResolvedValue({
+        data: [
+          {
+            ...sampleEntry,
+            actorId: null,
+            actorType: 'client',
+            actorClientId: 'bff-client',
+            actorClientName: 'Acme BFF',
+          },
+        ],
+        page: 1,
+        pageSize: 20,
+        total: 1,
+      });
+
+      await invokeSubcommand('list');
+
+      const rows = vi.mocked(printTable).mock.calls[0]?.[1] as string[][];
+      expect(rows[0]?.[1]).toBe('Acme BFF (bff-client)');
     });
 
     it('handles errors', async () => {

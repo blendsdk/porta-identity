@@ -1,9 +1,37 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock database module before importing repository
-vi.mock('../../../src/lib/database.js', () => ({
-  getPool: vi.fn(),
-}));
+const database = vi.hoisted(() => {
+  const getPool = vi.fn();
+  const runDatabaseTransaction = vi.fn(async (work: () => Promise<unknown>) => {
+    const pool = getPool();
+    if (!pool || typeof pool.connect !== 'function') return work();
+
+    const client = await pool.connect();
+    await client.query('BEGIN');
+    const previousImplementation = getPool.getMockImplementation();
+    getPool.mockReturnValue({ query: client.query, connect: pool.connect });
+    try {
+      const result = await work();
+      await client.query('COMMIT');
+      return result;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      getPool.mockReset();
+      if (previousImplementation) {
+        getPool.mockImplementation(previousImplementation);
+      } else {
+        getPool.mockReturnValue(pool);
+      }
+      client.release();
+    }
+  });
+  return { getPool, runDatabaseTransaction };
+});
+
+vi.mock('../../../src/lib/database.js', () => database);
 
 // Mock logger to suppress output and enable spy assertions
 vi.mock('../../../src/lib/logger.js', () => ({
