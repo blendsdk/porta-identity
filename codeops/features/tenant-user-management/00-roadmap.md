@@ -15,7 +15,7 @@
 
 | ID   | Title | RD  | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
 | ---- | ----- | --- | ---- | ----- | ------ | ------------ | -------------------- |
-| T-01 | Tenant-scoped M2M user management (CRUD, lifecycle, roles, audit) | — | [plan](plans/tenant-m2m-user-management/00-index.md) | 🔄 Executing | 🔄 | 2026-10-25 | — |
+| T-01 | Tenant-scoped M2M user management (CRUD, lifecycle, roles, audit) | — | [plan](plans/tenant-m2m-user-management/00-index.md) | ⛔ Blocked | ⛔ | 2026-10-25 | Production-security harness human-auth recovery failure (pre-existing, untouched test-harness) |
 
 ## Notes
 
@@ -30,6 +30,12 @@
   conditions). Evidence: `plans/tenant-m2m-user-management/00-preflight-report.md`.
 - The promoted plan, report, feature roadmap, and portfolio row are committed on
   `feat/tenant-m2m-user-management`, based on `origin/develop`.
+- Execution completed 55/56 tasks. All product and verification gates pass (`yarn verify`, E2E,
+  pentest, compatibility, docs, structure). The remaining gate is the production-security harness:
+  its 11 production-exposure cases pass, but the human-auth recovery case
+  `password-reset-throttled-request` fails because the normalized rejection log event is missing.
+  The failing test/adapter are in `test-harness/assurance`, which this branch did not modify. See
+  `plans/tenant-m2m-user-management/08-handoff.md`; do not deploy until this is resolved.
 - The plan was promoted from the Plan-mode workspace into this feature. Implementation starts from
   an up-to-date `origin/develop`, which already contains the tenant invitation prerequisite
   (PR #189). Do not use the stale local `develop` or the older `feat/tenant-user-invitations` branch.

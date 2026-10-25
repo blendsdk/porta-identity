@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 21:06
-> **Progress**: 50/56 tasks (89%)
+> **Last Updated**: 2026-10-25 22:12
+> **Progress**: 55/56 tasks (98%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -227,12 +227,12 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 - [x] 5.1.1 Run the focused full server regression suites (unit, integration, and existing E2E) with the repository services running; fix any regressions ✅ (completed: 2026-10-25 21:06) — unit 238 files / 3,869; integration 61 / 514; E2E 21 / 133
 - [x] 5.1.2 Run `yarn test:pentest` and review the tenant boundary results ✅ (completed: 2026-10-25 21:06) — 44 files / 286 tests
-- [ ] 5.1.3 Run `yarn assurance:harness --project security --profile production-security`; record the run ID, observer IDs, and exit code. Compare against the accepted incomplete-observer baseline; expected exit is `40`. Require no observer-set difference, no new gap, and no failed assertion. Never describe the run as fully passed.
-- [ ] 5.1.4 Use the git-commit skill to create a clean checkpoint, then run `yarn assurance:compat --select tenant-admin` from that committed revision; record the result
-- [ ] 5.1.5 Run `yarn docs:build` and `yarn test:structure`; update `repo-tests/monorepo/server-package.spec.test.mjs` and any asserted test-inventory counts if the new test-file inventory changes their expectations, then re-run both gates
-- [ ] 5.1.6 Run `yarn verify`; confirm lint, typecheck, unit, integration, E2E, pentest, SDK, CLI, and structure all pass
-- [ ] 5.1.7 Review findings, update documentation and the ambiguity register if a new decision surfaced, remove temporary artifacts, stop task-owned Docker services, and write the handoff summary with deployment steps
-- [ ] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one real `client_credentials` create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, full-stop/upgrade ordering for every instance, migration result, and post-migration audit verification.
+- [!] 5.1.3 Run `yarn assurance:harness --project security --profile production-security`; record the run ID, observer IDs, and exit code. Compare against the accepted incomplete-observer baseline; expected exit is `40`. Require no observer-set difference, no new gap, and no failed assertion. Never describe the run as fully passed. **Blocked: production exposure passes 11/11, but human-auth recovery fails on `password-reset-throttled-request` (missing normalized rejection log event) in untouched `test-harness/assurance`; runs `31bfd677-43b9-4e95-b9ba-e76d8d4b09b6` and `e99a0d4c-bc51-4a69-a8fe-5a0c1a9d3eb7`.**
+- [x] 5.1.4 Use the git-commit skill to create a clean checkpoint, then run `yarn assurance:compat --select tenant-admin` from that committed revision; record the result ✅ (completed: 2026-10-25 22:12) — compat run `3a682513-5846-4b29-b16a-0da55e922bad` passed
+- [x] 5.1.5 Run `yarn docs:build` and `yarn test:structure`; update `repo-tests/monorepo/server-package.spec.test.mjs` and any asserted test-inventory counts if the new test-file inventory changes their expectations, then re-run both gates ✅ (completed: 2026-10-25 22:12)
+- [x] 5.1.6 Run `yarn verify`; confirm lint, typecheck, unit, integration, E2E, pentest, SDK, CLI, and structure all pass ✅ (completed: 2026-10-25 22:12)
+- [x] 5.1.7 Review findings, update documentation and the ambiguity register if a new decision surfaced, remove temporary artifacts, stop task-owned Docker services, and write the handoff summary with deployment steps ✅ (completed: 2026-10-25 22:12) — [08-handoff.md](08-handoff.md)
+- [x] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one real `client_credentials` create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, full-stop/upgrade ordering for every instance, migration result, and post-migration audit verification. ✅ (completed: 2026-10-25 22:12) — instructions recorded in [08-handoff.md](08-handoff.md); deployment not executed.
 
 **Deliverables**:
 - [ ] All security and compatibility gates recorded, including the accepted harness baseline
