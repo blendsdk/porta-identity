@@ -32,7 +32,12 @@ import { getUserById } from '../users/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
 import { clearSessionCookies } from '../middleware/prompt-login-reset.js';
-import { TENANT_INVITE_SCOPE } from './scopes.js';
+import {
+  TENANT_INVITE_SCOPE,
+  TENANT_USER_DELETE_SCOPE,
+  TENANT_USER_READ_SCOPE,
+  TENANT_USER_WRITE_SCOPE,
+} from './scopes.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -545,9 +550,9 @@ export function buildProviderConfiguration(
     // Enable refresh token rotation — each refresh generates a new token
     rotateRefreshToken: true,
 
-    // Standard OIDC scopes plus the tenant application scope used by the
-    // tenant-scoped BFF invitation API. Supported scopes must be registered
-    // here before a client may carry them in its metadata.
+    // Standard OIDC scopes plus the tenant application scopes used by the
+    // tenant-scoped BFF user and invitation APIs. Supported scopes must be
+    // registered here before a client may carry them in its metadata.
     scopes: [
       'openid',
       'profile',
@@ -556,6 +561,9 @@ export function buildProviderConfiguration(
       'phone',
       'offline_access',
       TENANT_INVITE_SCOPE,
+      TENANT_USER_READ_SCOPE,
+      TENANT_USER_WRITE_SCOPE,
+      TENANT_USER_DELETE_SCOPE,
     ],
 
     // OIDC claims mapping per scope.
