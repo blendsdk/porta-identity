@@ -588,14 +588,15 @@ describe('tenant user CRUD routes', () => {
     service.getUserById.mockResolvedValue(testUser({ phoneNumber: null }));
     const ctx = createMockCtx({ phoneNumberVerified: true });
 
-    await executeRoute(
-      createTenantUsersRouter(),
-      'PUT',
-      '/api/organizations/:orgId/users/:userId',
-      ctx,
-    );
+    await expect(
+      executeRoute(
+        createTenantUsersRouter(),
+        'PUT',
+        '/api/organizations/:orgId/users/:userId',
+        ctx,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
 
-    expect(ctx.status).toBe(400);
     expect(service.updateUser).not.toHaveBeenCalled();
   });
 

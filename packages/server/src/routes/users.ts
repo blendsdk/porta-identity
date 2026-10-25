@@ -32,137 +32,34 @@ import type { InvitationEmailOptions } from '../auth/email-service.js';
 import { renderInvitationEmail } from '../auth/email-service.js';
 import { config } from '../config/index.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
-import { guardSuperAdmin, SuperAdminProtectionError } from '../lib/super-admin-protection.js';
+import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
-import { RoleDelegationError } from '../rbac/errors.js';
-import { UserNotFoundError, UserValidationError } from '../users/errors.js';
 import { exportUserData } from '../users/gdpr.js';
+import { inviteUser, inviteUserSchema } from '../users/invite-service.js';
 import {
-  InviteConflictError,
-  InviteOrganizationNotFoundError,
-  InvitePreAssignmentError,
-  InviteUserExistsError,
-  inviteUser,
-  inviteUserSchema,
-} from '../users/invite-service.js';
+  createUserSchema,
+  identifierSchema,
+  listUsersCursorSchema,
+  listUsersSchema,
+  updateUserSchema,
+} from '../users/schemas.js';
 import * as userService from '../users/service.js';
-import {
-  userBirthdateSchema,
-  userCountrySchema,
-  userEmailSchema,
-  userGenderSchema,
-  userLocaleSchema,
-  userPhoneNumberSchema,
-  userPostalCodeSchema,
-  userProfileNameSchema,
-  userProfileUrlSchema,
-  userZoneinfoSchema,
-} from '../users/validators.js';
+import { handleUserRouteError } from './user-error-handler.js';
 
 // ---------------------------------------------------------------------------
 // Validation schemas
 // ---------------------------------------------------------------------------
 
-/** Schema for creating a new user */
-const createUserSchema = z.object({
-  email: userEmailSchema,
-  password: z.string().min(8).max(128).optional(),
-  givenName: userProfileNameSchema.optional(),
-  familyName: userProfileNameSchema.optional(),
-  middleName: userProfileNameSchema.optional(),
-  nickname: userProfileNameSchema.optional(),
-  preferredUsername: userProfileNameSchema.optional(),
-  profileUrl: userProfileUrlSchema.optional(),
-  pictureUrl: userProfileUrlSchema.optional(),
-  websiteUrl: userProfileUrlSchema.optional(),
-  gender: userGenderSchema.optional(),
-  birthdate: userBirthdateSchema.optional(),
-  zoneinfo: userZoneinfoSchema.optional(),
-  locale: userLocaleSchema.optional(),
-  phoneNumber: userPhoneNumberSchema.optional(),
-  phoneNumberVerified: z.boolean().optional(),
-  address: z
-    .object({
-      street: z.string().nullable().optional(),
-      locality: userProfileNameSchema.nullable().optional(),
-      region: userProfileNameSchema.nullable().optional(),
-      postalCode: userPostalCodeSchema.nullable().optional(),
-      country: userCountrySchema.nullable().optional(),
-    })
-    .optional(),
-});
-
-/** Schema for updating a user (all fields optional, nullable for clearing) */
-const updateUserSchema = z
-  .object({
-    givenName: userProfileNameSchema.nullable().optional(),
-    familyName: userProfileNameSchema.nullable().optional(),
-    middleName: userProfileNameSchema.nullable().optional(),
-    nickname: userProfileNameSchema.nullable().optional(),
-    preferredUsername: userProfileNameSchema.nullable().optional(),
-    profileUrl: userProfileUrlSchema.nullable().optional(),
-    pictureUrl: userProfileUrlSchema.nullable().optional(),
-    websiteUrl: userProfileUrlSchema.nullable().optional(),
-    gender: userGenderSchema.nullable().optional(),
-    birthdate: userBirthdateSchema.nullable().optional(),
-    zoneinfo: userZoneinfoSchema.nullable().optional(),
-    locale: userLocaleSchema.nullable().optional(),
-    phoneNumber: userPhoneNumberSchema.nullable().optional(),
-    phoneNumberVerified: z.boolean().optional(),
-    address: z
-      .object({
-        street: z.string().nullable().optional(),
-        locality: userProfileNameSchema.nullable().optional(),
-        region: userProfileNameSchema.nullable().optional(),
-        postalCode: userPostalCodeSchema.nullable().optional(),
-        country: userCountrySchema.nullable().optional(),
-      })
-      .nullable()
-      .optional(),
-  })
-  .refine((value) => Object.keys(value).length > 0, {
-    message: 'At least one profile field must be provided',
-  });
-
-/** Schema for listing users with pagination */
-const listUsersSchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(['active', 'inactive', 'locked']).optional(),
-  search: z.string().max(255).optional(),
-  sortBy: z
-    .enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at'])
-    .default('created_at'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
-});
-
-/** Schema for cursor-based listing (keyset pagination) */
-const listUsersCursorSchema = z.object({
-  cursor: z.string().optional(),
-  limit: z.coerce.number().int().min(1).max(100).default(25),
-  status: z.enum(['active', 'inactive', 'locked']).optional(),
-  search: z.string().max(255).optional(),
-  sortBy: z
-    .enum(['email', 'given_name', 'family_name', 'created_at', 'last_login_at'])
-    .default('created_at'),
-  sortOrder: z.enum(['asc', 'desc']).default('desc'),
-});
-
 /** Schema for setting a password */
 const setPasswordSchema = z.object({
   password: z.string().min(8).max(128),
-});
-
-/** Organization-qualified parameters accepted by user deletion. */
-const identifierSchema = z.object({
-  orgId: z.string().uuid(),
-  userId: z.string().uuid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -177,46 +74,23 @@ function handleError(
   ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
   err: unknown,
 ): never {
-  if (err instanceof SuperAdminProtectionError) {
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined as never;
-  }
-  if (err instanceof InviteOrganizationNotFoundError) {
-    ctx.throw(404, 'Organization not found');
-  }
-  if (err instanceof InviteUserExistsError) {
-    ctx.status = 409;
-    ctx.body = { error: 'User already exists in this organization' };
-    return undefined as never;
-  }
-  if (err instanceof InviteConflictError) {
-    ctx.status = 409;
-    ctx.body = { error: 'A live invitation already exists for this email' };
-    return undefined as never;
-  }
-  if (err instanceof InvitePreAssignmentError) {
-    ctx.status = 400;
-    ctx.body = { error: 'User request is invalid' };
-    return undefined as never;
-  }
-  if (err instanceof RoleDelegationError) {
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined as never;
-  }
-  if (err instanceof UserNotFoundError) {
-    ctx.throw(404, 'User not found');
-  }
-  if (err instanceof UserValidationError) {
-    ctx.throw(400, 'User request is invalid');
-  }
-  if (err instanceof z.ZodError) {
-    ctx.status = 400;
-    ctx.body = { error: 'User request is invalid' };
-    return undefined as never;
-  }
-  throw err;
+  return handleUserRouteError(ctx, err);
+}
+
+/** Resolve the authenticated administrator as an audit actor. */
+function adminAuditActor(ctx: { state: { adminUser?: { id: string } } }): AuditActor {
+  const userId = ctx.state.adminUser?.id;
+  if (!userId) throw new Error('Admin actor missing after authentication');
+  return { kind: 'user', userId };
+}
+
+/** Capture the trusted request metadata used by mutation audit. */
+function auditContext(ctx: { ip: string; get: (field: string) => string }): AuditRequestContext {
+  const userAgent = ctx.get('user-agent');
+  return {
+    ...(ctx.ip ? { ipAddress: ctx.ip } : {}),
+    ...(userAgent ? { userAgent } : {}),
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -247,10 +121,14 @@ export function createUserRouter(): Router {
   router.post('/', requirePermission(ADMIN_PERMISSIONS.USER_CREATE), async (ctx) => {
     try {
       const body = createUserSchema.parse(ctx.request.body);
-      const user = await userService.createUser({
-        organizationId: ctx.params.orgId,
-        ...body,
-      });
+      const user = await userService.createUser(
+        {
+          organizationId: ctx.params.orgId,
+          ...body,
+        },
+        adminAuditActor(ctx),
+        auditContext(ctx),
+      );
       setETagHeader(ctx, 'user', user.id, user.updatedAt);
       ctx.status = 201;
       ctx.body = { data: user };
@@ -325,7 +203,12 @@ export function createUserRouter(): Router {
         // Convert null address to undefined — Zod allows null for clearing,
         // but UpdateUserInput uses undefined to mean "no change"
         const input = { ...body, address: body.address ?? undefined };
-        const user = await userService.updateUser(ctx.params.userId, input);
+        const user = await userService.updateUser(
+          ctx.params.userId,
+          input,
+          adminAuditActor(ctx),
+          auditContext(ctx),
+        );
         setETagHeader(ctx, 'user', user.id, user.updatedAt);
         ctx.body = { data: user };
       } catch (err) {
@@ -345,7 +228,11 @@ export function createUserRouter(): Router {
     async (ctx) => {
       try {
         await guardSuperAdmin(ctx.params.userId, 'deactivate');
-        await userService.deactivateUser(ctx.params.userId);
+        await userService.deactivateUser(
+          ctx.params.userId,
+          adminAuditActor(ctx),
+          auditContext(ctx),
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -362,7 +249,11 @@ export function createUserRouter(): Router {
     requireUserOrganization(),
     async (ctx) => {
       try {
-        await userService.activateUser(ctx.params.userId);
+        await userService.activateUser(
+          ctx.params.userId,
+          adminAuditActor(ctx),
+          auditContext(ctx),
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -449,7 +340,12 @@ export function createUserRouter(): Router {
     async (ctx) => {
       try {
         identifierSchema.parse(ctx.params);
-        await userService.deleteUser(ctx.params.orgId, ctx.params.userId, ctx.state.adminUser?.id);
+        await userService.deleteUser(
+          ctx.params.orgId,
+          ctx.params.userId,
+          adminAuditActor(ctx),
+          auditContext(ctx),
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -641,7 +537,11 @@ export function createStandaloneUserRouter(): Router {
     async (ctx) => {
       try {
         await guardSuperAdmin(ctx.params.userId, 'deactivate');
-        await userService.deactivateUser(ctx.params.userId);
+        await userService.deactivateUser(
+          ctx.params.userId,
+          adminAuditActor(ctx),
+          auditContext(ctx),
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -655,7 +555,11 @@ export function createStandaloneUserRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.USER_LIFECYCLE),
     async (ctx) => {
       try {
-        await userService.activateUser(ctx.params.userId);
+        await userService.activateUser(
+          ctx.params.userId,
+          adminAuditActor(ctx),
+          auditContext(ctx),
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);

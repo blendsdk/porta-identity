@@ -29,17 +29,9 @@ import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleDelegationError, RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
+import { roleIdsSchema } from '../users/schemas.js';
 
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
-
-// ---------------------------------------------------------------------------
-// Validation schemas
-// ---------------------------------------------------------------------------
-
-/** Schema for assigning/removing roles (array of UUIDs) */
-const roleIdsSchema = z.object({
-  roleIds: z.array(z.string().uuid()).min(1),
-});
 
 // ---------------------------------------------------------------------------
 // Error handler helper

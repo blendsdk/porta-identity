@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 19:08
-> **Progress**: 17/56 tasks (30%)
+> **Last Updated**: 2026-10-25 19:23
+> **Progress**: 25/56 tasks (45%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -101,17 +101,17 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Reference**: [03-02](03-02-user-crud-routes.md) · [03-03](03-03-audit-client-actor.md)
 **Objective**: Implement the non-destructive tenant user surface.
 
-- [ ] 2.2.1 Extract shared create/update/list/identifier/role schemas and a shared route-error mapper, add `emailVerified`, and add tenant create/update variants with password rejection and phone-verification consistency — `packages/server/src/users/schemas.ts`, `packages/server/src/routes/users.ts`, `packages/server/src/routes/user-roles.ts`
-- [ ] 2.2.2 Extend create/update services with `AuditActor`, `emailVerified`, typed duplicate-email conflict (Admin `400`, tenant `409`), target `user_id`, service-owned `runDatabaseTransaction`, transaction-bound audit, and post-commit cache effects; keep `InviteActor` for invite display/delegation — `packages/server/src/users/service.ts`, `packages/server/src/users/errors.ts`, `packages/server/src/users/invite-service.ts`
-- [ ] 2.2.3 Add tenant create/list/get/update routes with target-user organization guard and ETag handling — `packages/server/src/routes/tenant-users.ts`
-- [ ] 2.2.4 Add write rate limiting and `user.read`/`user.listed` audit calls — `packages/server/src/middleware/tenant-user-rate-limiter.ts`, `packages/server/src/routes/tenant-users.ts`
-- [ ] 2.2.5 Pass the Admin actor into shared create/update/lifecycle services in both the organization-scoped and standalone routers; use the shared schemas; document the CLI bootstrap `system` actor — `packages/server/src/routes/users.ts`, `packages/server/src/cli/commands/init.ts`
+- [x] 2.2.1 Extract shared create/update/list/identifier/role schemas and a shared route-error mapper, add `emailVerified`, and add tenant create/update variants with password rejection and phone-verification consistency — `packages/server/src/users/schemas.ts`, `packages/server/src/routes/users.ts`, `packages/server/src/routes/user-roles.ts` ✅ (completed: 2026-10-25 19:23)
+- [x] 2.2.2 Extend create/update services with `AuditActor`, `emailVerified`, typed duplicate-email conflict (Admin `400`, tenant `409`), target `user_id`, service-owned `runDatabaseTransaction`, transaction-bound audit, and post-commit cache effects; keep `InviteActor` for invite display/delegation — `packages/server/src/users/service.ts`, `packages/server/src/users/errors.ts`, `packages/server/src/users/invite-service.ts` ✅ (completed: 2026-10-25 19:23)
+- [x] 2.2.3 Add tenant create/list/get/update routes with target-user organization guard and ETag handling — `packages/server/src/routes/tenant-users.ts` ✅ (completed: 2026-10-25 19:23)
+- [x] 2.2.4 Add write rate limiting and `user.read`/`user.listed` audit calls — `packages/server/src/middleware/tenant-user-rate-limiter.ts`, `packages/server/src/routes/tenant-users.ts` ✅ (completed: 2026-10-25 19:23)
+- [x] 2.2.5 Pass the Admin actor into shared create/update/lifecycle services in both the organization-scoped and standalone routers; use the shared schemas; document the CLI bootstrap `system` actor — `packages/server/src/routes/users.ts`, `packages/server/src/cli/commands/init.ts` ✅ (completed: 2026-10-25 19:23)
 
 ### Step 2.3: Green phase, implementation tests, and verification
 
-- [ ] 2.3.1 Run the specification tests and verify the green phase
-- [ ] 2.3.2 Write implementation tests for schema strictness, ETag, body organization mismatch, and audit failure rollback — `packages/server/tests/unit/routes/tenant-users.impl.test.ts`, `packages/server/tests/unit/users/tenant-user-service.impl.test.ts`; update existing service/route tests for typed actors, transaction mocks, and Admin duplicate `400`
-- [ ] 2.3.3 Verify Phase 2: server typecheck, focused unit/integration/existing tests, and `yarn test:structure`
+- [x] 2.3.1 Run the specification tests and verify the green phase ✅ (completed: 2026-10-25 19:23)
+- [x] 2.3.2 Write implementation tests for schema strictness, ETag, body organization mismatch, and audit failure rollback — `packages/server/tests/unit/routes/tenant-users.impl.test.ts`, `packages/server/tests/unit/users/tenant-user-service.impl.test.ts`; update existing service/route tests for typed actors, transaction mocks, and Admin duplicate `400` ✅ (completed: 2026-10-25 19:23)
+- [x] 2.3.3 Verify Phase 2: server typecheck, focused unit/integration/existing tests, and `yarn test:structure` ✅ (completed: 2026-10-25 19:23)
 
 **Deliverables**:
 - [ ] Tenant create/list/get/update with full profile and verification flags
@@ -119,7 +119,9 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [ ] Read audit and write rate limiting
 - [ ] All Phase 2 verification passing
 
-**Verify**: `yarn workspace @portaidentity/server typecheck && yarn workspace @portaidentity/server vitest run --project unit tests/unit/routes/tenant-users.spec.test.ts tests/unit/routes/tenant-users.impl.test.ts tests/unit/routes/users.test.ts tests/unit/users/service.test.ts && yarn workspace @portaidentity/server vitest run --project integration tests/integration/security/tenant-user-management.spec.test.ts && yarn test:structure`
+**Verify**: `yarn workspace @portaidentity/server typecheck && yarn workspace @portaidentity/server vitest run --project unit tests/unit/routes/tenant-users.spec.test.ts tests/unit/routes/tenant-users.impl.test.ts tests/unit/users/tenant-user-service.impl.test.ts tests/unit/routes/users.test.ts tests/unit/users/service.test.ts && yarn workspace @portaidentity/server vitest run --project integration tests/integration/security/tenant-user-management.spec.test.ts && yarn test:structure`
+
+**Verification**: Passed — typecheck; 84 focused unit tests; 6 live tenant API tests; 138 structure tests. Full unit 237 files / 3,845 tests and full integration 61 files / 508 tests also pass.
 
 ---
 

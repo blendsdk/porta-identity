@@ -29,6 +29,14 @@ export type AuditActor =
   | { readonly kind: 'service'; readonly clientId: string; readonly clientName: string }
   | { readonly kind: 'system' };
 
+/** Optional request metadata attached to a mutation audit row. */
+export interface AuditRequestContext {
+  /** Trusted client IP resolved by the server. */
+  readonly ipAddress?: string;
+  /** Sanitized user-agent header. */
+  readonly userAgent?: string;
+}
+
 /** Input data for writing an audit log entry. */
 export interface AuditLogEntry {
   organizationId?: string;

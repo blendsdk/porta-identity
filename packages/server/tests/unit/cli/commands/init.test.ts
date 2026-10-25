@@ -299,9 +299,10 @@ describe('CLI Init Command', () => {
           familyName: 'User',
           password: 'SecurePassword123!',
         }),
+        { kind: 'system' },
       );
 
-      expect(activateUser).toHaveBeenCalledWith('user-admin-id');
+      expect(activateUser).toHaveBeenCalledWith('user-admin-id', { kind: 'system' });
       expect(markEmailVerified).toHaveBeenCalledWith('user-admin-id');
       expect(assignRolesToUser).toHaveBeenCalledWith(
         'org-super-admin-id',
@@ -420,6 +421,7 @@ describe('CLI Init Command', () => {
           familyName: 'Admin',
           password: 'CIPassword456!',
         }),
+        { kind: 'system' },
       );
 
       expect(success).toHaveBeenCalledWith('Porta initialization complete!');

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { User } from '../../../src/users/types.js';
-import { UserNotFoundError, UserValidationError } from '../../../src/users/errors.js';
+import { UserEmailConflictError, UserNotFoundError } from '../../../src/users/errors.js';
 
 // Mock all dependencies before importing the module under test
 vi.mock('../../../src/users/service.js', () => ({
@@ -132,11 +132,19 @@ function createMockCtx(
 ) {
   let statusCode = 200;
   let responseBody: unknown = undefined;
+  const headers: Record<string, string> = {};
 
   const ctx = {
     params: { orgId: 'org-uuid-1', ...(overrides.params ?? {}) },
     query: overrides.query ?? {},
     request: { body: overrides.body ?? {} },
+    ip: '127.0.0.1',
+    get(field: string) {
+      return headers[field.toLowerCase()] ?? '';
+    },
+    set(field: string, value: string) {
+      headers[field.toLowerCase()] = value;
+    },
     get status() {
       return statusCode;
     },
@@ -217,13 +225,19 @@ describe('user routes', () => {
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '');
       const ctx = createMockCtx({
-        body: { email: 'john@example.com', phoneNumberVerified: true },
+        body: {
+          email: 'john@example.com',
+          phoneNumber: '+15555550123',
+          phoneNumberVerified: true,
+        },
       });
 
       await exec(layer!, ctx);
 
       expect(userService.createUser).toHaveBeenCalledWith(
         expect.objectContaining({ phoneNumberVerified: true }),
+        { kind: 'user', userId: 'admin-uuid-1' },
+        expect.objectContaining({ ipAddress: '127.0.0.1' }),
       );
       expect(ctx.status).toBe(201);
     });
@@ -241,14 +255,16 @@ describe('user routes', () => {
 
     it('should return 400 for duplicate email', async () => {
       (userService.createUser as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new UserValidationError('Email already exists in this organization'),
+        new UserEmailConflictError(),
       );
 
       const router = createUserRouter();
       const layer = findLayer(router, 'POST', '');
       const ctx = createMockCtx({ body: { email: 'john@example.com' } });
 
-      await expect(exec(layer!, ctx)).rejects.toThrow('User request is invalid');
+      await exec(layer!, ctx);
+      expect(ctx.status).toBe(400);
+      expect(ctx.body).toEqual({ error: 'User already exists in this organization' });
     });
   });
 
@@ -404,7 +420,11 @@ describe('user routes', () => {
 
       await exec(layer!, ctx);
 
-      expect(userService.activateUser).toHaveBeenCalledWith('user-uuid-1');
+      expect(userService.activateUser).toHaveBeenCalledWith(
+        'user-uuid-1',
+        { kind: 'user', userId: 'admin-uuid-1' },
+        expect.objectContaining({ ipAddress: '127.0.0.1' }),
+      );
       expect(ctx.status).toBe(204);
     });
   });

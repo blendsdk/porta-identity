@@ -51,3 +51,17 @@ export class RoleDelegationError extends Error {
     this.name = 'RoleDelegationError';
   }
 }
+
+/**
+ * Thrown when a role mutation crosses the client application boundary.
+ *
+ * This is a request validation failure, not an authorization failure: the
+ * caller is allowed to mutate roles, but one requested role belongs to another
+ * application or to the canonical control plane.
+ */
+export class RoleApplicationBoundaryError extends Error {
+  constructor() {
+    super('Role does not belong to the client application');
+    this.name = 'RoleApplicationBoundaryError';
+  }
+}

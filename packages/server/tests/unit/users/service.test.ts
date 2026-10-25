@@ -26,12 +26,46 @@ vi.mock('../../../src/users/password.js', () => ({
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn().mockResolvedValue(undefined),
+  writeAuditLogInTransaction: vi.fn().mockResolvedValue(undefined),
+  auditActorColumns: (actor: {
+    kind: 'user' | 'service' | 'system';
+    userId?: string;
+    clientId?: string;
+    clientName?: string;
+  }) =>
+    actor.kind === 'service'
+      ? {
+          actorId: undefined,
+          actorType: 'client',
+          actorClientId: actor.clientId,
+          actorClientName: actor.clientName,
+        }
+      : actor.kind === 'user'
+        ? {
+            actorId: actor.userId,
+            actorType: 'user',
+            actorClientId: null,
+            actorClientName: null,
+          }
+        : {
+            actorId: undefined,
+            actorType: 'system',
+            actorClientId: null,
+            actorClientName: null,
+          },
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: vi.fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: vi.fn() }),
+  afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
 }));
 
 import * as repo from '../../../src/users/repository.js';
 import * as cache from '../../../src/users/cache.js';
 import * as pw from '../../../src/users/password.js';
-import { writeAuditLog } from '../../../src/lib/audit-log.js';
+import { writeAuditLog, writeAuditLogInTransaction } from '../../../src/lib/audit-log.js';
 import {
   createUser,
   getUserById,
@@ -47,7 +81,11 @@ import {
   recordLogin,
   findUserForOidc,
 } from '../../../src/users/service.js';
-import { UserNotFoundError, UserValidationError } from '../../../src/users/errors.js';
+import {
+  UserEmailConflictError,
+  UserNotFoundError,
+  UserValidationError,
+} from '../../../src/users/errors.js';
 import type { User } from '../../../src/users/types.js';
 
 /** Helper to create a test user */
@@ -149,7 +187,7 @@ describe('user service', () => {
 
       await expect(
         createUser({ organizationId: 'org-uuid-1', email: 'john@example.com' }),
-      ).rejects.toThrow(UserValidationError);
+      ).rejects.toThrow(UserEmailConflictError);
     });
 
     it('should reject invalid password length', async () => {
@@ -169,10 +207,21 @@ describe('user service', () => {
       (repo.emailExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
       (repo.insertUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await createUser({ organizationId: 'org-uuid-1', email: 'john@example.com' }, 'actor-1');
+      await createUser(
+        { organizationId: 'org-uuid-1', email: 'john@example.com' },
+        { kind: 'user', userId: 'actor-1' },
+        { ipAddress: '127.0.0.1', userAgent: 'test-agent' },
+      );
 
-      expect(writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: 'user.created', actorId: 'actor-1' }),
+      expect(writeAuditLogInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          eventType: 'user.created',
+          actorId: 'actor-1',
+          actorType: 'user',
+          ipAddress: '127.0.0.1',
+          userAgent: 'test-agent',
+        }),
       );
     });
   });
@@ -256,9 +305,10 @@ describe('user service', () => {
       const user = createTestUser();
       (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await updateUser('user-uuid-1', { givenName: 'Jane' }, 'actor-1');
+      await updateUser('user-uuid-1', { givenName: 'Jane' }, { kind: 'user', userId: 'actor-1' });
 
-      expect(writeAuditLog).toHaveBeenCalledWith(
+      expect(writeAuditLogInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({ eventType: 'user.updated', actorId: 'actor-1' }),
       );
     });

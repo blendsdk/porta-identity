@@ -10,66 +10,69 @@
  */
 
 import Router from '@koa/router';
-import { z } from 'zod';
-import { requireTenantActorAuth } from '../middleware/tenant-user-auth.js';
-import type { TenantTokenProvider } from '../middleware/tenant-user-auth.js';
-import { tenantInviteRateLimiter } from '../middleware/tenant-invite-rate-limiter.js';
-import { TENANT_INVITE_PERMISSION, TENANT_INVITE_SCOPE } from '../oidc/scopes.js';
-import { RoleDelegationError, RoleNotFoundError } from '../rbac/errors.js';
+import type { Context } from 'koa';
 import {
-  InviteConflictError,
-  InviteOrganizationNotFoundError,
-  InvitePreAssignmentError,
-  InviteUserExistsError,
-  inviteUser,
-  inviteUserSchema,
-} from '../users/invite-service.js';
+  auditActorColumns,
+  tenantActorToAuditActor,
+  writeAuditLog,
+} from '../lib/audit-log.js';
+import type { AuditRequestContext } from '../lib/audit-log.js';
+import { checkIfMatch, setETagHeader } from '../lib/etag.js';
+import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
+import { requireTenantActorAuth } from '../middleware/tenant-user-auth.js';
+import type { TenantActor, TenantTokenProvider } from '../middleware/tenant-user-auth.js';
+import { requireUserOrganization } from '../middleware/require-user-organization.js';
+import { tenantInviteRateLimiter } from '../middleware/tenant-invite-rate-limiter.js';
+import { tenantUserWriteRateLimiter } from '../middleware/tenant-user-rate-limiter.js';
+import {
+  TENANT_INVITE_PERMISSION,
+  TENANT_INVITE_SCOPE,
+  TENANT_USER_READ_SCOPE,
+  TENANT_USER_WRITE_SCOPE,
+} from '../oidc/scopes.js';
+import { UserValidationError } from '../users/errors.js';
+import { inviteUser, inviteUserSchema } from '../users/invite-service.js';
 import type { InviteActor } from '../users/invite-service.js';
+import {
+  createUser,
+  getUserById,
+  listUsersByOrganization,
+  listUsersCursor,
+  updateUser,
+} from '../users/service.js';
+import {
+  listUsersCursorSchema,
+  listUsersSchema,
+  tenantCreateUserSchema,
+  tenantUpdateUserSchema,
+} from '../users/schemas.js';
+import { handleUserRouteError } from './user-error-handler.js';
 
-/**
- * Map invitation domain errors to sanitized HTTP responses.
- *
- * @param ctx - Koa context
- * @param error - Unknown caught value
- */
-function handleInviteError(
-  ctx: { status: number; body: unknown; throw: (status: number, message: string) => never },
-  error: unknown,
-): never {
-  if (error instanceof z.ZodError) {
-    ctx.status = 400;
-    ctx.body = { error: 'User request is invalid' };
-    return undefined as never;
+/** Capture trusted request metadata for mutation and read audit. */
+function auditContext(ctx: Context): AuditRequestContext {
+  const userAgent = ctx.get('user-agent');
+  return {
+    ...(ctx.ip ? { ipAddress: ctx.ip } : {}),
+    ...(userAgent ? { userAgent } : {}),
+  };
+}
+
+/** Return the authenticated service actor, or write the fixed missing-auth response. */
+function serviceActor(
+  ctx: Context,
+): Extract<TenantActor, { kind: 'service' }> | undefined {
+  const actor = ctx.state.tenantActor;
+  if (!actor || actor.kind !== 'service') {
+    ctx.status = 401;
+    ctx.body = { error: 'Authentication required' };
+    return undefined;
   }
-  if (error instanceof InviteOrganizationNotFoundError) {
-    ctx.throw(404, 'Organization not found');
-  }
-  if (error instanceof InviteUserExistsError) {
-    ctx.status = 409;
-    ctx.body = { error: 'User already exists in this organization' };
-    return undefined as never;
-  }
-  if (error instanceof InviteConflictError) {
-    ctx.status = 409;
-    ctx.body = { error: 'A live invitation already exists for this email' };
-    return undefined as never;
-  }
-  if (error instanceof InvitePreAssignmentError) {
-    ctx.status = 400;
-    ctx.body = { error: 'User request is invalid' };
-    return undefined as never;
-  }
-  if (error instanceof RoleDelegationError) {
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined as never;
-  }
-  if (error instanceof RoleNotFoundError) {
-    ctx.status = 400;
-    ctx.body = { error: 'User request is invalid' };
-    return undefined as never;
-  }
-  throw error;
+  return actor;
+}
+
+/** Map tenant user/role/invite errors with the tenant duplicate-email policy. */
+function handleTenantError(ctx: Context, error: unknown): never {
+  return handleUserRouteError(ctx, error, { duplicateEmailStatus: 409 });
 }
 
 /**
@@ -80,6 +83,181 @@ function handleInviteError(
  */
 export function createTenantUsersRouter(provider?: TenantTokenProvider): Router {
   const router = new Router({ prefix: '/api/organizations/:orgId/users' });
+
+  router.post(
+    '/',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_WRITE_SCOPE,
+    }),
+    requireExistingOrganization(),
+    tenantUserWriteRateLimiter(),
+    async (ctx) => {
+      try {
+        const body = tenantCreateUserSchema.parse(ctx.request.body);
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+
+        const user = await createUser(
+          { ...body, organizationId: ctx.params.orgId },
+          tenantActorToAuditActor(actor),
+          auditContext(ctx),
+        );
+        setETagHeader(ctx, 'user', user.id, user.updatedAt);
+        ctx.status = 201;
+        ctx.body = { data: user };
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.get(
+    '/',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_READ_SCOPE,
+    }),
+    requireExistingOrganization(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+
+        if (ctx.query.cursor !== undefined || ctx.query.limit !== undefined) {
+          const query = listUsersCursorSchema.parse(ctx.query);
+          const result = await listUsersCursor({ organizationId: ctx.params.orgId, ...query });
+          await writeAuditLog({
+            organizationId: ctx.params.orgId,
+            ...auditActorColumns(tenantActorToAuditActor(actor)),
+            eventType: 'user.listed',
+            eventCategory: 'security',
+            metadata: {
+              source: 'tenant-user-api',
+              limit: query.limit,
+              search: query.search ?? null,
+              status: query.status ?? null,
+              sortBy: query.sortBy,
+              sortOrder: query.sortOrder,
+              resultCount: result.data.length,
+            },
+            ...auditContext(ctx),
+          });
+          ctx.body = result;
+          return;
+        }
+
+        const query = listUsersSchema.parse(ctx.query);
+        const result = await listUsersByOrganization({
+          organizationId: ctx.params.orgId,
+          ...query,
+        });
+        await writeAuditLog({
+          organizationId: ctx.params.orgId,
+          ...auditActorColumns(tenantActorToAuditActor(actor)),
+          eventType: 'user.listed',
+          eventCategory: 'security',
+          metadata: {
+            source: 'tenant-user-api',
+            page: query.page,
+            pageSize: query.pageSize,
+            search: query.search ?? null,
+            status: query.status ?? null,
+            sortBy: query.sortBy,
+            sortOrder: query.sortOrder,
+            resultCount: result.data.length,
+          },
+          ...auditContext(ctx),
+        });
+        ctx.body = result;
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.get(
+    '/:userId',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_READ_SCOPE,
+    }),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+
+        const user = await getUserById(ctx.params.userId);
+        if (!user) {
+          ctx.status = 404;
+          ctx.body = { error: 'User not found' };
+          return;
+        }
+
+        setETagHeader(ctx, 'user', user.id, user.updatedAt);
+        await writeAuditLog({
+          organizationId: ctx.params.orgId,
+          userId: user.id,
+          ...auditActorColumns(tenantActorToAuditActor(actor)),
+          eventType: 'user.read',
+          eventCategory: 'security',
+          metadata: { source: 'tenant-user-api' },
+          ...auditContext(ctx),
+        });
+        ctx.body = { data: user };
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.put(
+    '/:userId',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_WRITE_SCOPE,
+    }),
+    requireUserOrganization(),
+    tenantUserWriteRateLimiter(),
+    async (ctx) => {
+      try {
+        const body = tenantUpdateUserSchema.parse(ctx.request.body);
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+
+        const current = await getUserById(ctx.params.userId);
+        if (!current) {
+          ctx.status = 404;
+          ctx.body = { error: 'User not found' };
+          return;
+        }
+        if (!checkIfMatch(ctx, 'user', current.id, current.updatedAt, current)) return;
+
+        const effectivePhone =
+          body.phoneNumber !== undefined ? body.phoneNumber : current.phoneNumber;
+        if (body.phoneNumberVerified === true && !effectivePhone) {
+          throw new UserValidationError('A phone number is required when phoneNumberVerified is true');
+        }
+
+        const input = { ...body, address: body.address ?? undefined };
+        const user = await updateUser(
+          ctx.params.userId,
+          input,
+          tenantActorToAuditActor(actor),
+          auditContext(ctx),
+        );
+        setETagHeader(ctx, 'user', user.id, user.updatedAt);
+        ctx.body = { data: user };
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
 
   router.post(
     '/invite',
@@ -132,7 +310,7 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
         ctx.status = 201;
         ctx.body = { data: result };
       } catch (error) {
-        handleInviteError(ctx, error);
+        handleTenantError(ctx, error);
       }
     },
   );
