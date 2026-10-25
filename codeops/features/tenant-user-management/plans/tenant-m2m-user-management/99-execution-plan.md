@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25
-> **Progress**: 0/56 tasks (0%)
+> **Last Updated**: 2026-10-25 18:09
+> **Progress**: 3/56 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -45,7 +45,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 ## Phase 1: Tenant auth, scopes, and audit foundation
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill from a temporary-index snapshot of committed, staged, unstaged, and untracked phase-start state)_
+> **Phase baseline tree**: 83f258a148efb3507dc0cb53c7fd5f89e468a6d2
 > **Lenses**: security, api, data
 > **Reasoning**: high — authentication, tenant isolation, audit schema, and migration semantics
 
@@ -54,9 +54,9 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Reference**: [03-01](03-01-tenant-auth-and-scopes.md) · [03-03](03-03-audit-client-actor.md) · AR-2, AR-3, AR-6, AR-14, AR-16, AR-18, AR-21.
 **Objective**: Prove the auth matrix, scope registration, and audit migration before implementation.
 
-- [ ] 1.1.1 [spec-author] Write tenant auth/scope/instrumentation specification tests from ST-1–ST-9 and ST-51 — `packages/server/tests/unit/middleware/tenant-user-auth.spec.test.ts`
-- [ ] 1.1.2 [spec-author] Write audit actor specification tests from ST-38–ST-42 — `packages/server/tests/unit/lib/audit-client-actor.spec.test.ts`; write migration/backfill specification tests from ST-46 — `packages/server/tests/integration/migrations/034-audit-client-actor.spec.test.ts`
-- [ ] 1.1.3 Run the new specification tests and verify the red phase; record any justified pre-implementation pass
+- [x] 1.1.1 [spec-author] Write tenant auth/scope/instrumentation specification tests from ST-1–ST-9 and ST-51 — `packages/server/tests/unit/middleware/tenant-user-auth.spec.test.ts` ✅ (completed: 2026-10-25 18:09)
+- [x] 1.1.2 [spec-author] Write audit actor specification tests from ST-38–ST-42 — `packages/server/tests/unit/lib/audit-client-actor.spec.test.ts`; write migration/backfill specification tests from ST-46 — `packages/server/tests/integration/migrations/034-audit-client-actor.spec.test.ts` ✅ (completed: 2026-10-25 18:09)
+- [x] 1.1.3 Run the new specification tests and verify the red phase; record any justified pre-implementation pass ✅ (completed: 2026-10-25 18:09) — auth import missing; audit writer columns/mapping absent; migration file absent. Justified pre-implementation passes: compatibility-writer swallow behavior and transaction-writer failure propagation already match the specification.
 - [ ] 1.1.4 Add `org:user:read`, `org:user:write`, and `org:user:delete` constants and register them in the provider scope list — `packages/server/src/oidc/scopes.ts`, `packages/server/src/oidc/configuration.ts`
 - [ ] 1.1.5 Generalize tenant actor auth to configurable actor kinds, required scope, required permission, and preserved security decision/reference instrumentation; rename state to `tenantActor` — `packages/server/src/middleware/tenant-user-auth.ts`, `packages/server/src/middleware/tenant-invite-auth.ts`
 - [ ] 1.1.6 Create the consolidated tenant user router, move the invite handler, retire `tenant-invitations.ts`, and mount it from the server — `packages/server/src/routes/tenant-users.ts`, `packages/server/src/server.ts`
