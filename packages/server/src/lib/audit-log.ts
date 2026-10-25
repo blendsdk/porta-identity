@@ -197,6 +197,21 @@ export function auditActorColumns(
   };
 }
 
+/**
+ * Combine actor columns with optional trusted request metadata.
+ *
+ * @param actor - Audit actor, or system when omitted
+ * @param context - Optional trusted IP and user-agent metadata
+ * @returns Fields ready to spread into an audit entry
+ */
+export function auditFields(actor: AuditActor | undefined, context?: AuditRequestContext) {
+  return {
+    ...auditActorColumns(actor ?? { kind: 'system' }),
+    ...(context?.ipAddress ? { ipAddress: context.ipAddress } : {}),
+    ...(context?.userAgent ? { userAgent: context.userAgent } : {}),
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Writer
 // ---------------------------------------------------------------------------

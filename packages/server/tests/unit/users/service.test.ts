@@ -24,36 +24,14 @@ vi.mock('../../../src/users/password.js', () => ({
   verifyPassword: vi.fn(),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: vi.fn().mockResolvedValue(undefined),
-  writeAuditLogInTransaction: vi.fn().mockResolvedValue(undefined),
-  auditActorColumns: (actor: {
-    kind: 'user' | 'service' | 'system';
-    userId?: string;
-    clientId?: string;
-    clientName?: string;
-  }) =>
-    actor.kind === 'service'
-      ? {
-          actorId: undefined,
-          actorType: 'client',
-          actorClientId: actor.clientId,
-          actorClientName: actor.clientName,
-        }
-      : actor.kind === 'user'
-        ? {
-            actorId: actor.userId,
-            actorType: 'user',
-            actorClientId: null,
-            actorClientName: null,
-          }
-        : {
-            actorId: undefined,
-            actorType: 'system',
-            actorClientId: null,
-            actorClientName: null,
-          },
-}));
+vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/audit-log.js')>();
+  return {
+    ...actual,
+    writeAuditLog: vi.fn().mockResolvedValue(undefined),
+    writeAuditLogInTransaction: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
@@ -348,6 +326,18 @@ describe('user service', () => {
 
       expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', { status: 'inactive' });
       expect(cache.invalidateUserCache).toHaveBeenCalled();
+    });
+
+    it('should not invalidate the cache when the lifecycle audit fails', async () => {
+      const user = createTestUser({ status: 'active' });
+      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      (writeAuditLogInTransaction as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('audit unavailable'),
+      );
+
+      await expect(deactivateUser('user-uuid-1')).rejects.toThrow('audit unavailable');
+      expect(cache.invalidateUserCache).not.toHaveBeenCalled();
     });
 
     it('should reject already inactive user', async () => {

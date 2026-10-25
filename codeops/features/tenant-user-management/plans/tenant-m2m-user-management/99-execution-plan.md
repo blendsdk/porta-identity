@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 20:01
+> **Last Updated**: 2026-10-25 20:35
 > **Progress**: 37/56 tasks (66%)
 > **CodeOps Artifact Schema**: 1
 
@@ -166,6 +166,8 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Verify**: `yarn workspace @portaidentity/server typecheck && yarn workspace @portaidentity/server vitest run --project unit tests/unit/routes/tenant-users.spec.test.ts tests/unit/rbac/tenant-user-roles.spec.test.ts tests/unit/rbac/user-role-service.test.ts tests/unit/routes/user-roles.test.ts tests/unit/routes/users.test.ts && yarn workspace @portaidentity/server vitest run --project integration tests/integration/security/tenant-user-management.spec.test.ts tests/integration/rbac/authority-mutations.spec.test.ts tests/integration/rbac/permission-deletion-concurrency.impl.test.ts tests/integration/admin/record-deletion.spec.test.ts && yarn workspace @portaidentity/server vitest run --project pentest tests/pentest/admin-security/tenant-user-boundary.spec.test.ts && yarn test:structure`
 
 **Verification**: Passed — typecheck; 91 focused unit tests; 36 focused integration tests; 8 tenant boundary pentest tests; 138 structure tests. Full unit 238 files / 3,861 tests, full integration 61 files / 513 tests, and full pentest 44 files / 286 tests also pass.
+
+**Review**: Passed after fixes — all critical/major findings resolved; RV-007 accepted (tenant delete session revocation remains covered by the shared delete service and its existing integration evidence rather than a new tenant-local assertion). Independent re-review resolved; evidence in [05-findings.md](05-findings.md). Final full unit 3,869, integration 514, pentest 286, structure 138.
 
 ---
 

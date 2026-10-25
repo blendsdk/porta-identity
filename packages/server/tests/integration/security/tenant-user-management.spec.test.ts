@@ -101,9 +101,10 @@ async function readAudit(eventType: string, organizationId: string) {
     actor_client_id: string | null;
     actor_client_name: string | null;
     user_id: string | null;
+    organization_id: string | null;
     metadata: Record<string, unknown>;
   }>(
-    `SELECT actor_type, actor_client_id, actor_client_name, user_id, metadata
+    `SELECT actor_type, actor_client_id, actor_client_name, user_id, organization_id, metadata
        FROM audit_log
       WHERE event_type = $1 AND organization_id = $2
       ORDER BY created_at DESC
@@ -132,6 +133,9 @@ beforeEach(async () => {
       find: async (token) => {
         if (token === 'read-only-token') {
           return { clientId: client.clientId, scopes: new Set(['org:user:read']) };
+        }
+        if (token === 'write-only-token') {
+          return { clientId: client.clientId, scopes: new Set(['org:user:write']) };
         }
         return token === 'tenant-token'
           ? {
@@ -370,6 +374,12 @@ describe('tenant user API', () => {
     expect(hidden.status).toBe(404);
     const stillThere = await getPool().query('SELECT 1 FROM users WHERE id = $1', [foreign.id]);
     expect(stillThere.rowCount).toBe(1);
+
+    const repeat = await request(fixture, {
+      method: 'DELETE',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}`,
+    });
+    expect(repeat.status).toBe(404);
   });
 
   it('ST-30/ST-31 deactivates and reactivates a user and rejects an invalid transition', async () => {
@@ -382,9 +392,10 @@ describe('tenant user API', () => {
       path: `/api/organizations/${fixture.organizationId}/users/${user.id}/deactivate`,
     });
     expect(deactivate.status).toBe(204);
-    let status = await getPool().query<{ status: string }>('SELECT status FROM users WHERE id = $1', [
-      user.id,
-    ]);
+    let status = await getPool().query<{ status: string }>(
+      'SELECT status FROM users WHERE id = $1',
+      [user.id],
+    );
     expect(status.rows[0]?.status).toBe('inactive');
 
     const activate = await request(fixture, {
@@ -397,16 +408,41 @@ describe('tenant user API', () => {
     ]);
     expect(status.rows[0]?.status).toBe('active');
 
-    const invalid = await request(fixture, {
+    const firstDeactivate = await request(fixture, {
       method: 'POST',
       path: `/api/organizations/${fixture.organizationId}/users/${user.id}/deactivate`,
     });
-    expect(invalid.status).toBe(204);
+    expect(firstDeactivate.status).toBe(204);
     const second = await request(fixture, {
       method: 'POST',
       path: `/api/organizations/${fixture.organizationId}/users/${user.id}/deactivate`,
     });
     expect(second.status).toBe(400);
+
+    const deactivatedAudit = await readAudit('user.deactivated', fixture.organizationId);
+    const activatedAudit = await readAudit('user.activated', fixture.organizationId);
+    expect(deactivatedAudit).toMatchObject({
+      actor_type: 'client',
+      actor_client_id: fixture.clientId,
+      user_id: user.id,
+    });
+    expect(activatedAudit).toMatchObject({
+      actor_type: 'client',
+      actor_client_id: fixture.clientId,
+      user_id: user.id,
+    });
+  });
+
+  it('ST-37 rejects role reads with only the write scope', async () => {
+    const user = await createTestUser(fixture.organizationId, {
+      email: `write-only-${randomUUID()}@example.test`,
+    });
+    const roles = await request(fixture, {
+      method: 'GET',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
+      authToken: 'write-only-token',
+    });
+    expect(roles.status).toBe(403);
   });
 
   it('ST-32/ST-33/ST-35/ST-36 manages only client-application roles and permissions', async () => {
@@ -416,6 +452,10 @@ describe('tenant user API', () => {
     });
     const otherApplication = await createTestApplication();
     const otherRole = await createTestRole(otherApplication.id);
+    const otherPermission = await createTestPermission(otherApplication.id, {
+      name: 'Other Permission',
+      slug: `other:permission:${randomUUID()}`,
+    });
     const permission = await createTestPermission(fixture.applicationId, {
       name: 'Tenant Permission',
       slug: `tenant:permission:${randomUUID()}`,
@@ -424,6 +464,11 @@ describe('tenant user API', () => {
       `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)
        ON CONFLICT DO NOTHING`,
       [role.id, permission.id],
+    );
+    await getPool().query(
+      `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [otherRole.id, otherPermission.id],
     );
     const user = await createTestUser(fixture.organizationId, {
       email: `roles-${randomUUID()}@example.test`,
@@ -435,6 +480,16 @@ describe('tenant user API', () => {
       body: { roleIds: [role.id] },
     });
     expect(assign.status).toBe(204);
+    const assignedAudit = await readAudit('user.roles.assigned', fixture.organizationId);
+    expect(assignedAudit).toMatchObject({
+      organization_id: fixture.organizationId,
+      actor_type: 'client',
+      actor_client_id: fixture.clientId,
+    });
+    await getPool().query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [
+      user.id,
+      otherRole.id,
+    ]);
 
     const roles = await request(fixture, {
       method: 'GET',
@@ -450,6 +505,7 @@ describe('tenant user API', () => {
     });
     expect(permissions.status).toBe(200);
     expect(JSON.stringify(permissions.body)).toContain(permission.slug);
+    expect(JSON.stringify(permissions.body)).not.toContain(otherPermission.slug);
 
     const boundary = await request(fixture, {
       method: 'PUT',
@@ -458,11 +514,24 @@ describe('tenant user API', () => {
     });
     expect(boundary.status).toBe(400);
 
+    const removeBoundary = await request(fixture, {
+      method: 'DELETE',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
+      body: { roleIds: [otherRole.id] },
+    });
+    expect(removeBoundary.status).toBe(400);
+
     const remove = await request(fixture, {
       method: 'DELETE',
       path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
       body: { roleIds: [role.id] },
     });
     expect(remove.status).toBe(200);
+    const removedAudit = await readAudit('user.roles.removed', fixture.organizationId);
+    expect(removedAudit).toMatchObject({
+      organization_id: fixture.organizationId,
+      actor_type: 'client',
+      actor_client_id: fixture.clientId,
+    });
   });
 });

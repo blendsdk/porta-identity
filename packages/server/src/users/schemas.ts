@@ -89,10 +89,7 @@ const updateUserObjectSchema = z.object({
 });
 
 /** Require at least one supplied update field. */
-function requireUpdateField(
-  value: Record<string, unknown>,
-  context: z.RefinementCtx,
-): void {
+function requireUpdateField(value: Record<string, unknown>, context: z.RefinementCtx): void {
   if (Object.keys(value).length === 0) {
     context.addIssue({
       code: 'custom',
@@ -155,5 +152,5 @@ export const identifierSchema = z.object({
 
 /** Role assignment request body. */
 export const roleIdsSchema = z.object({
-  roleIds: z.array(z.string().uuid()).min(1),
+  roleIds: z.array(z.string().uuid()).min(1).max(100),
 });

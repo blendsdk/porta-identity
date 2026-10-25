@@ -48,23 +48,17 @@ vi.mock('../../../src/users/repository.js', () => ({
 
 vi.mock('../../../src/lib/database.js', () => ({
   getDatabaseTransactionClient: () => ({ query: vi.fn() }),
-  runDatabaseTransaction: (work: () => Promise<unknown>) => dependencies.runDatabaseTransaction(work),
+  runDatabaseTransaction: (work: () => Promise<unknown>) =>
+    dependencies.runDatabaseTransaction(work),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLogInTransaction: dependencies.writeAuditLogInTransaction,
-  auditActorColumns: (actor: { kind: string; userId?: string; clientId?: string; clientName?: string }) =>
-    actor.kind === 'service'
-      ? {
-          actorId: undefined,
-          actorType: 'client',
-          actorClientId: actor.clientId,
-          actorClientName: actor.clientName,
-        }
-      : actor.kind === 'user'
-        ? { actorId: actor.userId, actorType: 'user', actorClientId: null, actorClientName: null }
-        : { actorId: undefined, actorType: 'system', actorClientId: null, actorClientName: null },
-}));
+vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/audit-log.js')>();
+  return {
+    ...actual,
+    writeAuditLogInTransaction: dependencies.writeAuditLogInTransaction,
+  };
+});
 
 vi.mock('../../../src/lib/deletion-cleanup.js', () => ({
   registerDeletionCleanup: vi.fn(),
@@ -75,14 +69,8 @@ vi.mock('../../../src/lib/authority-revocation.js', () => ({
   revokeAffectedAuthorityInTransaction: dependencies.revokeAffectedAuthorityInTransaction,
 }));
 
-import {
-  assignRolesToUser,
-  removeRolesFromUser,
-} from '../../../src/rbac/user-role-service.js';
-import {
-  RoleApplicationBoundaryError,
-  RoleDelegationError,
-} from '../../../src/rbac/errors.js';
+import { assignRolesToUser, removeRolesFromUser } from '../../../src/rbac/user-role-service.js';
+import { RoleApplicationBoundaryError, RoleDelegationError } from '../../../src/rbac/errors.js';
 
 const ORG = '11111111-1111-4111-8111-111111111111';
 const USER = '22222222-2222-4222-8222-222222222222';
@@ -97,9 +85,7 @@ function role(applicationId = APP, slug = 'crm-editor') {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  dependencies.runDatabaseTransaction.mockImplementation(
-    (work: () => Promise<unknown>) => work(),
-  );
+  dependencies.runDatabaseTransaction.mockImplementation((work: () => Promise<unknown>) => work());
   dependencies.getApplicationBySlug.mockResolvedValue({ id: ADMIN_APP, slug: 'porta-admin' });
   dependencies.lockUserRoleTargets.mockResolvedValue({
     user: { id: USER, status: 'active' },
@@ -123,21 +109,31 @@ describe('tenant user role mutations', () => {
       allowedApplicationId: APP,
     });
 
-    expect(dependencies.assignRolesToUser).toHaveBeenCalledWith(
-      ORG,
-      USER,
-      [ROLE],
-      undefined,
-    );
+    expect(dependencies.assignRolesToUser).toHaveBeenCalledWith(ORG, USER, [ROLE], undefined);
     expect(dependencies.writeAuditLogInTransaction).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        organizationId: ORG,
         eventType: 'user.roles.assigned',
         actorType: 'client',
         actorClientId: 'bff-client',
         userId: USER,
       }),
     );
+  });
+
+  it('opens its own service transaction and deduplicates repeated role IDs', async () => {
+    await assignRolesToUser({
+      organizationId: ORG,
+      userId: USER,
+      roleIds: [ROLE, ROLE],
+      actor: { kind: 'service', clientId: 'bff-client', clientName: 'Tenant BFF' },
+      allowedApplicationId: APP,
+    });
+
+    expect(dependencies.runDatabaseTransaction).toHaveBeenCalledOnce();
+    expect(dependencies.lockUserRoleTargets).toHaveBeenCalledWith(ORG, USER, [ROLE]);
+    expect(dependencies.assignRolesToUser).toHaveBeenCalledWith(ORG, USER, [ROLE], undefined);
   });
 
   it('rejects a role from another application before writing', async () => {
@@ -159,6 +155,27 @@ describe('tenant user role mutations', () => {
     expect(dependencies.assignRolesToUser).not.toHaveBeenCalled();
   });
 
+  it('rejects an unassigned foreign-application role on removal', async () => {
+    dependencies.lockUserRoleTargets.mockResolvedValue({
+      user: { id: USER, status: 'active' },
+      roles: [role(OTHER_APP)],
+      assignedRoleIds: [],
+    });
+
+    await expect(
+      removeRolesFromUser({
+        organizationId: ORG,
+        userId: USER,
+        roleIds: [ROLE],
+        actor: { kind: 'service', clientId: 'bff-client', clientName: 'Tenant BFF' },
+        allowedApplicationId: APP,
+      }),
+    ).rejects.toBeInstanceOf(RoleApplicationBoundaryError);
+
+    expect(dependencies.removeRolesFromUser).not.toHaveBeenCalled();
+    expect(dependencies.writeAuditLogInTransaction).not.toHaveBeenCalled();
+  });
+
   it('rejects a canonical admin application role for a tenant actor', async () => {
     dependencies.lockUserRoleTargets.mockResolvedValue({
       user: { id: USER, status: 'active' },
@@ -175,6 +192,20 @@ describe('tenant user role mutations', () => {
         allowedApplicationId: APP,
       }),
     ).rejects.toBeInstanceOf(RoleApplicationBoundaryError);
+  });
+
+  it('propagates a durable role audit failure so the mutation rolls back', async () => {
+    dependencies.writeAuditLogInTransaction.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(
+      assignRolesToUser({
+        organizationId: ORG,
+        userId: USER,
+        roleIds: [ROLE],
+        actor: { kind: 'service', clientId: 'bff-client', clientName: 'Tenant BFF' },
+        allowedApplicationId: APP,
+      }),
+    ).rejects.toThrow('audit unavailable');
   });
 
   it('rejects a system actor role mutation', async () => {
@@ -208,7 +239,11 @@ describe('tenant user role mutations', () => {
     expect(dependencies.removeRolesFromUser).toHaveBeenCalledWith(ORG, USER, [ROLE]);
     expect(dependencies.writeAuditLogInTransaction).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ eventType: 'user.roles.removed', actorType: 'client' }),
+      expect.objectContaining({
+        organizationId: ORG,
+        eventType: 'user.roles.removed',
+        actorType: 'client',
+      }),
     );
   });
 });

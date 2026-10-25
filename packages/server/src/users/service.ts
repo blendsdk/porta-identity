@@ -18,16 +18,12 @@
  *   - automatic lockout: active → locked → active after the configured cooldown
  */
 
-import { auditActorColumns, writeAuditLog } from '../lib/audit-log.js';
+import { auditFields, writeAuditLog } from '../lib/audit-log.js';
 import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { cacheUser, getCachedUserById, invalidateUserCache } from './cache.js';
-import {
-  UserEmailConflictError,
-  UserNotFoundError,
-  UserValidationError,
-} from './errors.js';
+import { UserEmailConflictError, UserNotFoundError, UserValidationError } from './errors.js';
 import {
   ensureDummyPasswordHash,
   hashPassword,
@@ -70,15 +66,6 @@ import type {
 
 /** Fixed UUID that can never identify a persisted account. */
 const NON_ACCOUNT_USER_ID = '00000000-0000-0000-0000-000000000000';
-
-/** Combine normalized actor columns with optional request metadata. */
-function auditFields(actor: AuditActor | undefined, context?: AuditRequestContext) {
-  return {
-    ...auditActorColumns(actor ?? { kind: 'system' }),
-    ...(context?.ipAddress ? { ipAddress: context.ipAddress } : {}),
-    ...(context?.userAgent ? { userAgent: context.userAgent } : {}),
-  };
-}
 
 /** Return whether a PostgreSQL error is a unique-constraint violation. */
 function isUniqueViolation(error: unknown): boolean {

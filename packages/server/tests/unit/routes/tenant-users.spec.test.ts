@@ -32,13 +32,11 @@ const service = vi.hoisted(() => ({
 }));
 
 vi.mock('../../../src/middleware/tenant-user-auth.js', () => ({
-  requireTenantActorAuth: () => async (
-    ctx: { state: { tenantActor?: unknown } },
-    next: () => Promise<void>,
-  ) => {
-    ctx.state.tenantActor = state.actor;
-    await next();
-  },
+  requireTenantActorAuth:
+    () => async (ctx: { state: { tenantActor?: unknown } }, next: () => Promise<void>) => {
+      ctx.state.tenantActor = state.actor;
+      await next();
+    },
 }));
 
 vi.mock('../../../src/middleware/tenant-invite-rate-limiter.js', () => ({
@@ -134,10 +132,7 @@ import {
   InviteUserExistsError,
 } from '../../../src/users/invite-service.js';
 import { UserEmailConflictError, UserValidationError } from '../../../src/users/errors.js';
-import {
-  RoleApplicationBoundaryError,
-  RoleDelegationError,
-} from '../../../src/rbac/errors.js';
+import { RoleApplicationBoundaryError, RoleDelegationError } from '../../../src/rbac/errors.js';
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ORG_ID = '99999999-9999-4999-8999-999999999999';
@@ -422,12 +417,7 @@ describe('tenant user CRUD routes', () => {
       emailVerified: true,
     });
 
-    await executeRoute(
-      createTenantUsersRouter(),
-      'POST',
-      '/api/organizations/:orgId/users',
-      ctx,
-    );
+    await executeRoute(createTenantUsersRouter(), 'POST', '/api/organizations/:orgId/users', ctx);
 
     expect(ctx.status).toBe(201);
     expect(service.createUser).toHaveBeenCalledWith(
@@ -447,12 +437,7 @@ describe('tenant user CRUD routes', () => {
   it('ST-11 rejects a password on tenant create before calling the service', async () => {
     const ctx = createMockCtx({ email: 'password@example.com', password: 'Password1!' });
 
-    await executeRoute(
-      createTenantUsersRouter(),
-      'POST',
-      '/api/organizations/:orgId/users',
-      ctx,
-    );
+    await executeRoute(createTenantUsersRouter(), 'POST', '/api/organizations/:orgId/users', ctx);
 
     expect(ctx.status).toBe(400);
     expect(ctx.body).toEqual({ error: 'User request is invalid' });
@@ -465,12 +450,7 @@ describe('tenant user CRUD routes', () => {
       phoneNumberVerified: true,
     });
 
-    await executeRoute(
-      createTenantUsersRouter(),
-      'POST',
-      '/api/organizations/:orgId/users',
-      ctx,
-    );
+    await executeRoute(createTenantUsersRouter(), 'POST', '/api/organizations/:orgId/users', ctx);
 
     expect(ctx.status).toBe(400);
     expect(service.createUser).not.toHaveBeenCalled();
@@ -480,12 +460,7 @@ describe('tenant user CRUD routes', () => {
     service.createUser.mockRejectedValue(new UserEmailConflictError());
     const ctx = createMockCtx({ email: 'duplicate@example.com' });
 
-    await executeRoute(
-      createTenantUsersRouter(),
-      'POST',
-      '/api/organizations/:orgId/users',
-      ctx,
-    );
+    await executeRoute(createTenantUsersRouter(), 'POST', '/api/organizations/:orgId/users', ctx);
 
     expect(ctx.status).toBe(409);
     expect(ctx.body).toEqual({ error: 'User already exists in this organization' });
@@ -497,12 +472,7 @@ describe('tenant user CRUD routes', () => {
       organizationId: OTHER_ORG_ID,
     });
 
-    await executeRoute(
-      createTenantUsersRouter(),
-      'POST',
-      '/api/organizations/:orgId/users',
-      ctx,
-    );
+    await executeRoute(createTenantUsersRouter(), 'POST', '/api/organizations/:orgId/users', ctx);
 
     expect(service.createUser).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: ORG_ID }),
@@ -701,7 +671,12 @@ describe('tenant user CRUD routes', () => {
   it('ST-30 deactivates and activates with the client actor', async () => {
     const router = createTenantUsersRouter();
     const deactivate = createMockCtx();
-    await executeRoute(router, 'POST', '/api/organizations/:orgId/users/:userId/deactivate', deactivate);
+    await executeRoute(
+      router,
+      'POST',
+      '/api/organizations/:orgId/users/:userId/deactivate',
+      deactivate,
+    );
     expect(deactivate.status).toBe(204);
     expect(service.deactivateUser).toHaveBeenCalledWith(
       USER_ID,
@@ -710,7 +685,12 @@ describe('tenant user CRUD routes', () => {
     );
 
     const activate = createMockCtx();
-    await executeRoute(router, 'POST', '/api/organizations/:orgId/users/:userId/activate', activate);
+    await executeRoute(
+      router,
+      'POST',
+      '/api/organizations/:orgId/users/:userId/activate',
+      activate,
+    );
     expect(activate.status).toBe(204);
     expect(service.activateUser).toHaveBeenCalledWith(
       USER_ID,
@@ -751,12 +731,7 @@ describe('tenant user CRUD routes', () => {
   it('ST-33/ST-34/ST-36 assigns and removes only client-application roles and maps boundary errors', async () => {
     const router = createTenantUsersRouter();
     const assign = createMockCtx({ roleIds: ['44444444-4444-4444-8444-444444444444'] });
-    await executeRoute(
-      router,
-      'PUT',
-      '/api/organizations/:orgId/users/:userId/roles',
-      assign,
-    );
+    await executeRoute(router, 'PUT', '/api/organizations/:orgId/users/:userId/roles', assign);
     expect(assign.status).toBe(204);
     expect(service.assignRolesToUser).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -770,21 +745,11 @@ describe('tenant user CRUD routes', () => {
 
     service.assignRolesToUser.mockRejectedValue(new RoleApplicationBoundaryError());
     const boundary = createMockCtx({ roleIds: ['44444444-4444-4444-8444-444444444444'] });
-    await executeRoute(
-      router,
-      'PUT',
-      '/api/organizations/:orgId/users/:userId/roles',
-      boundary,
-    );
+    await executeRoute(router, 'PUT', '/api/organizations/:orgId/users/:userId/roles', boundary);
     expect(boundary.status).toBe(400);
 
     const remove = createMockCtx({ roleIds: ['44444444-4444-4444-8444-444444444444'] });
-    await executeRoute(
-      router,
-      'DELETE',
-      '/api/organizations/:orgId/users/:userId/roles',
-      remove,
-    );
+    await executeRoute(router, 'DELETE', '/api/organizations/:orgId/users/:userId/roles', remove);
     expect(remove.status).toBe(200);
     expect(service.removeRolesFromUser).toHaveBeenCalledWith(
       expect.objectContaining({ allowedApplicationId: APP_ID, actor: auditActor }),

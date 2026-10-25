@@ -9,17 +9,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/auth/rate-limiter.js', () => ({
   checkRateLimit: vi.fn(),
+  checkRateLimitStrict: vi.fn(),
 }));
 
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: { warn: vi.fn(), debug: vi.fn(), info: vi.fn(), error: vi.fn() },
 }));
 
-import { checkRateLimit } from '../../../src/auth/rate-limiter.js';
-import {
-  tenantCreateUserSchema,
-  tenantUpdateUserSchema,
-} from '../../../src/users/schemas.js';
+import { checkRateLimit, checkRateLimitStrict } from '../../../src/auth/rate-limiter.js';
+import { tenantCreateUserSchema, tenantUpdateUserSchema } from '../../../src/users/schemas.js';
 import {
   TENANT_USER_DELETE_RATE_LIMIT,
   TENANT_USER_WRITE_RATE_LIMIT,
@@ -64,6 +62,11 @@ function limiterCtx() {
 beforeEach(() => {
   vi.clearAllMocks();
   (checkRateLimit as ReturnType<typeof vi.fn>).mockResolvedValue({
+    allowed: true,
+    remaining: 10,
+    retryAfter: 0,
+  });
+  (checkRateLimitStrict as ReturnType<typeof vi.fn>).mockResolvedValue({
     allowed: true,
     remaining: 10,
     retryAfter: 0,
@@ -133,11 +136,22 @@ describe('tenant user rate limits', () => {
 
     await tenantUserDeleteRateLimiter()(ctx as never, next);
 
-    expect(checkRateLimit).toHaveBeenCalledWith(
+    expect(checkRateLimitStrict).toHaveBeenCalledWith(
       'ratelimit:tenant-user:delete:org-1:bff-client',
       TENANT_USER_DELETE_RATE_LIMIT,
     );
     expect(ctx.headers['x-ratelimit-limit']).toBe('60');
+  });
+
+  it('fails closed when the delete counter is unavailable', async () => {
+    (checkRateLimitStrict as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('redis down'));
+    const ctx = limiterCtx();
+    const next = vi.fn().mockResolvedValue(undefined);
+
+    await tenantUserDeleteRateLimiter()(ctx as never, next);
+
+    expect(ctx.status).toBe(503);
+    expect(next).not.toHaveBeenCalled();
   });
 
   it('returns 429 with Retry-After and does not continue when the budget is exhausted', async () => {

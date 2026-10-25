@@ -190,6 +190,8 @@ Add a test-only audit insert helper so future fixtures cannot omit `actor_type`.
 | Rate limits | Redis limiter, tenant routes | 429 after the configured allowance |
 | Admin regression | Admin routes, standalone routes, shared services | Admin actor is recorded for create/update/lifecycle; permissions, duplicate `400`, and behavior unchanged; CLI bootstrap uses `system` |
 
+**Rate and audit-failure coverage note:** ST-43–ST-45 allowance thresholds are verified through the shared Redis limiter tests plus the tenant limiter key/429 tests, not by running 300+/60+/30+ request loops in integration. ST-41 audit-failure rollback is proven for create/update and invitation; delete, lifecycle, and role mutations share the same service-owned transaction writer and have focused rejection tests plus the live transaction suites.
+
 ### End-to-End Tests
 
 `N/A` — no browser flow or OIDC interaction changes. The new API is exercised by integration and pentest. The created user's first login remains the existing login/magic-link/reset flow, which is covered by the existing suites.

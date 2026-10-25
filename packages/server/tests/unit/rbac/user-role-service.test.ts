@@ -19,21 +19,14 @@ vi.mock('../../../src/rbac/mapping-repository.js', () => ({
   lockUserRoleTargets: vi.fn(),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: vi.fn(),
-  writeAuditLogInTransaction: vi.fn(),
-  auditActorColumns: (actor: { kind: string; userId?: string; clientId?: string; clientName?: string }) =>
-    actor.kind === 'service'
-      ? {
-          actorId: undefined,
-          actorType: 'client',
-          actorClientId: actor.clientId,
-          actorClientName: actor.clientName,
-        }
-      : actor.kind === 'user'
-        ? { actorId: actor.userId, actorType: 'user', actorClientId: null, actorClientName: null }
-        : { actorId: undefined, actorType: 'system', actorClientId: null, actorClientName: null },
-}));
+vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/audit-log.js')>();
+  return {
+    ...actual,
+    writeAuditLog: vi.fn(),
+    writeAuditLogInTransaction: vi.fn(),
+  };
+});
 
 vi.mock('../../../src/lib/database.js', () => ({
   getDatabaseTransactionClient: vi.fn(),
@@ -192,6 +185,7 @@ describe('assignRolesToUser', () => {
     expect(mockTransactionalAudit).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        organizationId: 'org-1',
         eventType: 'user.roles.assigned',
         eventCategory: 'admin',
         userId: 'user-1',
@@ -268,6 +262,7 @@ describe('removeRolesFromUser', () => {
     expect(mockTransactionalAudit).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({
+        organizationId: 'org-1',
         eventType: 'user.roles.removed',
         userId: 'user-1',
         actorId: 'admin-1',
@@ -284,11 +279,11 @@ describe('removeRolesFromUser', () => {
 
     await expect(
       removeRolesFromUser({
-      organizationId: 'org-1',
-      userId: 'user-1',
-      roleIds: ['role-uuid-1'],
-      actor: { kind: 'user', userId: 'admin-1' },
-    }),
+        organizationId: 'org-1',
+        userId: 'user-1',
+        roleIds: ['role-uuid-1'],
+        actor: { kind: 'user', userId: 'admin-1' },
+      }),
     ).resolves.toEqual({ reauthenticationRequired: false });
     expect(mockRevokeAuthority).not.toHaveBeenCalled();
     expect(mockRepoRemove).not.toHaveBeenCalled();

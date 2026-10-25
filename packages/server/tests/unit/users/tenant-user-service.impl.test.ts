@@ -17,6 +17,13 @@ vi.mock('../../../src/users/repository.js', () => ({
   listUsersCursor: vi.fn(),
   emailExists: vi.fn(),
   updateLoginStats: vi.fn(),
+  deleteUserCapture: vi.fn(),
+  deleteCapturedUser: vi.fn(),
+}));
+
+vi.mock('../../../src/lib/deletion-cleanup.js', () => ({
+  registerDeletionCleanup: vi.fn(),
+  registerAuthorityCleanup: vi.fn(),
 }));
 
 vi.mock('../../../src/users/cache.js', () => ({
@@ -32,36 +39,14 @@ vi.mock('../../../src/users/password.js', () => ({
   ensureDummyPasswordHash: vi.fn(),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: vi.fn(),
-  writeAuditLogInTransaction: vi.fn().mockResolvedValue(undefined),
-  auditActorColumns: (actor: {
-    kind: 'user' | 'service' | 'system';
-    userId?: string;
-    clientId?: string;
-    clientName?: string;
-  }) =>
-    actor.kind === 'service'
-      ? {
-          actorId: undefined,
-          actorType: 'client',
-          actorClientId: actor.clientId,
-          actorClientName: actor.clientName,
-        }
-      : actor.kind === 'user'
-        ? {
-            actorId: actor.userId,
-            actorType: 'user',
-            actorClientId: null,
-            actorClientName: null,
-          }
-        : {
-            actorId: undefined,
-            actorType: 'system',
-            actorClientId: null,
-            actorClientName: null,
-          },
-}));
+vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/audit-log.js')>();
+  return {
+    ...actual,
+    writeAuditLog: vi.fn(),
+    writeAuditLogInTransaction: vi.fn().mockResolvedValue(undefined),
+  };
+});
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
@@ -73,11 +58,8 @@ vi.mock('../../../src/lib/database.js', () => ({
 import * as repo from '../../../src/users/repository.js';
 import * as cache from '../../../src/users/cache.js';
 import { writeAuditLogInTransaction } from '../../../src/lib/audit-log.js';
-import { createUser, updateUser } from '../../../src/users/service.js';
-import {
-  UserEmailConflictError,
-  UserNotFoundError,
-} from '../../../src/users/errors.js';
+import { createUser, deleteUser, updateUser } from '../../../src/users/service.js';
+import { UserEmailConflictError, UserNotFoundError } from '../../../src/users/errors.js';
 import type { User } from '../../../src/users/types.js';
 
 function testUser(overrides: Partial<User> = {}): User {
@@ -122,7 +104,9 @@ beforeEach(() => {
   vi.clearAllMocks();
   (repo.emailExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
   (repo.insertUser as ReturnType<typeof vi.fn>).mockResolvedValue(testUser());
-  (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(testUser({ givenName: 'Updated' }));
+  (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(
+    testUser({ givenName: 'Updated' }),
+  );
 });
 
 describe('tenant user service implementation', () => {
@@ -188,9 +172,9 @@ describe('tenant user service implementation', () => {
       Object.assign(new Error('duplicate key'), { code: '23505' }),
     );
 
-    await expect(
-      updateUser('user-1', { givenName: 'Updated' }),
-    ).rejects.toBeInstanceOf(UserEmailConflictError);
+    await expect(updateUser('user-1', { givenName: 'Updated' })).rejects.toBeInstanceOf(
+      UserEmailConflictError,
+    );
     expect(cache.cacheUser).not.toHaveBeenCalled();
   });
 
@@ -213,10 +197,32 @@ describe('tenant user service implementation', () => {
     );
   });
 
-  it('keeps the user-not-found mapping for an update', async () => {
-    (repo.updateUser as ReturnType<typeof vi.fn>).mockRejectedValue(
-      new Error('User not found'),
+  it('does not delete the captured user when the delete audit write fails', async () => {
+    (repo.deleteUserCapture as ReturnType<typeof vi.fn>).mockResolvedValue({
+      user: testUser(),
+      userIds: ['user-1'],
+      grantIds: [],
+      roleIds: [],
+      claimIds: [],
+      applicationIds: [],
+    });
+    (writeAuditLogInTransaction as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error('audit unavailable'),
     );
+
+    await expect(
+      deleteUser('org-1', 'user-1', {
+        kind: 'service',
+        clientId: 'bff-client',
+        clientName: 'Tenant BFF',
+      }),
+    ).rejects.toThrow('audit unavailable');
+
+    expect(repo.deleteCapturedUser).not.toHaveBeenCalled();
+  });
+
+  it('keeps the user-not-found mapping for an update', async () => {
+    (repo.updateUser as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('User not found'));
 
     await expect(updateUser('missing', { givenName: 'Updated' })).rejects.toBeInstanceOf(
       UserNotFoundError,

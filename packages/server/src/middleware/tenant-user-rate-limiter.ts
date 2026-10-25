@@ -9,8 +9,8 @@
  */
 
 import type { Middleware } from 'koa';
-import { checkRateLimit } from '../auth/rate-limiter.js';
-import type { RateLimitConfig } from '../auth/rate-limiter.js';
+import { checkRateLimit, checkRateLimitStrict } from '../auth/rate-limiter.js';
+import type { RateLimitConfig, RateLimitResult } from '../auth/rate-limiter.js';
 import { logger } from '../lib/logger.js';
 import type { TenantActor } from './tenant-user-auth.js';
 
@@ -43,7 +43,22 @@ function createLimiter(bucket: 'write' | 'delete', config: RateLimitConfig): Mid
     if (!actor) return next();
 
     const key = rateLimitKey(bucket, actor);
-    const result = await checkRateLimit(key, config);
+    let result: RateLimitResult;
+    if (bucket === 'delete') {
+      try {
+        result = await checkRateLimitStrict(key, config);
+      } catch {
+        logger.warn(
+          { action: 'tenant_user_delete_rate_limit_unavailable', actorKind: actor.kind },
+          'Tenant user delete rate limit unavailable',
+        );
+        ctx.status = 503;
+        ctx.body = { error: 'Service Unavailable' };
+        return;
+      }
+    } else {
+      result = await checkRateLimit(key, config);
+    }
     ctx.set('X-RateLimit-Limit', String(config.max));
     ctx.set('X-RateLimit-Remaining', String(result.remaining));
 

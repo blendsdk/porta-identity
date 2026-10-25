@@ -22,7 +22,7 @@ import {
   getPermissionsForOrganizationUser,
   lockUserRoleTargets,
 } from './mapping-repository.js';
-import { auditActorColumns, writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { auditFields, writeAuditLogInTransaction } from '../lib/audit-log.js';
 import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import type { Role, Permission, UserRole } from './types.js';
 import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
@@ -34,11 +34,7 @@ import {
   getPermissionsForAdminRole,
   resolvePermissionsFromRoles,
 } from '../lib/admin-permissions.js';
-import {
-  RoleApplicationBoundaryError,
-  RoleDelegationError,
-  RoleNotFoundError,
-} from './errors.js';
+import { RoleApplicationBoundaryError, RoleDelegationError, RoleNotFoundError } from './errors.js';
 import { UserNotFoundError } from '../users/errors.js';
 import {
   lockControlPlaneOrganization,
@@ -61,15 +57,6 @@ export interface UserRoleMutationOptions {
   readonly allowedApplicationId?: string;
   /** Trusted request metadata for the audit row. */
   readonly auditContext?: AuditRequestContext;
-}
-
-/** Combine normalized actor columns with optional request metadata. */
-function auditFields(actor: AuditActor, context?: AuditRequestContext) {
-  return {
-    ...auditActorColumns(actor),
-    ...(context?.ipAddress ? { ipAddress: context.ipAddress } : {}),
-    ...(context?.userAgent ? { userAgent: context.userAgent } : {}),
-  };
 }
 
 /** Reject a system actor and enforce the tenant application boundary. */
@@ -106,22 +93,29 @@ function requireRoleActorBoundary(
  */
 export async function assignRolesToUser(options: UserRoleMutationOptions): Promise<void> {
   const { organizationId, userId, roleIds, actor, allowedApplicationId, auditContext } = options;
-  if (roleIds.length === 0) return;
+  const requestedRoleIds = [...new Set(roleIds)];
+  if (requestedRoleIds.length === 0) return;
 
   await runDatabaseTransaction(async () => {
-    const targets = await requireUserRoleTargets(organizationId, userId, [...roleIds]);
+    const targets = await requireUserRoleTargets(organizationId, userId, requestedRoleIds);
     requireRoleActorBoundary(actor, targets, allowedApplicationId);
     if (actor.kind === 'user' && !allowedApplicationId) {
       await requireDelegableRoles(targets.roles, actor.userId, targets.adminApplicationId);
     }
 
     const assignedBy = actor.kind === 'user' ? actor.userId : undefined;
-    const insertedRoleIds = await repoAssignRoles(organizationId, userId, [...roleIds], assignedBy);
+    const insertedRoleIds = await repoAssignRoles(
+      organizationId,
+      userId,
+      requestedRoleIds,
+      assignedBy,
+    );
     if (insertedRoleIds.length === 0) return;
 
     const transaction = getDatabaseTransactionClient();
     if (!transaction) throw new Error('User role assignment requires an active transaction');
     await writeAuditLogInTransaction(transaction, {
+      organizationId,
       eventType: 'user.roles.assigned',
       eventCategory: 'admin',
       userId,
@@ -140,13 +134,11 @@ export async function assignRolesToUser(options: UserRoleMutationOptions): Promi
 /**
  * Remove roles from a user (bulk).
  *
- * Invalidates the user's RBAC cache since their effective permissions
- * may change.
+ * Owns the transaction so the removal and audit row commit together.
+ * Tenant service actors are bounded to their application; Admin user actors
+ * keep the canonical survivor guard.
  *
- * @param organizationId - Authoritative organization UUID
- * @param userId - User UUID
- * @param roleIds - Array of role UUIDs to remove
- * @param actorId - UUID of the admin performing the action
+ * @param options - Organization, target user, roles, actor, and tenant boundary
  * @returns Whether the actor must authenticate again
  */
 export async function removeRolesFromUser(
@@ -158,8 +150,8 @@ export async function removeRolesFromUser(
   return runDatabaseTransaction(async () => {
     await lockControlPlaneOrganization(organizationId);
     const targets = await requireUserRoleTargets(organizationId, userId, [...roleIds]);
-    if (targets.assignedRoleIds.length === 0) return { reauthenticationRequired: false };
     requireRoleActorBoundary(actor, targets, allowedApplicationId);
+    if (targets.assignedRoleIds.length === 0) return { reauthenticationRequired: false };
 
     const removesExactSuperAdmin = targets.roles.some(
       (role) =>
@@ -178,6 +170,7 @@ export async function removeRolesFromUser(
     const transaction = getDatabaseTransactionClient();
     if (!transaction) throw new Error('User role removal requires an active transaction');
     await writeAuditLogInTransaction(transaction, {
+      organizationId,
       eventType: 'user.roles.removed',
       eventCategory: 'admin',
       userId,
@@ -205,6 +198,7 @@ export async function removeRolesFromUser(
  *
  * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
+ * @param applicationId - Optional application filter; omit to return every application
  * @returns Array of Role objects
  */
 export async function getUserRoles(
@@ -227,6 +221,7 @@ export async function getUserRolesForAuthority(userId: string): Promise<Role[]> 
  *
  * @param organizationId - Authoritative organization UUID
  * @param userId - User UUID
+ * @param applicationId - Optional application filter; omit to return every application
  * @returns Deduplicated array of Permission objects
  */
 export async function getUserPermissions(

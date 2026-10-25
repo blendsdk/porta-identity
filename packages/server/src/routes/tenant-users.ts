@@ -11,11 +11,7 @@
 
 import Router from '@koa/router';
 import type { Context } from 'koa';
-import {
-  auditActorColumns,
-  tenantActorToAuditActor,
-  writeAuditLog,
-} from '../lib/audit-log.js';
+import { auditActorColumns, tenantActorToAuditActor, writeAuditLog } from '../lib/audit-log.js';
 import type { AuditRequestContext } from '../lib/audit-log.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
 import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
@@ -72,9 +68,7 @@ function auditContext(ctx: Context): AuditRequestContext {
 }
 
 /** Return the authenticated service actor, or write the fixed missing-auth response. */
-function serviceActor(
-  ctx: Context,
-): Extract<TenantActor, { kind: 'service' }> | undefined {
+function serviceActor(ctx: Context): Extract<TenantActor, { kind: 'service' }> | undefined {
   const actor = ctx.state.tenantActor;
   if (!actor || actor.kind !== 'service') {
     ctx.status = 401;
@@ -259,7 +253,9 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
             ? body.phoneNumberVerified
             : current.phoneNumberVerified;
         if (effectiveVerified && !effectivePhone) {
-          throw new UserValidationError('A phone number is required when phoneNumberVerified is true');
+          throw new UserValidationError(
+            'A phone number is required when phoneNumberVerified is true',
+          );
         }
 
         const input = { ...body, address: body.address ?? undefined };
@@ -290,11 +286,7 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
       try {
         const actor = serviceActor(ctx);
         if (!actor) return;
-        await deactivateUser(
-          ctx.params.userId,
-          tenantActorToAuditActor(actor),
-          auditContext(ctx),
-        );
+        await deactivateUser(ctx.params.userId, tenantActorToAuditActor(actor), auditContext(ctx));
         ctx.status = 204;
       } catch (error) {
         handleTenantError(ctx, error);
@@ -315,11 +307,7 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
       try {
         const actor = serviceActor(ctx);
         if (!actor) return;
-        await activateUser(
-          ctx.params.userId,
-          tenantActorToAuditActor(actor),
-          auditContext(ctx),
-        );
+        await activateUser(ctx.params.userId, tenantActorToAuditActor(actor), auditContext(ctx));
         ctx.status = 204;
       } catch (error) {
         handleTenantError(ctx, error);
@@ -365,11 +353,7 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
       try {
         const actor = serviceActor(ctx);
         if (!actor) return;
-        const roles = await getUserRoles(
-          ctx.params.orgId,
-          ctx.params.userId,
-          actor.applicationId,
-        );
+        const roles = await getUserRoles(ctx.params.orgId, ctx.params.userId, actor.applicationId);
         ctx.body = { data: roles };
       } catch (error) {
         handleTenantError(ctx, error);

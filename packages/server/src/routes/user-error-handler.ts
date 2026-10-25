@@ -23,11 +23,7 @@ import {
   InvitePreAssignmentError,
   InviteUserExistsError,
 } from '../users/invite-service.js';
-import {
-  UserEmailConflictError,
-  UserNotFoundError,
-  UserValidationError,
-} from '../users/errors.js';
+import { UserEmailConflictError, UserNotFoundError, UserValidationError } from '../users/errors.js';
 
 /** Minimal response context used by the shared mapper. */
 interface ErrorContext {
