@@ -15,7 +15,7 @@
 
 | ID   | Title | RD  | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
 | ---- | ----- | --- | ---- | ----- | ------ | ------------ | -------------------- |
-| T-01 | Tenant-scoped M2M user management (CRUD, lifecycle, roles, audit) | — | [plan](plans/tenant-m2m-user-management/00-index.md) | 🔬 Plan Preflighted | 🔄 | 2026-10-25 | — |
+| T-01 | Tenant-scoped M2M user management (CRUD, lifecycle, roles, audit) | — | [plan](plans/tenant-m2m-user-management/00-index.md) | 🔄 Executing | 🔄 | 2026-10-25 | — |
 
 ## Notes
 

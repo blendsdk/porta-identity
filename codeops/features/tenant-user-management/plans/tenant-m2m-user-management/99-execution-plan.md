@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 20:50
-> **Progress**: 48/56 tasks (85%)
+> **Last Updated**: 2026-10-25 21:06
+> **Progress**: 50/56 tasks (89%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -216,7 +216,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 ## Phase 5: Security verification and handoff
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: d52efdf2de0f40b871beff88de6318dbebbae56c
 > **Lenses**: security, compatibility, operations
 > **Reasoning**: high — production security gates, tenant isolation, SDK compatibility, and deployment readiness
 
@@ -225,8 +225,8 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Reference**: [07-testing-strategy.md](07-testing-strategy.md) · AR-23.
 **Objective**: Prove the feature across the project's full verification and security gates, then hand off deployment steps.
 
-- [ ] 5.1.1 Run the focused full server regression suites (unit, integration, and existing E2E) with the repository services running; fix any regressions
-- [ ] 5.1.2 Run `yarn test:pentest` and review the tenant boundary results
+- [x] 5.1.1 Run the focused full server regression suites (unit, integration, and existing E2E) with the repository services running; fix any regressions ✅ (completed: 2026-10-25 21:06) — unit 238 files / 3,869; integration 61 / 514; E2E 21 / 133
+- [x] 5.1.2 Run `yarn test:pentest` and review the tenant boundary results ✅ (completed: 2026-10-25 21:06) — 44 files / 286 tests
 - [ ] 5.1.3 Run `yarn assurance:harness --project security --profile production-security`; record the run ID, observer IDs, and exit code. Compare against the accepted incomplete-observer baseline; expected exit is `40`. Require no observer-set difference, no new gap, and no failed assertion. Never describe the run as fully passed.
 - [ ] 5.1.4 Use the git-commit skill to create a clean checkpoint, then run `yarn assurance:compat --select tenant-admin` from that committed revision; record the result
 - [ ] 5.1.5 Run `yarn docs:build` and `yarn test:structure`; update `repo-tests/monorepo/server-package.spec.test.mjs` and any asserted test-inventory counts if the new test-file inventory changes their expectations, then re-run both gates
