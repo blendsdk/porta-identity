@@ -25,7 +25,7 @@ This component turns the invite-specific tenant auth middleware into a reusable 
 - The middleware resolves the token in the existing order: `ClientCredentials` first, then `AccessToken`.
 - A valid token whose actor kind is not allowed receives a fixed `403` denial. A missing/invalid token receives `401`.
 - State key: `ctx.state.tenantActor`; remove `tenantInviteActor` after all callers/tests are updated.
-- Preserve the existing `recordSecurityDecision` decision points and `recordSecurityReference` actor/tenant references at the same boundaries; add a regression matrix for them.
+- Preserve the existing `recordSecurityDecision` decision points and `recordSecurityReference` actor/tenant references at the same boundaries; add a regression matrix for them. Tenant paths are classified as the additive `tenant-api` surface in `security.decision.v1`; admin and public-auth classification is unchanged.
 - The custom `TenantActor` is the only actor shape consumed by routes; the rate limiter and audit mapper read it.
 
 ## Implementation Details

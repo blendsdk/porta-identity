@@ -20,6 +20,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 import { afterDatabaseCommit, getPool } from '../../../src/lib/database.js';
 import { logger } from '../../../src/lib/logger.js';
 import {
+  auditActorColumns,
   inviteActorToAuditActor,
   tenantActorToAuditActor,
   writeAuditLog,
@@ -160,6 +161,35 @@ describe('client audit actor', () => {
         permissions: new Set(),
       }),
     ).toEqual({ kind: 'user', userId: 'user-1' });
+  });
+
+  it('should map a service audit actor to exact client columns', () => {
+    expect(
+      auditActorColumns({ kind: 'service', clientId: 'bff-client', clientName: 'Acme BFF' }),
+    ).toEqual({
+      actorId: undefined,
+      actorType: 'client',
+      actorClientId: 'bff-client',
+      actorClientName: 'Acme BFF',
+    });
+  });
+
+  it('should map a user audit actor to exact user columns', () => {
+    expect(auditActorColumns({ kind: 'user', userId: 'user-1' })).toEqual({
+      actorId: 'user-1',
+      actorType: 'user',
+      actorClientId: null,
+      actorClientName: null,
+    });
+  });
+
+  it('should map a system audit actor to exact system columns', () => {
+    expect(auditActorColumns({ kind: 'system' })).toEqual({
+      actorId: undefined,
+      actorType: 'system',
+      actorClientId: null,
+      actorClientName: null,
+    });
   });
 
   it('should map invitation actors without forcing AuditActor onto the workflow', () => {

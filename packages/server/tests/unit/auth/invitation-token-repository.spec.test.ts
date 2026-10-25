@@ -13,6 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
 }));
 
 vi.mock('../../../src/lib/logger.js', () => ({

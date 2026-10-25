@@ -539,7 +539,7 @@ the organization, subject user, and actor use `ON DELETE SET NULL`, so deletion 
 evidence. Generic mutation audit resolves its actor through the live user table and permits a null
 result, allowing self-deletion to commit without retaining a live account solely for attribution.
 
-Covered administrative and public-authentication requests emit one strict
+Covered administrative, tenant, and public-authentication requests emit one strict
 `security.decision.v1` terminal event after the final response status is known. Correlation starts
 before parsing and is server-owned. The event records only a normalized route template, closed
 decision facts, and optional domain-separated keyed references; raw requests, identities, network

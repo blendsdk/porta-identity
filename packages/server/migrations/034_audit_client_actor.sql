@@ -9,6 +9,9 @@
 -- Operational note: this migration updates every audit row to set actor_type
 -- and applies SET NOT NULL while holding an ACCESS EXCLUSIVE lock. Deploy it
 -- in a documented maintenance window with a verified pre-migration backup.
+-- Stop or upgrade every server instance before applying it: a previous build
+-- does not supply actor_type, so its compatibility audit writes would fail the
+-- NOT NULL constraint and transaction-bound writes would fail closed.
 -- Historical rows whose actor user was deleted have actor_id NULL and are
 -- classified as system. Future actor deletions retain actor_type = 'user'.
 
@@ -36,16 +39,23 @@ SET actor_type = CASE
   ELSE actor_type
 END;
 
--- Make user-entity history useful for historical rows. Only link users that
--- still exist; a deleted user's historical metadata must not violate the
--- user_id foreign key.
+-- Make user-entity history useful for historical rows. Validate the UUID before
+-- casting and only link users that still exist; a deleted user's historical
+-- metadata must not violate the user_id foreign key.
+WITH user_id_candidates AS (
+  SELECT id, metadata->>'userId' AS raw_user_id
+    FROM audit_log
+   WHERE user_id IS NULL
+     AND metadata ? 'userId'
+     AND pg_input_is_valid(metadata->>'userId', 'uuid')
+)
 UPDATE audit_log AS audit
-SET user_id = (audit.metadata->>'userId')::uuid
-WHERE audit.user_id IS NULL
-  AND audit.metadata->>'userId' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'
+SET user_id = candidates.raw_user_id::uuid
+FROM user_id_candidates AS candidates
+WHERE audit.id = candidates.id
   AND EXISTS (
     SELECT 1 FROM users
-    WHERE users.id = (audit.metadata->>'userId')::uuid
+    WHERE users.id = candidates.raw_user_id::uuid
   );
 
 ALTER TABLE audit_log

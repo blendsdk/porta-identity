@@ -1,6 +1,6 @@
 ## Ambiguity Register: Tenant-Scoped M2M User Management
 
-> **Status**: ✅ GATE PASSED — all 24 items resolved
+> **Status**: ✅ GATE PASSED — all 25 items resolved
 > **Last Updated**: 2026-10-25
 
 | # | Category | Ambiguity / Gap | Options Presented | User Decision | Status |
@@ -29,6 +29,7 @@
 | AR-22 | Integration | What must change in the SDK, CLI, and documentation? | New SDK methods / reuse existing domains and update types/docs / server-only change | Reuse existing SDK domains and `apiPrefix: '/api'`. Add optional `emailVerified` and `phoneNumberVerified` types, add client actor fields to audit/history types, update the exact input-type contracts and remove the old negative assertions, update the CLI audit/history display with terminal-safe client actor handling, and update public docs and techdocs. | ✅ Resolved |
 | AR-23 | Non-functional | What verification gates apply? | Unit tests only / focused suites plus full verify / add a new assurance harness profile | Focused unit, integration, pentest, structure, SDK, CLI, and docs gates; final `yarn verify`; `yarn assurance:harness --project security --profile production-security` recorded against the accepted incomplete-observer baseline (expected exit 40; no new gaps or failed assertions; never call it fully passed); and the registered `yarn assurance:compat --select tenant-admin` from a clean committed revision. No new harness profile. | ✅ Resolved |
 | AR-24 | Naming | What are the stable names for the plan, scopes, routes, and audit fields? | Free-form names / follow existing `org:user:*` and `/api/organizations/:orgId/users` conventions | Plan `tenant-m2m-user-management`; scopes `org:user:read|write|delete`; router `routes/tenant-users.ts`; audit fields `actor_type`, `actor_client_id`, `actor_client_name`; events `user.read` and `user.listed` in addition to existing `user.*` mutation events. | ✅ Resolved |
+| AR-25 | Technical (runtime) | How should tenant denials satisfy the ST-51 security instrumentation requirement? | Add an additive `tenant-api` surface to the existing security decision event / document tenant exclusion and assert no event | Add the additive `tenant-api` surface, classify `/api/organizations/*`, and prove one end-to-end tenant denial event with protected actor/tenant references. Existing admin and public-auth behavior is unchanged. | ✅ Resolved — Authority: AI — delegated by `--auto-design` |
 
 ### Resolution Notes
 
@@ -51,3 +52,15 @@ change to the tenant surface, documented the audit migration's full-table update
 historical `system` classification, and replaced the harness "passes" wording with an accepted
 baseline result. Durable evidence and the remaining decisions are in
 `00-preflight-report.md`.
+
+**AR-25 (runtime, Phase 1 review):**
+- Authority: AI — delegated by `--auto-design`; policy version 1; root invocation ID `ep-tenant-m2m-20261025-01`.
+- Eligibility: security mechanism within the approved instrumentation requirement; no product-scope or reserved-authority change.
+- Objective: make the ST-51 tenant decision/reference claims observable at the existing event boundary.
+- Decision: add the additive `tenant-api` surface and classify `/api/organizations/*`.
+- Evidence: Phase 1 review SA-001; `finalizeSecurityDecision` returned `null` for tenant paths; the closed surface enum and docs covered only admin/auth.
+- Rejected alternatives: documenting exclusion and asserting no event (contradicts ST-51's emitted claim); a separate tenant event schema (unnecessary support surface).
+- Strongest counterargument: the event surface is a documented closed contract and consumers may not recognize a new value.
+- Confidence: High — the change is additive; admin and public-auth classification and behavior are unchanged.
+- Hardening: independent security auditor identified the gap; the fix is subject to the phase re-review.
+- Reopen triggers: an external consumer rejects unknown surface values; the event contract is declared closed to new surfaces; assurance evidence requires no tenant events.

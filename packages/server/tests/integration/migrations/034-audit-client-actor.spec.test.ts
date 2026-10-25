@@ -112,6 +112,7 @@ describe('audit client actor migration', () => {
       const liveActor = await createUser(connection, organizationId, 'live-actor');
       const targetUser = await createUser(connection, organizationId, 'target-user');
       const deletedActor = await createUser(connection, organizationId, 'deleted-actor');
+      const deletedTarget = await createUser(connection, organizationId, 'deleted-target');
       const futureActor = await createUser(connection, organizationId, 'future-actor');
 
       await connection.query(
@@ -120,7 +121,8 @@ describe('audit client actor migration', () => {
            ($1, NULL, 'user.invited', 'admin', $2::jsonb),
            ($1, $3, 'user.created', 'admin', $4::jsonb),
            ($1, NULL, 'user.auto_unlocked', 'security', '{}'::jsonb),
-           ($1, $5, 'user.updated', 'admin', '{}'::jsonb)`,
+           ($1, $5, 'user.updated', 'admin', '{}'::jsonb),
+           ($1, NULL, 'user.deleted_target', 'admin', $6::jsonb)`,
         [
           organizationId,
           JSON.stringify({
@@ -132,11 +134,16 @@ describe('audit client actor migration', () => {
           liveActor,
           JSON.stringify({ userId: targetUser }),
           deletedActor,
+          JSON.stringify({ userId: deletedTarget }),
         ],
       );
 
-      // A deleted actor leaves actor_id NULL through the existing FK.
-      await connection.query('DELETE FROM users WHERE id = $1', [deletedActor]);
+      // A deleted actor leaves actor_id NULL through the existing FK. The
+      // deleted target still has a well-formed UUID in metadata, so the
+      // migration must leave user_id NULL rather than violate the FK.
+      await connection.query('DELETE FROM users WHERE id = ANY($1::uuid[])', [
+        [deletedActor, deletedTarget],
+      ]);
 
       await connection.query(migration.up);
 
@@ -173,6 +180,16 @@ describe('audit client actor migration', () => {
         actor_type: 'system',
         actor_client_id: null,
         actor_client_name: null,
+        user_id: null,
+      });
+
+      const deletedTargetRow = await readAuditRow(
+        connection,
+        organizationId,
+        'user.deleted_target',
+      );
+      expect(deletedTargetRow).toMatchObject({
+        actor_type: 'system',
         user_id: null,
       });
 

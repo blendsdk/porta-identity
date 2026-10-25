@@ -79,6 +79,9 @@ export function normalizedRouteTemplate(ctx: Context): string {
     return matched;
   }
   if (ctx.path.startsWith('/api/admin')) return '/api/admin/unmatched';
+  if (ctx.path.startsWith('/api/organizations')) {
+    return '/api/organizations/:orgId/users/unmatched';
+  }
   if (ctx.path.includes('/auth/')) return '/:organization/auth/unmatched';
   return '/unmatched';
 }
@@ -113,9 +116,11 @@ export async function finalizeSecurityDecision(
   state.emitted = true;
   const surface: SecurityDecisionEvent['surface'] | null = ctx.path.startsWith('/api/admin')
     ? 'admin-api'
-    : ctx.path.includes('/auth/')
-      ? 'public-auth'
-      : null;
+    : ctx.path.startsWith('/api/organizations')
+      ? 'tenant-api'
+      : ctx.path.includes('/auth/')
+        ? 'public-auth'
+        : null;
   if (surface === null) return null;
 
   const status = ctx.status;

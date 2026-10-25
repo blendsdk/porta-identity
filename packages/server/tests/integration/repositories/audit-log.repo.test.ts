@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { truncateAllTables } from '../helpers/database.js';
 import { flushTestRedis } from '../helpers/redis.js';
 import { createTestOrganization, createTestUser } from '../helpers/factories.js';
+import { insertAuditFixture } from '../../helpers/audit.js';
 import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import { getPool } from '../../../src/lib/database.js';
 
@@ -165,16 +166,18 @@ describe('Audit Log Repository (Integration)', () => {
     const pool = getPool();
 
     // Insert entries with controlled timestamps
-    await pool.query(
-      `INSERT INTO audit_log (organization_id, actor_type, event_type, event_category, created_at)
-       VALUES ($1, 'system', 'old.event', 'test', NOW() - INTERVAL '2 days')`,
-      [orgId],
-    );
-    await pool.query(
-      `INSERT INTO audit_log (organization_id, actor_type, event_type, event_category, created_at)
-       VALUES ($1, 'system', 'recent.event', 'test', NOW())`,
-      [orgId],
-    );
+    await insertAuditFixture(pool, {
+      organizationId: orgId,
+      eventType: 'old.event',
+      eventCategory: 'test',
+      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+    });
+    await insertAuditFixture(pool, {
+      organizationId: orgId,
+      eventType: 'recent.event',
+      eventCategory: 'test',
+      createdAt: new Date(),
+    });
 
     // Query only recent entries (last 24 hours)
     const result = await pool.query(

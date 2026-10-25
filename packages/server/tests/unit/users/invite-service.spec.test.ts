@@ -64,6 +64,32 @@ vi.mock('../../../src/lib/audit-log.js', () => ({
       : actor.userId
         ? { kind: 'user', userId: actor.userId }
         : { kind: 'system' },
+  auditActorColumns: (actor: {
+    kind: 'user' | 'service' | 'system';
+    userId?: string;
+    clientId?: string;
+    clientName?: string;
+  }) =>
+    actor.kind === 'service'
+      ? {
+          actorId: undefined,
+          actorType: 'client',
+          actorClientId: actor.clientId,
+          actorClientName: actor.clientName,
+        }
+      : actor.kind === 'user'
+        ? {
+            actorId: actor.userId,
+            actorType: 'user',
+            actorClientId: null,
+            actorClientName: null,
+          }
+        : {
+            actorId: undefined,
+            actorType: 'system',
+            actorClientId: null,
+            actorClientName: null,
+          },
   writeAuditLogInTransaction: dependencies.writeAuditLogInTransaction,
 }));
 
@@ -193,6 +219,20 @@ describe('inviteUser', () => {
         }),
       }),
     );
+  });
+
+  it('does not schedule the invitation email when the durable audit insert fails', async () => {
+    dependencies.writeAuditLogInTransaction.mockRejectedValue(new Error('audit unavailable'));
+
+    await expect(
+      inviteUser({
+        organizationId: ORG_ID,
+        input: { email: 'new.user@example.com' },
+        actor: ADMIN_ACTOR,
+      }),
+    ).rejects.toThrow('audit unavailable');
+
+    expect(dependencies.sendInvitationEmail).not.toHaveBeenCalled();
   });
 
   it('rejects an email that already belongs to the organization', async () => {

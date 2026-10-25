@@ -246,8 +246,21 @@ describe('tenant actor authentication', () => {
     expect(next).not.toHaveBeenCalled();
   });
 
-  it('should reject an inactive or public service client', async () => {
+  it('should reject a public service client', async () => {
     repository.getClientByClientId.mockResolvedValue({ ...TENANT_CLIENT, clientType: 'public' });
+    CLIENT_CREDENTIALS_FIND.mockResolvedValue({
+      clientId: CLIENT_ID,
+      scopes: new Set(['org:user:read']),
+    });
+
+    const { ctx, next } = await run('Bearer service-token', CRUD_OPTIONS);
+
+    expect(ctx.status).toBe(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should reject an inactive service client', async () => {
+    repository.getClientByClientId.mockResolvedValue({ ...TENANT_CLIENT, status: 'inactive' });
     CLIENT_CREDENTIALS_FIND.mockResolvedValue({
       clientId: CLIENT_ID,
       scopes: new Set(['org:user:read']),
@@ -370,6 +383,23 @@ describe('tenant actor authentication', () => {
     repository.findUserForOidc.mockResolvedValue({
       ...TENANT_USER,
       organizationId: OTHER_ORG_ID,
+    });
+
+    const { ctx, next } = await run('Bearer user-token', INVITE_OPTIONS);
+
+    expect(ctx.status).toBe(403);
+    expect(next).not.toHaveBeenCalled();
+  });
+
+  it('should reject a user token issued by an inactive client', async () => {
+    ACCESS_TOKEN_FIND.mockResolvedValue({
+      accountId: USER_ID,
+      clientId: CLIENT_ID,
+      scopes: new Set(['openid']),
+    });
+    repository.getClientByClientId.mockResolvedValue({
+      ...TENANT_CLIENT,
+      status: 'inactive',
     });
 
     const { ctx, next } = await run('Bearer user-token', INVITE_OPTIONS);

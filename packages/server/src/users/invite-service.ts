@@ -21,6 +21,7 @@ import { InvitationConflictError, replaceInvitation } from '../auth/token-reposi
 import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
 import {
+  auditActorColumns,
   inviteActorToAuditActor,
   writeAuditLogInTransaction,
 } from '../lib/audit-log.js';
@@ -326,15 +327,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
 
       await writeAuditLogInTransaction(transaction, {
         organizationId,
-        actorId: auditActor.kind === 'user' ? auditActor.userId : undefined,
-        actorType:
-          auditActor.kind === 'service'
-            ? 'client'
-            : auditActor.kind === 'user'
-              ? 'user'
-              : 'system',
-        actorClientId: auditActor.kind === 'service' ? auditActor.clientId : null,
-        actorClientName: auditActor.kind === 'service' ? auditActor.clientName : null,
+        ...auditActorColumns(auditActor),
         eventType: 'user.invited',
         eventCategory: 'admin',
         description: 'User invitation created',

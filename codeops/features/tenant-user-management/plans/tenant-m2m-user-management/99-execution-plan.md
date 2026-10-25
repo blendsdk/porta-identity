@@ -3,7 +3,7 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 18:30
+> **Last Updated**: 2026-10-25 19:05
 > **Progress**: 14/56 tasks (25%)
 > **CodeOps Artifact Schema**: 1
 
@@ -76,6 +76,8 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [ ] All Phase 1 verification passing
 
 **Verify**: `yarn workspace @portaidentity/server typecheck && yarn workspace @portaidentity/server vitest run --project unit tests/unit/middleware/tenant-user-auth.spec.test.ts tests/unit/lib/audit-client-actor.spec.test.ts tests/unit/lib/audit-log.test.ts tests/unit/users/invite-service.spec.test.ts && yarn workspace @portaidentity/server vitest run --project integration tests/integration/migrations/034-audit-client-actor.spec.test.ts tests/integration/migrations.test.ts && yarn test:structure`
+
+**Review**: Passed after fixes — 14 findings fixed (RV-001–RV-008, SA-001–SA-006); independent re-review resolved; evidence in [05-findings.md](05-findings.md). Full unit 235 files / 3,822 tests, targeted integration 59 tests, structure 138 tests.
 
 ---
 
@@ -218,7 +220,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [ ] 5.1.5 Run `yarn docs:build` and `yarn test:structure`; update `repo-tests/monorepo/server-package.spec.test.mjs` and any asserted test-inventory counts if the new test-file inventory changes their expectations, then re-run both gates
 - [ ] 5.1.6 Run `yarn verify`; confirm lint, typecheck, unit, integration, E2E, pentest, SDK, CLI, and structure all pass
 - [ ] 5.1.7 Review findings, update documentation and the ambiguity register if a new decision surfaced, remove temporary artifacts, stop task-owned Docker services, and write the handoff summary with deployment steps
-- [ ] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, migration result, and post-migration audit verification.
+- [ ] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, full-stop/upgrade ordering for every instance, migration result, and post-migration audit verification.
 
 **Deliverables**:
 - [ ] All security and compatibility gates recorded, including the accepted harness baseline

@@ -42,7 +42,7 @@ export interface SecurityDecisionEventObservation {
   /** Server-created UUID correlation identifier. */
   readonly requestId: string;
   /** Closed public surface identifier. */
-  readonly surface: 'admin-api' | 'public-auth' | 'transport';
+  readonly surface: 'admin-api' | 'public-auth' | 'tenant-api' | 'transport';
   /** Closed HTTP method. */
   readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'UNKNOWN';
   /** Registered normalized route template. */

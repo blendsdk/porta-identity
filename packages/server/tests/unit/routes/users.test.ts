@@ -42,6 +42,20 @@ vi.mock('../../../src/organizations/service.js', () => ({
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
+  inviteActorToAuditActor: () => ({ kind: 'system' }),
+  auditActorColumns: () => ({
+    actorType: 'system',
+    actorClientId: null,
+    actorClientName: null,
+  }),
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: vi.fn(() => ({ query: vi.fn().mockResolvedValue({ rows: [] }) })),
+  afterDatabaseCommit: (fn: () => Promise<void> | void) => fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: vi.fn().mockResolvedValue({ rows: [] }) }),
 }));
 
 // Mock config so the invite URL uses a deterministic, trusted base URL.

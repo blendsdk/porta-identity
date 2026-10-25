@@ -74,7 +74,7 @@ The surface covers create, list, get, update profile and verification flags, per
 - Read routes reuse the existing pagination and user caches.
 - Write and delete limits use the existing Redis-backed rate limiter.
 - Audit read events are best-effort and do not add a second transaction to reads.
-- The migration adds columns, updates every audit row to set `actor_type`, and applies `NOT NULL` under the migration transaction. It requires a documented maintenance window, a pre-migration backup, and post-migration verification. Historical rows whose actor user was deleted are classified `system`; future actor deletions retain `actor_type='user'`. Applied migrations are never rewritten.
+- The migration adds columns, updates every audit row to set `actor_type`, and applies `NOT NULL` under the migration transaction. It requires a documented maintenance window, a pre-migration backup, post-migration verification, and a full stop/upgrade of every server instance before applying it. Historical rows whose actor user was deleted are classified `system`; future actor deletions retain `actor_type='user'`. Applied migrations are never rewritten.
 
 ### Verification
 

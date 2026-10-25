@@ -123,7 +123,7 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
               };
 
         const result = await inviteUser({
-          organizationId: ctx.params.orgId,
+          organizationId: actor.organizationId,
           input: body,
           actor: inviteActor,
           allowedApplicationId: actor.applicationId,

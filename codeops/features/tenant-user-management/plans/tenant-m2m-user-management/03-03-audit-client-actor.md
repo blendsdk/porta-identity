@@ -81,7 +81,10 @@ allows `actor_id` to become null when the actor user is later deleted, because t
 **Operational note:** this is not an additive-only migration. In one migration transaction it adds
 columns, updates every audit row to set `actor_type`, backfills `user_id`, and applies `SET NOT NULL`.
 PostgreSQL holds an `ACCESS EXCLUSIVE` lock for the duration, so deployment requires a documented
-maintenance window, a verified pre-migration backup, and post-migration verification. Historical
+maintenance window, a verified pre-migration backup, and post-migration verification. Stop or
+upgrade every server instance before applying it; a previous build does not supply `actor_type`, so
+its compatibility audit writes fail the `NOT NULL` constraint and transaction-bound writes fail
+closed. Historical
 rows whose actor user was deleted have `actor_id` NULL and cannot be distinguished from system rows;
 they are classified `system`. This accepted historical limitation does not affect future actor
 deletions, which retain `actor_type='user'`. The UUID regex is a format guard before the cast; the

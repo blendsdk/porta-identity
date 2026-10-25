@@ -33,9 +33,13 @@ export type AuditActor =
 export interface AuditLogEntry {
   organizationId?: string;
   userId?: string;
+  /** Porta user identifier for a user actor. */
   actorId?: string;
+  /** Actor class: a Porta user, an OAuth service client, or the system. */
   actorType?: 'user' | 'client' | 'system';
+  /** OAuth client identifier for a client actor. */
   actorClientId?: string | null;
+  /** OAuth client name captured at event time for a client actor. */
   actorClientName?: string | null;
   eventType: string;
   eventCategory: string;
@@ -99,8 +103,7 @@ function normalizeActor(entry: AuditLogEntry): NormalizedAuditRow {
 }
 
 /** Build the positional values used by both INSERT statements. */
-function insertValues(entry: AuditLogEntry): unknown[] {
-  const actor = normalizeActor(entry);
+function insertValues(entry: AuditLogEntry, actor: NormalizedAuditRow): unknown[] {
   return [
     entry.organizationId ?? null,
     entry.userId ?? null,
@@ -150,6 +153,42 @@ export function inviteActorToAuditActor(actor: InviteActor): AuditActor {
   return actor.userId ? { kind: 'user', userId: actor.userId } : { kind: 'system' };
 }
 
+/**
+ * Convert a normalized audit actor into the columns accepted by an audit entry.
+ *
+ * Mutation services call this once so actor-kind handling cannot drift between
+ * invitation, user, and role writes.
+ *
+ * @param actor - Normalized audit actor
+ * @returns Actor fields ready to spread into an audit entry
+ */
+export function auditActorColumns(
+  actor: AuditActor,
+): Pick<AuditLogEntry, 'actorId' | 'actorType' | 'actorClientId' | 'actorClientName'> {
+  if (actor.kind === 'service') {
+    return {
+      actorId: undefined,
+      actorType: 'client',
+      actorClientId: actor.clientId,
+      actorClientName: actor.clientName,
+    };
+  }
+  if (actor.kind === 'user') {
+    return {
+      actorId: actor.userId,
+      actorType: 'user',
+      actorClientId: null,
+      actorClientName: null,
+    };
+  }
+  return {
+    actorId: undefined,
+    actorType: 'system',
+    actorClientId: null,
+    actorClientName: null,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // Writer
 // ---------------------------------------------------------------------------
@@ -158,17 +197,18 @@ export function inviteActorToAuditActor(actor: InviteActor): AuditActor {
  * Write an audit log entry to the database.
  *
  * Compatibility events never change the owning operation's result. Outside a database transaction
- * they are written immediately; inside one they are deferred until commit. Database errors are
- * reduced to a privacy-safe warning and are never thrown to the caller. Actor-shape errors are
- * programming errors and are raised before the write is scheduled.
+ * they are written immediately; inside one they are deferred until commit. Storage and metadata
+ * serialization errors are reduced to a privacy-safe warning and are never thrown to the caller.
+ * Actor-shape errors are programming errors and are raised before the write is scheduled.
  *
  * @param entry - Audit log entry data
  */
 export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
-  const values = insertValues(entry);
+  const actor = normalizeActor(entry);
 
   await afterDatabaseCommit(async () => {
     try {
+      const values = insertValues(entry, actor);
       const pool = getPool();
       await pool.query(
         `INSERT INTO audit_log (
@@ -202,7 +242,8 @@ export async function writeAuditLogInTransaction(
   client: Pick<PoolClient, 'query'>,
   entry: AuditLogEntry,
 ): Promise<void> {
-  const values = insertValues(entry);
+  const actor = normalizeActor(entry);
+  const values = insertValues(entry, actor);
 
   await client.query(
     `INSERT INTO audit_log (

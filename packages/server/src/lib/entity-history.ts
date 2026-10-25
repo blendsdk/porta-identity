@@ -23,9 +23,13 @@ import { getPool } from './database.js';
 export interface HistoryEntry {
   id: string;
   eventType: string;
+  /** Porta user identifier for a user actor. */
   actorId: string | null;
+  /** Actor class: a Porta user, an OAuth service client, or the system. */
   actorType: 'user' | 'client' | 'system';
+  /** OAuth client identifier for a client actor. */
   actorClientId: string | null;
+  /** OAuth client name captured at event time for a client actor. */
   actorClientName: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
