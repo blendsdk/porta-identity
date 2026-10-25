@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 18:26
-> **Progress**: 13/56 tasks (23%)
+> **Last Updated**: 2026-10-25 18:30
+> **Progress**: 14/56 tasks (25%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -67,7 +67,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [x] 1.1.11 Run the specification tests and verify the green phase ✅ (completed: 2026-10-25 18:20)
 - [x] 1.1.12 Write implementation tests for token lookup order, provider failure, migration edge cases, audit normalization, and writer parameter order — `*.impl.test.ts` ✅ (completed: 2026-10-25 18:24)
 - [x] 1.1.13 Update the existing writer/invite/auth/route tests and mocks affected by Phase 1: `audit-log.test.ts`, `users/invite-service.spec.test.ts`, `middleware/tenant-invite-auth.spec.test.ts` (rename/update), `routes/tenant-invitations.spec.test.ts` (move/update); add the central test-side audit insert helper. Service/role actor-test updates belong to Phases 2 and 3. ✅ (completed: 2026-10-25 18:26)
-- [ ] 1.1.14 Verify Phase 1: server typecheck, focused unit, migration, and existing-test suites, and `yarn test:structure`
+- [x] 1.1.14 Verify Phase 1: server typecheck, focused unit, migration, and existing-test suites, and `yarn test:structure` ✅ (completed: 2026-10-25 18:30)
 
 **Deliverables**:
 - [ ] New scopes registered; tenant auth reusable; invite behavior preserved
