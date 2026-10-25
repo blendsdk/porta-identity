@@ -339,25 +339,34 @@ active key under a transaction-scoped table lock.
 
 Immutable audit trail for all administrative actions.
 
-| Column            | Type           | Description                                                       |
-| ----------------- | -------------- | ----------------------------------------------------------------- |
-| `id`              | UUID           | Primary key                                                       |
-| `organization_id` | UUID, nullable | Tenant context; `ON DELETE SET NULL` preserves history            |
-| `user_id`         | UUID, nullable | Subject user; `ON DELETE SET NULL` preserves history              |
-| `actor_id`        | UUID, nullable | Acting user; `ON DELETE SET NULL` supports successful self-delete |
-| `event_type`      | VARCHAR(100)   | Closed event identifier such as `app.module.deleted`              |
-| `event_category`  | VARCHAR(50)    | Event category                                                    |
-| `description`     | TEXT           | Bounded description                                               |
-| `metadata`        | JSONB          | Safe target identity, state, and parent metadata                  |
-| `ip_address`      | INET           | Optional request address                                          |
-| `user_agent`      | TEXT           | Optional request user agent                                       |
-| `created_at`      | TIMESTAMPTZ    | Event timestamp                                                   |
+| Column              | Type           | Description                                                       |
+| ------------------- | -------------- | ----------------------------------------------------------------- |
+| `id`                | UUID           | Primary key                                                       |
+| `organization_id`   | UUID, nullable | Tenant context; `ON DELETE SET NULL` preserves history            |
+| `user_id`           | UUID, nullable | Subject user; `ON DELETE SET NULL` preserves history              |
+| `actor_id`          | UUID, nullable | Acting user; `ON DELETE SET NULL` supports successful self-delete |
+| `actor_type`        | VARCHAR(20)    | `user`, `client`, or `system`; NOT NULL                           |
+| `actor_client_id`   | VARCHAR(255)   | OAuth client ID for a client actor; indexed with `created_at`     |
+| `actor_client_name` | VARCHAR(255)   | OAuth client name captured at event time                          |
+| `event_type`        | VARCHAR(100)   | Closed event identifier such as `app.module.deleted`              |
+| `event_category`    | VARCHAR(50)    | Event category                                                    |
+| `description`       | TEXT           | Bounded description                                               |
+| `metadata`          | JSONB          | Safe target identity, state, and parent metadata                  |
+| `ip_address`        | INET           | Optional request address                                          |
+| `user_agent`        | TEXT           | Optional request user agent                                       |
+| `created_at`        | TIMESTAMPTZ    | Event timestamp                                                   |
 
 Deletion events are inserted before the target is removed and commit in the same transaction. The
 nullable foreign keys keep the audit record after an organization or user is deleted, including
 when the acting user deletes their own account. Metadata excludes secrets, protocol payloads,
 affected-user lists, cache keys, and raw errors. The existing automated retention policy from
 migration 017 remains authoritative.
+
+Migration 034 adds the actor columns and a check constraint: a `client` row requires
+`actor_client_id` and a null `actor_id`; a `user` row keeps `actor_client_id` null; a `system` row
+keeps both identities null. Existing invitation service metadata is backfilled into the client
+columns, target `user_id` values are linked only when the user still exists, and historical rows
+whose actor user was deleted are classified `system`. Future actor deletions retain `user`.
 
 ### Branding Assets (Migrations 018 and 027)
 

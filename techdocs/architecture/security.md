@@ -276,6 +276,26 @@ SELECT * FROM users WHERE id = $1;
   returns empty RBAC arrays when it is missing or malformed. The private identifier is not emitted
   in tokens, UserInfo, introspection, discovery, rendered authentication output, errors, or logs.
 
+### Tenant service-client user management
+
+The tenant M2M user API applies the same tenant boundary as the Admin API
+without granting control-plane authority:
+
+- Service clients must be active, confidential, belong to the route
+  organization, carry the required scope in both token and client metadata, and
+  be outside the `porta-admin` application and super-admin organization.
+- CRUD and lifecycle are service-client only; the existing invite route keeps
+  its dual service/user behavior.
+- Role reads and mutations are bounded to the token client's application.
+  Canonical `porta-admin` roles are rejected.
+- Permanent delete uses the separate `org:user:delete` scope and a strict,
+  fail-closed Redis counter. The shared deletion service revokes sessions,
+  tokens, and cached authority.
+- The service layer, not the route, owns the mutation transaction. Client
+  attribution and the business audit row commit with the mutation.
+- Tenant denials and successes emit the additive `tenant-api` surface in
+  `security.decision.v1` with protected actor and tenant references.
+
 ### Cache Isolation
 
 Redis cache keys include tenant context to prevent cross-tenant cache poisoning:
@@ -524,6 +544,13 @@ All security-relevant actions are logged to the `audit_log` table:
 | Security       | `security.login_method_disabled`, `security.rate_limited`         |
 | Admin          | `organization.created`, `client.secret_rotated`, `role.assigned`  |
 | System         | `admin.config.updated`, `system.key_rotated`                      |
+
+`audit_log` records one actor class per row: `actor_type` (`user`, `client`, or
+`system`), `actor_id` for a Porta user, and `actor_client_id` /
+`actor_client_name` for an OAuth service client. A client actor has no synthetic
+user row. The name is captured at event time, and a check constraint rejects
+anonymous client rows. Historical rows whose actor user was deleted are
+classified `system`; future deletions retain `user`.
 
 Compatibility audit writes remain best-effort and do not change the main request result. Every
 successful state-changing administrative request also writes a durable business audit row through

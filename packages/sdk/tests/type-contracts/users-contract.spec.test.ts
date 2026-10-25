@@ -2,6 +2,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 import type { StandaloneUsersDomain, UsersDomain } from '../../src/domains/index.js';
 import type {
   AddressInput,
+  AuditEntry,
   CreateUserInput,
   HistoryEntry,
   HistoryParams,
@@ -41,6 +42,8 @@ type ExpectedCreateUserInput = {
   zoneinfo?: string;
   locale?: string;
   phoneNumber?: string;
+  phoneNumberVerified?: boolean;
+  emailVerified?: boolean;
   address?: AddressInput;
 };
 
@@ -59,7 +62,35 @@ type ExpectedUpdateUserInput = {
   locale?: string | null;
   phoneNumber?: string | null;
   phoneNumberVerified?: boolean;
+  emailVerified?: boolean;
   address?: AddressInput;
+};
+
+type ExpectedAuditEntry = {
+  id: string;
+  eventType: string;
+  eventCategory: string;
+  actorId: string | null;
+  actorType?: 'user' | 'client' | 'system';
+  actorClientId?: string | null;
+  actorClientName?: string | null;
+  organizationId: string | null;
+  userId: string | null;
+  description: string | null;
+  metadata: Record<string, unknown> | null;
+  ipAddress: string | null;
+  createdAt: string;
+};
+
+type ExpectedHistoryEntry = {
+  id: string;
+  eventType: string;
+  actorId: string | null;
+  actorType?: 'user' | 'client' | 'system';
+  actorClientId?: string | null;
+  actorClientName?: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
 };
 
 type ExpectedInviteUserResult = {
@@ -162,6 +193,8 @@ describe('user type contracts', () => {
       zoneinfo: 'Europe/London',
       locale: 'en-GB',
       phoneNumber: '+442000000000',
+      phoneNumberVerified: true,
+      emailVerified: true,
       address,
     };
     const updateInput: UpdateUserInput = {
@@ -179,6 +212,7 @@ describe('user type contracts', () => {
       locale: null,
       phoneNumber: null,
       phoneNumberVerified: false,
+      emailVerified: true,
       address,
     };
 
@@ -201,12 +235,11 @@ describe('user type contracts', () => {
     const createWithVerification: CreateUserInput = {
       organizationId: 'org-1',
       email: 'person@example.com',
-      // @ts-expect-error Verification state is not accepted during creation.
       phoneNumberVerified: true,
+      emailVerified: true,
     };
     // @ts-expect-error Email is immutable through the profile update input.
     const updateWithEmail: UpdateUserInput = { email: 'other@example.com' };
-    // @ts-expect-error Email verification uses its dedicated operation.
     const updateWithEmailVerification: UpdateUserInput = { emailVerified: true };
     // @ts-expect-error Password changes use the dedicated password operation.
     const updateWithPassword: UpdateUserInput = { password: 'replacement password' };
@@ -235,6 +268,8 @@ describe('user type contracts', () => {
 
   it('exposes exact invitation, history, and list result shapes', () => {
     expectTypeOf<InviteUserResult>().toEqualTypeOf<ExpectedInviteUserResult>();
+    expectTypeOf<AuditEntry>().toEqualTypeOf<ExpectedAuditEntry>();
+    expectTypeOf<HistoryEntry>().toEqualTypeOf<ExpectedHistoryEntry>();
     expectTypeOf<HistoryResult>().toEqualTypeOf<ExpectedHistoryResult>();
     expectTypeOf<UserListParams>().toEqualTypeOf<ExpectedUserListParams>();
 

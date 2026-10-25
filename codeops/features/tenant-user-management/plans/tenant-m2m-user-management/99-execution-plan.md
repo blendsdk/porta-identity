@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 20:35
-> **Progress**: 37/56 tasks (66%)
+> **Last Updated**: 2026-10-25 20:41
+> **Progress**: 48/56 tasks (85%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -173,7 +173,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 ## Phase 4: SDK, CLI, docs, and techdocs
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: 04d2f74ac7a41748617d19a53abd0b7a7fb337d2
 > **Lenses**: api, compatibility, documentation
 > **Reasoning**: medium — additive contracts and operator-facing display, with compatibility checks
 
@@ -182,23 +182,23 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Reference**: [03-04](03-04-sdk-cli-docs-contracts.md) · AR-14, AR-22.
 **Objective**: Define the additive SDK/CLI contract before changing it.
 
-- [ ] 4.1.1 [spec-author] Write SDK type/path contract tests from ST-47–ST-48 — `packages/sdk/tests/type-contracts/tenant-user-management.spec.test.ts`, `packages/sdk/tests/domains/tenant-user-paths.spec.test.ts`; update the existing exact expectations in `packages/sdk/tests/type-contracts/users-contract.spec.test.ts` and replace the old negative `phoneNumberVerified`/`emailVerified` assertions
-- [ ] 4.1.2 [spec-author] Write CLI audit/history display and terminal-safety tests from ST-49 and ST-52 — `packages/cli/tests/commands/audit-client-actor.spec.test.ts`, `packages/cli/tests/admin/user-service-client-actor.spec.test.ts`
-- [ ] 4.1.3 Run the new contract tests and verify the red phase; ST-47 paths may already pass, so record that justified pass and rely on ST-48/ST-49/ST-52 for red
+- [x] 4.1.1 [spec-author] Write SDK type/path contract tests from ST-47–ST-48 — `packages/sdk/tests/type-contracts/tenant-user-management.spec.test.ts`, `packages/sdk/tests/domains/tenant-user-paths.spec.test.ts`; update the existing exact expectations in `packages/sdk/tests/type-contracts/users-contract.spec.test.ts` and replace the old negative `phoneNumberVerified`/`emailVerified` assertions ✅ (completed: 2026-10-25 20:41)
+- [x] 4.1.2 [spec-author] Write CLI audit/history display and terminal-safety tests from ST-49 and ST-52 — `packages/cli/tests/commands/audit-client-actor.spec.test.ts`, `packages/cli/tests/admin/user-service-client-actor.spec.test.ts` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.1.3 Run the new contract tests and verify the red phase; ST-47 paths may already pass, so record that justified pass and rely on ST-48/ST-49/ST-52 for red ✅ (completed: 2026-10-25 20:41)
 
 ### Step 4.2: Implementation
 
 **Reference**: [03-04](03-04-sdk-cli-docs-contracts.md)
 **Objective**: Update SDK types, CLI display, and documentation.
 
-- [ ] 4.2.1 Add optional `emailVerified`/`phoneNumberVerified` fields to SDK user inputs and client actor fields to audit/history types; update the exact type-contract expectations — `packages/sdk/src/types/users.ts`, `packages/sdk/src/types/audit.ts`, `packages/sdk/src/types/common.ts`
-- [ ] 4.2.2 Update CLI audit list and user history to display client actors; validate client actor strings with `isText`/`containsTerminalControl`, degrade invalid labels to a safe placeholder, and sanitize at render — `packages/cli/src/commands/audit.ts`, `packages/cli/src/admin/user-service.ts`, `packages/cli/src/admin/user-workspace.ts`
-- [ ] 4.2.3 Update public API docs for tenant CRUD, scopes, client setup, no-password flow, delete safety, and audit — `docs/api/users.md`, `docs/api/audit.md`
-- [ ] 4.2.4 Update the SDK README and SDK guide pages with the tenant CRUD example and scope guidance — `packages/sdk/README.md`, `docs/guide/sdk.md`, `docs/guide/sdk-node.md`
-- [ ] 4.2.5 Update techdocs and add ADR-017 — `techdocs/architecture/api-design.md`, `techdocs/architecture/security.md`, `techdocs/architecture/data-model.md`, `techdocs/decisions/index.md`, `techdocs/index.md`
-- [ ] 4.2.6 Run the contract tests and verify the green phase
-- [ ] 4.2.7 Write implementation tests for optional-field compatibility, client-name-only/ID-only display, historical missing actor fields, terminal-control fallback, and the exact SDK contract updates — `*.impl.test.ts`
-- [ ] 4.2.8 Verify Phase 4: SDK verify, CLI verify, docs build, and `yarn test:structure`
+- [x] 4.2.1 Add optional `emailVerified`/`phoneNumberVerified` fields to SDK user inputs and client actor fields to audit/history types; update the exact type-contract expectations — `packages/sdk/src/types/users.ts`, `packages/sdk/src/types/audit.ts`, `packages/sdk/src/types/common.ts` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.2 Update CLI audit list and user history to display client actors; validate client actor strings with `isText`/`containsTerminalControl`, degrade invalid labels to a safe placeholder, and sanitize at render — `packages/cli/src/commands/audit.ts`, `packages/cli/src/admin/user-service.ts`, `packages/cli/src/admin/user-workspace.ts` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.3 Update public API docs for tenant CRUD, scopes, client setup, no-password flow, delete safety, and audit — `docs/api/users.md`, `docs/api/audit.md` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.4 Update the SDK README and SDK guide pages with the tenant CRUD example and scope guidance — `packages/sdk/README.md`, `docs/guide/sdk.md`, `docs/guide/sdk-node.md` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.5 Update techdocs and add ADR-017 — `techdocs/architecture/api-design.md`, `techdocs/architecture/security.md`, `techdocs/architecture/data-model.md`, `techdocs/decisions/index.md`, `techdocs/index.md` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.6 Run the contract tests and verify the green phase ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.7 Write implementation tests for optional-field compatibility, client-name-only/ID-only display, historical missing actor fields, terminal-control fallback, and the exact SDK contract updates — `*.impl.test.ts` ✅ (completed: 2026-10-25 20:41)
+- [x] 4.2.8 Verify Phase 4: SDK verify, CLI verify, docs build, and `yarn test:structure` ✅ (completed: 2026-10-25 20:41)
 
 **Deliverables**:
 - [ ] Additive SDK types and tenant-path contract; exact input-type expectations updated
@@ -207,6 +207,8 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [ ] All Phase 4 verification passing
 
 **Verify**: `yarn workspace @portaidentity/sdk verify && yarn workspace @portaidentity/cli verify && yarn docs:build && yarn test:structure`
+
+**Verification**: Passed — SDK 55 files / 586 tests, CLI 104 files / 1,469 tests, docs build, and 138 structure tests. SDK/CLI typechecks, lint and builds pass.
 
 ---
 

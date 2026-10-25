@@ -30,6 +30,9 @@ GET /api/admin/audit
       "eventType": "organization.created",
       "eventCategory": "admin",
       "actorId": "user-uuid",
+      "actorType": "user",
+      "actorClientId": null,
+      "actorClientName": null,
       "organizationId": "org-uuid",
       "userId": "user-uuid",
       "description": "Organization created",
@@ -60,17 +63,35 @@ GET /api/admin/audit
 
 ### User Events
 
-| Action                  | Description          |
-| ----------------------- | -------------------- |
-| `user.created`          | New user created     |
-| `user.invited`          | Invitation created (no user record yet) |
-| `user.updated`          | User profile updated |
-| `user.deactivated`      | User deactivated     |
-| `user.activated`        | User activated       |
-| `user.deleted`          | User deleted         |
-| `user.password_changed` | Password changed     |
-| `user.login_success`    | Successful login     |
-| `user.login_failure`    | Failed login attempt |
+| Action                  | Description                                   |
+| ----------------------- | --------------------------------------------- |
+| `user.created`          | New user created                              |
+| `user.invited`          | Invitation created (no user record yet)       |
+| `user.updated`          | User profile updated                          |
+| `user.deactivated`      | User deactivated                              |
+| `user.activated`        | User activated                                |
+| `user.deleted`          | User deleted                                  |
+| `user.password_changed` | Password changed                              |
+| `user.login_success`    | Successful login                              |
+| `user.login_failure`    | Failed login attempt                          |
+| `user.read`             | Tenant user read (best-effort security event) |
+| `user.listed`           | Tenant user list (filters and count only)     |
+| `user.roles.assigned`   | Roles assigned to a user                      |
+| `user.roles.removed`    | Roles removed from a user                     |
+
+### Actor attribution
+
+Every audit row records one actor class:
+
+| Field             | Meaning                                                           |
+| ----------------- | ----------------------------------------------------------------- |
+| `actorType`       | `user`, `client`, or `system`                                     |
+| `actorId`         | Porta user ID for a user actor; null for a client or system actor |
+| `actorClientId`   | OAuth client ID for a client actor; null otherwise                |
+| `actorClientName` | OAuth client name captured at event time; null otherwise          |
+
+A client actor never gets a synthetic Porta user ID. `actorClientName` is the
+name at event time, not a live join.
 
 ### Client Events
 

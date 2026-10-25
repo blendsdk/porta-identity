@@ -171,6 +171,53 @@ The service client must be configured with:
 `createClientCredentialsAuth` sends the client secret in the form body, so the
 client must allow `client_secret_post`.
 
+### Tenant-scoped user management from a BFF
+
+The same `users` and `userRoles` domains manage tenant users when the transport
+uses `apiPrefix: '/api'`. The tenant client holds only a client ID and secret;
+it never needs a control-plane account or refresh token.
+
+```typescript
+import { createPortaClient } from '@portaidentity/sdk';
+import { createClientCredentialsAuth, createNodeTransport } from '@portaidentity/sdk/node';
+
+const tenant = createPortaClient({
+  transport: createNodeTransport({
+    baseUrl: 'https://porta.example.com',
+    apiPrefix: '/api',
+    auth: createClientCredentialsAuth({
+      tokenEndpoint: 'https://porta.example.com/acme/token',
+      clientId: process.env.PORTA_TENANT_CLIENT_ID!,
+      clientSecret: process.env.PORTA_TENANT_CLIENT_SECRET!,
+      scope: 'org:user:read org:user:write org:user:delete',
+    }),
+  }),
+});
+
+const orgId = process.env.PORTA_TENANT_ORG_ID!;
+const created = await tenant.users.create({
+  organizationId: orgId,
+  email: 'new.user@example.com',
+  givenName: 'New',
+  familyName: 'User',
+  emailVerified: true,
+});
+
+await tenant.users.update(orgId, created.data.id, {
+  nickname: 'newbie',
+  phoneNumber: '+15555550123',
+  phoneNumberVerified: true,
+});
+
+await tenant.users.deactivate(orgId, created.data.id);
+```
+
+Tenant create accepts no password. The BFF sends its own welcome message and
+directs the user to the existing login, magic-link, or forgot-password flow.
+Tenant update rejects email, status, password, and 2FA changes. Role assignment
+is limited to roles owned by the client application. Delete requires the
+separate `org:user:delete` scope and is permanent.
+
 ### AI Agent Integration
 
 ```typescript
@@ -315,7 +362,7 @@ first-page `{ data, hasMore, nextCursor }` history envelope.
 ## Testing
 
 ```bash
-# Run all SDK tests (352 tests)
+# Run all SDK tests (586 tests)
 cd packages/sdk && yarn test
 
 # Type checking

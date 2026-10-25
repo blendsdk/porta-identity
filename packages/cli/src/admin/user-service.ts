@@ -269,13 +269,38 @@ function userHistory(value: unknown): AdminUserHistory | undefined {
     ) {
       return undefined;
     }
+    const actorType = entry.actorType;
+    if (
+      actorType !== undefined &&
+      actorType !== 'user' &&
+      actorType !== 'client' &&
+      actorType !== 'system'
+    ) {
+      return undefined;
+    }
+    const clientName =
+      typeof entry.actorClientName === 'string' && isText(entry.actorClientName, 255)
+        ? entry.actorClientName
+        : undefined;
+    const clientId =
+      typeof entry.actorClientId === 'string' && isText(entry.actorClientId, 255)
+        ? entry.actorClientId
+        : undefined;
+    const actor =
+      actorType === 'client'
+        ? clientName
+          ? clientId
+            ? `${clientName} (${clientId})`
+            : clientName
+          : (clientId ?? '—')
+        : (entry.actorId ?? 'System');
     const timestamp = Date.parse(entry.createdAt);
     if (timestamp > previousTime) return undefined;
     previousTime = timestamp;
     entries.push(
       Object.freeze({
         eventType: entry.eventType,
-        actor: entry.actorId ?? 'System',
+        actor,
         createdAt: entry.createdAt,
       }),
     );
