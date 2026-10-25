@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 18:10
-> **Progress**: 6/56 tasks (11%)
+> **Last Updated**: 2026-10-25 18:12
+> **Progress**: 7/56 tasks (13%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -60,7 +60,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [x] 1.1.4 Add `org:user:read`, `org:user:write`, and `org:user:delete` constants and register them in the provider scope list — `packages/server/src/oidc/scopes.ts`, `packages/server/src/oidc/configuration.ts` ✅ (completed: 2026-10-25 18:10)
 - [x] 1.1.5 Generalize tenant actor auth to configurable actor kinds, required scope, required permission, and preserved security decision/reference instrumentation; rename state to `tenantActor` — `packages/server/src/middleware/tenant-user-auth.ts`, `packages/server/src/middleware/tenant-invite-auth.ts` ✅ (completed: 2026-10-25 18:10)
 - [x] 1.1.6 Create the consolidated tenant user router, move the invite handler, retire `tenant-invitations.ts`, and mount it from the server — `packages/server/src/routes/tenant-users.ts`, `packages/server/src/server.ts` ✅ (completed: 2026-10-25 18:10)
-- [ ] 1.1.7 Add migration `034_audit_client_actor.sql` with columns, backfill, constraint, index, and down migration; record the full-table update/lock, maintenance window, backup, and historical deleted-actor classification — `packages/server/migrations/034_audit_client_actor.sql`
+- [x] 1.1.7 Add migration `034_audit_client_actor.sql` with columns, backfill, constraint, index, and down migration; record the full-table update/lock, maintenance window, backup, and historical deleted-actor classification — `packages/server/migrations/034_audit_client_actor.sql` ✅ (completed: 2026-10-25 18:12)
 - [ ] 1.1.8 Extend `AuditLogEntry` and both audit writers with actor type/client fields and normalization — `packages/server/src/lib/audit-log.ts`
 - [ ] 1.1.9 Update audit API, entity history, source direct inserts, and the existing fixture inserts for the new columns — `packages/server/src/routes/audit.ts`, `packages/server/src/lib/entity-history.ts`, `packages/server/src/auth/token-repository.ts`, `packages/server/src/lib/data-export.ts`, `packages/server/tests/integration/migrations.test.ts`, `packages/server/tests/integration/repositories/audit-log.repo.test.ts`, `packages/server/tests/integration/admin/record-deletion.spec.test.ts`, `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`, `packages/server/tests/unit/admin/administrative-data-production-driver.ts`
 - [ ] 1.1.10 Keep `InviteActor` for the invitation workflow and add `inviteActorToAuditActor`; update the invite audit to first-class client attribution — `packages/server/src/users/invite-service.ts`
