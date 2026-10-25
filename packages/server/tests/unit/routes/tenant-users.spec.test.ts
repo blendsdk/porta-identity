@@ -25,7 +25,7 @@ vi.mock('../../../src/users/invite-service.js', async (importOriginal) => {
   return { ...actual, inviteUser: service.inviteUser };
 });
 
-import { createTenantInviteRouter } from '../../../src/routes/tenant-invitations.js';
+import { createTenantUsersRouter } from '../../../src/routes/tenant-users.js';
 import {
   InvitePreAssignmentError,
   InviteUserExistsError,
@@ -43,7 +43,7 @@ function createMockCtx(body: unknown = { email: 'new.user@example.com' }) {
   return {
     params: { orgId: ORG_ID },
     request: { body },
-    state: { tenantInviteActor: state.actor },
+    state: { tenantActor: state.actor },
     get status() {
       return statusCode;
     },
@@ -64,14 +64,14 @@ function createMockCtx(body: unknown = { email: 'new.user@example.com' }) {
   };
 }
 
-function findInviteHandler(router: ReturnType<typeof createTenantInviteRouter>) {
+function findInviteHandler(router: ReturnType<typeof createTenantUsersRouter>) {
   return router.stack.find(
     (layer) =>
       layer.methods.includes('POST') && layer.path === '/api/organizations/:orgId/users/invite',
   );
 }
 
-async function execute(router: ReturnType<typeof createTenantInviteRouter>, body?: unknown) {
+async function execute(router: ReturnType<typeof createTenantUsersRouter>, body?: unknown) {
   const layer = findInviteHandler(router);
   if (!layer) throw new Error('Invite route not found');
   const ctx = createMockCtx(body);
@@ -98,7 +98,7 @@ beforeEach(() => {
 
 describe('tenant invitation route', () => {
   it('passes a service actor and the tenant application boundary to the invite service', async () => {
-    const ctx = await execute(createTenantInviteRouter());
+    const ctx = await execute(createTenantUsersRouter());
 
     expect(service.inviteUser).toHaveBeenCalledWith({
       organizationId: ORG_ID,
@@ -132,7 +132,7 @@ describe('tenant invitation route', () => {
       permissions,
     };
 
-    await execute(createTenantInviteRouter());
+    await execute(createTenantUsersRouter());
 
     expect(service.inviteUser).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -149,7 +149,7 @@ describe('tenant invitation route', () => {
   it('returns 409 when the email already belongs to the organization', async () => {
     service.inviteUser.mockRejectedValue(new InviteUserExistsError());
 
-    const ctx = await execute(createTenantInviteRouter());
+    const ctx = await execute(createTenantUsersRouter());
 
     expect(ctx.status).toBe(409);
     expect(ctx.body).toEqual({ error: 'User already exists in this organization' });
@@ -158,7 +158,7 @@ describe('tenant invitation route', () => {
   it('returns 400 for an invalid pre-assignment', async () => {
     service.inviteUser.mockRejectedValue(new InvitePreAssignmentError());
 
-    const ctx = await execute(createTenantInviteRouter());
+    const ctx = await execute(createTenantUsersRouter());
 
     expect(ctx.status).toBe(400);
     expect(ctx.body).toEqual({ error: 'User request is invalid' });
@@ -167,7 +167,7 @@ describe('tenant invitation route', () => {
   it('returns 403 when a tenant user exceeds their authority', async () => {
     service.inviteUser.mockRejectedValue(new RoleDelegationError());
 
-    const ctx = await execute(createTenantInviteRouter());
+    const ctx = await execute(createTenantUsersRouter());
 
     expect(ctx.status).toBe(403);
     expect(ctx.body).toEqual({
@@ -177,7 +177,7 @@ describe('tenant invitation route', () => {
   });
 
   it('rejects custom claim pre-assignment on the tenant route', async () => {
-    const ctx = await execute(createTenantInviteRouter(), {
+    const ctx = await execute(createTenantUsersRouter(), {
       email: 'new.user@example.com',
       claims: [
         {
@@ -194,7 +194,7 @@ describe('tenant invitation route', () => {
   });
 
   it('returns 400 for a malformed request body', async () => {
-    const ctx = await execute(createTenantInviteRouter(), { email: 'not-an-email' });
+    const ctx = await execute(createTenantUsersRouter(), { email: 'not-an-email' });
 
     expect(ctx.status).toBe(400);
     expect(ctx.body).toEqual({ error: 'User request is invalid' });
@@ -204,7 +204,7 @@ describe('tenant invitation route', () => {
   it('returns 401 when authentication did not set an actor', async () => {
     state.actor = undefined;
 
-    const ctx = await execute(createTenantInviteRouter());
+    const ctx = await execute(createTenantUsersRouter());
 
     expect(ctx.status).toBe(401);
     expect(service.inviteUser).not.toHaveBeenCalled();
