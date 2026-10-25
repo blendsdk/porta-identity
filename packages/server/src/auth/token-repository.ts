@@ -14,7 +14,7 @@
  */
 
 import type { PoolClient } from 'pg';
-import { getPool } from '../lib/database.js';
+import { getPool, runDatabaseTransaction } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 import type { UserStatus } from '../users/types.js';
 
@@ -764,43 +764,42 @@ export async function invalidateUserTokens(table: TokenTable, userId: string): P
  * @throws InvitationConflictError when another invite wins the same-email race.
  */
 export async function replaceInvitation(input: InsertInvitationInput): Promise<{ id: string }> {
-  const client = await getPool().connect();
   try {
-    await client.query('BEGIN');
-    await client.query(
-      `UPDATE invitation_tokens
-          SET used_at = NOW()
-        WHERE organization_id = $1
-          AND email = $2
-          AND used_at IS NULL`,
-      [input.organizationId, input.email],
-    );
-    const result = await client.query<{ id: string }>(
-      `INSERT INTO invitation_tokens
-         (organization_id, email, token_hash, expires_at,
-          given_name, family_name, locale, details, invited_by)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id`,
-      [
-        input.organizationId,
-        input.email,
-        input.tokenHash,
-        input.expiresAt,
-        input.givenName ?? null,
-        input.familyName ?? null,
-        input.locale ?? null,
-        input.details ? JSON.stringify(input.details) : null,
-        input.invitedBy ?? null,
-      ],
-    );
-    await client.query('COMMIT');
-    logger.debug(
-      { organizationId: input.organizationId, hasDetails: !!input.details },
-      'Deferred invitation stored',
-    );
-    return { id: result.rows[0].id };
+    return await runDatabaseTransaction(async () => {
+      const pool = getPool();
+      await pool.query(
+        `UPDATE invitation_tokens
+            SET used_at = NOW()
+          WHERE organization_id = $1
+            AND email = $2
+            AND used_at IS NULL`,
+        [input.organizationId, input.email],
+      );
+      const result = await pool.query<{ id: string }>(
+        `INSERT INTO invitation_tokens
+           (organization_id, email, token_hash, expires_at,
+            given_name, family_name, locale, details, invited_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         RETURNING id`,
+        [
+          input.organizationId,
+          input.email,
+          input.tokenHash,
+          input.expiresAt,
+          input.givenName ?? null,
+          input.familyName ?? null,
+          input.locale ?? null,
+          input.details ? JSON.stringify(input.details) : null,
+          input.invitedBy ?? null,
+        ],
+      );
+      logger.debug(
+        { organizationId: input.organizationId, hasDetails: !!input.details },
+        'Deferred invitation stored',
+      );
+      return { id: result.rows[0].id };
+    });
   } catch (error) {
-    await client.query('ROLLBACK');
     if (
       typeof error === 'object' &&
       error !== null &&
@@ -810,8 +809,6 @@ export async function replaceInvitation(input: InsertInvitationInput): Promise<{
       throw new InvitationConflictError();
     }
     throw error;
-  } finally {
-    client.release();
   }
 }
 

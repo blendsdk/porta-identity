@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 18:16
-> **Progress**: 9/56 tasks (16%)
+> **Last Updated**: 2026-10-25 18:18
+> **Progress**: 10/56 tasks (17%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -63,7 +63,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [x] 1.1.7 Add migration `034_audit_client_actor.sql` with columns, backfill, constraint, index, and down migration; record the full-table update/lock, maintenance window, backup, and historical deleted-actor classification — `packages/server/migrations/034_audit_client_actor.sql` ✅ (completed: 2026-10-25 18:12)
 - [x] 1.1.8 Extend `AuditLogEntry` and both audit writers with actor type/client fields and normalization — `packages/server/src/lib/audit-log.ts` ✅ (completed: 2026-10-25 18:14)
 - [x] 1.1.9 Update audit API, entity history, source direct inserts, and the existing fixture inserts for the new columns — `packages/server/src/routes/audit.ts`, `packages/server/src/lib/entity-history.ts`, `packages/server/src/auth/token-repository.ts`, `packages/server/src/lib/data-export.ts`, `packages/server/tests/integration/migrations.test.ts`, `packages/server/tests/integration/repositories/audit-log.repo.test.ts`, `packages/server/tests/integration/admin/record-deletion.spec.test.ts`, `packages/server/tests/integration/admin/portability-round-trip.spec.test.ts`, `packages/server/tests/unit/admin/administrative-data-production-driver.ts` ✅ (completed: 2026-10-25 18:16)
-- [ ] 1.1.10 Keep `InviteActor` for the invitation workflow and add `inviteActorToAuditActor`; update the invite audit to first-class client attribution — `packages/server/src/users/invite-service.ts`
+- [x] 1.1.10 Keep `InviteActor` for the invitation workflow and add `inviteActorToAuditActor`; update the invite audit to first-class client attribution — `packages/server/src/users/invite-service.ts` ✅ (completed: 2026-10-25 18:18)
 - [ ] 1.1.11 Run the specification tests and verify the green phase
 - [ ] 1.1.12 Write implementation tests for token lookup order, provider failure, migration edge cases, audit normalization, and writer parameter order — `*.impl.test.ts`
 - [ ] 1.1.13 Update the existing writer/invite/auth/route tests and mocks affected by Phase 1: `audit-log.test.ts`, `users/invite-service.spec.test.ts`, `middleware/tenant-invite-auth.spec.test.ts` (rename/update), `routes/tenant-invitations.spec.test.ts` (move/update); add the central test-side audit insert helper. Service/role actor-test updates belong to Phases 2 and 3.

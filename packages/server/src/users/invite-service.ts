@@ -20,8 +20,16 @@ import { sendInvitationEmail } from '../auth/email-service.js';
 import { InvitationConflictError, replaceInvitation } from '../auth/token-repository.js';
 import { generateToken } from '../auth/tokens.js';
 import { config } from '../config/index.js';
-import { writeAuditLog } from '../lib/audit-log.js';
-import { afterDatabaseCommit, getPool } from '../lib/database.js';
+import {
+  inviteActorToAuditActor,
+  writeAuditLogInTransaction,
+} from '../lib/audit-log.js';
+import {
+  afterDatabaseCommit,
+  getDatabaseTransactionClient,
+  getPool,
+  runDatabaseTransaction,
+} from '../lib/database.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { RoleDelegationError } from '../rbac/errors.js';
@@ -293,59 +301,79 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
   if (input.claims?.length) details.claims = input.claims;
   details.inviterName = actor.displayName;
 
+  const auditActor = inviteActorToAuditActor(actor);
+  const inviteUrl = `${config.issuerBaseUrl}/${organization.slug}/auth/accept-invite/${plaintext}`;
+
   let invitationId: string;
   try {
-    const invitation = await replaceInvitation({
-      organizationId,
-      email: input.email,
-      tokenHash: hash,
-      expiresAt,
-      givenName: input.givenName ?? null,
-      familyName: input.familyName ?? null,
-      locale: input.locale ?? null,
-      details: Object.keys(details).length > 0 ? details : null,
-      invitedBy: actor.kind === 'service' ? null : (actor.userId ?? null),
+    invitationId = await runDatabaseTransaction(async () => {
+      const invitation = await replaceInvitation({
+        organizationId,
+        email: input.email,
+        tokenHash: hash,
+        expiresAt,
+        givenName: input.givenName ?? null,
+        familyName: input.familyName ?? null,
+        locale: input.locale ?? null,
+        details: Object.keys(details).length > 0 ? details : null,
+        invitedBy: actor.kind === 'service' ? null : (actor.userId ?? null),
+      });
+
+      const transaction = getDatabaseTransactionClient();
+      if (!transaction) {
+        throw new Error('Invitation creation requires an active database transaction');
+      }
+
+      await writeAuditLogInTransaction(transaction, {
+        organizationId,
+        actorId: auditActor.kind === 'user' ? auditActor.userId : undefined,
+        actorType:
+          auditActor.kind === 'service'
+            ? 'client'
+            : auditActor.kind === 'user'
+              ? 'user'
+              : 'system',
+        actorClientId: auditActor.kind === 'service' ? auditActor.clientId : null,
+        actorClientName: auditActor.kind === 'service' ? auditActor.clientName : null,
+        eventType: 'user.invited',
+        eventCategory: 'admin',
+        description: 'User invitation created',
+        metadata: {
+          invitationId: invitation.id,
+          hasPersonalMessage: Boolean(input.personalMessage),
+          preAssignedRoles: input.roles?.length ?? 0,
+          preAssignedClaims: input.claims?.length ?? 0,
+          actorKind: actor.kind,
+          ...(actor.kind === 'service' && actor.clientId
+            ? { serviceClientId: actor.clientId }
+            : {}),
+        },
+      });
+
+      const emailOptions: InvitationEmailOptions = { invitationId: invitation.id };
+      if (input.personalMessage) emailOptions.personalMessage = input.personalMessage;
+      emailOptions.inviterName = actor.displayName;
+
+      await afterDatabaseCommit(() =>
+        sendInvitationEmail(
+          {
+            email: input.email,
+            givenName: input.givenName ?? null,
+            familyName: input.familyName ?? null,
+          },
+          organization,
+          inviteUrl,
+          input.locale ?? organization.defaultLocale ?? 'en',
+          emailOptions,
+        ),
+      );
+
+      return invitation.id;
     });
-    invitationId = invitation.id;
   } catch (error) {
     if (error instanceof InvitationConflictError) throw new InviteConflictError();
     throw error;
   }
-
-  const inviteUrl = `${config.issuerBaseUrl}/${organization.slug}/auth/accept-invite/${plaintext}`;
-  const emailOptions: InvitationEmailOptions = { invitationId };
-  if (input.personalMessage) emailOptions.personalMessage = input.personalMessage;
-  emailOptions.inviterName = actor.displayName;
-
-  await afterDatabaseCommit(() =>
-    sendInvitationEmail(
-      {
-        email: input.email,
-        givenName: input.givenName ?? null,
-        familyName: input.familyName ?? null,
-      },
-      organization,
-      inviteUrl,
-      input.locale ?? organization.defaultLocale ?? 'en',
-      emailOptions,
-    ),
-  );
-
-  writeAuditLog({
-    organizationId,
-    actorId: actor.kind === 'service' ? undefined : actor.userId,
-    eventType: 'user.invited',
-    eventCategory: 'admin',
-    description: 'User invitation created',
-    metadata: {
-      invitationId,
-      hasPersonalMessage: Boolean(input.personalMessage),
-      preAssignedRoles: input.roles?.length ?? 0,
-      preAssignedClaims: input.claims?.length ?? 0,
-      actorKind: actor.kind,
-      ...(actor.kind === 'service' && actor.clientId ? { serviceClientId: actor.clientId } : {}),
-    },
-  });
 
   return {
     invitationId,
