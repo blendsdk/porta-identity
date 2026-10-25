@@ -47,7 +47,7 @@ describe('user history client actor display', () => {
           actorId: null,
           actorType: 'client',
           actorClientId: 'bff-unsafe',
-          actorClientName: 'Evil\u001b[31m',
+          actorClientName: 'Evil\u001b[31m\u202e',
           metadata: null,
           createdAt: '2026-08-29T11:00:00.000Z',
         },
@@ -84,7 +84,7 @@ describe('user history client actor display', () => {
             actor: 'Acme BFF (bff-client)',
             createdAt: '2026-08-29T12:00:00.000Z',
           },
-          { eventType: 'user.updated', actor: 'bff-unsafe', createdAt: '2026-08-29T11:00:00.000Z' },
+          { eventType: 'user.updated', actor: '—', createdAt: '2026-08-29T11:00:00.000Z' },
           { eventType: 'user.deactivated', actor: actorId, createdAt: '2026-08-29T10:00:00.000Z' },
           {
             eventType: 'user.auto_unlocked',

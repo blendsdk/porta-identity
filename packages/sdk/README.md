@@ -218,6 +218,11 @@ Tenant update rejects email, status, password, and 2FA changes. Role assignment
 is limited to roles owned by the client application. Delete requires the
 separate `org:user:delete` scope and is permanent.
 
+`emailVerified` and `phoneNumberVerified` are BFF assertions. Set them only
+after the BFF has verified the value itself. A relying party must not treat a
+tenant-asserted `email_verified`/`phone_number_verified` claim as platform
+verification by Porta.
+
 ### AI Agent Integration
 
 ```typescript

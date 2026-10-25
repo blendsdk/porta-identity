@@ -83,15 +83,17 @@ GET /api/admin/audit
 
 Every audit row records one actor class:
 
-| Field             | Meaning                                                           |
-| ----------------- | ----------------------------------------------------------------- |
-| `actorType`       | `user`, `client`, or `system`                                     |
-| `actorId`         | Porta user ID for a user actor; null for a client or system actor |
-| `actorClientId`   | OAuth client ID for a client actor; null otherwise                |
-| `actorClientName` | OAuth client name captured at event time; null otherwise          |
+| Field             | Meaning                                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `actorType`       | `user`, `client`, or `system`                                                                                    |
+| `actorId`         | Porta user ID for a user actor; null for a client or system actor, or when the historical actor user was deleted |
+| `actorClientId`   | OAuth client ID for a client actor; null otherwise                                                               |
+| `actorClientName` | OAuth client name captured at event time; null otherwise                                                         |
 
 A client actor never gets a synthetic Porta user ID. `actorClientName` is the
-name at event time, not a live join.
+name at event time, not a live join. A future user-actor deletion sets
+`actorId` to null while retaining `actorType='user'`; only historical rows
+whose actor was already deleted are classified `system`.
 
 ### Client Events
 
@@ -113,8 +115,8 @@ name at event time, not a live join.
 | `permission.deleted`       | Permission deleted           |
 | `role.permission_assigned` | Permission assigned to role  |
 | `role.permission_removed`  | Permission removed from role |
-| `user.role_assigned`       | Role assigned to user        |
-| `user.role_removed`        | Role removed from user       |
+| `user.roles.assigned`      | Role assigned to user        |
+| `user.roles.removed`       | Role removed from user       |
 
 ### Security Events
 

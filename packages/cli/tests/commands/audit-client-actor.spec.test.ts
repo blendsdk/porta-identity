@@ -35,12 +35,30 @@ describe('audit client actor display', () => {
     ).toBe('Acme BFF (bff-client)');
   });
 
+  it('shows the client name when the identifier is missing', () => {
+    expect(
+      auditActor(entry({ actorType: 'client', actorClientId: null, actorClientName: 'Acme BFF' })),
+    ).toBe('Acme BFF');
+  });
+
   it('shows the client identifier when the name is missing', () => {
     expect(
       auditActor(
         entry({ actorType: 'client', actorClientId: 'bff-client', actorClientName: null }),
       ),
     ).toBe('bff-client');
+  });
+
+  it('uses a placeholder for a directional-control client name', () => {
+    expect(
+      auditActor(
+        entry({
+          actorType: 'client',
+          actorClientId: 'bff-client',
+          actorClientName: 'Acme\u202e',
+        }),
+      ),
+    ).toBe('—');
   });
 
   it('keeps user actor display unchanged and uses a placeholder for a missing actor', () => {

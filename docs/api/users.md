@@ -121,14 +121,14 @@ control-plane administrator. The API mirrors the Admin resource paths under
 
 **Client configuration:**
 
-| Field                     | Value                                                                 |
-| ------------------------- | --------------------------------------------------------------------- |
-| `clientType`              | `confidential`                                                        |
-| `grantTypes`              | `['client_credentials']`                                              |
-| `scope`                   | `org:user:read org:user:write org:user:delete` (add `invite` if used) |
-| `tokenEndpointAuthMethod` | `client_secret_post`                                                  |
-| `organizationId`          | Tenant organization                                                   |
-| `applicationId`           | Tenant application                                                    |
+| Field                     | Value                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `clientType`              | `confidential`                                                                 |
+| `grantTypes`              | `['client_credentials']`                                                       |
+| `scope`                   | `org:user:read org:user:write org:user:delete` (add `org:user:invite` if used) |
+| `tokenEndpointAuthMethod` | `client_secret_post`                                                           |
+| `organizationId`          | Tenant organization                                                            |
+| `applicationId`           | Tenant application                                                             |
 
 The client must be active, confidential, belong to `:orgId`, and pass the
 tenant boundary. Control-plane clients, the super-admin organization, and
@@ -147,6 +147,7 @@ foreign organizations are rejected.
 | `GET`    | `/:userId/roles/permissions` | `org:user:read`   | Effective permissions from that application    |
 | `PUT`    | `/:userId/roles`             | `org:user:write`  | Assign roles from that application             |
 | `DELETE` | `/:userId/roles`             | `org:user:write`  | Remove roles from that application             |
+| `POST`   | `/invite`                    | `org:user:invite` | Existing invite route (service or user actor)  |
 
 **Create and update fields:** full OIDC profile fields plus `emailVerified` and
 `phoneNumberVerified`. The tenant create route rejects `password`; the update
@@ -158,10 +159,15 @@ record that trust boundary in the BFF.
 scope, revokes sessions and tokens, and cannot be undone. Prefer deactivate for
 routine offboarding.
 
-**ETag and errors:** reads and writes return an ETag. `If-Match` is optional and
-uses the existing Admin `409 Conflict` response when stale. Duplicate email is
-`409` on this surface (Admin keeps `400`). Foreign or missing users return the
-same `404`.
+**ETag and errors:** create, single-user read, and update return an ETag.
+`If-Match` applies to update and uses the existing Admin `409 Conflict`
+response when stale. Duplicate email is `409` on this surface (Admin keeps
+`400`). Foreign or missing users return the same `404`.
+
+**Supported SDK methods:** `users.create/list/get/update/deactivate/activate/delete`
+and `userRoles.list/assign/remove/getEffectivePermissions`. Password,
+verify-email, export, history, and invite-preview remain Admin-only; the tenant
+router does not mount them.
 
 **Audit:** mutations write one durable `user.*` row with
 `actor_type=client`, `actor_client_id`, `actor_client_name`, and target

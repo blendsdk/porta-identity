@@ -12,7 +12,14 @@ import type { AuditEntry } from '@portaidentity/sdk';
 import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
-import { printTable, printJson, success, warn, formatDate } from '../output.js';
+import {
+  printTable,
+  printJson,
+  success,
+  warn,
+  formatDate,
+  sanitizeTerminalText,
+} from '../output.js';
 
 /**
  * Render one audit actor for terminal display.
@@ -22,10 +29,18 @@ import { printTable, printJson, success, warn, formatDate } from '../output.js';
  */
 export function auditActor(entry: AuditEntry): string {
   if (entry.actorType === 'client') {
-    const clientName = entry.actorClientName?.trim();
-    const clientId = entry.actorClientId?.trim();
+    const rawName = entry.actorClientName ?? '';
+    const rawId = entry.actorClientId ?? '';
+    if (
+      (rawName.length > 0 && sanitizeTerminalText(rawName) !== rawName) ||
+      (rawId.length > 0 && sanitizeTerminalText(rawId) !== rawId)
+    ) {
+      return '—';
+    }
+    const clientName = rawName.trim();
+    const clientId = rawId.trim();
     if (clientName) return clientId ? `${clientName} (${clientId})` : clientName;
-    return clientId ?? '—';
+    return clientId || '—';
   }
   return entry.actorId ?? '—';
 }

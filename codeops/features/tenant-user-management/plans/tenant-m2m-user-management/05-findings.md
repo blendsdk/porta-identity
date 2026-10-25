@@ -44,3 +44,14 @@
 | RV-104 | 3 | MINOR | formatting | fixed |
 | SA-015 | 3 | MINOR | tests | fixed |
 | SA-016 | 3 | MINOR | tests | fixed |
+| RV-001 | 4 | MINOR | sdk-contract | fixed |
+| RV-002 | 4 | MINOR | cli-test | fixed |
+| RV-003 | 4 | MINOR | cli-label | fixed |
+| RV-004 | 4 | MINOR | docs | fixed |
+| RV-005 | 4 | MINOR | docs | fixed |
+| RV-006 | 4 | MINOR | docs | fixed |
+| RV-007 | 4 | MINOR | docs | fixed |
+| RV-008 | 4 | MINOR | docs | fixed |
+| RV-009 | 4 | MINOR | docs | fixed |
+| SA-001 | 4 | MINOR | cli-terminal | fixed |
+| SA-002 | 4 | MINOR | docs | fixed |

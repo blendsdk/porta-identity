@@ -293,6 +293,9 @@ without granting control-plane authority:
   tokens, and cached authority.
 - The service layer, not the route, owns the mutation transaction. Client
   attribution and the business audit row commit with the mutation.
+- `emailVerified` and `phoneNumberVerified` are tenant BFF assertions. Porta
+  records them but does not independently establish them; relying parties must
+  treat them as tenant-asserted rather than platform-verified.
 - Tenant denials and successes emit the additive `tenant-api` surface in
   `security.decision.v1` with protected actor and tenant references.
 
