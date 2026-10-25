@@ -11,7 +11,12 @@
 
 import { z } from 'zod';
 import { SuperAdminProtectionError } from '../lib/super-admin-protection.js';
-import { RoleDelegationError, RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
+import {
+  RoleApplicationBoundaryError,
+  RoleDelegationError,
+  RoleNotFoundError,
+  RbacValidationError,
+} from '../rbac/errors.js';
 import {
   InviteConflictError,
   InviteOrganizationNotFoundError,
@@ -82,6 +87,11 @@ export function handleUserRouteError(
   if (error instanceof RoleDelegationError) {
     ctx.status = 403;
     ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
+    return undefined as never;
+  }
+  if (error instanceof RoleApplicationBoundaryError) {
+    ctx.status = 400;
+    ctx.body = { error: 'User request is invalid' };
     return undefined as never;
   }
   if (error instanceof RoleNotFoundError) {

@@ -43,12 +43,47 @@ async function requiredMutation(module: Promise<object>, exportName: string): Pr
   return candidate as Mutation;
 }
 
+type UserRoleMutation = (options: {
+  organizationId: string;
+  userId: string;
+  roleIds: string[];
+  actor: { kind: 'user'; userId: string };
+}) => Promise<unknown>;
+
+/** Wrap the options-object service in the table helper's positional harness. */
+async function userRoleMutation(
+  name: 'assignRolesToUser' | 'removeRolesFromUser',
+): Promise<Mutation> {
+  const service = await import('../../../src/rbac/user-role-service.js');
+  const candidate: UserRoleMutation =
+    name === 'assignRolesToUser' ? service.assignRolesToUser : service.removeRolesFromUser;
+
+  return async (...arguments_: unknown[]) => {
+    const [organizationId, userId, roleIds, actorId] = arguments_;
+    if (
+      typeof organizationId !== 'string' ||
+      typeof userId !== 'string' ||
+      !Array.isArray(roleIds) ||
+      !roleIds.every((roleId) => typeof roleId === 'string') ||
+      typeof actorId !== 'string'
+    ) {
+      throw new Error('Invalid user-role mutation test arguments');
+    }
+    return candidate({
+      organizationId,
+      userId,
+      roleIds,
+      actor: { kind: 'user', userId: actorId },
+    });
+  };
+}
+
 async function assignUserRoles(): Promise<Mutation> {
-  return requiredMutation(import('../../../src/rbac/user-role-service.js'), 'assignRolesToUser');
+  return userRoleMutation('assignRolesToUser');
 }
 
 async function removeUserRoles(): Promise<Mutation> {
-  return requiredMutation(import('../../../src/rbac/user-role-service.js'), 'removeRolesFromUser');
+  return userRoleMutation('removeRolesFromUser');
 }
 
 async function assignRolePermissions(): Promise<Mutation> {

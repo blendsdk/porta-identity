@@ -150,12 +150,16 @@ export function createUserRoleRouter(): Router {
           return;
         }
         await requireDelegableRoles(body.roleIds, actor.permissions);
-        await userRoleService.assignRolesToUser(
-          ctx.params.orgId,
-          ctx.params.userId,
-          body.roleIds,
-          actor.id,
-        );
+        await userRoleService.assignRolesToUser({
+          organizationId: ctx.params.orgId,
+          userId: ctx.params.userId,
+          roleIds: body.roleIds,
+          actor: { kind: 'user', userId: actor.id },
+          auditContext: {
+            ...(ctx.ip ? { ipAddress: ctx.ip } : {}),
+            ...(ctx.get?.('user-agent') ? { userAgent: ctx.get('user-agent') } : {}),
+          },
+        });
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -178,12 +182,16 @@ export function createUserRoleRouter(): Router {
           ctx.throw(401, 'Authentication required');
           return;
         }
-        const result = await userRoleService.removeRolesFromUser(
-          ctx.params.orgId,
-          ctx.params.userId,
-          body.roleIds,
-          actor.id,
-        );
+        const result = await userRoleService.removeRolesFromUser({
+          organizationId: ctx.params.orgId,
+          userId: ctx.params.userId,
+          roleIds: body.roleIds,
+          actor: { kind: 'user', userId: actor.id },
+          auditContext: {
+            ...(ctx.ip ? { ipAddress: ctx.ip } : {}),
+            ...(ctx.get?.('user-agent') ? { userAgent: ctx.get('user-agent') } : {}),
+          },
+        });
         ctx.status = 200;
         ctx.body = { data: result };
       } catch (err) {

@@ -21,7 +21,9 @@ import {
   tenantUpdateUserSchema,
 } from '../../../src/users/schemas.js';
 import {
+  TENANT_USER_DELETE_RATE_LIMIT,
   TENANT_USER_WRITE_RATE_LIMIT,
+  tenantUserDeleteRateLimiter,
   tenantUserWriteRateLimiter,
 } from '../../../src/middleware/tenant-user-rate-limiter.js';
 
@@ -123,6 +125,19 @@ describe('tenant user rate limits', () => {
     );
     expect(ctx.headers['x-ratelimit-limit']).toBe('300');
     expect(next).toHaveBeenCalledOnce();
+  });
+
+  it('keys delete limiting by organization and client', async () => {
+    const ctx = limiterCtx();
+    const next = vi.fn().mockResolvedValue(undefined);
+
+    await tenantUserDeleteRateLimiter()(ctx as never, next);
+
+    expect(checkRateLimit).toHaveBeenCalledWith(
+      'ratelimit:tenant-user:delete:org-1:bff-client',
+      TENANT_USER_DELETE_RATE_LIMIT,
+    );
+    expect(ctx.headers['x-ratelimit-limit']).toBe('60');
   });
 
   it('returns 429 with Retry-After and does not continue when the budget is exhausted', async () => {

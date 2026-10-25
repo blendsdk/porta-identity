@@ -19,9 +19,16 @@ const service = vi.hoisted(() => ({
   listUsersByOrganization: vi.fn(),
   listUsersCursor: vi.fn(),
   getUserById: vi.fn(),
+  deleteUser: vi.fn(),
+  deactivateUser: vi.fn(),
+  activateUser: vi.fn(),
   findUserById: vi.fn(),
   getOrganizationById: vi.fn(),
   writeAuditLog: vi.fn(),
+  assignRolesToUser: vi.fn(),
+  removeRolesFromUser: vi.fn(),
+  getUserRoles: vi.fn(),
+  getUserPermissions: vi.fn(),
 }));
 
 vi.mock('../../../src/middleware/tenant-user-auth.js', () => ({
@@ -57,6 +64,20 @@ vi.mock('../../../src/users/service.js', async (importOriginal) => {
     listUsersByOrganization: service.listUsersByOrganization,
     listUsersCursor: service.listUsersCursor,
     getUserById: service.getUserById,
+    deleteUser: service.deleteUser,
+    deactivateUser: service.deactivateUser,
+    activateUser: service.activateUser,
+  };
+});
+
+vi.mock('../../../src/rbac/user-role-service.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/rbac/user-role-service.js')>();
+  return {
+    ...actual,
+    assignRolesToUser: service.assignRolesToUser,
+    removeRolesFromUser: service.removeRolesFromUser,
+    getUserRoles: service.getUserRoles,
+    getUserPermissions: service.getUserPermissions,
   };
 });
 
@@ -112,8 +133,11 @@ import {
   InvitePreAssignmentError,
   InviteUserExistsError,
 } from '../../../src/users/invite-service.js';
-import { UserEmailConflictError } from '../../../src/users/errors.js';
-import { RoleDelegationError } from '../../../src/rbac/errors.js';
+import { UserEmailConflictError, UserValidationError } from '../../../src/users/errors.js';
+import {
+  RoleApplicationBoundaryError,
+  RoleDelegationError,
+} from '../../../src/rbac/errors.js';
 
 const ORG_ID = '11111111-1111-4111-8111-111111111111';
 const OTHER_ORG_ID = '99999999-9999-4999-8999-999999999999';
@@ -257,6 +281,13 @@ beforeEach(() => {
     nextCursor: null,
   });
   service.writeAuditLog.mockResolvedValue(undefined);
+  service.deleteUser.mockResolvedValue(undefined);
+  service.deactivateUser.mockResolvedValue(undefined);
+  service.activateUser.mockResolvedValue(undefined);
+  service.assignRolesToUser.mockResolvedValue(undefined);
+  service.removeRolesFromUser.mockResolvedValue({ reauthenticationRequired: false });
+  service.getUserRoles.mockResolvedValue([]);
+  service.getUserPermissions.mockResolvedValue([]);
 });
 
 describe('tenant invitation route', () => {
@@ -631,5 +662,147 @@ describe('tenant user CRUD routes', () => {
 
     expect(ctx.status).toBe(409);
     expect(service.updateUser).not.toHaveBeenCalled();
+  });
+
+  it('ST-27 deletes a user with the client actor and returns 204', async () => {
+    const ctx = createMockCtx();
+
+    await executeRoute(
+      createTenantUsersRouter(),
+      'DELETE',
+      '/api/organizations/:orgId/users/:userId',
+      ctx,
+    );
+
+    expect(ctx.status).toBe(204);
+    expect(service.deleteUser).toHaveBeenCalledWith(
+      ORG_ID,
+      USER_ID,
+      auditActor,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
+  });
+
+  it('ST-29 hides a foreign delete behind 404 before deleting', async () => {
+    service.findUserById.mockResolvedValue(testUser({ organizationId: OTHER_ORG_ID }));
+    const ctx = createMockCtx();
+
+    await executeRoute(
+      createTenantUsersRouter(),
+      'DELETE',
+      '/api/organizations/:orgId/users/:userId',
+      ctx,
+    );
+
+    expect(ctx.status).toBe(404);
+    expect(service.deleteUser).not.toHaveBeenCalled();
+  });
+
+  it('ST-30 deactivates and activates with the client actor', async () => {
+    const router = createTenantUsersRouter();
+    const deactivate = createMockCtx();
+    await executeRoute(router, 'POST', '/api/organizations/:orgId/users/:userId/deactivate', deactivate);
+    expect(deactivate.status).toBe(204);
+    expect(service.deactivateUser).toHaveBeenCalledWith(
+      USER_ID,
+      auditActor,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
+
+    const activate = createMockCtx();
+    await executeRoute(router, 'POST', '/api/organizations/:orgId/users/:userId/activate', activate);
+    expect(activate.status).toBe(204);
+    expect(service.activateUser).toHaveBeenCalledWith(
+      USER_ID,
+      auditActor,
+      expect.objectContaining({ ipAddress: '127.0.0.1' }),
+    );
+  });
+
+  it('ST-31 maps an invalid lifecycle transition to 400', async () => {
+    service.deactivateUser.mockRejectedValue(new UserValidationError('Already inactive'));
+    const ctx = createMockCtx();
+
+    await expect(
+      executeRoute(
+        createTenantUsersRouter(),
+        'POST',
+        '/api/organizations/:orgId/users/:userId/deactivate',
+        ctx,
+      ),
+    ).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('ST-32 lists only client-application roles', async () => {
+    service.getUserRoles.mockResolvedValue([{ id: 'role-1', applicationId: APP_ID }]);
+    const ctx = createMockCtx();
+
+    await executeRoute(
+      createTenantUsersRouter(),
+      'GET',
+      '/api/organizations/:orgId/users/:userId/roles',
+      ctx,
+    );
+
+    expect(service.getUserRoles).toHaveBeenCalledWith(ORG_ID, USER_ID, APP_ID);
+    expect(ctx.body).toEqual({ data: [{ id: 'role-1', applicationId: APP_ID }] });
+  });
+
+  it('ST-33/ST-34/ST-36 assigns and removes only client-application roles and maps boundary errors', async () => {
+    const router = createTenantUsersRouter();
+    const assign = createMockCtx({ roleIds: ['44444444-4444-4444-8444-444444444444'] });
+    await executeRoute(
+      router,
+      'PUT',
+      '/api/organizations/:orgId/users/:userId/roles',
+      assign,
+    );
+    expect(assign.status).toBe(204);
+    expect(service.assignRolesToUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        userId: USER_ID,
+        roleIds: ['44444444-4444-4444-8444-444444444444'],
+        actor: auditActor,
+        allowedApplicationId: APP_ID,
+      }),
+    );
+
+    service.assignRolesToUser.mockRejectedValue(new RoleApplicationBoundaryError());
+    const boundary = createMockCtx({ roleIds: ['44444444-4444-4444-8444-444444444444'] });
+    await executeRoute(
+      router,
+      'PUT',
+      '/api/organizations/:orgId/users/:userId/roles',
+      boundary,
+    );
+    expect(boundary.status).toBe(400);
+
+    const remove = createMockCtx({ roleIds: ['44444444-4444-4444-8444-444444444444'] });
+    await executeRoute(
+      router,
+      'DELETE',
+      '/api/organizations/:orgId/users/:userId/roles',
+      remove,
+    );
+    expect(remove.status).toBe(200);
+    expect(service.removeRolesFromUser).toHaveBeenCalledWith(
+      expect.objectContaining({ allowedApplicationId: APP_ID, actor: auditActor }),
+    );
+  });
+
+  it('ST-35 resolves only client-application permissions', async () => {
+    service.getUserPermissions.mockResolvedValue([{ id: 'permission-1', slug: 'crm:read' }]);
+    const ctx = createMockCtx();
+
+    await executeRoute(
+      createTenantUsersRouter(),
+      'GET',
+      '/api/organizations/:orgId/users/:userId/roles/permissions',
+      ctx,
+    );
+
+    expect(service.getUserPermissions).toHaveBeenCalledWith(ORG_ID, USER_ID, APP_ID);
+    expect(ctx.body).toEqual({ data: [{ id: 'permission-1', slug: 'crm:read' }] });
   });
 });

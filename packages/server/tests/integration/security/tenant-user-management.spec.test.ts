@@ -19,12 +19,15 @@ import {
   createTestApplication,
   createTestClient,
   createTestOrganization,
+  createTestPermission,
+  createTestRole,
   createTestUser,
 } from '../helpers/factories.js';
 import { flushTestRedis } from '../helpers/redis.js';
 
 interface Fixture {
   readonly organizationId: string;
+  readonly applicationId: string;
   readonly clientId: string;
   readonly router: ReturnType<typeof createTenantUsersRouter>;
 }
@@ -57,7 +60,17 @@ async function request(fixture: Fixture, options: RequestOptions) {
   if (options.body !== undefined) context.request.body = options.body;
   context.state = { requestId: randomUUID() };
 
-  await fixture.router.routes()(context, async () => undefined);
+  try {
+    await fixture.router.routes()(context, async () => undefined);
+  } catch (error) {
+    const status =
+      typeof error === 'object' && error !== null && 'status' in error
+        ? (error as { status?: unknown }).status
+        : undefined;
+    if (typeof status !== 'number') throw error;
+    context.status = status;
+    context.body = { error: status === 404 ? 'User not found' : 'User request is invalid' };
+  }
   return context;
 }
 
@@ -133,6 +146,7 @@ beforeEach(async () => {
 
   fixture = {
     organizationId: organization.id,
+    applicationId: application.id,
     clientId: client.clientId,
     router: createTenantUsersRouter(provider),
   };
@@ -322,5 +336,133 @@ describe('tenant user API', () => {
       body: { nickname: 'stale' },
     });
     expect(stale.status).toBe(409);
+  });
+
+  it('ST-27/ST-29 deletes a user, retains client audit, and hides foreign deletes', async () => {
+    const user = await createTestUser(fixture.organizationId, {
+      email: `delete-${randomUUID()}@example.test`,
+    });
+
+    const deleted = await request(fixture, {
+      method: 'DELETE',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}`,
+    });
+    expect(deleted.status).toBe(204);
+
+    const remaining = await getPool().query('SELECT 1 FROM users WHERE id = $1', [user.id]);
+    expect(remaining.rowCount).toBe(0);
+    const audit = await readAudit('user.deleted', fixture.organizationId);
+    expect(audit).toMatchObject({
+      actor_type: 'client',
+      actor_client_id: fixture.clientId,
+      user_id: null,
+    });
+    expect(JSON.stringify(audit.metadata)).toContain(user.email);
+
+    const other = await createTestOrganization();
+    const foreign = await createTestUser(other.id, {
+      email: `foreign-delete-${randomUUID()}@example.test`,
+    });
+    const hidden = await request(fixture, {
+      method: 'DELETE',
+      path: `/api/organizations/${fixture.organizationId}/users/${foreign.id}`,
+    });
+    expect(hidden.status).toBe(404);
+    const stillThere = await getPool().query('SELECT 1 FROM users WHERE id = $1', [foreign.id]);
+    expect(stillThere.rowCount).toBe(1);
+  });
+
+  it('ST-30/ST-31 deactivates and reactivates a user and rejects an invalid transition', async () => {
+    const user = await createTestUser(fixture.organizationId, {
+      email: `lifecycle-${randomUUID()}@example.test`,
+    });
+
+    const deactivate = await request(fixture, {
+      method: 'POST',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/deactivate`,
+    });
+    expect(deactivate.status).toBe(204);
+    let status = await getPool().query<{ status: string }>('SELECT status FROM users WHERE id = $1', [
+      user.id,
+    ]);
+    expect(status.rows[0]?.status).toBe('inactive');
+
+    const activate = await request(fixture, {
+      method: 'POST',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/activate`,
+    });
+    expect(activate.status).toBe(204);
+    status = await getPool().query<{ status: string }>('SELECT status FROM users WHERE id = $1', [
+      user.id,
+    ]);
+    expect(status.rows[0]?.status).toBe('active');
+
+    const invalid = await request(fixture, {
+      method: 'POST',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/deactivate`,
+    });
+    expect(invalid.status).toBe(204);
+    const second = await request(fixture, {
+      method: 'POST',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/deactivate`,
+    });
+    expect(second.status).toBe(400);
+  });
+
+  it('ST-32/ST-33/ST-35/ST-36 manages only client-application roles and permissions', async () => {
+    const role = await createTestRole(fixture.applicationId, {
+      name: 'Tenant Role',
+      slug: `tenant-role-${randomUUID()}`,
+    });
+    const otherApplication = await createTestApplication();
+    const otherRole = await createTestRole(otherApplication.id);
+    const permission = await createTestPermission(fixture.applicationId, {
+      name: 'Tenant Permission',
+      slug: `tenant:permission:${randomUUID()}`,
+    });
+    await getPool().query(
+      `INSERT INTO role_permissions (role_id, permission_id) VALUES ($1, $2)
+       ON CONFLICT DO NOTHING`,
+      [role.id, permission.id],
+    );
+    const user = await createTestUser(fixture.organizationId, {
+      email: `roles-${randomUUID()}@example.test`,
+    });
+
+    const assign = await request(fixture, {
+      method: 'PUT',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
+      body: { roleIds: [role.id] },
+    });
+    expect(assign.status).toBe(204);
+
+    const roles = await request(fixture, {
+      method: 'GET',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
+    });
+    expect(roles.status).toBe(200);
+    expect(JSON.stringify(roles.body)).toContain(role.id);
+    expect(JSON.stringify(roles.body)).not.toContain(otherRole.id);
+
+    const permissions = await request(fixture, {
+      method: 'GET',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles/permissions`,
+    });
+    expect(permissions.status).toBe(200);
+    expect(JSON.stringify(permissions.body)).toContain(permission.slug);
+
+    const boundary = await request(fixture, {
+      method: 'PUT',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
+      body: { roleIds: [otherRole.id] },
+    });
+    expect(boundary.status).toBe(400);
+
+    const remove = await request(fixture, {
+      method: 'DELETE',
+      path: `/api/organizations/${fixture.organizationId}/users/${user.id}/roles`,
+      body: { roleIds: [role.id] },
+    });
+    expect(remove.status).toBe(200);
   });
 });

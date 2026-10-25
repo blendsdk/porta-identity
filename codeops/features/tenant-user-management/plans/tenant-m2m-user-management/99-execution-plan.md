@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 19:35
-> **Progress**: 25/56 tasks (45%)
+> **Last Updated**: 2026-10-25 20:01
+> **Progress**: 37/56 tasks (66%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -129,7 +129,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 ## Phase 3: Delete, lifecycle, and roles
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: 99ae35fff7d4c7c756ca61ecb668bb363b4f2b7c
 > **Lenses**: security, api, data
 > **Reasoning**: high — destructive operations, privilege boundaries, and role authority
 
@@ -138,24 +138,24 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Reference**: [03-02](03-02-user-crud-routes.md) · [03-03](03-03-audit-client-actor.md) · AR-8, AR-12, AR-17.
 **Objective**: Define delete/lifecycle/role behavior and the attack matrix before implementation.
 
-- [ ] 3.1.1 [spec-author] Write delete/lifecycle/role specification tests from ST-27–ST-37 and ST-43–ST-45 — `packages/server/tests/unit/routes/tenant-users.spec.test.ts`, `packages/server/tests/unit/rbac/tenant-user-roles.spec.test.ts`; extend the live integration spec to ST-27–ST-46 and the rate cases — `packages/server/tests/integration/security/tenant-user-management.spec.test.ts`
-- [ ] 3.1.2 [spec-author] Write the tenant boundary pentest specification from ST-1–ST-9, ST-22, ST-28, ST-34, and ST-36 — `packages/server/tests/pentest/admin-security/tenant-user-boundary.spec.test.ts`
-- [ ] 3.1.3 Run the new specification tests and verify the red phase; record any justified pre-implementation pass
+- [x] 3.1.1 [spec-author] Write delete/lifecycle/role specification tests from ST-27–ST-37 and ST-43–ST-45 — `packages/server/tests/unit/routes/tenant-users.spec.test.ts`, `packages/server/tests/unit/rbac/tenant-user-roles.spec.test.ts`; extend the live integration spec to ST-27–ST-46 and the rate cases — `packages/server/tests/integration/security/tenant-user-management.spec.test.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.1.2 [spec-author] Write the tenant boundary pentest specification from ST-1–ST-9, ST-22, ST-28, ST-34, and ST-36 — `packages/server/tests/pentest/admin-security/tenant-user-boundary.spec.test.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.1.3 Run the new specification tests and verify the red phase; record any justified pre-implementation pass ✅ (completed: 2026-10-25 20:01)
 
 ### Step 3.2: Implementation
 
 **Reference**: [03-02](03-02-user-crud-routes.md) · [03-03](03-03-audit-client-actor.md)
 **Objective**: Implement delete, lifecycle, and app-bound role management.
 
-- [ ] 3.2.1 Extend delete service/route with the client actor, service-owned `runDatabaseTransaction`, transaction audit, and tenant delete scope — `packages/server/src/users/service.ts`, `packages/server/src/routes/tenant-users.ts`
-- [ ] 3.2.2 Add tenant activate/deactivate routes with client actor audit; pass the admin actor in both Admin and standalone lifecycle handlers — `packages/server/src/routes/tenant-users.ts`, `packages/server/src/routes/users.ts`, `packages/server/src/users/service.ts`
-- [ ] 3.2.3 Extend role assignment/removal with an options object (`AuditActor`, `allowedApplicationId`), `assigned_by=null` for service actors, `RoleApplicationBoundaryError` mapped to `400`, service-owned transactions, and transaction audit — `packages/server/src/rbac/user-role-service.ts`, `packages/server/src/rbac/errors.ts`
-- [ ] 3.2.4 Add tenant role list/assign/remove/effective-permission routes and filter reads to the client application — `packages/server/src/routes/tenant-users.ts`, `packages/server/src/rbac/user-role-service.ts`
-- [ ] 3.2.5 Add the delete rate limiter and wire it to the delete route — `packages/server/src/middleware/tenant-user-rate-limiter.ts`
-- [ ] 3.2.6 Update Admin role routes to pass the admin actor options object without changing permissions — `packages/server/src/routes/user-roles.ts`
-- [ ] 3.2.7 Run the specification tests and verify the green phase
-- [ ] 3.2.8 Write implementation tests for invalid transitions, repeat delete, empty/duplicate role arrays, cross-application removal, and tenant transaction ownership — `*.impl.test.ts`; update existing role/user tests (`user-role-service.test.ts`, `user-roles.test.ts`, `authority-mutations.spec.test.ts`, `permission-deletion-concurrency.impl.test.ts`, `record-deletion.spec.test.ts`) for the new actor options and transaction ownership
-- [ ] 3.2.9 Verify Phase 3: server typecheck, focused unit/integration/pentest/existing tests, and `yarn test:structure`
+- [x] 3.2.1 Extend delete service/route with the client actor, service-owned `runDatabaseTransaction`, transaction audit, and tenant delete scope — `packages/server/src/users/service.ts`, `packages/server/src/routes/tenant-users.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.2 Add tenant activate/deactivate routes with client actor audit; pass the admin actor in both Admin and standalone lifecycle handlers — `packages/server/src/routes/tenant-users.ts`, `packages/server/src/routes/users.ts`, `packages/server/src/users/service.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.3 Extend role assignment/removal with an options object (`AuditActor`, `allowedApplicationId`), `assigned_by=null` for service actors, `RoleApplicationBoundaryError` mapped to `400`, service-owned transactions, and transaction audit — `packages/server/src/rbac/user-role-service.ts`, `packages/server/src/rbac/errors.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.4 Add tenant role list/assign/remove/effective-permission routes and filter reads to the client application — `packages/server/src/routes/tenant-users.ts`, `packages/server/src/rbac/user-role-service.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.5 Add the delete rate limiter and wire it to the delete route — `packages/server/src/middleware/tenant-user-rate-limiter.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.6 Update Admin role routes to pass the admin actor options object without changing permissions — `packages/server/src/routes/user-roles.ts` ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.7 Run the specification tests and verify the green phase ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.8 Write implementation tests for invalid transitions, repeat delete, empty/duplicate role arrays, cross-application removal, and tenant transaction ownership — `*.impl.test.ts`; update existing role/user tests (`user-role-service.test.ts`, `user-roles.test.ts`, `authority-mutations.spec.test.ts`, `permission-deletion-concurrency.impl.test.ts`, `record-deletion.spec.test.ts`) for the new actor options and transaction ownership ✅ (completed: 2026-10-25 20:01)
+- [x] 3.2.9 Verify Phase 3: server typecheck, focused unit/integration/pentest/existing tests, and `yarn test:structure` ✅ (completed: 2026-10-25 20:01)
 
 **Deliverables**:
 - [ ] Permanent delete with separate authority, service-owned transaction, and existing revocation
@@ -164,6 +164,8 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [ ] All Phase 3 verification passing
 
 **Verify**: `yarn workspace @portaidentity/server typecheck && yarn workspace @portaidentity/server vitest run --project unit tests/unit/routes/tenant-users.spec.test.ts tests/unit/rbac/tenant-user-roles.spec.test.ts tests/unit/rbac/user-role-service.test.ts tests/unit/routes/user-roles.test.ts tests/unit/routes/users.test.ts && yarn workspace @portaidentity/server vitest run --project integration tests/integration/security/tenant-user-management.spec.test.ts tests/integration/rbac/authority-mutations.spec.test.ts tests/integration/rbac/permission-deletion-concurrency.impl.test.ts tests/integration/admin/record-deletion.spec.test.ts && yarn workspace @portaidentity/server vitest run --project pentest tests/pentest/admin-security/tenant-user-boundary.spec.test.ts && yarn test:structure`
+
+**Verification**: Passed — typecheck; 91 focused unit tests; 36 focused integration tests; 8 tenant boundary pentest tests; 138 structure tests. Full unit 238 files / 3,861 tests, full integration 61 files / 513 tests, and full pentest 44 files / 286 tests also pass.
 
 ---
 

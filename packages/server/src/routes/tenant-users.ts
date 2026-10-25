@@ -23,18 +23,31 @@ import { requireTenantActorAuth } from '../middleware/tenant-user-auth.js';
 import type { TenantActor, TenantTokenProvider } from '../middleware/tenant-user-auth.js';
 import { requireUserOrganization } from '../middleware/require-user-organization.js';
 import { tenantInviteRateLimiter } from '../middleware/tenant-invite-rate-limiter.js';
-import { tenantUserWriteRateLimiter } from '../middleware/tenant-user-rate-limiter.js';
+import {
+  tenantUserDeleteRateLimiter,
+  tenantUserWriteRateLimiter,
+} from '../middleware/tenant-user-rate-limiter.js';
 import {
   TENANT_INVITE_PERMISSION,
   TENANT_INVITE_SCOPE,
+  TENANT_USER_DELETE_SCOPE,
   TENANT_USER_READ_SCOPE,
   TENANT_USER_WRITE_SCOPE,
 } from '../oidc/scopes.js';
+import {
+  assignRolesToUser,
+  getUserPermissions,
+  getUserRoles,
+  removeRolesFromUser,
+} from '../rbac/user-role-service.js';
 import { UserValidationError } from '../users/errors.js';
 import { inviteUser, inviteUserSchema } from '../users/invite-service.js';
 import type { InviteActor } from '../users/invite-service.js';
 import {
+  activateUser,
   createUser,
+  deactivateUser,
+  deleteUser,
   getUserById,
   listUsersByOrganization,
   listUsersCursor,
@@ -43,6 +56,7 @@ import {
 import {
   listUsersCursorSchema,
   listUsersSchema,
+  roleIdsSchema,
   tenantCreateUserSchema,
   tenantUpdateUserSchema,
 } from '../users/schemas.js';
@@ -257,6 +271,189 @@ export function createTenantUsersRouter(provider?: TenantTokenProvider): Router 
         );
         setETagHeader(ctx, 'user', user.id, user.updatedAt);
         ctx.body = { data: user };
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.post(
+    '/:userId/deactivate',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_WRITE_SCOPE,
+    }),
+    requireUserOrganization(),
+    tenantUserWriteRateLimiter(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        await deactivateUser(
+          ctx.params.userId,
+          tenantActorToAuditActor(actor),
+          auditContext(ctx),
+        );
+        ctx.status = 204;
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.post(
+    '/:userId/activate',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_WRITE_SCOPE,
+    }),
+    requireUserOrganization(),
+    tenantUserWriteRateLimiter(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        await activateUser(
+          ctx.params.userId,
+          tenantActorToAuditActor(actor),
+          auditContext(ctx),
+        );
+        ctx.status = 204;
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.delete(
+    '/:userId',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_DELETE_SCOPE,
+    }),
+    requireUserOrganization(),
+    tenantUserDeleteRateLimiter(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        await deleteUser(
+          ctx.params.orgId,
+          ctx.params.userId,
+          tenantActorToAuditActor(actor),
+          auditContext(ctx),
+        );
+        ctx.status = 204;
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.get(
+    '/:userId/roles',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_READ_SCOPE,
+    }),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        const roles = await getUserRoles(
+          ctx.params.orgId,
+          ctx.params.userId,
+          actor.applicationId,
+        );
+        ctx.body = { data: roles };
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.get(
+    '/:userId/roles/permissions',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_READ_SCOPE,
+    }),
+    requireUserOrganization(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        const permissions = await getUserPermissions(
+          ctx.params.orgId,
+          ctx.params.userId,
+          actor.applicationId,
+        );
+        ctx.body = { data: permissions };
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.put(
+    '/:userId/roles',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_WRITE_SCOPE,
+    }),
+    requireUserOrganization(),
+    tenantUserWriteRateLimiter(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        const body = roleIdsSchema.parse(ctx.request.body);
+        await assignRolesToUser({
+          organizationId: ctx.params.orgId,
+          userId: ctx.params.userId,
+          roleIds: body.roleIds,
+          actor: tenantActorToAuditActor(actor),
+          allowedApplicationId: actor.applicationId,
+          auditContext: auditContext(ctx),
+        });
+        ctx.status = 204;
+      } catch (error) {
+        handleTenantError(ctx, error);
+      }
+    },
+  );
+
+  router.delete(
+    '/:userId/roles',
+    requireTenantActorAuth({
+      provider,
+      allowedActorKinds: ['service'],
+      requiredScope: TENANT_USER_WRITE_SCOPE,
+    }),
+    requireUserOrganization(),
+    tenantUserWriteRateLimiter(),
+    async (ctx) => {
+      try {
+        const actor = serviceActor(ctx);
+        if (!actor) return;
+        const body = roleIdsSchema.parse(ctx.request.body);
+        const result = await removeRolesFromUser({
+          organizationId: ctx.params.orgId,
+          userId: ctx.params.userId,
+          roleIds: body.roleIds,
+          actor: tenantActorToAuditActor(actor),
+          allowedApplicationId: actor.applicationId,
+          auditContext: auditContext(ctx),
+        });
+        ctx.status = 200;
+        ctx.body = { data: result };
       } catch (error) {
         handleTenantError(ctx, error);
       }
