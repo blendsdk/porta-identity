@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: tenant-user-management/T-01
-> **Last Updated**: 2026-10-25 19:05
-> **Progress**: 14/56 tasks (25%)
+> **Last Updated**: 2026-10-25 19:08
+> **Progress**: 17/56 tasks (30%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -83,7 +83,7 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 
 ## Phase 2: Tenant read, create, and update
 
-> **Phase baseline tree**: _(recorded by the exec-plan skill)_
+> **Phase baseline tree**: 1ef2ade4137aed704346cad2ee53ff842035267f
 > **Lenses**: security, api, data
 > **Reasoning**: high — tenant isolation, verification-flag trust, transaction-bound audit
 
@@ -92,9 +92,9 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 **Reference**: [03-02](03-02-user-crud-routes.md) · AR-4, AR-7, AR-9, AR-10, AR-11, AR-13, AR-17, AR-20.
 **Objective**: Define create/list/get/update behavior before implementation.
 
-- [ ] 2.1.1 [spec-author] Write create/list/get/update specification tests from ST-10–ST-26 — `packages/server/tests/unit/routes/tenant-users.spec.test.ts`
-- [ ] 2.1.2 [spec-author] Write live tenant API specification tests from ST-1–ST-26 — `packages/server/tests/integration/security/tenant-user-management.spec.test.ts`; Phase 3 extends the same file to ST-27–ST-46 and the rate cases
-- [ ] 2.1.3 Run the new specification tests and verify the red phase; record any justified pre-implementation pass
+- [x] 2.1.1 [spec-author] Write create/list/get/update specification tests from ST-10–ST-26 — `packages/server/tests/unit/routes/tenant-users.spec.test.ts` ✅ (completed: 2026-10-25 19:08)
+- [x] 2.1.2 [spec-author] Write live tenant API specification tests from ST-1–ST-26 — `packages/server/tests/integration/security/tenant-user-management.spec.test.ts`; Phase 3 extends the same file to ST-27–ST-46 and the rate cases ✅ (completed: 2026-10-25 19:08)
+- [x] 2.1.3 Run the new specification tests and verify the red phase; record any justified pre-implementation pass ✅ (completed: 2026-10-25 19:08) — CRUD unit routes and live tenant routes are absent as expected; the pre-existing invite regression tests pass.
 
 ### Step 2.2: Implementation
 

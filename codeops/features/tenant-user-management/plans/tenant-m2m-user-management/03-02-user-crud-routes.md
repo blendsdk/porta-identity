@@ -150,7 +150,7 @@ export async function removeRolesFromUser(
 | Foreign/absent user | `404` | `User not found` |
 | Role from another application or canonical `porta-admin` role | `400` | Fixed validation message |
 | Duplicate email (`UserEmailConflictError`) | `400` Admin / `409` tenant | `User already exists in this organization` |
-| Stale `If-Match` | `412` | Existing precondition failure |
+| Stale `If-Match` | `409` | Existing Admin precondition response |
 | Rate limit | `429` | Fixed rate-limit message with `Retry-After` |
 | Unexpected error | `500` | Global sanitized error boundary |
 

@@ -1,6 +1,6 @@
 ## Ambiguity Register: Tenant-Scoped M2M User Management
 
-> **Status**: ✅ GATE PASSED — all 25 items resolved
+> **Status**: ✅ GATE PASSED — all 26 items resolved
 > **Last Updated**: 2026-10-25
 
 | # | Category | Ambiguity / Gap | Options Presented | User Decision | Status |
@@ -30,6 +30,7 @@
 | AR-23 | Non-functional | What verification gates apply? | Unit tests only / focused suites plus full verify / add a new assurance harness profile | Focused unit, integration, pentest, structure, SDK, CLI, and docs gates; final `yarn verify`; `yarn assurance:harness --project security --profile production-security` recorded against the accepted incomplete-observer baseline (expected exit 40; no new gaps or failed assertions; never call it fully passed); and the registered `yarn assurance:compat --select tenant-admin` from a clean committed revision. No new harness profile. | ✅ Resolved |
 | AR-24 | Naming | What are the stable names for the plan, scopes, routes, and audit fields? | Free-form names / follow existing `org:user:*` and `/api/organizations/:orgId/users` conventions | Plan `tenant-m2m-user-management`; scopes `org:user:read|write|delete`; router `routes/tenant-users.ts`; audit fields `actor_type`, `actor_client_id`, `actor_client_name`; events `user.read` and `user.listed` in addition to existing `user.*` mutation events. | ✅ Resolved |
 | AR-25 | Technical (runtime) | How should tenant denials satisfy the ST-51 security instrumentation requirement? | Add an additive `tenant-api` surface to the existing security decision event / document tenant exclusion and assert no event | Add the additive `tenant-api` surface, classify `/api/organizations/*`, and prove one end-to-end tenant denial event with protected actor/tenant references. Existing admin and public-auth behavior is unchanged. | ✅ Resolved — Authority: AI — delegated by `--auto-design` |
+| AR-26 | Technical (runtime) | Which status should a stale tenant `If-Match` return? | `409` from the existing Admin ETag helper / new `412` tenant-specific response | Use the existing Admin `409 Conflict` behavior. Requirement R5 says tenant `If-Match` behavior matches the Admin route; a separate `412` would create a product difference and duplicate concurrency logic. Update the stale `03-02`/ST-25 `412` wording. | ✅ Resolved — Authority: AI — delegated by `--auto-design` |
 
 ### Resolution Notes
 
@@ -64,3 +65,15 @@ baseline result. Durable evidence and the remaining decisions are in
 - Confidence: High — the change is additive; admin and public-auth classification and behavior are unchanged.
 - Hardening: independent security auditor identified the gap; the fix is subject to the phase re-review.
 - Reopen triggers: an external consumer rejects unknown surface values; the event contract is declared closed to new surfaces; assurance evidence requires no tenant events.
+
+**AR-26 (runtime, Phase 2 specification):**
+- Authority: AI — delegated by `--auto-design`; policy version 1; root invocation ID `ep-tenant-m2m-20261025-01`.
+- Eligibility: implementation consistency within the accepted R5 compatibility requirement; no product-scope expansion.
+- Objective: define one predictable optimistic-concurrency response without changing Admin behavior.
+- Decision: reuse the existing `checkIfMatch` `409 Conflict` response for the tenant update route and correct the stale `412` wording.
+- Evidence: `packages/server/src/lib/etag.ts` returns `409`; R5 says tenant behavior matches the Admin route; `03-02` and ST-25 said `412`.
+- Rejected alternatives: add a tenant-only `412` (would diverge from Admin and duplicate the helper); change the shared helper to `412` (public Admin compatibility break).
+- Strongest counterargument: HTTP `412 Precondition Failed` is the conventional status for a failed `If-Match`.
+- Confidence: High — compatibility and reuse win; the response body remains the existing sanitized conflict shape.
+- Hardening: not required for this low-impact, reversible choice; covered by the route specification.
+- Reopen triggers: an explicit product requirement for tenant-only `412`; a future Admin-wide move to `412`.

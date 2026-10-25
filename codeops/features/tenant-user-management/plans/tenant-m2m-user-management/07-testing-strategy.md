@@ -67,7 +67,7 @@
 | ST-22 | Update with `email`, `status`, `password`, or 2FA fields | `400`; no field changed | R5 / AR-20 |
 | ST-23 | Update a user in another organization | `404`; no field changed | R5 / AR-7 |
 | ST-24 | Update with `phoneNumberVerified: true` and no phone in the request or stored user | `400`; no field changed | R5 / AR-20 |
-| ST-25 | Update with a stale `If-Match` | `412`; no field changed | R5 / AR-4 |
+| ST-25 | Update with a stale `If-Match` | `409`; no field changed | R5 / AR-4, AR-26 |
 | ST-26 | Update with a token lacking `org:user:write` | `403`; no field changed | R2 / AR-3 |
 
 ### Delete and lifecycle
