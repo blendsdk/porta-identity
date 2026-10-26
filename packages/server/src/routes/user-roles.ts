@@ -29,17 +29,9 @@ import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleDelegationError, RoleNotFoundError, RbacValidationError } from '../rbac/errors.js';
 import { UserNotFoundError, UserValidationError } from '../users/errors.js';
+import { roleIdsSchema } from '../users/schemas.js';
 
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
-
-// ---------------------------------------------------------------------------
-// Validation schemas
-// ---------------------------------------------------------------------------
-
-/** Schema for assigning/removing roles (array of UUIDs) */
-const roleIdsSchema = z.object({
-  roleIds: z.array(z.string().uuid()).min(1),
-});
 
 // ---------------------------------------------------------------------------
 // Error handler helper
@@ -158,12 +150,16 @@ export function createUserRoleRouter(): Router {
           return;
         }
         await requireDelegableRoles(body.roleIds, actor.permissions);
-        await userRoleService.assignRolesToUser(
-          ctx.params.orgId,
-          ctx.params.userId,
-          body.roleIds,
-          actor.id,
-        );
+        await userRoleService.assignRolesToUser({
+          organizationId: ctx.params.orgId,
+          userId: ctx.params.userId,
+          roleIds: body.roleIds,
+          actor: { kind: 'user', userId: actor.id },
+          auditContext: {
+            ...(ctx.ip ? { ipAddress: ctx.ip } : {}),
+            ...(ctx.get?.('user-agent') ? { userAgent: ctx.get('user-agent') } : {}),
+          },
+        });
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -186,12 +182,16 @@ export function createUserRoleRouter(): Router {
           ctx.throw(401, 'Authentication required');
           return;
         }
-        const result = await userRoleService.removeRolesFromUser(
-          ctx.params.orgId,
-          ctx.params.userId,
-          body.roleIds,
-          actor.id,
-        );
+        const result = await userRoleService.removeRolesFromUser({
+          organizationId: ctx.params.orgId,
+          userId: ctx.params.userId,
+          roleIds: body.roleIds,
+          actor: { kind: 'user', userId: actor.id },
+          auditContext: {
+            ...(ctx.ip ? { ipAddress: ctx.ip } : {}),
+            ...(ctx.get?.('user-agent') ? { userAgent: ctx.get('user-agent') } : {}),
+          },
+        });
         ctx.status = 200;
         ctx.body = { data: result };
       } catch (err) {

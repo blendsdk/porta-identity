@@ -18,7 +18,7 @@ vi.mock('../../../src/middleware/admin-auth.js', () => ({
 import { generateETag } from '../../../src/lib/etag.js';
 import { createUserRouter } from '../../../src/routes/users.js';
 import { seedBaseData, truncateAllTables } from '../helpers/database.js';
-import { createTestOrganization } from '../helpers/factories.js';
+import { createTestOrganization, createTestUser } from '../helpers/factories.js';
 import { flushTestRedis } from '../helpers/redis.js';
 
 /** Administrator identity and request payload for one admin user route call. */
@@ -52,6 +52,7 @@ async function request(
   method: string,
   path: string,
   organizationId: string,
+  actorId: string,
   options: AuthenticatedRouteOptions,
 ) {
   const incoming = new IncomingMessage(new Socket());
@@ -65,7 +66,7 @@ async function request(
   context.state = {
     requestId: 'user-create-etag-request',
     adminUser: {
-      id: '10000000-0000-4000-8000-000000000002',
+      id: actorId,
       email: 'etag-operator@example.test',
       organizationId,
       roles: [],
@@ -83,12 +84,13 @@ async function request(
  * @param organizationId - Organization receiving the new user
  * @returns The completed create context and the created user
  */
-async function createUserThroughRoute(organizationId: string) {
+async function createUserThroughRoute(organizationId: string, actorId: string) {
   const email = `etag-${randomUUID()}@test.example.com`;
   const context = await request(
     'POST',
     `/api/admin/organizations/${organizationId}/users`,
     organizationId,
+    actorId,
     {
       permission: 'admin:user:create',
       body: { email, givenName: 'Casey', familyName: 'Creator' },
@@ -109,8 +111,9 @@ describe('user create ETag', () => {
   // identity and `updatedAt`, matching the value every other write path emits.
   it('should return a weak ETag derived from the user updatedAt when an administrator creates a user', async () => {
     const organization = await createTestOrganization();
+    const admin = await createTestUser(organization.id);
 
-    const { context, created } = await createUserThroughRoute(organization.id);
+    const { context, created } = await createUserThroughRoute(organization.id, admin.id);
 
     expect(context.status).toBe(201);
     const etag = context.response.get('ETag');
@@ -122,7 +125,11 @@ describe('user create ETag', () => {
   // keep using the header it received on create.
   it('should repeat the create ETag on a subsequent read when the user was just created', async () => {
     const organization = await createTestOrganization();
-    const { context: createContext, created } = await createUserThroughRoute(organization.id);
+    const admin = await createTestUser(organization.id);
+    const { context: createContext, created } = await createUserThroughRoute(
+      organization.id,
+      admin.id,
+    );
     const createETag = createContext.response.get('ETag');
     expect(createETag).toMatch(/^W\/"[a-f0-9]{16}"$/);
 
@@ -130,6 +137,7 @@ describe('user create ETag', () => {
       'GET',
       `/api/admin/organizations/${organization.id}/users/${created.id}`,
       organization.id,
+      admin.id,
       { permission: 'admin:user:read' },
     );
 
@@ -141,7 +149,11 @@ describe('user create ETag', () => {
   // after a create does not need an extra read.
   it('should accept an If-Match update carrying the create ETag when the user was just created', async () => {
     const organization = await createTestOrganization();
-    const { context: createContext, created } = await createUserThroughRoute(organization.id);
+    const admin = await createTestUser(organization.id);
+    const { context: createContext, created } = await createUserThroughRoute(
+      organization.id,
+      admin.id,
+    );
     const createETag = createContext.response.get('ETag');
     expect(createETag).toMatch(/^W\/"[a-f0-9]{16}"$/);
 
@@ -149,6 +161,7 @@ describe('user create ETag', () => {
       'PUT',
       `/api/admin/organizations/${organization.id}/users/${created.id}`,
       organization.id,
+      admin.id,
       {
         permission: 'admin:user:update',
         headers: { 'If-Match': createETag },

@@ -364,20 +364,23 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         // -----------------------------------------------------------------
         // Step 9: Create the admin user in the super-admin organization
         // -----------------------------------------------------------------
-        const adminUser = await createUser({
-          organizationId: superAdminOrg.id,
-          email: userDetails.email,
-          givenName: userDetails.givenName,
-          familyName: userDetails.familyName,
-          password: userDetails.password,
-        });
+        const adminUser = await createUser(
+          {
+            organizationId: superAdminOrg.id,
+            email: userDetails.email,
+            givenName: userDetails.givenName,
+            familyName: userDetails.familyName,
+            password: userDetails.password,
+          },
+          { kind: 'system' },
+        );
         console.log(`  ✅ User created: ${adminUser.email}`);
 
         // -----------------------------------------------------------------
         // Step 10: Activate user (if not already active)
         // -----------------------------------------------------------------
         if (adminUser.status !== 'active') {
-          await activateUser(adminUser.id);
+          await activateUser(adminUser.id, { kind: 'system' });
         }
         console.log('  ✅ User activated');
 

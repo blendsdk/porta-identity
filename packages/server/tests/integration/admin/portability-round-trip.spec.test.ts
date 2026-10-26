@@ -247,8 +247,8 @@ async function seedPopulatedSource(): Promise<ExportFixture> {
     [assignedUser.id, alphaOrganization.id],
   );
   await pool.query(
-    `INSERT INTO audit_log (organization_id, actor_id, event_type, event_category, metadata)
-     VALUES ($1, $2, 'fixture.private', 'security', '{"private":"audit-must-not-export"}')`,
+    `INSERT INTO audit_log (organization_id, actor_id, actor_type, event_type, event_category, metadata)
+     VALUES ($1, $2, 'user', 'fixture.private', 'security', '{"private":"audit-must-not-export"}')`,
     [alphaOrganization.id, actorUser.id],
   );
 

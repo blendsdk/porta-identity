@@ -40,6 +40,15 @@ function containsTerminalControl(value: string, allowLineEndings = false): boole
     const codePoint = character.codePointAt(0) ?? 0;
     if (allowLineEndings && (codePoint === 0x0a || codePoint === 0x0d)) continue;
     if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return true;
+    if (
+      codePoint === 0x061c ||
+      codePoint === 0xfeff ||
+      (codePoint >= 0x200b && codePoint <= 0x200f) ||
+      (codePoint >= 0x202a && codePoint <= 0x202e) ||
+      (codePoint >= 0x2066 && codePoint <= 0x2069)
+    ) {
+      return true;
+    }
   }
   return false;
 }
@@ -269,13 +278,50 @@ function userHistory(value: unknown): AdminUserHistory | undefined {
     ) {
       return undefined;
     }
+    const actorType = entry.actorType;
+    if (
+      actorType !== undefined &&
+      actorType !== 'user' &&
+      actorType !== 'client' &&
+      actorType !== 'system'
+    ) {
+      return undefined;
+    }
+    const clientName =
+      typeof entry.actorClientName === 'string' && isText(entry.actorClientName, 255, 1)
+        ? entry.actorClientName
+        : undefined;
+    const clientId =
+      typeof entry.actorClientId === 'string' && isText(entry.actorClientId, 255, 1)
+        ? entry.actorClientId
+        : undefined;
+    const clientNameInvalid =
+      entry.actorClientName !== undefined &&
+      entry.actorClientName !== null &&
+      clientName === undefined;
+    const clientIdInvalid =
+      entry.actorClientId !== undefined &&
+      entry.actorClientId !== null &&
+      clientId === undefined;
+    const actor: string =
+      actorType === 'client'
+        ? clientNameInvalid || clientIdInvalid
+          ? '—'
+          : clientName
+            ? clientId
+              ? `${clientName} (${clientId})`
+              : clientName
+            : (clientId ?? '—')
+        : typeof entry.actorId === 'string'
+          ? entry.actorId
+          : 'System';
     const timestamp = Date.parse(entry.createdAt);
     if (timestamp > previousTime) return undefined;
     previousTime = timestamp;
     entries.push(
       Object.freeze({
         eventType: entry.eventType,
-        actor: entry.actorId ?? 'System',
+        actor,
         createdAt: entry.createdAt,
       }),
     );

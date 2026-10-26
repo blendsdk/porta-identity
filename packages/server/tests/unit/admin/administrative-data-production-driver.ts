@@ -308,8 +308,8 @@ export class ProductionAdministrativeDataDriver implements AdministrativeDataSpe
     }
     await getPool().query(
       `INSERT INTO audit_log (
-         organization_id, actor_id, event_type, event_category, description, metadata, created_at
-       ) VALUES ($1, $2, 'unrecognized.private', 'admin', $3, $4, $5)`,
+         organization_id, actor_id, actor_type, event_type, event_category, description, metadata, created_at
+       ) VALUES ($1, $2, 'user', 'unrecognized.private', 'admin', $3, $4, $5)`,
       [
         fixture.alphaOrganizationId,
         fixture.actorId,

@@ -744,7 +744,7 @@ Porta automatically redacts sensitive fields from log output to prevent personal
 
 This redaction is always active regardless of `NODE_ENV` or `LOG_LEVEL`.
 
-For covered administrative and authentication requests, use the single structured
+For covered administrative, tenant, and authentication requests, use the single structured
 `security.decision.v1` record as the terminal authorization/validation outcome. Correlate on its
 server-generated `requestId`; do not attempt to reconstruct a decision by joining ordinary request
 messages or audit rows. The event uses normalized route templates and closed reason codes and never

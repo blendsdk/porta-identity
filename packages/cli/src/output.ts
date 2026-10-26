@@ -28,10 +28,15 @@ import chalk from 'chalk';
 export function sanitizeTerminalText(value: string): string {
   return Array.from(value, (character) => {
     const codePoint = character.codePointAt(0);
-    return codePoint !== undefined &&
-      (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f))
-      ? '\ufffd'
-      : character;
+    if (codePoint === undefined) return character;
+    const isControl = codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f);
+    const isDirectionalOrInvisible =
+      codePoint === 0x061c ||
+      codePoint === 0xfeff ||
+      (codePoint >= 0x200b && codePoint <= 0x200f) ||
+      (codePoint >= 0x202a && codePoint <= 0x202e) ||
+      (codePoint >= 0x2066 && codePoint <= 0x2069);
+    return isControl || isDirectionalOrInvisible ? '\ufffd' : character;
   }).join('');
 }
 

@@ -21,6 +21,7 @@ import {
   row,
 } from '@jsvision/ui';
 import type { Column, Signal } from '@jsvision/ui';
+import { sanitizeTerminalText } from '../output.js';
 import { formatAdminDateTime, formatOptionalAdminDateTime } from './admin-date-time.js';
 import type { AdminCapabilities } from './state.js';
 import type {
@@ -453,7 +454,9 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     const list = new ListView({
       items: entries,
       getText: (entry) =>
-        `${formatAdminDateTime(entry.createdAt)} — ${entry.eventType} — ${entry.actor}`,
+        `${formatAdminDateTime(entry.createdAt)} — ${entry.eventType} — ${sanitizeTerminalText(
+          entry.actor,
+        )}`,
       sorted: false,
     });
     const historySection = new GroupBox({ title: `History for ${state.detail.email}` });

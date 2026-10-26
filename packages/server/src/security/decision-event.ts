@@ -62,7 +62,7 @@ export const securityDecisionEventSchema = z
     eventName: z.literal(SECURITY_DECISION_EVENT_NAME),
     occurredAt: z.string().datetime({ offset: true }),
     requestId: z.string().uuid(),
-    surface: z.enum(['admin-api', 'public-auth', 'transport']),
+    surface: z.enum(['admin-api', 'public-auth', 'tenant-api', 'transport']),
     method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'UNKNOWN']),
     routeTemplate: z
       .string()

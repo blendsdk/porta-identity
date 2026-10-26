@@ -27,7 +27,7 @@ export const TENANT_INVITE_RATE_LIMIT: RateLimitConfig = {
  */
 export function tenantInviteRateLimiter(): Middleware {
   return async function tenantInviteRateLimiterMiddleware(ctx, next) {
-    const actor = ctx.state.tenantInviteActor;
+    const actor = ctx.state.tenantActor;
     if (!actor) return next();
 
     const key =

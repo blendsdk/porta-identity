@@ -24,14 +24,26 @@ vi.mock('../../../src/users/password.js', () => ({
   verifyPassword: vi.fn(),
 }));
 
-vi.mock('../../../src/lib/audit-log.js', () => ({
-  writeAuditLog: vi.fn().mockResolvedValue(undefined),
+vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../src/lib/audit-log.js')>();
+  return {
+    ...actual,
+    writeAuditLog: vi.fn().mockResolvedValue(undefined),
+    writeAuditLogInTransaction: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+vi.mock('../../../src/lib/database.js', () => ({
+  getPool: vi.fn(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: vi.fn() }),
+  afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
 }));
 
 import * as repo from '../../../src/users/repository.js';
 import * as cache from '../../../src/users/cache.js';
 import * as pw from '../../../src/users/password.js';
-import { writeAuditLog } from '../../../src/lib/audit-log.js';
+import { writeAuditLog, writeAuditLogInTransaction } from '../../../src/lib/audit-log.js';
 import {
   createUser,
   getUserById,
@@ -47,7 +59,11 @@ import {
   recordLogin,
   findUserForOidc,
 } from '../../../src/users/service.js';
-import { UserNotFoundError, UserValidationError } from '../../../src/users/errors.js';
+import {
+  UserEmailConflictError,
+  UserNotFoundError,
+  UserValidationError,
+} from '../../../src/users/errors.js';
 import type { User } from '../../../src/users/types.js';
 
 /** Helper to create a test user */
@@ -149,7 +165,7 @@ describe('user service', () => {
 
       await expect(
         createUser({ organizationId: 'org-uuid-1', email: 'john@example.com' }),
-      ).rejects.toThrow(UserValidationError);
+      ).rejects.toThrow(UserEmailConflictError);
     });
 
     it('should reject invalid password length', async () => {
@@ -169,10 +185,21 @@ describe('user service', () => {
       (repo.emailExists as ReturnType<typeof vi.fn>).mockResolvedValue(false);
       (repo.insertUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await createUser({ organizationId: 'org-uuid-1', email: 'john@example.com' }, 'actor-1');
+      await createUser(
+        { organizationId: 'org-uuid-1', email: 'john@example.com' },
+        { kind: 'user', userId: 'actor-1' },
+        { ipAddress: '127.0.0.1', userAgent: 'test-agent' },
+      );
 
-      expect(writeAuditLog).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: 'user.created', actorId: 'actor-1' }),
+      expect(writeAuditLogInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          eventType: 'user.created',
+          actorId: 'actor-1',
+          actorType: 'user',
+          ipAddress: '127.0.0.1',
+          userAgent: 'test-agent',
+        }),
       );
     });
   });
@@ -256,9 +283,10 @@ describe('user service', () => {
       const user = createTestUser();
       (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
 
-      await updateUser('user-uuid-1', { givenName: 'Jane' }, 'actor-1');
+      await updateUser('user-uuid-1', { givenName: 'Jane' }, { kind: 'user', userId: 'actor-1' });
 
-      expect(writeAuditLog).toHaveBeenCalledWith(
+      expect(writeAuditLogInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({ eventType: 'user.updated', actorId: 'actor-1' }),
       );
     });
@@ -298,6 +326,18 @@ describe('user service', () => {
 
       expect(repo.updateUser).toHaveBeenCalledWith('user-uuid-1', { status: 'inactive' });
       expect(cache.invalidateUserCache).toHaveBeenCalled();
+    });
+
+    it('should not invalidate the cache when the lifecycle audit fails', async () => {
+      const user = createTestUser({ status: 'active' });
+      (repo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(user);
+      (writeAuditLogInTransaction as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+        new Error('audit unavailable'),
+      );
+
+      await expect(deactivateUser('user-uuid-1')).rejects.toThrow('audit unavailable');
+      expect(cache.invalidateUserCache).not.toHaveBeenCalled();
     });
 
     it('should reject already inactive user', async () => {

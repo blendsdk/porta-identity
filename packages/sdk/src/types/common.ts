@@ -111,6 +111,12 @@ export interface HistoryEntry {
   eventType: string;
   /** ID of the actor who triggered the event, or null for system events */
   actorId: string | null;
+  /** Actor class: user, OAuth service client, or system */
+  actorType?: 'user' | 'client' | 'system';
+  /** OAuth client identifier for a service-client actor */
+  actorClientId?: string | null;
+  /** OAuth client name captured at event time for a service-client actor */
+  actorClientName?: string | null;
   /** Arbitrary event metadata recorded with the audit entry */
   metadata: Record<string, unknown> | null;
   /** ISO 8601 timestamp */

@@ -104,6 +104,16 @@ refresh token stored in a secret manager, or obtain a short-lived token through
 `porta login` or Authorization Code + PKCE and pass it to `createTokenAuth`.
 Service accounts for `/api/admin` are not available yet.
 
+### Tenant user management from a BFF
+
+Set `apiPrefix: '/api'` and authenticate with
+`createClientCredentialsAuth` to use the `users` and `userRoles` domains against
+a tenant. The client needs `org:user:read`, `org:user:write`, and (only for
+permanent delete) `org:user:delete`. Tenant create rejects `password`; the BFF
+directs the user to the existing login or reset flow. Roles must belong to the
+client application. See the [Users API](../api/users.md#tenant-scoped-m2m-user-management)
+for the route and error contract.
+
 ## Domain Namespaces
 
 The `PortaClient` provides 19 domain namespaces:

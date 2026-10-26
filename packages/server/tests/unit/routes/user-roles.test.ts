@@ -199,12 +199,13 @@ describe('user-role routes', () => {
       await execHandler(layer!, ctx);
 
       expect(ctx.status).toBe(204);
-      expect(userRoleService.assignRolesToUser).toHaveBeenCalledWith(
-        'org-uuid-1',
-        'user-uuid-1',
-        ['a0000000-0000-4000-a000-000000000001'],
-        'actor-uuid-1',
-      );
+      expect(userRoleService.assignRolesToUser).toHaveBeenCalledWith({
+        organizationId: 'org-uuid-1',
+        userId: 'user-uuid-1',
+        roleIds: ['a0000000-0000-4000-a000-000000000001'],
+        actor: { kind: 'user', userId: 'actor-uuid-1' },
+        auditContext: expect.any(Object),
+      });
     });
 
     it('should return 400 for invalid role IDs (not UUIDs)', async () => {
@@ -263,12 +264,13 @@ describe('user-role routes', () => {
 
       expect(ctx.status).toBe(200);
       expect(ctx.body).toEqual({ data: result });
-      expect(userRoleService.removeRolesFromUser).toHaveBeenCalledWith(
-        'org-uuid-1',
-        'user-uuid-1',
-        ['a0000000-0000-4000-a000-000000000001'],
-        'actor-uuid-1',
-      );
+      expect(userRoleService.removeRolesFromUser).toHaveBeenCalledWith({
+        organizationId: 'org-uuid-1',
+        userId: 'user-uuid-1',
+        roleIds: ['a0000000-0000-4000-a000-000000000001'],
+        actor: { kind: 'user', userId: 'actor-uuid-1' },
+        auditContext: expect.any(Object),
+      });
     });
 
     it('should preserve the explicit false result for an idempotent removal', async () => {

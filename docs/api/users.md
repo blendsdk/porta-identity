@@ -111,6 +111,69 @@ The tenant service client must be configured with `clientType: confidential`,
 `tokenEndpointAuthMethod: 'client_secret_post'`. The SDK client-credentials
 provider sends the secret in the form body.
 
+## Tenant-Scoped M2M User Management
+
+A tenant service client can manage users in its own organization without a
+control-plane administrator. The API mirrors the Admin resource paths under
+`/api`, so the existing SDK domains work with `apiPrefix: '/api'`.
+
+**Base path:** `/api/organizations/:orgId/users`
+
+**Client configuration:**
+
+| Field                     | Value                                                                          |
+| ------------------------- | ------------------------------------------------------------------------------ |
+| `clientType`              | `confidential`                                                                 |
+| `grantTypes`              | `['client_credentials']`                                                       |
+| `scope`                   | `org:user:read org:user:write org:user:delete` (add `org:user:invite` if used) |
+| `tokenEndpointAuthMethod` | `client_secret_post`                                                           |
+| `organizationId`          | Tenant organization                                                            |
+| `applicationId`           | Tenant application                                                             |
+
+The client must be active, confidential, belong to `:orgId`, and pass the
+tenant boundary. Control-plane clients, the super-admin organization, and
+foreign organizations are rejected.
+
+| Method   | Path                         | Required scope    | Behavior                                       |
+| -------- | ---------------------------- | ----------------- | ---------------------------------------------- |
+| `POST`   | `/`                          | `org:user:write`  | Create a user without a password               |
+| `GET`    | `/`                          | `org:user:read`   | List users with the Admin pagination contracts |
+| `GET`    | `/:userId`                   | `org:user:read`   | Read one user and its ETag                     |
+| `PUT`    | `/:userId`                   | `org:user:write`  | Update profile and verification flags          |
+| `POST`   | `/:userId/deactivate`        | `org:user:write`  | Active → inactive                              |
+| `POST`   | `/:userId/activate`          | `org:user:write`  | Inactive → active                              |
+| `DELETE` | `/:userId`                   | `org:user:delete` | Permanently delete the user                    |
+| `GET`    | `/:userId/roles`             | `org:user:read`   | Roles from the client application only         |
+| `GET`    | `/:userId/roles/permissions` | `org:user:read`   | Effective permissions from that application    |
+| `PUT`    | `/:userId/roles`             | `org:user:write`  | Assign roles from that application             |
+| `DELETE` | `/:userId/roles`             | `org:user:write`  | Remove roles from that application             |
+| `POST`   | `/invite`                    | `org:user:invite` | Existing invite route (service or user actor)  |
+
+**Create and update fields:** full OIDC profile fields plus `emailVerified` and
+`phoneNumberVerified`. The tenant create route rejects `password`; the update
+route rejects `email`, `status`, `password`, and 2FA fields. A verified phone
+requires a non-null phone number. The BFF is asserting the verification flags;
+record that trust boundary in the BFF.
+
+**Delete safety:** permanent delete requires the separate `org:user:delete`
+scope, revokes sessions and tokens, and cannot be undone. Prefer deactivate for
+routine offboarding.
+
+**ETag and errors:** create, single-user read, and update return an ETag.
+`If-Match` applies to update and uses the existing Admin `409 Conflict`
+response when stale. Duplicate email is `409` on this surface (Admin keeps
+`400`). Foreign or missing users return the same `404`.
+
+**Supported SDK methods:** `users.create/list/get/update/deactivate/activate/delete`
+and `userRoles.list/assign/remove/getEffectivePermissions`. Password,
+verify-email, export, history, and invite-preview remain Admin-only; the tenant
+router does not mount them.
+
+**Audit:** mutations write one durable `user.*` row with
+`actor_type=client`, `actor_client_id`, `actor_client_name`, and target
+`user_id`. Reads write best-effort `user.read` / `user.listed` rows; list
+metadata contains filters and result count only, never returned user data.
+
 ## Preview Invitation Email
 
 ```http

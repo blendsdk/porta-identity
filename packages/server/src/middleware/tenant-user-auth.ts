@@ -1,29 +1,28 @@
 /**
- * Tenant-scoped invitation authentication.
+ * Tenant-scoped actor authentication.
  *
- * The tenant invitation route accepts two caller types:
+ * The tenant user API accepts service clients for CRUD and either a service
+ * client or a tenant user for invitation. A caller must present a valid OAuth
+ * token, belong to the route organization, pass the tenant boundary, and hold
+ * the scope or permission required by the route.
  *
- *   - A confidential client using the OAuth `client_credentials` grant. The
- *     token must carry the `org:user:invite` scope, the client must be active
- *     and confidential, and the client must belong to the route organization.
- *   - A tenant user's access token. The user must be active, belong to the
- *     route organization, and hold the `org:user:invite` permission in the
- *     token client's application.
+ * Control-plane clients and the super-admin organization are rejected. The
+ * middleware stores a normalized `TenantActor` on the request for route
+ * handlers, rate limiting, and audit attribution.
  *
- * Control-plane clients and the super-admin organization are rejected. This
- * route is deliberately separate from `/api/admin/*`; a Porta administrator
- * uses the existing admin invitation route instead.
- *
- * @module middleware/tenant-invite-auth
+ * @module middleware/tenant-user-auth
  */
 
 import type { Middleware } from 'koa';
 import { getApplicationBySlug } from '../applications/service.js';
 import { getClientByClientId } from '../clients/service.js';
 import { logger } from '../lib/logger.js';
-import { TENANT_INVITE_PERMISSION, TENANT_INVITE_SCOPE } from '../oidc/scopes.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { buildPermissionClaims } from '../rbac/user-role-service.js';
+import type {
+  SecurityDecisionEvent,
+  SecurityDecisionReasonCode,
+} from '../security/decision-event.js';
 import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
 import { findUserForOidc } from '../users/service.js';
 
@@ -31,10 +30,8 @@ import { findUserForOidc } from '../users/service.js';
 // Public constants and contracts
 // ---------------------------------------------------------------------------
 
-export { TENANT_INVITE_PERMISSION, TENANT_INVITE_SCOPE };
-
 /** Minimal provider boundary needed to resolve both supported token types. */
-export interface TenantInviteTokenProvider {
+export interface TenantTokenProvider {
   /** Opaque user access-token model. */
   readonly AccessToken: {
     /** Resolve one user access token. */
@@ -60,18 +57,23 @@ export interface TenantInviteTokenProvider {
   };
 }
 
-/** Authenticated tenant invitation actor. */
-export type TenantInviteActor =
+/** Caller kinds supported by the tenant surface. */
+export type TenantActorKind = 'service' | 'user';
+
+/** Authenticated tenant actor. */
+export type TenantActor =
   | {
       /** Tenant service client. */
       readonly kind: 'service';
       /** Client identifier used for audit and rate limiting. */
       readonly clientId: string;
-      /** Application that owns the invite's roles and claims. */
+      /** Human-readable client name used for audit attribution. */
+      readonly clientName: string;
+      /** Application that owns the client's roles and claims. */
       readonly applicationId: string;
       /** Route organization. */
       readonly organizationId: string;
-      /** Safe display name used in the invitation email. */
+      /** Safe display name used by invitation and audit flows. */
       readonly displayName: string;
     }
   | {
@@ -79,15 +81,27 @@ export type TenantInviteActor =
       readonly kind: 'user';
       /** User identifier used for audit and rate limiting. */
       readonly userId: string;
-      /** Application that owns the invite's roles and claims. */
+      /** Application that owns the user's roles and claims. */
       readonly applicationId: string;
       /** Route organization. */
       readonly organizationId: string;
-      /** Safe display name used in the invitation email. */
+      /** Safe display name used by invitation and audit flows. */
       readonly displayName: string;
       /** Live permissions used to enforce the delegation ceiling. */
       readonly permissions: ReadonlySet<string>;
     };
+
+/** Per-route tenant authentication policy. */
+export interface TenantAuthOptions {
+  /** OIDC provider token models, or undefined to fail closed. */
+  readonly provider?: TenantTokenProvider;
+  /** Caller kinds permitted by the route. */
+  readonly allowedActorKinds: readonly TenantActorKind[];
+  /** OAuth scope required by the route. */
+  readonly requiredScope: string;
+  /** Permission required for user actors; defaults to the required scope. */
+  readonly requiredPermission?: string;
+}
 
 // ---------------------------------------------------------------------------
 // Koa state augmentation
@@ -95,8 +109,8 @@ export type TenantInviteActor =
 
 declare module 'koa' {
   interface DefaultState {
-    /** Set by requireTenantInviteAuth after a successful caller check. */
-    tenantInviteActor?: TenantInviteActor;
+    /** Set by requireTenantActorAuth after a successful caller check. */
+    tenantActor?: TenantActor;
   }
 }
 
@@ -104,9 +118,9 @@ declare module 'koa' {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
-/** Return the authenticated permission set when the scope is granted. */
-function hasInviteScope(scopes: ReadonlySet<string> | undefined): boolean {
-  return scopes?.has(TENANT_INVITE_SCOPE) === true;
+/** Return whether a token carries the required scope. */
+function hasScope(scopes: ReadonlySet<string> | undefined, requiredScope: string): boolean {
+  return scopes?.has(requiredScope) === true;
 }
 
 /** Build a safe display name from optional profile fields. */
@@ -131,11 +145,7 @@ async function loadSuperAdminOrganizationId(): Promise<string | null> {
   return organization?.id ?? null;
 }
 
-/**
- * Reject the super-admin organization and the canonical admin application.
- *
- * @returns A fixed denial status when the route is not a tenant surface.
- */
+/** Reject the super-admin organization and the canonical admin application. */
 async function isTenantBoundary(organizationId: string, applicationId: string): Promise<boolean> {
   const [adminApplicationId, superAdminOrganizationId] = await Promise.all([
     loadAdminApplicationId(),
@@ -144,6 +154,30 @@ async function isTenantBoundary(organizationId: string, applicationId: string): 
   if (!adminApplicationId || !superAdminOrganizationId) return false;
   return applicationId !== adminApplicationId && organizationId !== superAdminOrganizationId;
 }
+
+/** Write one fixed denial and record its security decision. */
+function deny(
+  ctx: Parameters<Middleware>[0],
+  decisionPoint: SecurityDecisionEvent['decisionPoint'],
+  reasonCode: SecurityDecisionReasonCode,
+  status: 401 | 403,
+  body: Record<string, unknown>,
+): undefined {
+  recordSecurityDecision(ctx, {
+    decisionPoint,
+    reasonCode,
+    outcome: 'deny',
+  });
+  ctx.status = status;
+  ctx.body = body;
+  return undefined;
+}
+
+/** Fixed forbidden body shared by every boundary denial. */
+const FORBIDDEN_BODY = {
+  error: 'Forbidden',
+  message: 'The requested operation is not permitted',
+} as const;
 
 /**
  * Authorize a client-credentials token.
@@ -154,16 +188,10 @@ async function authorizeService(
   ctx: Parameters<Middleware>[0],
   organizationId: string,
   token: { readonly clientId?: string; readonly scopes: ReadonlySet<string> },
-): Promise<Extract<TenantInviteActor, { kind: 'service' }> | undefined> {
-  if (!token.clientId || !hasInviteScope(token.scopes)) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'permission',
-      reasonCode: 'permission-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+  requiredScope: string,
+): Promise<Extract<TenantActor, { kind: 'service' }> | undefined> {
+  if (!token.clientId || !hasScope(token.scopes, requiredScope)) {
+    return deny(ctx, 'permission', 'permission-required', 403, FORBIDDEN_BODY);
   }
 
   const client = await getClientByClientId(token.clientId);
@@ -172,32 +200,19 @@ async function authorizeService(
     client.status !== 'active' ||
     client.clientType !== 'confidential' ||
     client.organizationId !== organizationId ||
-    !client.scope.split(' ').includes(TENANT_INVITE_SCOPE)
+    !client.scope.split(' ').includes(requiredScope)
   ) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'membership',
-      reasonCode: 'membership-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+    return deny(ctx, 'membership', 'membership-required', 403, FORBIDDEN_BODY);
   }
 
   if (!(await isTenantBoundary(organizationId, client.applicationId))) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'membership',
-      reasonCode: 'membership-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+    return deny(ctx, 'membership', 'membership-required', 403, FORBIDDEN_BODY);
   }
 
   return {
     kind: 'service',
     clientId: client.clientId,
+    clientName: client.clientName,
     applicationId: client.applicationId,
     organizationId,
     displayName: client.clientName,
@@ -213,63 +228,32 @@ async function authorizeUser(
   ctx: Parameters<Middleware>[0],
   organizationId: string,
   token: { readonly accountId?: string; readonly clientId?: string },
-): Promise<Extract<TenantInviteActor, { kind: 'user' }> | undefined> {
+  requiredPermission: string,
+): Promise<Extract<TenantActor, { kind: 'user' }> | undefined> {
   if (!token.accountId || !token.clientId) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'authentication',
-      reasonCode: 'authentication-required',
-      outcome: 'deny',
+    return deny(ctx, 'authentication', 'authentication-required', 401, {
+      error: 'Invalid token',
+      message: 'Token validation failed',
     });
-    ctx.status = 401;
-    ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
-    return undefined;
   }
 
   const client = await getClientByClientId(token.clientId);
   if (!client || client.status !== 'active' || client.organizationId !== organizationId) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'membership',
-      reasonCode: 'membership-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+    return deny(ctx, 'membership', 'membership-required', 403, FORBIDDEN_BODY);
   }
 
   if (!(await isTenantBoundary(organizationId, client.applicationId))) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'membership',
-      reasonCode: 'membership-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+    return deny(ctx, 'membership', 'membership-required', 403, FORBIDDEN_BODY);
   }
 
   const user = await findUserForOidc(token.accountId);
   if (!user || user.organizationId !== organizationId) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'membership',
-      reasonCode: 'membership-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+    return deny(ctx, 'membership', 'membership-required', 403, FORBIDDEN_BODY);
   }
 
   const permissions = await buildPermissionClaims(user.id, client.applicationId);
-  if (!permissions.includes(TENANT_INVITE_PERMISSION)) {
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'permission',
-      reasonCode: 'permission-required',
-      outcome: 'deny',
-    });
-    ctx.status = 403;
-    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
-    return undefined;
+  if (!permissions.includes(requiredPermission)) {
+    return deny(ctx, 'permission', 'permission-required', 403, FORBIDDEN_BODY);
   }
 
   return {
@@ -287,15 +271,18 @@ async function authorizeUser(
 // ---------------------------------------------------------------------------
 
 /**
- * Create middleware that authenticates a tenant invitation caller.
+ * Create middleware that authenticates a tenant caller for one route policy.
  *
- * @param provider - OIDC provider token models, or undefined to fail closed
- * @returns Koa middleware that sets `ctx.state.tenantInviteActor`
+ * @param options - Provider, allowed actor kinds, and required scope/permission
+ * @returns Koa middleware that sets `ctx.state.tenantActor`
  */
-export function requireTenantInviteAuth(provider?: TenantInviteTokenProvider): Middleware {
-  return async function tenantInviteAuthMiddleware(ctx, next) {
+export function requireTenantActorAuth(options: TenantAuthOptions): Middleware {
+  return async function tenantActorAuthMiddleware(ctx, next) {
+    const { provider, allowedActorKinds, requiredScope } = options;
+    const requiredPermission = options.requiredPermission ?? requiredScope;
+
     if (!provider) {
-      logger.error('Tenant invite auth: OIDC provider not initialized');
+      logger.error('Tenant actor auth: OIDC provider not initialized');
       recordSecurityDecision(ctx, {
         decisionPoint: 'handler',
         reasonCode: 'handler-failed',
@@ -308,35 +295,25 @@ export function requireTenantInviteAuth(provider?: TenantInviteTokenProvider): M
 
     const organizationId = ctx.params.orgId;
     if (typeof organizationId !== 'string' || organizationId.length === 0) {
-      recordSecurityDecision(ctx, {
-        decisionPoint: 'resource',
-        reasonCode: 'resource-not-found',
-        outcome: 'deny',
-      });
-      ctx.status = 404;
-      ctx.body = { error: 'Organization not found' };
+      deny(ctx, 'resource', 'resource-not-found', 403, FORBIDDEN_BODY);
       return;
     }
 
     const authHeader = ctx.get('Authorization');
     if (!authHeader.startsWith('Bearer ')) {
-      recordSecurityDecision(ctx, {
-        decisionPoint: 'authentication',
-        reasonCode: 'authentication-required',
-        outcome: 'deny',
-      });
-      ctx.status = 401;
-      ctx.body = {
+      deny(ctx, 'authentication', 'authentication-required', 401, {
         error: 'Authentication required',
         message: 'Missing or invalid Authorization header',
-      };
+      });
       return;
     }
 
     const token = authHeader.slice(7);
     if (token.length === 0) {
-      ctx.status = 401;
-      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+      deny(ctx, 'authentication', 'authentication-required', 401, {
+        error: 'Invalid token',
+        message: 'Token validation failed',
+      });
       return;
     }
 
@@ -346,17 +323,21 @@ export function requireTenantInviteAuth(provider?: TenantInviteTokenProvider): M
       serviceToken = await provider.ClientCredentials.find(token);
     } catch {
       logger.debug(
-        { event: 'tenant-invite-service-token-unavailable' },
-        'Tenant invite service token lookup failed',
+        { event: 'tenant-user-service-token-unavailable' },
+        'Tenant user service token lookup failed',
       );
     }
 
     if (serviceToken) {
-      const actor = await authorizeService(ctx, organizationId, serviceToken);
+      if (!allowedActorKinds.includes('service')) {
+        deny(ctx, 'permission', 'permission-required', 403, FORBIDDEN_BODY);
+        return;
+      }
+      const actor = await authorizeService(ctx, organizationId, serviceToken, requiredScope);
       if (!actor) return;
       recordSecurityReference(ctx, 'actor', actor.clientId);
       recordSecurityReference(ctx, 'tenant', organizationId);
-      ctx.state.tenantInviteActor = actor;
+      ctx.state.tenantActor = actor;
       await next();
       return;
     }
@@ -372,27 +353,28 @@ export function requireTenantInviteAuth(provider?: TenantInviteTokenProvider): M
       userToken = await provider.AccessToken.find(token);
     } catch {
       logger.debug(
-        { event: 'tenant-invite-user-token-unavailable' },
-        'Tenant invite user token lookup failed',
+        { event: 'tenant-user-user-token-unavailable' },
+        'Tenant user user-token lookup failed',
       );
     }
 
     if (userToken) {
-      const actor = await authorizeUser(ctx, organizationId, userToken);
+      if (!allowedActorKinds.includes('user')) {
+        deny(ctx, 'permission', 'permission-required', 403, FORBIDDEN_BODY);
+        return;
+      }
+      const actor = await authorizeUser(ctx, organizationId, userToken, requiredPermission);
       if (!actor) return;
       recordSecurityReference(ctx, 'actor', actor.userId);
       recordSecurityReference(ctx, 'tenant', organizationId);
-      ctx.state.tenantInviteActor = actor;
+      ctx.state.tenantActor = actor;
       await next();
       return;
     }
 
-    recordSecurityDecision(ctx, {
-      decisionPoint: 'authentication',
-      reasonCode: 'authentication-required',
-      outcome: 'deny',
+    deny(ctx, 'authentication', 'authentication-required', 401, {
+      error: 'Invalid token',
+      message: 'Token validation failed',
     });
-    ctx.status = 401;
-    ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
   };
 }

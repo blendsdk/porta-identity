@@ -182,6 +182,10 @@ export interface CreateUserInput {
   locale?: string;
   /** OIDC phone number. */
   phoneNumber?: string;
+  /** Whether the caller asserts the phone number is verified. */
+  phoneNumberVerified?: boolean;
+  /** Whether the caller asserts the email address is verified. */
+  emailVerified?: boolean;
   /** Structured OIDC address fields. */
   address?: AddressInput;
 }
@@ -220,6 +224,8 @@ export interface UpdateUserInput {
   phoneNumber?: string | null;
   /** Whether the user's phone number has been verified. */
   phoneNumberVerified?: boolean;
+  /** Whether the user's email address has been verified. */
+  emailVerified?: boolean;
   /** Structured address fields to update or clear individually. */
   address?: AddressInput;
 }

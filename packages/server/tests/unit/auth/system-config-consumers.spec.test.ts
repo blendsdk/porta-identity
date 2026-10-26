@@ -39,6 +39,8 @@ vi.mock('../../../src/lib/system-config.js', () => ({
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: () => ({ query: boundary.query }),
   afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: boundary.query }),
 }));
 vi.mock('../../../src/lib/redis.js', () => ({
   getRedis: () => ({ incr: boundary.incr, expire: boundary.expire, ttl: boundary.ttl }),
@@ -49,6 +51,37 @@ vi.mock('../../../src/lib/logger.js', () => ({
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
   writeAuditLogInTransaction: vi.fn(),
+  inviteActorToAuditActor: (actor: {
+    kind: 'admin' | 'user' | 'service';
+    userId?: string;
+    clientId?: string;
+    displayName: string;
+  }) =>
+    actor.kind === 'service' && actor.clientId
+      ? { kind: 'service', clientId: actor.clientId, clientName: actor.displayName }
+      : actor.userId
+        ? { kind: 'user', userId: actor.userId }
+        : { kind: 'system' },
+  auditActorColumns: (actor: {
+    kind: 'user' | 'service' | 'system';
+    userId?: string;
+    clientId?: string;
+    clientName?: string;
+  }) =>
+    actor.kind === 'service'
+      ? {
+          actorType: 'client',
+          actorClientId: actor.clientId,
+          actorClientName: actor.clientName,
+        }
+      : actor.kind === 'user'
+        ? {
+            actorId: actor.userId,
+            actorType: 'user',
+            actorClientId: null,
+            actorClientName: null,
+          }
+        : { actorType: 'system', actorClientId: null, actorClientName: null },
 }));
 vi.mock('../../../src/users/repository.js', () => ({
   incrementFailedLoginCount: boundary.increment,
@@ -81,6 +114,7 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
   ensureRecoveryJobToken: boundary.ensureToken,
   replaceInvitation: boundary.invitationToken,
   invalidateUserTokens: vi.fn(),
+  InvitationConflictError: class InvitationConflictError extends Error {},
 }));
 vi.mock('../../../src/auth/email-service.js', () => ({
   sendRecoveryEmailStrict: boundary.sendRecovery,

@@ -383,6 +383,46 @@ expiry. Provider-startup lifetimes require restarting every instance, not automa
 
 ---
 
+## ADR-017: Tenant-Scoped M2M User Management
+
+**Context**: Tenant BFFs already invite users with a confidential
+`client_credentials` client and the `org:user:invite` scope. Extending that
+model to user management requires CRUD, lifecycle, roles, and durable
+accountability without giving the BFF a control-plane user, refresh token, or
+Admin API authority.
+
+**Decision**: Add a service-client-only tenant user API under
+`/api/organizations/:orgId/users` with `org:user:read`, `org:user:write`, and
+`org:user:delete` scopes. Reuse the Admin user/role services and SDK domains
+with `apiPrefix: '/api'`. Bound role reads and mutations to the client
+application. Record first-class client actor columns (`actor_type`,
+`actor_client_id`, `actor_client_name`) and commit mutation audit in the same
+transaction as the mutation. Permanent delete keeps a separate scope, a strict
+60/hour bucket, and the existing session/token revocation.
+
+**Rationale**: The BFF already holds a tenant client identity, so a service
+actor is the smallest accountable model. Reusing existing routes, services, and
+SDK domains avoids a second API implementation. First-class client columns make
+M2M actions queryable without inventing a user, while the application boundary
+prevents cross-application role escalation.
+
+**Consequences**:
+
+- The provider supported-scope list grows by three values; every instance must
+  restart after deployment.
+- Migration 034 updates every audit row and applies `NOT NULL` under lock, so it
+  needs a maintenance window, verified backup, and full-stop/upgrade ordering.
+- Tenant create accepts no password and update cannot change email, status,
+  password, or 2FA. The BFF owns the verification assertions it sends.
+- Role assignment is separate from create and limited to the client
+  application; canonical `porta-admin` roles are rejected.
+- Read audit is best-effort and records filters/result count only; mutation
+  audit is transaction-bound.
+- Historical rows whose actor user was deleted are classified `system`; future
+  deletions retain `user`.
+
+---
+
 ## Adding New ADRs
 
 When making a significant architecture decision, add an entry to this log with:

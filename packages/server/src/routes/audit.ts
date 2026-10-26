@@ -83,8 +83,9 @@ export function createAuditRouter(): Router {
       conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
     params.push(limit);
-    const query = `SELECT id, event_type, event_category, actor_id, organization_id,
-                          user_id, description, metadata, ip_address, created_at
+    const query = `SELECT id, event_type, event_category, actor_id,
+                          actor_type, actor_client_id, actor_client_name,
+                          organization_id, user_id, description, metadata, ip_address, created_at
                    FROM audit_log ${whereClause}
                    ORDER BY created_at DESC
                    LIMIT $${paramIdx}`;
@@ -97,6 +98,9 @@ export function createAuditRouter(): Router {
         event_type: string;
         event_category: string;
         actor_id: string | null;
+        actor_type: 'user' | 'client' | 'system';
+        actor_client_id: string | null;
+        actor_client_name: string | null;
         organization_id: string | null;
         user_id: string | null;
         description: string | null;
@@ -108,6 +112,9 @@ export function createAuditRouter(): Router {
         eventType: r.event_type,
         eventCategory: r.event_category,
         actorId: r.actor_id,
+        actorType: r.actor_type,
+        actorClientId: r.actor_client_id,
+        actorClientName: r.actor_client_name,
         organizationId: r.organization_id,
         userId: r.user_id,
         description: r.description,

@@ -424,8 +424,8 @@ describe('Cascade Behavior', () => {
 
     // Create audit log entry referencing the user
     await pool.query(
-      `INSERT INTO audit_log (organization_id, user_id, event_type, event_category)
-       VALUES ($1, $2, 'test.event', 'test')`,
+      `INSERT INTO audit_log (organization_id, user_id, actor_type, event_type, event_category)
+       VALUES ($1, $2, 'system', 'test.event', 'test')`,
       [orgId, userId],
     );
 

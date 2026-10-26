@@ -394,15 +394,18 @@ export async function lockUserRoleTargets(
 export async function getRolesForOrganizationUser(
   organizationId: string,
   userId: string,
+  applicationId?: string,
 ): Promise<Role[]> {
+  const applicationFilter = applicationId ? ' AND role.application_id = $3' : '';
+  const params = applicationId ? [organizationId, userId, applicationId] : [organizationId, userId];
   const result = await getPool().query<RoleRow>(
     `SELECT role.*
      FROM users target
      JOIN user_roles assignment ON assignment.user_id = target.id
      JOIN roles role ON role.id = assignment.role_id
-     WHERE target.organization_id = $1 AND target.id = $2
+     WHERE target.organization_id = $1 AND target.id = $2${applicationFilter}
      ORDER BY role.name ASC`,
-    [organizationId, userId],
+    params,
   );
   return result.rows.map(mapRowToRole);
 }
@@ -411,7 +414,10 @@ export async function getRolesForOrganizationUser(
 export async function getPermissionsForOrganizationUser(
   organizationId: string,
   userId: string,
+  applicationId?: string,
 ): Promise<Permission[]> {
+  const applicationFilter = applicationId ? ' AND role.application_id = $3' : '';
+  const params = applicationId ? [organizationId, userId, applicationId] : [organizationId, userId];
   const result = await getPool().query<PermissionRow>(
     `SELECT DISTINCT permission.*
      FROM users target
@@ -420,9 +426,9 @@ export async function getPermissionsForOrganizationUser(
      JOIN role_permissions mapping ON mapping.role_id = role.id
      JOIN permissions permission ON permission.id = mapping.permission_id
        AND permission.application_id = role.application_id
-     WHERE target.organization_id = $1 AND target.id = $2
+     WHERE target.organization_id = $1 AND target.id = $2${applicationFilter}
      ORDER BY permission.slug ASC`,
-    [organizationId, userId],
+    params,
   );
   return result.rows.map(mapRowToPermission);
 }

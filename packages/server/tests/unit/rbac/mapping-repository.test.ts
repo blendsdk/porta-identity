@@ -446,6 +446,24 @@ describe('organization-qualified user authority reads', () => {
     );
     expect(mockQuery.mock.calls[0]?.[1]).toEqual(['org-1', 'user-1']);
   });
+
+  it('filters organization role reads by application when requested', async () => {
+    const mockQuery = mockPool([createTestRoleRow()]);
+
+    await getRolesForOrganizationUser('org-1', 'user-1', 'app-1');
+
+    expect(mockQuery.mock.calls[0]?.[0]).toContain('role.application_id = $3');
+    expect(mockQuery.mock.calls[0]?.[1]).toEqual(['org-1', 'user-1', 'app-1']);
+  });
+
+  it('filters organization permission reads by application when requested', async () => {
+    const mockQuery = mockPool([createTestPermissionRow()]);
+
+    await getPermissionsForOrganizationUser('org-1', 'user-1', 'app-1');
+
+    expect(mockQuery.mock.calls[0]?.[0]).toContain('role.application_id = $3');
+    expect(mockQuery.mock.calls[0]?.[1]).toEqual(['org-1', 'user-1', 'app-1']);
+  });
 });
 
 describe('getRolesForUser', () => {

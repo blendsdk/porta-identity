@@ -139,6 +139,7 @@ export interface CreateUserInput {
   locale?: string;
   phoneNumber?: string;
   phoneNumberVerified?: boolean;
+  emailVerified?: boolean;
 
   // Address
   address?: AddressInput;
