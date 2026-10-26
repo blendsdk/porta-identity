@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.1] - 2026-10-26
+
+Added:
+- Native build approvals and overrides to enhance package management.
+
+Changed:
+- Updated repository-development commands and guidance documentation for clarity.
+- Converted repository and package scripts to use pnpm as the package manager.
+- Updated packages/sdk/README.md and packages/sdk/package.json to reflect recent changes.
+
+Deprecated:
+- Yarn Classic is deprecated in favor of pnpm.
+
+Removed:
+- N/A
+
+Fixed:
+- Verified structure tests with 142/142 passing for ensures integrity post-migration.
+
+Security:
+- N/A
+
 ## [1.14.0] - 2026-10-26
 
 Added:

@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.1] - 2026-10-26
+
+Changed:
+- Migrated package manager from Yarn Classic 1.22 to pnpm 12.15.0 with a hoisted workspace.
+- Converted repository and package scripts to use pnpm.
+
+Added:
+- Introduced native build approvals, overrides, TypeScript 6 alias, and pnpm contract tests.
+
 ## [1.14.0] - 2026-10-26
 
 Changed:

@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.1] - 2026-10-26
+
+### Fixed
+- Fail startup before serving when the audit schema is not current to guard against mutation failures.
+- Aligned setup action and onboarding commands to use pnpm/action-setup v6.1.0 for native pnpm 12 support.
+- Logged only safe structured failure context for generic, config, and bulk admin mutations.
+
+### Changed
+- Replaced Yarn Classic 1.22 with pnpm 12.15.0 and adopted a hoisted workspace.
+- Updated repository-development commands, techdocs, AGENTS, and dependabot note.
+
+### Documentation
+- Finished structural contracts and current guidance by converting the remaining workspace, script, assurance, and docs assertions.
+
 ## [1.14.0] - 2026-10-26
 
 Added:
