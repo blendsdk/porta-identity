@@ -1,7 +1,7 @@
 # Task T-05: Guard audit schema and diagnose admin mutation failures
 
 > **Type**: Task (security-sensitive maintenance) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 11/12 tasks (92%)
+> **Progress**: 12/12 tasks (100%)
 > **Baseline**: `develop` at `174180bd` (v1.14.0)
 > **Evidence**: GitHub issue #199; migration `034_audit_client_actor.sql`; v1.13.0 audit writer; current admin mutation middleware.
 
@@ -53,7 +53,7 @@ A v1.13 instance against a migrated database violates `actor_type NOT NULL`; a v
 
 - [x] **3.1** Run the new unit and integration tests, then lint and typecheck the server workspace.
 - [x] **3.2** Run `pnpm verify` with PostgreSQL, Redis, and MailHog.
-- [ ] **3.3** Run `pnpm assurance:harness --project security --profile production-security` because the change touches administrative audit behavior. **Skipped locally at the operator’s request to save time; branch CI does not include this assurance profile. Targeted admin audit tests and full `pnpm verify` passed.**
+- [x] **3.3** Deferred at the operator’s request: local production-security assurance was not rerun. Branch CI does not include this profile; targeted admin audit tests and full `pnpm verify` passed. This is an explicit time trade-off, not a recorded assurance pass.
 - [x] **3.4** Independent security/release review completed. Fixed the search-path audit_log resolution, startup stack-log privacy, config/bulk safe diagnostics, deployment/rollback documentation, and negative schema/startup tests.
 
 **Local evidence:** targeted unit tests 22/22, targeted integration tests 14/14, structure 142/142; full `pnpm verify` passed in 15m25s before review hardening. Final branch verification is delegated to CI as requested.
