@@ -1,15 +1,17 @@
-# Release Notes — v1.13.0
+# Release Notes — v1.14.0
 
-**Released**: 2026-10-24
+**Released**: 2026-10-26
 
-We are excited to announce the release of version 1.13.0, which brings important updates and enhancements aimed at improving your experience with our services. This version focuses on performance improvements, increased functionality, and enhanced security, ensuring that you have a reliable and user-friendly platform.
+We are excited to announce the release of version 1.14.0, which brings a range of user-facing improvements and enhancements to our services. This update focuses on refining user management functions, improving documentation, and ensuring a smoother experience for everyone using our platform.
 
 Highlights of this release include:
 
-- **Enhanced Email Delivery:** We have upgraded our email handling system with the latest security patches. This means your communications will be safer and more reliable, reducing the chances of email delivery issues. Users can expect smoother, faster email interactions.
+- **Enhanced User Management**: We have introduced new capabilities for managing user roles and lifecycles. This means system administrators can now delete users more easily and effectively manage user roles, leading to improved security and better organizational control.
+  
+- **Improved Documentation**: The updates also include the exposure of important user contracts and relevant documentation. This enhancement ensures that our users have access to clear instructions and guidelines, helping them utilize our services more effectively.
+  
+- **Refined Client Attribution**: We've made significant updates to client attribution processes, making it easier to track and manage how clients interact with our platform. This enhancement supports better insights into user behavior and improves the overall user experience.
+  
+- **Auditing and Logging Enhancements**: The invitation audit process has been made more durable, ensuring that all actions are reliably tracked and logged. This contributes to a higher level of accountability and oversight within the system.
 
-- **Improved Data Validation:** With the latest update to our data validation tools, you can be confident that the information being processed is accurate and secure. This enhances the overall user experience by minimizing errors and ensuring data integrity throughout the platform.
-
-- **Tenant-Scoped User Invitations:** We have added a new feature that allows for tenant-scoped user invitations. This means that you can now manage invitations more effectively, inviting users specific to your tenant, which enhances collaboration and usability within your teams.
-
-These updates reflect our commitment to continuously improving our platform based on your feedback and the latest technological advancements. We appreciate your continued support and look forward to hearing your thoughts on these new features. Thank you for using our services!
+These updates reflect our commitment to continuously improving our platform based on user feedback and review findings. We believe these changes will make your experience smoother and more efficient, allowing you to focus on what matters most in your activities. Thank you for your continued support and trust in our services.

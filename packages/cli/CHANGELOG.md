@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-10-26
+
+Changed:
+- Updated user-service.ts to enhance user management capabilities.
+- Refactored user-workspace.ts for improved workspace handling.
+- Improved audit.ts for better audit trail performance.
+- Refined output.ts for clearer command output formatting.
+- Adjusted user-service-client-actor.spec.test.ts to align with new logic.
+- Updated audit-client-actor.impl.test.ts for better coverage of new features.
+- Revised audit-client-actor.spec.test.ts to ensure tests match updated code.
+- Modified audit.test.ts to incorporate the latest audit functionalities.
+
 ## [1.12.0] - 2026-10-23
 
 Added:

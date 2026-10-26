@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.0] - 2026-10-26
+
+Added:
+- Add tenant permanent delete, activate/deactivate, and delete rate limiting with client actor audit.
+- Add shared user schemas, strict tenant variants, and a common sanitized error mapper.
+- Add the AuditActor contract and actor mapping helpers.
+- Add actor type, client ID, and client name columns to audit_log.
+- Register the read, write, and delete tenant user scopes with the OIDC provider.
+- Keep InviteActor for invitation display and delegation, mapping it to the audit actor at the boundary.
+- Return actor type and client fields from the audit API and entity history.
+
+Changed:
+- Modify organizationId on role audit rows and assert it in unit and live tests.
+- Make role assignment/removal service-owned and app-bounded for service actors with assigned_by normalization.
+- Replace invite-only auth with configurable tenant actor kinds, scopes, and permissions while preserving security insights.
+- Make create, update, lifecycle, and delete service mutations transaction-bound with first-class audit attribution.
+
+Fixed:
+- Enforce the role application boundary before the no-op removal path and add assigned/unassigned foreign-role tests.
+- Validate the effective verified-phone pair, including clearing a verified phone, and record verification in system logs.
+- Emit tenant-api security decision events with protected actor/tenant references and prove finalization end to end.
+- Harden the audit UUID backfill with pg_input_is_valid, add deleted-target coverage, and improve related tests.
+
 ## [1.13.0] - 2026-10-24
 
 ## Added
