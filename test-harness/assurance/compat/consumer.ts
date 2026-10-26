@@ -106,11 +106,11 @@ async function runRequiredChild(
 
 /** Builds one current package before creating its public archive. */
 async function buildPackage(repositoryRoot: string, workspace: string): Promise<void> {
+  const packageDirectory = workspace.replace('@portaidentity/', 'packages/');
   await runRequiredChild(
-    'pnpm',
-    ['--filter', workspace, 'build'],
+    npmCommand(repositoryRoot),
+    ['--prefix', packageDirectory, 'run', 'build'],
     repositoryRoot,
-    { ...process.env, pnpm_config_verify_deps_before_run: 'false' },
   );
 }
 
