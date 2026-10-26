@@ -118,7 +118,7 @@ test('should release from a manual dispatch that bumps, notes, tags, and publish
   assert.match(source, /pnpm --filter [^\n]+ pack/);
   assert.match(source, /\$\{RUNNER_TEMP\}\/release-artifacts/);
   assert.match(source, /pnpm_config_git_checks/);
-  assert.match(source, /pnpm\/action-setup@v4/);
+  assert.match(source, /pnpm\/action-setup@v6\.1\.0/);
   assert.match(source, /pnpm release:publish/);
   assert.match(source, /--dry/);
   assert.match(source, /refs\/tags\//);
