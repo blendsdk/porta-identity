@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .turbo/
+.pnpm-store/
+pnpm-debug.log*
 .env
 .env.docker.local
 *.log

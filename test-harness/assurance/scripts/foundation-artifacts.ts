@@ -150,7 +150,7 @@ export function runFoundationValidation(repositoryRoot: string): string {
   const traceabilityPath = resolve(canonicalRoot, 'test-harness/assurance/traceability.json');
   const inventoryPath = resolve(canonicalRoot, 'test-harness/assurance/test-inventory.json');
   const signaturesPath = resolve(canonicalRoot, 'test-harness/assurance/red-signatures.json');
-  const lockPath = resolve(canonicalRoot, 'yarn.lock');
+  const lockPath = resolve(canonicalRoot, 'pnpm-lock.yaml');
   let provenance: ReturnType<typeof inspectFoundationProvenance>;
   try {
     provenance = inspectFoundationProvenance(canonicalRoot);
@@ -198,7 +198,7 @@ export function runFoundationValidation(repositoryRoot: string): string {
     const fixtureIdentity = 'not-applicable:definition-validation';
     const result = foundationValidationResultSchema.parse({
       id: 'foundation-validation',
-      command: 'yarn assurance:validate',
+      command: 'pnpm assurance:validate',
       status: 'passed',
       startedAt,
       completedAt,
@@ -220,7 +220,7 @@ export function runFoundationValidation(repositoryRoot: string): string {
     const manifest = foundationManifestSchema.parse({
       runId,
       status: 'passed',
-      command: 'yarn assurance:validate',
+      command: 'pnpm assurance:validate',
       startedAt,
       completedAt,
       buildIdentity: provenance.commitIdentity,

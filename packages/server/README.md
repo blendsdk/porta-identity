@@ -11,11 +11,11 @@ the server and its CLI can be started from any working directory.
 Run these commands from the monorepo root:
 
 ```bash
-yarn workspace @portaidentity/server build
-yarn workspace @portaidentity/server test
-yarn workspace @portaidentity/server verify
-yarn start
-yarn porta --help
+pnpm --filter @portaidentity/server build
+pnpm --filter @portaidentity/server test
+pnpm --filter @portaidentity/server verify
+pnpm start
+pnpm porta --help
 ```
 
 The root commands preserve the repository-root `.env` behavior used by existing development and

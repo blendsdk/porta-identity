@@ -173,7 +173,7 @@ function printSuccessBox(
   console.log(`║  Admin Roles:   ${padRight(`${roleCount} roles seeded`, w)}║`);
   console.log('╠══════════════════════════════════════════════════════════════╣');
   console.log('║  Next steps:                                                ║');
-  console.log('║  1. Start the server:  yarn dev                             ║');
+  console.log('║  1. Start the server:  pnpm dev                             ║');
   console.log('║  2. Authenticate:      porta login                          ║');
   console.log('║  3. Open administration: porta admin                        ║');
   console.log('╚══════════════════════════════════════════════════════════════╝');

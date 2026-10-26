@@ -14,7 +14,7 @@ export function registerSchemaCases(schema: SchemaModule): void {
   test('accepts complete result, gap, and fault records without discarding provenance', () => {
     const result = {
       id: 'protocol-verification',
-      command: 'yarn verify',
+      command: 'pnpm verify',
       status: 'passed',
       startedAt: '2026-08-10T09:59:00.000Z',
       completedAt: '2026-08-10T10:00:00.000Z',
@@ -37,8 +37,8 @@ export function registerSchemaCases(schema: SchemaModule): void {
       expectedSignature: 'cross-client-redemption-accepted',
       targetRevision: '0123456789abcdef',
       patch: 'test-harness/assurance/faults/protocol-client-binding.patch',
-      buildCommand: 'yarn build',
-      executionCommand: 'yarn assurance:test --select ST-01',
+      buildCommand: 'pnpm build',
+      executionCommand: 'pnpm assurance:test --select ST-01',
       cleanupVerification: 'primary-worktree-clean',
     };
 
@@ -50,7 +50,7 @@ export function registerSchemaCases(schema: SchemaModule): void {
   test('accepts schema-complete foundation results and manifests with immutable provenance', () => {
     const result = {
       id: 'foundation-validation',
-      command: 'yarn assurance:validate',
+      command: 'pnpm assurance:validate',
       status: 'passed',
       startedAt: '2026-08-10T09:59:00.000Z',
       completedAt: '2026-08-10T10:00:00.000Z',
@@ -70,7 +70,7 @@ export function registerSchemaCases(schema: SchemaModule): void {
     const manifest = {
       runId: '00000000-0000-4000-8000-000000000001',
       status: 'passed',
-      command: 'yarn assurance:validate',
+      command: 'pnpm assurance:validate',
       startedAt: result.startedAt,
       completedAt: result.completedAt,
       buildIdentity: result.buildIdentity,

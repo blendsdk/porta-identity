@@ -45,7 +45,7 @@ test('should keep assurance tooling under direct root dependency ownership', () 
     'the retained harness must not acquire its own package manifest',
   );
   assert.equal(
-    existsSync(resolve(repositoryRoot, 'test-harness/yarn.lock')),
+    existsSync(resolve(repositoryRoot, 'test-harness/pnpm-lock.yaml')),
     false,
     'the retained harness must use the root lockfile',
   );
@@ -117,7 +117,7 @@ test('should keep typecheck and lint ownership at the repository root', () => {
     assert.equal(typeof scripts[command], 'string', `root script ${command} must exist`);
     assert.doesNotMatch(
       scripts[command],
-      /yarn\s+workspace\s+[^\s]*harness|test-harness\/package\.json/,
+      /pnpm\s+--filter\s+[^\s]*harness|test-harness\/package\.json/,
       `root script ${command} must not delegate to a harness workspace`,
     );
   }

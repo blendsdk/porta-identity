@@ -368,13 +368,13 @@ first-page `{ data, hasMore, nextCursor }` history envelope.
 
 ```bash
 # Run all SDK tests (586 tests)
-cd packages/sdk && yarn test
+cd packages/sdk && pnpm test
 
 # Type checking
-yarn typecheck
+pnpm typecheck
 
 # Full verify (lint + typecheck + test + build)
-yarn verify
+pnpm verify
 ```
 
 ## License

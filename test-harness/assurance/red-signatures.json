@@ -6,7 +6,7 @@
       "caseId": "ST-01",
       "observedChildExit": 1,
       "normalizedFailureExit": 21,
-      "command": "yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts",
+      "command": "pnpm exec tsx --test test-harness/assurance/tests/assurance.spec.test.ts",
       "marker": "ASSURANCE_FOUNDATION_MISSING"
     },
     {
@@ -14,7 +14,7 @@
       "caseId": "ST-09",
       "observedChildExit": 1,
       "normalizedFailureExit": 21,
-      "command": "yarn tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts",
+      "command": "pnpm exec tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts",
       "marker": "LIFECYCLE_CURRENT_SURFACE_GAPS: reset-failures-nonfatal,fixed-endpoints,cleanup-unfenced,poison-state-absent"
     },
     {
@@ -22,7 +22,7 @@
       "caseId": "ST-13",
       "observedChildExit": 1,
       "normalizedFailureExit": 21,
-      "command": "yarn tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts",
+      "command": "pnpm exec tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts",
       "marker": "FIXTURE_CURRENT_SURFACE_GAPS: shared-single-tenant,project-collection-incomplete,secret-output-present,production-security-profile-absent"
     },
     {
@@ -30,7 +30,7 @@
       "caseId": "ST-19",
       "observedChildExit": 1,
       "normalizedFailureExit": 21,
-      "command": "yarn tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts",
+      "command": "pnpm exec tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts",
       "marker": "COVERAGE_CURRENT_SURFACE_GAPS: porta-v8-capture-absent,raw-output-mount-absent,converter-module-absent,coverage-handler-unavailable"
     },
     {
@@ -38,7 +38,7 @@
       "caseId": "ST-64",
       "observedChildExit": 1,
       "normalizedFailureExit": 21,
-      "command": "yarn tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts",
+      "command": "pnpm exec tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts",
       "marker": "FAULT_RUNNER_CURRENT_SURFACE_GAPS: fault-catalog-absent,fault-runner-module-absent,fault-handler-unavailable"
     },
     {
@@ -46,7 +46,7 @@
       "caseId": "ST-69",
       "observedChildExit": 1,
       "normalizedFailureExit": 21,
-      "command": "yarn tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts",
+      "command": "pnpm exec tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts",
       "marker": "PACKED_CONSUMER_CURRENT_SURFACE_GAPS: packed-consumer-module-absent,consumer-template-absent,compat-handler-unavailable"
     }
   ]

@@ -131,8 +131,8 @@ Full development environment for contributing to Porta or running from source.
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) ≥ 22.0.0
-- [Yarn](https://classic.yarnpkg.com/) Classic 1.22 (NOT npm, NOT Berry)
+- [Node.js](https://nodejs.org/) ≥ 22.22.2
+- [pnpm](https://pnpm.io/) 12.15 (enable it with `corepack enable` or install it standalone)
 - [Docker](https://docs.docker.com/get-docker/) + Docker Compose (for infrastructure services)
 
 ### Steps
@@ -142,7 +142,7 @@ Full development environment for contributing to Porta or running from source.
 ```bash
 git clone https://github.com/blendsdk/porta-identity.git
 cd porta-identity
-yarn install
+pnpm install
 ```
 
 **2. Configure environment**
@@ -158,7 +158,7 @@ The defaults in `.env.example` work for local development with the Docker-based 
 **3. Start infrastructure**
 
 ```bash
-yarn docker:up
+pnpm docker:up
 ```
 
 This starts PostgreSQL 16, Redis 7, and MailHog using Docker Compose.
@@ -167,19 +167,19 @@ This starts PostgreSQL 16, Redis 7, and MailHog using Docker Compose.
 
 ```bash
 # Compile TypeScript
-yarn build
+pnpm build
 
 # Run database migrations
-yarn porta migrate up
+pnpm porta migrate up
 
 # Bootstrap admin system (interactive)
-yarn porta init
+pnpm porta init
 ```
 
 **5. Start the development server**
 
 ```bash
-yarn dev
+pnpm dev
 ```
 
 The server starts with hot-reload via `tsx watch` on [https://porta.local:3443](https://porta.local:3443).
@@ -188,18 +188,18 @@ The server starts with hot-reload via `tsx watch` on [https://porta.local:3443](
 
 ```bash
 # Full verification (lint + build + test)
-yarn verify
+pnpm verify
 
 # Or individually:
-yarn lint              # ESLint
-yarn test:unit         # Unit tests only
-yarn test:integration  # Integration tests (requires docker:up)
+pnpm lint              # ESLint
+pnpm test:unit         # Unit tests only
+pnpm test:integration  # Integration tests (requires docker:up)
 ```
 
 ### Stopping
 
 ```bash
-yarn docker:down
+pnpm docker:down
 ```
 
 ---

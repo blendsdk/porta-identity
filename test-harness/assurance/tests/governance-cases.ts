@@ -38,7 +38,9 @@ export function registerGovernanceCases(
     mkdirSync(runDirectory, { recursive: true });
     writeFileSync(resolve(sandbox, '.gitignore'), 'test-harness/.assurance-results/\n');
     writeFileSync(resolve(sandbox, 'package.json'), '{}\n');
-    writeFileSync(resolve(sandbox, 'yarn.lock'), '# fixture lock\n');
+    writeFileSync(resolve(sandbox, 'pnpm-lock.yaml'), '# fixture lock\n');
+    writeFileSync(resolve(sandbox, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n');
+    writeFileSync(resolve(sandbox, '.npmrc'), '# fixture\n');
     writeFileSync(resolve(sandbox, 'test-harness/eslint.config.js'), 'export default [];\n');
     writeFileSync(resolve(sandbox, 'test-harness/tsconfig.assurance.json'), '{}\n');
     writeFileSync(
@@ -66,7 +68,7 @@ export function registerGovernanceCases(
       resolve(runDirectory, 'result.json'),
       JSON.stringify({
         id: 'fixture-result',
-        command: 'yarn verify',
+        command: 'pnpm verify',
         status: 'passed',
         startedAt,
         completedAt,
@@ -82,7 +84,7 @@ export function registerGovernanceCases(
       JSON.stringify({
         runId: '00000000-0000-4000-8000-000000000001',
         status: 'passed',
-        command: 'yarn assurance:test',
+        command: 'pnpm assurance:test',
         startedAt,
         completedAt,
         buildIdentity: provenance.commitIdentity,
@@ -90,7 +92,7 @@ export function registerGovernanceCases(
         fixtureIdentity: claim.evidence.fixtureIdentity,
         runtimeProfile: claim.profile,
         executionArtifact: { kind: 'source-tree', digest: provenance.assuranceToolDigest },
-        dependencyLockDigest: digestRepositoryFile(resolve(sandbox, 'yarn.lock')),
+        dependencyLockDigest: digestRepositoryFile(resolve(sandbox, 'pnpm-lock.yaml')),
         assuranceToolDigest: provenance.assuranceToolDigest,
         definitionDigests: {
           traceability: digestRepositoryFile(resolve(inventoryDirectory, 'traceability.json')),
@@ -179,7 +181,7 @@ export function registerGovernanceCases(
         evidence: {
           ...loaded.claim.evidence,
           results: [
-            { command: 'yarn verify', status: 'failed', runtimeProfile: 'production-security' },
+            { command: 'pnpm verify', status: 'failed', runtimeProfile: 'production-security' },
           ],
         },
       }),
@@ -267,7 +269,7 @@ export function registerGovernanceCases(
     for (const evidence of [
       { buildIdentity: 'commit:attacker' },
       { fixtureIdentity: 'fixture:attacker' },
-      { commands: ['yarn attacker-command'] },
+      { commands: ['pnpm attacker-command'] },
       { killedFaultIds: ['attacker-fault'] },
     ]) {
       const loaded = createContext();
@@ -491,7 +493,7 @@ export function registerGovernanceCases(
           caseId: 'ST-01',
           observedChildExit: 1,
           normalizedFailureExit: 21,
-          command: 'yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts',
+          command: 'pnpm exec tsx --test test-harness/assurance/tests/assurance.spec.test.ts',
           marker: 'ASSURANCE_FOUNDATION_MISSING',
         },
       ],

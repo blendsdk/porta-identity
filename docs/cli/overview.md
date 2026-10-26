@@ -47,8 +47,8 @@ docker exec -it porta-app porta migrate up
 In development:
 
 ```bash
-yarn porta init
-yarn porta migrate up
+pnpm porta init
+pnpm porta migrate up
 ```
 
 ## Authentication

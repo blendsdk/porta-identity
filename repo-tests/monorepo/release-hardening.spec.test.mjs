@@ -30,6 +30,10 @@ test('should fail closed when source identity or published package integrity dif
   assert.match(workflow, /git rev-parse HEAD/);
   assert.match(workflow, /dist\.integrity/);
   assert.match(workflow, /dist\.attestations\.provenance\.predicateType/);
+  assert.match(workflow, /pnpm --filter [^\n]+ pack/);
+  assert.match(workflow, /\$\{RUNNER_TEMP\}\/release-artifacts/);
+  assert.match(workflow, /pnpm install --lockfile-only/);
+  assert.match(workflow, /pnpm_config_git_checks/);
   assert.doesNotMatch(workflow, /bootstrap|publish_if_absent|NPM_TOKEN|NODE_AUTH_TOKEN/);
 });
 

@@ -32,8 +32,8 @@
       "affectedRequirementPrefix": "*"
     },
     "dependency": {
-      "paths": ["yarn.lock"],
-      "digest": "sha256:b35d279fd3d199436eeb59658b8e44ab3eb3a9140ae90cd7094b17ed27478dd9",
+      "paths": ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
+      "digest": "sha256:cee6c41179959b4bb5eb60475300cef4c00d29a4ce0614e7f86ee9aebe7211ad",
       "affectedRequirementPrefix": "*"
     },
     "sentinel": {

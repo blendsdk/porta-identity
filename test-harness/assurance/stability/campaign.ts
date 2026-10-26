@@ -114,7 +114,7 @@ export async function runStabilityCampaign(
     throw new Error('stability candidate path is unavailable');
   }
   const before = inspectFoundationProvenance(canonicalRoot);
-  const dependencyLockDigest = digestRepositoryFile(resolve(canonicalRoot, 'yarn.lock'));
+  const dependencyLockDigest = digestRepositoryFile(resolve(canonicalRoot, 'pnpm-lock.yaml'));
   const seeds = createStabilitySeeds(seedSet);
   const attempts: StabilityAttemptEvidence[] = [];
 

@@ -6,7 +6,7 @@
   "type": "module",
   "engines": {
     "node": ">=22.22.2",
-    "yarn": ">=1.22.22"
+    "pnpm": ">=12.15.0"
   },
   "workspaces": [
     "packages/*"
@@ -19,17 +19,17 @@
     "lint": "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' && turbo run lint",
     "lint:fix": "eslint --config test-harness/eslint.config.js 'test-harness/assurance/**/*.ts' --fix && turbo run lint:fix",
     "test": "turbo run test",
-    "test:all": "yarn workspace @portaidentity/server test:all && yarn workspace @portaidentity/sdk test && yarn workspace @portaidentity/cli test",
-    "test:unit": "yarn workspace @portaidentity/server test:unit",
-    "test:integration": "yarn workspace @portaidentity/server test:integration",
-    "test:e2e": "yarn workspace @portaidentity/server test:e2e",
-    "test:pentest": "yarn workspace @portaidentity/server test:pentest",
-    "test:ui": "yarn workspace @portaidentity/server test:ui",
-    "test:ui:debug": "yarn workspace @portaidentity/server test:ui:debug",
-    "test:watch": "yarn workspace @portaidentity/server test:watch",
-    "test:coverage": "yarn workspace @portaidentity/server test:coverage",
+    "test:all": "pnpm --filter @portaidentity/server test:all && pnpm --filter @portaidentity/sdk test && pnpm --filter @portaidentity/cli test",
+    "test:unit": "pnpm --filter @portaidentity/server test:unit",
+    "test:integration": "pnpm --filter @portaidentity/server test:integration",
+    "test:e2e": "pnpm --filter @portaidentity/server test:e2e",
+    "test:pentest": "pnpm --filter @portaidentity/server test:pentest",
+    "test:ui": "pnpm --filter @portaidentity/server test:ui",
+    "test:ui:debug": "pnpm --filter @portaidentity/server test:ui:debug",
+    "test:watch": "pnpm --filter @portaidentity/server test:watch",
+    "test:coverage": "pnpm --filter @portaidentity/server test:coverage",
     "test:structure": "node --test repo-tests/monorepo/*.test.mjs",
-    "verify": "yarn test:structure && turbo run verify",
+    "verify": "pnpm test:structure && turbo run verify",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "docker:up": "docker compose -f docker/docker-compose.yml up -d",
@@ -63,10 +63,10 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "deps:check": "ncu --root --workspaces -x \"@portaidentity/*\"",
-    "deps:update": "ncu -u --root --workspaces -x \"@portaidentity/*\" && rm -rf node_modules yarn.lock && yarn install && yarn verify",
-    "release:prepare": "lockstep version --type auto --no-git-commit && node scripts/sync-versions.js",
+    "deps:update": "ncu -u --root --workspaces -x \"@portaidentity/*\" && rm -rf node_modules pnpm-lock.yaml && pnpm install && pnpm verify",
+    "release:prepare": "lockstep version --type auto --no-git-commit && node scripts/sync-versions.js && pnpm install --lockfile-only",
     "release:preflight": "node scripts/release-preflight.js && node scripts/sync-versions.js --check",
-    "release:publish": "yarn release:preflight && npm_config_registry=https://registry.npmjs.org lockstep publish --tag latest --provenance"
+    "release:publish": "pnpm release:preflight && pnpm_config_git_checks=false pnpm_config_registry=https://registry.npmjs.org lockstep publish --tag latest --provenance"
   },
   "devDependencies": {
     "@bcoe/v8-coverage": "1.0.2",
@@ -100,6 +100,7 @@
     "sirv-cli": "^3.0.1",
     "tsx": "4.23.11",
     "turbo": "^2.10.9",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "typescript-eslint": "8.66.0",
     "vitepress": "1.6.4",
     "vitepress-plugin-mermaid": "2.0.17",
@@ -107,10 +108,5 @@
     "yaml": "^2.9.0",
     "zod": "4.6.6"
   },
-  "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e",
-  "resolutions": {
-    "**/co-body/qs": "6.16.0",
-    "**/minimatch/brace-expansion": "5.0.12",
-    "**/fast-copy": "4.2.0"
-  }
+  "packageManager": "pnpm@12.15.0"
 }

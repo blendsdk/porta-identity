@@ -48,7 +48,7 @@ export async function setup(): Promise<void> {
     await pool.end();
     throw new Error(
       `Test database not available at ${TEST_DATABASE_URL}. ` +
-        'Ensure Docker services are running: yarn docker:up',
+        'Ensure Docker services are running: pnpm docker:up',
     );
   }
   await pool.end();

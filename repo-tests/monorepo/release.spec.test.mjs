@@ -113,8 +113,13 @@ test('should release from a manual dispatch that bumps, notes, tags, and publish
   assert.match(source, /Build and Test/);
   assert.match(source, /lockstep version/);
   assert.match(source, /--no-git-commit/);
-  assert.match(source, /yarn release:preflight/);
-  assert.match(source, /yarn release:publish/);
+  assert.match(source, /pnpm release:preflight/);
+  assert.match(source, /pnpm install --lockfile-only/);
+  assert.match(source, /pnpm --filter [^\n]+ pack/);
+  assert.match(source, /\$\{RUNNER_TEMP\}\/release-artifacts/);
+  assert.match(source, /pnpm_config_git_checks/);
+  assert.match(source, /pnpm\/action-setup@v6\.1\.0/);
+  assert.match(source, /pnpm release:publish/);
   assert.match(source, /--dry/);
   assert.match(source, /refs\/tags\//);
   assert.match(source, /gh release create/);
@@ -124,7 +129,7 @@ test('should release from a manual dispatch that bumps, notes, tags, and publish
   assert.doesNotMatch(source, /NODE_AUTH_TOKEN|NPM_TOKEN/);
   assert.match(manifest.scripts?.['release:publish'] ?? '', /--provenance/);
   assert.doesNotMatch(source, /semantic-release/);
-  assert.doesNotMatch(source, /\byarn\s+build:(?:sdk|cli)\b/);
+  assert.doesNotMatch(source, /\b(?:yarn|pnpm)\s+build:(?:sdk|cli)\b/);
 });
 
 test('should dispatch Docker from the verified release tag and publish one image digest', () => {
@@ -148,7 +153,7 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /npm\s+(?:--version|exec)/);
   assert.match(source, /id-token:\s*write/);
   assert.match(source, /runs-on:\s*ubuntu-latest/);
-  assert.match(source, /run:\s*yarn release:publish/);
+  assert.match(source, /run:\s*pnpm release:publish/);
   assert.match(source, /for attempt in \$\(seq 1 60\)/);
   assert.match(source, /sleep 15/);
   // The integrity comparison applies to the run that published; an already-published re-run
@@ -174,8 +179,14 @@ test('should publish through tokenless npm Trusted Publishing', () => {
   assert.match(source, /docker manifest inspect/);
   assert.match(
     readRepositoryJson('package.json').scripts?.['release:publish'] ?? '',
-    /npm_config_registry=https:\/\/registry\.npmjs\.org/,
+    /pnpm_config_registry=https:\/\/registry\.npmjs\.org/,
   );
+  assert.match(
+    readRepositoryJson('package.json').scripts?.['release:publish'] ?? '',
+    /pnpm_config_git_checks=false/,
+  );
+  const workspace = parse(readRepositoryFile('pnpm-workspace.yaml'));
+  assert.notEqual(workspace.gitChecks, false, 'global git checks must remain enabled');
   assert.doesNotMatch(source, /bootstrap|publish_if_absent/);
 });
 

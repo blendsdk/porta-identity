@@ -27,7 +27,7 @@ test('freezes exact natural-red commands for every independently executable P1 s
   );
   for (const requirement of p1BaselineRequirements) {
     assert.deepEqual(requirement.command, [
-      'yarn',
+      'pnpm',
       'assurance:baseline',
       '--case',
       requirement.caseId,

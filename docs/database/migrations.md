@@ -17,20 +17,20 @@ porta migrate down
 porta migrate status
 ```
 
-### Via Yarn
+### Via pnpm
 
 ```bash
 # Apply migrations
-yarn migrate
+pnpm migrate
 
 # Roll back
-yarn migrate:rollback
+pnpm migrate:rollback
 
 # Check status
-yarn migrate:status
+pnpm migrate:status
 
 # Create a new migration
-yarn migrate:create my_migration_name
+pnpm migrate:create my_migration_name
 ```
 
 ## Migration Files
@@ -106,7 +106,7 @@ DROP TABLE IF EXISTS my_table;
 ### Creating a New Migration
 
 ```bash
-yarn migrate:create add_my_feature
+pnpm migrate:create add_my_feature
 ```
 
 This creates a new file like `migrations/029_add_my_feature.sql` with `UP` and `DOWN` sections.

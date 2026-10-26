@@ -1,0 +1,9 @@
+# CI-only BuildKit cache for the retained OIDC harness image.
+# Included by the harness lifecycle only when HARNESS_BUILD_CACHE_FILE is set.
+services:
+  porta:
+    build:
+      cache_from:
+        - type=gha,scope=porta-harness-ci
+      cache_to:
+        - type=gha,mode=max,scope=porta-harness-ci

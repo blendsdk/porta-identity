@@ -87,6 +87,6 @@ test('returns only a bounded exact recovery when consumer cleanup authority is m
 
   assert.deepEqual(cleanup, {
     removed: false,
-    recoveryCommand: `yarn assurance:compat --recover ${runId}`,
+    recoveryCommand: `pnpm assurance:compat --recover ${runId}`,
   });
 });

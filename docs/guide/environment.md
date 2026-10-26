@@ -73,7 +73,7 @@ The detailed environment sections below retain their existing startup validation
 
 Migration `030_global_configuration_catalog.sql` resets canonical operational values to these native
 defaults, removes obsolete public keys and preserves internal rows. Its Down is a no-op; use the
-development reset workflow (`yarn admin:env reset`) rather than restoring retired public values.
+development reset workflow (`pnpm admin:env reset`) rather than restoring retired public values.
 
 ## Server
 
