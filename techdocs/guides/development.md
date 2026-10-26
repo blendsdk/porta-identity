@@ -172,27 +172,27 @@ packages/server/tests/
 
 ```bash
 # Unit + integration (default)
-yarn test
+pnpm test
 
 # All suites (unit + integration + e2e + pentest)
-yarn test:all
+pnpm test:all
 
 # Specific suites
-yarn test:unit
-yarn test:integration
-yarn test:e2e
-yarn test:pentest
-yarn test:ui
+pnpm test:unit
+pnpm test:integration
+pnpm test:e2e
+pnpm test:pentest
+pnpm test:ui
 
 # Full verification (lint + build + test:all)
-yarn verify
+pnpm verify
 
 # Retained external SPA/BFF OIDC harness
-yarn harness:test
+pnpm harness:test
 ```
 
 The root assurance aliases are local/on-demand evidence tools. Start with
-`yarn assurance:validate`; use the exact registered selectors documented in
+`pnpm assurance:validate`; use the exact registered selectors documented in
 [Current Test Inventory](../reference/current-test-inventory.md). They are not new required CI,
 release, or merge gates.
 
@@ -234,7 +234,7 @@ Current coverage:
 ### Creating a Migration
 
 ```bash
-yarn migrate:create <description>
+pnpm migrate:create <description>
 ```
 
 This creates a new numbered SQL file in `packages/server/migrations/`.
@@ -274,9 +274,9 @@ CREATE INDEX IF NOT EXISTS idx_my_table_org_id ON my_table(organization_id);
 
 ```bash
 # Via CLI (with Docker services running)
-yarn porta migrate up       # Run pending migrations
-yarn porta migrate down     # Rollback last migration
-yarn porta migrate status   # Check migration state
+pnpm porta migrate up       # Run pending migrations
+pnpm porta migrate down     # Rollback last migration
+pnpm porta migrate status   # Check migration state
 ```
 
 ## Git Workflow
@@ -306,7 +306,7 @@ docs(api): update organizations endpoint docs
 Always run the full verification before committing:
 
 ```bash
-yarn verify
+pnpm verify
 ```
 
 This runs lint → build → test:all. All checks must pass.

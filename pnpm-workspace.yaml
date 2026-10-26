@@ -1,0 +1,24 @@
+packages:
+  - 'packages/*'
+
+nodeLinker: hoisted
+linkWorkspacePackages: true
+minimumReleaseAge: 0
+strictDepBuilds: true
+engineStrict: true
+savePrefix: ''
+autoInstallPeers: false
+
+allowBuilds:
+  argon2: true
+  esbuild: true
+  fs-ext-extra-prebuilt: true
+  fsevents: true
+
+skills:
+  dirs: []
+
+overrides:
+  co-body>qs: 6.16.0
+  minimatch>brace-expansion: 5.0.12
+  fast-copy: 4.2.0

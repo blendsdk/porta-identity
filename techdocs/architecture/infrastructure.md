@@ -67,14 +67,14 @@ graph TB
     subgraph "Stage 1: Builder"
         S1[node:22-alpine]
         S1 --> DEPS1[Install python3, make, g++<br/>for native modules: argon2]
-        DEPS1 --> YARN1[yarn install --frozen-lockfile]
-        YARN1 --> BUILD[yarn build: tsc]
+        DEPS1 --> YARN1[pnpm install --frozen-lockfile]
+        YARN1 --> BUILD[pnpm build: tsc]
     end
 
     subgraph "Stage 2: Production Deps"
         S2[node:22-alpine]
         S2 --> DEPS2[Install python3, make, g++]
-        DEPS2 --> YARN2[yarn install --production<br/>--frozen-lockfile]
+        DEPS2 --> YARN2[pnpm install --production<br/>--frozen-lockfile]
     end
 
     subgraph "Stage 3: Runtime"
@@ -133,9 +133,9 @@ cleanup is qualified and a separate workflow-policy change is approved.
 
 ```mermaid
 graph LR
-    PUSH[Push / PR] --> VERIFY[yarn verify]
-    PUSH --> UI[yarn test:ui]
-    PUSH --> HARNESS[yarn harness:test]
+    PUSH[Push / PR] --> VERIFY[pnpm verify]
+    PUSH --> UI[pnpm test:ui]
+    PUSH --> HARNESS[pnpm harness:test]
     VERIFY --> PASS[✅ Branch checks]
     UI --> PASS
     HARNESS --> PASS

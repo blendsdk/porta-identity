@@ -30,7 +30,7 @@ pushes, tags, and dispatches nothing). The workflow requires a successful `Build
 the current `main` HEAD before it mutates anything. `OPENAI_API_KEY` should be a repository Actions
 secret.
 
-`yarn release:prepare`, `yarn release:preflight`, and `yarn release:publish` remain available for
+`pnpm release:prepare`, `pnpm release:preflight`, and `pnpm release:publish` remain available for
 local preparation and diagnostics. `release:prepare` leaves changes in the working tree and creates
 no commit or tag.
 
@@ -79,8 +79,8 @@ node_modules/.bin/npm trust github @portaidentity/cli --repo blendsdk/porta-iden
 npm does not validate the mapping when it is saved. Record the three settings as readiness
 evidence; the first end-to-end tokenless acceptance proof occurs on the next version.
 
-Normal releases run `yarn release:publish` on a GitHub-hosted runner with `id-token: write`. The
-script pins the publish registry to `https://registry.npmjs.org` so Yarn cannot redirect
+Normal releases run `pnpm release:publish` on a GitHub-hosted runner with `id-token: write`. The
+script pins the publish registry to `https://registry.npmjs.org` so a local package-manager configuration cannot redirect
 Lockstep's npm subprocess to its package mirror; npm then exchanges the workflow identity for a
 short-lived credential and publishes provenance. The
 bootstrap token must remain absent from the workflow and should be revoked after the first

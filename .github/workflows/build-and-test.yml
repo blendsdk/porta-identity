@@ -62,14 +62,18 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 12.15.0
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Verify structure and active packages
-        run: yarn verify
+        run: pnpm verify
 
   ui:
     name: UI Tests
@@ -117,18 +121,22 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 12.15.0
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Install Playwright Chromium
-        run: yarn playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Build active packages
-        run: yarn build
+        run: pnpm build
       - name: Run UI tests
-        run: yarn test:ui
+        run: pnpm test:ui
 
   harness:
     name: OIDC Harness
@@ -137,16 +145,24 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 12.15.0
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Install Playwright Chromium
-        run: yarn playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
       - name: Run OIDC harness
-        run: yarn harness:test
+        run: pnpm harness:test
+        env:
+          HARNESS_BUILD_CACHE_FILE: test-harness/docker-compose.ci.yml
 
   docs:
     name: Public Documentation
@@ -155,14 +171,18 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 12.15.0
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Build public documentation
-        run: yarn docs:build
+        run: pnpm docs:build
 
   docker:
     name: Production Docker Build
@@ -171,8 +191,18 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
       - name: Build production image
-        run: docker build --file docker/Dockerfile --tag porta-ci .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: false
+          load: true
+          tags: porta-ci:latest
+          cache-from: type=gha,scope=porta-ci
+          cache-to: type=gha,mode=max,scope=porta-ci
 
   audit:
     name: Production Dependency Audit
@@ -181,11 +211,15 @@ jobs:
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
+      - uses: pnpm/action-setup@v6.1.0
+        with:
+          version: 12.15.0
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version: 22
-          cache: yarn
+          cache: pnpm
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
       - name: Audit production dependencies
-        run: yarn audit --groups dependencies --level high
+        run: pnpm audit --prod --audit-level high

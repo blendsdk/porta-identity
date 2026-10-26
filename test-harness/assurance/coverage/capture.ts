@@ -567,7 +567,7 @@ export function readCleanSourceProvenance(repositoryRoot: string): Readonly<{
   if (!/^[0-9a-f]{40}$/u.test(revision)) throw new Error('coverage revision is malformed');
   return Object.freeze({
     revision,
-    dependencyLockDigest: digestCoverageFile(resolve(canonicalRoot, 'yarn.lock')),
+    dependencyLockDigest: digestCoverageFile(resolve(canonicalRoot, 'pnpm-lock.yaml')),
     sourceTreeDigest: digestTrackedSourceTree(canonicalRoot),
   });
 }

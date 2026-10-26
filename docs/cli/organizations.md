@@ -92,7 +92,7 @@ Admin API, or TypeScript SDK to manage fallback image URLs and uploaded logo/fav
 
 ## Embedded Admin UI
 
-Start the terminal Admin UI with `yarn admin` in the repository playground, or with
+Start the terminal Admin UI with `pnpm admin` in the repository playground, or with
 `porta admin --server <issuer-url>` from an installed CLI. Select an organization, then choose
 **Organizations → Manage current organization…**.
 

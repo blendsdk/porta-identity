@@ -81,27 +81,27 @@ function includesBranch(branchFilter, branchName) {
 }
 
 /**
- * Requires every job that executes Yarn commands to install the root frozen lockfile first.
+ * Requires every job that executes pnpm commands to install the root frozen lockfile first.
  *
  * @param {Record<string, any>} workflow Parsed GitHub Actions workflow.
  */
-function assertFrozenInstallBeforeYarnCommands(workflow) {
+function assertFrozenInstallBeforePnpmCommands(workflow) {
   for (const [jobName, job] of Object.entries(workflow.jobs)) {
     const runSteps = (job.steps ?? [])
       .map((step, stepIndex) => ({ step, stepIndex, command: step.run }))
       .filter(({ command }) => typeof command === 'string');
-    const yarnSteps = runSteps.filter(({ command }) => /(?:^|\s)yarn(?:\s|$)/m.test(command));
+    const pnpmSteps = runSteps.filter(({ command }) => /(?:^|\s)pnpm(?:\s|$)/m.test(command));
 
-    if (yarnSteps.length === 0) {
+    if (pnpmSteps.length === 0) {
       continue;
     }
 
-    const installStep = yarnSteps.find(({ command }) =>
-      /(?:^|\s)yarn\s+install\s+--frozen-lockfile(?:\s|$)/m.test(command),
+    const installStep = pnpmSteps.find(({ command }) =>
+      /(?:^|\s)pnpm\s+install\s+--frozen-lockfile(?:\s|$)/m.test(command),
     );
     assert.ok(
       installStep,
-      `${workflowPath} job ${jobName} must install with yarn install --frozen-lockfile`,
+      `${workflowPath} job ${jobName} must install with pnpm install --frozen-lockfile`,
     );
     assert.equal(
       installStep.step['working-directory'],
@@ -109,13 +109,13 @@ function assertFrozenInstallBeforeYarnCommands(workflow) {
       `${workflowPath} job ${jobName} frozen install must run from the repository root`,
     );
 
-    const firstNonInstallYarnStep = yarnSteps.find(
-      ({ command }) => !/(?:^|\s)yarn\s+install\s+--frozen-lockfile(?:\s|$)/m.test(command),
+    const firstNonInstallPnpmStep = pnpmSteps.find(
+      ({ command }) => !/(?:^|\s)pnpm\s+install\s+--frozen-lockfile(?:\s|$)/m.test(command),
     );
-    if (firstNonInstallYarnStep) {
+    if (firstNonInstallPnpmStep) {
       assert.ok(
-        installStep.stepIndex < firstNonInstallYarnStep.stepIndex,
-        `${workflowPath} job ${jobName} must install before other Yarn commands`,
+        installStep.stepIndex < firstNonInstallPnpmStep.stepIndex,
+        `${workflowPath} job ${jobName} must install before other pnpm commands`,
       );
     }
   }
@@ -147,8 +147,8 @@ test('should run Build and Test for migration-branch pushes and pull requests', 
   );
 });
 
-// Every Yarn-using job consumes the root Yarn Classic graph from the frozen lockfile.
-test('should install the frozen root dependency graph before Yarn verification commands', () => {
+// Every pnpm-using job consumes the root pnpm graph from the frozen lockfile.
+test('should install the frozen root dependency graph before pnpm verification commands', () => {
   const workflow = readBuildAndTestWorkflow();
 
   assert.equal(
@@ -156,7 +156,7 @@ test('should install the frozen root dependency graph before Yarn verification c
     undefined,
     `${workflowPath} must not redirect root commands to a package directory`,
   );
-  assertFrozenInstallBeforeYarnCommands(workflow);
+  assertFrozenInstallBeforePnpmCommands(workflow);
 });
 
 // Root verification delegates to Turbo and each active package retains build, typecheck, lint, and test coverage.
@@ -169,12 +169,12 @@ test('should verify all active packages through the root Turbo command', () => {
 
   assert.match(
     commands,
-    /(?:^|\s)yarn\s+verify(?:\s|$)/m,
-    `${workflowPath} must run root yarn verify`,
+    /(?:^|\s)pnpm\s+verify(?:\s|$)/m,
+    `${workflowPath} must run root pnpm verify`,
   );
   assert.match(
     rootManifest.scripts?.verify ?? '',
-    /\byarn\s+test:structure\b/,
+    /\bpnpm\s+test:structure\b/,
     'root verify must include fast structure contracts',
   );
   assert.match(
@@ -189,8 +189,8 @@ test('should verify all active packages through the root Turbo command', () => {
     for (const requiredTask of ['lint', 'typecheck', 'test', 'build']) {
       const taskPattern =
         requiredTask === 'test'
-          ? /\byarn\s+test(?::[a-z0-9-]+)?(?=\s|&|$)/
-          : new RegExp(`\\byarn\\s+${requiredTask}(?=\\s|&|$)`);
+          ? /\bpnpm\s+(?:run\s+)?test(?::[a-z0-9-]+)?(?=\s|&|$)/
+          : new RegExp(`\\bpnpm\\s+(?:run\\s+)?${requiredTask}(?=\\s|&|$)`);
       assert.match(
         verifyCommand,
         taskPattern,
@@ -203,7 +203,7 @@ test('should verify all active packages through the root Turbo command', () => {
   for (const retainedSuite of ['unit', 'integration', 'e2e', 'pentest']) {
     assert.match(
       serverScripts['test:all'] ?? '',
-      new RegExp(`(?:--project\\s+|yarn\\s+test:)${retainedSuite}(?=\\s|&|$)`),
+      new RegExp(`(?:--project\\s+|pnpm\\s+(?:run\\s+)?test:)${retainedSuite}(?=\\s|&|$)`),
       `packages/server/package.json test:all must retain the ${retainedSuite} suite`,
     );
   }
@@ -215,11 +215,11 @@ test('should run every retained suite with its required CI infrastructure', () =
   const runSteps = getRunSteps(workflow);
   const commands = runSteps.map(({ command }) => command).join('\n');
   const infrastructureJobs = runSteps.filter(({ command }) =>
-    /(?:^|\s)yarn\s+(?:verify|test:ui)(?:\s|$)/m.test(command),
+    /(?:^|\s)pnpm\s+(?:verify|test:ui)(?:\s|$)/m.test(command),
   );
 
   assert.ok(
-    infrastructureJobs.some(({ command }) => /(?:^|\s)yarn\s+verify(?:\s|$)/m.test(command)),
+    infrastructureJobs.some(({ command }) => /(?:^|\s)pnpm\s+verify(?:\s|$)/m.test(command)),
     `${workflowPath} must have a job that runs the retained Turbo verification suites`,
   );
   for (const { jobName } of infrastructureJobs) {
@@ -234,7 +234,7 @@ test('should run every retained suite with its required CI infrastructure', () =
 
   assert.match(
     commands,
-    /(?:^|\s)yarn\s+test:ui(?:\s|$)/m,
+    /(?:^|\s)pnpm\s+test:ui(?:\s|$)/m,
     `${workflowPath} must run retained Playwright UI tests`,
   );
   assert.match(
@@ -244,12 +244,12 @@ test('should run every retained suite with its required CI infrastructure', () =
   );
   assert.match(
     commands,
-    /(?:^|\s)yarn\s+harness:test(?:\s|$)/m,
+    /(?:^|\s)pnpm\s+harness:test(?:\s|$)/m,
     `${workflowPath} must run the retained OIDC harness`,
   );
   assert.match(
     commands,
-    /(?:^|\s)yarn\s+audit\b[^\n]*--level\s+high\b/m,
+    /(?:^|\s)pnpm\s+audit\b[^\n]*--audit-level\s+high\b/m,
     `${workflowPath} must retain high-severity dependency auditing`,
   );
 });
@@ -268,7 +268,7 @@ test('should build public docs and the production Docker image as parity checks'
 
   assert.match(
     commands,
-    /(?:^|\s)yarn\s+docs:build(?:\s|$)/m,
+    /(?:^|\s)pnpm\s+docs:build(?:\s|$)/m,
     `${workflowPath} must build public VitePress documentation`,
   );
   const usesDockerBuildCommand =
@@ -352,7 +352,7 @@ test('should exclude retired playground and legacy smoke commands from branch CI
 
   assert.doesNotMatch(
     commands,
-    /\bplayground(?:-bff|:|\/)|\byarn\s+playground\b/i,
+    /\bplayground(?:-bff|:|\/)|\bpnpm\s+playground\b/i,
     `${workflowPath} must not add retired playgrounds to verification`,
   );
   assert.doesNotMatch(

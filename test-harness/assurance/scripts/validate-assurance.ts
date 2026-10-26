@@ -100,7 +100,7 @@ function validateOwnedManifest(
     throw new Error('owned-run manifest source provenance does not match the current tree');
   }
   if (
-    manifest.dependencyLockDigest !== digestRepositoryFile(resolve(repositoryRoot, 'yarn.lock')) ||
+    manifest.dependencyLockDigest !== digestRepositoryFile(resolve(repositoryRoot, 'pnpm-lock.yaml')) ||
     manifest.definitionDigests.traceability !==
       digestRepositoryFile(resolve(repositoryRoot, 'test-harness/assurance/traceability.json')) ||
     manifest.definitionDigests.redSignatures !==

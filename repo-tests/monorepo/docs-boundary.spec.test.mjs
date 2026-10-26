@@ -283,7 +283,7 @@ test('should build only public documentation without publishing technical routes
     'docs:build must not publish or deploy documentation',
   );
 
-  runRepositoryCommand('yarn', ['docs:build']);
+  runRepositoryCommand('pnpm', ['docs:build']);
 
   const outputRoot = 'docs/.vitepress/dist';
   assert.equal(

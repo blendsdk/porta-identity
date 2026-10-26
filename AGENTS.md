@@ -6,8 +6,8 @@ Clean up everything you create for a task before reporting the task complete.
 
 - Tear down every container, compose project, network, volume, and image you started, and remove
   every test Porta installation you created. The machine must look as it did before the task.
-- For repository-owned stacks use the owned lifecycle commands (`yarn docker:down`,
-  `yarn harness:stop`, and the cleanup built into each `yarn assurance:*` run) instead of ad-hoc
+- For repository-owned stacks use the owned lifecycle commands (`pnpm docker:down`,
+  `pnpm harness:stop`, and the cleanup built into each `pnpm assurance:*` run) instead of ad-hoc
   `docker rm` / `docker compose down`. Remove task-created scratch stacks with their own compose
   project name (`docker compose -p <scratch> down -v`); never touch resources you did not create.
 - Give scratch stacks their own compose project name and prefer `docker run --rm`, so cleanup
@@ -22,7 +22,7 @@ Clean up everything you create for a task before reporting the task complete.
 ## Project profile
 
 - Porta is a TypeScript ESM identity platform requiring Node.js 22.22.2+; active feature verification uses Node.js 24. The server is built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
-- Yarn Classic 1.x and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
+- pnpm 12.15 and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
 - `main` is the production branch and remains strictly off limits. Integrate feature work through `develop`; preserve the verified migration and assurance histories. Do not assume historical integration branches or worktrees are still active.
 - Commits use Conventional Commit prefixes such as `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
 
@@ -32,27 +32,27 @@ Run commands from the repository root.
 
 | Purpose             | Command                                                                  | Validation                                                                                |
 | ------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Install             | `yarn install --frozen-lockfile`                                         | Passed on 2026-08-08 in the migration worktree                                            |
-| Full verification   | `yarn verify`                                                            | Passed on 2026-09-17; counts below                                                        |
-| CLI verification    | `yarn workspace @portaidentity/cli verify`                               | Passed on 2026-09-17: lint, typecheck, 1,419 tests and build                              |
-| Structure tests     | `yarn test:structure`                                                    | Passed on 2026-09-17: 122 contracts; some spawn builds/CLI commands; no services required |
-| Unit tests          | `yarn test:unit`                                                         | Runs the server unit project                                                              |
-| Integration tests   | `yarn test:integration`                                                  | Requires PostgreSQL, Redis, and MailHog                                                   |
-| End-to-end tests    | `yarn test:e2e`                                                          | Requires PostgreSQL, Redis, and MailHog                                                   |
-| Penetration tests   | `yarn test:pentest`                                                      | Requires PostgreSQL, Redis, and MailHog                                                   |
-| Browser tests       | `yarn test:ui`                                                           | Passed on 2026-09-17: 133; requires Playwright Chromium and test infrastructure           |
-| OIDC harness        | `yarn harness:test`                                                      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                  |
-| Documentation build | `yarn docs:build`                                                        | Passed on 2026-09-17                                                                      |
-| Dependency check    | `yarn deps:check`                                                        | Checks root and active workspaces while excluding internal workspace packages             |
-| Release tooling     | `yarn release:prepare`, `yarn release:preflight`, `yarn release:publish` | Declared by root scripts; not executed during this guidance refresh                       |
+| Install             | `pnpm install --frozen-lockfile`                                         | Passed on 2026-08-08 in the migration worktree                                            |
+| Full verification   | `pnpm verify`                                                            | Passed on 2026-09-17; counts below                                                        |
+| CLI verification    | `pnpm --filter @portaidentity/cli verify`                               | Passed on 2026-09-17: lint, typecheck, 1,419 tests and build                              |
+| Structure tests     | `pnpm test:structure`                                                    | Passed on 2026-09-17: 122 contracts; some spawn builds/CLI commands; no services required |
+| Unit tests          | `pnpm test:unit`                                                         | Runs the server unit project                                                              |
+| Integration tests   | `pnpm test:integration`                                                  | Requires PostgreSQL, Redis, and MailHog                                                   |
+| End-to-end tests    | `pnpm test:e2e`                                                          | Requires PostgreSQL, Redis, and MailHog                                                   |
+| Penetration tests   | `pnpm test:pentest`                                                      | Requires PostgreSQL, Redis, and MailHog                                                   |
+| Browser tests       | `pnpm test:ui`                                                           | Passed on 2026-09-17: 133; requires Playwright Chromium and test infrastructure           |
+| OIDC harness        | `pnpm harness:test`                                                      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                  |
+| Documentation build | `pnpm docs:build`                                                        | Passed on 2026-09-17                                                                      |
+| Dependency check    | `pnpm deps:check`                                                        | Checks root and active workspaces while excluding internal workspace packages             |
+| Release tooling     | `pnpm release:prepare`, `pnpm release:preflight`, `pnpm release:publish` | Declared by root scripts; not executed during this guidance refresh                       |
 
-`yarn verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
+`pnpm verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
 
 Latest full verification (2026-09-17): structure 122; server unit 3,635, integration 476, E2E 127,
 pentest 260; SDK 558; CLI 1,419. Lint, typechecks and builds pass. These are dated evidence,
 not fixed test-count requirements.
 
-The registered `yarn assurance:harness --project security --profile production-security` run on
+The registered `pnpm assurance:harness --project security --profile production-security` run on
 2026-09-17 passed its 7 human-authentication, 4 second-factor and 17 tenant/admin tests; exposure
 checks recorded 8 passes and no product/execution failures. Exactly three previously accepted
 forwarding-context observer gaps remain incomplete, with exit 40 preserved. Cleanup passed. Do not
@@ -64,17 +64,17 @@ Evidence: `codeops/features/production-readiness/plans/postgresql-backed-global-
 - Before implementation, identify the affected public and security boundaries and write or update
   immutable specification tests first. During implementation, run the narrow unit, integration,
   E2E, UI, or harness selector that gives the fastest relevant feedback.
-- Before every commit, run verification for every affected workspace plus `yarn test:structure`.
-  Use `yarn verify` when server behavior or multiple product workspaces change. Never delete, skip,
+- Before every commit, run verification for every affected workspace plus `pnpm test:structure`.
+  Use `pnpm verify` when server behavior or multiple product workspaces change. Never delete, skip,
   weaken, or retry-away a failing security assertion.
-- For browser-facing behavior, also run `yarn test:ui`. For retained SPA/BFF behavior, run
-  `yarn harness:test`; both remain outside `yarn verify`.
+- For browser-facing behavior, also run `pnpm test:ui`. For retained SPA/BFF behavior, run
+  `pnpm harness:test`; both remain outside `pnpm verify`.
 - For authentication, OIDC/token, tenant isolation, administrative authorization, sessions,
   recovery, cookies, CSRF, CORS, or other security-sensitive behavior, also run the relevant
-  `yarn assurance:harness` command with a registered `protocol` or `security` project and the
+  `pnpm assurance:harness` command with a registered `protocol` or `security` project and the
   applicable profile. Use `production-security` whenever the claim depends on production cookie,
   TLS, CORS, CSP, or security-profile behavior.
-- For SDK or CLI contract changes, run the relevant registered `yarn assurance:compat` selector
+- For SDK or CLI contract changes, run the relevant registered `pnpm assurance:compat` selector
   from a clean committed revision so package and source provenance can be verified.
 - Coverage, fault, mutation, control-check, stability, report, and `assurance:all` commands are
   specialized plan/evidence tools, not routine feature gates. Run them only when the governing
@@ -129,7 +129,7 @@ Evidence: `codeops/features/production-readiness/plans/postgresql-backed-global-
 
 - Do not edit or commit `dist/`, `coverage/`, `test-results/`, `playwright-report/`, VitePress caches, generated playground configuration, or generated TLS certificates.
 - `.env` is local and must never be committed. Treat connection strings, signing keys, cookie keys, npm tokens, and release-provider keys as secrets.
-- Lockstep owns coordinated manifest versions, internal dependency ranges and changelogs. A release is a manual dispatch of the `Release` workflow on `main`: it bumps, writes the changelogs and release notes, commits and tags, publishes with provenance, creates the GitHub Release, dispatches Docker, and syncs `develop`. `yarn release:prepare` and `scripts/sync-versions.js` remain for local preparation; do not hand-edit version-derived constants during ordinary feature work. Triggering the release workflow is the explicit publication authorization, not an ordinary verification run.
+- Lockstep owns coordinated manifest versions, internal dependency ranges and changelogs. A release is a manual dispatch of the `Release` workflow on `main`: it bumps, writes the changelogs and release notes, commits and tags, publishes with provenance, creates the GitHub Release, dispatches Docker, and syncs `develop`. `pnpm release:prepare` and `scripts/sync-versions.js` remain for local preparation; do not hand-edit version-derived constants during ordinary feature work. Triggering the release workflow is the explicit publication authorization, not an ordinary verification run.
 
 ## CI-only loopback DNS
 

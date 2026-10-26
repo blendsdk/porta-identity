@@ -171,14 +171,14 @@ docker run -d \
 ```bash
 git clone git@github.com:blendsdk/porta-identity.git
 cd porta-identity
-yarn install --frozen-lockfile
-yarn build
+pnpm install --frozen-lockfile
+pnpm build
 ```
 
 ### Run
 
 ```bash
-NODE_ENV=production yarn start
+NODE_ENV=production pnpm start
 ```
 
 Requires the root `node_modules/` and the built `packages/server/dist/` directory.

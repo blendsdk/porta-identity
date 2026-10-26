@@ -27,7 +27,7 @@ test('freezes exact commands and natural-red classification for every human-auth
   );
   for (const requirement of humanAuthBaselineRequirements) {
     assert.deepEqual(requirement.command, [
-      'yarn',
+      'pnpm',
       'assurance:baseline',
       '--case',
       requirement.caseId,

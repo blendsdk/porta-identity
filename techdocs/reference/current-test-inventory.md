@@ -67,36 +67,36 @@ merge-policy use.
 
 | Suite                 |   Files |     Cases |   Test LOC | Primary boundary                                          | Required by branch CI       |
 | --------------------- | ------: | --------: | ---------: | --------------------------------------------------------- | --------------------------- |
-| Server unit           |     163 |     2,861 |     46,473 | Isolated modules; dependencies commonly mocked            | Yes, through `yarn verify`  |
-| Server integration    |      33 |       363 |      6,506 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `yarn verify`  |
-| Server HTTP E2E       |      20 |       129 |      3,121 | Full Porta server with real infrastructure                | Yes, through `yarn verify`  |
-| Server penetration    |      35 |       224 |      5,266 | Attack-oriented HTTP requests against full Porta          | Yes, through `yarn verify`  |
+| Server unit           |     163 |     2,861 |     46,473 | Isolated modules; dependencies commonly mocked            | Yes, through `pnpm verify`  |
+| Server integration    |      33 |       363 |      6,506 | Real PostgreSQL, Redis, and MailHog where applicable      | Yes, through `pnpm verify`  |
+| Server HTTP E2E       |      20 |       129 |      3,121 | Full Porta server with real infrastructure                | Yes, through `pnpm verify`  |
+| Server penetration    |      35 |       224 |      5,266 | Attack-oriented HTTP requests against full Porta          | Yes, through `pnpm verify`  |
 | Server browser UI     |      24 |       132 |      4,783 | Chromium against a real Porta server                      | Yes, separate `ui` job      |
-| SDK unit              |      31 |       404 |      5,884 | SDK behavior with mock transports                         | Yes, through `yarn verify`  |
-| CLI unit              |      29 |       356 |      6,051 | CLI behavior with mocked SDK calls                        | Yes, through `yarn verify`  |
+| SDK unit              |      31 |       404 |      5,884 | SDK behavior with mock transports                         | Yes, through `pnpm verify`  |
+| CLI unit              |      29 |       356 |      6,051 | CLI behavior with mocked SDK calls                        | Yes, through `pnpm verify`  |
 | External OIDC harness |       6 |         6 |        203 | Dockerized SPA and BFF clients using Porta over HTTP/TLS  | Yes, separate `harness` job |
-| Repository structure  |      15 |        70 |      2,915 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `yarn verify`  |
+| Repository structure  |      15 |        70 |      2,915 | Files, manifests, scripts, docs, CI, and package topology | Yes, through `pnpm verify`  |
 | **Total**             | **356** | **4,545** | **81,202** | —                                                         | **Yes**                     |
 
 Case counts were collected through Vitest's runtime collector, Playwright's `--list` mode, and a
-fresh `yarn test:structure` run. Parameterized server tests explain why runtime case counts exceed
+fresh `pnpm test:structure` run. Parameterized server tests explain why runtime case counts exceed
 static `it(...)` declarations.
 
 ## Execution Topology
 
 | Command or job                                                                              | What it executes                                                                                                      |
 | ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `yarn verify`                                                                               | 70 structure tests, all 3,577 server Vitest cases, 404 SDK tests, and 356 CLI tests, plus lint, typecheck, and builds |
-| `yarn assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
-| `yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
-| `yarn test:ui`                                                                              | 132 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
-| `yarn harness:test`                                                                         | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
-| CI `verify` job                                                                             | `yarn verify` with PostgreSQL, Redis, and MailHog services                                                            |
+| `pnpm verify`                                                                               | 70 structure tests, all 3,577 server Vitest cases, 404 SDK tests, and 356 CLI tests, plus lint, typecheck, and builds |
+| `pnpm assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
+| `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
+| `pnpm test:ui`                                                                              | 132 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
+| `pnpm harness:test`                                                                         | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
+| CI `verify` job                                                                             | `pnpm verify` with PostgreSQL, Redis, and MailHog services                                                            |
 | CI `ui` job                                                                                 | Builds packages and runs the Playwright UI suite                                                                      |
 | CI `harness` job                                                                            | Runs the independently packaged OIDC harness                                                                          |
 
 The branch workflow therefore executes every suite in this inventory. UI and harness coverage are
-not part of the local `yarn verify` command; they are separate CI jobs.
+not part of the local `pnpm verify` command; they are separate CI jobs.
 
 ## Server Unit Tests
 
@@ -311,7 +311,7 @@ specified or that every relevant mutation would be detected.
 ## Measured Server Coverage
 
 The V8 coverage provider is installed at the same exact version as Vitest (`4.1.10`). A complete
-`yarn test:coverage` run executed all 3,348 server cases successfully and then failed the configured
+`pnpm test:coverage` run executed all 3,348 server cases successfully and then failed the configured
 coverage gate.
 
 | Metric     | Covered | Total | Measured | Threshold | Result                         |
@@ -386,7 +386,7 @@ PID and produced the same 137 normalized source paths and observation digest,
 | SDK-to-live-server compatibility    | Packed current SDK is provenance-bound to an owned server/fixture; live journeys start in risk slices                |
 | CLI-to-live-server compatibility    | Packed current CLI resolves the exact packed SDK and proves credential isolation; live journeys start in risk slices |
 | Coverage measurement                | Operational: 79.57% lines, 79.18% statements, 70.28% branches, and 85.87% functions                                  |
-| Coverage enforcement in CI          | None; `yarn verify` does not invoke coverage                                                                         |
+| Coverage enforcement in CI          | None; `pnpm verify` does not invoke coverage                                                                         |
 | Mutation testing                    | Not configured                                                                                                       |
 | Property-based/fuzz testing         | Not configured                                                                                                       |
 | Load/performance testing            | Not configured                                                                                                       |
@@ -421,23 +421,23 @@ The suite does **not yet demonstrate** that:
 
 ```bash
 # Enumerate runtime-collected Vitest cases without executing them.
-yarn workspace @portaidentity/server vitest list --project unit
-yarn workspace @portaidentity/server vitest list --project integration
-yarn workspace @portaidentity/server vitest list --project e2e
-yarn workspace @portaidentity/server vitest list --project pentest
-yarn workspace @portaidentity/sdk vitest list
-yarn workspace @portaidentity/cli vitest list
+pnpm --filter @portaidentity/server vitest list --project unit
+pnpm --filter @portaidentity/server vitest list --project integration
+pnpm --filter @portaidentity/server vitest list --project e2e
+pnpm --filter @portaidentity/server vitest list --project pentest
+pnpm --filter @portaidentity/sdk vitest list
+pnpm --filter @portaidentity/cli vitest list
 
 # Enumerate browser cases.
-yarn playwright test --config packages/server/tests/ui/playwright.config.ts --list
-yarn playwright test --config test-harness/playwright.config.ts --list
+pnpm exec playwright test --config packages/server/tests/ui/playwright.config.ts --list
+pnpm exec playwright test --config test-harness/playwright.config.ts --list
 
 # Execute the repository-contract suite.
-yarn test:structure
+pnpm test:structure
 
 # Execute all server Vitest projects with V8 coverage and enforce thresholds.
-yarn test:coverage
+pnpm test:coverage
 
 # Observe coverage from the assembled Porta process without enforcing a threshold.
-yarn assurance:coverage --project protocol --profile operational --seed coverage-baseline
+pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline
 ```

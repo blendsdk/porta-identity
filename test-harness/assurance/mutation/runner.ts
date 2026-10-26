@@ -300,7 +300,7 @@ export async function runMutationPilot(
       provenance: {
         ...provenance,
         dependencyLockDigest: `sha256:${createHash('sha256')
-          .update(readFileSync(resolve(canonicalRoot, 'yarn.lock')))
+          .update(readFileSync(resolve(canonicalRoot, 'pnpm-lock.yaml')))
           .digest('hex')}`,
         runnerVersion,
         runnerPackageVersion,
@@ -329,7 +329,7 @@ export async function runMutationPilot(
       : {
           runId,
           exitCode: 60,
-          recoveryCommand: `yarn assurance:mutation --recover ${runId}`,
+          recoveryCommand: `pnpm assurance:mutation --recover ${runId}`,
         };
   } finally {
     if (worktreeCreated && !recoverMutationPilotRun(canonicalRoot, runId)) {

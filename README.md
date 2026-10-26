@@ -100,12 +100,12 @@ Contributions are welcome — please open an issue to discuss before submitting 
 ```bash
 # Development setup
 git clone https://github.com/blendsdk/porta-identity.git && cd porta-identity
-yarn install
+pnpm install
 cp .env.example .env
-yarn docker:up        # Start PostgreSQL, Redis, MailHog
-yarn build && yarn porta migrate up && yarn porta init
-yarn dev              # Start the development server with live reload
-yarn verify           # Run lint + build + tests before committing
+pnpm docker:up        # Start PostgreSQL, Redis, MailHog
+pnpm build && pnpm porta migrate up && pnpm porta init
+pnpm dev              # Start the development server with live reload
+pnpm verify           # Run lint + build + tests before committing
 ```
 
 ## 📄 License

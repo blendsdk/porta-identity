@@ -174,7 +174,7 @@ test('should keep package tasks in Turbo and root-own retained-harness static ch
   assert.match(scripts['lint:fix'] ?? '', /test-harness\/eslint\.config\.js/);
   assert.match(scripts['lint:fix'] ?? '', /turbo run lint:fix/);
   assertScriptEquals(scripts, 'test:structure', 'node --test repo-tests/monorepo/*.test.mjs');
-  assertScriptEquals(scripts, 'verify', 'yarn test:structure && turbo run verify');
+  assertScriptEquals(scripts, 'verify', 'pnpm test:structure && turbo run verify');
   assertScriptEquals(scripts, 'format', 'prettier --write .');
   assertScriptEquals(scripts, 'format:check', 'prettier --check .');
 });
@@ -187,11 +187,11 @@ test('should run all active workspace tests directly', () => {
   assertScriptEquals(
     scripts,
     'test:all',
-    'yarn workspace @portaidentity/server test:all && yarn workspace @portaidentity/sdk test && yarn workspace @portaidentity/cli test',
+    'pnpm --filter @portaidentity/server test:all && pnpm --filter @portaidentity/sdk test && pnpm --filter @portaidentity/cli test',
   );
   assert.doesNotMatch(
     allTests,
-    /\byarn\s+test:(?:server|sdk|cli|packages)\b/,
+    /\bpnpm\s+test:(?:server|sdk|cli|packages)\b/,
     'package.json script test:all must not invoke removed test aliases',
   );
 
@@ -208,7 +208,7 @@ test('should run all active workspace tests directly', () => {
     assertScriptEquals(
       scripts,
       `test:${serverTest}`,
-      `yarn workspace @portaidentity/server test:${serverTest}`,
+      `pnpm --filter @portaidentity/server test:${serverTest}`,
     );
   }
 });
@@ -306,7 +306,7 @@ test('should delegate documentation and dependency maintenance commands from the
   assertScriptEquals(
     scripts,
     'deps:update',
-    'ncu -u --root --workspaces -x "@portaidentity/*" && rm -rf node_modules yarn.lock && yarn install && yarn verify',
+    'ncu -u --root --workspaces -x "@portaidentity/*" && rm -rf node_modules pnpm-lock.yaml && pnpm install && pnpm verify',
   );
 });
 
@@ -322,7 +322,7 @@ test('should keep active root-script documentation aligned with the supported co
 
     for (const removedScript of removedScripts) {
       const removedReference = new RegExp(
-        `(?:\\byarn\\s+|\`)${escapeRegExp(removedScript)}(?=\\s|\`|$)`,
+        `(?:\\bpnpm\\s+|\`)${escapeRegExp(removedScript)}(?=\\s|\`|$)`,
         'i',
       );
       assert.doesNotMatch(
@@ -347,7 +347,7 @@ test('should keep active root-script documentation aligned with the supported co
   );
   assert.match(
     repositoryReadme,
-    /\byarn porta migrate up\b[\s\S]{0,80}\byarn porta init\b/,
+    /\bpnpm porta migrate up\b[\s\S]{0,80}\bpnpm porta init\b/,
     'README.md must initialize a source checkout through the supported server CLI alias',
   );
 
@@ -359,7 +359,7 @@ test('should keep active root-script documentation aligned with the supported co
   );
   assert.match(
     deploymentGuide,
-    /\bNODE_ENV=production yarn start\b/,
+    /\bNODE_ENV=production pnpm start\b/,
     'source deployment guidance must use the supported root start command',
   );
 });

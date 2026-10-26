@@ -540,7 +540,7 @@ function formatVerboseDiagnostics(error) {
 async function main(arguments_) {
   const [operation, ...flags] = arguments_;
   if (!['up', 'stop', 'status', 'reset'].includes(operation)) {
-    throw new Error('Usage: yarn admin:env <up|stop|status|reset> [--yes] [--verbose]');
+    throw new Error('Usage: pnpm admin:env <up|stop|status|reset> [--yes] [--verbose]');
   }
   const verbose = flags.includes('--verbose');
   const lifecycle = createAdminPlaygroundLifecycle(productionDependencies({ verbose }));

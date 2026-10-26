@@ -7,28 +7,33 @@ FROM node:22-alpine AS builder
 
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
+RUN npm install -g pnpm@12.15.0
 
 # Copy the complete workspace manifest graph before installation for stable Docker layers.
-COPY package.json yarn.lock ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
 COPY packages/cli/package.json packages/cli/package.json
-RUN yarn install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 COPY packages/server/tsconfig.json packages/server/tsconfig.json
 COPY packages/server/src/ packages/server/src/
-RUN yarn workspace @portaidentity/server build
+RUN pnpm --filter @portaidentity/server build
 
 FROM node:22-alpine AS production-dependencies
 
 WORKDIR /app
 RUN apk add --no-cache python3 make g++
+RUN npm install -g pnpm@12.15.0
 
-COPY package.json yarn.lock ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY packages/server/package.json packages/server/package.json
 COPY packages/sdk/package.json packages/sdk/package.json
 COPY packages/cli/package.json packages/cli/package.json
-RUN yarn install --production --frozen-lockfile
+RUN pnpm install --prod --frozen-lockfile
+
+# The production-only pnpm tree hoists and satisfies every server runtime dependency.
+RUN node -e "const fs=require('fs'),path=require('path');const s=JSON.parse(fs.readFileSync('packages/server/package.json','utf8'));const bad=[];for(const [n,r] of Object.entries(s.dependencies||{})){const p=path.join('node_modules',n,'package.json');if(!fs.existsSync(p)){bad.push(n+' missing');continue;}const v=JSON.parse(fs.readFileSync(p,'utf8')).version;if(v!==r&&!v.startsWith(r.replace(/^\^/,''))&&r!=='*'){bad.push(n+' '+v+' != '+r);}}if(bad.length){console.error(bad);process.exit(1)}console.log('server runtime dependency tree OK');"
 
 FROM node:22-alpine AS runtime
 
@@ -45,7 +50,6 @@ WORKDIR /app
 
 COPY --from=builder /app/packages/server/dist/ dist/
 COPY --from=production-dependencies /app/node_modules/ node_modules/
-COPY --from=production-dependencies /app/packages/server/node_modules/ node_modules/
 COPY packages/server/package.json ./package.json
 COPY packages/server/migrations/ migrations/
 COPY packages/server/templates/ templates/
@@ -54,7 +58,8 @@ COPY docker/entrypoint.sh ./entrypoint.sh
 
 RUN chmod +x ./entrypoint.sh \
     && printf '#!/bin/sh\nexec node /app/dist/cli/index.js "$@"\n' > /usr/local/bin/porta \
-    && chmod +x /usr/local/bin/porta
+    && chmod +x /usr/local/bin/porta \
+    && node --input-type=module -e "await import('chalk'); await import('yaml'); console.log('runtime imports OK')"
 
 USER porta
 EXPOSE 3000

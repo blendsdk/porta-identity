@@ -155,7 +155,7 @@ test('should retain the server test aliases used by branch CI', () => {
   ]) {
     assert.match(
       scripts[scriptName] ?? '',
-      /^yarn workspace @portaidentity\/server test:/,
+      /^pnpm --filter @portaidentity\/server test:/,
       `${scriptName} must delegate to the server package`,
     );
   }
@@ -164,10 +164,10 @@ test('should retain the server test aliases used by branch CI', () => {
 // Nested install boundaries can silently bypass the root lockfile and workspace dependency graph.
 test('should keep active package and harness installs under the root lockfile', () => {
   for (const { directory } of readPackageWorkspaces()) {
-    assert.equal(existsSync(resolve(repositoryRoot, directory, 'yarn.lock')), false);
+    assert.equal(existsSync(resolve(repositoryRoot, directory, 'pnpm-lock.yaml')), false);
   }
 
   assert.equal(existsSync(resolve(repositoryRoot, 'test-harness/package.json')), false);
-  assert.equal(existsSync(resolve(repositoryRoot, 'test-harness/yarn.lock')), false);
-  assert.equal(existsSync(resolve(repositoryRoot, 'yarn.lock')), true);
+  assert.equal(existsSync(resolve(repositoryRoot, 'test-harness/pnpm-lock.yaml')), false);
+  assert.equal(existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')), true);
 });

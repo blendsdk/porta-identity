@@ -422,6 +422,10 @@ class RuntimeComposeAdapter implements ComposeAdapter {
     profile = 'operational',
   ): readonly string[] {
     const files = ['-f', 'test-harness/docker-compose.yml'];
+    const buildCacheFile = process.env.HARNESS_BUILD_CACHE_FILE;
+    if (buildCacheFile) {
+      files.push('-f', buildCacheFile);
+    }
     if (profile === 'production-security') {
       files.push('-f', 'test-harness/docker-compose.production-security.yml');
     }

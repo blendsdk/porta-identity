@@ -7,12 +7,12 @@
 | Requirement | Version | Purpose |
 |-------------|---------|---------|
 | Node.js | ≥ 22.0.0 | Runtime |
-| Yarn | ≥ 1.22.0 (Classic) | Package manager (**not npm, not Berry**) |
+| pnpm | 12.15 | Package manager |
 | Docker & Docker Compose | Latest | PostgreSQL, Redis, MailHog |
 | Git | Latest | Version control |
 
-::: warning Yarn Classic Only
-Porta uses Yarn Classic 1.22.x. Do **not** use npm, pnpm, or Yarn Berry. This is enforced via `.npmrc` (`engine-strict=true`).
+::: warning pnpm only
+Porta uses pnpm 12.15.x with the hoisted node_modules layout. Do **not** use npm or Yarn. The workspace contract is enforced by `pnpm-workspace.yaml` and the structural tests.
 :::
 
 ## Initial Setup
@@ -27,7 +27,7 @@ cd porta-identity
 ### 2. Install Dependencies
 
 ```bash
-yarn install
+pnpm install
 ```
 
 This installs all dependencies including native modules (argon2 requires Python 3 and a C++ compiler on your system).
@@ -61,7 +61,7 @@ See the [Configuration Reference](../reference/configuration.md) for all environ
 ### 4. Start Infrastructure Services
 
 ```bash
-yarn docker:up
+pnpm docker:up
 ```
 
 This starts PostgreSQL 16, Redis 7, and MailHog via Docker Compose.
@@ -76,7 +76,7 @@ This starts PostgreSQL 16, Redis 7, and MailHog via Docker Compose.
 ### 5. Run Migrations
 
 ```bash
-yarn porta migrate up
+pnpm porta migrate up
 ```
 
 This runs all 19 migrations to create the database schema.
@@ -84,7 +84,7 @@ This runs all 19 migrations to create the database schema.
 ### 6. Bootstrap Admin Infrastructure
 
 ```bash
-yarn porta init
+pnpm porta init
 ```
 
 The `porta init` command creates:
@@ -96,7 +96,7 @@ The `porta init` command creates:
 ### 7. Start the Dev Server
 
 ```bash
-yarn dev
+pnpm dev
 ```
 
 The server starts at `https://porta.local:3443` with hot-reload via `tsx watch`.
@@ -126,7 +126,7 @@ Expected response:
 After `porta init`, log in via the CLI:
 
 ```bash
-yarn porta login
+pnpm porta login
 ```
 
 This opens a browser window for OIDC authentication. After logging in, credentials are stored at `~/.porta/credentials.json`.
@@ -134,7 +134,7 @@ This opens a browser window for OIDC authentication. After logging in, credentia
 Verify your identity:
 
 ```bash
-yarn porta whoami
+pnpm porta whoami
 ```
 
 ## Project Layout Quick Reference
@@ -155,17 +155,17 @@ techdocs/              # Developer and architecture documentation
 
 | Task | Command |
 |------|---------|
-| Start Porta server | `yarn dev` |
-| Run all Porta tests | `yarn test:all` |
-| Run Porta unit tests only | `yarn test:unit` |
-| Run integration tests | `yarn test:integration` |
-| Build for production | `yarn build` |
-| Full verify (lint + build + test) | `yarn verify` |
-| Create a migration | `yarn migrate:create <name>` |
-| Run migrations | `yarn porta migrate up` |
-| Lint code | `yarn lint` |
-| Start Docker services | `yarn docker:up` |
-| Stop Docker services | `yarn docker:down` |
+| Start Porta server | `pnpm dev` |
+| Run all Porta tests | `pnpm test:all` |
+| Run Porta unit tests only | `pnpm test:unit` |
+| Run integration tests | `pnpm test:integration` |
+| Build for production | `pnpm build` |
+| Full verify (lint + build + test) | `pnpm verify` |
+| Create a migration | `pnpm migrate:create <name>` |
+| Run migrations | `pnpm porta migrate up` |
+| Lint code | `pnpm lint` |
+| Start Docker services | `pnpm docker:up` |
+| Stop Docker services | `pnpm docker:down` |
 
 ## Troubleshooting
 
@@ -191,7 +191,7 @@ owns the port before starting Porta again.
 Ensure Docker services are running:
 
 ```bash
-yarn docker:up
+pnpm docker:up
 docker ps  # Verify containers are healthy
 ```
 

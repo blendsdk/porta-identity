@@ -70,7 +70,7 @@ test('should link exact playground guidance when technical docs are read', () =>
     const contents = readRepositoryFile(repositoryPath);
     return (
       contents.includes('porta-admin-playground.ci.portaidentity.com') &&
-      contents.includes('yarn admin:env')
+      contents.includes('pnpm admin:env')
     );
   });
 
@@ -85,11 +85,11 @@ test('should link exact playground guidance when technical docs are read', () =>
 
   for (const requiredPattern of [
     /porta-admin-playground\.ci\.portaidentity\.com/i,
-    /yarn admin(?:\s|$)/,
-    /yarn admin:env up/,
-    /yarn admin:env stop/,
-    /yarn admin:env reset/,
-    /yarn admin:env status/,
+    /pnpm admin(?:\s|$)/,
+    /pnpm admin:env up/,
+    /pnpm admin:env stop/,
+    /pnpm admin:env reset/,
+    /pnpm admin:env status/,
     /MailHog/i,
     /reset porta-admin-playground/,
     /non-production|not for production/i,
