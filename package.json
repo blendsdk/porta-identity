@@ -64,9 +64,9 @@
     "docs:preview": "vitepress preview docs",
     "deps:check": "ncu --root --workspaces -x \"@portaidentity/*\"",
     "deps:update": "ncu -u --root --workspaces -x \"@portaidentity/*\" && rm -rf node_modules pnpm-lock.yaml && pnpm install && pnpm verify",
-    "release:prepare": "lockstep version --type auto --no-git-commit && node scripts/sync-versions.js",
+    "release:prepare": "lockstep version --type auto --no-git-commit && node scripts/sync-versions.js && pnpm install --lockfile-only",
     "release:preflight": "node scripts/release-preflight.js && node scripts/sync-versions.js --check",
-    "release:publish": "pnpm release:preflight && npm_config_registry=https://registry.npmjs.org lockstep publish --tag latest --provenance"
+    "release:publish": "pnpm release:preflight && pnpm_config_git_checks=false pnpm_config_registry=https://registry.npmjs.org lockstep publish --tag latest --provenance"
   },
   "devDependencies": {
     "@bcoe/v8-coverage": "1.0.2",

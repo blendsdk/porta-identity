@@ -40,14 +40,18 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.15.0
+          run_install: false
       - uses: actions/setup-node@v6
         with:
           node-version: 22.22.2
-          cache: yarn
+          cache: pnpm
           registry-url: https://registry.npmjs.org
 
       - name: Install pinned release tools
-        run: yarn install --frozen-lockfile
+        run: pnpm install --frozen-lockfile
 
       # Lockstep commits the bump, so the runner needs a git identity.
       - name: Configure git identity
@@ -109,6 +113,7 @@ jobs:
           # everything together so release:preflight passes.
           node_modules/.bin/lockstep version --type "${{ inputs.bump }}" --no-git-commit
           node scripts/sync-versions.js
+          pnpm install --lockfile-only
           version=$(node --input-type=module -e "import m from './package.json' with { type: 'json' }; process.stdout.write(m.version)")
           git add .
           git commit -m "chore(release): v$version [skip ci]"
@@ -124,13 +129,13 @@ jobs:
 
       - name: Build publishable packages
         if: ${{ !inputs.dry_run }}
-        run: yarn build
+        run: pnpm build
 
       - name: Validate committed candidate
         if: ${{ !inputs.dry_run }}
         shell: bash
         run: |
-          yarn release:preflight
+          pnpm release:preflight
           node_modules/.bin/npm --version
 
       # A promotion that does not bump the version re-enters this workflow for a version that is
@@ -160,10 +165,11 @@ jobs:
       - name: Pack expected release artifacts
         if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' }}
         run: |
-          mkdir release-artifacts
-          node_modules/.bin/npm pack --workspace @portaidentity/server --pack-destination release-artifacts
-          node_modules/.bin/npm pack --workspace @portaidentity/sdk --pack-destination release-artifacts
-          node_modules/.bin/npm pack --workspace @portaidentity/cli --pack-destination release-artifacts
+          release_dir="${RUNNER_TEMP}/release-artifacts"
+          mkdir -p "$release_dir"
+          pnpm --filter @portaidentity/server pack --pack-destination "$release_dir"
+          pnpm --filter @portaidentity/sdk pack --pack-destination "$release_dir"
+          pnpm --filter @portaidentity/cli pack --pack-destination "$release_dir"
 
       # Skip the publish when every package already carries this version, so a re-run after the
       # post-publish verification failed does not hit "cannot publish over the previously published
@@ -186,9 +192,12 @@ jobs:
             echo "all_published=false" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Publish with npm Trusted Publishing
+      - name: Publish with pnpm Trusted Publishing
         if: ${{ !inputs.dry_run && steps.released.outputs.complete != 'true' && steps.published.outputs.all_published != 'true' }}
-        run: yarn release:publish
+        env:
+          pnpm_config_git_checks: 'false'
+          pnpm_config_registry: https://registry.npmjs.org/
+        run: pnpm release:publish
 
       # npm view can lag the publish by minutes (the server package has exceeded ten minutes), so
       # retry the version and provenance checks for up to 900s per package. The integrity
@@ -240,7 +249,7 @@ jobs:
             " || true
           }
           for package_name in server sdk cli; do
-            expected_integrity=$(package_integrity "release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
+            expected_integrity=$(package_integrity "${RUNNER_TEMP}/release-artifacts/portaidentity-$package_name-$RELEASE_VERSION.tgz")
             verified=false
             for attempt in $(seq 1 60); do
               published=$(node_modules/.bin/npm view "@portaidentity/$package_name@$RELEASE_VERSION" version 2>/dev/null || true)
