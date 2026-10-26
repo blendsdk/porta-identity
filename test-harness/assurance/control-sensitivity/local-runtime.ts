@@ -204,7 +204,7 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
       }
       this.observedProvenance = Object.freeze({
         ...source,
-        dependencyLockDigest: digestRepositoryFile(resolve(this.repositoryRoot, 'yarn.lock')),
+        dependencyLockDigest: digestRepositoryFile(resolve(this.repositoryRoot, 'pnpm-lock.yaml')),
         targetPath: definition.targetPath,
         originalSha256: definition.originalSha256,
       });
@@ -249,7 +249,7 @@ export class LocalControlSensitivityRuntime implements ControlSensitivityRuntime
   /** Builds the server package from the exact isolated source variant. */
   public async build(): Promise<ControlSensitivityStageObservation> {
     if (!this.worktreeCreated) return Object.freeze({ status: 'failed' });
-    const child = await runManagedChild('yarn', ['workspace', '@portaidentity/server', 'build'], {
+    const child = await runManagedChild('pnpm', ['--filter', '@portaidentity/server', 'build'], {
       cwd: this.worktreeRoot,
       env: process.env,
       stdio: 'pipe',

@@ -87,7 +87,7 @@ const redCommands: Readonly<
   Record<string, { readonly display: string; readonly args: readonly string[] }>
 > = {
   'lifecycle-current-failure': {
-    display: 'yarn tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
+    display: 'pnpm exec tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -96,7 +96,7 @@ const redCommands: Readonly<
     ],
   },
   'fixture-current-failure': {
-    display: 'yarn tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
+    display: 'pnpm exec tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -105,7 +105,7 @@ const redCommands: Readonly<
     ],
   },
   'coverage-current-failure': {
-    display: 'yarn tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    display: 'pnpm exec tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -114,7 +114,7 @@ const redCommands: Readonly<
     ],
   },
   'fault-runner-missing': {
-    display: 'yarn tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts',
+    display: 'pnpm exec tsx --test test-harness/assurance/tests/fault-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -124,7 +124,7 @@ const redCommands: Readonly<
   },
   'packed-consumer-missing': {
     display:
-      'yarn tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
+      'pnpm exec tsx --test test-harness/assurance/tests/packed-client-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -973,7 +973,7 @@ function printCommandHelp(action: (typeof assuranceCommandActions)[number]): voi
 
   process.stdout.write(
     [
-      `Usage: yarn ${alias}${selector}`,
+      `Usage: pnpm ${alias}${selector}`,
       `Timeout: ${contract.timeout}`,
       `Artifacts: test-harness/.assurance-results/<run-id>/${contract.artifactSubdirectory}`,
       `Prerequisites: ${contract.prerequisites.join('; ')}`,

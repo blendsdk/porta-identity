@@ -15,7 +15,9 @@ function createProvenanceRepository(): { root: string; cleanup: () => void } {
   const root = mkdtempSync(resolve(tmpdir(), 'porta-assurance-provenance-'));
   mkdirSync(resolve(root, 'test-harness/assurance'), { recursive: true });
   writeFileSync(resolve(root, 'package.json'), '{}\n');
-  writeFileSync(resolve(root, 'yarn.lock'), '# lock\n');
+  writeFileSync(resolve(root, 'pnpm-lock.yaml'), '# lock\n');
+  writeFileSync(resolve(root, 'pnpm-workspace.yaml'), 'packages:\n  - packages/*\n');
+  writeFileSync(resolve(root, '.npmrc'), '# fixture\n');
   writeFileSync(resolve(root, 'test-harness/eslint.config.js'), 'export default [];\n');
   writeFileSync(resolve(root, 'test-harness/tsconfig.assurance.json'), '{}\n');
   writeFileSync(resolve(root, 'test-harness/assurance/tool.ts'), 'export const value = 1;\n');

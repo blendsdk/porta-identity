@@ -106,7 +106,17 @@ async function runRequiredChild(
 
 /** Builds one current package before creating its public archive. */
 async function buildPackage(repositoryRoot: string, workspace: string): Promise<void> {
-  await runRequiredChild('yarn', ['workspace', workspace, 'build'], repositoryRoot);
+  await runRequiredChild(
+    'pnpm',
+    ['--filter', workspace, 'build'],
+    repositoryRoot,
+    { ...process.env, pnpm_config_verify_deps_before_run: 'false' },
+  );
+}
+
+/** Returns the pinned npm CLI used for consumer packing and installation. */
+function npmCommand(repositoryRoot: string): string {
+  return resolve(repositoryRoot, 'node_modules/.bin/npm');
 }
 
 /** Creates an exact detached source worktree with only the primary toolchain linked into it. */
@@ -153,16 +163,27 @@ async function packDeterministicArchive(
 ): Promise<PackedArchiveIdentity> {
   const archivePath = resolve(archivesDirectory, `${archiveName}.tgz`);
   const comparisonPath = resolve(archivesDirectory, `${archiveName}.comparison.tgz`);
-  await runRequiredChild(
-    'yarn',
-    ['workspace', workspace, 'pack', '--filename', archivePath],
-    repositoryRoot,
-  );
-  await runRequiredChild(
-    'yarn',
-    ['workspace', workspace, 'pack', '--filename', comparisonPath],
-    repositoryRoot,
-  );
+
+  /** Packs one workspace with npm and returns the generated tarball path. */
+  async function packOnce(): Promise<string> {
+    const result = await runRequiredChild(
+      npmCommand(repositoryRoot),
+      ['pack', '--workspace', workspace, '--pack-destination', archivesDirectory],
+      repositoryRoot,
+    );
+    const filename = result.stdout.trim().split(/\r?\n/u).at(-1) ?? '';
+    if (!filename.endsWith('.tgz')) {
+      throw new Error('npm pack did not report a tarball filename');
+    }
+    const generatedPath = resolve(archivesDirectory, filename);
+    if (!existsSync(generatedPath)) {
+      throw new Error('npm pack did not create the reported tarball');
+    }
+    return generatedPath;
+  }
+
+  renameSync(await packOnce(), archivePath);
+  renameSync(await packOnce(), comparisonPath);
   const sha256 = sha256Bytes(readFileSync(archivePath));
   if (sha256 !== sha256Bytes(readFileSync(comparisonPath))) {
     throw new Error('package archive is not deterministic');
@@ -208,7 +229,7 @@ function validateConsumerLocation(repositoryRoot: string, consumerPath: string):
   });
 }
 
-/** Proves Yarn installed only the two exact local archives into ordinary package directories. */
+/** Proves npm installed only the two exact local archives into ordinary package directories. */
 function validateInstalledDependencyGraph(
   consumerPath: string,
   dependencies: Readonly<Record<'@portaidentity/sdk' | '@portaidentity/cli', string>>,
@@ -220,9 +241,16 @@ function validateInstalledDependencyGraph(
   if (JSON.stringify(manifest.dependencies) !== JSON.stringify(dependencies)) {
     throw new Error('packed consumer dependencies changed during installation');
   }
-  const lock = readFileSync(resolve(consumerPath, 'yarn.lock'), 'utf8');
+  const lock = JSON.parse(readFileSync(resolve(consumerPath, 'package-lock.json'), 'utf8')) as {
+    packages?: Record<string, { resolved?: string }>;
+  };
   for (const [name, source] of Object.entries(dependencies)) {
-    if (!lock.includes(`${name}@file:`) || !lock.includes(basename(source.slice(5)))) {
+    const entry = lock.packages?.[`node_modules/${name}`];
+    if (
+      entry?.resolved === undefined ||
+      !entry.resolved.startsWith('file:') ||
+      !entry.resolved.includes(basename(source.slice(5)))
+    ) {
       throw new Error('packed consumer lock does not bind the local archive');
     }
     const installedRoot = resolve(consumerPath, 'node_modules', ...name.split('/'));
@@ -309,18 +337,18 @@ export async function preparePackedConsumer(
       resolve(consumerPath, 'surface-probe.mjs'),
     );
     await runRequiredChild(
-      'yarn',
+      npmCommand(canonicalRoot),
       [
         'install',
-        '--non-interactive',
-        '--production=true',
+        '--omit=dev',
         '--ignore-scripts',
-        '--no-progress',
-        '--cache-folder',
+        '--no-audit',
+        '--no-fund',
+        '--cache',
         cachePath,
       ],
       consumerPath,
-      { ...process.env, YARN_CACHE_FOLDER: cachePath },
+      { ...process.env, npm_config_cache: cachePath },
     );
     validateInstalledDependencyGraph(consumerPath, dependencies, [sdk, cli]);
     return Object.freeze({
@@ -343,13 +371,13 @@ export async function preparePackedConsumer(
       try {
         removeBuildWorktree(canonicalRoot, buildWorktreePath);
       } catch {
-        throw new CompatibilityExecutionError(60, `yarn assurance:compat --recover ${runId}`);
+        throw new CompatibilityExecutionError(60, `pnpm assurance:compat --recover ${runId}`);
       }
     }
     try {
       rmSync(runRoot, { recursive: true, force: true });
     } catch {
-      throw new CompatibilityExecutionError(60, `yarn assurance:compat --recover ${runId}`);
+      throw new CompatibilityExecutionError(60, `pnpm assurance:compat --recover ${runId}`);
     }
     throw error;
   }
@@ -425,7 +453,7 @@ export function cleanupPackedConsumer(
 ): PackedConsumerCleanupResult {
   const canonicalRoot = realpathSync(repositoryRoot);
   const runRoot = resolve(canonicalRoot, 'test-harness/.assurance-runtime/compat', consumer.runId);
-  const recoveryCommand = `yarn assurance:compat --recover ${consumer.runId}`;
+  const recoveryCommand = `pnpm assurance:compat --recover ${consumer.runId}`;
   try {
     if (
       !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(

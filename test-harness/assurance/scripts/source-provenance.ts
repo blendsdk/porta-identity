@@ -76,7 +76,9 @@ export function inspectFoundationProvenance(repositoryRoot: string): {
   }).trim();
   const ownedInputs = [
     'package.json',
-    'yarn.lock',
+    'pnpm-lock.yaml',
+    'pnpm-workspace.yaml',
+    '.npmrc',
     'test-harness/eslint.config.js',
     'test-harness/tsconfig.assurance.json',
     ...listRegularFiles(resolve(canonicalRoot, 'test-harness/assurance')).map(

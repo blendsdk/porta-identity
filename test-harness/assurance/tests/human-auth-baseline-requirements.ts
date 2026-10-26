@@ -55,7 +55,7 @@ export interface HumanAuthBaselineCandidateRequirement {
 export interface HumanAuthBaselineRequirement {
   readonly caseId: HumanAuthBaselineCaseId;
   readonly claimIds: readonly ('CLAIM-R5-06' | 'CLAIM-R5-07')[];
-  readonly command: readonly ['yarn', 'assurance:baseline', '--case', HumanAuthBaselineCaseId];
+  readonly command: readonly ['pnpm', 'assurance:baseline', '--case', HumanAuthBaselineCaseId];
   readonly classification: 'natural-red';
   readonly reason: 'missing-exact-human-auth-sentinel';
   readonly selectedSentinel: null;
@@ -246,7 +246,7 @@ export const humanAuthBaselineRequirements: readonly HumanAuthBaselineRequiremen
     Object.freeze({
       caseId,
       claimIds: caseId <= 'ST-45' ? (['CLAIM-R5-06'] as const) : (['CLAIM-R5-07'] as const),
-      command: ['yarn', 'assurance:baseline', '--case', caseId] as const,
+      command: ['pnpm', 'assurance:baseline', '--case', caseId] as const,
       classification: 'natural-red' as const,
       reason: 'missing-exact-human-auth-sentinel' as const,
       selectedSentinel: null,

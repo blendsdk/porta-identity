@@ -129,7 +129,7 @@ test('should require unique RED signatures and exact case, exit, and marker matc
         caseId: 'ST-01',
         observedChildExit: 1,
         normalizedFailureExit: 21,
-        command: 'yarn tsx --test test-harness/assurance/tests/assurance.spec.test.ts',
+        command: 'pnpm exec tsx --test test-harness/assurance/tests/assurance.spec.test.ts',
         marker: 'EXACT_FAILURE_MARKER',
       },
     ],

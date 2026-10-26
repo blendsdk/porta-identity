@@ -80,7 +80,7 @@ export interface P1BaselineRequirement {
   /** Requirement claims supported by the selected sentinel. */
   readonly claimIds: readonly ('CLAIM-R5-08' | 'CLAIM-R5-09' | 'CLAIM-R5-10')[];
   /** Exact root command that records the result. */
-  readonly command: readonly ['yarn', 'assurance:baseline', '--case', P1BaselineCaseId];
+  readonly command: readonly ['pnpm', 'assurance:baseline', '--case', P1BaselineCaseId];
   /** Incomplete legacy evidence is recorded as natural RED. */
   readonly classification: 'natural-red';
   /** Stable explanation for the missing exact external sentinel. */
@@ -342,7 +342,7 @@ export const p1BaselineRequirements: readonly P1BaselineRequirement[] = p1Baseli
   (caseId) => ({
     caseId,
     claimIds: claimIdsForCase(caseId),
-    command: ['yarn', 'assurance:baseline', '--case', caseId],
+    command: ['pnpm', 'assurance:baseline', '--case', caseId],
     classification: 'natural-red',
     reason: 'missing-exact-p1-sentinel',
     selectedSentinel: null,

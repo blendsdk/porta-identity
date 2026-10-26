@@ -199,6 +199,6 @@ export async function runTenantAdminControlSensitivity(
     artifactPath: relative(repositoryRoot, artifact).split(sep).join('/'),
     recoveryCommand: result.cleanupComplete
       ? undefined
-      : `yarn assurance:control-check --recover ${runtime.runId}`,
+      : `pnpm assurance:control-check --recover ${runtime.runId}`,
   });
 }

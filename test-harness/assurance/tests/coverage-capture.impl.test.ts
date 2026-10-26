@@ -34,11 +34,11 @@ function withTemporaryRepository(run: (root: string) => void): void {
       resolve(root, '.gitignore'),
       'test-harness/.assurance-results/\ntest-harness/.assurance-runtime/\n',
     );
-    writeFileSync(resolve(root, 'yarn.lock'), '# fixture lock\n');
+    writeFileSync(resolve(root, 'pnpm-lock.yaml'), '# fixture lock\n');
     execFileSync('git', ['init', '--quiet'], { cwd: root });
     execFileSync('git', ['config', 'user.email', 'coverage@test.invalid'], { cwd: root });
     execFileSync('git', ['config', 'user.name', 'Coverage Test'], { cwd: root });
-    execFileSync('git', ['add', '.gitignore', 'yarn.lock'], { cwd: root });
+    execFileSync('git', ['add', '.gitignore', 'pnpm-lock.yaml'], { cwd: root });
     execFileSync('git', ['commit', '--quiet', '-m', 'test fixture'], { cwd: root });
     run(root);
   } finally {
@@ -116,7 +116,7 @@ test('should create one ignored run-owned raw and compiled workspace', () => {
 test('should reject coverage build attribution when tracked inputs are dirty', () => {
   withTemporaryRepository((root) => {
     const workspace = createCoverageWorkspace(root, 'protocol', 'operational');
-    writeFileSync(resolve(root, 'yarn.lock'), '# changed lock\n');
+    writeFileSync(resolve(root, 'pnpm-lock.yaml'), '# changed lock\n');
     assert.throws(() => coverageEnvironment(workspace), /requires a clean source tree/u);
   });
 });
@@ -195,11 +195,11 @@ test('should reject a selected Porta container absent from the unchanged durable
       resolve(root, '.gitignore'),
       'test-harness/.assurance-results/\ntest-harness/.assurance-runtime/\n',
     );
-    writeFileSync(resolve(root, 'yarn.lock'), '# fixture lock\n');
+    writeFileSync(resolve(root, 'pnpm-lock.yaml'), '# fixture lock\n');
     execFileSync('git', ['init', '--quiet'], { cwd: root });
     execFileSync('git', ['config', 'user.email', 'coverage@test.invalid'], { cwd: root });
     execFileSync('git', ['config', 'user.name', 'Coverage Test'], { cwd: root });
-    execFileSync('git', ['add', '.gitignore', 'yarn.lock'], { cwd: root });
+    execFileSync('git', ['add', '.gitignore', 'pnpm-lock.yaml'], { cwd: root });
     execFileSync('git', ['commit', '--quiet', '-m', 'test fixture'], { cwd: root });
     const workspace = createCoverageWorkspace(root, 'protocol', 'operational');
     const provenance = coverageEnvironment(workspace);
