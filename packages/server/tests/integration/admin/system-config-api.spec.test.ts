@@ -4,6 +4,7 @@ import { Socket } from 'node:net';
 import Koa from 'koa';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getPool } from '../../../src/lib/database.js';
+import { observeOperationalLogOutput } from '../../../src/lib/logger.js';
 import { findSuperAdminOrganization } from '../../../src/organizations/repository.js';
 import { createTestUser } from '../helpers/factories.js';
 import { seedBaseData, truncateAllTables } from '../helpers/database.js';
@@ -39,6 +40,10 @@ describe('live administrative configuration atomicity', () => {
     await getPool().query('DROP TRIGGER IF EXISTS config_spec_failure ON audit_log');
     await getPool().query('DROP TRIGGER IF EXISTS config_spec_failure ON system_config');
     await getPool().query('DROP FUNCTION IF EXISTS config_spec_failure()');
+    await getPool().query(
+      'DROP TRIGGER IF EXISTS issue_199_config_audit_failure ON audit_log',
+    );
+    await getPool().query('DROP FUNCTION IF EXISTS issue_199_config_audit_failure()');
     runtime.clearSystemConfigCache();
   });
 
@@ -187,6 +192,55 @@ describe('live administrative configuration atomicity', () => {
       expect(await runtime.getSystemConfigNumber('magic_link_ttl')).toBe(900);
     },
   );
+
+  it('should log safe audit failure context for a configuration mutation', async () => {
+    await getPool().query(`
+      CREATE OR REPLACE FUNCTION issue_199_config_audit_failure() RETURNS trigger AS $$
+      BEGIN
+        IF NEW.event_type = 'admin.config.updated' THEN
+          RAISE EXCEPTION 'forced config audit failure' USING ERRCODE = '42P01';
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE plpgsql;
+      CREATE TRIGGER issue_199_config_audit_failure
+        BEFORE INSERT ON audit_log
+        FOR EACH ROW EXECUTE FUNCTION issue_199_config_audit_failure();
+    `);
+
+    const observed: string[] = [];
+    const stopObserving = observeOperationalLogOutput((entry) => observed.push(entry));
+    let response: Awaited<ReturnType<typeof update>> | undefined;
+    try {
+      response = await update('magic_link_ttl', { value: 1200 });
+    } finally {
+      stopObserving();
+    }
+
+    if (!response) throw new Error('Configuration mutation did not return a response');
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      error: 'Configuration store is unavailable',
+      code: 'config_store_unavailable',
+      requestId: 'live-config-request',
+    });
+
+    const fields = observed.map((entry) => {
+      const parsed: unknown = JSON.parse(entry);
+      const first = Array.isArray(parsed) ? parsed[0] : undefined;
+      return typeof first === 'object' && first !== null
+        ? (first as Record<string, unknown>)
+        : {};
+    });
+    expect(fields.find((entry) => entry.event === 'admin_config_mutation_failed')).toMatchObject({
+      event: 'admin_config_mutation_failed',
+      requestId: 'live-config-request',
+      method: 'PUT',
+      errorCode: '42P01',
+      failureClass: 'audit_schema_missing',
+    });
+    expect(observed.join('\n')).not.toContain('forced config audit failure');
+  });
 
   it('should expose all native defaults without database-owned metadata', async () => {
     const rows = await getPool().query<{ key: string; value: unknown }>(

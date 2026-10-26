@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { logAdminMutationFailure } from '../lib/admin-mutation-diagnostics.js';
 import { bulkStatusChange } from '../lib/bulk-operations.js';
 
 // ---------------------------------------------------------------------------
@@ -54,6 +55,14 @@ export function createBulkRouter(): Router {
   const router = new Router({ prefix: '/api/admin/bulk' });
 
   router.use(requireAdminAuth());
+  router.use(async (ctx, next) => {
+    try {
+      await next();
+    } catch (error) {
+      logAdminMutationFailure(ctx, error, 'admin_bulk_mutation_failed');
+      throw error;
+    }
+  });
 
   // -------------------------------------------------------------------------
   // POST /organizations/status — Bulk organization status change

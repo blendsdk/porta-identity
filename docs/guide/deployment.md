@@ -302,6 +302,27 @@ docker exec porta-app node dist/cli/index.js migrate status
 `PORTA_AUTO_MIGRATE` is an initial-setup convenience. Keep it `false` in production and run
 `porta migrate up` explicitly as a controlled deployment step before starting the new release.
 
+::: warning Migration 034 requires a full application upgrade
+Migration `034_audit_client_actor.sql` makes `audit_log.actor_type` `NOT NULL` and adds the
+`audit_log_actor_shape` constraint. Pre-1.14 server builds do not write the new actor columns, so
+their administrative writes fail after this migration is applied. A 1.14+ build against a database
+without the migration also fails. Pre-guard builds roll back the mutation and return a generic 503;
+guarded builds exit before serving with `audit_schema_outdated`.
+
+Before applying migration 034:
+
+1. Take every pre-1.14 Porta instance out of service. Do not apply 034 while an old instance can
+   still serve administrative traffic.
+2. Take a verified database backup.
+3. Run `porta migrate up` once as a controlled deployment step.
+4. Start the matching 1.14+ instances and confirm `/health`.
+5. Verify that `audit_log` has `actor_type`, `actor_client_id`, `actor_client_name`, and
+   `audit_log_actor_shape` before re-enabling administrative traffic.
+
+Do not use `PORTA_AUTO_MIGRATE=true` for a rolling production deployment. The 1.14+ server now
+refuses to start when the audit schema is not current.
+:::
+
 ### Backup & Recovery
 
 PostgreSQL is Porta's only durable data store — all organizations, users, clients, roles,

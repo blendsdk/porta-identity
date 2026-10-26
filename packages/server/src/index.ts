@@ -15,6 +15,7 @@ import { createApp } from './server.js';
 import { config } from './config/index.js';
 import { logger } from './lib/logger.js';
 import { SERVER_VERSION } from './version.js';
+import { assertAuditSchema, AuditSchemaError } from './lib/audit-schema.js';
 import { connectDatabase, disconnectDatabase } from './lib/database.js';
 import { connectRedis, disconnectRedis } from './lib/redis.js';
 import { SigningKeyCryptoError } from './lib/signing-key-crypto.js';
@@ -30,6 +31,9 @@ import { attachTransportDecisionHandler } from './security/transport-decision.js
 async function main() {
   // Step 1: Connect to infrastructure services
   await connectDatabase();
+
+  // Fail before accepting traffic when the running build and database audit schema disagree.
+  await assertAuditSchema();
   await connectRedis();
 
   // Step 2: Initialize i18n and template engine for auth workflow pages.
@@ -99,7 +103,7 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  if (error instanceof SigningKeyCryptoError) {
+  if (error instanceof SigningKeyCryptoError || error instanceof AuditSchemaError) {
     logger.fatal(error.message);
   } else {
     logger.fatal(error, 'Failed to start server');
