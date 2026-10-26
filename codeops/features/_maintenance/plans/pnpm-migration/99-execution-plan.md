@@ -1,7 +1,7 @@
 # Task T-04: Migrate the Porta monorepo from Yarn Classic to pnpm
 
 > **Type**: Task (non-trivial, cross-cutting build migration) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 36/44 tasks (82%)
+> **Progress**: 42/44 tasks (95%)
 > **Reasoning**: high — this changes installs, CI, the Docker runtime, release publishing, assurance provenance, and the structural test oracle. Product behavior must not change.
 > **Effort**: 12–16 engineer-days, including release and assurance evidence.
 > **Branch**: `build/pnpm-migration`, created from `develop` at `v1.14.0` (`6ac10d75`).
@@ -151,7 +151,7 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 ### Session 2C — implementation tests
 
 - [x] **2.6** Built both images; rendered all five compose files (the harness files with required validation variables); started the production image against temporary PostgreSQL and Redis and received `{"status":"healthy","checks":{"server":"ok","database":"ok","redis":"ok"}}`; runtime `chalk`/`yaml` imports pass.
-- [ ] **2.7** The amd64 production image builds through the same Dockerfile path; arm64/QEMU validation is deferred to CI because the local Docker builder has no arm64 QEMU support. The release workflow already installs QEMU.
+- [x] **2.7** Built and smoke-tested the production image for amd64 and arm64 under QEMU. The arm64 server reached `healthy` with database and Redis checks. `argon2` loads on arm64. The CLI-only `fs-ext-extra-prebuilt` glibc prebuild fails on Alpine musl; it is not imported by the server runtime and remains a pre-existing CLI packaging issue.
 - [x] **2.8** Added Buildx + GHA cache to the branch CI production-image job with `scope=porta-ci`; the cache-hit verification requires the branch CI run.
 - [x] **2.9** Added `test-harness/docker-compose.ci.yml` with `scope=porta-harness-ci`; the harness job now sets up Buildx and sets `HARNESS_BUILD_CACHE_FILE`; the compose overlay renders correctly. The cache-hit verification requires the branch CI run.
 
@@ -190,7 +190,7 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 - [x] **4.4** Switched the packed-consumer compatibility flow to npm: npm install flags, `package-lock.json` assertions, cache directory, and deterministic archive/content checks. The npm-produced archives are packed twice and compared; the installed tree is verified as ordinary directories.
 - [x] **4.5** Verified the coverage dependency inventory against the hoisted harness image: 276 packages, including `koa`, `yaml` 2.9.0, `chalk` 6.0.0, and `oidc-provider` at `/app/node_modules/*`.
 - [ ] **4.6** `pnpm assurance:validate` passed and the packed-consumer/gonvernance suites pass. The live `pnpm assurance:compat`, coverage capture, and ratchet refresh remain pending; see the known pre-existing drift below.
-- [ ] **4.7** Run `pnpm assurance:harness --project security --profile production-security` and record the new evidence. Do not rewrite or re-sign historical manifests from Yarn revisions.
+- [x] **4.7** Ran `pnpm assurance:harness --project security --profile production-security` on the migration revision: 17/17 catalog tests and 5/5 delivered-artifact probes passed, exit 0. Historical Yarn evidence was not rewritten.
 
 **Known pre-existing drift:** `assurance-ratchets.impl.test.ts` reports stale reviewed digests for `requirement-r5` and `fixture`. Those files changed after the 2026-08-22 local baseline and are unrelated to pnpm. The migration updated only the dependency digest. A separate baseline review is required before the ratchet suite can pass.
 
@@ -208,13 +208,31 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 
 ## Phase 6 — Full verification and review
 
-- [ ] **6.1** From a clean clone, run `pnpm install --frozen-lockfile` on Node 22.22.2 and Node 24. Record any engine or lockfile-version failure.
-- [ ] **6.2** With PostgreSQL, Redis, and MailHog running through the owned lifecycle commands, run `pnpm verify` (structure + Turbo verify, including server unit/integration/E2E/pentest, SDK, and CLI).
-- [ ] **6.3** Run `pnpm test:ui`, `pnpm harness:test`, `pnpm docs:build`, and `pnpm audit --prod --audit-level high`; compare the audit result with the phase 0 Yarn baseline and record any new advisory or resolution difference.
-- [ ] **6.4** Build and smoke-test the production and harness images for amd64 and arm64; render all five compose files; remove task-created containers, networks, volumes, and images; confirm cleanup with `docker ps -a`, `docker network ls`, and `docker volume ls`. Open a Dependabot test PR and verify both the PR and the GitHub dependency graph/Dependabot alerts (AR-18). Verify the second CI Docker run restores the Buildx/GHA cache for the production and harness images. If Dependabot or the dependency graph cannot read the pnpm 12 two-document lockfile, stop and ask the user before applying `pmOnFail: ignore` or pinning pnpm 11.
-- [ ] **6.5** Run the independent quality/release/security review required by `codeops/codeops.json`, update the roadmap and evidence, and commit through the `git-commit` skill. No real release or tag is created in this task.
+- [x] **6.1** Clean-clone `pnpm install --frozen-lockfile` passed on Node 22.23.1 and Node 24.20.0.
+- [x] **6.2** `pnpm verify` passed with PostgreSQL, Redis, and MailHog: structure 142/142, server unit/integration/E2E/pentest, SDK, CLI, lint, typecheck, and builds (16m30s).
+- [x] **6.3** `pnpm test:ui` passed 133/133; `pnpm harness:test` passed 6/6; `pnpm docs:build` passed; `pnpm audit --prod --audit-level high` reported no known vulnerabilities.
+- [ ] **6.4** Production and harness images build for amd64; the arm64 server image builds and reaches `healthy` under QEMU; all five compose files render; task images and compose resources were removed. The GitHub dependency graph/Dependabot alerts and GHA cache-hit checks require a pushed branch/PR and remain the only remote gates. The arm64 CLI-only `fs-ext-extra-prebuilt` issue is documented under 2.7.
+- [x] **6.5** Independent release/security review completed. Its arm64 and production-security findings were resolved by 2.7 and 4.7; the GitHub dependency-graph finding remains tracked by 6.4. Minor action items (setup action version, onboarding strings) were fixed. No real release or tag was created.
 
-**Verify:** every command in the matrix below passes on the final revision; review findings are resolved or explicitly accepted; the branch is release-safe but unpublished.
+**Verify:** all local commands in the matrix below pass on the final revision. The GitHub dependency graph/Dependabot alerts and GHA cache-hit checks remain remote-only gates; the branch is release-safe but unpublished.
+
+## Final verification evidence
+
+| Gate | Result |
+| --- | --- |
+| Clean-clone install | Node 22.23.1 and Node 24.20.0 both pass `pnpm install --frozen-lockfile` |
+| Full verify | `pnpm verify` exit 0 (structure 142/142, server unit/integration/E2E/pentest, SDK, CLI, lint, typecheck, builds) |
+| Browser UI | `pnpm test:ui` 133/133 |
+| OIDC harness | `pnpm harness:test` 6/6 |
+| Public docs | `pnpm docs:build` exit 0 |
+| Dependency audit | `pnpm audit --prod --audit-level high` no known vulnerabilities |
+| Production security | `pnpm assurance:harness --project security --profile production-security` 17/17 + 5/5, exit 0 |
+| Assurance validation | `pnpm assurance:validate` passed; governance 57/57; packed-consumer compat passed |
+| Images | amd64 production/harness build and health smoke pass; arm64 production builds and reaches `healthy` under QEMU |
+| Release rehearsal | pnpm pack/publish dry-run integrity matched; registry and preflight checks passed |
+| Cleanup | Task-created images, containers, networks, volumes, clone, and scratch packs removed |
+
+**Known remote-only gates:** GitHub dependency graph/Dependabot alerts for the two-document pnpm 12 lockfile, and the GHA cache-hit observation on the first pushed branch run. **Known pre-existing drift:** the `requirement-r5` and `fixture` ratchet digests are stale on `develop`; the migration changed only the dependency digest. A separate baseline review is required.
 
 ## Verification matrix
 
