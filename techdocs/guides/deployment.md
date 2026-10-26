@@ -105,9 +105,9 @@ volumes:
 docker compose up -d
 ```
 
-The entrypoint script automatically:
-1. Runs database migrations
-2. Starts the Porta server
+The entrypoint script starts the Porta server. For production, run `porta migrate up` explicitly
+before starting the new release; keep `PORTA_AUTO_MIGRATE=false` for rolling deployments.
+Migration 034 requires every pre-1.14 instance to be stopped or upgraded before it is applied.
 
 ### 5. Bootstrap Admin
 
@@ -231,12 +231,26 @@ Porta enforces production safety checks via Zod's `superRefine`:
 ### Docker Compose Upgrade
 
 ```bash
-# Pull latest image
+# Stop the old version before applying migrations that are not mixed-version compatible.
+docker compose down
+
+# Pull the matching new image.
 docker compose pull porta
 
-# Restart (migrations run automatically)
+# Apply migrations as a controlled deployment step.
+docker compose run --rm porta node dist/cli/index.js migrate up
+
+# Start the new version.
 docker compose up -d
 ```
+
+::: danger Migration 034 mixed-version rollout
+Migration `034_audit_client_actor.sql` applies `NOT NULL` and a shape constraint to audit actor
+columns. Pre-1.14 builds omit `actor_type`, so they cannot run against a migrated database. Never
+apply migration 034 while old instances still serve administrative traffic. Stop or upgrade every
+instance first, take a verified backup, and apply the migration once. The 1.14+ server fails startup
+if the audit schema is missing or incomplete.
+:::
 
 ### Rollback
 
@@ -254,7 +268,7 @@ docker compose up -d
 ```
 
 ::: danger Migration Rollback
-Database migrations are forward-only in production. Rolling back a migration requires manual intervention with `porta migrate down` and should be done with extreme care.
+Database migrations are forward-only in production. Rolling back a migration requires manual intervention with `porta migrate down` and should be done with extreme care. After migration 034, a pre-1.14 build cannot write administrative audit rows against the migrated schema; roll back only with a verified backup and an explicit maintenance window.
 :::
 
 ## Monitoring

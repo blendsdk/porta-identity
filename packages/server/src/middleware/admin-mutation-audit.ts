@@ -1,5 +1,6 @@
 import type { Middleware } from 'koa';
 import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { logAdminMutationFailure } from '../lib/admin-mutation-diagnostics.js';
 import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
 import { normalizedRouteTemplate, recordSecurityDecision } from '../security/decision-context.js';
 
@@ -76,6 +77,7 @@ export function adminMutationAudit(): Middleware {
         reasonCode: 'handler-failed',
         outcome: 'error',
       });
+      logAdminMutationFailure(ctx, error, 'admin_mutation_failed');
       ctx.status = 503;
       ctx.body = {
         error: 'Administrative request could not be completed',

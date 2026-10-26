@@ -29,6 +29,7 @@ import {
   runDatabaseTransaction,
 } from '../lib/database.js';
 import { writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { logAdminMutationFailure } from '../lib/admin-mutation-diagnostics.js';
 import { clearSystemConfigCache } from '../lib/system-config.js';
 import {
   SYSTEM_CONFIG_CATALOG,
@@ -157,7 +158,8 @@ async function commitConfigChanges(ctx: Context, changes: ConfigChange[], single
       return entries;
     });
     ctx.body = { data: single ? data[0] : data, restartRequired };
-  } catch {
+  } catch (error) {
+    logAdminMutationFailure(ctx, error, 'admin_config_mutation_failed');
     configUnavailable(ctx);
   }
 }
