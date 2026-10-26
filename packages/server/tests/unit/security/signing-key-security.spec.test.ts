@@ -34,6 +34,21 @@ vi.mock('../../../src/config/index.js', () => ({
   config: { signingKeyEncryptionKey: 'deadbeef'.repeat(8), host: '127.0.0.1', port: 0 },
 }));
 
+vi.mock('../../../src/lib/audit-schema.js', () => {
+  class AuditSchemaError extends Error {
+    readonly code = 'audit_schema_outdated';
+
+    constructor() {
+      super(
+        'Audit schema is not current; apply pending database migrations before starting Porta',
+      );
+      this.name = 'AuditSchemaError';
+    }
+  }
+
+  return { assertAuditSchema: vi.fn(), AuditSchemaError };
+});
+
 vi.mock('../../../src/lib/logger.js', () => ({ logger: mocks.log }));
 
 vi.mock('../../../src/lib/redis.js', () => ({
@@ -494,6 +509,28 @@ describe('signing-key security specification', () => {
     expect(output).not.toContain('startup-ciphertext');
     expect(output).not.toContain('auth tag mismatch');
     expect(output).not.toContain('/srv/porta/private.ts');
+  });
+
+  // A predictable schema mismatch must not log the caught error object or its stack.
+  it('does not expose startup stack traces when the audit schema is outdated', async () => {
+    vi.resetModules();
+    const auditSchema = await import('../../../src/lib/audit-schema.js');
+    vi.mocked(auditSchema.assertAuditSchema).mockRejectedValueOnce(
+      new auditSchema.AuditSchemaError(),
+    );
+    mocks.log.fatal.mockClear();
+    const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+
+    await import('../../../src/index.js');
+    await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(1));
+
+    const fatalCalls = mocks.log.fatal.mock.calls;
+    expect(fatalCalls).toHaveLength(1);
+    expect(fatalCalls.flat()).not.toEqual(expect.arrayContaining([expect.any(Error)]));
+    const output = JSON.stringify(fatalCalls);
+    expect(output).toContain('Audit schema is not current');
+    expect(output).not.toContain('stack');
+    expect(output).not.toContain('/srv/porta');
   });
 
   // Authentication and each exact mutation permission fail before any key or cache change.
