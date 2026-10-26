@@ -8,7 +8,7 @@
 version: 2
 
 updates:
-  # npm dependencies (package.json / yarn.lock)
+  # npm dependencies (package.json / pnpm-lock.yaml)
   - package-ecosystem: npm
     directory: /
     schedule:

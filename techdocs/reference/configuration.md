@@ -203,7 +203,7 @@ existing lock timestamp.
 
 Migration `030_global_configuration_catalog.sql` overwrites the 18 canonical rows with native
 defaults, deletes seven obsolete public keys and preserves internal rows. Down is intentionally a
-no-op; development reset uses `yarn admin:env reset` rather than restoring retired public values.
+no-op; development reset uses `pnpm admin:env reset` rather than restoring retired public values.
 
 ## Example `.env` File
 

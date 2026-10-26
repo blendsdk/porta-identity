@@ -33,7 +33,7 @@ test('should root-own assurance dependencies without creating another harness wo
   }
   assert.deepEqual(manifest.workspaces, ['packages/*']);
   assert.equal(existsSync(resolve(repositoryRoot, 'test-harness/package.json')), false);
-  assert.equal(existsSync(resolve(repositoryRoot, 'test-harness/yarn.lock')), false);
+  assert.equal(existsSync(resolve(repositoryRoot, 'test-harness/pnpm-lock.yaml')), false);
 });
 
 test('should compose root static checks across assurance tooling and active packages', () => {
@@ -59,6 +59,6 @@ test('should expose the approved aliases while leaving verify unchanged', () => 
   for (const action of assuranceAliases) {
     assert.equal(scripts[`assurance:${action}`], `tsx ${dispatcher} ${action}`);
   }
-  assert.equal(scripts.verify, 'yarn test:structure && turbo run verify');
+  assert.equal(scripts.verify, 'pnpm test:structure && turbo run verify');
   assert.doesNotMatch(scripts.verify, /assurance:(?:harness|coverage|fault|compat|stability|all)/);
 });

@@ -56,7 +56,7 @@ function findPackageManifests(directory) {
 }
 
 /**
- * Returns Yarn Classic workspace patterns from either supported manifest shape.
+ * Returns pnpm workspace patterns from either supported manifest shape.
  *
  * @param {Record<string, any>} manifest Root package manifest.
  * @returns {string[]} Workspace path patterns.
@@ -74,7 +74,7 @@ function getWorkspacePatterns(manifest) {
 }
 
 /**
- * Converts the small set of path globs supported by Yarn workspaces to a regular expression.
+ * Converts the small set of path globs supported by pnpm workspaces to a regular expression.
  * A single star stays within one directory segment, while a double star can cross segments.
  *
  * @param {string} pattern Workspace path pattern.
@@ -101,7 +101,7 @@ function workspaceGlobToRegExp(pattern) {
 }
 
 /**
- * Determines whether a repository-relative directory belongs to the Yarn install graph.
+ * Determines whether a repository-relative directory belongs to the pnpm install graph.
  *
  * @param {string} directory Repository-relative directory using forward slashes.
  * @param {string[]} patterns Root workspace patterns.
@@ -111,8 +111,8 @@ function isWorkspaceDirectory(directory, patterns) {
   return patterns.some((pattern) => workspaceGlobToRegExp(pattern).test(directory));
 }
 
-// The repository root identifies the private Yarn Classic monorepo and its supported Node floor.
-test('should identify the private Yarn Classic monorepo at the repository root', () => {
+// The repository root identifies the private pnpm monorepo and its supported Node floor.
+test('should identify the private pnpm monorepo at the repository root', () => {
   const rootManifest = readRepositoryJson('package.json');
 
   assert.equal(
@@ -123,8 +123,8 @@ test('should identify the private Yarn Classic monorepo at the repository root',
   assert.equal(rootManifest.private, true, 'root package must be private');
   assert.match(
     rootManifest.packageManager ?? '',
-    /^yarn@1\.22\.22(?:\+|$)/,
-    'packageManager must identify Yarn 1.22.22',
+    /^pnpm@12\.15\.0(?:\+|$)/,
+    'packageManager must identify pnpm 12.15.0',
   );
   assert.equal(rootManifest.engines?.node, '>=22.22.2', 'Node engine must have a >=22.22.2 floor');
 });
@@ -146,7 +146,7 @@ test('should expose exactly the three retained public packages as root workspace
     expectedPublicPackages,
     'packages/ must contain exactly the public server, SDK, and CLI manifests',
   );
-  assert.ok(workspacePatterns.length > 0, 'root package must declare Yarn workspaces');
+  assert.ok(workspacePatterns.length > 0, 'root package must declare pnpm workspaces');
 
   for (const publicPackage of publicPackages) {
     assert.ok(
@@ -161,7 +161,7 @@ test('should expose exactly the three retained public packages as root workspace
     'OIDC harness must not own a package manifest',
   );
   assert.equal(
-    existsSync(resolve(repositoryRoot, 'test-harness/yarn.lock')),
+    existsSync(resolve(repositoryRoot, 'test-harness/pnpm-lock.yaml')),
     false,
     'OIDC harness must use the root lockfile',
   );
@@ -237,12 +237,12 @@ test('should provide root-and-workspace dependency maintenance commands', () => 
 
   assert.match(
     scripts['deps:update'] ?? '',
-    /\byarn install\b/,
+    /\bpnpm install\b/,
     'deps:update must reinstall dependencies',
   );
   assert.match(
     scripts['deps:update'] ?? '',
-    /\byarn verify\b/,
+    /\bpnpm verify\b/,
     'deps:update must verify the repository after reinstalling',
   );
 });
@@ -294,7 +294,7 @@ test('should remove obsolete root command wrappers', () => {
     assert.equal(
       existsSync(resolve(repositoryRoot, obsoletePath)),
       false,
-      `${obsoletePath} must not duplicate or contradict the supported root Yarn commands`,
+      `${obsoletePath} must not duplicate or contradict the supported root pnpm commands`,
     );
   }
 });

@@ -4,7 +4,7 @@ import { resolve } from 'node:path';
 import test from 'node:test';
 
 const repositoryRoot = resolve(import.meta.dirname, '../..');
-const yarnBuiltins = new Set(['install', 'workspace']);
+const pnpmBuiltins = new Set(['exec', 'install', 'run']);
 
 /**
  * Reads a JSON file relative to the repository root.
@@ -17,25 +17,26 @@ function readRepositoryJson(repositoryPath) {
 }
 
 /**
- * Finds Yarn commands that can refer to another root script.
+ * Finds pnpm commands that can refer to another root script.
  *
- * Yarn built-ins such as `workspace` and `install` use the same command position as scripts, so
- * callers exclude them before checking the root manifest.
+ * pnpm built-ins such as `install`, `run`, and `exec` use the same command position as scripts, so
+ * callers exclude them before checking the root manifest. Filter arguments such as `--filter` are
+ * intentionally not matched.
  *
  * @param {string} command Root script command text.
  * @returns {string[]} Candidate root-script names.
  */
-function findYarnScriptReferences(command) {
-  return [...command.matchAll(/(?:^|&&\s*)yarn\s+([a-z][\w:-]*)/g)].map((match) => match[1]);
+function findPnpmScriptReferences(command) {
+  return [...command.matchAll(/(?:^|&&\s*)pnpm\s+(?!-)([a-z][\w:-]*)/g)].map((match) => match[1]);
 }
 
 // Root scripts may compose supported aliases, but must never call an alias removed from the manifest.
-test('should resolve every composed Yarn alias through the root manifest', () => {
+test('should resolve every composed pnpm alias through the root manifest', () => {
   const scripts = readRepositoryJson('package.json').scripts ?? {};
 
   for (const [scriptName, command] of Object.entries(scripts)) {
-    for (const reference of findYarnScriptReferences(command)) {
-      if (yarnBuiltins.has(reference)) {
+    for (const reference of findPnpmScriptReferences(command)) {
+      if (pnpmBuiltins.has(reference)) {
         continue;
       }
 
@@ -75,7 +76,7 @@ test('should keep server README workspace commands executable', () => {
     }),
   );
 
-  for (const match of readme.matchAll(/yarn workspace (@portaidentity\/[^\s]+) ([\w:-]+)/g)) {
+  for (const match of readme.matchAll(/pnpm --filter (@portaidentity\/[^\s]+) ([\w:-]+)/g)) {
     const [, workspaceName, scriptName] = match;
     const manifest = workspaceManifests.get(workspaceName);
 
