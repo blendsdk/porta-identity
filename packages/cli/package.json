@@ -19,7 +19,7 @@
     "test:watch": "vitest",
     "lint": "eslint 'src/**/*.ts' 'tests/**/*.ts'",
     "typecheck": "../../node_modules/@typescript/native/bin/tsc --noEmit",
-    "verify": "yarn lint && yarn typecheck && yarn test && yarn build",
+    "verify": "pnpm run lint && pnpm run typecheck && pnpm run test && pnpm run build",
     "clean": "rm -rf dist"
   },
   "dependencies": {

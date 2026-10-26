@@ -1,7 +1,7 @@
 # Task T-04: Migrate the Porta monorepo from Yarn Classic to pnpm
 
 > **Type**: Task (non-trivial, cross-cutting build migration) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 4/44 tasks (9%)
+> **Progress**: 11/44 tasks (25%)
 > **Reasoning**: high — this changes installs, CI, the Docker runtime, release publishing, assurance provenance, and the structural test oracle. Product behavior must not change.
 > **Effort**: 12–16 engineer-days, including release and assurance evidence.
 > **Branch**: `build/pnpm-migration`, created from `develop` at `v1.14.0` (`6ac10d75`).
@@ -119,19 +119,19 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 
 ### Session 1A — specification tests first
 
-- [ ] **1.1** Add `repo-tests/monorepo/package-manager.spec.test.mjs` covering: pnpm `packageManager`, `pnpm-workspace.yaml` selecting `packages/*`, root `pnpm-lock.yaml` with no nested lockfiles, `nodeLinker: hoisted`, `linkWorkspacePackages: true`, `minimumReleaseAge: 0`, `allowBuilds` for the four native packages, and the three overrides. Run it against the current Yarn state and confirm the expected red result.
-- [ ] **1.2** Update `repo-tests/monorepo/toolchain.spec.test.mjs` to read the last document of `pnpm-lock.yaml` with the existing `yaml` dependency; keep the TypeScript 7/6 alias-consistency assertion and the `deps:check` intent. Do not treat the missing-lockfile failure as a behavioral red; the lockfile is generated in 1.4 and this spec is made green in 1.7.
+- [x] **1.1** Add `repo-tests/monorepo/package-manager.spec.test.mjs` covering: pnpm `packageManager`, `pnpm-workspace.yaml` selecting `packages/*`, root `pnpm-lock.yaml` with no nested lockfiles, `nodeLinker: hoisted`, `linkWorkspacePackages: true`, `minimumReleaseAge: 0`, `allowBuilds` for the four native packages, and the three overrides. The red run failed all four cases; the green run passes all four.
+- [x] **1.2** Update `repo-tests/monorepo/toolchain.spec.test.mjs` to read the last document of `pnpm-lock.yaml` with the existing `yaml` dependency; keep the TypeScript 7/6 alias-consistency assertion and the `deps:check` intent. The missing-lockfile red was not treated as behavioral; the spec is green after the lockfile existed.
 
 ### Session 1B — implementation
 
-- [ ] **1.3** Update `package.json`: `packageManager` to `pnpm@12.15.0` (optionally with the Corepack-compatible integrity hash), `engines` to Node + pnpm, remove `engines.yarn` and `resolutions`, keep `workspaces` (AR-9), and add the root `typescript: npm:@typescript/typescript6@^6.0.2` devDependency (AR-19). Add `pnpm-workspace.yaml` with `packages`, `nodeLinker`, `linkWorkspacePackages`, `minimumReleaseAge`, `strictDepBuilds`, `engineStrict`, `savePrefix: ''`, `autoInstallPeers: false`, `skills.dirs: []`, `allowBuilds`, and `overrides` (AR-1, AR-4, AR-8, AR-20). Keep `.npmrc` for auth/registry settings only.
-- [ ] **1.4** Remove the existing Yarn install tree (root and `packages/*/node_modules`, plus `.yarn-integrity`) before the first pnpm install. Generate and review `pnpm-lock.yaml` with `pnpm import` + `pnpm install`; remove `yarn.lock`; confirm the three overrides, local workspace links, and no unexpected version drift. Add `jwt-decode` to root devDependencies only if AR-10 requires it.
-- [ ] **1.5** Convert root scripts (`test:all`, `test:unit`, `test:integration`, `test:e2e`, `test:pentest`, `test:ui`, `test:ui:debug`, `test:watch`, `test:coverage`, `verify`, `deps:update`, `release:publish`) and package scripts (`verify`, `test:all`) to `pnpm --filter` / `pnpm run`. Keep the separate-process ordering of the four server suites.
+- [x] **1.3** Update `package.json`: `packageManager` to `pnpm@12.15.0`, `engines` to Node + pnpm, remove `engines.yarn` and `resolutions`, keep `workspaces` (AR-9), and add the root `typescript: npm:@typescript/typescript6@^6.0.2` devDependency (AR-19). Added `pnpm-workspace.yaml` with `packages`, `nodeLinker`, `linkWorkspacePackages`, `minimumReleaseAge`, `strictDepBuilds`, `engineStrict`, `savePrefix: ''`, `autoInstallPeers: false`, `skills.dirs: []`, `allowBuilds`, and `overrides` (AR-1, AR-4, AR-8, AR-20).
+- [x] **1.4** Removed the existing Yarn install tree (root and `packages/*/node_modules`, plus `.yarn-integrity`), generated `pnpm-lock.yaml` with `pnpm import` + `pnpm install`, and removed `yarn.lock`. The three overrides, local workspace links, and expected versions are present; `jwt-decode@4.0.0` is already hoisted (AR-10).
+- [x] **1.5** Converted the root scripts (`test:all`, `test:unit`, `test:integration`, `test:e2e`, `test:pentest`, `test:ui`, `test:ui:debug`, `test:watch`, `test:coverage`, `verify`, `deps:update`, `release:publish`) and package scripts (`verify`, `test:all`) to `pnpm --filter` / `pnpm run`; the four server suites still run in separate processes.
 
 ### Session 1C — implementation tests and hardening
 
-- [ ] **1.6** From the cleaned tree, run `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, and a narrow server unit selector. Fix layout or script issues; do not weaken tests.
-- [ ] **1.7** Run the package-manager and toolchain structural tests green, then run the rest of `pnpm test:structure` and record the remaining expected red files for phase 5.
+- [x] **1.6** From the cleaned tree, `pnpm install --frozen-lockfile`, `pnpm build`, `pnpm lint`, `pnpm typecheck`, and the narrow `cursor-total` unit test pass.
+- [x] **1.7** The package-manager and toolchain specs are green. The remaining 10 structural failures are the planned Yarn assertions in `assurance-root-contract`, `ci`, `root-scripts`, `server-package`, and `workspace-layout`; they are scheduled for phases 2 and 5.
 
 **Verify:** clean `pnpm install --frozen-lockfile`; `pnpm build`, `pnpm lint`, and `pnpm typecheck` pass; package-manager and toolchain specs are green.
 

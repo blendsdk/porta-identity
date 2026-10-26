@@ -3,6 +3,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
+import { parseAllDocuments } from 'yaml';
+
 const repositoryRoot = resolve(import.meta.dirname, '../..');
 const expectedPackages = [
   { directory: 'packages/cli', name: '@portaidentity/cli' },
@@ -74,25 +76,47 @@ function normalizeStableTypeScriptVersion(versionRange, manifestPath) {
 }
 
 /**
- * Extracts every TypeScript version selected by a Yarn Classic lockfile.
+ * Reads the project document from a pnpm lockfile.
  *
- * @param {string} lockfile Yarn Classic lockfile contents.
+ * pnpm 12 may write a boot document followed by the project document. The last document owns the
+ * workspace importers and the selected dependency versions.
+ *
+ * @returns {Record<string, any>} Parsed project lockfile document.
+ */
+function readPnpmProjectLockfile() {
+  const documents = parseAllDocuments(
+    readFileSync(resolve(repositoryRoot, 'pnpm-lock.yaml'), 'utf8'),
+  );
+  const project = documents.at(-1)?.toJSON();
+
+  assert.ok(
+    project && typeof project === 'object' && project.importers,
+    'pnpm-lock.yaml must contain a project document with importers',
+  );
+  return project;
+}
+
+/**
+ * Extracts every TypeScript version selected by the active pnpm importers.
+ *
+ * @param {Record<string, any>} lockfile Parsed pnpm project lockfile.
  * @returns {string[]} Selected TypeScript versions.
  */
 function getLockedTypeScriptVersions(lockfile) {
   const versions = [];
-  const blocks = lockfile.split(/\n(?=\S)/);
 
-  for (const block of blocks) {
-    const header = block.slice(0, block.indexOf('\n'));
-    if (!/(?:^|,\s*)["']?@typescript\/native@npm:typescript@/.test(header)) {
-      continue;
-    }
+  for (const activePackage of expectedPackages) {
+    const dependency =
+      lockfile.importers?.[activePackage.directory]?.devDependencies?.['@typescript/native'];
+    assert.ok(
+      dependency?.version,
+      `${activePackage.directory} importer must select the TypeScript 7 compiler alias`,
+    );
 
-    const versionMatch = /^\s{2}version\s+["']([^"']+)["']\s*$/m.exec(block);
+    const versionMatch = /^(?:typescript@)?(7\.\d+\.\d+)$/.exec(dependency.version);
     assert.ok(
       versionMatch,
-      `yarn.lock TypeScript entry must contain a selected version: ${header}`,
+      `${activePackage.directory} lockfile selection must be a stable TypeScript 7 version; found ${dependency.version}`,
     );
     versions.push(versionMatch[1]);
   }
@@ -121,8 +145,8 @@ function assertWorkspaceAwareNcuSelection(scriptName, command) {
   );
 }
 
-// The private root coordinates exactly the server, SDK, and CLI through one Yarn Classic install.
-test('should keep exactly the three active packages under the private Yarn Classic root', () => {
+// The private root coordinates exactly the server, SDK, and CLI through one pnpm install.
+test('should keep exactly the three active packages under the private pnpm root', () => {
   const rootManifest = readRepositoryJson('package.json');
   const discoveredPackages = readdirSync(resolve(repositoryRoot, 'packages'), {
     withFileTypes: true,
@@ -146,8 +170,8 @@ test('should keep exactly the three active packages under the private Yarn Class
   assert.equal(rootManifest.private, true, 'root monorepo coordinator must remain private');
   assert.match(
     rootManifest.packageManager ?? '',
-    /^yarn@1\.22\.22(?:\+|$)/,
-    'root packageManager must select Yarn Classic 1.22.22',
+    /^pnpm@12\.15\.0(?:\+|$)/,
+    'root packageManager must select pnpm 12.15.0',
   );
   assert.deepEqual(
     discoveredPackages,
@@ -155,21 +179,28 @@ test('should keep exactly the three active packages under the private Yarn Class
     'packages/ must contain exactly the active server, SDK, and CLI',
   );
   assert.equal(
-    existsSync(resolve(repositoryRoot, 'yarn.lock')),
+    existsSync(resolve(repositoryRoot, 'pnpm-lock.yaml')),
     true,
-    'the active install graph must use the root yarn.lock',
+    'the active install graph must use the root pnpm-lock.yaml',
+  );
+  assert.equal(
+    existsSync(resolve(repositoryRoot, 'yarn.lock')),
+    false,
+    'the Yarn lockfile must be removed after the migration',
   );
 
   for (const activePackage of expectedPackages) {
-    assert.equal(
-      existsSync(resolve(repositoryRoot, activePackage.directory, 'yarn.lock')),
-      false,
-      `${activePackage.directory} must not own a separate lockfile`,
-    );
+    for (const lockfileName of ['yarn.lock', 'pnpm-lock.yaml']) {
+      assert.equal(
+        existsSync(resolve(repositoryRoot, activePackage.directory, lockfileName)),
+        false,
+        `${activePackage.directory} must not own a separate ${lockfileName}`,
+      );
+    }
   }
 });
 
-// Every active package and the Yarn Classic lockfile select one identical stable TypeScript 7 release.
+// Every active package and the pnpm lockfile select one identical stable TypeScript 7 release.
 test('should select the same stable TypeScript 7 version across active packages', () => {
   const manifestVersions = expectedPackages.map(({ directory }) => {
     const manifestPath = `${directory}/package.json`;
@@ -200,19 +231,15 @@ test('should select the same stable TypeScript 7 version across active packages'
     `active package TypeScript versions must be synchronized; found ${uniqueManifestVersions.join(', ')}`,
   );
 
-  const lockfile = readFileSync(resolve(repositoryRoot, 'yarn.lock'), 'utf8');
-  assert.match(
-    lockfile,
-    /^# yarn lockfile v1$/m,
-    'root yarn.lock must use the Yarn Classic lockfile format',
-  );
+  const lockfile = readPnpmProjectLockfile();
+  assert.equal(lockfile.lockfileVersion, '9.0', 'pnpm lockfile must use lockfile version 9.0');
 
   const lockedVersions = [...new Set(getLockedTypeScriptVersions(lockfile))];
-  assert.ok(lockedVersions.length > 0, 'root yarn.lock must contain a TypeScript selection');
+  assert.ok(lockedVersions.length > 0, 'pnpm-lock.yaml must contain a TypeScript selection');
   assert.deepEqual(
     lockedVersions,
     uniqueManifestVersions,
-    `root yarn.lock TypeScript selection must match active manifests; found ${lockedVersions.join(', ')}`,
+    `pnpm-lock.yaml TypeScript selection must match active manifests; found ${lockedVersions.join(', ')}`,
   );
 });
 
@@ -223,7 +250,7 @@ test('should check dependencies across the active workspace graph without networ
   assertWorkspaceAwareNcuSelection('deps:check', scripts['deps:check'] ?? '');
 });
 
-// Dependency updates use the same selection, reinstall with Yarn Classic, and verify the full repository.
+// Dependency updates use the same selection, reinstall with pnpm, and verify the full repository.
 test('should update, reinstall, and verify dependencies across the active workspace graph', () => {
   const scripts = readRepositoryJson('package.json').scripts ?? {};
   const updateCommand = scripts['deps:update'] ?? '';
@@ -236,18 +263,18 @@ test('should update, reinstall, and verify dependencies across the active worksp
   );
   assert.match(
     updateCommand,
-    /(?:^|\s)yarn\s+install(?:\s|&|$)/,
-    'deps:update must reinstall with Yarn Classic',
+    /(?:^|\s)pnpm\s+install(?:\s|&|$)/,
+    'deps:update must reinstall with pnpm',
   );
   assert.match(
     updateCommand,
-    /(?:^|\s)yarn\s+verify(?:\s|&|$)/,
+    /(?:^|\s)pnpm\s+verify(?:\s|&|$)/,
     'deps:update must run the repository verification',
   );
 
   const updateIndex = updateCommand.indexOf('ncu');
-  const installIndex = updateCommand.indexOf('yarn install');
-  const verifyIndex = updateCommand.indexOf('yarn verify');
+  const installIndex = updateCommand.indexOf('pnpm install');
+  const verifyIndex = updateCommand.indexOf('pnpm verify');
   assert.ok(
     updateIndex < installIndex && installIndex < verifyIndex,
     'deps:update must update manifests before reinstalling and verify only after installation',
