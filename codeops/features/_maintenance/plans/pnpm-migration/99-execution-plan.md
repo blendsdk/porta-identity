@@ -1,7 +1,7 @@
 # Task T-04: Migrate the Porta monorepo from Yarn Classic to pnpm
 
 > **Type**: Task (non-trivial, cross-cutting build migration) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 19/44 tasks (43%)
+> **Progress**: 26/44 tasks (59%)
 > **Reasoning**: high — this changes installs, CI, the Docker runtime, release publishing, assurance provenance, and the structural test oracle. Product behavior must not change.
 > **Effort**: 12–16 engineer-days, including release and assurance evidence.
 > **Branch**: `build/pnpm-migration`, created from `develop` at `v1.14.0` (`6ac10d75`).
@@ -161,19 +161,19 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 
 ### Session 3A — specification tests first
 
-- [ ] **3.1** Update `repo-tests/monorepo/release.spec.test.mjs` to assert pnpm publish, pnpm pack, lockfile refresh after versioning, the release-scoped git-check override, the pnpm registry pin, explicit release preflight invariants, and the unchanged tested-revision/provenance/develop-sync guarantees. Update `release-hardening.spec.test.mjs` only where its existing commands change; do not weaken its non-Yarn invariants. Confirm expected red.
+- [x] **3.1** Updated `release.spec.test.mjs` and `release-hardening.spec.test.mjs` for pnpm publish/pack, lockfile refresh, release-scoped git checks, the registry pin, and preflight invariants; all release contract tests pass.
 
 ### Session 3B — implementation
 
-- [ ] **3.2** Keep `gitChecks: true` in `pnpm-workspace.yaml`; set `pnpm_config_git_checks=false` (verify the exact pnpm 12 variable) or pass `--config.git-checks=false` only on the release publish command (AR-5). Add explicit invariants to `scripts/release-preflight.js`: `main` branch, clean tree, expected tag, release commit descends from the tested `origin/main` revision with no unrelated divergence, effective registry equals `https://registry.npmjs.org`, and no real publish without the tested revision.
-- [ ] **3.3** Add `pnpm install --lockfile-only` after `lockstep version` + `scripts/sync-versions.js` in `release:prepare` and in the workflow bump step; ensure the lockfile is part of the bump commit. Add a lockfile-freshness check to preflight.
-- [ ] **3.4** Switch expected artifact packing from `npm pack --workspace` to `pnpm pack` (per package) into `$RUNNER_TEMP/release-artifacts`, and adjust the expected filenames and integrity comparison in `.github/workflows/release.yml`. Keep `npm view` for registry reads and keep the existing SLSA provenance verification.
-- [ ] **3.5** Update the release workflow setup/install/build/publish commands to pnpm while preserving `node_modules/.bin/lockstep` and `node_modules/.bin/npm` tool access. Replace `npm_config_registry` with `pnpm_config_registry=https://registry.npmjs.org` (or `--registry`) in the publish path (AR-17).
+- [x] **3.2** Kept global git checks enabled; scoped `pnpm_config_git_checks=false` to the publish command and workflow step. `release-preflight.js` now checks the clean tree, `main`, the release tag at HEAD, descent from `origin/main`, the effective pnpm registry, and a frozen lockfile-only refresh.
+- [x] **3.3** Added `pnpm install --lockfile-only` after `lockstep version` + `sync-versions` in `release:prepare` and the workflow bump step; preflight verifies the frozen lockfile. The rehearsal diff changed only the CLI SDK specifier.
+- [x] **3.4** Pack expected artifacts with `pnpm --filter ... pack` into `${RUNNER_TEMP}/release-artifacts`; updated integrity paths. The SDK pack tarball matched `pnpm publish --dry-run` exactly on SHA-512 and SHA-1.
+- [x] **3.5** Updated the release workflow to pnpm setup/install/build/publish; preserved `node_modules/.bin/lockstep` and `node_modules/.bin/npm`; replaced `npm_config_registry` with `pnpm_config_registry`.
 
 ### Session 3C — rehearsal and hardening
 
-- [ ] **3.6** In a scratch clone, rehearse the bump without publishing: `lockstep version --no-git-commit`, `sync-versions`, `pnpm install --lockfile-only`, commit/tag the rehearsal candidate in the scratch clone, run `pnpm release:preflight` in its explicit rehearsal mode (scratch branch allowed, clean tree required), pack into a temporary directory outside the repo, and run `lockstep publish --dry`. Do not tag or publish in the real repository.
-- [ ] **3.7** If pnpm publish git checks or tarball integrity still fail after the pnpm-pack change, stop and ask the user whether to adopt the npm-publish wrapper fallback. Do not silently weaken integrity checks.
+- [x] **3.6** Scratch-clone rehearsal passed: bump to 1.14.1, derived version sync, lockfile-only refresh, commit/tag, rehearsal preflight, built artifacts (all contain `dist`), pnpm pack, and `lockstep publish --dry` through pnpm with the npmjs registry. No real tag or publish occurred in this repository.
+- [x] **3.7** No fallback needed: pnpm publish dry-run passed its git checks with the scoped override and produced the same tarball integrity as pnpm pack.
 
 **Verify:** release preflight passes on the rehearsed candidate; the expected tarball integrity matches the pnpm-produced artifact; the effective registry is correct; no real publish occurs.
 
