@@ -179,7 +179,7 @@ test('should identify the server package and its executable entry points', () =>
   );
   assert.equal(
     serverManifest.scripts?.['test:all'],
-    'yarn test:unit && yarn test:integration && yarn test:e2e && yarn test:pentest',
+    'pnpm run test:unit && pnpm run test:integration && pnpm run test:e2e && pnpm run test:pentest',
     'service-backed server suites must run in separate processes so project teardown completes before the next shared-infrastructure owner starts',
   );
 });
@@ -235,7 +235,7 @@ test('should declare and provide complete server package contents', () => {
 
 // A normal server workspace build produces both runtime entry points promised by the package manifest.
 test('should build the server and produce both compiled entry points', () => {
-  runRepositoryCommand('yarn', ['workspace', '@portaidentity/server', 'build']);
+  runRepositoryCommand('pnpm', ['--filter', '@portaidentity/server', 'build']);
 
   for (const compiledFile of ['dist/index.js', 'dist/cli/index.js']) {
     assert.equal(
@@ -262,10 +262,41 @@ test('should use the server workspace in the production container', () => {
     /packages\/server\/dist/,
     'docker/Dockerfile must copy the server build output',
   );
+  assert.match(dockerfile, /pnpm-lock\.yaml/, 'docker/Dockerfile must copy the pnpm lockfile');
   assert.match(
     dockerfile,
+    /pnpm-workspace\.yaml/,
+    'docker/Dockerfile must copy the pnpm workspace configuration',
+  );
+  assert.match(
+    dockerfile,
+    /pnpm install --frozen-lockfile/,
+    'docker/Dockerfile must use a frozen pnpm install',
+  );
+  assert.match(
+    dockerfile,
+    /pnpm install --prod --frozen-lockfile/,
+    'docker/Dockerfile must install production dependencies with pnpm',
+  );
+  assert.match(
+    dockerfile,
+    /pnpm --filter @portaidentity\/server build/,
+    'docker/Dockerfile must build the server through the pnpm filter',
+  );
+  assert.match(
+    dockerfile,
+    /server runtime dependency tree OK/,
+    'docker/Dockerfile must verify the production dependency tree',
+  );
+  assert.match(
+    dockerfile,
+    /await import\('chalk'\).*await import\('yaml'\)/s,
+    'docker/Dockerfile must smoke-test server runtime imports',
+  );
+  assert.doesNotMatch(
+    dockerfile,
     /packages\/server\/node_modules/,
-    'docker/Dockerfile must copy package-local production dependencies',
+    'docker/Dockerfile must not copy a package-local production dependency tree',
   );
   for (const assetDirectory of ['migrations', 'templates', 'locales']) {
     assert.match(
@@ -326,8 +357,23 @@ test('should use current package paths in the OIDC harness image', () => {
   );
   assert.match(
     harnessDockerfile,
+    /pnpm install --prod --frozen-lockfile/,
+    'test-harness/Dockerfile must install production dependencies with pnpm',
+  );
+  assert.match(
+    harnessDockerfile,
+    /pnpm --filter @portaidentity\/server build/,
+    'test-harness/Dockerfile must build the server through the pnpm filter',
+  );
+  assert.match(
+    harnessDockerfile,
+    /await import\('chalk'\).*await import\('yaml'\)/s,
+    'test-harness/Dockerfile must smoke-test server runtime imports',
+  );
+  assert.doesNotMatch(
+    harnessDockerfile,
     /packages\/server\/node_modules/,
-    'test-harness/Dockerfile must copy package-local production dependencies',
+    'test-harness/Dockerfile must not copy a package-local production dependency tree',
   );
 });
 

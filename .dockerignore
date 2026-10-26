@@ -16,8 +16,35 @@ node_modules/
 # Build output (rebuilt inside Docker)
 dist/
 
-# Tests
+# pnpm local metadata (rebuilt inside Docker)
+.pnpm-store/
+pnpm-debug.log*
+
+# Tests and generated reports not needed by either image
 tests/
+packages/*/tests/
+/coverage/
+packages/*/coverage/
+.turbo/
+test-results/
+playwright-report/
+release-artifacts/
+work/
+
+# Internal planning, requirements, and maintainer documentation
+codeops/
+techdocs/
+repo-tests/
+
+# Harness runtime state not needed by the image build
+test-harness/assurance/
+test-harness/bff/
+test-harness/consumers/
+test-harness/fixtures/
+test-harness/spa/
+test-harness/tests/
+test-harness/.assurance-results/
+test-harness/.assurance-runtime/
 
 # Documentation
 docs/
@@ -53,6 +80,7 @@ docker/.dockerignore
 Makefile
 .editorconfig
 .prettierrc
+# Keep local auth tokens and machine-specific npm settings out of the build context.
 .npmrc
 eslint.config.js
 tsconfig.eslint.json
