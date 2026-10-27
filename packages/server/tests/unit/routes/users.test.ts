@@ -30,7 +30,7 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
 }));
 
 vi.mock('../../../src/auth/email-service.js', () => ({
-  sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+  sendInvitationEmail: vi.fn().mockResolvedValue('sent'),
   renderInvitationEmail: vi
     .fn()
     .mockResolvedValue({ html: '<html></html>', text: 'text', subject: 'subject' }),
@@ -63,6 +63,12 @@ vi.mock('../../../src/config/index.js', () => ({
   config: { issuerBaseUrl: 'https://auth.example.com' },
 }));
 
+// Keep the preview renderer independent of PostgreSQL.
+vi.mock('../../../src/lib/system-config.js', () => ({
+  getSystemConfigNumber: vi.fn().mockResolvedValue(604800),
+  getInternalSystemConfigString: vi.fn().mockResolvedValue(''),
+}));
+
 // Mock super-admin middleware to always pass through
 vi.mock('../../../src/middleware/admin-auth.js', () => ({
   requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),
@@ -81,10 +87,8 @@ vi.mock('../../../src/lib/entity-history.js', () => ({
 import * as userService from '../../../src/users/service.js';
 import * as emailService from '../../../src/auth/email-service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
-import {
-  createStandaloneUserRouter,
-  createUserRouter,
-} from '../../../src/routes/users.js';
+import { getSystemConfigNumber } from '../../../src/lib/system-config.js';
+import { createStandaloneUserRouter, createUserRouter } from '../../../src/routes/users.js';
 
 /** Standard test user */
 function createTestUser(overrides: Partial<User> = {}): User {
@@ -586,6 +590,24 @@ describe('user routes', () => {
       const previewUrl = (emailService.renderInvitationEmail as ReturnType<typeof vi.fn>).mock
         .calls[0][2];
       expect(previewUrl).toBe('https://auth.example.com/acme/auth/accept-invite/PREVIEW_TOKEN');
+      expect(
+        (emailService.renderInvitationEmail as ReturnType<typeof vi.fn>).mock.calls[0][4],
+      ).toMatchObject({ expiresInSeconds: 604800 });
+    });
+
+    it('should render the preview with the configured invitation lifetime', async () => {
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(mockOrg);
+      (getSystemConfigNumber as ReturnType<typeof vi.fn>).mockResolvedValueOnce(3600);
+
+      const router = createUserRouter();
+      const layer = findLayer(router, 'POST', '/invite/preview');
+      const ctx = createMockCtx({ body: { email: 'invitee@example.com' } });
+
+      await exec(layer!, ctx);
+
+      expect(
+        (emailService.renderInvitationEmail as ReturnType<typeof vi.fn>).mock.calls[0][4],
+      ).toMatchObject({ expiresInSeconds: 3600 });
     });
   });
 

@@ -284,7 +284,7 @@ describe('system configuration consumer decisions', () => {
     boundary.ensureToken.mockResolvedValue('active');
     boundary.invitationToken.mockResolvedValue({ id: 'invitation-fixture' });
     boundary.sendRecovery.mockResolvedValue(undefined);
-    boundary.sendInvitation.mockResolvedValue(undefined);
+    boundary.sendInvitation.mockResolvedValue('sent');
     boundary.query.mockResolvedValue({ rows: [{ count: '2' }], rowCount: 2 });
     boundary.ttl.mockResolvedValue(500);
     boundary.incr.mockResolvedValue(3);
@@ -321,9 +321,11 @@ describe('system configuration consumer decisions', () => {
     expect(context.status).toBe(201);
     expect(boundary.numberRead).toHaveBeenCalledWith('invitation_ttl');
     const replaced = boundary.invitationToken.mock.calls.at(-1)?.[0] as
-      | { expiresAt?: Date }
-      | undefined;
+      { expiresAt?: Date } | undefined;
     expect(replaced?.expiresAt?.getTime()).toBe(NOW.getTime() + 1209600 * 1000);
+    expect(boundary.sendInvitation.mock.calls.at(-1)?.[4]).toMatchObject({
+      expiresInSeconds: 1209600,
+    });
   });
 
   it.each([

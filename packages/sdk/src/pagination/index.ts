@@ -14,14 +14,15 @@
  *
  * The response shape varies by pagination strategy — offset-based
  * endpoints include `page`/`totalPages`, cursor-based include
- * `cursor`/`hasMore`. Both always include `data` and `total`.
+ * `cursor`/`hasMore`. Offset responses also include `total`; cursor
+ * responses omit it.
  */
 export interface PaginatedResult<T> {
   /** Array of entities for the current page */
   data: T[];
 
-  /** Total number of entities across all pages */
-  total: number;
+  /** Total number of entities across all pages; absent from cursor-mode responses */
+  total?: number;
 
   // ── Offset-based pagination fields ──
 

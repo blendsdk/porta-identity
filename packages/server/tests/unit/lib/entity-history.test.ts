@@ -158,6 +158,42 @@ describe('entity-history', () => {
       expect(params[3]).toBe('org.%');
     });
 
+    it('should scope application history through metadata and the app event family', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await getEntityHistory('application', 'app-123');
+
+      const [sql, params] = mockPool.query.mock.calls[0];
+      expect(sql).toContain("metadata->>'applicationId' = $1");
+      expect(sql).toContain('event_type LIKE $2');
+      expect(params[0]).toBe('app-123');
+      expect(params[1]).toBe('app.%');
+    });
+
+    it('should scope client history through both client metadata keys', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await getEntityHistory('client', 'client-123');
+
+      const [sql, params] = mockPool.query.mock.calls[0];
+      expect(sql).toContain("COALESCE(metadata->>'clientDbId', metadata->>'clientId') = $1");
+      expect(sql).toContain('event_type LIKE $2');
+      expect(params[0]).toBe('client-123');
+      expect(params[1]).toBe('client.%');
+    });
+
+    it('should combine the caller prefix with the application family prefix', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      await getEntityHistory('application', 'app-123', { eventTypePrefix: 'app.module' });
+
+      const [sql, params] = mockPool.query.mock.calls[0];
+      expect(sql).toContain('event_type LIKE $2');
+      expect(sql).toContain('event_type LIKE $3');
+      expect(params[1]).toBe('app.%');
+      expect(params[2]).toBe('app.module%');
+    });
+
     it('should throw for unsupported entity types', async () => {
       await expect(getEntityHistory('unknown', 'id-1')).rejects.toThrow(
         'Unsupported entity type for history: unknown',

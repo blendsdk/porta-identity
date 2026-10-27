@@ -233,15 +233,18 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printJson(invitation);
               } else {
                 success(
-                  invitation.invitationSent
+                  invitation.emailDelivery === 'sent'
                     ? `Invitation sent to ${invitation.email}`
-                    : `Invitation created for ${invitation.email}`,
+                    : invitation.emailDelivery === 'failed'
+                      ? `Invitation created for ${invitation.email}, but email delivery failed`
+                      : `Invitation created for ${invitation.email}; email delivery is unknown`,
                 );
                 printTable(
                   ['Field', 'Value'],
                   [
                     ['Invitation ID', invitation.invitationId],
                     ['Email', invitation.email],
+                    ['Email delivery', invitation.emailDelivery],
                     ['invitationSent', String(invitation.invitationSent)],
                     ['Expires', invitation.expiresAt],
                   ],

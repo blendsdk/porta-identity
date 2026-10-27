@@ -523,8 +523,10 @@ organization before locking the user and role targets. User deletion uses the sa
 first order, preventing the two rare administrative operations from deadlocking each other.
 
 Canonical `porta-admin` roles, permissions, and their mappings reject generic create, update,
-delete, and mapping operations. The direct initialization workflow writes those fixed definitions
-through repository functions before normal Admin authorization exists.
+delete, and mapping operations. The canonical application record and its modules reject generic
+update, activation, deactivation, and deletion through the application routes; reads remain
+available. The direct initialization workflow writes those fixed definitions through repository
+functions before normal Admin authorization exists.
 
 Two control-plane guards prevent deletion from removing the ability to administer Porta:
 
@@ -575,6 +577,10 @@ before parsing and is server-owned. The event records only a normalized route te
 decision facts, and optional domain-separated keyed references; raw requests, identities, network
 data, and error details have no event representation. A local sink failure cannot turn a denial
 into success and is represented only by a bounded in-memory failure counter.
+
+The event preserves the `HEAD` method. Magic-link `400` responses use the generic authentication
+reason `authentication-rejected`, rather than the fallback schema-validation classification.
+This does not disclose whether an artifact was unknown, expired, used, or bound to another tenant.
 
 ## Penetration Test Coverage
 

@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
+import { randomUUID } from 'node:crypto';
 import { truncateAllTables, seedBaseData } from '../helpers/database.js';
 import { flushTestRedis } from '../helpers/redis.js';
 import { createTestOrganization, createTestUser } from '../helpers/factories.js';
@@ -171,6 +172,120 @@ describe('Entity History (Integration)', () => {
 
       expect(result.data.length).toBeGreaterThanOrEqual(1);
       expect(result.data.every((e) => e.eventType.startsWith('organization.updated'))).toBe(true);
+    });
+  });
+
+  // ── Application and client metadata scopes ─────────────────────────
+
+  describe('application and client history scopes', () => {
+    it('should return only the application events recorded in audit metadata', async () => {
+      const applicationId = randomUUID();
+      const otherApplicationId = randomUUID();
+
+      await writeAuditLog({
+        eventType: 'app.created',
+        eventCategory: 'admin',
+        metadata: { applicationId },
+      });
+      await writeAuditLog({
+        eventType: 'app.module.created',
+        eventCategory: 'admin',
+        metadata: { applicationId, moduleId: randomUUID() },
+      });
+      await writeAuditLog({
+        eventType: 'app.created',
+        eventCategory: 'admin',
+        metadata: { applicationId: otherApplicationId },
+      });
+      await writeAuditLog({
+        eventType: 'client.created',
+        eventCategory: 'admin',
+        metadata: { applicationId, clientDbId: randomUUID() },
+      });
+
+      const result = await getEntityHistory('application', applicationId, { limit: 10 });
+
+      expect(result.data.map((entry) => entry.eventType).sort()).toEqual([
+        'app.created',
+        'app.module.created',
+      ]);
+    });
+
+    it('should include legacy client secret events keyed by the internal client id', async () => {
+      const clientId = randomUUID();
+      const otherClientId = randomUUID();
+
+      await writeAuditLog({
+        eventType: 'client.created',
+        eventCategory: 'admin',
+        metadata: { clientDbId: clientId, clientId: 'public-client-1' },
+      });
+      await writeAuditLog({
+        eventType: 'client.secret.generated',
+        eventCategory: 'admin',
+        metadata: { clientId, secretId: randomUUID() },
+      });
+      await writeAuditLog({
+        eventType: 'client.created',
+        eventCategory: 'admin',
+        metadata: { clientDbId: otherClientId, clientId: 'public-client-2' },
+      });
+      await writeAuditLog({
+        eventType: 'app.created',
+        eventCategory: 'admin',
+        metadata: { applicationId: clientId },
+      });
+
+      const result = await getEntityHistory('client', clientId, { limit: 10 });
+
+      expect(result.data.map((entry) => entry.eventType).sort()).toEqual([
+        'client.created',
+        'client.secret.generated',
+      ]);
+    });
+
+    it('should paginate application history with the composite cursor', async () => {
+      const applicationId = randomUUID();
+      for (let index = 0; index < 3; index += 1) {
+        await writeAuditLog({
+          eventType: 'app.updated',
+          eventCategory: 'admin',
+          description: `Update ${index}`,
+          metadata: { applicationId, index },
+        });
+      }
+
+      const first = await getEntityHistory('application', applicationId, { limit: 1 });
+      expect(first.data).toHaveLength(1);
+      expect(first.hasMore).toBe(true);
+
+      const second = await getEntityHistory('application', applicationId, {
+        limit: 1,
+        after: first.nextCursor!,
+      });
+      expect(second.data).toHaveLength(1);
+      expect(second.data[0]?.id).not.toBe(first.data[0]?.id);
+    });
+
+    it('should combine the caller event prefix with the application family prefix', async () => {
+      const applicationId = randomUUID();
+      await writeAuditLog({
+        eventType: 'app.created',
+        eventCategory: 'admin',
+        metadata: { applicationId },
+      });
+      await writeAuditLog({
+        eventType: 'app.module.created',
+        eventCategory: 'admin',
+        metadata: { applicationId, moduleId: randomUUID() },
+      });
+
+      const result = await getEntityHistory('application', applicationId, {
+        limit: 10,
+        eventTypePrefix: 'app.module',
+      });
+
+      expect(result.data.map((entry) => entry.eventType)).toEqual(['app.module.created']);
     });
   });
 });

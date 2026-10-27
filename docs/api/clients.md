@@ -52,7 +52,9 @@ POST /api/admin/clients
 GET /api/admin/clients
 ```
 
-Supports `page`, `pageSize`, `search`, `status`, `sort`, `order`, and `organization_id` filter.
+Supports offset pagination with `page`, `pageSize`, `search`, `status`, `sort`, `order`, and
+`organization_id`, or cursor pagination with `cursor` and `limit`. Cursor responses return
+`nextCursor`, `previousCursor`, and `hasMore` without `total`.
 
 **Response:** `200 OK` — Paginated list with `effectiveLoginMethods` computed for each client.
 

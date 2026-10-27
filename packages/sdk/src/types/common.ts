@@ -55,8 +55,8 @@ export interface HistoryParams {
 export interface PaginatedResponse<T> {
   /** Array of entity items */
   data: T[];
-  /** Total number of matching items */
-  total: number;
+  /** Total number of matching items; absent from cursor-mode responses */
+  total?: number;
   /** Current page number (offset pagination) */
   page?: number;
   /** Items per page */

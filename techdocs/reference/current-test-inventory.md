@@ -84,19 +84,24 @@ static `it(...)` declarations.
 
 ## Execution Topology
 
-| Command or job                                                                              | What it executes                                                                                                      |
-| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `pnpm verify`                                                                               | 70 structure tests, all 3,577 server Vitest cases, 404 SDK tests, and 356 CLI tests, plus lint, typecheck, and builds |
-| `pnpm assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI                |
-| `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance     |
-| `pnpm test:ui`                                                                              | 132 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                       |
-| `pnpm harness:test`                                                                         | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                               |
-| CI `verify` job                                                                             | `pnpm verify` with PostgreSQL, Redis, and MailHog services                                                            |
-| CI `ui` job                                                                                 | Builds packages and runs the Playwright UI suite                                                                      |
-| CI `harness` job                                                                            | Runs the independently packaged OIDC harness                                                                          |
+| Command or job                                                                              | What it executes                                                                                                  |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `pnpm test`                                                                                 | Full product suite: every server Vitest project plus SDK and CLI tests                                            |
+| `pnpm verify`                                                                               | CI gate: structure tests, lint, typecheck, all product tests, and builds                                          |
+| `pnpm test:changed`                                                                         | Local default: structure contracts plus unit tests affected since `origin/develop`                                |
+| `pnpm test:unit`                                                                            | Local fast path: server unit, SDK, and CLI tests without services                                                 |
+| `pnpm assurance:test --select assurance-governance`                                         | 53 root-owned governance specification and implementation cases; intentionally separate from branch CI            |
+| `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` | Captures observation-only V8 coverage from the assembled Porta process under exact lifecycle and build provenance |
+| `pnpm test:ui`                                                                              | 132 Chromium UI cases against a full server with PostgreSQL, Redis, and MailHog                                   |
+| `pnpm harness:test`                                                                         | Six retained black-box SPA/BFF OIDC scenarios in Docker                                                           |
+| CI `verify` job                                                                             | `pnpm verify` with PostgreSQL, Redis, and MailHog services                                                        |
+| CI `ui` job                                                                                 | Builds packages and runs the Playwright UI suite                                                                  |
+| CI `harness` job                                                                            | Runs the independently packaged OIDC harness                                                                      |
 
 The branch workflow therefore executes every suite in this inventory. UI and harness coverage are
-not part of the local `pnpm verify` command; they are separate CI jobs.
+not part of `pnpm verify`; they are separate CI jobs. `pnpm test` is the explicit full product test
+command; CI runs the broader `pnpm verify` gate. Local work starts with `pnpm test:changed` or the
+narrowest category that covers the change.
 
 ## Server Unit Tests
 
@@ -420,6 +425,12 @@ The suite does **not yet demonstrate** that:
 ## Reproduction Commands
 
 ```bash
+# Local default: structure plus unit tests affected by the current change.
+pnpm test:changed
+
+# Fast unit tests across every active workspace.
+pnpm test:unit
+
 # Enumerate runtime-collected Vitest cases without executing them.
 pnpm --filter @portaidentity/server vitest list --project unit
 pnpm --filter @portaidentity/server vitest list --project integration

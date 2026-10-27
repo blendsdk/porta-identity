@@ -45,6 +45,9 @@ export interface HistoryOptions {
   eventTypePrefix?: string;
 }
 
+/** Supported entity types for change-history queries. */
+export type HistoryEntityType = 'organization' | 'user' | 'application' | 'client';
+
 /** Paginated history response */
 export interface HistoryResult {
   data: HistoryEntry[];
@@ -53,18 +56,52 @@ export interface HistoryResult {
 }
 
 // ============================================================================
-// Entity type → audit_log FK column mapping
+// Entity type → audit_log scope mapping
 // ============================================================================
 
 /**
- * Maps entity types to the corresponding audit_log FK column.
- * The audit_log table stores references via organization_id and user_id
- * columns — there is no generic entity_type/entity_id pair.
+ * Describes how one entity type is referenced from the audit log.
+ *
+ * Organizations and users have dedicated FK columns. Applications and clients are deployment-global
+ * records without audit FK columns, so their events store the identifier in JSONB metadata. Those
+ * families also carry a mandatory event-type prefix to prevent a client event from appearing in an
+ * application history (or the reverse).
  */
-const ENTITY_FK_COLUMN: Record<string, string> = {
-  organization: 'organization_id',
-  user: 'user_id',
+interface HistoryScope {
+  /** SQL expression compared to the entity id parameter */
+  referenceExpression: string;
+  /** Mandatory event-type prefix for metadata-backed entity families */
+  eventTypeFamily?: string;
+}
+
+/** Entity-specific audit scopes. */
+const ENTITY_SCOPES: Record<HistoryEntityType, HistoryScope> = {
+  organization: { referenceExpression: 'organization_id' },
+  user: { referenceExpression: 'user_id' },
+  application: {
+    referenceExpression: "metadata->>'applicationId'",
+    eventTypeFamily: 'app.',
+  },
+  client: {
+    referenceExpression: "COALESCE(metadata->>'clientDbId', metadata->>'clientId')",
+    eventTypeFamily: 'client.',
+  },
 };
+
+/**
+ * Resolve the audit scope for one entity type.
+ *
+ * @param entityType - Entity type supplied by a route
+ * @returns The matching scope
+ * @throws Error when the entity type is not supported
+ */
+function resolveHistoryScope(entityType: string): HistoryScope {
+  const scope = (ENTITY_SCOPES as Record<string, HistoryScope | undefined>)[entityType];
+  if (!scope) {
+    throw new Error(`Unsupported entity type for history: ${entityType}`);
+  }
+  return scope;
+}
 
 // ============================================================================
 // Cursor helpers
@@ -121,13 +158,13 @@ function decodeCursor(cursor: string): DecodedCursor {
  * order (newest first). Supports cursor-based pagination via the
  * `after` parameter.
  *
- * @param entityType - The entity type (e.g., 'organization', 'user')
+ * @param entityType - The entity type (organization, user, application, or client)
  * @param entityId - The entity's UUID
  * @param options - Pagination and filter options
  * @returns Paginated history entries
  */
 export async function getEntityHistory(
-  entityType: string,
+  entityType: HistoryEntityType,
   entityId: string,
   options: HistoryOptions = {},
 ): Promise<HistoryResult> {
@@ -136,12 +173,8 @@ export async function getEntityHistory(
   // Fetch one extra to determine hasMore
   const fetchLimit = limit + 1;
 
-  const fkColumn = ENTITY_FK_COLUMN[entityType];
-  if (!fkColumn) {
-    throw new Error(`Unsupported entity type for history: ${entityType}`);
-  }
-
-  const conditions: string[] = [`${fkColumn} = $1`];
+  const scope = resolveHistoryScope(entityType);
+  const conditions: string[] = [`${scope.referenceExpression} = $1`];
   const params: unknown[] = [entityId];
   let paramIndex = 2;
 
@@ -153,6 +186,12 @@ export async function getEntityHistory(
     conditions.push(`(created_at, id) < ($${paramIndex}, $${paramIndex + 1})`);
     params.push(cursor.createdAt, cursor.id);
     paramIndex += 2;
+  }
+
+  if (scope.eventTypeFamily) {
+    conditions.push(`event_type LIKE $${paramIndex}`);
+    params.push(`${scope.eventTypeFamily}%`);
+    paramIndex++;
   }
 
   if (options.eventTypePrefix) {

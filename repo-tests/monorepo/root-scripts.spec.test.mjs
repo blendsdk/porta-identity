@@ -49,6 +49,8 @@ const supportedScripts = [
   'start',
   'test',
   'test:all',
+  'test:changed',
+  'test:changed:integration',
   'test:coverage',
   'test:e2e',
   'test:integration',
@@ -58,6 +60,7 @@ const supportedScripts = [
   'test:ui:debug',
   'test:unit',
   'test:watch',
+  'test:watch:integration',
   'typecheck',
   'verify',
 ];
@@ -195,16 +198,29 @@ test('should run all active workspace tests directly', () => {
     'package.json script test:all must not invoke removed test aliases',
   );
 
-  for (const serverTest of [
-    'unit',
-    'integration',
-    'e2e',
-    'pentest',
-    'ui',
-    'ui:debug',
-    'watch',
-    'coverage',
-  ]) {
+  assertScriptEquals(
+    scripts,
+    'test:unit',
+    'pnpm --filter @portaidentity/server test:unit && pnpm --filter @portaidentity/sdk test && pnpm --filter @portaidentity/cli test',
+  );
+  assertScriptEquals(
+    scripts,
+    'test:changed',
+    'pnpm test:structure && pnpm --filter @portaidentity/server test:changed && pnpm --filter @portaidentity/sdk test:changed && pnpm --filter @portaidentity/cli test:changed',
+  );
+  assertScriptEquals(
+    scripts,
+    'test:changed:integration',
+    'pnpm --filter @portaidentity/server test:changed:integration',
+  );
+  assertScriptEquals(scripts, 'test:watch', 'pnpm --filter @portaidentity/server test:watch');
+  assertScriptEquals(
+    scripts,
+    'test:watch:integration',
+    'pnpm --filter @portaidentity/server test:watch:integration',
+  );
+
+  for (const serverTest of ['integration', 'e2e', 'pentest', 'ui', 'ui:debug', 'coverage']) {
     assertScriptEquals(
       scripts,
       `test:${serverTest}`,

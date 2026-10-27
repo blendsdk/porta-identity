@@ -15,7 +15,8 @@ import type {
   ListParams,
   PaginatedResponse,
   ETagResponse,
-  HistoryEntry,
+  HistoryParams,
+  HistoryResult,
 } from '../types/index.js';
 import { listAll } from '../pagination/index.js';
 import {
@@ -23,6 +24,7 @@ import {
   isRecord,
   requireData,
   requireDataWithEtag,
+  requireHistoryResult,
   requirePaginatedData,
   toQueryParams,
 } from './helpers.js';
@@ -56,18 +58,6 @@ function isApplicationModule(value: unknown): value is ApplicationModule {
   );
 }
 
-/** Validate one application history entry. */
-function isHistoryEntry(value: unknown): value is HistoryEntry {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.eventType === 'string' &&
-    (typeof value.actorId === 'string' || value.actorId === null) &&
-    (isRecord(value.metadata) || value.metadata === null) &&
-    typeof value.createdAt === 'string'
-  );
-}
-
 export interface ApplicationsDomain {
   /** List one page of global applications. */
   list(params?: ListParams): Promise<PaginatedResponse<Application>>;
@@ -86,7 +76,7 @@ export interface ApplicationsDomain {
   /** Permanently delete a deployment-global application. */
   delete(id: string): Promise<void>;
   /** Read application audit history. */
-  getHistory(idOrSlug: string, params?: ListParams): Promise<HistoryEntry[]>;
+  getHistory(idOrSlug: string, params?: HistoryParams): Promise<HistoryResult>;
   /** List modules owned by an application. */
   listModules(appId: string): Promise<ApplicationModule[]>;
   /** Add a module under an application. */
@@ -156,15 +146,16 @@ export function createApplicationsDomain(transport: HttpTransport): Applications
     },
 
     async getHistory(idOrSlug, params?) {
+      const query: Record<string, string | number> = {};
+      if (params?.limit !== undefined) query.limit = params.limit;
+      if (params?.after !== undefined) query.after = params.after;
+      if (params?.eventType !== undefined) query.event_type = params.eventType;
       const res = await transport.request({
         method: 'GET',
         path: `${base}/${idOrSlug}/history`,
-        params: toQueryParams(params),
+        params: Object.keys(query).length > 0 ? query : undefined,
       });
-      return requireData(
-        res.body,
-        (value): value is HistoryEntry[] => Array.isArray(value) && value.every(isHistoryEntry),
-      );
+      return requireHistoryResult(res.body);
     },
 
     async listModules(appId) {

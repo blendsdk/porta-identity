@@ -156,6 +156,28 @@ describe('listAll — cursor-based', () => {
     // Second call should include the cursor from the first response
     expect(fetchPage).toHaveBeenNthCalledWith(2, expect.objectContaining({ cursor: 'abc123' }));
   });
+
+  it('uses nextCursor when the server omits total and the legacy cursor alias', async () => {
+    const fetchPage = vi
+      .fn<(params: PaginatedListParams) => Promise<PaginatedResult<TestEntity>>>()
+      .mockResolvedValueOnce({
+        data: [{ id: 1, name: 'one' }],
+        nextCursor: 'next-page',
+        previousCursor: null,
+        hasMore: true,
+      })
+      .mockResolvedValueOnce({
+        data: [{ id: 2, name: 'two' }],
+        nextCursor: null,
+        previousCursor: 'next-page',
+        hasMore: false,
+      });
+
+    const result = await listAll(fetchPage);
+
+    expect(result.map((entry) => entry.id)).toEqual([1, 2]);
+    expect(fetchPage).toHaveBeenNthCalledWith(2, expect.objectContaining({ cursor: 'next-page' }));
+  });
 });
 
 // ── Empty results ───────────────────────────────────────────────

@@ -172,7 +172,9 @@ If the entity was modified since you read it, a `PortaConflictError` (HTTP 409) 
 
 ## Pagination
 
-List methods return `PaginatedResponse<T>` with `data`, `total`, `page`, `pageSize`, and optional `cursor`. Use `listAll()` for automatic cursor-based iteration:
+List methods return `PaginatedResponse<T>`. Offset responses include `data`, `total`, `page`, and
+`pageSize`; cursor responses include `data`, `nextCursor`, `previousCursor`, and `hasMore`, and omit
+`total`. Use `listAll()` for automatic cursor-based iteration:
 
 ```typescript
 // Manual pagination
@@ -188,13 +190,15 @@ For organization-scoped users, offset pagination uses `page` and `pageSize`. Cur
 ## User Administration Contracts
 
 Create and invite calls carry `organizationId` in the input object. `users.invite()` returns the
-invitation outcome (`invitationId`, `email`, `invitationSent`, and `expiresAt`), not a full user:
-the account is created only when the recipient accepts the invitation.
+invitation outcome (`invitationId`, `email`, `emailDelivery`, `invitationSent`, and `expiresAt`),
+not a full user: the account is created only when the recipient accepts the invitation.
+`emailDelivery` is `sent`, `failed`, or `unknown`; `invitationSent` is true only when the transport
+accepted the message.
 Administrators can activate and deactivate users. Account lockout and cooldown recovery are
-automatic. `organizations.getHistory()` and `users.getHistory()` accept
-`{ limit, after, eventType }` and return the full `HistoryResult` envelope (`data`, `hasMore`,
-`nextCursor`). The `after` cursor is opaque; an invalid value surfaces as a `PortaServerError`.
-`usersById.getHistory()` returns the same envelope without parameters.
+automatic. `organizations.getHistory()`, `applications.getHistory()`, `clients.getHistory()`, and
+`users.getHistory()` accept `{ limit, after, eventType }` and return the full `HistoryResult`
+envelope (`data`, `hasMore`, `nextCursor`). The `after` cursor is opaque; an invalid value surfaces
+as a `PortaServerError`. `usersById.getHistory()` returns the same envelope without parameters.
 
 ## Custom Claims
 

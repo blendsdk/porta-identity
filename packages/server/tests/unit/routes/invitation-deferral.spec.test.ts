@@ -121,7 +121,7 @@ vi.mock('../../../src/config/index.js', () => ({
 vi.mock('../../../src/lib/system-config.js', () => ({ getSystemConfigNumber: vi.fn() }));
 
 vi.mock('../../../src/auth/email-service.js', () => ({
-  sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+  sendInvitationEmail: vi.fn().mockResolvedValue('sent'),
   renderInvitationEmail: vi.fn().mockResolvedValue({ html: '', text: '', subject: '' }),
 }));
 
@@ -186,7 +186,12 @@ function createMockCtx(options: MockCtxOptions = {}) {
   let responseBody: unknown;
   let contentType = '';
   return {
-    params: { orgId: ORG_ID, orgSlug: 'test-org', token: 'presented-token', ...(options.params ?? {}) },
+    params: {
+      orgId: ORG_ID,
+      orgSlug: 'test-org',
+      token: 'presented-token',
+      ...(options.params ?? {}),
+    },
     query: options.query ?? {},
     request: { body: options.body ?? {} },
     req: {},
@@ -285,6 +290,7 @@ describe('deferred invitation routes', () => {
           invitationId: 'invitation-1',
           email: 'invitee@example.com',
           invitationSent: true,
+          emailDelivery: 'sent',
           expiresAt: expect.any(String),
         },
       });
@@ -321,7 +327,9 @@ describe('deferred invitation routes', () => {
 
       await exec(inviteLayer()!, ctx);
 
-      const expiresAt = new Date((ctx.body as { data: { expiresAt: string } }).data.expiresAt).getTime();
+      const expiresAt = new Date(
+        (ctx.body as { data: { expiresAt: string } }).data.expiresAt,
+      ).getTime();
       expect(expiresAt - before).toBeGreaterThanOrEqual(3600_000 - 5_000);
       expect(expiresAt - before).toBeLessThanOrEqual(3600_000 + 5_000);
     });
@@ -330,7 +338,12 @@ describe('deferred invitation routes', () => {
       const ctx = createMockCtx({
         body: {
           email: 'invitee@example.com',
-          roles: [{ applicationId: '11111111-1111-1111-1111-111111111111', roleId: '22222222-2222-2222-2222-222222222222' }],
+          roles: [
+            {
+              applicationId: '11111111-1111-1111-1111-111111111111',
+              roleId: '22222222-2222-2222-2222-222222222222',
+            },
+          ],
         },
       });
 
@@ -519,7 +532,10 @@ describe('deferred invitation routes', () => {
 
     it('should render an error for a weak password and not accept', async () => {
       vi.mocked(tokenRepo.findValidInvitationToken).mockResolvedValue(INVITATION);
-      vi.mocked(passwordUtils.validatePassword).mockReturnValue({ isValid: false, error: 'Too short' });
+      vi.mocked(passwordUtils.validatePassword).mockReturnValue({
+        isValid: false,
+        error: 'Too short',
+      });
       const ctx = createMockCtx({ body: { password: 'x', confirmPassword: 'x', _csrf: 'tok' } });
 
       await exec(postLayer()!, ctx);
@@ -533,7 +549,9 @@ describe('deferred invitation routes', () => {
 
     it('should reject a CSRF mismatch with 403 and not accept', async () => {
       vi.mocked(csrf.verifyCsrfToken).mockReturnValue(false);
-      const ctx = createMockCtx({ body: { password: 'pass', confirmPassword: 'pass', _csrf: 'bad' } });
+      const ctx = createMockCtx({
+        body: { password: 'pass', confirmPassword: 'pass', _csrf: 'bad' },
+      });
 
       await exec(postLayer()!, ctx);
 
@@ -590,7 +608,9 @@ describe('deferred invitation routes', () => {
         'invite-success',
         expect.objectContaining({ flash: { success: expect.any(String) } }),
       );
-      const roleInserts = poolQuery.mock.calls.filter(([sql]) => String(sql).includes('INSERT INTO user_roles'));
+      const roleInserts = poolQuery.mock.calls.filter(([sql]) =>
+        String(sql).includes('INSERT INTO user_roles'),
+      );
       expect(roleInserts).toHaveLength(1);
       expect(roleInserts[0][1]).toEqual(['user-1', LIVE_ROLE_ID]);
     });

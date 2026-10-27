@@ -171,20 +171,26 @@ packages/server/tests/
 ### Test Commands
 
 ```bash
-# Unit + integration (default)
-pnpm test
+# Local default: affected tests plus structure contracts
+pnpm test:changed
 
-# All suites (unit + integration + e2e + pentest)
-pnpm test:all
-
-# Specific suites
+# Fast unit tests across server, SDK, and CLI (no services)
 pnpm test:unit
+
+# Specific categories
 pnpm test:integration
+pnpm test:changed:integration
 pnpm test:e2e
 pnpm test:pentest
 pnpm test:ui
+pnpm test:structure
 
-# Full verification (lint + build + test:all)
+# Watch modes
+pnpm test:watch
+pnpm test:watch:integration
+
+# Full product suite and full verification (CI only)
+pnpm test
 pnpm verify
 
 # Retained external SPA/BFF OIDC harness
@@ -303,13 +309,17 @@ docs(api): update organizations endpoint docs
 
 ### Pre-Commit Verification
 
-Always run the full verification before committing:
+Start with the affected-test selector:
 
 ```bash
-pnpm verify
+pnpm test:changed
 ```
 
-This runs lint → build → test:all. All checks must pass.
+If it selects nothing or the change crosses a boundary, run the smallest category that covers the
+change, plus `pnpm test:structure`. Do not run `pnpm verify` locally unless the change touches test
+infrastructure, shared authentication/database/middleware code, or another cross-cutting boundary.
+CI runs the full `pnpm verify` gate on every push and pull request, and a PR is mergeable only when
+that full run is green.
 
 ## Environment Modes
 

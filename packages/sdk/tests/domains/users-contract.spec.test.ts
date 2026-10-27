@@ -86,6 +86,7 @@ describe('user domain contracts', () => {
       invitationId: 'invitation-2',
       email: 'invitee@example.com',
       invitationSent: true,
+      emailDelivery: 'sent',
       expiresAt: '2026-08-31T10:00:00.000Z',
     };
     transport = mockTransport({ body: { data: invitation } });

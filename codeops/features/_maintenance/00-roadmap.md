@@ -3,7 +3,7 @@
 > **Feature-Set**: Porta Maintenance
 > **Status**: In Progress
 > **Created**: 2026-09-27
-> **Last Updated**: 2026-10-26 15:02
+> **Last Updated**: 2026-10-27
 > **Progress**: n/a (task-only feature)
 > **CodeOps Artifact Schema**: 1
 
@@ -19,4 +19,5 @@
 | T-02 | Make the tampered-tag signing-key crypto test deterministic            | —   | [plan](plans/signing-key-crypto-flake/99-execution-plan.md)         | Done  | ✅     | 2026-09-27 23:35 | —                    |
 | T-03 | Make release verification resilient to registry lag and re-runs        | —   | [plan](plans/release-verify-resilience/99-execution-plan.md)        | Done  | ✅     | 2026-09-28 01:05 | —                    |
 | T-04 | Migrate the monorepo from Yarn Classic to pnpm                          | —   | [plan](plans/pnpm-migration/99-execution-plan.md)                   | Executing | 🔄 | 2026-10-26 14:20 | Remote dependency-graph and GHA cache checks |
-| T-05 | Guard audit schema and diagnose admin mutation failures                 | —   | [plan](plans/admin-mutation-schema-guard/99-execution-plan.md)      | Executing | 🔄 | 2026-10-26 15:02 | Issue #199; migration 034 rollout |
+| T-05 | Guard audit schema and diagnose admin mutation failures                 | —   | [plan](plans/admin-mutation-schema-guard/99-execution-plan.md)      | Done  | ✅     | 2026-10-26 15:10 | Released in v1.14.1; live migration/instance alignment remains with the operator |
+| T-06 | Narrow local tests and resolve five open bugs                           | —   | [delivery record](plans/local-tests-and-open-bugfixes/99-execution-plan.md) | Done | ✅ | 2026-10-27 | Merged to `develop`; PRs #202–#206; issues closed; not released |

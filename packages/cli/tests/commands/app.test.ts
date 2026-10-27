@@ -210,6 +210,20 @@ describe('app command', () => {
       expect(info).toHaveBeenCalledWith('Total: 1 applications');
     });
 
+    it('does not print a total for a cursor page without one', async () => {
+      mockApplications.list.mockResolvedValue({
+        data: [sampleApp],
+        nextCursor: null,
+        previousCursor: null,
+        hasMore: false,
+      });
+
+      await invokeSubcommand(['list'], {});
+
+      expect(printTable).toHaveBeenCalled();
+      expect(info).not.toHaveBeenCalledWith(expect.stringContaining('Total:'));
+    });
+
     it('warns when empty', async () => {
       mockApplications.list.mockResolvedValue({ data: [], total: 0, page: 1, pageSize: 20 });
       await invokeSubcommand(['list'], {});
@@ -281,15 +295,19 @@ describe('app command', () => {
   describe('history', () => {
     it('shows history', async () => {
       // Server HistoryEntry shape (src/lib/entity-history.ts).
-      mockApplications.getHistory.mockResolvedValue([
-        {
-          id: 'h1',
-          eventType: 'app.created',
-          actorId: 'admin',
-          metadata: null,
-          createdAt: '2024-01-01T00:00:00Z',
-        },
-      ]);
+      mockApplications.getHistory.mockResolvedValue({
+        data: [
+          {
+            id: 'h1',
+            eventType: 'app.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      });
 
       await invokeSubcommand(['history', 'my-app'], {});
       expect(printTable).toHaveBeenCalled();

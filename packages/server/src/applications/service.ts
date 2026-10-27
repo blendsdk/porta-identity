@@ -68,6 +68,9 @@ import { getDatabaseTransactionClient } from '../lib/database.js';
 import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 
+/** Immutable slug of the application that owns Porta's control-plane definitions. */
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+
 // ===========================================================================
 // Application CRUD
 // ===========================================================================
@@ -180,6 +183,23 @@ export async function getApplicationBySlug(slug: string): Promise<Application | 
 // ---------------------------------------------------------------------------
 
 /**
+ * Reject mutations of the canonical Porta Admin application.
+ *
+ * The canonical application owns the control-plane roles, permissions, modules and clients. Generic
+ * application and module routes must not change it, because deleting or renaming that record would
+ * remove or invalidate Porta's administrative authority.
+ *
+ * @param applicationId - Target application UUID
+ * @throws ApplicationValidationError when the target is the canonical Porta Admin application
+ */
+async function requireMutableApplication(applicationId: string): Promise<void> {
+  const canonical = await getApplicationBySlug(ADMIN_APPLICATION_SLUG);
+  if (canonical?.id === applicationId) {
+    throw new ApplicationValidationError('Canonical Porta Admin application cannot be modified');
+  }
+}
+
+/**
  * Update an application's basic fields (name, description).
  *
  * @param id - Application UUID
@@ -193,6 +213,8 @@ export async function updateApplication(
   input: UpdateApplicationInput,
   actorId?: string,
 ): Promise<Application> {
+  await requireMutableApplication(id);
+
   // Build update data from input
   const updateData: Record<string, unknown> = {};
   if (input.name !== undefined) updateData.name = input.name;
@@ -276,6 +298,7 @@ async function loadAppForStatusChange(id: string): Promise<Application> {
  * @throws ApplicationValidationError if not currently active
  */
 export async function deactivateApplication(id: string, actorId?: string): Promise<void> {
+  await requireMutableApplication(id);
   const app = await loadAppForStatusChange(id);
 
   if (app.status !== 'active') {
@@ -304,6 +327,7 @@ export async function deactivateApplication(id: string, actorId?: string): Promi
  * @throws ApplicationValidationError if not currently inactive
  */
 export async function activateApplication(id: string, actorId?: string): Promise<void> {
+  await requireMutableApplication(id);
   const app = await loadAppForStatusChange(id);
 
   if (app.status !== 'inactive') {
@@ -347,6 +371,8 @@ export async function createModule(
   input: CreateModuleInput,
   actorId?: string,
 ): Promise<ApplicationModule> {
+  await requireMutableApplication(applicationId);
+
   // Validate parent application exists
   const app = await findApplicationById(applicationId);
   if (!app) throw new ApplicationNotFoundError(applicationId);
@@ -401,6 +427,7 @@ export async function updateModule(
   input: UpdateModuleInput,
   actorId?: string,
 ): Promise<ApplicationModule> {
+  await requireMutableApplication(applicationId);
   const ownedModule = await findModuleById(applicationId, moduleId);
   if (!ownedModule || ownedModule.applicationId !== applicationId) {
     throw new ApplicationNotFoundError(moduleId);
@@ -449,6 +476,7 @@ export async function deactivateModule(
   moduleId: string,
   actorId?: string,
 ): Promise<void> {
+  await requireMutableApplication(applicationId);
   const mod = await findModuleById(applicationId, moduleId);
   if (!mod || mod.applicationId !== applicationId) {
     throw new ApplicationNotFoundError(moduleId);
@@ -482,6 +510,7 @@ export async function activateModule(
   moduleId: string,
   actorId?: string,
 ): Promise<void> {
+  await requireMutableApplication(applicationId);
   const mod = await findModuleById(applicationId, moduleId);
   if (!mod || mod.applicationId !== applicationId) {
     throw new ApplicationNotFoundError(moduleId);
@@ -524,10 +553,14 @@ export async function deleteApplication(
   id: string,
   actorId?: string,
 ): Promise<ApplicationDeletionCapture> {
+  await requireMutableApplication(id);
   const client = getDatabaseTransactionClient();
   if (!client) throw new Error('Application deletion requires an active database transaction');
   const capture = await captureApplicationForDeletion(id);
   if (!capture) throw new ApplicationNotFoundError(id);
+  if (capture.application.slug === ADMIN_APPLICATION_SLUG) {
+    throw new ApplicationValidationError('Canonical Porta Admin application cannot be modified');
+  }
   await client.query(
     `UPDATE admin_sessions SET revoked_at = NOW()
      WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
@@ -581,6 +614,7 @@ export async function deleteModule(
   moduleId: string,
   actorId?: string,
 ): Promise<ModuleDeletionCapture> {
+  await requireMutableApplication(applicationId);
   const client = getDatabaseTransactionClient();
   if (!client) throw new Error('Module deletion requires an active database transaction');
   const capture = await captureModuleForDeletion(applicationId, moduleId);

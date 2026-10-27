@@ -253,8 +253,10 @@ export interface InviteUserResult {
   invitationId: string;
   /** Email address that received the invitation. */
   email: string;
-  /** Whether the invitation email was sent. */
+  /** Whether the invitation email was accepted by the configured transport. */
   invitationSent: boolean;
+  /** Delivery outcome: sent, failed, or unknown when the post-commit effect did not report. */
+  emailDelivery: 'sent' | 'failed' | 'unknown';
   /** ISO 8601 expiration time for the invitation. */
   expiresAt: string;
 }

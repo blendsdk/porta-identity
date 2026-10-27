@@ -315,8 +315,17 @@ export function createApplicationRouter(): Router {
   // GET /:id/history — Application change history
   // -------------------------------------------------------------------------
   router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.APP_READ), async (ctx) => {
+    const param = ctx.params.id;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(param);
+    const app = isUuid
+      ? await applicationService.getApplicationById(param)
+      : await applicationService.getApplicationBySlug(param);
+    if (!app) {
+      ctx.throw(404, 'Application not found');
+      return;
+    }
     const { limit, after, event_type } = ctx.query as Record<string, string>;
-    const result = await getEntityHistory('application', ctx.params.id, {
+    const result = await getEntityHistory('application', app.id, {
       limit: limit ? parseInt(limit, 10) : undefined,
       after: after || undefined,
       eventTypePrefix: event_type || undefined,

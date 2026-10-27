@@ -199,6 +199,7 @@ function fallbackDecisionFact(status: number): SecurityDecisionFact {
 function normalizeMethod(method: string): SecurityDecisionEvent['method'] {
   switch (method) {
     case 'GET':
+    case 'HEAD':
     case 'POST':
     case 'PUT':
     case 'DELETE':

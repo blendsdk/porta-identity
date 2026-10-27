@@ -83,6 +83,10 @@ import * as userCache from '../../../src/users/cache.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
 import * as templateEngine from '../../../src/auth/template-engine.js';
 import * as rateLimiter from '../../../src/auth/rate-limiter.js';
+import {
+  initializeSecurityDecision,
+  finalizeSecurityDecision,
+} from '../../../src/security/decision-context.js';
 import type { Organization } from '../../../src/organizations/types.js';
 
 /** Provider model whose current interaction belongs to the test client. */
@@ -254,6 +258,28 @@ describe('magic link routes', () => {
       expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'user.magic_link.failed' }),
       );
+    });
+
+    it('should classify a rejected token as authentication rather than schema validation', async () => {
+      vi.mocked(tokenRepo.consumeAuthorizedMagicLink).mockResolvedValue(null);
+      const ctx = Object.assign(createMockCtx(), {
+        method: 'GET',
+        path: '/test-org/auth/magic-link/plain-token-123',
+        _matchedRoute: '/:orgSlug/auth/magic-link/:token',
+      });
+      initializeSecurityDecision(ctx as never, '00000000-0000-4000-8000-000000000001');
+
+      await exec(findLayer(createTestRouter(), 'GET', 'magic-link')!, ctx);
+
+      const event = await finalizeSecurityDecision(ctx as never, vi.fn());
+      expect(event).toMatchObject({
+        method: 'GET',
+        statusCode: 400,
+        outcome: 'deny',
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-rejected',
+      });
+      expect(JSON.stringify(event)).not.toContain('plain-token-123');
     });
 
     it('should reject before durable lookup when the callback budget is exhausted', async () => {

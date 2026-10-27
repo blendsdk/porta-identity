@@ -90,8 +90,8 @@ another application does not grant Admin access.
 
 Admin authorization uses the canonical application identity, static built-in capability sets, and
 an assignment ceiling: an administrator cannot assign a canonical Admin role that grants
-capabilities they do not have. Generic CRUD cannot alter the canonical built-in definitions;
-initialization and reset own them.
+capabilities they do not have. Generic CRUD cannot alter the canonical application record, its
+modules, or its built-in role and permission definitions; initialization and reset own them.
 
 ## Authority changes
 

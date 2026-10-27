@@ -25,6 +25,7 @@
 import Router from '@koa/router';
 import type { Context } from 'koa';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
+import { rejectHeadProbe } from '../middleware/reject-head-probe.js';
 import { hashToken } from '../auth/tokens.js';
 import { consumeAuthorizedMagicLink } from '../auth/token-repository.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
@@ -47,6 +48,7 @@ import {
   loadMagicLinkRateLimitConfig,
 } from '../auth/rate-limiter.js';
 import { magicLinkCallbackArtifactDigest } from '../auth/recovery-crypto.js';
+import { recordSecurityDecision } from '../security/decision-context.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -122,6 +124,9 @@ export function createMagicLinkRouter(
   // Applied at route level because this router is mounted directly on the Koa app
   // (not under the OIDC catch-all router which has its own tenant resolver).
   const resolve = tenantResolver();
+
+  // Stop automatic HEAD-to-GET dispatch before tenant, limiter, or token access.
+  router.head('/:orgSlug/auth/magic-link/:token', rejectHeadProbe);
 
   // GET /:orgSlug/auth/magic-link/:token — Verify magic link
   router.get('/:orgSlug/auth/magic-link/:token', resolve, async (ctx) => {
@@ -338,6 +343,11 @@ async function renderErrorPageForAuth(
     ctx.status = 400;
     ctx.type = 'text/html';
     ctx.body = html;
+    recordSecurityDecision(ctx, {
+      decisionPoint: 'authentication',
+      reasonCode: 'authentication-rejected',
+      outcome: 'deny',
+    });
   } catch {
     logger.error({ event: 'auth-error-render-failed' }, 'Authentication error page failed');
     ctx.status = 500;
