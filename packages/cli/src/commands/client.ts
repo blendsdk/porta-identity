@@ -473,7 +473,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const sdkClient = createClient(argv);
               const history = await sdkClient.clients.getHistory(argv['client-id']);
 
-              if (history.length === 0) {
+              if (history.data.length === 0) {
                 warn('No history entries found');
                 return;
               }
@@ -483,7 +483,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               } else {
                 printTable(
                   ['Date', 'Event', 'Actor', 'Metadata'],
-                  history.map((h) => [
+                  history.data.map((h) => [
                     formatDate(h.createdAt),
                     h.eventType,
                     h.actorId ?? '—',

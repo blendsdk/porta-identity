@@ -195,10 +195,10 @@ not a full user: the account is created only when the recipient accepts the invi
 `emailDelivery` is `sent`, `failed`, or `unknown`; `invitationSent` is true only when the transport
 accepted the message.
 Administrators can activate and deactivate users. Account lockout and cooldown recovery are
-automatic. `organizations.getHistory()` and `users.getHistory()` accept
-`{ limit, after, eventType }` and return the full `HistoryResult` envelope (`data`, `hasMore`,
-`nextCursor`). The `after` cursor is opaque; an invalid value surfaces as a `PortaServerError`.
-`usersById.getHistory()` returns the same envelope without parameters.
+automatic. `organizations.getHistory()`, `applications.getHistory()`, `clients.getHistory()`, and
+`users.getHistory()` accept `{ limit, after, eventType }` and return the full `HistoryResult`
+envelope (`data`, `hasMore`, `nextCursor`). The `after` cursor is opaque; an invalid value surfaces
+as a `PortaServerError`. `usersById.getHistory()` returns the same envelope without parameters.
 
 ## Custom Claims
 

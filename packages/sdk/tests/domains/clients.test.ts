@@ -268,7 +268,8 @@ describe('domains/clients', () => {
   // ── getHistory ──────────────────────────────────────────────
   describe('getHistory', () => {
     it('calls GET /clients/:id/history', async () => {
-      transport = mockTransport({ body: { data: [historyEntry] } });
+      const history = { data: [historyEntry], hasMore: false, nextCursor: null };
+      transport = mockTransport({ body: history });
       const clients = createClientsDomain(transport);
       const result = await clients.getHistory('c1');
       expect(transport.request).toHaveBeenCalledWith({
@@ -276,7 +277,22 @@ describe('domains/clients', () => {
         path: '/clients/c1/history',
         params: undefined,
       });
-      expect(result).toEqual([historyEntry]);
+      expect(result).toEqual(history);
+    });
+
+    it('maps history parameters to the server query names', async () => {
+      transport = mockTransport({
+        body: { data: [historyEntry], hasMore: true, nextCursor: 'next-page' },
+      });
+      const clients = createClientsDomain(transport);
+
+      await clients.getHistory('c1', { limit: 50, after: 'cursor-1', eventType: 'client.secret' });
+
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/clients/c1/history',
+        params: { limit: 50, after: 'cursor-1', event_type: 'client.secret' },
+      });
     });
   });
 

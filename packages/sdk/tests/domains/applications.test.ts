@@ -36,7 +36,7 @@ const module = {
 
 const historyEntry = {
   id: 'h1',
-  eventType: 'application.created',
+  eventType: 'app.created',
   actorId: null,
   metadata: null,
   createdAt: application.createdAt,
@@ -242,7 +242,8 @@ describe('domains/applications', () => {
   // ── getHistory ──────────────────────────────────────────────
   describe('getHistory', () => {
     it('calls GET /applications/:id/history', async () => {
-      transport = mockTransport({ body: { data: [historyEntry] } });
+      const history = { data: [historyEntry], hasMore: false, nextCursor: null };
+      transport = mockTransport({ body: history });
       const apps = createApplicationsDomain(transport);
       const result = await apps.getHistory('app-1');
       expect(transport.request).toHaveBeenCalledWith({
@@ -250,7 +251,22 @@ describe('domains/applications', () => {
         path: '/applications/app-1/history',
         params: undefined,
       });
-      expect(result).toEqual([historyEntry]);
+      expect(result).toEqual(history);
+    });
+
+    it('maps history parameters to the server query names', async () => {
+      transport = mockTransport({
+        body: { data: [historyEntry], hasMore: true, nextCursor: 'next-page' },
+      });
+      const apps = createApplicationsDomain(transport);
+
+      await apps.getHistory('app-1', { limit: 50, after: 'cursor-1', eventType: 'app.module' });
+
+      expect(transport.request).toHaveBeenCalledWith({
+        method: 'GET',
+        path: '/applications/app-1/history',
+        params: { limit: 50, after: 'cursor-1', event_type: 'app.module' },
+      });
     });
   });
 

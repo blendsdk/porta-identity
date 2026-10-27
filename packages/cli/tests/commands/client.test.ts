@@ -509,15 +509,19 @@ describe('client command', () => {
   describe('history', () => {
     it('shows client change history in table format', async () => {
       // Server HistoryEntry shape (src/lib/entity-history.ts).
-      mockClients.getHistory.mockResolvedValue([
-        {
-          id: 'h1',
-          eventType: 'client.created',
-          actorId: 'admin-user',
-          metadata: { name: 'My Web App' },
-          createdAt: '2024-01-01T00:00:00Z',
-        },
-      ]);
+      mockClients.getHistory.mockResolvedValue({
+        data: [
+          {
+            id: 'h1',
+            eventType: 'client.created',
+            actorId: 'admin-user',
+            metadata: { name: 'My Web App' },
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      });
 
       await invokeSubcommand('history', { _pos_: 'client-uuid-1234' });
 
@@ -526,15 +530,19 @@ describe('client command', () => {
     });
 
     it('shows history in JSON format', async () => {
-      const history = [
-        {
-          id: 'h1',
-          eventType: 'client.created',
-          actorId: 'admin',
-          metadata: null,
-          createdAt: '2024-01-01T00:00:00Z',
-        },
-      ];
+      const history = {
+        data: [
+          {
+            id: 'h1',
+            eventType: 'client.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      };
       mockClients.getHistory.mockResolvedValue(history);
 
       await invokeSubcommand('history', { _pos_: 'client-uuid-1234', json: true });
@@ -543,7 +551,7 @@ describe('client command', () => {
     });
 
     it('shows warning when no history found', async () => {
-      mockClients.getHistory.mockResolvedValue([]);
+      mockClients.getHistory.mockResolvedValue({ data: [], hasMore: false, nextCursor: null });
 
       await invokeSubcommand('history', { _pos_: 'client-uuid-1234' });
 
