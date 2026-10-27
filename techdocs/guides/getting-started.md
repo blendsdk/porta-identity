@@ -4,12 +4,12 @@
 
 ## Prerequisites
 
-| Requirement | Version | Purpose |
-|-------------|---------|---------|
-| Node.js | ≥ 22.0.0 | Runtime |
-| pnpm | 12.15 | Package manager |
-| Docker & Docker Compose | Latest | PostgreSQL, Redis, MailHog |
-| Git | Latest | Version control |
+| Requirement             | Version  | Purpose                    |
+| ----------------------- | -------- | -------------------------- |
+| Node.js                 | ≥ 22.0.0 | Runtime                    |
+| pnpm                    | 12.15    | Package manager            |
+| Docker & Docker Compose | Latest   | PostgreSQL, Redis, MailHog |
+| Git                     | Latest   | Version control            |
 
 ::: warning pnpm only
 Porta uses pnpm 12.15.x with the hoisted node_modules layout. Do **not** use npm or Yarn. The workspace contract is enforced by `pnpm-workspace.yaml` and the structural tests.
@@ -66,12 +66,12 @@ pnpm docker:up
 
 This starts PostgreSQL 16, Redis 7, and MailHog via Docker Compose.
 
-| Service | URL | Credentials |
-|---------|-----|-------------|
-| PostgreSQL | `localhost:5432` | `porta:porta` / DB: `porta` |
-| Redis | `localhost:6379` | No auth |
-| MailHog SMTP | `localhost:1025` | No auth |
-| MailHog UI | `http://localhost:8025` | Browser |
+| Service      | URL                     | Credentials                 |
+| ------------ | ----------------------- | --------------------------- |
+| PostgreSQL   | `localhost:5432`        | `porta:porta` / DB: `porta` |
+| Redis        | `localhost:6379`        | No auth                     |
+| MailHog SMTP | `localhost:1025`        | No auth                     |
+| MailHog UI   | `http://localhost:8025` | Browser                     |
 
 ### 5. Run Migrations
 
@@ -88,6 +88,7 @@ pnpm porta init
 ```
 
 The `porta init` command creates:
+
 - The super-admin organization
 - The Porta admin application with RBAC roles and permissions
 - A PKCE-enabled OIDC client for the CLI
@@ -153,19 +154,21 @@ techdocs/              # Developer and architecture documentation
 
 ## Common Tasks
 
-| Task | Command |
-|------|---------|
-| Start Porta server | `pnpm dev` |
-| Run all Porta tests | `pnpm test:all` |
-| Run Porta unit tests only | `pnpm test:unit` |
-| Run integration tests | `pnpm test:integration` |
-| Build for production | `pnpm build` |
-| Full verify (lint + build + test) | `pnpm verify` |
-| Create a migration | `pnpm migrate:create <name>` |
-| Run migrations | `pnpm porta migrate up` |
-| Lint code | `pnpm lint` |
-| Start Docker services | `pnpm docker:up` |
-| Stop Docker services | `pnpm docker:down` |
+| Task                                   | Command                                              |
+| -------------------------------------- | ---------------------------------------------------- |
+| Start Porta server                     | `pnpm dev`                                           |
+| Run affected tests (local default)     | `pnpm test:changed`                                  |
+| Run all unit tests                     | `pnpm test:unit`                                     |
+| Run the full product suite (CI only)   | `pnpm test`                                          |
+| Run integration tests                  | `pnpm test:integration`                              |
+| Run E2E, penetration, or browser tests | `pnpm test:e2e`, `pnpm test:pentest`, `pnpm test:ui` |
+| Build for production                   | `pnpm build`                                         |
+| Full verification (CI only)            | `pnpm verify`                                        |
+| Create a migration                     | `pnpm migrate:create <name>`                         |
+| Run migrations                         | `pnpm porta migrate up`                              |
+| Lint code                              | `pnpm lint`                                          |
+| Start Docker services                  | `pnpm docker:up`                                     |
+| Stop Docker services                   | `pnpm docker:down`                                   |
 
 ## Troubleshooting
 

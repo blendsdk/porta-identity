@@ -17,6 +17,28 @@ Clean up everything you create for a task before reporting the task complete.
 - Before finishing, confirm with `docker ps -a`, `docker network ls`, and `docker volume ls` that
   nothing from the task remains. If cleanup cannot complete, report the exact recovery command.
 
+## Prime directive — keep local test runs narrow
+
+CI runs the full suite on every push and pull request. Do not run the full suite locally by
+default. Start with `pnpm test:changed`; if it selects nothing or the change crosses a boundary,
+run the smallest category that covers the change (`pnpm test:unit`, `pnpm test:integration`,
+`pnpm test:e2e`, `pnpm test:pentest`, `pnpm test:ui`, or `pnpm test:structure`).
+
+Run the full suite (`pnpm test` or `pnpm verify`) locally only when:
+
+- the change touches test infrastructure, CI, Turbo, root scripts, or shared test setup;
+- the change spans multiple workspaces or shared authentication, database, or middleware code
+  where no narrower gate is credible;
+- you are preparing a release or diagnosing a failure that only reproduces in the full run;
+- the user explicitly asks for a full run.
+
+This does not relax security testing. Authentication, OIDC/token, tenant isolation,
+administrative authorization, sessions, recovery, cookies, CSRF, and CORS changes must still run
+`pnpm test:pentest` and the applicable assurance harness.
+
+A local run is a selection, not a waiver: a change is mergeable only after CI's full
+`pnpm verify` passes.
+
 <!-- CODEOPS-PROJECT:START -->
 
 ## Project profile
@@ -30,27 +52,33 @@ Clean up everything you create for a task before reporting the task complete.
 
 Run commands from the repository root.
 
-| Purpose             | Command                                                                  | Validation                                                                                |
-| ------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
-| Install             | `pnpm install --frozen-lockfile`                                         | Passed on 2026-08-08 in the migration worktree                                            |
-| Full verification   | `pnpm verify`                                                            | Passed on 2026-09-17; counts below                                                        |
-| CLI verification    | `pnpm --filter @portaidentity/cli verify`                               | Passed on 2026-09-17: lint, typecheck, 1,419 tests and build                              |
-| Structure tests     | `pnpm test:structure`                                                    | Passed on 2026-09-17: 122 contracts; some spawn builds/CLI commands; no services required |
-| Unit tests          | `pnpm test:unit`                                                         | Runs the server unit project                                                              |
-| Integration tests   | `pnpm test:integration`                                                  | Requires PostgreSQL, Redis, and MailHog                                                   |
-| End-to-end tests    | `pnpm test:e2e`                                                          | Requires PostgreSQL, Redis, and MailHog                                                   |
-| Penetration tests   | `pnpm test:pentest`                                                      | Requires PostgreSQL, Redis, and MailHog                                                   |
-| Browser tests       | `pnpm test:ui`                                                           | Passed on 2026-09-17: 133; requires Playwright Chromium and test infrastructure           |
-| OIDC harness        | `pnpm harness:test`                                                      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services                  |
-| Documentation build | `pnpm docs:build`                                                        | Passed on 2026-09-17                                                                      |
-| Dependency check    | `pnpm deps:check`                                                        | Checks root and active workspaces while excluding internal workspace packages             |
-| Release tooling     | `pnpm release:prepare`, `pnpm release:preflight`, `pnpm release:publish` | Declared by root scripts; not executed during this guidance refresh                       |
+| Purpose              | Command                                                                  | Scope          | Validation                                                                    |
+| -------------------- | ------------------------------------------------------------------------ | -------------- | ----------------------------------------------------------------------------- |
+| Install              | `pnpm install --frozen-lockfile`                                         | Local / CI     | Passed on 2026-08-08 in the migration worktree                                |
+| Full product tests   | `pnpm test`                                                              | CI only        | Server unit, integration, E2E, and pentest; SDK; CLI                          |
+| Full verification    | `pnpm verify`                                                            | CI only        | Structure contracts, lint, typecheck, all product tests, and builds           |
+| Affected tests       | `pnpm test:changed`                                                      | Local default  | Structure contracts plus unit tests affected since `origin/develop`           |
+| Unit tests           | `pnpm test:unit`                                                         | Local          | Server unit, SDK, and CLI; no services required                               |
+| Watch unit tests     | `pnpm test:watch`                                                        | Local          | Server unit project only                                                      |
+| Integration tests    | `pnpm test:integration`                                                  | Local services | Requires PostgreSQL, Redis, and MailHog                                       |
+| Affected integration | `pnpm test:changed:integration`                                          | Local services | Integration tests affected since `origin/develop`                             |
+| Watch integration    | `pnpm test:watch:integration`                                            | Local services | Server integration project only                                               |
+| End-to-end tests     | `pnpm test:e2e`                                                          | Local services | Requires PostgreSQL, Redis, and MailHog                                       |
+| Penetration tests    | `pnpm test:pentest`                                                      | Security gate  | Requires PostgreSQL, Redis, and MailHog                                       |
+| Browser tests        | `pnpm test:ui`                                                           | Browser gate   | Requires Playwright Chromium and test infrastructure                          |
+| Structure tests      | `pnpm test:structure`                                                    | Local / CI     | 142 contracts; some spawn builds/CLI commands; no services required           |
+| OIDC harness         | `pnpm harness:test`                                                      | On demand      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services      |
+| Documentation build  | `pnpm docs:build`                                                        | Docs changes   | Passed on 2026-09-17                                                          |
+| Dependency check     | `pnpm deps:check`                                                        | On demand      | Checks root and active workspaces while excluding internal workspace packages |
+| Release tooling      | `pnpm release:prepare`, `pnpm release:preflight`, `pnpm release:publish` | Manual release | Declared by root scripts; not executed during ordinary feature work           |
 
-`pnpm verify` runs the root structure tests and Turbo verification for server, SDK, and CLI. Browser tests and the retained OIDC harness remain separate commands.
+`pnpm test` runs every product test project. `pnpm verify` adds structure contracts, lint, typecheck,
+and builds, and is the CI gate. Browser tests and the retained OIDC harness remain separate CI jobs.
+Use the narrow category scripts locally; CI covers the full surface on every push and pull request.
 
-Latest full verification (2026-09-17): structure 122; server unit 3,635, integration 476, E2E 127,
-pentest 260; SDK 558; CLI 1,419. Lint, typechecks and builds pass. These are dated evidence,
-not fixed test-count requirements.
+Latest CI full verification (2026-09-17): structure 122; server unit 3,635, integration 476, E2E 127,
+pentest 260; SDK 558; CLI 1,419. Lint, typechecks and builds pass. These are dated CI evidence,
+not fixed test-count requirements and not a local default.
 
 The registered `pnpm assurance:harness --project security --profile production-security` run on
 2026-09-17 passed its 7 human-authentication, 4 second-factor and 17 tenant/admin tests; exposure
@@ -64,9 +92,13 @@ Evidence: `codeops/features/production-readiness/plans/postgresql-backed-global-
 - Before implementation, identify the affected public and security boundaries and write or update
   immutable specification tests first. During implementation, run the narrow unit, integration,
   E2E, UI, or harness selector that gives the fastest relevant feedback.
-- Before every commit, run verification for every affected workspace plus `pnpm test:structure`.
-  Use `pnpm verify` when server behavior or multiple product workspaces change. Never delete, skip,
-  weaken, or retry-away a failing security assertion.
+- Start local verification with `pnpm test:changed`. If it selects nothing or the change crosses a
+  boundary, run the smallest category that covers it. Before every commit, run the affected
+  workspace checks plus `pnpm test:structure`. Do not run `pnpm verify` locally unless the
+  local-test prime directive exception applies. Never delete, skip, weaken, or retry-away a failing
+  security assertion.
+- Before opening or merging a PR, confirm CI's full `pnpm verify` is green. CI is the authoritative
+  full-suite gate; a local category run is a selection, not a waiver.
 - For browser-facing behavior, also run `pnpm test:ui`. For retained SPA/BFF behavior, run
   `pnpm harness:test`; both remain outside `pnpm verify`.
 - For authentication, OIDC/token, tenant isolation, administrative authorization, sessions,

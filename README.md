@@ -105,7 +105,9 @@ cp .env.example .env
 pnpm docker:up        # Start PostgreSQL, Redis, MailHog
 pnpm build && pnpm porta migrate up && pnpm porta init
 pnpm dev              # Start the development server with live reload
-pnpm verify           # Run lint + build + tests before committing
+pnpm test:changed     # Local: affected tests + structure contracts
+pnpm test:unit        # Local: all unit tests, no services
+# CI runs pnpm verify: structure, lint, typecheck, full tests, and builds
 ```
 
 ## 📄 License
