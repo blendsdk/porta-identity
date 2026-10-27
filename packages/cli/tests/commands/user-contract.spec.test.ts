@@ -127,6 +127,7 @@ describe('user command SDK contract', () => {
       invitationId: 'invitation-1',
       email: 'invited@example.com',
       invitationSent: false,
+      emailDelivery: 'failed',
       expiresAt: '2026-09-01T12:00:00.000Z',
     };
 

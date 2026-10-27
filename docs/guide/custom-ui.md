@@ -260,6 +260,9 @@ When the consent page is shown depends on the client's trust and the request:
 | `userName`   | `string` | Recipient's display name                         |
 | `year`       | `number` | Current year                                     |
 
+Invitation templates receive `expiresIn` from the configured `invitation_ttl`, for example
+`7 days`, `12 hours`, or `5 minutes`. The former `expiresDays` variable is removed.
+
 ---
 
 ## Creating a Custom Login Page {#custom-login}

@@ -65,10 +65,15 @@ Creates a pending invitation and sends an enhanced invitation email. No account 
     "invitationId": "uuid",
     "email": "user@example.com",
     "invitationSent": true,
+    "emailDelivery": "sent",
     "expiresAt": "2026-01-08T00:00:00.000Z"
   }
 }
 ```
+
+`emailDelivery` is `sent`, `failed`, or `unknown`. `invitationSent` is true only when the
+configured transport accepted the message. A failed or unknown send still creates the invitation
+and records an `email.send.failed` audit event.
 
 **Pre-assignment behavior:**
 

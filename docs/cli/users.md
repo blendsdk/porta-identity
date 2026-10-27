@@ -34,7 +34,9 @@ Sends an invitation email. No account is created yet: the recipient's account
 is created only when they accept the invitation and set a password. The
 `--name` value is split into OIDC `givenName`/`familyName` on the first space
 (same behavior as `create`). The command prints the invitation outcome:
-`invitationId`, `email`, `invitationSent`, and `expiresAt`.
+`invitationId`, `email`, `emailDelivery`, `invitationSent`, and `expiresAt`. `emailDelivery` is
+`sent`, `failed`, or `unknown`; `invitationSent` is true only when the transport accepted the
+message.
 
 | Flag                 | Required | Description                                                                                                                                                                                            |
 | -------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

@@ -58,6 +58,8 @@ export interface AdminInvitedUser {
   readonly email: string;
   /** Whether an invitation message was sent. */
   readonly invitationSent: boolean;
+  /** Delivery outcome: sent, failed, or unknown when the post-commit effect did not report. */
+  readonly emailDelivery: 'sent' | 'failed' | 'unknown';
   /** Invitation expiration timestamp. */
   readonly expiresAt: string;
 }

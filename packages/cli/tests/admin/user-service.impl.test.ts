@@ -137,6 +137,7 @@ describe('admin user service implementation', () => {
       invitationId: userId,
       email: 'person@example.test',
       invitationSent: true,
+      emailDelivery: 'sent',
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
     const invitePreview = vi
@@ -186,6 +187,7 @@ describe('admin user service implementation', () => {
       email: 'person@example.test',
       created: true,
       invitationSent: true,
+      emailDelivery: 'sent',
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
     const operations = createAdminUserOperations(() => domain({ invite }));

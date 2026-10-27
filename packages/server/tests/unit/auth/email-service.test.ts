@@ -219,7 +219,14 @@ describe('email-service', () => {
 
   describe('sendInvitationEmail', () => {
     it('should render and send invitation email', async () => {
-      await sendInvitationEmail(TEST_USER, TEST_ORG, 'https://acme.com/invite?token=inv', 'en');
+      const delivery = await sendInvitationEmail(
+        TEST_USER,
+        TEST_ORG,
+        'https://acme.com/invite?token=inv',
+        'en',
+        { expiresInSeconds: 604800 },
+      );
+      expect(delivery).toBe('sent');
 
       expect(renderEmail).toHaveBeenCalledWith(
         'invitation',
@@ -228,7 +235,7 @@ describe('email-service', () => {
           userName: 'Alice Smith',
           inviteUrl: 'https://acme.com/invite?token=inv',
           orgName: 'Acme Corp',
-          expiresDays: 7,
+          expiresIn: '7 days',
         }),
       );
 
@@ -244,13 +251,52 @@ describe('email-service', () => {
       );
     });
 
+    it.each([
+      [604800, '7 days'],
+      [86400, '1 day'],
+      [43200, '12 hours'],
+      [3600, '1 hour'],
+      [300, '5 minutes'],
+      [90, '2 minutes'],
+    ])('should render a %i-second lifetime as %s', async (seconds, expected) => {
+      await sendInvitationEmail(TEST_USER, TEST_ORG, 'https://acme.com/invite?token=inv', 'en', {
+        expiresInSeconds: seconds,
+      });
+
+      expect(renderEmail).toHaveBeenCalledWith(
+        'invitation',
+        'acme-corp',
+        expect.objectContaining({ expiresIn: expected }),
+      );
+    });
+
+    it('should report failed and audit when the transport rejects the message', async () => {
+      mockTransport.send.mockRejectedValueOnce(new Error('smtp unavailable'));
+
+      const delivery = await sendInvitationEmail(
+        TEST_USER,
+        TEST_ORG,
+        'https://acme.com/invite?token=inv',
+        'en',
+        { expiresInSeconds: 604800 },
+      );
+
+      expect(delivery).toBe('failed');
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'email.send.failed',
+          metadata: expect.objectContaining({ template: 'invitation' }),
+        }),
+      );
+    });
+
     it('should send to a recipient without an account and record the invitation id', async () => {
       await sendInvitationEmail(
         { email: 'pending@example.com', givenName: 'Pending', familyName: 'User' },
         TEST_ORG,
         'https://acme.com/invite?token=inv',
         'en',
-        { invitationId: 'invitation-123' },
+        { invitationId: 'invitation-123', expiresInSeconds: 604800 },
       );
 
       expect(mockTransport.send).toHaveBeenCalledWith(
@@ -272,7 +318,9 @@ describe('email-service', () => {
         brandingCompanyName: null,
       };
 
-      await sendInvitationEmail(TEST_USER, orgNoBranding, 'https://invite.url', 'en');
+      await sendInvitationEmail(TEST_USER, orgNoBranding, 'https://invite.url', 'en', {
+        expiresInSeconds: 604800,
+      });
 
       expect(mockTransport.send).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -372,9 +420,7 @@ describe('email-service', () => {
 
     it('should catch render failures without throwing', async () => {
       // Make the renderer fail
-      (renderEmail as ReturnType<typeof vi.fn>).mockRejectedValue(
-        new Error('Template not found'),
-      );
+      (renderEmail as ReturnType<typeof vi.fn>).mockRejectedValue(new Error('Template not found'));
 
       // Should NOT throw
       await expect(
