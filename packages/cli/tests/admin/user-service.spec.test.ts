@@ -573,6 +573,7 @@ describe('user administration input', () => {
       invitationId: userId,
       email: 'person@example.test',
       invitationSent: true,
+      emailDelivery: 'sent',
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
     const operations = createAdminUserOperations(() => domain({ invite }));
@@ -599,6 +600,7 @@ describe('user administration input', () => {
       invitationId: userId,
       email: 'person@example.test',
       invitationSent: true,
+      emailDelivery: 'sent',
       expiresAt: '2026-08-31T10:00:00.000Z',
     });
     const operations = createAdminUserOperations(() => domain({ create, invite }));
@@ -872,7 +874,9 @@ describe('fixed user operation outcomes', () => {
   it('should map malformed typed mutation success to outcome-unknown', async () => {
     // A malformed success payload cannot be treated as definite success after the mutation was sent.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
-    const invite = vi.fn().mockResolvedValue({ invitationId: 'bad-id', email: 'person@example.test' });
+    const invite = vi
+      .fn()
+      .mockResolvedValue({ invitationId: 'bad-id', email: 'person@example.test' });
     const operations = createAdminUserOperations(() => domain({ invite }));
 
     await expect(

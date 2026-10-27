@@ -78,6 +78,57 @@ describe('domains/applications', () => {
       const result = await apps.list();
       expect(result).toEqual(body);
     });
+
+    it('accepts the server cursor envelope without total', async () => {
+      const body = {
+        data: [application],
+        nextCursor: 'next-page',
+        previousCursor: null,
+        hasMore: true,
+      };
+      transport = mockTransport({ body });
+      const apps = createApplicationsDomain(transport);
+
+      const result = await apps.list({ cursor: 'current-page' });
+
+      expect(result).toEqual(body);
+    });
+
+    it('advances through cursor pages in listAll', async () => {
+      const second = { ...application, id: 'app-2', slug: 'app-2' };
+      transport.request = vi
+        .fn()
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: {
+            data: [application],
+            nextCursor: 'next-page',
+            previousCursor: null,
+            hasMore: true,
+          },
+        })
+        .mockResolvedValueOnce({
+          status: 200,
+          headers: {},
+          body: {
+            data: [second],
+            nextCursor: null,
+            previousCursor: 'next-page',
+            hasMore: false,
+          },
+        });
+      const apps = createApplicationsDomain(transport);
+
+      const result = await apps.listAll({ limit: 1 });
+
+      expect(result.map((entry) => entry.id)).toEqual([application.id, second.id]);
+      expect(transport.request).toHaveBeenNthCalledWith(2, {
+        method: 'GET',
+        path: '/applications',
+        params: { limit: 1, cursor: 'next-page' },
+      });
+    });
   });
 
   // ── get ─────────────────────────────────────────────────────

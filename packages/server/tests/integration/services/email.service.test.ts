@@ -66,7 +66,8 @@ describe('Email Service (Integration)', () => {
   // ── Magic Link Email ───────────────────────────────────────────
 
   it('should send a magic link email received by MailHog', async () => {
-    const magicUrl = 'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/magic/token-abc123';
+    const magicUrl =
+      'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/magic/token-abc123';
 
     await sendMagicLinkEmail(testUser, testOrg, magicUrl, 'en');
 
@@ -82,7 +83,8 @@ describe('Email Service (Integration)', () => {
   // ── Password Reset Email ───────────────────────────────────────
 
   it('should send a password reset email received by MailHog', async () => {
-    const resetUrl = 'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/reset/token-def456';
+    const resetUrl =
+      'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/reset/token-def456';
 
     await sendPasswordResetEmail(testUser, testOrg, resetUrl, 'en');
 
@@ -96,15 +98,17 @@ describe('Email Service (Integration)', () => {
   // ── Invitation Email ───────────────────────────────────────────
 
   it('should send an invitation email received by MailHog', async () => {
-    const inviteUrl = 'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/accept-invite/token-ghi789';
+    const inviteUrl =
+      'https://porta-harness.ci.portaidentity.com:3443/test-org/auth/accept-invite/token-ghi789';
 
-    await sendInvitationEmail(testUser, testOrg, inviteUrl, 'en');
+    await sendInvitationEmail(testUser, testOrg, inviteUrl, 'en', { expiresInSeconds: 604800 });
 
     const message = await mailhog.waitForMessage(testUser.email, 5000);
     expect(message).toBeDefined();
     expect(message.subject).toContain('invited');
     const bodyText = message.body || message.html;
     expect(bodyText).toContain(inviteUrl);
+    expect(bodyText).toContain('7 days');
   });
 
   // ── Email From Address ─────────────────────────────────────────

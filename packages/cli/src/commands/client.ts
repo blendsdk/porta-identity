@@ -247,7 +247,9 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     formatDate(c.createdAt),
                   ]),
                 );
-                info(`Total: ${result.total} clients`);
+                if (result.total !== undefined) {
+                  info(`Total: ${result.total} clients`);
+                }
               }
             } catch (err) {
               handleError(err, argv.verbose);

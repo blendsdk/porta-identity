@@ -92,6 +92,21 @@ describe('domains/clients', () => {
         params: { page: 2, pageSize: 5 },
       });
     });
+
+    it('accepts the server cursor envelope without total', async () => {
+      const body = {
+        data: [client],
+        nextCursor: 'next-page',
+        previousCursor: 'previous-page',
+        hasMore: true,
+      };
+      transport = mockTransport({ body });
+      const clients = createClientsDomain(transport);
+
+      const result = await clients.list({ cursor: 'current-page' });
+
+      expect(result).toEqual(body);
+    });
   });
 
   // ── get ─────────────────────────────────────────────────────

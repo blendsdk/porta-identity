@@ -147,7 +147,9 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                   ['ID', 'Name', 'Slug', 'Status', 'Created'],
                   result.data.map((a) => [a.id, a.name, a.slug, a.status, formatDate(a.createdAt)]),
                 );
-                info(`Total: ${result.total} applications`);
+                if (result.total !== undefined) {
+                  info(`Total: ${result.total} applications`);
+                }
               }
             } catch (err) {
               handleError(err, argv.verbose);

@@ -146,7 +146,7 @@ beforeEach(() => {
   dependencies.getUserByEmail.mockResolvedValue(null);
   dependencies.generateToken.mockReturnValue({ plaintext: 'token', hash: 'token-hash' });
   dependencies.replaceInvitation.mockResolvedValue({ id: 'invitation-1' });
-  dependencies.sendInvitationEmail.mockResolvedValue(undefined);
+  dependencies.sendInvitationEmail.mockResolvedValue('sent');
   dependencies.getSystemConfigNumber.mockResolvedValue(3600);
   dependencies.writeAuditLogInTransaction.mockResolvedValue(undefined);
   dependencies.getPermissionsForRole.mockResolvedValue([]);
@@ -170,6 +170,7 @@ describe('inviteUser', () => {
       invitationId: 'invitation-1',
       email: 'new.user@example.com',
       invitationSent: true,
+      emailDelivery: 'sent',
       expiresAt: expect.any(String),
     });
     expect(dependencies.replaceInvitation).toHaveBeenCalledWith(
@@ -194,6 +195,40 @@ describe('inviteUser', () => {
       'en',
       expect.objectContaining({ inviterName: 'Admin User' }),
     );
+  });
+
+  it('reports a failed delivery without failing the invitation', async () => {
+    dependencies.sendInvitationEmail.mockResolvedValue('failed');
+
+    const result = await inviteUser({
+      organizationId: ORG_ID,
+      input: { email: 'new.user@example.com' },
+      actor: ADMIN_ACTOR,
+    });
+
+    expect(result).toMatchObject({
+      invitationId: 'invitation-1',
+      invitationSent: false,
+      emailDelivery: 'failed',
+    });
+    expect(dependencies.replaceInvitation).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports an unknown delivery when the post-commit effect throws', async () => {
+    dependencies.sendInvitationEmail.mockRejectedValue(new Error('transport unavailable'));
+
+    const result = await inviteUser({
+      organizationId: ORG_ID,
+      input: { email: 'new.user@example.com' },
+      actor: ADMIN_ACTOR,
+    });
+
+    expect(result).toMatchObject({
+      invitationId: 'invitation-1',
+      invitationSent: false,
+      emailDelivery: 'unknown',
+    });
+    expect(dependencies.replaceInvitation).toHaveBeenCalledTimes(1);
   });
 
   it('creates a service invitation without a user actor', async () => {
