@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.2] - 2026-10-27
+
+Added:
+  - Added narrow local test selection for improved testing efficiency.
+  - Introduced `test:changed`, `test:changed:integration`, and watch scripts for local development.
+
+Changed:
+  - Updated `pnpm test` to execute the full product suite while retaining `pnpm verify` as the CI gate. 
+  - Enhanced documentation in AGENTS.md, README.md, and other guides to reflect local-test prime directive.
+
+Fixed:
+  - Adjusted various command and admin files for consistency and performance in the CLI functionality.
+
 ## [1.14.1] - 2026-10-26
 
 Changed:

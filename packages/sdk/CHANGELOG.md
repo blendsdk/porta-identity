@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.2] - 2026-10-27
+
+Changed:
+- Made the `total` field optional in cursor pagination responses and validated those responses without it.
+- Preserved `nextCursor`, `previousCursor`, and `hasMore` in pagination.
+- Advanced `listAll` method through `nextCursor` pages.
+- Improved CLI by avoiding the printing of an undefined `total`.
+
+Added:
+- Introduced new test scripts: `test:changed`, `test:changed:integration`, and watch scripts for improved local development.
+- Updated the test suite to run the full product suite with `pnpm test`, while `pnpm verify` remains as the CI gate.
+
 ## [1.14.1] - 2026-10-26
 
 Added:

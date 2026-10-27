@@ -1,17 +1,17 @@
-# Release Notes — v1.14.1
+# Release Notes — v1.14.2
 
-**Released**: 2026-10-26
+**Released**: 2026-10-27
 
-We are excited to announce the release of version 1.14.1, which brings important updates across our core packages. These enhancements aim to improve the user experience, increase reliability, and streamline our onboarding process.
+We are excited to announce the release of version 1.14.2, which brings several important updates focused on enhancing user experience and improving overall functionality. This update highlights our commitment to delivering a smoother, more reliable service while ensuring transparency and security for our users.
 
-Highlights of the Updates:
+Key Highlights:
 
-1. **Improved Onboarding Process**: We've refined the setup actions and onboarding commands, making it easier for new users to navigate the initial setup and get started with our platform. This enhancement ensures that users feel supported from the moment they begin their journey with us.
+1. **Improved Email Communication**: Users will notice enhanced clarity in invitation emails. We have included a precise expiry date for invitations, ensuring you know exactly when your invitation will expire. Additionally, you will now receive updates on the status of invitation email deliveries, keeping you informed every step of the way.
 
-2. **Enhanced Reliability**: Our server package has received significant improvements, including safeguards to ensure system stability during audits. This means fewer disruptions and a smoother experience when you interact with our services.
+2. **Enhanced Security**: We have strengthened system protections by preventing potential security issues related to HEAD probes, which helps keep your information safe. The Porta Admin application now has added layers of protection to ensure a secure environment for managing accounts.
 
-3. **Updated Structural Guidance**: We have finalized our structural contracts and updated our guidance documents across the platform. These changes aim to provide clearer direction and support for users, allowing for more effective interactions with our tools.
+3. **Better User Experience**: The changes in our SDK now allow for more efficient navigation through data, with improved handling of cursor pagination. This means you can more easily access and manage larger sets of information.
 
-4. **Package Management Improvements**: All of our core packages have been upgraded to use a more efficient package management foundation. This update not only reflects our commitment to using the latest technologies but also enhances the overall performance of our services.
+4. **Streamlined Testing Options**: For our developers, we have introduced a feature that allows for narrower local test selection, making it easier to run and verify specific tests without unnecessary complexity.
 
-In summary, version 1.14.1 focuses on refining the user experience, enhancing reliability, and ensuring clarity in our operations. We are committed to continually improving our platform and appreciate your ongoing support as we evolve to meet your needs.
+This update is designed to enhance your overall experience with our platform, making it safer, clearer, and more user-friendly. Thank you for your continued support, and we look forward to delivering even more improvements in the future!

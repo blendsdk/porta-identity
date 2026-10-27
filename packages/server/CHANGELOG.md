@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.14.2] - 2026-10-27
+
+## Fixed
+- Prevent HEAD probes from consuming magic links by rejecting HEAD before magic-link validation and OIDC login handling.
+- Restore application and client history by reading events from audit metadata with family scoping.
+- Report invitation email delivery outcomes, returning sent or failed status from the invitation email boundary.
+- State the real invitation expiry in emails by rendering a human-readable expiresIn from the configured invitation_ttl.
+- Protect the canonical Porta Admin application by rejecting update, activation, deactivation, and deletion actions while allowing reads.
+
+## Changed
+- Preserve tokens, callback budgets, and continuation cookies while keeping one-click GET login.
+- Add migration 035 for metadata expression indexes.
+- Update invitation templates and the custom-template document to reflect actual invitation expiry.
+
 ## [1.14.1] - 2026-10-26
 
 ### Fixed
