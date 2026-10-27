@@ -249,18 +249,51 @@ export async function sendPasswordResetEmail(
 }
 
 /**
+ * Delivery outcome reported after one invitation email attempt.
+ *
+ * `sent` means the configured transport accepted the message. `failed` means rendering or transport
+ * failed after the audit record was written. Neither outcome changes the already-created invitation.
+ */
+export type InvitationEmailDelivery = 'sent' | 'failed';
+
+/**
  * Optional parameters for enhanced invitation emails.
  *
  * Supports personal messages from the inviting admin and pre-assignment
  * metadata display in the invitation email.
  */
 export interface InvitationEmailOptions {
+  /** Configured invitation lifetime in seconds; rendered as a human-readable expiry */
+  expiresInSeconds: number;
   /** Optional personal message from the admin (HTML-escaped before rendering) */
   personalMessage?: string;
   /** Display name of the admin who sent the invitation */
   inviterName?: string;
   /** Invitation row id, recorded in the send audit when there is no recipient account yet */
   invitationId?: string;
+}
+
+/**
+ * Format an invitation lifetime for the email template.
+ *
+ * Prefers whole days, then whole hours, and falls back to rounded-up minutes so the recipient
+ * never reads a zero-length or fractional expiry.
+ *
+ * @param seconds - Invitation lifetime in seconds
+ * @returns Human-readable duration such as `7 days`, `12 hours`, or `5 minutes`
+ */
+function formatInvitationLifetime(seconds: number): string {
+  const total = Math.max(1, Math.floor(seconds));
+  const days = Math.floor(total / 86400);
+  if (days >= 1 && total % 86400 === 0) {
+    return `${days} ${days === 1 ? 'day' : 'days'}`;
+  }
+  const hours = Math.floor(total / 3600);
+  if (hours >= 1 && total % 3600 === 0) {
+    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+  }
+  const minutes = Math.max(1, Math.ceil(total / 60));
+  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
 }
 
 /**
@@ -273,7 +306,7 @@ export interface InvitationEmailOptions {
  * @param org - Organization for branding
  * @param inviteUrl - Full URL the user clicks to accept
  * @param locale - Locale for i18n
- * @param options - Optional personal message and inviter name
+ * @param options - Required expiry plus optional personal message and inviter name
  * @returns Template context and computed subject line
  */
 async function buildInvitationContext(
@@ -281,7 +314,7 @@ async function buildInvitationContext(
   org: EmailOrganization,
   inviteUrl: string,
   locale: string,
-  options?: InvitationEmailOptions,
+  options: InvitationEmailOptions,
 ): Promise<{ context: Record<string, unknown>; subject: string }> {
   const branding = await resolveEffectiveBranding(org);
   const orgName = branding.companyName;
@@ -290,14 +323,14 @@ async function buildInvitationContext(
       userName: getUserDisplayName(user),
       inviteUrl,
       orgName,
-      expiresDays: 7,
+      expiresIn: formatInvitationLifetime(options.expiresInSeconds),
       branding,
       locale,
       // Enhanced invitation fields — only included when provided
-      personalMessage: options?.personalMessage ?? null,
-      inviterName: options?.inviterName ?? null,
+      personalMessage: options.personalMessage ?? null,
+      inviterName: options.inviterName ?? null,
     },
-    subject: options?.inviterName
+    subject: options.inviterName
       ? `${options.inviterName} has invited you to ${orgName}`
       : `You've been invited to ${orgName}`,
   };
@@ -310,15 +343,16 @@ async function buildInvitationContext(
  * @param org - Organization (for branding and template override)
  * @param inviteUrl - Full URL the user clicks to accept the invitation
  * @param locale - Locale for i18n
- * @param options - Optional personal message and inviter name
+ * @param options - Required expiry plus optional personal message and inviter name
+ * @returns `sent` when the transport accepted the message, otherwise `failed`
  */
 export async function sendInvitationEmail(
   user: EmailUser,
   org: EmailOrganization,
   inviteUrl: string,
   locale: string,
-  options?: InvitationEmailOptions,
-): Promise<void> {
+  options: InvitationEmailOptions,
+): Promise<InvitationEmailDelivery> {
   try {
     const { context, subject } = await buildInvitationContext(
       user,
@@ -346,6 +380,7 @@ export async function sendInvitationEmail(
     });
 
     logger.debug({ userId: user.id, email: user.email }, 'Invitation email sent');
+    return 'sent';
   } catch (error) {
     logger.warn({ error, userId: user.id, email: user.email }, 'Failed to send invitation email');
     writeAuditLog({
@@ -356,6 +391,7 @@ export async function sendInvitationEmail(
       description: `Failed to send invitation email to ${user.email}`,
       metadata: { error: String(error), template: 'invitation' },
     });
+    return 'failed';
   }
 }
 
@@ -377,7 +413,7 @@ export async function renderInvitationEmail(
   org: EmailOrganization,
   inviteUrl: string,
   locale: string,
-  options?: InvitationEmailOptions,
+  options: InvitationEmailOptions,
 ): Promise<{ html: string; text: string; subject: string }> {
   const { context, subject } = await buildInvitationContext(user, org, inviteUrl, locale, options);
   const { html, text } = await renderEmail('invitation', org.slug, context);

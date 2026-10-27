@@ -256,6 +256,7 @@ beforeEach(() => {
     invitationId: 'invitation-1',
     email: 'new.user@example.com',
     invitationSent: true,
+    emailDelivery: 'sent',
     expiresAt: '2026-10-31T12:00:00.000Z',
   });
   service.createUser.mockResolvedValue(testUser());
@@ -305,6 +306,7 @@ describe('tenant invitation route', () => {
         invitationId: 'invitation-1',
         email: 'new.user@example.com',
         invitationSent: true,
+        emailDelivery: 'sent',
         expiresAt: '2026-10-31T12:00:00.000Z',
       },
     });

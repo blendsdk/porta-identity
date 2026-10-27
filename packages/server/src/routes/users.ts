@@ -39,6 +39,7 @@ import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import { checkIfMatch, setETagHeader } from '../lib/etag.js';
+import { getSystemConfigNumber } from '../lib/system-config.js';
 import { guardSuperAdmin } from '../lib/super-admin-protection.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
@@ -449,7 +450,8 @@ export function createUserRouter(): Router {
       };
 
       // Render the invitation email (without sending)
-      const emailOptions: InvitationEmailOptions = {};
+      const invitationTtl = await getSystemConfigNumber('invitation_ttl');
+      const emailOptions: InvitationEmailOptions = { expiresInSeconds: invitationTtl };
       if (body.personalMessage) emailOptions.personalMessage = body.personalMessage;
       emailOptions.inviterName = inviterName;
 

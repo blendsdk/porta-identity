@@ -227,6 +227,7 @@ describe('user command', () => {
         invitationId: sampleUser.id,
         email: 'bob@example.com',
         invitationSent: true,
+        emailDelivery: 'sent',
         expiresAt: '2026-09-01T12:00:00.000Z',
       };
       mockUsers.invite.mockResolvedValue(invitation);
@@ -244,6 +245,7 @@ describe('user command', () => {
         invitationId: sampleUser.id,
         email: 'bob@example.com',
         invitationSent: true,
+        emailDelivery: 'sent',
         expiresAt: '2026-09-01T12:00:00.000Z',
       };
       mockUsers.invite.mockResolvedValue(invitation);
