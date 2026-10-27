@@ -15,7 +15,7 @@
  */
 
 import { z } from 'zod';
-import type { InvitationEmailOptions } from '../auth/email-service.js';
+import type { InvitationEmailDelivery, InvitationEmailOptions } from '../auth/email-service.js';
 import { sendInvitationEmail } from '../auth/email-service.js';
 import { InvitationConflictError, replaceInvitation } from '../auth/token-repository.js';
 import { generateToken } from '../auth/tokens.js';
@@ -32,6 +32,7 @@ import {
   runDatabaseTransaction,
 } from '../lib/database.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
+import { logger } from '../lib/logger.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { RoleDelegationError } from '../rbac/errors.js';
 import { getPermissionsForRole } from '../rbac/role-service.js';
@@ -141,6 +142,9 @@ export interface InviteUserOptions {
   readonly allowedApplicationId?: string;
 }
 
+/** Delivery outcome returned to invitation callers. */
+export type InviteUserEmailDelivery = InvitationEmailDelivery | 'unknown';
+
 /** Result returned after an invitation is created. */
 export interface InviteUserResult {
   /** Invitation record identifier. */
@@ -149,6 +153,8 @@ export interface InviteUserResult {
   readonly email: string;
   /** Whether the invitation email was handed to the mail boundary. */
   readonly invitationSent: boolean;
+  /** Delivery outcome: sent, failed, or unknown when the post-commit effect did not report. */
+  readonly emailDelivery: InviteUserEmailDelivery;
   /** ISO 8601 expiration time. */
   readonly expiresAt: string;
 }
@@ -306,6 +312,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
   const inviteUrl = `${config.issuerBaseUrl}/${organization.slug}/auth/accept-invite/${plaintext}`;
 
   let invitationId: string;
+  const deliveryOutcome: { value: InviteUserEmailDelivery } = { value: 'unknown' };
   try {
     invitationId = await runDatabaseTransaction(async () => {
       const invitation = await replaceInvitation({
@@ -350,19 +357,27 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
       if (input.personalMessage) emailOptions.personalMessage = input.personalMessage;
       emailOptions.inviterName = actor.displayName;
 
-      await afterDatabaseCommit(() =>
-        sendInvitationEmail(
-          {
-            email: input.email,
-            givenName: input.givenName ?? null,
-            familyName: input.familyName ?? null,
-          },
-          organization,
-          inviteUrl,
-          input.locale ?? organization.defaultLocale ?? 'en',
-          emailOptions,
-        ),
-      );
+      await afterDatabaseCommit(async () => {
+        try {
+          deliveryOutcome.value = await sendInvitationEmail(
+            {
+              email: input.email,
+              givenName: input.givenName ?? null,
+              familyName: input.familyName ?? null,
+            },
+            organization,
+            inviteUrl,
+            input.locale ?? organization.defaultLocale ?? 'en',
+            emailOptions,
+          );
+        } catch {
+          deliveryOutcome.value = 'unknown';
+          logger.warn(
+            { event: 'invitation-email-outcome-unknown', invitationId: invitation.id },
+            'Invitation email delivery outcome is unknown',
+          );
+        }
+      });
 
       return invitation.id;
     });
@@ -374,7 +389,8 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
   return {
     invitationId,
     email: input.email,
-    invitationSent: true,
+    invitationSent: deliveryOutcome.value === 'sent',
+    emailDelivery: deliveryOutcome.value,
     expiresAt: expiresAt.toISOString(),
   };
 }

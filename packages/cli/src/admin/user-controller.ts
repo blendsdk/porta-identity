@@ -290,6 +290,20 @@ export function createAdminUserController(
     return loadDetail(previous.selected.id);
   };
 
+  /**
+   * Read a validated invitation delivery outcome from an operation value.
+   *
+   * @param value - Untrusted mutation value
+   * @returns The delivery outcome when present and valid
+   */
+  function invitationDelivery(value: unknown): 'sent' | 'failed' | 'unknown' | undefined {
+    if (typeof value !== 'object' || value === null) return undefined;
+    const delivery = Reflect.get(value, 'emailDelivery');
+    return delivery === 'sent' || delivery === 'failed' || delivery === 'unknown'
+      ? delivery
+      : undefined;
+  }
+
   /** Applies a fixed mutation result without optimistic local patching. */
   const finishMutation = async (
     result: ControllerMutationResult,
@@ -308,7 +322,13 @@ export function createAdminUserController(
         await reconcile(previous, deleted);
       } else if (noReadSuccess) {
         visible = true;
-        publish({ kind: 'success', action: noReadSuccess });
+        const emailDelivery =
+          noReadSuccess === 'invited' ? invitationDelivery(result.value) : undefined;
+        publish({
+          kind: 'success',
+          action: noReadSuccess,
+          ...(emailDelivery ? { emailDelivery } : {}),
+        });
         syncMount();
       }
       return;

@@ -494,13 +494,19 @@ export function createAdminUserWorkspace(options: AdminUserWorkspaceOptions): Ad
     currentFocus = null;
     if (disposed || currentState.kind === 'closed') return;
     if (currentState.kind === 'success') {
+      const message =
+        currentState.action === 'created'
+          ? 'User created'
+          : currentState.emailDelivery === 'sent'
+            ? 'Invitation sent'
+            : currentState.emailDelivery === 'failed'
+              ? 'Invitation created - email delivery failed'
+              : currentState.emailDelivery === 'unknown'
+                ? 'Invitation created - email delivery unknown'
+                : 'Invitation created';
       content.add(
         cover(
-          col(
-            { padding: { top: 1, right: 1, bottom: 1, left: 1 } },
-            new Text(currentState.action === 'created' ? 'User created' : 'Invitation sent'),
-            spacer(),
-          ),
+          col({ padding: { top: 1, right: 1, bottom: 1, left: 1 } }, new Text(message), spacer()),
         ),
       );
       return;

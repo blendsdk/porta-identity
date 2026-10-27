@@ -249,6 +249,14 @@ export async function sendPasswordResetEmail(
 }
 
 /**
+ * Delivery outcome reported after one invitation email attempt.
+ *
+ * `sent` means the configured transport accepted the message. `failed` means rendering or transport
+ * failed after the audit record was written. Neither outcome changes the already-created invitation.
+ */
+export type InvitationEmailDelivery = 'sent' | 'failed';
+
+/**
  * Optional parameters for enhanced invitation emails.
  *
  * Supports personal messages from the inviting admin and pre-assignment
@@ -336,6 +344,7 @@ async function buildInvitationContext(
  * @param inviteUrl - Full URL the user clicks to accept the invitation
  * @param locale - Locale for i18n
  * @param options - Required expiry plus optional personal message and inviter name
+ * @returns `sent` when the transport accepted the message, otherwise `failed`
  */
 export async function sendInvitationEmail(
   user: EmailUser,
@@ -343,7 +352,7 @@ export async function sendInvitationEmail(
   inviteUrl: string,
   locale: string,
   options: InvitationEmailOptions,
-): Promise<void> {
+): Promise<InvitationEmailDelivery> {
   try {
     const { context, subject } = await buildInvitationContext(
       user,
@@ -371,6 +380,7 @@ export async function sendInvitationEmail(
     });
 
     logger.debug({ userId: user.id, email: user.email }, 'Invitation email sent');
+    return 'sent';
   } catch (error) {
     logger.warn({ error, userId: user.id, email: user.email }, 'Failed to send invitation email');
     writeAuditLog({
@@ -381,6 +391,7 @@ export async function sendInvitationEmail(
       description: `Failed to send invitation email to ${user.email}`,
       metadata: { error: String(error), template: 'invitation' },
     });
+    return 'failed';
   }
 }
 

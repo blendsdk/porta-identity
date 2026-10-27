@@ -30,7 +30,7 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
 }));
 
 vi.mock('../../../src/auth/email-service.js', () => ({
-  sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+  sendInvitationEmail: vi.fn().mockResolvedValue('sent'),
   renderInvitationEmail: vi
     .fn()
     .mockResolvedValue({ html: '<html></html>', text: 'text', subject: 'subject' }),

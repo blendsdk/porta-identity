@@ -219,9 +219,14 @@ describe('email-service', () => {
 
   describe('sendInvitationEmail', () => {
     it('should render and send invitation email', async () => {
-      await sendInvitationEmail(TEST_USER, TEST_ORG, 'https://acme.com/invite?token=inv', 'en', {
-        expiresInSeconds: 604800,
-      });
+      const delivery = await sendInvitationEmail(
+        TEST_USER,
+        TEST_ORG,
+        'https://acme.com/invite?token=inv',
+        'en',
+        { expiresInSeconds: 604800 },
+      );
+      expect(delivery).toBe('sent');
 
       expect(renderEmail).toHaveBeenCalledWith(
         'invitation',
@@ -262,6 +267,26 @@ describe('email-service', () => {
         'invitation',
         'acme-corp',
         expect.objectContaining({ expiresIn: expected }),
+      );
+    });
+
+    it('should report failed and audit when the transport rejects the message', async () => {
+      mockTransport.send.mockRejectedValueOnce(new Error('smtp unavailable'));
+
+      const delivery = await sendInvitationEmail(
+        TEST_USER,
+        TEST_ORG,
+        'https://acme.com/invite?token=inv',
+        'en',
+        { expiresInSeconds: 604800 },
+      );
+
+      expect(delivery).toBe('failed');
+      expect(writeAuditLog).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'email.send.failed',
+          metadata: expect.objectContaining({ template: 'invitation' }),
+        }),
       );
     });
 

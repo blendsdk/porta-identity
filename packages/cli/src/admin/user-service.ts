@@ -300,9 +300,7 @@ function userHistory(value: unknown): AdminUserHistory | undefined {
       entry.actorClientName !== null &&
       clientName === undefined;
     const clientIdInvalid =
-      entry.actorClientId !== undefined &&
-      entry.actorClientId !== null &&
-      clientId === undefined;
+      entry.actorClientId !== undefined && entry.actorClientId !== null && clientId === undefined;
     const actor: string =
       actorType === 'client'
         ? clientNameInvalid || clientIdInvalid
@@ -529,6 +527,9 @@ function invitedUser(value: unknown): AdminInvitedUser | undefined {
     !isText(candidate.email, 255, 1) ||
     !EMAIL.test(candidate.email) ||
     typeof candidate.invitationSent !== 'boolean' ||
+    (candidate.emailDelivery !== 'sent' &&
+      candidate.emailDelivery !== 'failed' &&
+      candidate.emailDelivery !== 'unknown') ||
     !isTimestamp(candidate.expiresAt)
   ) {
     return undefined;
@@ -537,6 +538,7 @@ function invitedUser(value: unknown): AdminInvitedUser | undefined {
     invitationId: candidate.invitationId,
     email: candidate.email,
     invitationSent: candidate.invitationSent,
+    emailDelivery: candidate.emailDelivery,
     expiresAt: candidate.expiresAt,
   });
 }

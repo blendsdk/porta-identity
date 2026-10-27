@@ -122,7 +122,7 @@ vi.mock('../../../src/config/index.js', () => ({
 vi.mock('../../../src/lib/system-config.js', () => ({ getSystemConfigNumber: vi.fn() }));
 
 vi.mock('../../../src/auth/email-service.js', () => ({
-  sendInvitationEmail: vi.fn().mockResolvedValue(undefined),
+  sendInvitationEmail: vi.fn().mockResolvedValue('sent'),
   renderInvitationEmail: vi.fn().mockResolvedValue({ html: '', text: '', subject: '' }),
 }));
 
@@ -188,7 +188,12 @@ function createMockCtx(options: MockCtxOptions = {}) {
   let statusCode = 200;
   let responseBody: unknown;
   return {
-    params: { orgId: ORG_ID, orgSlug: 'test-org', token: 'presented-token', ...(options.params ?? {}) },
+    params: {
+      orgId: ORG_ID,
+      orgSlug: 'test-org',
+      token: 'presented-token',
+      ...(options.params ?? {}),
+    },
     query: options.query ?? {},
     request: { body: options.body ?? {} },
     req: {},
@@ -363,11 +368,19 @@ describe('invitation enumeration resistance and token secrecy', () => {
       const data = (ctx.body as { data: Record<string, unknown> }).data;
       expect(Object.keys(data).sort()).toEqual([
         'email',
+        'emailDelivery',
         'expiresAt',
         'invitationId',
         'invitationSent',
       ]);
-      for (const forbidden of ['userId', 'created', 'givenName', 'familyName', 'nickname', 'status']) {
+      for (const forbidden of [
+        'userId',
+        'created',
+        'givenName',
+        'familyName',
+        'nickname',
+        'status',
+      ]) {
         expect(data).not.toHaveProperty(forbidden);
       }
     });
@@ -396,9 +409,7 @@ describe('invitation enumeration resistance and token secrecy', () => {
           ...vi.mocked(auditLog.writeAuditLog).mock.calls,
           ...vi.mocked(auditLog.writeAuditLogInTransaction).mock.calls,
         ]),
-      ).not.toContain(
-        'token-plaintext',
-      );
+      ).not.toContain('token-plaintext');
       const loggerCalls = [
         ...vi.mocked(logger.logger.debug).mock.calls,
         ...vi.mocked(logger.logger.info).mock.calls,

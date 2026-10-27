@@ -97,6 +97,7 @@ type ExpectedInviteUserResult = {
   invitationId: string;
   email: string;
   invitationSent: boolean;
+  emailDelivery: 'sent' | 'failed' | 'unknown';
   expiresAt: string;
 };
 
