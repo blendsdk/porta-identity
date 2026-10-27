@@ -187,14 +187,17 @@ The server starts with hot-reload via `tsx watch` on [https://porta.local:3443](
 **6. Run tests**
 
 ```bash
-# Full verification (lint + build + test)
-pnpm verify
+# Local default: affected tests plus structure contracts
+pnpm test:changed
 
 # Or individually:
 pnpm lint              # ESLint
-pnpm test:unit         # Unit tests only
+pnpm test:unit         # All unit tests, no services
 pnpm test:integration  # Integration tests (requires docker:up)
 ```
+
+CI runs the full `pnpm verify` gate (structure, lint, typecheck, full tests, and builds) on every
+push and pull request.
 
 ### Stopping
 

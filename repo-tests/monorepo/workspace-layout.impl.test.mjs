@@ -146,13 +146,12 @@ test('should preserve repository-root execution for server operational commands'
 test('should retain the server test aliases used by branch CI', () => {
   const scripts = readRepositoryJson('package.json').scripts ?? {};
 
-  for (const scriptName of [
-    'test:unit',
-    'test:integration',
-    'test:e2e',
-    'test:pentest',
-    'test:ui',
-  ]) {
+  assert.equal(
+    scripts['test:unit'],
+    'pnpm --filter @portaidentity/server test:unit && pnpm --filter @portaidentity/sdk test && pnpm --filter @portaidentity/cli test',
+    'test:unit must cover every active workspace once',
+  );
+  for (const scriptName of ['test:integration', 'test:e2e', 'test:pentest', 'test:ui']) {
     assert.match(
       scripts[scriptName] ?? '',
       /^pnpm --filter @portaidentity\/server test:/,
