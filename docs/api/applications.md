@@ -10,17 +10,23 @@ organization. Creating, changing, or deleting them can affect all organizations 
 application. See the [Core ownership model](../concepts/ownership-model.md).
 :::
 
+::: warning Canonical control-plane application
+The canonical `porta-admin` application and its modules are read-only through this API. Update,
+activation, deactivation, and deletion return `400 Application request is invalid`; list, get, and
+module reads remain available.
+:::
+
 ## Create Application
 
 ```http
 POST /api/admin/applications
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | Application display name |
-| `slug` | string | | URL slug (auto-generated from name) |
-| `description` | string | | Description of the application |
+| Field         | Type   | Required | Description                         |
+| ------------- | ------ | -------- | ----------------------------------- |
+| `name`        | string | ✅       | Application display name            |
+| `slug`        | string |          | URL slug (auto-generated from name) |
+| `description` | string |          | Description of the application      |
 
 ```json
 {
@@ -57,10 +63,10 @@ GET /api/admin/applications/:id
 PUT /api/admin/applications/:id
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Display name |
-| `description` | string | Description |
+| Field         | Type   | Description  |
+| ------------- | ------ | ------------ |
+| `name`        | string | Display name |
+| `description` | string | Description  |
 
 **Response:** `200 OK`
 
@@ -83,11 +89,11 @@ Modules are logical groupings within an application (e.g., CRM, Invoicing, HR).
 POST /api/admin/applications/:id/modules
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `name` | string | ✅ | Module name |
-| `slug` | string | | Module slug |
-| `description` | string | | Module description |
+| Field         | Type   | Required | Description        |
+| ------------- | ------ | -------- | ------------------ |
+| `name`        | string | ✅       | Module name        |
+| `slug`        | string |          | Module slug        |
+| `description` | string |          | Module description |
 
 ### List Modules
 

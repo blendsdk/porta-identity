@@ -59,6 +59,8 @@ import {
   updateModule,
   activateModule,
   deactivateModule,
+  deleteApplication,
+  deleteModule,
   listModules,
 } from '../../../src/applications/service.js';
 import {
@@ -96,7 +98,11 @@ function createTestModule(overrides: Partial<ApplicationModule> = {}): Applicati
 }
 
 describe('application service', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (getCachedApplicationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    (findApplicationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+  });
 
   // -------------------------------------------------------------------------
   // createApplication
@@ -515,6 +521,60 @@ describe('application service', () => {
 
       expect(repoListModules).toHaveBeenCalledWith('app-uuid-1');
       expect(result).toEqual(modules);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Canonical Porta Admin protection
+  // -------------------------------------------------------------------------
+
+  describe('canonical application protection', () => {
+    const canonical = createTestApp({
+      id: 'canonical-app',
+      name: 'Porta Admin',
+      slug: 'porta-admin',
+    });
+
+    beforeEach(() => {
+      (getCachedApplicationBySlug as ReturnType<typeof vi.fn>).mockResolvedValue(canonical);
+    });
+
+    it('should reject every canonical application mutation before touching storage', async () => {
+      await expect(updateApplication(canonical.id, { name: 'Renamed' })).rejects.toThrow(
+        ApplicationValidationError,
+      );
+      await expect(deactivateApplication(canonical.id)).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+      await expect(activateApplication(canonical.id)).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+      await expect(deleteApplication(canonical.id)).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+
+      expect(repoUpdateApp).not.toHaveBeenCalled();
+    });
+
+    it('should reject every canonical module mutation before touching storage', async () => {
+      await expect(createModule(canonical.id, { name: 'Injected' })).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+      await expect(updateModule(canonical.id, 'mod-uuid-1', { name: 'Renamed' })).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+      await expect(deactivateModule(canonical.id, 'mod-uuid-1')).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+      await expect(activateModule(canonical.id, 'mod-uuid-1')).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+      await expect(deleteModule(canonical.id, 'mod-uuid-1')).rejects.toThrow(
+        'Canonical Porta Admin application cannot be modified',
+      );
+
+      expect(insertModule).not.toHaveBeenCalled();
+      expect(repoUpdateModule).not.toHaveBeenCalled();
     });
   });
 });
