@@ -343,7 +343,10 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
         },
       });
 
-      const emailOptions: InvitationEmailOptions = { invitationId: invitation.id };
+      const emailOptions: InvitationEmailOptions = {
+        invitationId: invitation.id,
+        expiresInSeconds: invitationTtl,
+      };
       if (input.personalMessage) emailOptions.personalMessage = input.personalMessage;
       emailOptions.inviterName = actor.displayName;
 
