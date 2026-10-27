@@ -285,6 +285,11 @@ Successful verification commits token consumption, account state, and durable au
 separate short-lived Redis continuation is created afterward and is atomically consumed only when
 its tenant and interaction match independently resolved OIDC authority.
 
+`HEAD` is explicitly rejected with `405`, `Allow: GET`, and `Cache-Control: no-store` on this
+callback and on `/interaction/:uid`, `/interaction/:uid/consent`, and `/interaction/:uid/abort`.
+These probes do not resolve token authority, consume callback attempts or login state, set cookies,
+or redirect. Normal `GET` requests retain the one-click login flow.
+
 ## Request Validation
 
 All request bodies are validated using **Zod schemas** defined inline in route handlers:

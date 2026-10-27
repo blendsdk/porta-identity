@@ -44,7 +44,7 @@ export interface SecurityDecisionEventObservation {
   /** Closed public surface identifier. */
   readonly surface: 'admin-api' | 'public-auth' | 'tenant-api' | 'transport';
   /** Closed HTTP method. */
-  readonly method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'UNKNOWN';
+  readonly method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'UNKNOWN';
   /** Registered normalized route template. */
   readonly routeTemplate: string;
   /** Final public status. */

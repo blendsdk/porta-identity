@@ -578,6 +578,10 @@ decision facts, and optional domain-separated keyed references; raw requests, id
 data, and error details have no event representation. A local sink failure cannot turn a denial
 into success and is represented only by a bounded in-memory failure counter.
 
+The event preserves the `HEAD` method. Magic-link `400` responses use the generic authentication
+reason `authentication-rejected`, rather than the fallback schema-validation classification.
+This does not disclose whether an artifact was unknown, expired, used, or bound to another tenant.
+
 ## Penetration Test Coverage
 
 The `packages/server/tests/pentest/` directory currently collects 35 files / 224 cases across the

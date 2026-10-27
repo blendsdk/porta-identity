@@ -16,6 +16,7 @@ export const SECURITY_DECISION_EVENT_NAME = 'security.decision.v1' as const;
 export const SECURITY_DECISION_REASON_CODES = [
   'allowed',
   'authentication-required',
+  'authentication-rejected',
   'membership-required',
   'permission-required',
   'resource-not-found',
@@ -63,7 +64,7 @@ export const securityDecisionEventSchema = z
     occurredAt: z.string().datetime({ offset: true }),
     requestId: z.string().uuid(),
     surface: z.enum(['admin-api', 'public-auth', 'tenant-api', 'transport']),
-    method: z.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'UNKNOWN']),
+    method: z.enum(['GET', 'HEAD', 'POST', 'PUT', 'DELETE', 'PATCH', 'UNKNOWN']),
     routeTemplate: z
       .string()
       .min(1)
@@ -154,6 +155,7 @@ export const securityDecisionEventSchema = z
     > = {
       allowed: 'handler',
       'authentication-required': 'authentication',
+      'authentication-rejected': 'authentication',
       'membership-required': 'membership',
       'permission-required': 'permission',
       'resource-not-found': 'resource',
