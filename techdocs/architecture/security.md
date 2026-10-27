@@ -523,8 +523,10 @@ organization before locking the user and role targets. User deletion uses the sa
 first order, preventing the two rare administrative operations from deadlocking each other.
 
 Canonical `porta-admin` roles, permissions, and their mappings reject generic create, update,
-delete, and mapping operations. The direct initialization workflow writes those fixed definitions
-through repository functions before normal Admin authorization exists.
+delete, and mapping operations. The canonical application record and its modules reject generic
+update, activation, deactivation, and deletion through the application routes; reads remain
+available. The direct initialization workflow writes those fixed definitions through repository
+functions before normal Admin authorization exists.
 
 Two control-plane guards prevent deletion from removing the ability to administer Porta:
 
