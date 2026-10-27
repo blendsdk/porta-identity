@@ -37,7 +37,9 @@ POST /api/admin/applications
 GET /api/admin/applications
 ```
 
-Supports `page`, `pageSize`, `search`, `status`, `sort`, `order` parameters.
+Supports offset pagination with `page`, `pageSize`, `search`, `status`, `sort`, and `order`, or
+cursor pagination with `cursor` and `limit`. Cursor responses return `nextCursor`,
+`previousCursor`, and `hasMore` without `total`.
 
 **Response:** `200 OK` — Paginated list of applications.
 

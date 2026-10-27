@@ -172,7 +172,9 @@ If the entity was modified since you read it, a `PortaConflictError` (HTTP 409) 
 
 ## Pagination
 
-List methods return `PaginatedResponse<T>` with `data`, `total`, `page`, `pageSize`, and optional `cursor`. Use `listAll()` for automatic cursor-based iteration:
+List methods return `PaginatedResponse<T>`. Offset responses include `data`, `total`, `page`, and
+`pageSize`; cursor responses include `data`, `nextCursor`, `previousCursor`, and `hasMore`, and omit
+`total`. Use `listAll()` for automatic cursor-based iteration:
 
 ```typescript
 // Manual pagination

@@ -275,6 +275,20 @@ describe('client command', () => {
       expect(info).toHaveBeenCalledWith('Total: 1 clients');
     });
 
+    it('does not print a total for a cursor page without one', async () => {
+      mockClients.list.mockResolvedValue({
+        data: [sampleClient],
+        nextCursor: null,
+        previousCursor: null,
+        hasMore: false,
+      });
+
+      await invokeSubcommand('list', { app: 'app-uuid' });
+
+      expect(printTable).toHaveBeenCalled();
+      expect(info).not.toHaveBeenCalledWith(expect.stringContaining('Total:'));
+    });
+
     it('lists clients in JSON format', async () => {
       const result = { data: [sampleClient], total: 1, page: 1, pageSize: 20 };
       mockClients.list.mockResolvedValue(result);
