@@ -434,8 +434,13 @@ export function createClientRouter(): Router {
   // GET /:id/history — Client change history
   // -------------------------------------------------------------------------
   router.get('/:id/history', requirePermission(ADMIN_PERMISSIONS.CLIENT_READ), async (ctx) => {
+    const client = await clientService.getClientById(ctx.params.id);
+    if (!client) {
+      ctx.throw(404, 'Client not found');
+      return;
+    }
     const { limit, after, event_type } = ctx.query as Record<string, string>;
-    const result = await getEntityHistory('client', ctx.params.id, {
+    const result = await getEntityHistory('client', client.id, {
       limit: limit ? parseInt(limit, 10) : undefined,
       after: after || undefined,
       eventTypePrefix: event_type || undefined,

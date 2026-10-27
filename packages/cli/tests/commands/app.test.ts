@@ -281,15 +281,19 @@ describe('app command', () => {
   describe('history', () => {
     it('shows history', async () => {
       // Server HistoryEntry shape (src/lib/entity-history.ts).
-      mockApplications.getHistory.mockResolvedValue([
-        {
-          id: 'h1',
-          eventType: 'app.created',
-          actorId: 'admin',
-          metadata: null,
-          createdAt: '2024-01-01T00:00:00Z',
-        },
-      ]);
+      mockApplications.getHistory.mockResolvedValue({
+        data: [
+          {
+            id: 'h1',
+            eventType: 'app.created',
+            actorId: 'admin',
+            metadata: null,
+            createdAt: '2024-01-01T00:00:00Z',
+          },
+        ],
+        hasMore: false,
+        nextCursor: null,
+      });
 
       await invokeSubcommand(['history', 'my-app'], {});
       expect(printTable).toHaveBeenCalled();

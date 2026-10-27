@@ -15,7 +15,8 @@ import type {
   ListParams,
   PaginatedResponse,
   ETagResponse,
-  HistoryEntry,
+  HistoryParams,
+  HistoryResult,
 } from '../types/index.js';
 import { listAll } from '../pagination/index.js';
 import {
@@ -24,6 +25,7 @@ import {
   isStringArray,
   requireData,
   requireDataWithEtag,
+  requireHistoryResult,
   requirePaginatedData,
   toQueryParams,
 } from './helpers.js';
@@ -103,17 +105,6 @@ function isGeneratedSecret(value: unknown): value is GeneratedSecret {
 }
 
 /** Validate one client history entry. */
-function isHistoryEntry(value: unknown): value is HistoryEntry {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.eventType === 'string' &&
-    (typeof value.actorId === 'string' || value.actorId === null) &&
-    (isRecord(value.metadata) || value.metadata === null) &&
-    typeof value.createdAt === 'string'
-  );
-}
-
 interface ClientCreateResult {
   /** Validated client projection. */
   client: Client;
@@ -146,7 +137,7 @@ export interface ClientsDomain {
   /** Permanently delete a client and its credentials. */
   delete(id: string): Promise<void>;
   /** Read client audit history. */
-  getHistory(id: string, params?: ListParams): Promise<HistoryEntry[]>;
+  getHistory(id: string, params?: HistoryParams): Promise<HistoryResult>;
   /** List secret metadata for one confidential client. */
   listSecrets(clientId: string): Promise<ClientSecret[]>;
   /** Generate a one-time plaintext secret for one confidential client. */
@@ -209,15 +200,16 @@ export function createClientsDomain(transport: HttpTransport): ClientsDomain {
     },
 
     async getHistory(id, params?) {
+      const query: Record<string, string | number> = {};
+      if (params?.limit !== undefined) query.limit = params.limit;
+      if (params?.after !== undefined) query.after = params.after;
+      if (params?.eventType !== undefined) query.event_type = params.eventType;
       const res = await transport.request({
         method: 'GET',
         path: `${base}/${id}/history`,
-        params: toQueryParams(params),
+        params: Object.keys(query).length > 0 ? query : undefined,
       });
-      return requireData(
-        res.body,
-        (value): value is HistoryEntry[] => Array.isArray(value) && value.every(isHistoryEntry),
-      );
+      return requireHistoryResult(res.body);
     },
 
     async listSecrets(clientId) {

@@ -191,10 +191,10 @@ Create and invite calls carry `organizationId` in the input object. `users.invit
 invitation outcome (`invitationId`, `email`, `invitationSent`, and `expiresAt`), not a full user:
 the account is created only when the recipient accepts the invitation.
 Administrators can activate and deactivate users. Account lockout and cooldown recovery are
-automatic. `organizations.getHistory()` and `users.getHistory()` accept
-`{ limit, after, eventType }` and return the full `HistoryResult` envelope (`data`, `hasMore`,
-`nextCursor`). The `after` cursor is opaque; an invalid value surfaces as a `PortaServerError`.
-`usersById.getHistory()` returns the same envelope without parameters.
+automatic. `organizations.getHistory()`, `applications.getHistory()`, `clients.getHistory()`, and
+`users.getHistory()` accept `{ limit, after, eventType }` and return the full `HistoryResult`
+envelope (`data`, `hasMore`, `nextCursor`). The `after` cursor is opaque; an invalid value surfaces
+as a `PortaServerError`. `usersById.getHistory()` returns the same envelope without parameters.
 
 ## Custom Claims
 

@@ -113,6 +113,10 @@ Each entity (organization, application, client, user) exposes a history endpoint
 | `after`      | string | —       | Opaque cursor for pagination (pass `nextCursor` from previous response) |
 | `event_type` | string | —       | Filter by event type prefix (e.g., `org.status`)                        |
 
+Application history reads `app.*` audit events whose metadata contains the application id,
+including module events. Client history reads `client.*` events keyed by the internal client id,
+including legacy secret events. Other entity families cannot leak into either result.
+
 ### Response
 
 ```json

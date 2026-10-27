@@ -5,7 +5,12 @@
  */
 
 import type { TransportResponse } from '../transport/types.js';
-import type { ETagResponse, PaginatedResponse } from '../types/index.js';
+import type {
+  ETagResponse,
+  HistoryEntry,
+  HistoryResult,
+  PaginatedResponse,
+} from '../types/index.js';
 import { PortaError } from '../errors/index.js';
 
 /** Return whether a value is a non-null object record. */
@@ -72,6 +77,47 @@ export function requirePaginatedData<T>(
     ...(body.totalPages !== undefined ? { totalPages: body.totalPages } : {}),
     ...(typeof body.cursor === 'string' ? { cursor: body.cursor } : {}),
     ...(body.hasMore !== undefined ? { hasMore: body.hasMore } : {}),
+  };
+}
+
+/**
+ * Validate one entity-history entry returned by the Admin API.
+ *
+ * @param value - Raw history entry
+ * @returns Whether the entry has the public history shape
+ */
+function isHistoryEntry(value: unknown): value is HistoryEntry {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.eventType === 'string' &&
+    (typeof value.actorId === 'string' || value.actorId === null) &&
+    (isRecord(value.metadata) || value.metadata === null) &&
+    typeof value.createdAt === 'string'
+  );
+}
+
+/**
+ * Require a validated history page envelope.
+ *
+ * @param body - Raw response body
+ * @returns Validated history page
+ * @throws {PortaError} When the envelope or an entry is invalid
+ */
+export function requireHistoryResult(body: unknown): HistoryResult {
+  if (
+    !isRecord(body) ||
+    !Array.isArray(body.data) ||
+    !body.data.every(isHistoryEntry) ||
+    typeof body.hasMore !== 'boolean' ||
+    (body.nextCursor !== null && typeof body.nextCursor !== 'string')
+  ) {
+    throw invalidResponseError();
+  }
+  return {
+    data: body.data,
+    hasMore: body.hasMore,
+    nextCursor: body.nextCursor,
   };
 }
 
