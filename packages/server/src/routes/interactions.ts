@@ -57,6 +57,7 @@ import { getOrganizationById } from '../organizations/service.js';
 import { getRedis } from '../lib/redis.js';
 import type { Organization } from '../organizations/types.js';
 import { hasMagicLinkSession, consumeMagicLinkSession } from '../auth/magic-link-session.js';
+import { rejectHeadProbe } from '../middleware/reject-head-probe.js';
 import type { MagicLinkSessionAuthority } from '../auth/magic-link-session.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import type { LoginMethod } from '../clients/types.js';
@@ -358,6 +359,10 @@ export function createInteractionRouter(
 ): Router {
   const router = new Router({ prefix: '/interaction' });
 
+  // GET may consume a login continuation, finish consent, or abort provider state.
+  // Explicit HEAD handlers must precede GET so link probes cannot perform those actions.
+  router.head(['/:uid', '/:uid/consent', '/:uid/abort'], rejectHeadProbe);
+
   router.use(async (ctx, next) => {
     try {
       await next();
@@ -575,7 +580,7 @@ async function showLogin(ctx: InteractionContext, provider: Provider): Promise<v
     // Render the login page with CSRF token in both cookie and hidden field
     await renderAndRespond(ctx, 'login', context);
   } catch {
-    logger.error({ event: 'login-page-failed' }, 'Login page rendering failed');
+    logger.error({ event: 'login-page-failed' }, 'Login page request failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
 }
