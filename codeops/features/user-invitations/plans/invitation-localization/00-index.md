@@ -1,7 +1,7 @@
 # Invitation Localization Implementation Plan
 
 > **Feature**: Localize invitation delivery and acceptance; package formal Dutch authentication translations
-> **Status**: Preflight Passed — implementation not started; 0/40 tasks
+> **Status**: Executing — Phase 1 specification authoring; progress owned by 99-execution-plan.md
 > **Created**: 2026-10-27
 > **Implements**: user-invitations/T-02
 > **CodeOps Artifact Schema**: 1

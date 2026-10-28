@@ -3,7 +3,7 @@
 > **Feature-Set**: User Invitations
 > **Status**: Active
 > **Created**: 2026-09-26
-> **Last Updated**: 2026-10-28
+> **Last Updated**: 2026-10-28 22:10
 > **Progress**: 0 / 0 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -16,7 +16,7 @@
 | ID   | Title | RD  | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
 | ---- | ----- | --- | ---- | ----- | ------ | ------------ | -------------------- |
 | T-01 | Deferred invitation creation (no user until acceptance) | — | [plan](plans/deferred-invitation-creation/00-index.md) | 🔄 Executing | 🔄 | 2026-09-27 00:35 | — |
-| T-02 | Invitation localization and formal Dutch support (#179) | — | [plan](plans/invitation-localization/00-index.md) | Backlog | ⬜ | 2026-10-28 | [Preflight passed](plans/invitation-localization/00-preflight-report.md); 0/40 tasks; ready for execution |
+| T-02 | Invitation localization and formal Dutch support (#179) | — | [plan](plans/invitation-localization/00-index.md) | 🔄 Executing | 🔄 | 2026-10-28 22:10 | 1/40 tasks; locale specifications verified; next 1.1.2 |
 
 ## Notes
 

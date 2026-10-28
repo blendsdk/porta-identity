@@ -1,8 +1,8 @@
 # Execution Plan: Invitation Localization
 
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-10-28
-> **Progress**: 0/40 tasks (0%)
+> **Last Updated**: 2026-10-28 22:10
+> **Progress**: 1/40 tasks (2.5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -47,15 +47,42 @@ with the dependency-changing task; hardening tasks recheck it.
 
 > **Reasoning**: high — closed configuration compatibility and request-language selection
 > **Lenses**: security, api-surface
-> **Phase baseline tree**: Record through exec-plan before changes.
+> **Phase baseline tree**: `30c7038e7d3a429a450d0de9237310a2b4169f27`
+> **Execution started**: 2026-10-28 22:00 — `--ask-commit`; strict scope; normal decision mode
+
+The entry gate confirmed the nine-document passed preflight hash before execution edits:
+`05ed3970c35765b9bf85181c39b0abeb8dcbccf83c90d44347021d7109d193c1`.
+The phase began with a clean worktree at `db204637b3fe8ae2b1dd01f3fd3f18af3228e232`;
+its committed tree is therefore the complete phase baseline. Recording that existing tree avoids
+unnecessary broad re-staging of protected files into a temporary snapshot.
+
+**Expected Phase 1 modification set (strict):** English `invitation.json`/`emails.json`, the eleven
+Dutch namespace JSON files under `packages/server/locales/default/`; `src/auth/i18n.ts` and
+`src/lib/system-config-catalog.ts` under `packages/server/`; the locale spec/implementation tests,
+existing i18n/catalog/runtime/API specifications and API fixture named below; the existing server
+inventory and global-configuration documentation specifications; the five documentation files in
+tasks 1.2.8–1.2.9; this plan's execution/status/review evidence and owning feature roadmap.
+The portfolio cascade remains deferred on this non-integration branch. Task 1.1.1 is bounded to
+its new locale specification, the exact catalog supersession and the physical inventory count.
 
 ### Session 1.1 — Specification Tests
 
 Reference: [03-01](03-01-locales.md); AR #1, #4, #10–13.
 
-- [ ] 1.1.1 [spec-author] Write `packages/server/tests/unit/auth/invitation-locales.spec.test.ts` from ST-01–ST-06 (including isolated resource-loss subcases) and resolver-only ST-07/ST-08; apply only the catalog-spec supersession in AR #12 before implementation. Direct preparation and send/preview assertions belong to Phase 2. Validate unit discovery and current physical inventory.
+- [x] 1.1.1 [spec-author] Write `packages/server/tests/unit/auth/invitation-locales.spec.test.ts` from ST-01–ST-06 (including isolated resource-loss subcases) and resolver-only ST-07/ST-08; apply only the catalog-spec supersession in AR #12 before implementation. Direct preparation and send/preview assertions belong to Phase 2. Validate unit discovery and current physical inventory. ✅ (completed: 2026-10-28 22:10)
 - [ ] 1.1.2 [spec-author] Update the existing system-config API/runtime and global-configuration documentation specifications only at AR #12 and its PF-002 supplement's superseded locale clauses (ST-02, ST-28–ST-29); retain unrelated expectations, malformed/fallback/cache/diagnostic assertions. Validate collection/syntax independently of source.
 - [ ] 1.1.3 Record focused behavioral red results for 1.1.1–1.1.2 with the explicit unit and documentation selectors from 07; distinguish expected failures from configuration/import errors and inherited passing cases.
+
+**Task 1.1.1 verification (2026-10-28):** Independent specification author
+`ses_e7bad270effeRZZyVNl8nRJbmF` wrote the tests without reading implementation or locale values.
+The parent reviewed the exact supersession, documentation and unchanged security boundaries;
+formatting-only follow-up preserved every assertion. Vitest `list --project unit` collected
+80 locale and 284 catalog cases without import errors; the new 80 case names are unique.
+The physical server inventory is exactly 372. Server lint, typecheck and build passed;
+`pnpm test:structure` passed 142/142. The initial `pnpm test:changed` baseline also passed
+142 structure checks and selected no product tests before authoring. These results verify this
+task's specification-authoring/collection gate, not prospective Dutch behavior. The explicit
+behavioral red run remains task 1.1.3; no later task is completed by this evidence.
 
 ### Session 1.2 — Implementation
 
