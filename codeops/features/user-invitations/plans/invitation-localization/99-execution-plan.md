@@ -1,7 +1,7 @@
 # Execution Plan: Invitation Localization
 
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-10-29 17:31
+> **Last Updated**: 2026-10-29 18:44
 > **Progress**: 38/40 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
@@ -382,7 +382,14 @@ resource files received manual copy review. Hash comparison confirms that tested
 test and documentation content remains identical to the candidate tree. Review evidence:
 [Phase 3 quality review](00-phase3-quality-review.md).
 
-- [~] 3.3.4 Establish 07's authorized clean committed checkpoint, including this task's pending/running state, and resolve exact-path runner approvals. Keep the worktree unchanged while running registered `pnpm assurance:harness --project security --profile production-security`; after exit/cleanup record candidate commit/tree, run, observers and exit outcome. Block if the commit mode cannot supply the checkpoint. Failed assertions/new gaps remain blockers; incomplete evidence is never a full pass. ⏳ (implemented: 2026-10-29 17:31; checkpoint/publication authorized; candidate commit and harness pending)
+- [~] 3.3.4 Establish 07's authorized clean committed checkpoint, including this task's pending/running state, and resolve exact-path runner approvals. Keep the worktree unchanged while running registered `pnpm assurance:harness --project security --profile production-security`; after exit/cleanup record candidate commit/tree, run, observers and exit outcome. Block if the commit mode cannot supply the checkpoint. Failed assertions/new gaps remain blockers; incomplete evidence is never a full pass. ⏳ (resumed: 2026-10-29 18:44; AR #16 exact short fixture path approved; new clean checkpoint pending)
+
+The first clean checkpoint `28f94101` exited 30 before collecting assurance evidence. Runner
+`TMPDIR` produced a 167-byte control-socket pathname; a direct local probe confirms Linux rejects
+it. Run `3b7a642d-b47d-45fb-9727-ace379709478` left no owned containers/networks/volumes; its new
+image and temporary fixtures were removed. Pre-existing generated public harness configuration
+and browser-library copies were preserved. AR #16 explicitly approves the shorter runner-only
+temporary location. No source/test/runner changes or failed-assertion waiver are involved.
 - [ ] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded.
 
 **Verify:** Use the exact gates in [07](07-testing-strategy.md#verification-commands), retaining

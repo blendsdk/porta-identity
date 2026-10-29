@@ -1,7 +1,7 @@
 # Ambiguity Register: Invitation Localization (#179)
 
-> **Status**: ✅ GATE PASSED — all 15 items resolved, including runtime fixture and helper rulings
-> **Last Updated**: 2026-10-29 08:59
+> **Status**: ✅ GATE PASSED — all 16 items resolved
+> **Last Updated**: 2026-10-29 18:44
 > **CodeOps Artifact Schema**: 1
 
 ## Planning scope contract
@@ -33,6 +33,19 @@ The existing invitation feature uses standalone plan-owned requirements; no upst
 | 11  | Integration; data/state         | Email locale precedence when input is absent or unsupported; regional language tags.                    | Explicit supported email input → organization → global → English, with no browser language; normalize regional tags, select packaged locales, skip unsupported candidates and browser `q=0`/invalid quality values.                          | User selected `Approve remaining register` after this exact chain and the normalization/quality recommendation. OIDC priority order stays unchanged.                                                                                                        | ✅ Resolved |
 | 12  | Scope; testing                  | Exact superseded English-only assertions and new specification/test ownership.                          | Replace only requirements superseded by #179 and directly affected presentation/mocks; preserve unrelated bounds, security assertions and historical evidence.                                                                               | User selected `Approve remaining register`. The exact bounded future test modification set is recorded below; no tests are edited during planning.                                                                                                          | ✅ Resolved |
 | 13  | Naming; technical               | Component/test names, small-helper API, domain lenses, phase decomposition and coverage goals.          | Three specification-first phases: locale resources/contracts, email, acceptance and final verification. Existing framework, configured quality thresholds and standard coverage targets remain; no new framework/infrastructure.             | User selected `Approve remaining register`. Internal lexical names carry no new public API contract; document them in the component specs.                                                                                                                  | ✅ Resolved |
+
+## Runtime Runner Path Approval
+
+| # | Category | Discovery | Proposed bounded resolution | Decision | Status |
+| --- | --- | --- | --- | --- | --- |
+| 16 | Verification environment (runtime) | The approved long temporary root yields a 167-byte harness control-socket pathname; Linux supports 108 bytes. The clean-candidate run exited 30 before producing assurance evidence. | Permit task-owned synthetic fixtures, browser profiles, sockets and metadata under `/tmp/opencode/porta-il-20261029/`, configure only runner `TMPDIR`, retain all source/oracles/lifecycle ownership, and clean the exact directory afterward. | User selected “Allow short path (Recommended)” for this exact fixture location and purpose on 2026-10-29 | ✅ Resolved |
+
+Evidence: `test-harness/fixtures/lifecycle-validation.ts:22–29` constructs the socket under
+`os.tmpdir()`. A bounded local socket probe rejects the configured pathname with `AF_UNIX path
+too long`. The first run used clean commit `28f94101d8a02585d652950351c20654c9c4b0b4`, tree
+`b488e8cdb165e17f4f9d76ab5e225b736dc3f8bc`, and produced no assurance result directory. Its
+source stayed clean throughout. The proposed fix is environment configuration, not runner or
+product code. Existing protected paths remain subject to their exact approvals.
 
 ## Systematic review
 

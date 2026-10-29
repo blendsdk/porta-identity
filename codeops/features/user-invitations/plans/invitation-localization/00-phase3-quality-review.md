@@ -1,7 +1,7 @@
 # Phase 3 Quality Review
 
 > **Status**: Reviews/local gates passed — assurance checkpoint and CI authorized, execution pending
-> **Last Updated**: 2026-10-29 17:31
+> **Last Updated**: 2026-10-29 18:44
 > **Baseline tree**: `7fa9417cd0b1f205c1aa367e82ceaaf6e9fa4d4e`
 > **Reviewed implementation tree**: `b43857af5a476aa2f5e08de83a5110fad5c563cc`
 > **CodeOps Artifact Schema**: 1
@@ -37,7 +37,7 @@ tree above. This is not yet a clean committed assurance candidate.
 | Focused SMTP/recovery integration | 23/23 passed |
 | Complete UI category | 135/135 passed, zero skipped/flaky cases, one worker, retries disabled |
 | Complete penetration category | 307/307 passed; earlier 306/307 runtime setup failure retained below; unchanged isolated diagnostic 5/5 passed |
-| Clean committed production-security | Authorized; checkpoint and execution pending |
+| Clean committed production-security | First candidate `28f94101` exited 30 before collection because the temporary socket path exceeded Linux limits; approved short-path rerun pending |
 | Full CI and separate branch jobs | Authorized feature-branch publication; pending assurance evidence |
 
 The initial IDOR failure points to `tests/pentest/admin-security/idor.test.ts:31:3` in its
