@@ -1,6 +1,6 @@
 # Production Deployment
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-10-29
 
 Guidance for deploying Porta to production environments using Docker.
 
@@ -30,7 +30,7 @@ exposed through the configuration API.
 | `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
 | `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
 | `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
-| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
+| `default_locale`                   | `en`      | `en, nl`                  | locale   | `runtime`          |
 
 Use [the Configuration API](../api/config.md), `porta config list|get|set`, or **System Configuration…**
 in `porta admin`; see [the environment reference](./environment.md#editable-global-configuration).
@@ -44,6 +44,37 @@ saving. Stored changes do not reconfigure an already running OIDC provider. API/
 Porta does not automatically restart servers or instantly invalidate every instance's cache.
 Existing token/link absolute expiries and Redis counter expiries remain unchanged; current runtime
 policy applies at the established next read/decision or artifact creation point.
+
+## Invitation Language Rollout and Rollback
+
+English (`en`) remains the default. The packaged invitation languages are `en` and formal Dutch
+(`nl`); global `default_locale` accepts these exact native values.
+
+### Rollout
+
+1. Upgrade every server instance and its shipped translation/template assets to the new version.
+2. Confirm that all instances are healthy before changing global `default_locale` to `nl`.
+3. If Dutch should be the deployment fallback, use the existing authenticated configuration API,
+   Admin UI, or `porta config set default_locale nl`.
+
+Mixed-version rolling upgrades may temporarily show language-only differences. Existing invitation
+rows, stored account locales, token lifetimes and delivery outcomes are preserved; no migration or
+backfill is required. Custom tenant templates retain their own hardcoded copy.
+
+### Rollback
+
+1. Restore global `default_locale` to `en` through the existing authenticated configuration surface.
+2. Confirm propagation on every healthy instance before downgrade. Runtime reads use the existing
+   60-second, read-driven cache: peers refresh on their next read after expiry. Verify authoritative
+   configuration reads as well as the applicable runtime behavior.
+3. Only then downgrade the server instances and their assets.
+
+An older English-only catalog can reject stored `nl` during authoritative API reads. Runtime
+fallback to English is not proof that those older reads are safe. Preserve existing invitation
+locale values and expiries throughout rollback.
+
+These are operator-controlled steps. Porta does not automatically switch `default_locale`, restart
+the deployment, or perform the rollback.
 
 ## External Bootstrap Settings and Secrets
 

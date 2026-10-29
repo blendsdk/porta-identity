@@ -51,6 +51,12 @@ successful results remain unchanged. Add no externally returned API field. Invit
 maps the reason to its localized resource and the existing exported length constants. An
 unexpected invalid reason gets the generic translated error, not raw internal text (AR #10).
 
+The prospective internal contract uses exported `PasswordValidationFailureReason` enum members
+`TooShort = 'too_short'` and `TooLong = 'too_long'`, plus optional
+`reason?: PasswordValidationFailureReason` on `PasswordValidationResult`. Failed validation keeps
+the existing `isValid: false` and English `error`; success remains exactly `{ isValid: true }`.
+These lexical names are fixed for specification authoring under AR #13's internal naming freedom.
+
 Do not match English error strings or reproduce password-validation policy in the route.
 Unrelated password consumers continue using their existing `error` property. The internal
 additive result and mocks are within AR #12's bounded test updates.

@@ -1,0 +1,12 @@
+{
+  "sent_title": "Controleer uw e-mail",
+  "check_email": "Er is een inloglink verzonden naar {{email}}.",
+  "expires_note": "De link verloopt over 15 minuten.",
+  "error_rate_limited": "Te veel verzoeken om een inloglink. Probeer het later opnieuw.",
+  "error_token_expired": "Deze inloglink is verlopen. Vraag een nieuwe link aan.",
+  "error_token_invalid": "Deze inloglink is ongeldig. Vraag een nieuwe link aan.",
+  "success_title": "E-mailadres geverifieerd",
+  "success_message": "Uw inloglink is geverifieerd.",
+  "success_hint": "Ga terug naar de browser waarin u het inloggen bent gestart. Het inloggen wordt automatisch voltooid.",
+  "success_close_tab": "U kunt dit tabblad veilig sluiten."
+}

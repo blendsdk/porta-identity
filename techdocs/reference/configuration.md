@@ -1,6 +1,6 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-10-29
 
 ## Overview
 
@@ -192,7 +192,7 @@ background task. There is no broadcast invalidation, polling worker or automatic
 | `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
 | `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
 | `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
-| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
+| `default_locale`                   | `en`      | `en, nl`                  | locale   | `runtime`          |
 
 The first five lifetimes are loaded at provider startup; changes require restarting every server
 instance. Interaction lifetime remains fixed at 3600 seconds and grant lifetime follows refresh
@@ -204,6 +204,18 @@ existing lock timestamp.
 Migration `030_global_configuration_catalog.sql` overwrites the 18 canonical rows with native
 defaults, deletes seven obsolete public keys and preserves internal rows. Down is intentionally a
 no-op; development reset uses `pnpm admin:env reset` rather than restoring retired public values.
+
+### Locale Compatibility
+
+`default_locale` is the closed native `en`/`nl` setting, with default `en`. Invitation rendering
+normalizes regional inputs and skips unsupported candidates, but it does not normalize stored
+invitation values or make tenant-owned data global. Adding a language requires a complete source
+bundle, a `SUPPORTED_LOCALES` update, tests and a rebuilt deployment.
+
+Upgrade every instance and its assets before enabling global Dutch. Before downgrade, restore
+`en` and confirm healthy-peer convergence under the existing 60-second read-driven cache. Older
+authoritative API reads can reject a stored `nl`; a runtime English fallback is not proof of safe
+rollback. See the [operator procedure](../../docs/guide/deployment.md#invitation-language-rollout-and-rollback).
 
 ## Example `.env` File
 

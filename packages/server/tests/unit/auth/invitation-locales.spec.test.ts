@@ -4,9 +4,13 @@ import i18next from 'i18next';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { getTranslationFunction, initI18n, resolveLocale } from '../../../src/auth/i18n.js';
 import { logger } from '../../../src/lib/logger.js';
-import { getSystemConfigString } from '../../../src/lib/system-config.js';
 
-vi.mock('../../../src/lib/system-config.js', () => ({ getSystemConfigString: vi.fn() }));
+/** External configuration fixtures include supported and unsupported stored locale strings. */
+const { getSystemConfigString } = vi.hoisted(() => ({
+  getSystemConfigString: vi.fn<() => Promise<string>>(),
+}));
+
+vi.mock('../../../src/lib/system-config.js', () => ({ getSystemConfigString }));
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
@@ -26,13 +30,21 @@ const NAMESPACES = [
   'two-factor',
 ] as const;
 
-/** Declares optional invitation context while remaining compatible with three-argument callers. */
-const resolveInvitationLocale: (
-  uiLocales?: string,
-  acceptLanguage?: string,
-  orgDefaultLocale?: string,
-  invitationLocale?: string | null,
-) => Promise<string> = resolveLocale;
+/**
+ * Calls the real resolver with missing defaults or prospective invitation context without
+ * depending on its declared argument types. Rest arguments retain each caller's exact arity;
+ * assertions inspect the actual result rather than imposing a return type through a cast.
+ */
+function resolveInvitationLocale(
+  ...args: [
+    uiLocales: string | undefined,
+    acceptLanguage: string | undefined,
+    orgDefaultLocale: string | undefined,
+    invitationLocale?: string | null,
+  ]
+): unknown {
+  return Reflect.apply(resolveLocale, undefined, args);
+}
 
 /** Rejects arrays and null when validating JSON objects and resource snapshots. */
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -88,12 +100,12 @@ describe('shipped invitation locale packs', () => {
 
 describe('invitation locale resolution with real resources', () => {
   beforeAll(async () => {
-    vi.mocked(getSystemConfigString).mockResolvedValue('en');
+    getSystemConfigString.mockResolvedValue('en');
     await initI18n();
   });
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(getSystemConfigString).mockResolvedValue('en');
+    getSystemConfigString.mockResolvedValue('en');
   });
 
   // Browser preference outranks the invitation, with stable ordering for equal qualities.
@@ -141,7 +153,7 @@ describe('invitation locale resolution with real resources', () => {
   ] as const)(
     'should continue from invitation %s through organization %s and global %s to %s',
     async (invitation, organization, global, expected) => {
-      vi.mocked(getSystemConfigString).mockResolvedValue(global);
+      getSystemConfigString.mockResolvedValue(global);
       expect(await resolveInvitationLocale(undefined, 'fr-FR', organization, invitation)).toBe(
         expected,
       );
@@ -159,8 +171,8 @@ describe('invitation locale resolution with real resources', () => {
   ] as const)(
     'should preserve OIDC order for %s / %s / %s / %s as %s',
     async (ui, browser, organization, global, expected) => {
-      vi.mocked(getSystemConfigString).mockResolvedValue(global);
-      expect(await resolveLocale(ui, browser, organization)).toBe(expected);
+      getSystemConfigString.mockResolvedValue(global);
+      expect(await resolveInvitationLocale(ui, browser, organization)).toBe(expected);
     },
   );
 
@@ -173,7 +185,7 @@ describe('invitation locale resolution with real resources', () => {
     ] as const)(
       'should resolve explicit %s with organization %s and global %s to %s',
       async (invitation, organization, global, expected) => {
-        vi.mocked(getSystemConfigString).mockResolvedValue(global);
+        getSystemConfigString.mockResolvedValue(global);
         expect(await resolveInvitationLocale(undefined, undefined, organization, invitation)).toBe(
           expected,
         );

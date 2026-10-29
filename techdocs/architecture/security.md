@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-10-29
 
 ## Overview
 
@@ -238,6 +238,34 @@ path.
   for at most 30 seconds during shutdown.
 - Worker diagnostics use closed reason codes and do not include addresses, tokens, SMTP errors, or
   protected payloads.
+
+### Invitation Rendering Authority
+
+Invitation localization follows two authority levels:
+
+| Context | Language sources |
+| --- | --- |
+| Baseline | Browser preferences → organization default → deployment default → English |
+| Valid invitation | Browser preferences → stored invitation locale → organization default → deployment default → English |
+
+The stored locale participates only after an organization-scoped valid-token lookup and an
+existing-account conflict check. Unknown, expired, used, foreign-tenant and conflicting tokens,
+including a late atomic rejection, share the baseline generic 400 response. A failed CSRF check
+uses baseline language and returns 403 before invitation or account lookup. A rendering failure
+after a late rejection cannot restore invitation-derived authority.
+
+GET confirmation and password pages do not create an account or consume a token. The existing
+acceptance service owns the atomic mutation. Stored explicit/null locale values remain unchanged
+when copied to the accepted account, even when the browser selected another display language.
+
+Each actual invitation render awaits its own tenant translation overrides. The translator keeps
+private language/tenant state, and inserted names or messages are never interpreted as another
+translation template. HTML escapes ordinary text once; plaintext invitation emails preserve
+literal characters. Internal password-failure reasons select localized copy without changing
+length policy, other callers' English errors, or the public response schema.
+
+Implementation: [invitation routes](../../packages/server/src/routes/invitation.ts) and
+[translation preparation](../../packages/server/src/auth/i18n.ts).
 
 ### Login Methods Enforcement
 

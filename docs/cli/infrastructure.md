@@ -153,7 +153,8 @@ porta config set default_locale en
 
 `get` also displays the entry description. `set <key> <value>` first fetches authoritative metadata,
 then parses a base-ten safe integer within inclusive bounds or an exact supported string. It sends
-a native JSON scalar, never a quoted number. Currently the only locale choice is `en`. Blank values,
+a native JSON scalar, never a quoted number. The exact locale choices are `en` and `nl`, with `en`
+remaining the default. Blank values,
 fractions, scientific notation and unsupported choices are rejected without sending an update.
 Because of the metadata read, conventional CLI `set` needs both `admin:config:read` and
 `admin:config:update`.

@@ -33,13 +33,18 @@ import { hashToken } from '../auth/tokens.js';
 import { findValidInvitationToken } from '../auth/token-repository.js';
 import type { InvitationTokenRecord } from '../auth/token-repository.js';
 import { getPool } from '../lib/database.js';
-import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
+import { resolveLocale, prepareTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { getUserByEmail } from '../users/service.js';
 import { acceptInvitation } from '../users/invitation-service.js';
-import { validatePassword } from '../users/password.js';
+import {
+  MAX_PASSWORD_LENGTH,
+  MIN_PASSWORD_LENGTH,
+  PasswordValidationFailureReason,
+  validatePassword,
+} from '../users/password.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
@@ -125,14 +130,12 @@ export function createInvitationRouter(): Router {
  *
  * @param ctx - Koa context
  * @param org - Organization for branding
- * @param locale - Resolved locale
- * @param t - Translation function
+ * @param baselineLocale - Request/organization language with no invitation-derived authority
  */
 async function renderExpiredInvite(
   ctx: Context,
   org: Organization,
-  locale: string,
-  t: (key: string, options?: Record<string, unknown>) => string,
+  baselineLocale: string,
 ): Promise<void> {
   writeAuditLog({
     organizationId: org.id,
@@ -142,12 +145,16 @@ async function renderExpiredInvite(
     ipAddress: ctx.ip,
   });
 
+  // Prepare from baseline authority here, including when acceptance rejected a previously
+  // valid invitation. A caller cannot accidentally reuse its invitation-specific translator.
+  const t = await prepareTranslationFunction(baselineLocale, org.slug);
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
   const context: TemplateContext = {
     branding: await resolveEffectiveBranding(org),
-    locale,
+    locale: baselineLocale,
     t,
+    pageTitle: t('invitation.expired_title'),
     csrfToken,
     orgSlug: org.slug,
   };
@@ -162,6 +169,48 @@ function readInviterName(record: InvitationTokenRecord): string | undefined {
 }
 
 /**
+ * Read an own string field without coercing malformed request values into passwords or CSRF.
+ * Missing or non-string values follow the existing missing-field path; length policy remains
+ * entirely in the password validator.
+ *
+ * @param body - Untrusted parsed form body.
+ * @param field - One of the existing invitation form fields.
+ * @returns The submitted string, or an empty string when absent or malformed.
+ */
+function readInvitationFormField(
+  body: unknown,
+  field: 'password' | 'confirmPassword' | '_csrf',
+): string {
+  if (typeof body !== 'object' || body === null || Array.isArray(body) || !Object.hasOwn(body, field)) {
+    return '';
+  }
+  const value: unknown = Reflect.get(body, field);
+  return typeof value === 'string' ? value : '';
+}
+
+/**
+ * Select presentation copy from a closed validation reason, never from a raw English error.
+ * An unknown runtime reason remains a generic failure rather than exposing internal details.
+ *
+ * @param reason - Internal password validation discriminator.
+ * @param t - Prepared translator for the authorized rendering context.
+ * @returns An ordinary localized error string using the existing policy bounds.
+ */
+function localizedPasswordError(
+  reason: PasswordValidationFailureReason | undefined,
+  t: TemplateContext['t'],
+): string {
+  switch (reason) {
+    case PasswordValidationFailureReason.TooShort:
+      return t('invitation.error_password_min_length', { minLength: MIN_PASSWORD_LENGTH });
+    case PasswordValidationFailureReason.TooLong:
+      return t('invitation.error_password_max_length', { maxLength: MAX_PASSWORD_LENGTH });
+    default:
+      return t('errors.generic');
+  }
+}
+
+/**
  * Show the invitation confirmation page or password form.
  *
  * The email link is non-mutating: it validates the invitation and renders a confirmation page. The
@@ -172,13 +221,13 @@ function readInviterName(record: InvitationTokenRecord): string | undefined {
 async function showAcceptInvite(ctx: AuthContext): Promise<void> {
   const org = ctx.state.organization;
   const tokenPlaintext = ctx.params.token;
+  const browserLanguages = ctx.get('Accept-Language') || undefined;
 
-  const locale = await resolveLocale(
+  const baselineLocale = await resolveLocale(
     undefined,
-    ctx.get('Accept-Language') || undefined,
+    browserLanguages,
     org.defaultLocale,
   );
-  const t = getTranslationFunction(locale, org.slug);
 
   // Validate the invitation token; a foreign tenant resolves nothing.
   const tokenHash = hashToken(tokenPlaintext);
@@ -186,10 +235,14 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
 
   // An address that already has an account is rejected with the same generic page.
   if (!tokenRecord || (await getUserByEmail(org.id, tokenRecord.email))) {
-    await renderExpiredInvite(ctx, org, locale, t);
+    await renderExpiredInvite(ctx, org, baselineLocale);
     return;
   }
 
+  // Only a scoped, non-conflicting invitation may contribute its stored language. Preparing
+  // this actual render's translator after the checks avoids loading an unused baseline copy.
+  const locale = await resolveLocale(undefined, browserLanguages, org.defaultLocale, tokenRecord.locale);
+  const t = await prepareTranslationFunction(locale, org.slug);
   const branding = await resolveEffectiveBranding(org);
   const csrfToken = generateCsrfToken();
   setCsrfCookie(ctx, csrfToken);
@@ -199,6 +252,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
       branding,
       locale,
       t,
+      pageTitle: t('invitation.title'),
       csrfToken,
       orgSlug: org.slug,
       orgName: branding.companyName,
@@ -213,6 +267,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
     branding,
     locale,
     t,
+    pageTitle: t('invitation.confirm_title'),
     csrfToken,
     orgSlug: org.slug,
     orgName: branding.companyName,
@@ -226,7 +281,7 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
  * Process an invitation acceptance form submission.
  *
  * 1. Verify CSRF token
- * 2. Re-validate the invitation token
+ * 2. Re-validate the invitation token and reject existing-account conflicts
  * 3. Validate password and confirm match
  * 4. Create the account and consume the invitation via `acceptInvitation`
  * 5. Apply pre-assigned roles and claims (best-effort)
@@ -238,26 +293,27 @@ async function showAcceptInvite(ctx: AuthContext): Promise<void> {
 async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   const org = ctx.state.organization;
   const tokenPlaintext = ctx.params.token;
-  const body = ctx.request.body as Record<string, string>;
-  const password = body.password ?? '';
-  const confirmPassword = body.confirmPassword ?? '';
-  const submittedCsrf = body._csrf ?? '';
+  const body: unknown = ctx.request.body;
+  const password = readInvitationFormField(body, 'password');
+  const confirmPassword = readInvitationFormField(body, 'confirmPassword');
+  const submittedCsrf = readInvitationFormField(body, '_csrf');
   const storedCsrf = getCsrfFromCookie(ctx) ?? '';
+  const browserLanguages = ctx.get('Accept-Language') || undefined;
 
-  const locale = await resolveLocale(
+  const baselineLocale = await resolveLocale(
     undefined,
-    ctx.get('Accept-Language') || undefined,
+    browserLanguages,
     org.defaultLocale,
   );
-  const t = getTranslationFunction(locale, org.slug);
 
   // Step 1: Verify CSRF token (cookie vs form field)
   if (!verifyCsrfToken(storedCsrf, submittedCsrf)) {
     logger.warn('CSRF token mismatch on accept-invite');
+    const t = await prepareTranslationFunction(baselineLocale, org.slug);
     await renderInviteFormWithError(
       ctx,
       org,
-      locale,
+      baselineLocale,
       t,
       tokenPlaintext,
       t('errors.csrf_invalid'),
@@ -271,13 +327,18 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   const tokenHash = hashToken(tokenPlaintext);
   const tokenRecord = await findValidInvitationToken(tokenHash, org.id);
 
-  if (!tokenRecord) {
-    await renderExpiredInvite(ctx, org, locale, t);
+  if (!tokenRecord || (await getUserByEmail(org.id, tokenRecord.email))) {
+    await renderExpiredInvite(ctx, org, baselineLocale);
     return;
   }
 
+  // Preserve baseline selection for a later atomic rejection. Translation reads are deferred
+  // until a response branch actually renders; selecting a locale never rewrites the row.
+  const locale = await resolveLocale(undefined, browserLanguages, org.defaultLocale, tokenRecord.locale);
+
   // Step 3: Validate passwords match
   if (password !== confirmPassword) {
+    const t = await prepareTranslationFunction(locale, org.slug);
     await renderInviteFormWithError(
       ctx,
       org,
@@ -293,18 +354,22 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
   // Step 3b: Validate password strength (NIST SP 800-63B)
   const validation = validatePassword(password);
   if (!validation.isValid) {
+    const t = await prepareTranslationFunction(locale, org.slug);
     await renderInviteFormWithError(
       ctx,
       org,
       locale,
       t,
       tokenPlaintext,
-      validation.error!,
+      localizedPasswordError(validation.reason, t),
       tokenRecord.email,
     );
     return;
   }
 
+  // Once the atomic operation rejects, even a rendering failure must follow the same error
+  // path as an initially invalid token. The catch must never restore invitation authority.
+  let invitationRejected = false;
   try {
     // Step 4: Create the account and consume the invitation atomically
     const accepted = await acceptInvitation({
@@ -313,7 +378,8 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       password,
     });
     if (!accepted) {
-      await renderExpiredInvite(ctx, org, locale, t);
+      invitationRejected = true;
+      await renderExpiredInvite(ctx, org, baselineLocale);
       return;
     }
 
@@ -335,6 +401,7 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
     });
 
     // Step 7: Render success page
+    const t = await prepareTranslationFunction(locale, org.slug);
     const branding = await resolveEffectiveBranding(org);
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
@@ -342,17 +409,20 @@ async function processAcceptInvite(ctx: AuthContext): Promise<void> {
       branding,
       locale,
       t,
+      pageTitle: t('invitation.success_title'),
       csrfToken,
       orgSlug: org.slug,
       flash: { success: t('invitation.success') },
     };
 
     await renderAndRespond(ctx, 'invite-success', context);
-  } catch {
+  } catch (error) {
+    if (invitationRejected) throw error;
     logger.error(
       { event: 'invitation-acceptance-failed' },
       'Invitation acceptance processing failed',
     );
+    const t = await prepareTranslationFunction(locale, org.slug);
     await renderInviteFormWithError(
       ctx,
       org,
@@ -398,6 +468,7 @@ async function renderInviteFormWithError(
     branding,
     locale,
     t,
+    pageTitle: t('invitation.title'),
     csrfToken,
     orgSlug: org.slug,
     token,

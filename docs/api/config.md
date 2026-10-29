@@ -96,7 +96,8 @@ An update or audit failure rolls back the entire batch. Missing targets are not 
 
 Integer settings accept only finite integers inside inclusive bounds. Strings containing numbers,
 fractions, booleans, objects, arrays and null are invalid. Locale must exactly match a supported
-choice; currently only `en` is supported.
+choice: `en` or `nl`. The default remains `en`; regional tags and uppercase variants are invalid
+configuration values.
 
 | Status | Code                       | Meaning                                                                            |
 | ------ | -------------------------- | ---------------------------------------------------------------------------------- |

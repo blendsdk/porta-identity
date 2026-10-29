@@ -10,7 +10,7 @@
  * Each test clears the MailHog inbox before running.
  */
 
-import { describe, it, expect, beforeEach, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from 'vitest';
 import { truncateAllTables, seedBaseData } from '../helpers/database.js';
 import { MailHogClient } from '../../e2e/helpers/mailhog.js';
 import { createTestOrganization, createTestUser } from '../helpers/factories.js';
@@ -21,6 +21,7 @@ import {
   setEmailTransport,
 } from '../../../src/auth/email-service.js';
 import { createSmtpTransport } from '../../../src/auth/email-transport.js';
+import { initI18n } from '../../../src/auth/i18n.js';
 import type { EmailUser, EmailOrganization } from '../../../src/auth/email-service.js';
 
 const mailhog = new MailHogClient();
@@ -29,6 +30,10 @@ describe('Email Service (Integration)', () => {
   /** Shared test user and org for email tests */
   let testUser: EmailUser;
   let testOrg: EmailOrganization;
+
+  beforeAll(async () => {
+    await initI18n();
+  });
 
   beforeEach(async () => {
     await truncateAllTables();

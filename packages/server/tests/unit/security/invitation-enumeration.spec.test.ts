@@ -1,6 +1,5 @@
 /**
- * Security specification for invitation enumeration resistance and token secrecy
- * (ST-30–ST-32).
+ * Security specification for invitation enumeration resistance and token secrecy.
  *
  * An attacker must not be able to tell unknown, expired, foreign-tenant, and
  * email-conflict invitations apart: all four render the same generic expired page and
@@ -13,6 +12,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type Router from '@koa/router';
+import type * as PasswordModule from '../../../src/users/password.js';
 
 const { poolQuery } = vi.hoisted(() => ({ poolQuery: vi.fn() }));
 
@@ -47,10 +47,14 @@ vi.mock('../../../src/lib/database.js', () => ({
   getDatabaseTransactionClient: () => ({ query: poolQuery }),
 }));
 
-vi.mock('../../../src/auth/i18n.js', () => ({
-  resolveLocale: vi.fn().mockResolvedValue('en'),
-  getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
-}));
+vi.mock('../../../src/auth/i18n.js', () => {
+  const translate = (key: string) => `t:${key}`;
+  return {
+    resolveLocale: vi.fn().mockResolvedValue('en'),
+    getTranslationFunction: vi.fn().mockReturnValue(translate),
+    prepareTranslationFunction: vi.fn().mockResolvedValue(translate),
+  };
+});
 
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: vi.fn().mockResolvedValue('<html>rendered</html>'),
@@ -71,7 +75,8 @@ vi.mock('../../../src/users/invitation-service.js', () => ({
   acceptInvitation: vi.fn(),
 }));
 
-vi.mock('../../../src/users/password.js', () => ({
+vi.mock('../../../src/users/password.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof PasswordModule>()),
   validatePassword: vi.fn().mockReturnValue({ isValid: true }),
 }));
 

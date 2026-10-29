@@ -210,7 +210,7 @@ export const TEST_CONFIG_DEFINITIONS = [
     valueType: 'string',
     unit: 'locale',
     defaultValue: 'en',
-    allowedValues: ['en'],
+    allowedValues: ['en', 'nl'],
     applicationMode: 'runtime',
   },
 ];

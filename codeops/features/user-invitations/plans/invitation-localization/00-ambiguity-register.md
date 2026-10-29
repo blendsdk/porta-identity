@@ -1,7 +1,7 @@
 # Ambiguity Register: Invitation Localization (#179)
 
-> **Status**: ✅ GATE PASSED — all 13 items resolved
-> **Last Updated**: 2026-10-27 15:24
+> **Status**: ✅ GATE PASSED — all 15 items resolved, including runtime fixture and helper rulings
+> **Last Updated**: 2026-10-29 08:59
 > **CodeOps Artifact Schema**: 1
 
 ## Planning scope contract
@@ -111,3 +111,54 @@ AR #12 without changing the approved product contract or allowing arbitrary spec
 
 All other original test boundaries remain in force. Current preflight changes documents only;
 product test edits still belong to authorized execution.
+
+## Runtime Resolution
+
+| # | Category | Ambiguity / gap | Options presented | User decision | Status |
+| --- | --- | --- | --- | --- | --- |
+| 14 | Testing (runtime) | The send/preview literal-data cases supply an inviter but install only the no-inviter subject override, then expect that override to replace the inviter-specific subject. | Correct only this case's override fixture to target the inviter-specific key, preserving recipient/inviter input values and every expected assertion; or keep execution paused for review. | User selected “Correct fixture (Recommended)” on 2026-10-29: change only the fixture key, preserve all recipient/inviter data and every expected output/assertion, then resume. | ✅ Resolved |
+| 15 | Testing; scope (runtime) | Existing MailHog client reads multipart data from `Content.MIME`, but the live v2 API exposes it at root `MIME`; delivered HTML is therefore reported as empty. | Correct only the v2 MIME-envelope location in the existing shared helper, preserve all feature assertions and verify affected consumers; or pause for review. | User selected “Fix helper (Recommended)” on 2026-10-29, explicitly authorizing the named file's scope addition, MIME-envelope correction and affected regression checks. | ✅ Resolved |
+
+The approved subject contract distinguishes inviter and no-inviter variants (`03-02-email.md:20–25`).
+The resource keys are `emails.invitation.subject_inviter` and `emails.invitation.subject`, and the
+implementation selects the former when an inviter is supplied (`src/auth/email-service.ts:374–376`
+under `packages/server/`). In `tests/unit/auth/invitation-email-localization.spec.test.ts:345–360`,
+the literal-data case installs only the latter key but supplies `inviterName: '{{locale}}'`.
+Consequently both send and preview receive the correct default inviter variant instead of the
+fixture's expected `Welkom bij $& {{userName}}`. The other 50 caller/context cases pass.
+
+Recommendation: keep the subject-variant contract and every immutable output assertion; correct
+only the fixture key in those two parameterized cases. No product, security or persistence policy
+change is needed. This requires an explicit ruling because it changes an authored specification's
+runtime fixture. Confidence: high; grounded in the approved variant contract and exact failing
+case. The expected value must not be changed to match current output.
+
+The authorized correction targets `emails.invitation.subject_inviter` in this one literal-data
+fixture, with the same `Welkom bij {{orgName}}` value. It changes no production subject selection,
+other override fixture, recipient/inviter data, expected output or assertion.
+
+### AR #15 — MailHog observer prerequisite
+
+All 68 email unit specifications pass. The six real parity cases also pass their complete
+pre-MIME send/preview comparisons and subject assertions, then fail because `received.html` is
+empty. The existing helper declares and reads `item.Content.MIME` at
+`packages/server/tests/e2e/helpers/mailhog.ts:57–67,232–245`.
+
+A controlled plain/HTML diagnostic message sent only to the owned stack confirmed that the v2
+response contains root-level `MIME.Parts`, no `Content.MIME`, and both `text/plain` and `text/html`
+parts. Only schema flags/content types were reported; no invitation token or message body was
+exposed. The diagnostic message was deleted afterward.
+
+The necessary expanded modification set is one existing file:
+`packages/server/tests/e2e/helpers/mailhog.ts`, plus these owning plan/status records. The proposed
+change corrects its raw response type and MIME accessor location. It adds no parser, dependency,
+runner or test framework and changes no product email behavior. Existing real integration cases
+already provide the regression oracle; their assertions must remain unchanged. A local duplicate
+decoder would add maintenance and leave the shared reader incorrect.
+
+Recommendation: authorize the bounded shared-helper correction, then run the affected MailHog
+consumer regression gates. The main tradeoff is that correcting a shared observer can expose
+previously hidden failures in other tests; those must be investigated, not weakened or ignored.
+
+The authorized correction moves the raw response's MIME field to the message root and reads
+that field during parsing. The existing decoder and every feature assertion remain unchanged.

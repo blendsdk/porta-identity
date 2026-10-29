@@ -19,6 +19,7 @@ import type { EmailTransport } from './email-transport.js';
 import { createSmtpTransport } from './email-transport.js';
 import { renderEmail } from './email-renderer.js';
 import { resolveEffectiveBranding } from './effective-branding.js';
+import { prepareTranslationFunction, resolveLocale } from './i18n.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
@@ -280,20 +281,33 @@ export interface InvitationEmailOptions {
  * never reads a zero-length or fractional expiry.
  *
  * @param seconds - Invitation lifetime in seconds
+ * @param translate - Prepared translator for this invitation's selected language
  * @returns Human-readable duration such as `7 days`, `12 hours`, or `5 minutes`
  */
-function formatInvitationLifetime(seconds: number): string {
+function formatInvitationLifetime(
+  seconds: number,
+  translate: (key: string, options?: Record<string, unknown>) => string,
+): string {
   const total = Math.max(1, Math.floor(seconds));
   const days = Math.floor(total / 86400);
   if (days >= 1 && total % 86400 === 0) {
-    return `${days} ${days === 1 ? 'day' : 'days'}`;
+    return translate(
+      days === 1 ? 'emails.invitation.duration.day_one' : 'emails.invitation.duration.day_other',
+      { count: days },
+    );
   }
   const hours = Math.floor(total / 3600);
   if (hours >= 1 && total % 3600 === 0) {
-    return `${hours} ${hours === 1 ? 'hour' : 'hours'}`;
+    return translate(
+      hours === 1 ? 'emails.invitation.duration.hour_one' : 'emails.invitation.duration.hour_other',
+      { count: hours },
+    );
   }
   const minutes = Math.max(1, Math.ceil(total / 60));
-  return `${minutes} ${minutes === 1 ? 'minute' : 'minutes'}`;
+  return translate(
+    minutes === 1 ? 'emails.invitation.duration.minute_one' : 'emails.invitation.duration.minute_other',
+    { count: minutes },
+  );
 }
 
 /**
@@ -305,7 +319,7 @@ function formatInvitationLifetime(seconds: number): string {
  * @param user - Recipient user
  * @param org - Organization for branding
  * @param inviteUrl - Full URL the user clicks to accept
- * @param locale - Locale for i18n
+ * @param locale - Explicit invitation language, or null/undefined to inherit current defaults
  * @param options - Required expiry plus optional personal message and inviter name
  * @returns Template context and computed subject line
  */
@@ -313,44 +327,76 @@ async function buildInvitationContext(
   user: EmailUser,
   org: EmailOrganization,
   inviteUrl: string,
-  locale: string,
+  locale: string | null | undefined,
   options: InvitationEmailOptions,
 ): Promise<{ context: Record<string, unknown>; subject: string }> {
   const branding = await resolveEffectiveBranding(org);
   const orgName = branding.companyName;
+  // Email has no browser preference. Preserve the separate organization fallback when the
+  // explicit input is unsupported, then wait for this tenant's first override read.
+  const selectedLocale = await resolveLocale(undefined, undefined, org.defaultLocale, locale);
+  const translate = await prepareTranslationFunction(selectedLocale, org.slug);
+  const userName = getUserDisplayName(user);
+  const expiresIn = formatInvitationLifetime(options.expiresInSeconds, translate);
+  const values = { orgName, userName, expiresIn, inviterName: options.inviterName ?? '' };
+  // Keep copy as ordinary text. Each template owns escaping, so names and messages are never
+  // compiled as markup and plaintext can retain their literal characters.
+  const invitationCopy = {
+    heading: translate('emails.invitation.heading'),
+    greeting: translate('emails.invitation.greeting', values),
+    description: translate(
+      options.inviterName ? 'emails.invitation.description_inviter' : 'emails.invitation.description',
+      values,
+    ),
+    htmlInstructions: translate('emails.invitation.html_instructions'),
+    textInstructions: translate('emails.invitation.text_instructions'),
+    expiry: translate('emails.invitation.expiry', values),
+    acceptLabel: translate('emails.invitation.accept_label'),
+    copyLinkLabel: translate('emails.invitation.copy_link_label'),
+    personalMessageLabel: translate(
+      options.inviterName
+        ? 'emails.invitation.personal_message_label_inviter'
+        : 'emails.invitation.personal_message_label',
+      values,
+    ),
+  };
   return {
     context: {
-      userName: getUserDisplayName(user),
+      userName,
       inviteUrl,
       orgName,
-      expiresIn: formatInvitationLifetime(options.expiresInSeconds),
+      expiresIn,
       branding,
-      locale,
+      locale: selectedLocale,
+      invitationCopy,
       // Enhanced invitation fields — only included when provided
       personalMessage: options.personalMessage ?? null,
       inviterName: options.inviterName ?? null,
     },
-    subject: options.inviterName
-      ? `${options.inviterName} has invited you to ${orgName}`
-      : `You've been invited to ${orgName}`,
+    subject: translate(
+      options.inviterName ? 'emails.invitation.subject_inviter' : 'emails.invitation.subject',
+      values,
+    ),
   };
 }
 
 /**
- * Send an invitation email to a newly created user.
+ * Send an invitation email to a recipient who may not have an account yet.
  *
- * @param user - Recipient user (newly created)
+ * @param user - Recipient fields; the account id is optional for a pending invitation
  * @param org - Organization (for branding and template override)
  * @param inviteUrl - Full URL the user clicks to accept the invitation
- * @param locale - Locale for i18n
+ * @param locale - Explicit invitation language; missing/unsupported input uses current defaults
  * @param options - Required expiry plus optional personal message and inviter name
  * @returns `sent` when the transport accepted the message, otherwise `failed`
+ * @example
+ * await sendInvitationEmail(recipient, organization, inviteUrl, 'nl', { expiresInSeconds: 604800 });
  */
 export async function sendInvitationEmail(
   user: EmailUser,
   org: EmailOrganization,
   inviteUrl: string,
-  locale: string,
+  locale: string | null | undefined,
   options: InvitationEmailOptions,
 ): Promise<InvitationEmailDelivery> {
   try {
@@ -404,15 +450,19 @@ export async function sendInvitationEmail(
  * @param user - Recipient user
  * @param org - Organization for branding
  * @param inviteUrl - Full URL (can be a placeholder for preview)
- * @param locale - Locale for i18n
- * @param options - Optional personal message and inviter name
+ * @param locale - Explicit invitation language; resolved identically to sent invitations
+ * @param options - Required lifetime plus optional personal message and inviter name
  * @returns Rendered HTML, plain text, and subject line
+ * @example
+ * const preview = await renderInvitationEmail(recipient, organization, previewUrl, 'nl', {
+ *   expiresInSeconds: 604800,
+ * });
  */
 export async function renderInvitationEmail(
   user: EmailUser,
   org: EmailOrganization,
   inviteUrl: string,
-  locale: string,
+  locale: string | null | undefined,
   options: InvitationEmailOptions,
 ): Promise<{ html: string; text: string; subject: string }> {
   const { context, subject } = await buildInvitationContext(user, org, inviteUrl, locale, options);

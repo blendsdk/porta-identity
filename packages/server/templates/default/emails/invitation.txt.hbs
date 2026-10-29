@@ -1,18 +1,15 @@
-You've been invited!
+{{{invitationCopy.heading}}}
 
-Hi {{userName}},
+{{{invitationCopy.greeting}}}
 
-{{#if inviterName}}
-{{inviterName}} has invited you to join {{orgName}}. Click the link below to set up your account. This invitation expires in {{expiresIn}}.
-{{else}}
-You've been invited to join {{orgName}}. Click the link below to set up your account. This invitation expires in {{expiresIn}}.
-{{/if}}
+{{{invitationCopy.description}}} {{{invitationCopy.textInstructions}}} {{{invitationCopy.expiry}}}
 {{#if personalMessage}}
 
-Message from {{#if inviterName}}{{inviterName}}{{else}}your admin{{/if}}:
-"{{personalMessage}}"
+{{{invitationCopy.personalMessageLabel}}}
+"{{{personalMessage}}}"
 
 {{/if}}
+{{{invitationCopy.acceptLabel}}}
 {{{inviteUrl}}}
 
-© {{year}} {{branding.companyName}}
+© {{year}} {{{branding.companyName}}}
