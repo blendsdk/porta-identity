@@ -6,6 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type * as PasswordModule from '../../../src/users/password.js';
 
 const { poolQuery } = vi.hoisted(() => ({ poolQuery: vi.fn() }));
 
@@ -28,10 +29,14 @@ vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(() => ({ query: poolQuery })),
 }));
 
-vi.mock('../../../src/auth/i18n.js', () => ({
-  resolveLocale: vi.fn().mockResolvedValue('en'),
-  getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
-}));
+vi.mock('../../../src/auth/i18n.js', () => {
+  const translate = (key: string) => `t:${key}`;
+  return {
+    resolveLocale: vi.fn().mockResolvedValue('en'),
+    getTranslationFunction: vi.fn().mockReturnValue(translate),
+    prepareTranslationFunction: vi.fn().mockResolvedValue(translate),
+  };
+});
 
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: vi.fn().mockResolvedValue('<html>rendered</html>'),
@@ -49,7 +54,8 @@ vi.mock('../../../src/users/invitation-service.js', () => ({
   acceptInvitation: vi.fn(),
 }));
 
-vi.mock('../../../src/users/password.js', () => ({
+vi.mock('../../../src/users/password.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof PasswordModule>()),
   validatePassword: vi.fn().mockReturnValue({ isValid: true }),
 }));
 

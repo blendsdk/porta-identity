@@ -190,7 +190,7 @@ templates/default/
 
 ## Template Variables Reference {#variables}
 
-All templates have access to these variables:
+The available variables depend on the page or email type:
 
 ### Global Variables (All Pages)
 
@@ -254,14 +254,35 @@ When the consent page is shown depends on the client's trust and the request:
 | Variable     | Type     | Description                                      |
 | ------------ | -------- | ------------------------------------------------ |
 | `branding.*` | `object` | Same branding variables as pages                 |
-| `url`        | `string` | Action URL (magic link, reset link, invite link) |
+| `inviteUrl`  | `string` | Invitation action URL                          |
 | `code`       | `string` | OTP code (for otp-code template)                 |
 | `expiresIn`  | `string` | Human-readable expiry (e.g., "15 minutes")       |
 | `userName`   | `string` | Recipient's display name                         |
 | `year`       | `number` | Current year                                     |
 
 Invitation templates receive `expiresIn` from the configured `invitation_ttl`, for example
-`7 days`, `12 hours`, or `5 minutes`. The former `expiresDays` variable is removed.
+`7 days` or `7 dagen`. The duration is already localized; the former `expiresDays` variable is
+removed. Invitation `locale` is the selected canonical packaged language, `en` or `nl`.
+
+All existing invitation context variables remain available:
+
+| Variable | Purpose |
+| --- | --- |
+| `userName`, `orgName`, `branding` | Recipient and organization presentation data |
+| `inviteUrl` | The existing trusted invitation destination |
+| `expiresIn`, `locale` | Localized duration and selected rendering language |
+| `personalMessage`, `inviterName` | Optional message and inviter display name |
+| `year` | Current copyright year |
+
+`invitationCopy` adds ordinary strings for `heading`, `greeting`, `description`, `htmlInstructions`,
+`textInstructions`, `expiry`, `acceptLabel`, `copyLinkLabel` and `personalMessageLabel`. These are
+plain text, not HTML or executable template content. Keep escaped interpolation in HTML;
+plaintext invitation templates can interpolate text literally.
+
+Tenant HTML and plaintext template lookup and fallback remain independent. A custom HTML file
+does not replace the default plaintext file, or the reverse. Hardcoded custom-template copy is
+not automatically translated. Names, branding and personal messages remain literal data and
+are not translated; HTML still escapes their text safely.
 
 ---
 
@@ -631,20 +652,22 @@ Then open [http://localhost:8025](http://localhost:8025) to view all sent emails
 
 ## Internationalization (i18n) {#i18n}
 
-Porta supports locale-based translations. Translation files are stored in `locales/default/<locale>/`:
+Porta ships complete English (`en`) and formal Dutch (`nl`, using `u/uw`) authentication-page
+translation bundles. The default remains English (`en`). Packaged files live in
+`locales/default/<locale>/`; their source is `packages/server/locales/default/<locale>/`.
 
 ```
 locales/default/
-└── en/
-    ├── common.json     # Shared strings (buttons, labels)
-    ├── login.json      # Login page strings
-    ├── consent.json    # Consent page strings
-    ├── errors.json     # Error messages
-    ├── emails.json     # Email subject lines and content
-    └── ...
+├── en/
+│   ├── common.json
+│   ├── invitation.json
+│   ├── emails.json
+│   └── ...            # All eleven authentication namespaces
+└── nl/
+    └── ...            # Matching namespaces, keys and placeholders
 ```
 
-Use the <code v-pre>{{t "key"}}</code> helper in templates to reference translated strings:
+On pages, use the <code v-pre>{{t "key"}}</code> helper to reference translated strings:
 
 ::: v-pre
 
@@ -656,7 +679,36 @@ Use the <code v-pre>{{t "key"}}</code> helper in templates to reference translat
 
 :::
 
-To add a new language, create a new locale directory (e.g., `locales/default/nl/`) with the same JSON files and mount it alongside your custom templates.
+### Invitation language
+
+| Surface | Selection order |
+| --- | --- |
+| Invitation email and preview | Supported explicit invitation input → organization default → global default → English |
+| Valid invitation acceptance pages | Browser preference → stored invitation locale → organization default → global default → English |
+
+Email and preview selection does not use browser preferences. Other email types retain their
+existing copy. The existing OIDC `ui_locales` priority is unchanged.
+
+Regional tags such as `nl-NL` are normalized to the base language `nl` for rendering. Unsupported
+invitation input is skipped, so organization and global fallback still apply. Stored explicit and
+null invitation locale values remain unchanged. Acceptance preserves that stored account locale;
+the browser's display preference does not overwrite it or create an inherited-language snapshot.
+
+Unknown, expired, used, foreign-tenant and email-conflicting invitations, including late rejection
+by atomic acceptance, use the baseline browser → organization → global → English chain without
+invitation language or details. CSRF is checked before invitation or account lookup.
+
+Missing selected-language content falls back to English. Tenant translation overrides are ready
+before invitation copy is rendered, and each render keeps its own tenant/language context.
+For rollout and rollback precautions, see [deployment guidance](./deployment.md#invitation-language-rollout-and-rollback).
+
+### Adding another language
+
+Add a complete source translation pack with every namespace, key and interpolation placeholder.
+Update `SUPPORTED_LOCALES` in `packages/server/src/lib/system-config-catalog.ts`, add the relevant
+tests, then rebuild and deploy the server and its assets. Mounting a directory alone does not
+install or activate a new language; languages are not discovered automatically at runtime.
+Existing tenant overrides for already packaged languages remain supported.
 
 ---
 

@@ -29,6 +29,7 @@ vi.mock('../../../src/auth/csrf.js', () => ({
 vi.mock('../../../src/auth/i18n.js', () => ({
   resolveLocale: async () => 'en',
   getTranslationFunction: () => (key: string) => key,
+  prepareTranslationFunction: async () => (key: string) => key,
 }));
 
 vi.mock('../../../src/auth/template-engine.js', () => ({

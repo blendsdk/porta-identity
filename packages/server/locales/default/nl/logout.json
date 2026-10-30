@@ -1,0 +1,9 @@
+{
+  "title": "Uitloggen",
+  "message": "Weet u zeker dat u wilt uitloggen?",
+  "message_client": "U staat op het punt uit te loggen bij deze toepassing.",
+  "confirm": "Uitloggen",
+  "cancel": "Terug naar de toepassing",
+  "success_title": "Uitgelogd",
+  "success_message": "U bent uitgelogd."
+}

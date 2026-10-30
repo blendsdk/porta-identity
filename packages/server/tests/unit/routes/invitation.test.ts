@@ -34,10 +34,14 @@ vi.mock('../../../src/lib/database.js', () => ({
   }),
 }));
 
-vi.mock('../../../src/auth/i18n.js', () => ({
-  resolveLocale: vi.fn().mockResolvedValue('en'),
-  getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
-}));
+vi.mock('../../../src/auth/i18n.js', () => {
+  const translate = (key: string) => key === 'invitation.error_password_min_length' ? 'Too short' : `t:${key}`;
+  return {
+    resolveLocale: vi.fn().mockResolvedValue('en'),
+    getTranslationFunction: vi.fn().mockReturnValue(translate),
+    prepareTranslationFunction: vi.fn().mockResolvedValue(translate),
+  };
+});
 
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: vi.fn().mockResolvedValue('<html>rendered</html>'),
@@ -51,7 +55,8 @@ vi.mock('../../../src/users/invitation-service.js', () => ({
   acceptInvitation: vi.fn(),
 }));
 
-vi.mock('../../../src/users/password.js', () => ({
+vi.mock('../../../src/users/password.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof passwordUtils>()),
   validatePassword: vi.fn().mockReturnValue({ isValid: true }),
 }));
 
@@ -474,6 +479,7 @@ describe('invitation routes', () => {
       vi.mocked(passwordUtils.validatePassword).mockReturnValue({
         isValid: false,
         error: 'Too short',
+        reason: passwordUtils.PasswordValidationFailureReason.TooShort,
       });
 
       const ctx = createMockCtx({ body: { password: 'x', confirmPassword: 'x', _csrf: 'tok' } });

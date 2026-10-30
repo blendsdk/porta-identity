@@ -58,13 +58,14 @@ interface MailHogApiItem {
     Headers: Record<string, string[]>;
     Body: string;
     Size: number;
-    MIME: {
-      Parts?: Array<{
-        Headers: Record<string, string[]>;
-        Body: string;
-      }>;
-    } | null;
   };
+  /** The v2 API places parsed MIME parts beside Content, not inside it. */
+  MIME: {
+    Parts?: Array<{
+      Headers: Record<string, string[]>;
+      Body: string;
+    }>;
+  } | null;
   Created: string;
   Raw: { From: string; To: string[]; Data: string; Helo: string };
 }
@@ -229,13 +230,13 @@ export class MailHogClient {
     let body = '';
     let html = '';
 
-    if (item.Content.MIME?.Parts && item.Content.MIME.Parts.length > 0) {
+    if (item.MIME?.Parts && item.MIME.Parts.length > 0) {
       // Multi-part MIME — extract text/plain and text/html parts.
       // Always decode quoted-printable — Nodemailer uses it by default
       // and long URLs are split across lines with `=` continuations
       // which breaks regex-based link extraction. Decoding is harmless
       // for non-QP content in this test context.
-      for (const part of item.Content.MIME.Parts) {
+      for (const part of item.MIME.Parts) {
         const contentType = part.Headers['Content-Type']?.[0] ?? '';
         const decoded = decodeQuotedPrintable(part.Body);
         if (contentType.includes('text/plain')) {

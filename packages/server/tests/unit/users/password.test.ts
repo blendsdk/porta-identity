@@ -21,30 +21,35 @@ describe('validatePassword', () => {
     const result = validatePassword('a'.repeat(MIN_PASSWORD_LENGTH));
     expect(result.isValid).toBe(true);
     expect(result.error).toBeUndefined();
+    expect(result.reason).toBeUndefined();
   });
 
   it('should accept valid password at maximum length', () => {
     const result = validatePassword('a'.repeat(MAX_PASSWORD_LENGTH));
     expect(result.isValid).toBe(true);
     expect(result.error).toBeUndefined();
+    expect(result.reason).toBeUndefined();
   });
 
   it('should reject password shorter than minimum', () => {
     const result = validatePassword('a'.repeat(MIN_PASSWORD_LENGTH - 1));
     expect(result.isValid).toBe(false);
     expect(result.error).toContain(`at least ${MIN_PASSWORD_LENGTH}`);
+    expect(result.reason).toBe('too_short');
   });
 
   it('should reject password longer than maximum', () => {
     const result = validatePassword('a'.repeat(MAX_PASSWORD_LENGTH + 1));
     expect(result.isValid).toBe(false);
     expect(result.error).toContain(`at most ${MAX_PASSWORD_LENGTH}`);
+    expect(result.reason).toBe('too_long');
   });
 
   it('should reject empty string', () => {
     const result = validatePassword('');
     expect(result.isValid).toBe(false);
     expect(result.error).toBeDefined();
+    expect(result.reason).toBe('too_short');
   });
 });
 

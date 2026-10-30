@@ -1,0 +1,37 @@
+{
+  "magic_link": {
+    "subject": "Log in op uw account"
+  },
+  "password_reset": {
+    "subject": "Stel uw wachtwoord opnieuw in"
+  },
+  "invitation": {
+    "subject": "U bent uitgenodigd voor {{orgName}}",
+    "subject_inviter": "{{inviterName}} heeft u uitgenodigd voor {{orgName}}",
+    "heading": "U bent uitgenodigd!",
+    "greeting": "Beste {{userName}},",
+    "description": "U bent uitgenodigd om lid te worden van {{orgName}}.",
+    "description_inviter": "{{inviterName}} heeft u uitgenodigd om lid te worden van {{orgName}}.",
+    "html_instructions": "Klik op de onderstaande knop om uw account in te stellen.",
+    "text_instructions": "Klik op de onderstaande link om uw account in te stellen.",
+    "expiry": "Deze uitnodiging verloopt over {{expiresIn}}.",
+    "accept_label": "Uitnodiging accepteren",
+    "copy_link_label": "Of kopieer deze link:",
+    "personal_message_label": "Bericht van uw beheerder:",
+    "personal_message_label_inviter": "Bericht van {{inviterName}}:",
+    "duration": {
+      "day_one": "{{count}} dag",
+      "day_other": "{{count}} dagen",
+      "hour_one": "{{count}} uur",
+      "hour_other": "{{count}} uur",
+      "minute_one": "{{count}} minuut",
+      "minute_other": "{{count}} minuten"
+    }
+  },
+  "welcome": {
+    "subject": "Welkom bij {{orgName}}"
+  },
+  "password_changed": {
+    "subject": "Uw wachtwoord is gewijzigd"
+  }
+}

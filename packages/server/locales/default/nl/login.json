@@ -1,0 +1,17 @@
+{
+  "title": "Log in op uw account",
+  "subtitle": "Log in om verder te gaan naar {{clientName}}",
+  "email_label": "E-mailadres",
+  "email_placeholder": "u@example.com",
+  "password_label": "Wachtwoord",
+  "password_placeholder": "Voer uw wachtwoord in",
+  "submit": "Inloggen",
+  "forgot_password": "Wachtwoord vergeten?",
+  "or_divider": "of",
+  "magic_link_button": "Stuur mij een inloglink",
+  "error_invalid": "Ongeldig e-mailadres of wachtwoord",
+  "error_account_inactive": "Uw account is nog niet actief. Neem contact op met uw beheerder.",
+  "error_account_locked": "Uw account is vergrendeld. Neem contact op met uw beheerder.",
+  "error_account_suspended": "Uw account is opgeschort. Neem contact op met uw beheerder.",
+  "error_rate_limited": "Te veel inlogpogingen. Probeer het later opnieuw."
+}

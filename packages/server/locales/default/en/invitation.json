@@ -18,5 +18,9 @@
   "expired_message": "This invitation link has expired or is no longer valid.",
   "contact_admin": "Please contact your organization administrator for a new invitation.",
   "error_mismatch": "Passwords do not match",
-  "error_weak": "Password does not meet the minimum requirements"
+  "error_weak": "Password does not meet the minimum requirements",
+  "error_password_mismatch": "Passwords do not match",
+  "error_password_min_length": "Password must be at least {{minLength}} characters",
+  "error_password_max_length": "Password must not exceed {{maxLength}} characters",
+  "success": "Your invitation has been accepted."
 }

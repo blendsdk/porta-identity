@@ -220,7 +220,7 @@ const EXPECTED_CATALOG = [
     valueType: 'string',
     unit: 'locale',
     defaultValue: 'en',
-    allowedValues: ['en'],
+    allowedValues: ['en', 'nl'],
     applicationMode: 'runtime',
   },
 ];
@@ -323,22 +323,39 @@ describe('system configuration catalog', () => {
     },
   );
 
-  it('should expose only the complete supported locale en', () => {
-    expect(SUPPORTED_LOCALES).toEqual(['en']);
+  it('should expose only the complete supported locales en and nl', () => {
+    expect(SUPPORTED_LOCALES).toEqual(['en', 'nl']);
     expect(NAMESPACES).toEqual(REQUIRED_NAMESPACES);
     const definition = findSystemConfigDefinition('default_locale');
     if (!definition) throw new Error('Locale definition is missing');
     expect(validateSystemConfigValue(definition, 'en')).toBe('en');
+    expect(validateSystemConfigValue(definition, 'nl')).toBe('nl');
   });
 
-  it.each(['EN', 'nl', ' en ', '', 900, true, null, [], {}].map((value) => [value]))(
-    'should reject unsupported or non-string locale %j',
-    (value) => {
-      const definition = findSystemConfigDefinition('default_locale');
-      if (!definition) throw new Error('Locale definition is missing');
-      expect(validateSystemConfigValue(definition, value)).toBeUndefined();
-    },
-  );
+  it.each(
+    [
+      'EN',
+      'NL',
+      'de',
+      'nl-NL',
+      'nl_NL',
+      'nl--NL',
+      'nl/nl',
+      ' en ',
+      ' nl ',
+      '',
+      900,
+      true,
+      false,
+      null,
+      [],
+      {},
+    ].map((value) => [value]),
+  )('should reject unsupported or non-string locale %j', (value) => {
+    const definition = findSystemConfigDefinition('default_locale');
+    if (!definition) throw new Error('Locale definition is missing');
+    expect(validateSystemConfigValue(definition, value)).toBeUndefined();
+  });
 
   it.each(REQUIRED_NAMESPACES)(
     'should package JSON object resources for namespace %s',

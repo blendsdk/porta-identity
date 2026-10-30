@@ -85,7 +85,7 @@ describe('i18n', () => {
         expect.objectContaining({
           fallbackLng: 'en',
           defaultNS: 'common',
-          preload: ['en'],
+          preload: ['en', 'nl'],
         }),
       );
     });
@@ -165,16 +165,15 @@ describe('i18n', () => {
     });
 
     it('should parse Accept-Language with quality values', async () => {
-      // Both 'de' and 'en' are loaded, but 'de' has higher quality
+      // Both packaged languages are loaded, but Dutch has higher quality.
       (mockedI18next.hasResourceBundle as ReturnType<typeof vi.fn>).mockImplementation(
         (locale: string, ns: string) =>
-          (locale === 'de' || locale === 'en') && ns === 'common',
+          (locale === 'nl' || locale === 'en') && ns === 'common',
       );
 
-      const result = await resolveLocale(undefined, 'en;q=0.5,de;q=0.9', 'fr');
+      const result = await resolveLocale(undefined, 'en;q=0.5,nl;q=0.9', 'fr');
 
-      // 'de' should win because it has higher quality value
-      expect(result).toBe('de');
+      expect(result).toBe('nl');
     });
 
     it('should fall back to org default locale', async () => {
@@ -188,15 +187,15 @@ describe('i18n', () => {
     });
 
     it('should fall back to system config default_locale', async () => {
-      // Nothing loaded except 'es'
+      // Only the packaged Dutch bundle is available.
       (mockedI18next.hasResourceBundle as ReturnType<typeof vi.fn>).mockImplementation(
-        (locale: string, ns: string) => locale === 'es' && ns === 'common',
+        (locale: string, ns: string) => locale === 'nl' && ns === 'common',
       );
-      (getSystemConfigString as ReturnType<typeof vi.fn>).mockResolvedValue('es');
+      (getSystemConfigString as ReturnType<typeof vi.fn>).mockResolvedValue('nl');
 
       const result = await resolveLocale(undefined, undefined, 'fr');
 
-      expect(result).toBe('es');
+      expect(result).toBe('nl');
     });
 
     it('should fall back to hardcoded en when nothing else matches', async () => {
@@ -223,15 +222,14 @@ describe('i18n', () => {
     });
 
     it('should handle multiple ui_locales and pick first available', async () => {
-      // Only 'de' is loaded
+      // Only Dutch is loaded; unsupported preferences must not hide it.
       (mockedI18next.hasResourceBundle as ReturnType<typeof vi.fn>).mockImplementation(
-        (locale: string, ns: string) => locale === 'de' && ns === 'common',
+        (locale: string, ns: string) => locale === 'nl' && ns === 'common',
       );
 
-      const result = await resolveLocale('fr de en', undefined, 'en');
+      const result = await resolveLocale('fr nl en', undefined, 'en');
 
-      // 'fr' not available, 'de' is → should pick 'de'
-      expect(result).toBe('de');
+      expect(result).toBe('nl');
     });
   });
 

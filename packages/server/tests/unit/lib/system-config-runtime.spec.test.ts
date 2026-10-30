@@ -80,7 +80,7 @@ describe('system configuration runtime policy', () => {
     },
   );
 
-  it.each(['EN', 'nl', ' en ', 900, true, null, [], {}].map((value) => [value]))(
+  it.each(['EN', 'de', ' en ', 900, true, null, [], {}].map((value) => [value]))(
     'should use native locale fallback for invalid stored value %j',
     async (value) => {
       query.mockResolvedValue({ rows: [{ value }] });
@@ -90,6 +90,15 @@ describe('system configuration runtime policy', () => {
         key: 'default_locale',
         reason: 'invalid',
       });
+    },
+  );
+
+  it.each(['en', 'nl'])(
+    'should return native locale %s unchanged without fallback warnings',
+    async (value) => {
+      query.mockResolvedValue({ rows: [{ value }] });
+      expect(await getSystemConfigString('default_locale')).toBe(value);
+      expect(warn).not.toHaveBeenCalled();
     },
   );
 

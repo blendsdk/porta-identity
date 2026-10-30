@@ -44,12 +44,19 @@ message.
 | `--email`            | ✅       | Email address                                                                                                                                                                                          |
 | `--name`             |          | Display name, split into `givenName`/`familyName` on the first space                                                                                                                                   |
 | `--role`             |          | Role to pre-assign as `<application-id>:<role-id>`. Repeat for more roles. Use `porta app list` and `porta app role list <app-id>` to find the IDs. Roles are applied when the invitation is accepted. |
-| `--locale`           |          | Locale forwarded with the invitation (default: organization default). The shipped email templates are English; localized content requires deployment templates.                                        |
+| `--locale`           |          | Optional invitation language input, such as `nl`. Rendering normalizes regional tags and falls back through organization/global defaults. |
 | `--personal-message` |          | Personal message included in the invitation email (max 500 characters)                                                                                                                                 |
 
 The deferred result shape is deliberate: no user exists until the invitation is
 accepted, so the command does not return a user ID. Assign additional roles after
 acceptance with `porta user roles assign`.
+
+The shipped invitation templates support English (`en`) and formal Dutch (`nl`). `--locale nl`
+requests Dutch email copy. Unsupported input falls through organization default, global default
+and English; email selection does not use browser preferences. Regional values such as `nl-NL`
+are normalized for rendering, while the stored input remains unchanged. The recipient's browser
+can override the invitation language on valid acceptance pages without changing the stored account
+locale. See [invitation language selection](../guide/custom-ui.md#invitation-language).
 
 ### `porta user list`
 
