@@ -28,7 +28,7 @@ const catalog = [
   ['max_failed_logins', '5', '1..100', 'attempts', 'runtime'],
   ['lockout_duration_seconds', '900', '60..604800', 'seconds', 'runtime'],
   ['audit_retention_days', '90', '1..3650', 'days', 'runtime'],
-  ['default_locale', 'en', 'en', 'locale', 'runtime'],
+  ['default_locale', 'en', 'en, nl', 'locale', 'runtime'],
 ];
 const startupKeys = catalog.filter((row) => row[4] === 'restart-required').map((row) => row[0]);
 
@@ -126,7 +126,9 @@ for (const path of publicGuides) {
       const row = table.rows.find((item) => plain(item[keyIndex]) === key);
       assert.equal(plain(row[defaultIndex]).replace(/,/g, ''), defaultValue, `${key}: native default`);
       if (key === 'default_locale') {
-        assert.match(plain(row[rangeIndex]), /^(?:en(?: only)?|only en)$/);
+        const choices = plain(row[rangeIndex]).replace(/\bonly\b/g, '').trim()
+          .split(/\s*(?:,|\bor\b|\band\b)\s*/).map((choice) => choice.trim()).sort();
+        assert.deepEqual(choices, ['en', 'nl'], `${key}: closed canonical choices`);
       } else {
         assert.equal(range(row[rangeIndex]), bounds, `${key}: inclusive range`);
       }

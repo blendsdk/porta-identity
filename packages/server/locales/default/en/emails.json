@@ -6,7 +6,27 @@
     "subject": "Reset your password"
   },
   "invitation": {
-    "subject": "You've been invited to {{orgName}}"
+    "subject": "You've been invited to {{orgName}}",
+    "subject_inviter": "{{inviterName}} has invited you to {{orgName}}",
+    "heading": "You've been invited!",
+    "greeting": "Hi {{userName}},",
+    "description": "You've been invited to join {{orgName}}.",
+    "description_inviter": "{{inviterName}} has invited you to join {{orgName}}.",
+    "html_instructions": "Click the button below to set up your account.",
+    "text_instructions": "Click the link below to set up your account.",
+    "expiry": "This invitation expires in {{expiresIn}}.",
+    "accept_label": "Accept Invitation",
+    "copy_link_label": "Or copy this link:",
+    "personal_message_label": "Message from your admin:",
+    "personal_message_label_inviter": "Message from {{inviterName}}:",
+    "duration": {
+      "day_one": "{{count}} day",
+      "day_other": "{{count}} days",
+      "hour_one": "{{count}} hour",
+      "hour_other": "{{count}} hours",
+      "minute_one": "{{count}} minute",
+      "minute_other": "{{count}} minutes"
+    }
   },
   "welcome": {
     "subject": "Welcome to {{orgName}}"

@@ -37,10 +37,22 @@ let dummyPasswordHashInitialization: Promise<string> | null = null;
 // Validation result type
 // ---------------------------------------------------------------------------
 
-/** Result of password validation — includes error message when invalid */
+/** Closed internal reasons used to select localized messages without matching English text. */
+export enum PasswordValidationFailureReason {
+  /** The password contains fewer characters than the existing minimum. */
+  TooShort = 'too_short',
+  /** The password exceeds the existing maximum length. */
+  TooLong = 'too_long',
+}
+
+/** Result of password validation, retaining the legacy English message for existing callers. */
 export interface PasswordValidationResult {
+  /** Whether the password satisfies the existing length policy. */
   isValid: boolean;
+  /** Legacy English validation message, present only on failure. */
   error?: string;
+  /** Internal presentation discriminator; absent on successful validation. */
+  reason?: PasswordValidationFailureReason;
 }
 
 // ---------------------------------------------------------------------------
@@ -56,13 +68,17 @@ export interface PasswordValidationResult {
  * frustrate users.
  *
  * @param password - The plaintext password to validate
- * @returns Validation result with `isValid` flag and optional `error` message
+ * @returns Validation flag plus the legacy English error and internal reason on failure
+ * @example
+ * const result = validatePassword(candidatePassword);
+ * if (!result.isValid) selectLocalizedMessage(result.reason);
  */
 export function validatePassword(password: string): PasswordValidationResult {
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
       isValid: false,
       error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters`,
+      reason: PasswordValidationFailureReason.TooShort,
     };
   }
 
@@ -70,6 +86,7 @@ export function validatePassword(password: string): PasswordValidationResult {
     return {
       isValid: false,
       error: `Password must be at most ${MAX_PASSWORD_LENGTH} characters`,
+      reason: PasswordValidationFailureReason.TooLong,
     };
   }
 

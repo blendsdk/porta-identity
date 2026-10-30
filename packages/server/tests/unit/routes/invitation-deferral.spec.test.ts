@@ -1,5 +1,5 @@
 /**
- * Route specification for the deferred invitation flow (ST-5–ST-15, ST-18–ST-20, ST-24, ST-34).
+ * Route specification for the deferred invitation flow.
  *
  * The admin invite route must store an email/organization-keyed invitation and create no account.
  * The public accept route must show a non-mutating confirmation page first and only create the
@@ -46,10 +46,14 @@ vi.mock('../../../src/lib/database.js', () => ({
   getDatabaseTransactionClient: () => ({ query: poolQuery }),
 }));
 
-vi.mock('../../../src/auth/i18n.js', () => ({
-  resolveLocale: vi.fn().mockResolvedValue('en'),
-  getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
-}));
+vi.mock('../../../src/auth/i18n.js', () => {
+  const translate = (key: string) => key === 'invitation.error_password_min_length' ? 'Too short' : `t:${key}`;
+  return {
+    resolveLocale: vi.fn().mockResolvedValue('en'),
+    getTranslationFunction: vi.fn().mockReturnValue(translate),
+    prepareTranslationFunction: vi.fn().mockResolvedValue(translate),
+  };
+});
 
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: vi.fn().mockResolvedValue('<html>rendered</html>'),
@@ -70,7 +74,8 @@ vi.mock('../../../src/users/invitation-service.js', () => ({
   acceptInvitation: vi.fn(),
 }));
 
-vi.mock('../../../src/users/password.js', () => ({
+vi.mock('../../../src/users/password.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof passwordUtils>()),
   validatePassword: vi.fn().mockReturnValue({ isValid: true }),
 }));
 
@@ -535,6 +540,7 @@ describe('deferred invitation routes', () => {
       vi.mocked(passwordUtils.validatePassword).mockReturnValue({
         isValid: false,
         error: 'Too short',
+        reason: passwordUtils.PasswordValidationFailureReason.TooShort,
       });
       const ctx = createMockCtx({ body: { password: 'x', confirmPassword: 'x', _csrf: 'tok' } });
 

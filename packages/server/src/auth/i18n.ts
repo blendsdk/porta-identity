@@ -9,9 +9,10 @@
  * The locale resolution chain prioritizes:
  *   1. ui_locales from OIDC authorization request
  *   2. Accept-Language header
- *   3. Organization defaultLocale
- *   4. Global default_locale from system_config
- *   5. Hardcoded fallback: 'en'
+ *   3. Valid invitation locale, when supplied by an invitation caller
+ *   4. Organization defaultLocale
+ *   5. Global default_locale from system_config
+ *   6. Hardcoded fallback: 'en'
  *
  * Also registers a Handlebars {{t}} helper for template translations.
  *
@@ -28,7 +29,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import Handlebars from 'handlebars';
 import { getSystemConfigString } from '../lib/system-config.js';
-import { SUPPORTED_LOCALES } from '../lib/system-config-catalog.js';
+import { SUPPORTED_LOCALES, type SupportedLocale } from '../lib/system-config-catalog.js';
 import { logger } from '../lib/logger.js';
 import { getLocalesDirectory } from '../lib/runtime-paths.js';
 
@@ -123,7 +124,8 @@ async function loadOrgOverrides(
   const overridePath = path.join(LOCALES_DIR, orgSlug, locale, `${namespace}.json`);
   try {
     const content = await fs.readFile(overridePath, 'utf-8');
-    return JSON.parse(content) as Record<string, unknown>;
+    const resource: unknown = JSON.parse(content);
+    return isTranslationObject(resource) ? resource : null;
   } catch {
     // No override file — this is normal, not an error
     return null;
@@ -131,14 +133,16 @@ async function loadOrgOverrides(
 }
 
 /**
- * Deep-merge org overrides into a flat key-value map.
+ * Flatten valid string overrides into a flat key-value map.
  *
  * Flattens nested objects into dot-notation keys for i18next lookup.
  * For example: { login: { title: "Custom" } } => { "login.title": "Custom" }
  *
  * @param obj - Nested object to flatten
  * @param prefix - Current key prefix (for recursion)
- * @returns Flat key-value map
+ * Invalid leaves are ignored so the corresponding packaged text remains the fallback.
+ *
+ * @returns Flat key-value map containing string translations only
  */
 function flattenOverrides(
   obj: Record<string, unknown>,
@@ -147,13 +151,18 @@ function flattenOverrides(
   const result: Record<string, string> = {};
   for (const [key, value] of Object.entries(obj)) {
     const fullKey = prefix ? `${prefix}.${key}` : key;
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      Object.assign(result, flattenOverrides(value as Record<string, unknown>, fullKey));
-    } else {
-      result[fullKey] = String(value);
+    if (isTranslationObject(value)) {
+      Object.assign(result, flattenOverrides(value, fullKey));
+    } else if (typeof value === 'string') {
+      result[fullKey] = value;
     }
   }
   return result;
+}
+
+/** Only JSON objects can contain namespace keys; arrays and scalar resources are malformed. */
+function isTranslationObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 // ---------------------------------------------------------------------------
@@ -163,24 +172,31 @@ function flattenOverrides(
 /**
  * Resolve the best locale for a request.
  *
- * Resolution chain (first non-empty match wins):
+ * Resolution chain (first supported, loaded match wins):
  *   1. ui_locales from OIDC authorization request (space-separated list)
- *   2. Accept-Language header (first language tag)
- *   3. Organization defaultLocale
- *   4. Global default_locale from system_config table
- *   5. Hardcoded fallback: 'en'
+ *   2. Accept-Language header (positive quality, highest preference first)
+ *   3. Optional invitation locale
+ *   4. Organization defaultLocale
+ *   5. Global default_locale from system_config table
+ *   6. Hardcoded fallback: 'en'
  *
- * Only returns locales that i18next has loaded (verified via hasResourceBundle).
+ * Candidates must be well-formed language tags and belong to the packaged allowlist. The
+ * selected language must have its common bundle loaded; unavailable candidates are skipped.
+ * Callers omitting invitation context retain the existing OIDC resolution order.
  *
  * @param uiLocales - Space-separated locale list from OIDC params (e.g., 'nl en')
  * @param acceptLanguage - Accept-Language header value (e.g., 'en-US,en;q=0.9')
  * @param orgDefaultLocale - Organization's default locale setting
+ * @param invitationLocale - Explicit email locale or a validated, non-conflicting invitation's locale
  * @returns Resolved locale string (e.g., 'en')
+ * @example
+ * await resolveLocale(undefined, 'fr-FR', 'en', 'nl'); // 'nl' when packaged and loaded
  */
 export async function resolveLocale(
   uiLocales: string | undefined,
   acceptLanguage: string | undefined,
   orgDefaultLocale: string,
+  invitationLocale?: string | null,
 ): Promise<string> {
   // Step 1: Try ui_locales from OIDC authorization request
   if (uiLocales) {
@@ -204,7 +220,16 @@ export async function resolveLocale(
     }
   }
 
-  // Step 3: Try organization default locale
+  // Keep invitation and organization candidates separate so an unsupported invitation
+  // language cannot erase a valid organization fallback.
+  if (invitationLocale) {
+    const normalized = normalizeLocale(invitationLocale);
+    if (isLocaleAvailable(normalized)) {
+      return normalized;
+    }
+  }
+
+  // Try the organization default only after browser and invitation preferences.
   if (orgDefaultLocale) {
     const normalized = normalizeLocale(orgDefaultLocale);
     if (isLocaleAvailable(normalized)) {
@@ -212,65 +237,92 @@ export async function resolveLocale(
     }
   }
 
-  // Step 4: Try global default_locale from system_config
+  // Try global default_locale from system_config.
   const globalDefault = await getSystemConfigString('default_locale');
   const normalized = normalizeLocale(globalDefault);
   if (isLocaleAvailable(normalized)) {
     return normalized;
   }
 
-  // Step 5: Hardcoded fallback
+  // English is the final fallback even when deployment resources are incomplete.
   return FALLBACK_LOCALE;
 }
 
 /**
- * Normalize a locale string to its base language code.
- * Strips region/variant suffixes: 'en-US' → 'en', 'nl-NL' → 'nl'.
+ * Validate a complete language tag before selecting its lowercase base language.
+ * Underscores retain the accepted regional-input convention. Validation happens before
+ * stripping suffixes so malformed or path-shaped input cannot become a valid locale.
  *
  * @param locale - Raw locale string
- * @returns Lowercase base language code
+ * @returns Lowercase base language code, or undefined for malformed input
  */
-function normalizeLocale(locale: string): string {
-  return locale.toLowerCase().split(/[-_]/)[0];
+function normalizeLocale(locale: string): string | undefined {
+  try {
+    const canonical = Intl.getCanonicalLocales(locale.replaceAll('_', '-'))[0];
+    return canonical?.split('-')[0].toLowerCase();
+  } catch {
+    return undefined;
+  }
 }
 
 /**
- * Check if a locale has loaded translations in i18next.
+ * Check that a canonical locale is packaged and has its common translations loaded.
  *
  * @param locale - Locale to check
- * @returns true if translations exist for this locale
+ * @returns true only for an available member of the closed language catalog
  */
-function isLocaleAvailable(locale: string): boolean {
-  // Check if at least the 'common' namespace has been loaded
-  return i18next.hasResourceBundle(locale, 'common');
+function isLocaleAvailable(locale: string | undefined): locale is SupportedLocale {
+  return (
+    locale !== undefined &&
+    SUPPORTED_LOCALES.some((supported) => supported === locale) &&
+    i18next.hasResourceBundle(locale, 'common')
+  );
 }
 
 /**
  * Parse an Accept-Language header into ordered language codes.
  *
- * Handles quality values (q=) and returns languages sorted by preference.
+ * Only an optional single quality parameter is accepted. Zero, malformed, duplicate and
+ * out-of-range qualities exclude that candidate. Stable sorting preserves header order
+ * for equal weights; locale validation and wildcard rejection happen during selection.
  * Example: 'en-US,en;q=0.9,nl;q=0.8' → ['en-US', 'en', 'nl']
  *
  * @param header - Accept-Language header value
  * @returns Array of language codes, highest quality first
  */
 function parseAcceptLanguage(header: string): string[] {
-  return header
-    .split(',')
-    .map((part) => {
-      const [lang, ...params] = part.trim().split(';');
-      const qParam = params.find((p) => p.trim().startsWith('q='));
-      const q = qParam ? parseFloat(qParam.trim().slice(2)) : 1.0;
-      return { lang: lang.trim(), q };
-    })
-    .sort((a, b) => b.q - a.q)
-    .map((entry) => entry.lang)
-    .filter(Boolean);
+  const preferences: { locale: string; quality: number }[] = [];
+  for (const part of header.split(',')) {
+    const [language, ...parameters] = part.trim().split(';');
+    if (parameters.length > 1) continue;
+
+    let quality = 1;
+    if (parameters.length === 1) {
+      const weight = /^q=(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/i.exec(parameters[0].trim());
+      if (!weight) continue;
+      quality = Number(weight[1]);
+    }
+    if (quality > 0) preferences.push({ locale: language.trim(), quality });
+  }
+  return preferences
+    .sort((left, right) => right.quality - left.quality)
+    .map(({ locale }) => locale);
 }
 
 // ---------------------------------------------------------------------------
 // Translation function
 // ---------------------------------------------------------------------------
+
+/** Synchronous lookup bound to one render's language and optional tenant overrides. */
+type TranslationFunction = (key: string, options?: Record<string, unknown>) => string;
+
+/** One translator and the completion signal for its private override reads. */
+interface TranslationContext {
+  /** Lookup closure whose override map is never shared with another render. */
+  translate: TranslationFunction;
+  /** Resolves after every existing namespace override read has settled. */
+  ready: Promise<void>;
+}
 
 /**
  * Get a translation function for a specific locale with optional org overrides.
@@ -281,26 +333,65 @@ function parseAcceptLanguage(header: string): string[] {
  *
  * The returned function uses namespace:key syntax internally but accepts
  * plain keys that auto-resolve by checking each namespace.
+ * Synchronous callers can see defaults while overrides load; use the prepared companion when
+ * the first lookup must include tenant overrides.
  *
  * @param locale - Target locale (e.g., 'en')
  * @param orgSlug - Optional org slug for translation overrides
  * @returns Translation function: (key, options?) => translated string
+ * @example
+ * const translate = getTranslationFunction('en');
+ * translate('invitation.title');
  */
 export function getTranslationFunction(
   locale: string,
   orgSlug?: string,
-): (key: string, options?: Record<string, unknown>) => string {
+): TranslationFunction {
+  const context = createTranslationContext(locale, orgSlug);
+  void context.ready.catch(() => {
+    logger.warn({ event: 'translation-overrides-unavailable' }, 'Translation overrides unavailable');
+  });
+  return context.translate;
+}
+
+/**
+ * Prepare a render-local translator before any invitation copy is evaluated.
+ *
+ * The locale must already be canonical, packaged and loaded. Rejecting misuse before creating
+ * the context prevents unselected language strings from reaching filesystem path construction.
+ * Missing, unreadable or malformed tenant overrides retain the packaged-resource fallback.
+ *
+ * @param locale - Canonical language selected by resolveLocale.
+ * @param orgSlug - Resolved organization slug, or undefined for packaged translations only.
+ * @returns Synchronous translator after its private override reads finish.
+ * @throws Error if the language is not available or preparation unexpectedly fails.
+ * @example
+ * const translate = await prepareTranslationFunction('nl', 'acme');
+ * translate('emails.invitation.subject', { orgName: 'Acme' });
+ */
+export async function prepareTranslationFunction(
+  locale: string,
+  orgSlug?: string,
+): Promise<TranslationFunction> {
+  if (!isLocaleAvailable(locale)) throw new Error('Translation locale is not available');
+  const context = createTranslationContext(locale, orgSlug);
+  await context.ready;
+  return context.translate;
+}
+
+/**
+ * Share the existing lookup engine between synchronous and awaited callers without sharing
+ * mutable state. Starting the reads here keeps readiness tied to this exact translator.
+ */
+function createTranslationContext(locale: string, orgSlug?: string): TranslationContext {
   // Cache for org overrides loaded during this function's lifetime
   const orgOverrideCache = new Map<string, Record<string, string>>();
-  let orgOverridesLoaded = false;
 
   /**
-   * Lazily load all org overrides for the given locale.
-   * Only runs once per translation function instance.
+    * Load each namespace once for this translation context.
    */
   async function ensureOrgOverrides(): Promise<void> {
-    if (orgOverridesLoaded || !orgSlug) return;
-    orgOverridesLoaded = true;
+    if (!orgSlug) return;
 
     for (const ns of NAMESPACES) {
       const overrides = await loadOrgOverrides(orgSlug, locale, ns);
@@ -310,12 +401,7 @@ export function getTranslationFunction(
     }
   }
 
-  // Pre-load org overrides eagerly (fire-and-forget — they'll be ready by first use)
-  if (orgSlug) {
-    ensureOrgOverrides().catch((error) => {
-      logger.warn({ error, orgSlug, locale }, 'Failed to load org translation overrides');
-    });
-  }
+  const ready = ensureOrgOverrides();
 
   /**
    * Translation function that resolves keys across namespaces.
@@ -325,7 +411,7 @@ export function getTranslationFunction(
    *   2. Use i18next standard lookup with namespace detection
    *   3. Fall back to key itself if no translation found
    */
-  return (key: string, options?: Record<string, unknown>): string => {
+  const translate: TranslationFunction = (key, options) => {
     // Determine namespace and key parts
     const colonIndex = key.indexOf(':');
     let ns: string | undefined;
@@ -352,18 +438,9 @@ export function getTranslationFunction(
     }
 
     // Check org overrides first
-    if (ns && orgOverrideCache.has(ns)) {
-      const overrides = orgOverrideCache.get(ns)!;
-      if (lookupKey in overrides) {
-        let result = overrides[lookupKey];
-        // Apply simple interpolation for org overrides
-        if (options) {
-          for (const [varKey, varValue] of Object.entries(options)) {
-            result = result.replace(new RegExp(`\\{\\{${varKey}\\}\\}`, 'g'), String(varValue));
-          }
-        }
-        return result;
-      }
+    const overrides = ns ? orgOverrideCache.get(ns) : undefined;
+    if (overrides && Object.hasOwn(overrides, lookupKey)) {
+      return interpolateOverride(overrides[lookupKey], options);
     }
 
     // Use i18next for standard lookup
@@ -373,21 +450,23 @@ export function getTranslationFunction(
       ...(options ?? {}),
     });
 
-    let result = typeof translated === 'string' ? translated : key;
-
-    // Fallback interpolation: if i18next did not replace {{variable}} placeholders
-    // (e.g., due to version-specific behavior or caching), perform manual replacement.
-    // This mirrors the org-override interpolation logic above.
-    if (options && result.includes('{{')) {
-      for (const [varKey, varValue] of Object.entries(options)) {
-        if (varValue !== undefined) {
-          result = result.replace(new RegExp(`\\{\\{${varKey}\\}\\}`, 'g'), String(varValue));
-        }
-      }
-    }
-
-    return result;
+    // i18next already interpolates packaged resources. A second pass would interpret braces
+    // introduced by a user's name or message as another template rather than literal data.
+    return typeof translated === 'string' ? translated : key;
   };
+  return { translate, ready };
+}
+
+/**
+ * Interpolate only placeholders in the original override text. A replacement callback keeps
+ * dollar signs literal and never recursively interprets placeholders contained in user data.
+ */
+function interpolateOverride(text: string, options?: Record<string, unknown>): string {
+  if (!options) return text;
+  return text.replace(/\{\{([^{}]+)\}\}/g, (placeholder, key: string) => {
+    const value = Object.hasOwn(options, key) ? options[key] : undefined;
+    return value === undefined ? placeholder : String(value);
+  });
 }
 
 // ---------------------------------------------------------------------------

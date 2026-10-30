@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="{{locale}}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -16,22 +16,18 @@
   <div class="wrapper">
     <div class="card">
       {{#if branding.logoUrl}}<img src="{{branding.logoUrl}}" alt="{{branding.companyName}}" style="max-height: 40px; margin-bottom: 16px;">{{/if}}
-      <h1 style="font-size: 20px; margin: 0 0 12px 0;">You've been invited!</h1>
-      <p>Hi {{userName}},</p>
-      {{#if inviterName}}
-      <p><strong>{{inviterName}}</strong> has invited you to join <strong>{{orgName}}</strong>. Click the button below to set up your account. This invitation expires in {{expiresIn}}.</p>
-      {{else}}
-      <p>You've been invited to join <strong>{{orgName}}</strong>. Click the button below to set up your account. This invitation expires in {{expiresIn}}.</p>
-      {{/if}}
+      <h1 style="font-size: 20px; margin: 0 0 12px 0;">{{invitationCopy.heading}}</h1>
+      <p>{{invitationCopy.greeting}}</p>
+      <p>{{invitationCopy.description}} {{invitationCopy.htmlInstructions}} {{invitationCopy.expiry}}</p>
       {{#if personalMessage}}
       <div class="personal-message">
         {{personalMessage}}
       </div>
       {{/if}}
       <p style="text-align: center; margin: 24px 0;">
-        <a href="{{{inviteUrl}}}" class="btn">Accept Invitation</a>
+        <a href="{{{inviteUrl}}}" class="btn">{{invitationCopy.acceptLabel}}</a>
       </p>
-      <p style="color: #6b7280; font-size: 13px;">Or copy this link: {{{inviteUrl}}}</p>
+      <p style="color: #6b7280; font-size: 13px;">{{invitationCopy.copyLinkLabel}} {{{inviteUrl}}}</p>
     </div>
     <div class="footer">&copy; {{year}} {{branding.companyName}}</div>
   </div>

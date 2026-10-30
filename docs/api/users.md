@@ -55,7 +55,16 @@ Creates a pending invitation and sends an enhanced invitation email. No account 
 | `claims[].applicationId`     | uuid   | ✅       | Application the claim belongs to                                   |
 | `claims[].claimDefinitionId` | uuid   | ✅       | Claim definition ID                                                |
 | `claims[].value`             | any    | ✅       | Claim value                                                        |
-| `locale`                     | string |          | Locale for the invitation email (default: org default)             |
+| `locale`                     | string |          | Optional invitation language input; normalized for rendering and stored unchanged |
+
+The shipped invitation languages are English (`en`) and formal Dutch (`nl`). Email and preview
+use supported explicit input, then organization default, global default and English. Regional
+input such as `nl-NL` renders as `nl`; unsupported input falls through that chain. This invitation
+field is not a new closed configuration enum.
+
+Valid acceptance pages prefer the recipient's browser language before the stored invitation
+locale and those defaults. Stored explicit/null values are preserved on acceptance; display
+selection does not rewrite them. See [invitation language selection](../guide/custom-ui.md#invitation-language).
 
 **Response:** `201 Created`. Returns `409 Conflict` when the email already has an account in the organization or a live invitation already exists for it.
 
@@ -188,6 +197,10 @@ POST /api/admin/organizations/:orgId/users/invite/preview
 **Permission:** `admin:user:invite`
 
 Renders the invitation email without sending it. Returns the HTML, plain text, and subject line for admin review before sending.
+
+Preview uses the same language selection and copy as sent invitations with matching inputs.
+Browser preferences do not affect either email surface; the preview destination uses its existing
+placeholder token rather than creating a live invitation.
 
 | Field             | Type   | Required | Description                                    |
 | ----------------- | ------ | -------- | ---------------------------------------------- |

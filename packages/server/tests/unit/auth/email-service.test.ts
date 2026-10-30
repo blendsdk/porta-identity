@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach, afterEach } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Mocks — must be declared before imports
@@ -18,6 +18,16 @@ vi.mock('../../../src/auth/effective-branding.js', () => ({
   resolveEffectiveBranding: vi.fn(),
 }));
 
+// Keep real packaged translations while isolating database defaults and tenant override files.
+vi.mock('../../../src/lib/system-config.js', () => ({
+  getSystemConfigString: vi.fn().mockResolvedValue('en'),
+}));
+vi.mock('node:fs/promises', () => ({
+  default: {
+    readFile: vi.fn().mockRejectedValue(new Error('No fixture override')),
+  },
+}));
+
 // Mock audit log — verify fire-and-forget audit entries
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
@@ -34,6 +44,7 @@ vi.mock('../../../src/lib/logger.js', () => ({
 }));
 
 import { renderEmail } from '../../../src/auth/email-renderer.js';
+import { initI18n } from '../../../src/auth/i18n.js';
 import { resolveEffectiveBranding } from '../../../src/auth/effective-branding.js';
 import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import { logger } from '../../../src/lib/logger.js';
@@ -101,6 +112,10 @@ function mockRender(html = '<p>Rendered</p>', text = 'Rendered') {
 
 describe('email-service', () => {
   let mockTransport: ReturnType<typeof createMockTransport>;
+
+  beforeAll(async () => {
+    await initI18n();
+  });
 
   beforeEach(() => {
     vi.clearAllMocks();

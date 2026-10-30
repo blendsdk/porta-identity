@@ -1,0 +1,13 @@
+{
+  "title": "Toegang verlenen",
+  "description": "{{clientName}} vraagt toegang tot uw account",
+  "scopes_heading": "Deze toepassing wil:",
+  "approve": "Toegang toestaan",
+  "deny": "Weigeren",
+  "scope_openid": "Uw identiteit verifiëren",
+  "scope_profile": "Uw profielgegevens inzien",
+  "scope_email": "Uw e-mailadres inzien",
+  "scope_phone": "Uw telefoonnummer inzien",
+  "scope_address": "Uw adres inzien",
+  "scope_offline_access": "Ingelogd blijven (offline toegang)"
+}

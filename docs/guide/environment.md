@@ -32,7 +32,7 @@ administrators can update values but cannot create, rename or delete arbitrary k
 | `max_failed_logins`                | `5`       | `1..100`                  | attempts | `runtime`          |
 | `lockout_duration_seconds`         | `900`     | `60..604800`              | seconds  | `runtime`          |
 | `audit_retention_days`             | `90`      | `1..3650`                 | days     | `runtime`          |
-| `default_locale`                   | `en`      | `en only`                 | locale   | `runtime`          |
+| `default_locale`                   | `en`      | `en, nl`                  | locale   | `runtime`          |
 
 Manage this policy with [the Configuration API](../api/config.md), `porta config list|get|set`,
 or **System Configuration…** in `porta admin`. Duration editors store exact seconds; inline help

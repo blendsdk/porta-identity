@@ -1,0 +1,22 @@
+{
+  "page_title": "Er is iets misgegaan",
+  "generic": "Er is een onverwachte fout opgetreden. Probeer het opnieuw.",
+  "not_found": "De pagina die u zoekt bestaat niet.",
+  "rate_limited": "Te veel verzoeken. Wacht even en probeer het opnieuw.",
+  "rate_limit_exceeded": "Te veel pogingen. Wacht even en probeer het opnieuw.",
+  "token_expired": "Deze link is verlopen. Vraag een nieuwe link aan.",
+  "token_invalid": "Deze link is ongeldig of al gebruikt.",
+  "session_expired": "Uw sessie is verlopen. Log opnieuw in.",
+  "interaction_expired": "Uw sessie is verlopen. Start het inloggen opnieuw.",
+  "csrf_invalid": "De beveiligingscontrole is mislukt. Vernieuw de pagina en probeer het opnieuw.",
+  "magic_link_expired": "Deze inloglink is verlopen. Vraag een nieuwe link aan.",
+  "reset_link_expired": "Deze link om uw wachtwoord opnieuw in te stellen is verlopen. Vraag een nieuwe link aan.",
+  "access_denied": "Toegang geweigerd. U hebt geen toestemming om deze bron te openen.",
+  "code_label": "Foutcode",
+  "org_not_found": "Organisatie niet gevonden.",
+  "org_suspended": "Deze organisatie is opgeschort.",
+  "org_archived": "Deze organisatie is niet meer actief.",
+  "login_method_disabled": "Deze authenticatiemethode is niet beschikbaar voor deze toepassing.",
+  "no_login_methods_configured": "Er zijn geen authenticatiemethoden ingesteld voor deze toepassing. Neem contact op met uw beheerder.",
+  "two_factor_unavailable": "Verificatie is tijdelijk niet beschikbaar. Neem contact op met uw beheerder."
+}

@@ -305,12 +305,41 @@ describe('system configuration administrative API contract', () => {
     },
   );
 
-  it('should reject unsupported locales exactly and accept native en', async () => {
-    for (const value of ['EN', 'nl', ' en ', 1, true, null, [], {}]) {
+  it('should reject unsupported locales exactly and accept native en and nl', async () => {
+    for (const value of [
+      'EN',
+      'NL',
+      'de',
+      'nl-NL',
+      'nl_NL',
+      ' en ',
+      '',
+      1,
+      true,
+      false,
+      null,
+      [],
+      {},
+    ]) {
       const response = await request('PUT', 'default_locale', { value });
       expect(response.status).toBe(400);
       expect(response.body).toEqual(INVALID_ERROR);
     }
-    expect((await request('PUT', 'default_locale', { value: 'en' })).status).toBe(200);
+    expect(boundary.query).not.toHaveBeenCalled();
+    expect(runtime.clearSystemConfigCache).not.toHaveBeenCalled();
+    for (const value of ['en', 'nl']) {
+      const response = await request('PUT', 'default_locale', { value });
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({
+        data: {
+          ...TEST_CONFIG_DEFINITIONS.find((entry) => entry.key === 'default_locale'),
+          allowedValues: ['en', 'nl'],
+          value,
+          updatedAt: CONFIG_UPDATED_AT,
+        },
+        restartRequired: false,
+      });
+    }
+    expect(clearStates).toEqual([true, true]);
   });
 });

@@ -1,7 +1,7 @@
 /** Closed operational policy. Database rows own values, never these definitions or defaults. */
 
 /** Locales for which Porta ships every authentication namespace. */
-export const SUPPORTED_LOCALES = Object.freeze(['en'] as const);
+export const SUPPORTED_LOCALES = Object.freeze(['en', 'nl'] as const);
 
 /** A completely packaged authentication locale. */
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number];
