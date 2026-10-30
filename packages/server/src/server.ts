@@ -43,6 +43,7 @@ import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
 import { createUserRouter, createStandaloneUserRouter } from './routes/users.js';
 import { createTenantUsersRouter } from './routes/tenant-users.js';
+import { createTenantInvitationsRouter } from './routes/tenant-invitations.js';
 import { createInteractionRouter } from './routes/interactions.js';
 import { createMagicLinkRouter } from './routes/magic-link.js';
 import { createPasswordResetRouter } from './routes/password-reset.js';
@@ -297,6 +298,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   const tenantUsersRouter = createTenantUsersRouter(oidcProvider);
   app.use(tenantUsersRouter.routes());
   app.use(tenantUsersRouter.allowedMethods());
+
+  // Invitation cancellation uses tenant invitation authority, not Admin API credentials.
+  const tenantInvitationsRouter = createTenantInvitationsRouter(oidcProvider);
+  app.use(tenantInvitationsRouter.routes());
+  app.use(tenantInvitationsRouter.allowedMethods());
 
   // Standalone user admin API — non-org-scoped user access by userId
   // Mounted at /api/admin/users/:userId (see routes/users.ts)

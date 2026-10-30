@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-10-29
+> **Last Updated**: 2026-10-30
 
 ## Overview
 
@@ -326,6 +326,25 @@ without granting control-plane authority:
   treat them as tenant-asserted rather than platform-verified.
 - Tenant denials and successes emit the additive `tenant-api` surface in
   `security.decision.v1` with protected actor and tenant references.
+
+### Tenant invitation revocation
+
+`DELETE /api/organizations/:orgId/invitations/:invitationId` accepts the same bearer-only
+service/user invitation authority as creation. It uses the authenticated organization/application,
+never an owner supplied by the request. Any invite-authorized actor within that application may
+revoke its pending invitations. Control-plane callers remain rejected; cookies grant no authority.
+
+A conditional invitation-row update and one `user.invite.revoked` audit commit together. The audit
+records actor and invitation/application identifiers, never recipient email or token/hash. Failure
+rolls back rather than reporting unaudited success. Existing acceptance row locks arbitrate races:
+committed revocation prevents account creation; committed acceptance is not undone.
+
+Unknown, foreign, unowned, expired or used target UUIDs share the normal empty `204` result and emit no
+revocation-success event. This is a status/body non-disclosure contract, not a constant-time or
+infrastructure-error indistinguishability promise. The existing strict 60/hour actor/organization
+deletion budget also covers no-ops; exhaustion returns `429`, Redis enforcement failure `503`. No retry
+or notification is added. See [invitation ownership and rollout](data-model.md)
+for legacy/admin invitations, application deletion and mixed-version limits.
 
 ### Cache Isolation
 

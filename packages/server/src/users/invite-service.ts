@@ -317,6 +317,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
     invitationId = await runDatabaseTransaction(async () => {
       const invitation = await replaceInvitation({
         organizationId,
+        applicationId: allowedApplicationId ?? null,
         email: input.email,
         tokenHash: hash,
         expiresAt,

@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: user-invitations/T-03
-> **Last Updated**: 2026-10-30 12:25
-> **Progress**: 0/30 tasks (0%)
+> **Last Updated**: 2026-10-30 22:13
+> **Progress**: 17/30 tasks (57%)
 > **CodeOps Artifact Schema**: 1
 
 ## Implementation Phases
@@ -22,35 +22,37 @@ Total: 30 tasks. Phase 2 follows verified Phase 1. Original goal and minimum des
 
 ## Phase 1: Ownership and tenant revocation
 
-> **Phase baseline tree**: recorded by exec-plan before implementation
+> **Phase baseline tree**: fb801cfd2c5b26808e5b532c4cab9f57545c8a8d
 > **Lenses**: api-surface, concurrency; dedicated security audit: owasp-web, auth-protocol, tenant-isolation
 > **Reasoning**: high — tenant authorization, migration and acceptance races
 
+Scope: strict. Expected modifications are Phase 1's named server source/test/migration paths, directly related invite fixtures, exact structure inventory and these task/evidence documents. No unrelated working changes existed at phase start. Runner paths explicitly approved for #196: repository .npmrc/root .env/server .env (runner reads only), synthetic installer env under the session's invitation-revocation-tests tree, and credentials/TLS/profiles/metadata under /tmp/opencode/porta-ir-20261030 and test-harness/.assurance-runtime; reports under .assurance-results. Never expose or commit their contents.
+
 ### Session 1.1 — Specification tests and red
 
-- [ ] 1.1.1 [spec-author] Write migration specifications ST-1–2 — `tests/integration/migrations/036-invitation-application-owner.spec.test.ts` per 03-01.
-- [ ] 1.1.2 [spec-author] Write service/persistence specifications ST-3–4, ST-8–13, ST-17 — `tests/integration/services/invitation-revocation.spec.test.ts` per 03-01.
-- [ ] 1.1.3 [spec-author] Write real concurrency specifications ST-14–16 — `tests/integration/services/invitation-revocation.concurrency.spec.test.ts` per 03-01.
-- [ ] 1.1.4 [spec-author] Write endpoint/security specifications ST-5–11, ST-18–19, ST-23 — `tests/pentest/admin-security/tenant-invitation-revocation.spec.test.ts` per 03-02.
-- [ ] 1.1.5 Verify red for new migration/service/route and record each intended failure before production changes; run `pnpm test:changed` first.
+- [x] 1.1.1 [spec-author] Write migration specifications ST-1–2 — `tests/integration/migrations/036-invitation-application-owner.spec.test.ts` per 03-01. ✅ (completed: 2026-10-30 13:12; independent author; both intended failures are missing migration036; commit deferred)
+- [x] 1.1.2 [spec-author] Write service/persistence specifications ST-3–4, ST-8–13, ST-17 — `tests/integration/services/invitation-revocation.spec.test.ts` per 03-01. ✅ (completed: 2026-10-30 13:12; independent author; expected red is missing service module; commit deferred)
+- [x] 1.1.3 [spec-author] Write real concurrency specifications ST-14–16 — `tests/integration/services/invitation-revocation.concurrency.spec.test.ts` per 03-01. ✅ (completed: 2026-10-30 13:12; independent author; expected red is missing service module; commit deferred)
+- [x] 1.1.4 [spec-author] Write endpoint/security specifications ST-5–11, ST-18–19, ST-23 — `tests/pentest/admin-security/tenant-invitation-revocation.spec.test.ts` per 03-02. ✅ (completed: 2026-10-30 13:08; 23 independently authored cases; expected red is missing new tenant-invitations module, with existing DB/setup successful; commit deferred per PF-003)
+- [x] 1.1.5 Verify red for new migration/service/route and record each intended failure before production changes; run `pnpm test:changed` first. ✅ (completed: 2026-10-30 13:12; initial changed selection passed157 structure with no selected units; baseline28 invitation units passed; intended missing migration/service/router failures recorded before production changes)
 
 ### Session 1.2 — Implementation and green
 
-- [ ] 1.2.1 Add migration 036 and parameterized ownership insert input — `migrations/036_invitation_application_owner.sql`, `src/auth/token-repository.ts` (AR #2/#7); verify migration cases.
-- [ ] 1.2.2 Pass authenticated ownership on invitation creation — `src/users/invite-service.ts` (AR #2); verify ST-3.
-- [ ] 1.2.3 Implement scoped atomic revocation/audit — `src/users/invitation-revocation-service.ts` (03-01); verify service specifications.
-- [ ] 1.2.4 Implement tenant DELETE route — `src/routes/tenant-invitations.ts` (03-02); verify endpoint/security specifications.
-- [ ] 1.2.5 Mount tenant route — `src/server.ts` (03-02); verify no admin-prefix authority and route wiring.
-- [ ] 1.2.6 Verify new specifications green, including real race/rollback cases ST-12–17; preserve immutable assertions.
+- [x] 1.2.1 Add migration 036 and parameterized ownership insert input — `migrations/036_invitation_application_owner.sql`, `src/auth/token-repository.ts` (AR #2/#7); verify migration cases. ✅ (completed: 2026-10-30 13:15; both upgrade/downgrade and SET NULL preservation specifications pass; commit deferred until affected specifications are green)
+- [x] 1.2.2 Pass authenticated ownership on invitation creation — `src/users/invite-service.ts` (AR #2); verify ST-3. ✅ (completed: 2026-10-30 13:15; ownership without roles and caller spoof hints proven by independent specification; all12 persistence cases pass; commit deferred)
+- [x] 1.2.3 Implement scoped atomic revocation/audit — `src/users/invitation-revocation-service.ts` (03-01); verify service specifications. ✅ (completed: 2026-10-30 13:15; all12 persistence specifications pass including actual audit rollback/acceptance, foreign/null/history no-ops and actor privacy; commit deferred)
+- [x] 1.2.4 Implement tenant DELETE route — `src/routes/tenant-invitations.ts` (03-02); verify endpoint/security specifications. ✅ (completed: 2026-10-30 21:50; all23 security cases pass after explicitly approved fixture-only corrections; every assertion and timeout unchanged)
+- [x] 1.2.5 Mount tenant route — `src/server.ts` (03-02); verify no admin-prefix authority and route wiring. ✅ (completed: 2026-10-30 21:50; server typecheck and configured full application HTTP mount check pass; missing provider fails closed, no new admin route; initial ad-hoc startup lacked SMTP fixture configuration and did not reach assertions)
+- [x] 1.2.6 Verify new specifications green, including real race/rollback cases ST-12–17; preserve immutable assertions. ✅ (completed: 2026-10-30 21:50; all20 migration/persistence/concurrency and23 security cases pass, every assertion/timeout retained after AR #10 fixture correction; no broad production refactor)
 
 ### Session 1.3 — Implementation tests, hardening and review
 
-- [ ] 1.3.1 Add internal failure/empty-result tests — `tests/unit/users/invitation-revocation.impl.test.ts`; verify transaction handling per 03-01.
-- [ ] 1.3.2 Add focused route-wiring/error tests — `tests/unit/routes/tenant-invitations.impl.test.ts`; verify per 03-02.
-- [ ] 1.3.3 Run affected invitation/acceptance/localization and migration regressions; reconcile actual exact inventories in `repo-tests/monorepo/server-package.spec.test.mjs` (PF-001), never weaken oracle expectations.
-- [ ] 1.3.4 Run server lint/typecheck/build, `pnpm test:structure` and `pnpm test:pentest`; record outcomes.
-- [ ] 1.3.5 Complete independent correctness/concurrency/API review and dedicated security audit; resolve critical/major findings by authorized ruling before proceeding.
-- [ ] 1.3.6 Record Phase 1 results, cleanup owned local resources and checkpoint using git-commit skill in push mode after verification.
+- [x] 1.3.1 Add internal failure/empty-result tests — `tests/unit/users/invitation-revocation.impl.test.ts`; verify transaction handling per 03-01. ✅ (completed: 2026-10-30 21:56; all4 parameterization/no-op/storage/audit client error cases pass; real rollback remains covered by integration specifications)
+- [x] 1.3.2 Add focused route-wiring/error tests — `tests/unit/routes/tenant-invitations.impl.test.ts`; verify per 03-02. ✅ (completed: 2026-10-30 21:56; all3 real router/full HTTP application cases pass; ephemeral listener closed)
+- [x] 1.3.3 Run affected invitation/acceptance/localization and migration regressions; reconcile actual exact inventories in `repo-tests/monorepo/server-package.spec.test.mjs` (PF-001), never weaken oracle expectations. ✅ (completed: 2026-10-30 21:56; affected452 unit/157 structure and52 invitation integration cases passed; actual385/55 inventory, exact assertions retained)
+- [x] 1.3.4 Run server lint/typecheck/build, `pnpm test:structure` and `pnpm test:pentest`; record outcomes. ✅ (completed: 2026-10-30 22:09; server lint/typecheck/build,157 structure,330 pentest across47 files passed; outer120s interrupted attempt retained as incomplete, unchanged background invocation completed exit0)
+- [x] 1.3.5 Complete independent correctness/concurrency/API review and dedicated security audit; resolve critical/major findings by authorized ruling before proceeding. ✅ (completed: 2026-10-30 22:05; both independent reviewers reported no findings; sessions/evidence in00-phase1-quality-review; remaining pentest gate still pending)
+- [x] 1.3.6 Record Phase 1 results, cleanup owned local resources and checkpoint using git-commit skill in push mode after verification. ✅ (completed: 2026-10-30 22:13; reviews,330 pentest and affected gates recorded; owned resources removed; incremental techdocs/links and final157 structure contracts passed; green checkpoint authorized)
 
 Deliverables: ownership storage, scoped mutation/API and ST-1–19/ST-23; independently reviewed, without unrelated auth or replacement changes.
 **Verify:** Focused selectors in 07; server checks, `pnpm test:structure`, `pnpm test:pentest`. Full verify deferred to CI (AR #4).
