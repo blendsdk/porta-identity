@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.15.0] - 2026-10-30
+
+Added:
+- Implemented formal Dutch localization for delivery and acceptance, including invitation subjects and page errors.
+- Introduced 80 independent test cases for locale packs and language selection.
+
+Changed:
+- Updated email and invitation JSON files to support Dutch localization.
+- Revamped invitation-related services to accommodate new translation mechanisms.
+
+Fixed:
+- Ensured rejection-audit and invitation assertions remained unchanged across 20 integration cases.  
+- Resolved issues in the email service and invitation email localization tests.
+
 ## [1.14.2] - 2026-10-27
 
 ## Fixed
