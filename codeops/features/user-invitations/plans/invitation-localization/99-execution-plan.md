@@ -1,7 +1,7 @@
 # Execution Plan: Invitation Localization
 
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-10-29 18:44
+> **Last Updated**: 2026-10-30 08:57
 > **Progress**: 38/40 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
@@ -382,7 +382,7 @@ resource files received manual copy review. Hash comparison confirms that tested
 test and documentation content remains identical to the candidate tree. Review evidence:
 [Phase 3 quality review](00-phase3-quality-review.md).
 
-- [~] 3.3.4 Establish 07's authorized clean committed checkpoint, including this task's pending/running state, and resolve exact-path runner approvals. Keep the worktree unchanged while running registered `pnpm assurance:harness --project security --profile production-security`; after exit/cleanup record candidate commit/tree, run, observers and exit outcome. Block if the commit mode cannot supply the checkpoint. Failed assertions/new gaps remain blockers; incomplete evidence is never a full pass. ⏳ (resumed: 2026-10-29 18:44; AR #16 exact short fixture path approved; new clean checkpoint pending)
+- [!] 3.3.4 Establish 07's authorized clean committed checkpoint, including this task's pending/running state, and resolve exact-path runner approvals. Keep the worktree unchanged while running registered `pnpm assurance:harness --project security --profile production-security`; after exit/cleanup record candidate commit/tree, run, observers and exit outcome. Block if the commit mode cannot supply the checkpoint. Failed assertions/new gaps remain blockers; incomplete evidence is never a full pass. Blocked: AR #17 earlier functional-auth failure lacks diagnostic classification; later full run passes but does not close the evidence gap (2026-10-29 19:31).
 
 The first clean checkpoint `28f94101` exited 30 before collecting assurance evidence. Runner
 `TMPDIR` produced a 167-byte control-socket pathname; a direct local probe confirms Linux rejects
@@ -390,7 +390,33 @@ it. Run `3b7a642d-b47d-45fb-9727-ace379709478` left no owned containers/networks
 image and temporary fixtures were removed. Pre-existing generated public harness configuration
 and browser-library copies were preserved. AR #16 explicitly approves the shorter runner-only
 temporary location. No source/test/runner changes or failed-assertion waiver are involved.
-- [ ] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded.
+
+Short-path candidate `abd9b756e2a836c5798af7fff44af6904b1d01e2`, tree
+`6583c4f96fec17dcaf2220a232ec8879e9236d88`: first admitted run `6ebcf584-1f5a-4df0-8072-bfc468703bc8`
+passed exposure 11/11 but exited 21 at the live functional-authentication case (suite 6/7). The
+parent's overly narrow output capture discarded its error details. The unchanged diagnostic run
+`238cd90b-da68-42b0-a32e-272e31a1218f` subsequently passed the entire registered command with exit 0:
+exposure 11/11; functional 7/7; second-factor 4/4; tenant/admin 17/17; recovery 5/5; zero skips.
+Source stayed clean throughout both runs and their lifecycle cleanup. Both results remain
+recorded. Independent security review requires an evidence disposition rather than silently
+classifying the earlier failure as environmental or retrying away a possible assertion failure.
+The three historically incomplete forwarding observations now pass in both current artifacts;
+they are not the present blocker. See AR #17 and the Phase 3 review for exact evidence identities.
+
+The user authorized focused investigation on 2026-10-30. The next clean evidence checkpoint
+records the unresolved failure and this permission. Diagnostics will use the existing owned
+production-security lifecycle and unchanged functional-authentication specification, retaining
+safe error types, source locations and operation timing. This is not another green-only rerun;
+task 3.3.4 stays blocked until the evidence gap receives a supported resolution.
+
+After interruption the runtime temporary root changed. The user explicitly approved synthetic
+installer fixture creation/use/cleanup under the new session's
+`/tmp/opencode/codeops/runtime-10bcd0c1-4211-41e0-a079-c0c7c79057ea/invitation-execution-tests/`.
+The parent noticed the root change after one structure run had already created and removed its
+synthetic fixtures there; no values were displayed. Future runners verify their exact approved
+fixture location before access. The separately approved short harness `TMPDIR` remains fixed.
+
+- [!] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded. Blocked: task 3.3.4 / AR #17; source and Dutch reviews passed, publication/CI pending.
 
 **Verify:** Use the exact gates in [07](07-testing-strategy.md#verification-commands), retaining
 existing invitation enumeration, replay, tenant isolation, expiry and delivery coverage. Required

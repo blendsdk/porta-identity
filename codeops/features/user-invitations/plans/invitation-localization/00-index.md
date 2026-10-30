@@ -1,7 +1,7 @@
 # Invitation Localization Implementation Plan
 
 > **Feature**: Localize invitation delivery and acceptance; package formal Dutch authentication translations
-> **Status**: Executing — authorized clean assurance checkpoint and final CI; local gates and reviews passed
+> **Status**: Blocked — AR #17 assurance evidence gap; local gates/reviews and later complete assurance run passed
 > **Created**: 2026-10-27
 > **Implements**: user-invitations/T-02
 > **CodeOps Artifact Schema**: 1

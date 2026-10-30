@@ -1,7 +1,7 @@
 # Ambiguity Register: Invitation Localization (#179)
 
-> **Status**: ✅ GATE PASSED — all 16 items resolved
-> **Last Updated**: 2026-10-29 18:44
+> **Status**: ❌ GATE BLOCKED — runtime item 17: unclassified earlier assurance failure
+> **Last Updated**: 2026-10-30 08:57
 > **CodeOps Artifact Schema**: 1
 
 ## Planning scope contract
@@ -46,6 +46,29 @@ too long`. The first run used clean commit `28f94101d8a02585d652950351c20654c9c4
 `b488e8cdb165e17f4f9d76ab5e225b736dc3f8bc`, and produced no assurance result directory. Its
 source stayed clean throughout. The proposed fix is environment configuration, not runner or
 product code. Existing protected paths remain subject to their exact approvals.
+
+## Runtime Assurance Evidence Gap
+
+| # | Category | Discovery | Required disposition | Decision | Status |
+| --- | --- | --- | --- | --- | --- |
+| 17 | Verification evidence (runtime) | Clean run `6ebcf584-1f5a-4df0-8072-bfc468703bc8` exited 21 at the live functional-authentication case. The parent summary retained its failure/counts but discarded the diagnostic detail. The unchanged complete diagnostic replay passed; the earlier failure cannot be classified as runtime versus semantic assertion. | Retain both outcomes, keep task 3.3.4 unverified, and determine a supported follow-up investigation. A later pass does not waive a possible failed security assertion. | Pending; no evidence waiver authorized | ❌ Open |
+
+Both runs used commit `abd9b756e2a836c5798af7fff44af6904b1d01e2`, tree
+`6583c4f96fec17dcaf2220a232ec8879e9236d88`, unchanged source/oracles/timeouts and the approved
+short `TMPDIR`. The later run `238cd90b-da68-42b0-a32e-272e31a1218f` exited 0 with exposure
+11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17 and recovery 5/5; zero skipped cases.
+Exposure artifacts from both runs confirm all eleven observations passed with no missing/failed
+arrays and successful recovery. The parent explicitly owns the diagnostic-capture loss.
+
+The independent security auditor, session `ses_e77cdec77ffe1BNO7LQjsfTtE4`, reviewed this exact
+evidence limitation. It requires holding the gate rather than treating the passing replay as
+classification of the earlier failure. No product defect is established, but neither is an
+environmental cause. Additional passes alone cannot recover the discarded diagnostic.
+
+On 2026-10-30 the user selected “Investigate further (Recommended)”: focused diagnostics may
+reuse the existing functional-authentication suite and harness with unchanged assertions. Source,
+oracle or infrastructure changes require a further decision. This authorizes investigation only;
+the evidence gap remains open until supported resolution is available.
 
 ## Systematic review
 
