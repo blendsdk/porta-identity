@@ -1,7 +1,7 @@
 # Invitation Localization Implementation Plan
 
 > **Feature**: Localize invitation delivery and acceptance; package formal Dutch authentication translations
-> **Status**: Executing — assurance evidence disposition approved; final feature-branch CI pending
+> **Status**: Complete — 40/40 tasks; full feature-branch CI passed; AR #17 evidence limitation retained
 > **Created**: 2026-10-27
 > **Implements**: user-invitations/T-02
 > **CodeOps Artifact Schema**: 1

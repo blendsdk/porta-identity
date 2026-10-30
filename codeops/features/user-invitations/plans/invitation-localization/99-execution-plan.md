@@ -1,8 +1,8 @@
 # Execution Plan: Invitation Localization
 
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-10-30 10:38
-> **Progress**: 39/40 tasks (97.5%)
+> **Last Updated**: 2026-10-30 10:47
+> **Progress**: 40/40 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -432,7 +432,7 @@ to CI. Earlier blocker statements above describe historical decisions, not curre
 No cause has been invented, assertion weakened, or failed outcome relabeled as passed. This
 explicit ruling closes the evidence decision while preserving its limitation in the final handoff.
 
-- [~] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded. ⏳ (implemented: 2026-10-30 10:27; reviews/cleanup passed, user disposition recorded; feature publication and CI pending)
+- [x] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded. ✅ (completed: 2026-10-30 10:47; published c9e9e761 passed full CI and all five separate jobs; reviews/cleanup passed; AR #17 limitation retained)
 
 Published evidence revision `75a7a5cc` ran CI `41033985088`. UI, OIDC harness, public docs,
 production Docker and dependency audit passed. Full monorepo verification exposed one missed
@@ -445,6 +445,14 @@ The mock-only correction passed all 20 affected existing/new invitation integrat
 157 structure contracts, focused lint and whitespace checks. The owned regression stack/volume
 was removed. All assertions and production source remain unchanged; only existing mock setup
 and this evidence record differ from the independently reviewed implementation.
+
+Final product/test revision `c9e9e761d0bb8615a4ce9e6b6d26fa0693f94a19` passed
+[Build and Test run 41035033382](https://github.com/blendsdk/porta-identity/actions/runs/41035033382):
+full monorepo verification, UI, retained OIDC harness, public docs, production Docker and dependency
+audit all passed. Full product counts: server unit 4,162/integration 540/E2E 133/pentest 307;
+SDK 592; CLI 1,474; browser 135; retained OIDC 6. These are dated evidence, not fixed requirements.
+The final evidence-only checkpoint records completion without modifying tested product content.
+The feature is not merged; develop integration, main and release remain separate actions.
 
 **Verify:** Use the exact gates in [07](07-testing-strategy.md#verification-commands), retaining
 existing invitation enumeration, replay, tenant isolation, expiry and delivery coverage. Required

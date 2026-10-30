@@ -3,7 +3,7 @@
 > **Feature-Set**: User Invitations
 > **Status**: Active
 > **Created**: 2026-09-26
-> **Last Updated**: 2026-10-30 10:27
+> **Last Updated**: 2026-10-30 10:47
 > **Progress**: 0 / 0 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -16,7 +16,7 @@
 | ID   | Title | RD  | Plan | Stage | Status | Last Updated | Depends-on / Blocker |
 | ---- | ----- | --- | ---- | ----- | ------ | ------------ | -------------------- |
 | T-01 | Deferred invitation creation (no user until acceptance) | — | [plan](plans/deferred-invitation-creation/00-index.md) | 🔄 Executing | 🔄 | 2026-09-27 00:35 | — |
-| T-02 | Invitation localization and formal Dutch support (#179) | — | [plan](plans/invitation-localization/00-index.md) | 🔄 Executing | 🔄 | 2026-10-30 10:27 | 39/40 tasks; assurance disposition accepted; publication/full CI next |
+| T-02 | Invitation localization and formal Dutch support (#179) | — | [plan](plans/invitation-localization/00-index.md) | ✅ Done | ✅ | 2026-10-30 10:47 | 40/40; full CI green on c9e9e761; AR #17 limitation retained |
 
 ## Notes
 

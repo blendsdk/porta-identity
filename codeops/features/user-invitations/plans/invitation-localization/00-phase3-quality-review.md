@@ -1,7 +1,7 @@
 # Phase 3 Quality Review
 
-> **Status**: Reviews and assurance accepted with retained AR #17 limitation; final CI pending
-> **Last Updated**: 2026-10-30 10:27
+> **Status**: Complete — reviews, current assurance and full CI passed; AR #17 limitation retained
+> **Last Updated**: 2026-10-30 10:47
 > **Baseline tree**: `7fa9417cd0b1f205c1aa367e82ceaaf6e9fa4d4e`
 > **Reviewed implementation tree**: `b43857af5a476aa2f5e08de83a5110fad5c563cc`
 > **CodeOps Artifact Schema**: 1
@@ -38,7 +38,7 @@ tree above. This is not yet a clean committed assurance candidate.
 | Complete UI category | 135/135 passed, zero skipped/flaky cases, one worker, retries disabled |
 | Complete penetration category | 307/307 passed; earlier 306/307 runtime setup failure retained below; unchanged isolated diagnostic 5/5 passed |
 | Clean committed production-security | Candidate `abd9b756` has a complete exit-0 run; user explicitly accepted current verification with the earlier unclassified failure retained under AR #17 |
-| Full CI and separate branch jobs | Authorized feature-branch publication; pending |
+| Full CI and separate branch jobs | All six jobs passed on `c9e9e761`; run `41035033382` |
 
 The initial IDOR failure points to `tests/pentest/admin-security/idor.test.ts:31:3` in its
 `beforeEach`, not a recorded failing security assertion. Its precise environmental cause was
@@ -74,6 +74,30 @@ safe browser-operation events, including the expected handled negative-login cal
 the natural-expiry wait. No uncaught exception or assertion failure reproduced. Start, admission,
 resets and owned stop all exited 0. The product/harness tree did not change. AR #17 therefore
 remains open; this investigation supplies no supported corrective source or test change.
+
+## Published CI
+
+Revision `75a7a5cc` initially passed UI/OIDC/docs/Docker/audit but failed one integration fixture
+because its existing i18n mock omitted the awaited translator. Commit `c9e9e761` adds only that
+mock export; every assertion is unchanged. Local verification passed 20 affected integration
+cases, 157 structure contracts and focused lint; its owned stack/volume were removed.
+
+[CI run 41035033382](https://github.com/blendsdk/porta-identity/actions/runs/41035033382) passed on
+`c9e9e761d0bb8615a4ce9e6b6d26fa0693f94a19`:
+
+| Job | Result |
+| --- | --- |
+| Verify Monorepo (`pnpm verify`) | Passed: structure, lint, types, builds; server unit 4,162/integration 540/E2E 133/pentest 307; SDK 592; CLI 1,474 |
+| UI Tests | 135 passed |
+| OIDC Harness | 6 passed |
+| Public Documentation | Passed |
+| Production Docker Build | Passed |
+| Production Dependency Audit | Passed |
+
+The final checkpoint changes evidence/status records only. Architecture reconciliation found no
+new entity, endpoint, integration or infrastructure beyond existing reviewed security/configuration
+guidance. Existing ADR intent and unrelated historical documents remain unchanged. No merge,
+main promotion, release or deployment was performed.
 
 ## Documentation and Cleanup
 
