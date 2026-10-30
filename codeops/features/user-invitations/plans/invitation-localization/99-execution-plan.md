@@ -1,7 +1,7 @@
 # Execution Plan: Invitation Localization
 
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-10-30 10:27
+> **Last Updated**: 2026-10-30 10:38
 > **Progress**: 39/40 tasks (97.5%)
 > **CodeOps Artifact Schema**: 1
 
@@ -433,6 +433,18 @@ No cause has been invented, assertion weakened, or failed outcome relabeled as p
 explicit ruling closes the evidence decision while preserving its limitation in the final handoff.
 
 - [~] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded. ⏳ (implemented: 2026-10-30 10:27; reviews/cleanup passed, user disposition recorded; feature publication and CI pending)
+
+Published evidence revision `75a7a5cc` ran CI `41033985088`. UI, OIDC harness, public docs,
+production Docker and dependency audit passed. Full monorepo verification exposed one missed
+existing integration mock in `tests/integration/services/invitation-enhanced.test.ts:29–32`:
+the new awaited translator export was absent. The bounded AR #12 setup permission covers adding
+that single mock export; no assertion, production code or runner changes. Targeted verification
+and a new published full CI run are required before this task can complete.
+
+The mock-only correction passed all 20 affected existing/new invitation integration cases,
+157 structure contracts, focused lint and whitespace checks. The owned regression stack/volume
+was removed. All assertions and production source remain unchanged; only existing mock setup
+and this evidence record differ from the independently reviewed implementation.
 
 **Verify:** Use the exact gates in [07](07-testing-strategy.md#verification-commands), retaining
 existing invitation enumeration, replay, tenant isolation, expiry and delivery coverage. Required
