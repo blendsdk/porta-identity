@@ -1,8 +1,8 @@
 # Execution Plan: Invitation Localization
 
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-10-30 08:57
-> **Progress**: 38/40 tasks (95%)
+> **Last Updated**: 2026-10-30 10:27
+> **Progress**: 39/40 tasks (97.5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -382,7 +382,7 @@ resource files received manual copy review. Hash comparison confirms that tested
 test and documentation content remains identical to the candidate tree. Review evidence:
 [Phase 3 quality review](00-phase3-quality-review.md).
 
-- [!] 3.3.4 Establish 07's authorized clean committed checkpoint, including this task's pending/running state, and resolve exact-path runner approvals. Keep the worktree unchanged while running registered `pnpm assurance:harness --project security --profile production-security`; after exit/cleanup record candidate commit/tree, run, observers and exit outcome. Block if the commit mode cannot supply the checkpoint. Failed assertions/new gaps remain blockers; incomplete evidence is never a full pass. Blocked: AR #17 earlier functional-auth failure lacks diagnostic classification; later full run passes but does not close the evidence gap (2026-10-29 19:31).
+- [x] 3.3.4 Establish 07's authorized clean committed checkpoint, including this task's pending/running state, and resolve exact-path runner approvals. Keep the worktree unchanged while running registered `pnpm assurance:harness --project security --profile production-security`; after exit/cleanup record candidate commit/tree, run, observers and exit outcome. Block if the commit mode cannot supply the checkpoint. Failed assertions/new gaps remain blockers; incomplete evidence is never a full pass. ✅ (completed: 2026-10-30 10:27; complete clean-source run exited 0; user explicitly accepted AR #17's retained unclassified earlier outcome; owned cleanup complete)
 
 The first clean checkpoint `28f94101` exited 30 before collecting assurance evidence. Runner
 `TMPDIR` produced a 167-byte control-socket pathname; a direct local probe confirms Linux rejects
@@ -409,6 +409,16 @@ production-security lifecycle and unchanged functional-authentication specificat
 safe error types, source locations and operation timing. This is not another green-only rerun;
 task 3.3.4 stays blocked until the evidence gap receives a supported resolution.
 
+Focused run `22315201-51a6-4714-b216-bd8a690b64e7` used clean diagnostic checkpoint
+`2777c661217af2783756865030f4f6536d827b2e`, whose product and harness content is unchanged from
+`abd9b756`. Existing production-security lifecycle start, security-project admission, both resets
+and stop all exited 0. Two executions of the unchanged functional specification passed 7/7,
+with no skips/cancellations, in 445.044 and 442.917 seconds. Safe operation capture retained 892
+events per run; twenty expected negative-login callback waits were caught by existing code, and
+the 301.601-second expiry-wait gap was observed. No uncaught failure reproduced. This evidence
+does not classify the earlier lost diagnostic; no further unchanged replay or speculative code
+change is authorized as an automatic resolution. Tasks 3.3.4–3.3.5 remain blocked.
+
 After interruption the runtime temporary root changed. The user explicitly approved synthetic
 installer fixture creation/use/cleanup under the new session's
 `/tmp/opencode/codeops/runtime-10bcd0c1-4211-41e0-a079-c0c7c79057ea/invitation-execution-tests/`.
@@ -416,7 +426,13 @@ The parent noticed the root change after one structure run had already created a
 synthetic fixtures there; no values were displayed. Future runners verify their exact approved
 fixture location before access. The separately approved short harness `TMPDIR` remains fixed.
 
-- [!] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded. Blocked: task 3.3.4 / AR #17; source and Dutch reviews passed, publication/CI pending.
+The user subsequently approved AR #17's limited evidence disposition on 2026-10-30: retain the
+first failure as unclassified, credit the complete exit-0 run as current verification, and proceed
+to CI. Earlier blocker statements above describe historical decisions, not current task state.
+No cause has been invented, assertion weakened, or failed outcome relabeled as passed. This
+explicit ruling closes the evidence decision while preserving its limitation in the final handoff.
+
+- [~] 3.3.5 Complete required independent phase/security review and Dutch-copy review, confirm full CI plus separate branch jobs on the authorized published revision, update feature tracking and record final owned-resource cleanup. If branch/PR publication has not been authorized, ask rather than publishing. `main` and releases remain excluded. ⏳ (implemented: 2026-10-30 10:27; reviews/cleanup passed, user disposition recorded; feature publication and CI pending)
 
 **Verify:** Use the exact gates in [07](07-testing-strategy.md#verification-commands), retaining
 existing invitation enumeration, replay, tenant isolation, expiry and delivery coverage. Required

@@ -1,7 +1,7 @@
 # Phase 3 Quality Review
 
-> **Status**: Blocked — later complete assurance run passed; earlier failure classification unresolved
-> **Last Updated**: 2026-10-29 19:31
+> **Status**: Reviews and assurance accepted with retained AR #17 limitation; final CI pending
+> **Last Updated**: 2026-10-30 10:27
 > **Baseline tree**: `7fa9417cd0b1f205c1aa367e82ceaaf6e9fa4d4e`
 > **Reviewed implementation tree**: `b43857af5a476aa2f5e08de83a5110fad5c563cc`
 > **CodeOps Artifact Schema**: 1
@@ -37,8 +37,8 @@ tree above. This is not yet a clean committed assurance candidate.
 | Focused SMTP/recovery integration | 23/23 passed |
 | Complete UI category | 135/135 passed, zero skipped/flaky cases, one worker, retries disabled |
 | Complete penetration category | 307/307 passed; earlier 306/307 runtime setup failure retained below; unchanged isolated diagnostic 5/5 passed |
-| Clean committed production-security | Candidate `abd9b756` has a complete exit-0 run; earlier same-candidate functional-auth failure is unclassified and remains AR #17 |
-| Full CI and separate branch jobs | Authorized feature-branch publication; pending assurance evidence |
+| Clean committed production-security | Candidate `abd9b756` has a complete exit-0 run; user explicitly accepted current verification with the earlier unclassified failure retained under AR #17 |
+| Full CI and separate branch jobs | Authorized feature-branch publication; pending |
 
 The initial IDOR failure points to `tests/pentest/admin-security/idor.test.ts:31:3` in its
 `beforeEach`, not a recorded failing security assertion. Its precise environmental cause was
@@ -66,7 +66,23 @@ was an execution problem or a failed security assertion. Independent auditor
 `ses_e77cdec77ffe1BNO7LQjsfTtE4` requires keeping the gate unverified pending supported resolution;
 no automatic evidence waiver is allowed. AR #17 records this limitation explicitly.
 
+The user-authorized follow-up ran only the unchanged functional specification through the existing
+production-security lifecycle. Run `22315201-51a6-4714-b216-bd8a690b64e7`, clean checkpoint
+`2777c661217af2783756865030f4f6536d827b2e`, passed 7/7 twice after separate fixture resets, with
+zero skips/cancellations. Durations were 445.044 and 442.917 seconds. Each attempt captured 892
+safe browser-operation events, including the expected handled negative-login callback waits and
+the natural-expiry wait. No uncaught exception or assertion failure reproduced. Start, admission,
+resets and owned stop all exited 0. The product/harness tree did not change. AR #17 therefore
+remains open; this investigation supplies no supported corrective source or test change.
+
 ## Documentation and Cleanup
+
+On 2026-10-30 the user explicitly approved the limited AR #17 disposition: preserve the earlier
+failure as unclassified, use the complete passing assurance run as current evidence, and proceed
+to full CI without further replay or speculative code changes. Historical auditor advice and
+outcomes above remain intact. This acceptance is not a diagnosis, a changed assertion or a claim
+that all attempts passed. Current assurance credit belongs only to run
+`238cd90b-da68-42b0-a32e-272e31a1218f` on its recorded clean candidate.
 
 The technical-documentation hook updated existing security/configuration guidance. Existing ADR
 intent is preserved; no new component, entity, endpoint, integration or infrastructure needs a
@@ -87,3 +103,9 @@ unattached volumes matched the three recorded startup times and the PostgreSQL/R
 declarations; only those six were removed, restoring the pre-run volume inventory of 41. The
 latest unrelated container/network inventory is 28/15 and was preserved. Pre-existing generated
 public harness configuration and browser-library copies were retained. Cleanup is complete.
+
+The 2026-10-30 focused investigation also completed cleanup. Its two anonymous data volumes were
+identified from the owned containers' mounts before teardown and were absent from the pre-run
+volume inventory; only those exact remaining volumes were removed. Its image, fixtures, report
+tree and temporary diagnostic summaries were removed after recording the result. Final inventories
+are 27 containers, 14 networks and 41 volumes, with no resources from the diagnostic run remaining.

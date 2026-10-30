@@ -1,7 +1,7 @@
 # Ambiguity Register: Invitation Localization (#179)
 
-> **Status**: ❌ GATE BLOCKED — runtime item 17: unclassified earlier assurance failure
-> **Last Updated**: 2026-10-30 08:57
+> **Status**: ✅ GATE PASSED — all 17 decisions resolved; original assurance failure retained as unclassified
+> **Last Updated**: 2026-10-30 10:27
 > **CodeOps Artifact Schema**: 1
 
 ## Planning scope contract
@@ -51,7 +51,7 @@ product code. Existing protected paths remain subject to their exact approvals.
 
 | # | Category | Discovery | Required disposition | Decision | Status |
 | --- | --- | --- | --- | --- | --- |
-| 17 | Verification evidence (runtime) | Clean run `6ebcf584-1f5a-4df0-8072-bfc468703bc8` exited 21 at the live functional-authentication case. The parent summary retained its failure/counts but discarded the diagnostic detail. The unchanged complete diagnostic replay passed; the earlier failure cannot be classified as runtime versus semantic assertion. | Retain both outcomes, keep task 3.3.4 unverified, and determine a supported follow-up investigation. A later pass does not waive a possible failed security assertion. | Pending; no evidence waiver authorized | ❌ Open |
+| 17 | Verification evidence (runtime) | Clean run `6ebcf584-1f5a-4df0-8072-bfc468703bc8` exited 21 at the live functional-authentication case. The parent summary retained its failure/counts but discarded the diagnostic detail. The unchanged complete diagnostic replay passed; the earlier failure cannot be classified as runtime versus semantic assertion. | Retain the first failure as unclassified, credit the complete passing run as current verification, perform no speculative correction or further green-only reruns, then publish for full CI. | User explicitly approved this limited evidence disposition with “do it” on 2026-10-30 after reviewing the limitation and completed focused investigation. No assertion change or claim that the first run passed is authorized. | ✅ Resolved |
 
 Both runs used commit `abd9b756e2a836c5798af7fff44af6904b1d01e2`, tree
 `6583c4f96fec17dcaf2220a232ec8879e9236d88`, unchanged source/oracles/timeouts and the approved
@@ -69,6 +69,22 @@ On 2026-10-30 the user selected “Investigate further (Recommended)”: focused
 reuse the existing functional-authentication suite and harness with unchanged assertions. Source,
 oracle or infrastructure changes require a further decision. This authorizes investigation only;
 the evidence gap remains open until supported resolution is available.
+
+The authorized bounded investigation completed two reset-isolated executions of the unchanged
+functional specification on clean checkpoint `2777c661217af2783756865030f4f6536d827b2e`.
+Both passed 7/7 with no skipped/cancelled cases (445.044 and 442.917 seconds). Each retained 892
+safe browser-operation events. The twenty expected negative-login callback waits per run were
+handled by the existing observer; no uncaught error or semantic failure reproduced. The natural
+expiry wait was observed in both runs. No source, oracle, timeout or infrastructure was changed.
+This closes the authorized diagnostic exercise, not the evidence gap. Further unchanged passing
+replays alone are not a supported resolution, and no speculative code correction is justified.
+
+**Final user disposition (2026-10-30):** After the investigation, the user requested a simple
+resolution and approved retaining the original failure as unclassified, using the complete
+exit-0 run as current verification and proceeding to full CI. This is an explicit evidence
+acceptance with a retained limitation, not a technical diagnosis or an assertion waiver. Earlier
+auditor advice and all failed outcomes remain above. No known failed semantic assertion is
+deleted, weakened or reclassified, and no claim of failure-free execution history is made.
 
 ## Systematic review
 
