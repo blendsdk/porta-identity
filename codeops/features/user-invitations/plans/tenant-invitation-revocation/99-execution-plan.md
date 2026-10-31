@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: user-invitations/T-03
-> **Last Updated**: 2026-10-31 21:34
-> **Progress**: 27/30 tasks (90%)
+> **Last Updated**: 2026-10-31 21:42
+> **Progress**: 30/30 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Implementation Phases
@@ -84,8 +84,8 @@ Phase1 checkpoint2423b938 is pushed and clean. Scope remains strict: named SDK/t
 - [x] 2.3.2 Run applicable invitation UI regression category, pentest and docs gates; record exact outputs. ✅ (completed: 2026-10-31 20:28; invitation UI11/11, complete pentest330/330 across47 files and docs build passed; pentest rerun on the fixed SDK also330/330)
 - [x] 2.3.3 Complete independent phase/API correctness review and security audit; resolve findings with authorized rulings and keep review evidence. ✅ (completed: 2026-10-31 20:59; two minor review fixes; critical SDK dot-segment finding fixed under AR #12 and focused re-review CLEAN; evidence in00-phase2-quality-review)
 - [x] 2.3.4 Create clean committed checkpoint via git-commit skill; run registered production-security harness and tenant-admin compatibility, record commit/tree/run/exit and owned cleanup; block on security failure. ✅ (completed: 2026-10-31 21:34; clean checkpoint a7598e3c; production-security run1908ceb0 exit0 with7/7 and exposure11/11 zero failures; tenant-admin compat runaa6bbc5c exit0; owned runner reports removed; no task-owned containers/networks/volumes remain)
-- [ ] 2.3.5 Push feature via git-commit skill in push mode and confirm CI full `pnpm verify` plus all separate branch jobs on exact published revision.
-- [ ] 2.3.6 Record final T-03 tracking/cleanup/evidence and completion checkpoint after substantive docs reconciliation; confirm CI on that final pushed HEAD (PF-007). No sibling tracking edits, merge or release.
+- [x] 2.3.5 Push feature via git-commit skill in push mode and confirm CI full `pnpm verify` plus all separate branch jobs on exact published revision. ✅ (completed: 2026-10-31 21:42; [run41239591455](https://github.com/blendsdk/porta-identity/actions/runs/41239591455) passed all6 jobs on5eaa70d9: server unit4174/integration560/E2E134/pentest330, SDK609, CLI1474, UI135, OIDC6, docs/Docker/audit)
+- [x] 2.3.6 Record final T-03 tracking/cleanup/evidence and completion checkpoint after substantive docs reconciliation; confirm CI on that final pushed HEAD (PF-007). No sibling tracking edits, merge or release. ✅ (completed: 2026-10-31 21:42; completion record binds product checkpointa7598e3c and CI-verified5eaa70d9; dated test-inventory snapshot predates the feature and was intentionally not rewritten; owned resources/reports removed; evidence-only head CI reported to user)
 
 Deliverables: SDK operation, docs, real-token proof and current registered assurance/compatibility/CI evidence.
 **Verify:** SDK checks, focused E2E, `pnpm test:ui`, `pnpm test:pentest`, `pnpm docs:build`, structure and registered commands from 07. CI full verification required.

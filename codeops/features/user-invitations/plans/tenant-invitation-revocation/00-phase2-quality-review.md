@@ -62,3 +62,21 @@ checkpoint `a7598e3c` before the evidence-only edits below:
 Owned assurance reports and temporary runner logs were removed after recording these identifiers;
 no task-owned container, network or volume remains. The final published revision requires its own
 full CI confirmation.
+
+## Published CI
+
+[Run 41239591455](https://github.com/blendsdk/porta-identity/actions/runs/41239591455) passed all six
+jobs on `5eaa70d9d9112d4865290d1f2cc463673db7761f28`:
+
+| Job | Result |
+| --- | --- |
+| Verify Monorepo | Server unit 4,174; integration 560; E2E 134; pentest 330; SDK 609; CLI 1,474; structure included |
+| UI Tests | 135 passed |
+| OIDC Harness | 6 passed |
+| Public Documentation | Passed |
+| Production Docker Build | Passed |
+| Production Dependency Audit | Passed |
+
+The completion checkpoint changes evidence and tracking only; its own CI result is reported with
+the handoff. The dated `current-test-inventory` snapshot predates this feature and was deliberately
+not rewritten here; the authoritative current counts are the CI and local gate outputs above.

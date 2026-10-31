@@ -1,7 +1,7 @@
 # Tenant Invitation Revocation (#196)
 
 > **Feature**: Cancel one tenant application-owned pending invitation
-> **Status**: Executing — 27/30 tasks; assurance passed; publication and final CI pending
+> **Status**: Complete — 30/30 tasks; assurance, compatibility and full CI passed
 > **Created**: 2026-10-30
 > **Implements**: user-invitations/T-03
 > **CodeOps Artifact Schema**: 1
