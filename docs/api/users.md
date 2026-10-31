@@ -125,6 +125,63 @@ The tenant service client must be configured with `clientType: confidential`,
 `tokenEndpointAuthMethod: 'client_secret_post'`. The SDK client-credentials
 provider sends the secret in the form body.
 
+## Tenant-Scoped Invitation Revocation
+
+```http
+DELETE /api/organizations/:orgId/invitations/:invitationId
+```
+
+Cancels one pending invitation before the recipient accepts it. The tenant invite
+route returns `invitationId`; keep that value if a later rejection or withdrawal
+should prevent account creation.
+
+**Caller authority** is the same as tenant invitation creation: a confidential
+service client with `org:user:invite`, or a tenant user with that permission in
+the token client's application. Control-plane callers and other organizations
+are rejected.
+
+Rules and limitations:
+
+- The invitation must belong to the authenticated tenant application. Ownership
+  is recorded when a tenant invitation is created, even without role
+  pre-assignment.
+- Admin API invitations and invitations created before application ownership
+  existed are unowned. They remain valid until acceptance, replacement or expiry,
+  but this tenant route does not cancel them.
+- Any authorized actor in that application may cancel its pending invitations;
+  the operation is not limited to the original inviter.
+- Normal completion is `204 No Content` with an empty body. Unknown, already
+  used, expired, replaced, foreign-application and unowned identifiers return
+  the same empty `204`; existence and prior state are not disclosed through the
+  normal status or response body. Timing is not guaranteed to be
+  indistinguishable.
+- The operation is idempotent. A second request changes nothing and writes no
+  second success audit event.
+- A committed acceptance is never undone. If acceptance completes first, the
+  account remains; if cancellation completes first, acceptance uses the normal
+  expired-invitation page and creates no account.
+- One durable `user.invite.revoked` audit event records the tenant user or service
+  client, organization, invitation and application identifiers. It never stores
+  the token, its hash or the recipient address.
+- No email or other notification is sent.
+- The route shares the strict `org:user:delete` deletion budget: 60 requests per
+  hour per authenticated actor and organization, including no-op requests.
+  Exceeding it returns `429`; if the counter cannot be enforced, the route
+  returns `503` without changing the invitation.
+- A malformed invitation UUID returns `400`. Storage or audit failure returns a
+  sanitized `500` and leaves the invitation usable.
+
+SDK equivalent:
+
+```typescript
+await tenant.users.revokeInvitation({ organizationId, invitationId });
+```
+
+The SDK sends a bodyless `DELETE` on a transport configured with
+`apiPrefix: '/api'`. The default admin prefix does not gain this authority.
+Identifiers that would resolve to a `.` or `..` path segment are rejected
+locally before any request, so they can never be normalized onto another route.
+
 ## Tenant-Scoped M2M User Management
 
 A tenant service client can manage users in its own organization without a

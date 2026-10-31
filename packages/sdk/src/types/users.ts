@@ -261,6 +261,23 @@ export interface InviteUserResult {
   expiresAt: string;
 }
 
+/**
+ * Input for cancelling one pending invitation.
+ *
+ * Tenant clients use it with a transport configured for `apiPrefix: '/api'`.
+ * The server accepts only an invitation owned by the authenticated tenant
+ * application; the identifiers here are not an authorization claim.
+ *
+ * @example
+ * await client.users.revokeInvitation({ organizationId, invitationId });
+ */
+export interface RevokeInvitationInput {
+  /** Organization authenticated by the tenant client credentials or user token. */
+  organizationId: string;
+  /** Identifier returned when the invitation was created. */
+  invitationId: string;
+}
+
 export interface SetPasswordInput {
   password: string;
 }

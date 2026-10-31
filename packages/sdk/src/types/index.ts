@@ -62,6 +62,7 @@ export type {
   UpdateUserInput,
   InviteUserInput,
   InviteUserResult,
+  RevokeInvitationInput,
   SetPasswordInput,
   UserListParams,
   UserDataExport,

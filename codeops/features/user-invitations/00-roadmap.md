@@ -3,7 +3,7 @@
 > **Feature-Set**: User Invitations
 > **Status**: Active
 > **Created**: 2026-09-26
-> **Last Updated**: 2026-10-30 10:47
+> **Last Updated**: 2026-10-31 22:10
 > **Progress**: 0 / 0 (0%)
 > **CodeOps Artifact Schema**: 1
 
@@ -17,6 +17,7 @@
 | ---- | ----- | --- | ---- | ----- | ------ | ------------ | -------------------- |
 | T-01 | Deferred invitation creation (no user until acceptance) | — | [plan](plans/deferred-invitation-creation/00-index.md) | 🔄 Executing | 🔄 | 2026-09-27 00:35 | — |
 | T-02 | Invitation localization and formal Dutch support (#179) | — | [plan](plans/invitation-localization/00-index.md) | ✅ Done | ✅ | 2026-10-30 10:47 | 40/40; full CI green on c9e9e761; AR #17 limitation retained |
+| T-03 | Tenant invitation revocation (#196) | — | [plan](plans/tenant-invitation-revocation/00-index.md) | ✅ Done | ✅ | 2026-10-31 22:10 | 30/30; assurance/compat green; merged to develop via PR #212 |
 
 ## Notes
 

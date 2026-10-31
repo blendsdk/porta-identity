@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-10-30
 
 ## Overview
 
@@ -94,6 +94,7 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `clients.ts`       | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
 | `users.ts`         | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
 | `tenant-users.ts`  | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
+| `tenant-invitations.ts` | `/api/organizations/:orgId/invitations`          | 1         | Tenant application-bound invitation revocation |
 | `roles.ts`         | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
 | `permissions.ts`   | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
 | `user-roles.ts`    | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
@@ -129,6 +130,18 @@ the Admin authentication boundary.
   invites keep the existing 30/hour budget.
 - Mutation audit is transaction-bound with first-class client actor columns.
   Reads write best-effort `user.read`/`user.listed` rows.
+
+### Tenant invitation cancellation
+
+`DELETE /api/organizations/:orgId/invitations/:invitationId` uses existing `org:user:invite`
+authority for a service or tenant user, independently of Admin API credentials. Normal completion
+is an empty `204` for both revocation and no-op; there is no invitation read endpoint. The route
+shares the strict user-delete budget, not the email-send budget. The SDK exposes it as
+`users.revokeInvitation({ organizationId, invitationId })` on a transport using `apiPrefix: '/api'`;
+the default admin prefix gains no cancellation authority, and the SDK rejects identifiers that would
+resolve to `.` or `..` before sending. See
+[revocation security](security.md#tenant-invitation-revocation) and
+[storage/rollout](data-model.md) for the ownership, audit and race boundaries.
 
 ### Organization branding assets
 

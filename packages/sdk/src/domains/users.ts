@@ -4,6 +4,7 @@
  * @module domains/users
  */
 
+import { PortaError } from '../errors/index.js';
 import { listAll } from '../pagination/index.js';
 import type { HttpTransport } from '../transport/types.js';
 import type {
@@ -14,6 +15,7 @@ import type {
   InviteUserInput,
   InviteUserResult,
   PaginatedResponse,
+  RevokeInvitationInput,
   SetPasswordInput,
   UpdateUserInput,
   User,
@@ -68,6 +70,8 @@ export interface UsersDomain {
   update(orgId: string, userId: string, input: UpdateUserInput, etag?: string): Promise<ETagResponse<User>>;
   /** Invite a user and return the invitation outcome. */
   invite(input: InviteUserInput): Promise<InviteUserResult>;
+  /** Cancel one pending tenant application invitation — DELETE .../invitations/:invitationId */
+  revokeInvitation(input: RevokeInvitationInput): Promise<void>;
   /** Preview the invitation email without sending — POST .../invite/preview */
   invitePreview(input: InviteUserInput): Promise<InvitePreviewResult>;
   setPassword(orgId: string, userId: string, input: SetPasswordInput): Promise<void>;
@@ -170,6 +174,21 @@ export function createUsersDomain(transport: HttpTransport): UsersDomain {
         body: input,
       });
       return unwrapData<InvitePreviewResult>(res.body);
+    },
+
+    async revokeInvitation(input) {
+      // Dots are not escaped by encodeURIComponent, and fetch normalizes a
+      // trailing "." or ".." segment. Rejecting those before the request keeps
+      // the default admin prefix from ever resolving a different route.
+      const organizationId = encodeURIComponent(input.organizationId);
+      const invitationId = encodeURIComponent(input.invitationId);
+      if ([organizationId, invitationId].some((value) => value === '.' || value === '..')) {
+        throw new PortaError('Invitation identifiers are invalid.');
+      }
+      await transport.request({
+        method: 'DELETE',
+        path: `/organizations/${organizationId}/invitations/${invitationId}`,
+      });
     },
 
     async setPassword(orgId, userId, input) {
