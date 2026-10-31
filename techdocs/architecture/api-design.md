@@ -136,7 +136,10 @@ the Admin authentication boundary.
 `DELETE /api/organizations/:orgId/invitations/:invitationId` uses existing `org:user:invite`
 authority for a service or tenant user, independently of Admin API credentials. Normal completion
 is an empty `204` for both revocation and no-op; there is no invitation read endpoint. The route
-shares the strict user-delete budget, not the email-send budget. See
+shares the strict user-delete budget, not the email-send budget. The SDK exposes it as
+`users.revokeInvitation({ organizationId, invitationId })` on a transport using `apiPrefix: '/api'`;
+the default admin prefix gains no cancellation authority, and the SDK rejects identifiers that would
+resolve to `.` or `..` before sending. See
 [revocation security](security.md#tenant-invitation-revocation) and
 [storage/rollout](data-model.md) for the ownership, audit and race boundaries.
 

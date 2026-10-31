@@ -115,6 +115,30 @@ flow. Role assignment is limited to the client application, and permanent
 delete requires the separate delete scope. See
 [Users API](../api/users.md#tenant-scoped-m2m-user-management).
 
+### Cancel a pending tenant invitation
+
+Keep the `invitationId` returned by `users.invite()` when a later rejection
+should prevent account creation. `users.revokeInvitation()` uses the same tenant
+invitation authority and transport:
+
+```typescript
+const invitation = await tenant.users.invite({ organizationId, email });
+
+// Later, when the tenant withdraws its approval:
+await tenant.users.revokeInvitation({
+  organizationId,
+  invitationId: invitation.invitationId,
+});
+```
+
+The call resolves `void` for a real cancellation and for an idempotent no-op.
+Unknown, expired, used or unowned invitations are not distinguished. Only
+invitations owned by the authenticated tenant application can be cancelled;
+control-plane invitations are not affected. A committed account is never
+deleted. See
+[Invitation Revocation](../api/users.md#tenant-scoped-invitation-revocation) for
+the `204` semantics, audit behaviour and shared 60/hour strict limit.
+
 ## 401 Handling & Token Refresh
 
 The `NodeTransport` automatically handles 401 responses:

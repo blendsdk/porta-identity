@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: user-invitations/T-03
-> **Last Updated**: 2026-10-30 22:13
-> **Progress**: 17/30 tasks (57%)
+> **Last Updated**: 2026-10-31 20:30
+> **Progress**: 26/30 tasks (87%)
 > **CodeOps Artifact Schema**: 1
 
 ## Implementation Phases
@@ -59,28 +59,30 @@ Deliverables: ownership storage, scoped mutation/API and ST-1–19/ST-23; indepe
 
 ## Phase 2: SDK, documentation and final evidence
 
-> **Phase baseline tree**: recorded by exec-plan before Phase 2
+> **Phase baseline tree**: 9f3b7ab4a17da99f00ec034b2e8c0ecc919b1c20
 > **Lenses**: api-surface, concurrency; security profiles as Phase 1
 > **Reasoning**: high — public SDK contract and security evidence provenance
 
+Phase1 checkpoint2423b938 is pushed and clean. Scope remains strict: named SDK/test/docs changes, approved exact CLI/type/inventory fixtures, final assurance/compatibility/CI and owned cleanup. Baseline backend source is frozen unless an actual regression or authorized review ruling requires correction. Phase2 starts with new specification authors before SDK implementation; AR #10 approved backend fixture changes remain unchanged.
+
 ### Session 2.1 — Specification tests and red
 
-- [ ] 2.1.1 [spec-author] Write SDK runtime/type specifications ST-20–22 — `tests/domains/invitation-revocation.spec.test.ts`, `tests/type-contracts/invitation-revocation.spec.test.ts`; register the latter in existing `tests/type-contracts/tsconfig.json` (PF-002), per 03-02.
-- [ ] 2.1.2 [spec-author] Write real-token E2E ST-24 — `server/tests/e2e/api/tenant-invitation-revocation.spec.test.ts` using existing helpers, no new runner.
-- [ ] 2.1.3 Verify SDK runtime/type and actual SDK-invoking E2E ST-24 red before the SDK method exists (PF-005); record intended failures without committing them (PF-003).
+- [x] 2.1.1 [spec-author] Write SDK runtime/type specifications ST-20–22 — `tests/domains/invitation-revocation.spec.test.ts`, `tests/type-contracts/invitation-revocation.spec.test.ts`; register the latter in existing `tests/type-contracts/tsconfig.json` (PF-002), per 03-02. ✅ (completed: 2026-10-30 22:24; independent author; intended red is ten missing-method failures plus compiler missing input/method exports; commit deferred)
+- [x] 2.1.2 [spec-author] Write real-token E2E ST-24 — `server/tests/e2e/api/tenant-invitation-revocation.spec.test.ts` using existing helpers, no new runner. ✅ (completed: 2026-10-30 22:24; AR #11 approved content-type fixture correction only; after it, real token/invite/email succeeded and failure moved to the missing SDK method; commit deferred)
+- [x] 2.1.3 Verify SDK runtime/type and actual SDK-invoking E2E ST-24 red before the SDK method exists (PF-005); record intended failures without committing them (PF-003). ✅ (completed: 2026-10-30 22:24; all three intended reds recorded; E2E credential diagnostics deliberately sanitized, no assertion/timeout change)
 
 ### Session 2.2 — Implementation and green
 
-- [ ] 2.2.1 Add SDK input type/export and domain method — `sdk/src/types/users.ts`, `sdk/src/types/index.ts`, `sdk/src/domains/users.ts` (03-02); add compatibility-only method stub in `cli/tests/admin/session-wiring.impl.test.ts` (PF-006); verify ST-20–22.
-- [ ] 2.2.2 Verify SDK and real-token E2E specifications green, with client-attributed audit and no recipient account.
-- [ ] 2.2.3 Document API/SDK consumer flow — `docs/api/users.md`, `docs/guide/sdk-node.md`, `packages/sdk/README.md` (03-02).
-- [ ] 2.2.4 Update maintainer security/data-model and existing migration guidance (03-01 rollout); verify links and `pnpm docs:build`.
+- [x] 2.2.1 Add SDK input type/export and domain method — `sdk/src/types/users.ts`, `sdk/src/types/index.ts`, `sdk/src/domains/users.ts` (03-02); add compatibility-only method stub in `cli/tests/admin/session-wiring.impl.test.ts` (PF-006); verify ST-20–22. ✅ (completed: 2026-10-31 20:25; SDK runtime10/10, compiler typecheck, lint and exact CLI fixture7/7 pass; inventory reconciled to386 server/57 SDK)
+- [x] 2.2.2 Verify SDK and real-token E2E specifications green, with client-attributed audit and no recipient account. ✅ (completed: 2026-10-31 20:25; real client-credentials→invite→email→actual SDK revoke→generic GET/CSRF-valid POST rejection, zero accounts, exact client audit metadata; no credential leakage)
+- [x] 2.2.3 Document API/SDK consumer flow — `docs/api/users.md`, `docs/guide/sdk-node.md`, `packages/sdk/README.md` (03-02). ✅ (completed: 2026-10-31 20:26; exact authority, idempotent empty204, unowned/admin limitation, acceptance, audit, no-notification, strict limit, error and tenant-prefix guidance added)
+- [x] 2.2.4 Update maintainer security/data-model and existing migration guidance (03-01 rollout); verify links and `pnpm docs:build`. ✅ (completed: 2026-10-31 20:26; API/security/data-model and SDK method reconciled; changed links verified; docs build complete)
 
 ### Session 2.3 — Hardening, reviews and publication
 
-- [ ] 2.3.1 Add any SDK internal error-path `.impl.test.ts` cases not already covered; reconcile actual exact inventories (PF-001), run affected SDK/server checks and `pnpm test:changed`/structure.
-- [ ] 2.3.2 Run applicable invitation UI regression category, pentest and docs gates; record exact outputs.
-- [ ] 2.3.3 Complete independent phase/API correctness review and security audit; resolve findings with authorized rulings and keep review evidence.
+- [x] 2.3.1 Add any SDK internal error-path `.impl.test.ts` cases not already covered; reconcile actual exact inventories (PF-001), run affected SDK/server checks and `pnpm test:changed`/structure. ✅ (completed: 2026-10-31 20:28; runtime spec already covers error propagation, encoding, no-retry and prefix, so no redundant impl file; inventory386/57; affected452unit/157structure/108+7SDK-CLI and SDK verify604 pass)
+- [x] 2.3.2 Run applicable invitation UI regression category, pentest and docs gates; record exact outputs. ✅ (completed: 2026-10-31 20:28; invitation UI11/11, complete pentest330/330 across47 files and docs build passed; pentest rerun on the fixed SDK also330/330)
+- [x] 2.3.3 Complete independent phase/API correctness review and security audit; resolve findings with authorized rulings and keep review evidence. ✅ (completed: 2026-10-31 20:59; two minor review fixes; critical SDK dot-segment finding fixed under AR #12 and focused re-review CLEAN; evidence in00-phase2-quality-review)
 - [ ] 2.3.4 Create clean committed checkpoint via git-commit skill; run registered production-security harness and tenant-admin compatibility, record commit/tree/run/exit and owned cleanup; block on security failure.
 - [ ] 2.3.5 Push feature via git-commit skill in push mode and confirm CI full `pnpm verify` plus all separate branch jobs on exact published revision.
 - [ ] 2.3.6 Record final T-03 tracking/cleanup/evidence and completion checkpoint after substantive docs reconciliation; confirm CI on that final pushed HEAD (PF-007). No sibling tracking edits, merge or release.

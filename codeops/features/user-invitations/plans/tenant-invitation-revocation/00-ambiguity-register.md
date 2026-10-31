@@ -1,7 +1,7 @@
 # Ambiguity Register: Tenant Invitation Revocation (#196)
 
-> **Status**: ✅ GATE PASSED — all 10 decisions resolved; approved fixture corrections pending verification
-> **Last Updated**: 2026-10-30 13:22
+> **Status**: ✅ GATE PASSED — all 12 decisions resolved and verified
+> **Last Updated**: 2026-10-31 20:35
 > **CodeOps Artifact Schema**: 1
 
 ## Planning scope contract
@@ -28,6 +28,8 @@ Unrelated roadmap cleanup, #180, #184, list/get, CLI/Admin UI changes, merging a
 | 8 | Input / errors / rate limiting | Invalid IDs, foreign IDs, limiter selection | Validate UUID org/id after existing auth; invalid is fixed 400; existing auth 401/403; unknown/foreign-app/null/used/expired UUID is empty 204; reuse tenantUserDeleteRateLimiter (60/hour, Redis unavailable 503) without new bucket | User selected “Approve contract (Recommended)”; fixed shared body {error: 'User request is invalid'}, limiter also covers no-op attempts | ✅ Resolved |
 | 9 | Technical / naming / UX | Implementation boundaries, SDK and docs | Small tenant-invitations route and invitation-revocation service; extend token insert input with optional applicationId; SDK input type and Promise<void> method; document tenant-only prefix /api and limitations; no new framework/dependency | User selected “Approve contract (Recommended)”; confirmed complete planning baseline, followed by preflight and implementation | ✅ Resolved |
 | 10 | Verification mechanics (runtime) | First green attempt has three endpoint and two acceptance-race failures caused by fixture mechanics | Invalidate fixture client cache after direct SQL app change; preconsume 30 real eligible user deletions before unchanged mixed-budget loop; initialize synthetic response404 like Koa; observe/gate acceptance's actual PG connection rather than wrapper transaction. Preserve every assertion, timeout, real mutation and lock observation. Alternative production cache/limiter/transaction refactors are outside scope and not justified by these failures. | User selected “Approve corrections (Recommended)” after the interrupted question was reissued; exact two new test files only, every assertion/timeout unchanged, no production refactor | ✅ Resolved |
+| 11 | Verification mechanics (runtime) | Actual E2E stops at invite201 assertion with400 before reaching missing SDK method | Add Content-Type: application/json alongside Authorization in the new E2E test's postJson options. Existing helper spreads options after merged headers (http-client.ts:141–149), replacing its JSON header. Do not modify shared helper, payload, expected201, remaining assertions or production code. | User selected “Approve header correction (Recommended)” after the interrupted question was reissued; exact new E2E fixture only, all payload/assertions unchanged | ✅ Resolved |
+| 12 | Security (runtime) | Critical: `.`/`..` identifiers survive encodeURIComponent; with the default admin prefix `fetch` normalizes `/api/admin/organizations/<org>/invitations/..` to the organization DELETE route, so a successful `void` could delete an organization | Reject encoded `.`/`..` for both identifiers with a fixed PortaError before transport, following the existing config-domain precedent; add adversarial tests proving no request; correct affected docs. Alternative strict client-side UUID validation was considered but rejected as a broader contract change. | User selected “Reject dot segments (Recommended)”; focused independent security re-review returned CLEAN | ✅ Resolved |
 
 ## Evidence and independent challenge
 
