@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: user-invitations/T-03
-> **Last Updated**: 2026-10-31 20:30
-> **Progress**: 26/30 tasks (87%)
+> **Last Updated**: 2026-10-31 21:34
+> **Progress**: 27/30 tasks (90%)
 > **CodeOps Artifact Schema**: 1
 
 ## Implementation Phases
@@ -83,7 +83,7 @@ Phase1 checkpoint2423b938 is pushed and clean. Scope remains strict: named SDK/t
 - [x] 2.3.1 Add any SDK internal error-path `.impl.test.ts` cases not already covered; reconcile actual exact inventories (PF-001), run affected SDK/server checks and `pnpm test:changed`/structure. ✅ (completed: 2026-10-31 20:28; runtime spec already covers error propagation, encoding, no-retry and prefix, so no redundant impl file; inventory386/57; affected452unit/157structure/108+7SDK-CLI and SDK verify604 pass)
 - [x] 2.3.2 Run applicable invitation UI regression category, pentest and docs gates; record exact outputs. ✅ (completed: 2026-10-31 20:28; invitation UI11/11, complete pentest330/330 across47 files and docs build passed; pentest rerun on the fixed SDK also330/330)
 - [x] 2.3.3 Complete independent phase/API correctness review and security audit; resolve findings with authorized rulings and keep review evidence. ✅ (completed: 2026-10-31 20:59; two minor review fixes; critical SDK dot-segment finding fixed under AR #12 and focused re-review CLEAN; evidence in00-phase2-quality-review)
-- [ ] 2.3.4 Create clean committed checkpoint via git-commit skill; run registered production-security harness and tenant-admin compatibility, record commit/tree/run/exit and owned cleanup; block on security failure.
+- [x] 2.3.4 Create clean committed checkpoint via git-commit skill; run registered production-security harness and tenant-admin compatibility, record commit/tree/run/exit and owned cleanup; block on security failure. ✅ (completed: 2026-10-31 21:34; clean checkpoint a7598e3c; production-security run1908ceb0 exit0 with7/7 and exposure11/11 zero failures; tenant-admin compat runaa6bbc5c exit0; owned runner reports removed; no task-owned containers/networks/volumes remain)
 - [ ] 2.3.5 Push feature via git-commit skill in push mode and confirm CI full `pnpm verify` plus all separate branch jobs on exact published revision.
 - [ ] 2.3.6 Record final T-03 tracking/cleanup/evidence and completion checkpoint after substantive docs reconciliation; confirm CI on that final pushed HEAD (PF-007). No sibling tracking edits, merge or release.
 

@@ -51,6 +51,14 @@ existing assertion or timeout was altered, and no server authority was added.
 
 ## Outstanding
 
-The production-security assurance harness and tenant-admin compatibility run only after a clean
-committed checkpoint and are recorded by the execution plan. The final published revision requires
-its own full CI confirmation.
+The production-security assurance harness and tenant-admin compatibility ran on the clean committed
+checkpoint `a7598e3c` before the evidence-only edits below:
+
+| Gate | Result |
+| --- | --- |
+| `pnpm assurance:harness --project security --profile production-security` | Run `1908ceb0-ab5f-456d-b97a-73b4ad891865`, exit 0, 7/7; production exposure 11 passed, 0 product/incomplete/execution failures |
+| `pnpm assurance:compat --select tenant-admin` | Run `aa6bbc5c-05ea-4100-b460-70cfb602f371`, exit 0 |
+
+Owned assurance reports and temporary runner logs were removed after recording these identifiers;
+no task-owned container, network or volume remains. The final published revision requires its own
+full CI confirmation.
