@@ -1,10 +1,10 @@
 # Roadmap: Test Assurance
 
 > **Feature-Set**: Test Assurance
-> **Status**: Executing — product remediation and the low-risk DEF residuals are resolved; consent, timing authority, and remaining assurance-observer campaigns stay open
+> **Status**: Blocked — DEF-23 timing authority and named deferred campaigns remain; 8.7c/9.6b/9.6c closed
 > **Created**: 2026-08-09
-> **Last Updated**: 2026-09-25 01:30
-> **Progress**: 0 / 7 (0%)
+> **Last Updated**: 2026-11-01 11:09
+> **Progress**: 122 / 123 tasks (99%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -24,7 +24,7 @@
 | RD-03    | Coverage attribution and ratchets                    | [RD-03](requirements/RD-03-coverage-attribution-and-ratchets.md)                    | [test-assurance-program](plans/test-assurance-program/00-index.md)               | Executing | 🔄     | 2026-08-10 00:06 | depends on RD-01, RD-02                                                                                                                                                                                               |
 | RD-04    | Functional contracts and compatibility               | [RD-04](requirements/RD-04-functional-contracts-and-compatibility.md)               | [test-assurance-program](plans/test-assurance-program/00-index.md)               | Executing | 🔄     | 2026-08-19 15:13 | packed protocol evidence admitted                                                                                                                                                                                     |
 | ↳ DEF-2  | Clean packed-client evidence checkpoints             | —                                                                                   | [test-assurance-program](plans/test-assurance-program/99-execution-plan.md)      | Done      | ✅     | 2026-08-14 16:37 | AR-58 approved; Tasks 6.5–6.7 own delivery                                                                                                                                                                            |
-| RD-05    | Security risk-slice assurance                        | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [product-remediation](plans/product-remediation/00-index.md)                     | Executing | 🔄     | 2026-08-23 00:44 | remediation 66/66; umbrella program 119/123 with four explicit blockers and deferred assurance gaps                                                                                                                   |
+| RD-05    | Security risk-slice assurance                        | [RD-05](requirements/RD-05-security-risk-slice-assurance.md)                        | [product-remediation](plans/product-remediation/00-index.md)                     | Executing | 🔄     | 2026-11-01 11:09 | remediation 66/66; umbrella 122/123; only 8.4/DEF-23 remains; 8.7c/9.6b/9.6c closed; M2 oracle gap remains |
 | ↳ DEF-3  | Advanced protocol consistency campaign               | —                                                                                   | —                                                                                | Deferred  | ⏸️     | 2026-08-19 19:40 | concurrency, response loss, restart, commit boundaries                                                                                                                                                                |
 | ↳ DEF-4  | Authorization-code atomic consumption                | —                                                                                   | —                                                                                | Done      | ✅     | 2026-09-21       | Resolved: atomic Redis consume; targeted integration suite passed                                                                                                                                                     |
 | ↳ DEF-5  | Protocol control sensitivity campaign                | —                                                                                   | —                                                                                | Deferred  | ⏸️     | 2026-08-19 19:53 | no disposable protocol source variations in this program                                                                                                                                                              |

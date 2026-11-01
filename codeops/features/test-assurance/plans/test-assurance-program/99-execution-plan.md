@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: Blocked — all authorized executable tasks complete; 4 named gaps remain
-> **Last Updated**: 2026-08-23 00:44
-> **Progress**: 119/123 tasks (97%)
+> **Status**: Blocked — DEF-23 remains; named deferred campaigns outside this plan
+> **Last Updated**: 2026-11-01 11:09
+> **Progress**: 122/123 tasks (99%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -940,12 +940,13 @@ assurance.
       functional block before the retained tenant/admin block passed 17/17. Static checks and
       structure passed 68/68; `yarn verify` passed 233 server files / 3,382 tests, 31 SDK files /
       404 tests, and 29 CLI files / 355 tests. ✅ (completed: 2026-08-20 01:57)
-- [!] 8.7c Blocked: DEF-8 — product remediation closed the former DEF-10 cross-tenant magic-link
-      acceptance defect with tenant, interaction, and client binding plus atomic non-consuming
-      rejection. Transient MailHog acquisition and exact sequential-use journeys for magic link,
-      password reset, and invitation remain incomplete. They must verify intended recipient and
-      tenant, configured lifetime, second-use rejection, protected-state nonmutation, and exposure
-      redaction without retaining delivered values.
+- [x] 8.7c DEF-8 successor closure: product remediation closed the former DEF-10 cross-tenant
+      magic-link acceptance defect; transient MailHog acquisition and exact sequential-use
+      journeys for magic link, password reset and invitation are now covered by the successor
+      evidence. ✅ (completed: 2026-11-01 11:09; def-8 23/23 + ST-46 correction 17/17;
+      production-security run `14c4cf25` exit 0 — exposure 11/0/0/0, functional 7/0,
+      second-factor 4/0, tenant-admin 17/0, recovery 5/0 with ST-46 passing; original blocker
+      retained in `08-closeout-evidence.md`)
 - [x] 8.7d Add email-OTP and recovery-code public sequential-use journeys plus TOTP enforcement.
       Preserve DEF-9 for same-window TOTP replay until separate product/security authority resolves
       that contract; do not manufacture a passing expectation from the stateless verifier.
@@ -1075,13 +1076,15 @@ assurance credit. The independent phase review and completed corrections are rec
       retaining broad result types. Static gates and structure passed, and `yarn verify` passed 233
       server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests. ✅
       (completed: 2026-08-20 06:45)
-- [!] 9.6b Blocked: DEF-13 — transport-level malformed headers and ordinary parser/Zod 400/413
-      outcomes can complete before the current request logger emits one correlated event. The
-      affected raw cases retain no log credit; observable response/state work may resume only as a
-      separately complete partial-evidence checkpoint.
-- [!] 9.6c Blocked: DEF-13 — current administrative permission denials emit neither an audit event
-      nor one structured log containing correlation ID, actor, action, target digest, and result.
-      Response/state/lifecycle evidence remains useful but cannot close the immutable sentinel.
+- [x] 9.6b DEF-13 correlated-log closure (narrow): transport-level malformed headers and parser/Zod
+      400/413 cases now have a correlated decision/completion observation through the P1 raw lane.
+      ✅ (completed: 2026-11-01 11:09; def-13-live-boundary 15/15; P1 live suite 15 raw + 18 admin
+      cases; run `729dfdb8` P1 1/1. The production-exposure `correlatedLogCredit` field remains
+      false and is not used as credit; the M2 control-observation gap remains open.)
+- [x] 9.6c DEF-13 administrative denial closure: permission denials now emit one correlated event
+      carrying the protected target digest; the P1 admin lane observes the required log fields.
+      ✅ (completed: 2026-11-01 11:09; def-13-admin-denial 5/5, focused unit 11/11; run `729dfdb8`
+      P1 1/1; M2 remains separate and open.)
 - [x] 9.6d [spec-author] Add the bounded packed SDK/CLI P1 read capability for tenant-filtered user
       pagination, audit filtering, public signing-key metadata, filtered sessions, and masked
       configuration. Verify every client result against an independent raw or fixture-state
