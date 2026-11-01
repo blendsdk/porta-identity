@@ -190,7 +190,7 @@ claim, and no failed attempt was removed. The detailed ruling ledger is [05-find
 | Original task | Original obligation | Successor evidence | M2 / residual | Candidate disposition |
 | --- | --- | --- | --- | --- |
 | 8.4 | DEF-23 timing enumeration hypothesis, effect-size bound, sample-size/power rule, environment/noise contract | None; no approved statistical authority | DEF-23 remains user-owned | **Remains blocked**; do not collect timing samples or infer a threshold |
-| 8.7c | DEF-8 transient MailHog acquisition and exact sequential-use journeys for magic link, password reset and invitation: recipient/tenant, lifetime, second-use, protected-state nonmutation, exposure redaction | `def-8-sequential-use-evidence` 23/23; `st46-delivered-artifact-correction` 17/17; production-security run `14c4cf25-df3c-464f-8400-fe78241bd295` exit 0 (production-exposure 11/0/0/0; functional 7/0; second-factor 4/0; tenant-admin 17/0; recovery 5/0) with ST-46 passing | No M2 dependency in ST-46; AR-29/AR-30 corrections recorded | **Closed** in 2.2.2 |
+| 8.7c | DEF-8 transient MailHog acquisition and exact sequential-use journeys for magic link, password reset and invitation: recipient/tenant, lifetime, second-use, protected-state nonmutation, exposure redaction | `def-8-sequential-use-evidence` 23/23; `st46-delivered-artifact-correction` 17/17; production-security run `14c4cf25-df3c-464f-8400-fe78241bd295` exit 0 (production-exposure 11/0/0/0; functional 7/0; second-factor 4/0; tenant-admin 17/0; recovery 5/0) with ST-46 passing | No M2 dependency in ST-46; successor-plan ambiguity decisions 29/30 corrected | **Closed** in 2.2.2 |
 | 9.6b | DEF-13 transport-level malformed headers and parser/Zod 400/413 cases need one correlated log/completion observation; raw cases retain no log credit | `def-13-live-boundary` 15/15; P1 live suite passes 15 raw + 18 admin cases; raw adapter correlates a decision or completion record by request ID and projects every required log field (`test-harness/assurance/p1/live-adapter.ts:222-257,276-311,470-488`); run `729dfdb8-88b5-48c2-808b-b7da6ebfcc67` P1 1/1, production-exposure passed=3 incomplete=3 exit 40 | M2 (control `requiredObservations`/`reachabilityObservations`) remains an oracle-level gap (`def-13-live-boundary/phase-4-review.md:30,62`). The production-exposure `correlatedLogCredit` field remains false (`production-exposure/evidence.ts:39`) and is **not** used as credit. | **Closed narrow** in 2.2.2; only the log obligation |
 | 9.6c | DEF-13 administrative permission denials need one correlated audit/structured log with correlation ID, actor, action, target digest and result | `def-13-admin-denial-digest` 5/5; focused unit spec 11/11; product emits the protected target digest; P1 admin lane observes 18 cases with required log fields; run `729dfdb8…` P1 1/1 | M2 is separate and remains open | **Closed** in 2.2.2 |
 
@@ -278,3 +278,17 @@ pending.
 - ST-6 satisfied: the case set is identical across the red/green runs; no probe was removed, no assertion weakened and no observer disappeared.
 - ST-7 satisfied narrowly: 9.6b closes only its log obligation; M2 remains open; 8.4/DEF-23 stays blocked.
 - ST-8 satisfied: DEF-23, DEF-3/6/22, DEF-5/11/17 and the consent follow-ups remain open with their owners.
+
+## Phase 2 Checkpoint
+
+- `pnpm test:changed` passed; focused route tests 60/60, server typecheck/lint, assurance
+  typecheck/lint, `human-auth-recovery-specs` (4 pass, 1 live skip) and structure passed.
+- Document validation: 44 unique tasks with phase totals 7/8/11/6/5/7; links resolve; AR and ST
+  references are valid; the legacy test-assurance helper zero-task result is recorded, not fixed
+  by rewriting IDs.
+- Cleanup: run directories `069b36ff`, `26887eb3` and `b89ea7a6` were removed; no containers,
+  networks or volumes remain for those run IDs. The two images created at 10:16
+  (`porta-069b36ff…`, `porta-26887eb3…`) were removed; older run images were left untouched.
+  The green run log is retained under `/tmp/opencode` for the final handoff and will be removed at
+  session cleanup after its sanitized facts are recorded here.
+- Docker cleanup did not touch pre-existing unrelated stacks or the older tenant-run images.

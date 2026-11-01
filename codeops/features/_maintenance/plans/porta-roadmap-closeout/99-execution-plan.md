@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 11:21
-> **Progress**: 14/44 tasks (32%)
+> **Last Updated**: 2026-11-01 11:23
+> **Progress**: 15/44 tasks (34%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -93,7 +93,7 @@ Markdown-only work. An unavailable historical artifact is not a reason to releas
 ### 2.3 Review and validation
 
 - [x] 2.3.1 Obtain independent security/provenance review of the case mapping and closure claims; resolve findings, retaining any required user ruling. — Phase evidence; AR-7/8/10. ✅ (completed: 2026-11-01 11:21)
-- [ ] 2.3.2 Run affected checks, structure and document validation; verify owned-run cleanup, record sanitized evidence and checkpoint. — 07 and 03-03; ST-19.
+- [x] 2.3.2 Run affected checks, structure and document validation; verify owned-run cleanup, record sanitized evidence and checkpoint. — 07 and 03-03; ST-19. ✅ (completed: 2026-11-01 11:23)
 
 **Verify:** exact ST-4–8 outcomes; current production-security evidence where required. For a
 security behavior repair, add pentest and applicable boundary gates under 07. M2 is not repaired
