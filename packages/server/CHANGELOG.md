@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.16.0] - 2026-11-01
+
+Added:
+- Revoke pending tenant application invitations with strict delete limits and tenant-only UUID cancellation.
+
+Changed:
+- Updated vitest and @vitest/coverage-v8 to 4.1.11 to patch an advisory.
+- Modified tenant application invitation handling to persist nullable authenticated ownership.
+
+Fixed:
+- Corrected ST dispositions, case size, tenant records, and portfolio deviation in phase 2 review findings.
+- Awaited the audit write before returning 429 responses for magic-link and password-reset routes.
+
 ## [1.15.0] - 2026-10-30
 
 Added:

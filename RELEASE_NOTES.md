@@ -1,15 +1,19 @@
-# Release Notes — v1.15.0
+# Release Notes — v1.16.0
 
-**Released**: 2026-10-30
+**Released**: 2026-11-01
 
-We are excited to announce version 1.15.0 of our software, which brings several notable enhancements that improve user experience and accessibility. This update focuses on localization and streamlining communication within the platform. 
+We are excited to announce version 1.16.0 of our software, which brings important updates and enhancements aimed at improving your experience. This release focuses on refining certain functionalities, enhancing our system's security, and streamlining user management features.
 
 Key Highlights:
 
-- **Improved Language Support**: We have added formal Dutch localization for both delivery and acceptance processes, making the platform more accessible to Dutch-speaking users. This enhancement ensures that users can interact with the software in a language that feels natural and comfortable, facilitating clearer communication.
+- **Improved Configuration Choices**: Users can now better tailor their experience with the addition of server-owned configuration locale choices, making it easier to set up the system in their preferred language and formats.
 
-- **Customizable Invitation Settings**: In this release, we introduced an option for users to select their preferred locale for invitations. This feature allows for a more personalized experience, as users can receive invitations in their chosen language, enhancing engagement and reducing confusion.
+- **Enhanced Tenant Management**: We've introduced the ability to cancel pending tenant invitations. This improvement gives administrators more control over their user invitations and helps streamline management tasks.
 
-- **Streamlined User Experience**: We have also made several behind-the-scenes adjustments to improve the overall functionality of the platform. These changes ensure smoother interactions and contribute to a more efficient experience when navigating through the software.
+- **Security Updates**: This release addresses some security vulnerabilities by patching known issues. We prioritize the safety of our users, and these updates are a part of our ongoing commitment to provide a secure environment.
 
-This update reflects our ongoing commitment to improving user satisfaction by making our platform more user-friendly and accessible to a wider audience. We believe these enhancements will significantly benefit our users and look forward to hearing your feedback!
+- **Streamlined Invitations Process**: The server now automatically revokes pending tenant application invitations, reducing the clutter and confusion that can arise from unaddressed invitations. 
+
+- **Compliance Adjustments**: We've made adjustments based on ongoing reviews to ensure that our platform continues to meet necessary standards and best practices. This includes refining specific functionalities to enhance the overall user experience.
+
+We're committed to continuous improvement and appreciate your feedback as we strive to make our platform even better. Thank you for your support and happy exploring in version 1.16.0!
