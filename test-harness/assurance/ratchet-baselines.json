@@ -1,16 +1,16 @@
 {
   "version": 1,
   "coverage": {
-    "sourceRevision": "16dae6b8412577a1c98e3f1f2ae07e20a69eee95",
-    "sourceRunId": "53ff6f24-219a-485b-a87f-93343612aa91",
-    "summaryDigest": "sha256:7b48038ecc8ce95ecb59770f6dcbc1fadfda1461c99b641a07a3a2fd218c66a9",
-    "normalizedPathCount": 150,
-    "normalizedPathDigest": "sha256:fd7fc28f6149f51ca71b8ca6266dc140706bf2c225b877aa40252ed3b0a94e63",
+    "sourceRevision": "604c2a0fdd9d62a6fbfb8dd5a78ee168a82e9da7",
+    "sourceRunId": "83acea43-3440-48c9-80da-5114767148a3",
+    "summaryDigest": "sha256:b3d31684ee9a79fc357ae52895e33cfc26c2b911f5d4a745b20a047c396ab10b",
+    "normalizedPathCount": 188,
+    "normalizedPathDigest": "sha256:86a8366b408dfaca021a8b190d2c2b148114b6d5ab1efe8ae5a014036586df94",
     "counts": {
-      "statements": { "covered": 1838, "total": 7630 },
-      "branches": { "covered": 580, "total": 3919 },
-      "functions": { "covered": 317, "total": 1177 },
-      "lines": { "covered": 1806, "total": 7296 }
+      "statements": { "covered": 2114, "total": 9613 },
+      "branches": { "covered": 691, "total": 5179 },
+      "functions": { "covered": 363, "total": 1550 },
+      "lines": { "covered": 2074, "total": 9034 }
     },
     "enforcement": "local-observation-only",
     "promotionAuthorized": false
@@ -20,7 +20,7 @@
       "paths": [
         "codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md"
       ],
-      "digest": "sha256:f17005ca28d271dbf6e14ff2b0a606fe06c7a5af654bc252c2a55b3f85ffc569",
+      "digest": "sha256:06c509c014c98fc03aba7ea38ef0db42ea886267a959657d977a4ca18fb2ef18",
       "affectedRequirementPrefix": "R5"
     },
     "fixture": {
@@ -28,12 +28,12 @@
         "test-harness/fixtures/fixture-definition.ts",
         "test-harness/fixtures/seed-arrangement.ts"
       ],
-      "digest": "sha256:08c5e9634ea2fc605d18c65050e2edebad5949aa09295b7d11a08784f9ebaab6",
+      "digest": "sha256:3524d67b9c53cbe6a4599fc31994808ae3098b9a9fe7ac00d69dfde78a06cbf0",
       "affectedRequirementPrefix": "*"
     },
     "dependency": {
       "paths": ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
-      "digest": "sha256:cee6c41179959b4bb5eb60475300cef4c00d29a4ce0614e7f86ee9aebe7211ad",
+      "digest": "sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e",
       "affectedRequirementPrefix": "*"
     },
     "sentinel": {
@@ -43,11 +43,11 @@
     }
   },
   "review": {
-    "reviewId": "local-observation-baseline-final-r5-2026-08-22",
-    "reviewedAt": "2026-08-22T20:41:46+02:00",
-    "reviewedBy": "authorized-test-assurance-execution",
-    "reason": "Retain the accepted local coverage observation while binding staleness to the final reviewed R5 requirement content, corrected R5.17 trace cases, and explicit external-correlation gap without changing CI policy.",
-    "sourceArtifact": "test-harness/.assurance-results/53ff6f24-219a-485b-a87f-93343612aa91/coverage/security/production-security/report/coverage-summary.json",
+    "reviewId": "local-observation-baseline-closeout-2026-11-01",
+    "reviewedAt": "2026-11-01T13:23:05+01:00",
+    "reviewedBy": "authorized-closeout-execution",
+    "reason": "Refresh the reviewed local security coverage observation after the pnpm migration, the RD-05 R5 requirement/content refresh, and current source expansion; covered counts increased, totals expanded, and no promotion is authorized.",
+    "sourceArtifact": "test-harness/.assurance-results/83acea43-3440-48c9-80da-5114767148a3/coverage/security/production-security/report/coverage-summary.json",
     "promotionAuthorized": false
   }
 }

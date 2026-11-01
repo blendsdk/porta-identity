@@ -450,3 +450,7 @@ values. The reviewer recomputed all digests/counts, found no lowered covered flo
 change, and identified only the two documentation clarifications above (now applied). The user
 approved applying the same values to both `ratchet-baselines.json` and the reviewed fixture, with
 `local-observation-only` and both promotion flags false. No file was changed before this approval.
+
+Applied in 3.2.5: both files now hold exactly these values; the JSON/fixture coverage blocks and all
+four monitored digests compare equal, and `pnpm assurance:test --select assurance-ratchets` passes
+10/10.
