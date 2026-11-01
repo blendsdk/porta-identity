@@ -1,6 +1,6 @@
 # Handoff: Tenant-Scoped M2M User Management
 
-> **Status**: Blocked on the production-security harness. Do not deploy from this state.
+> **Status**: Production-security gate green (run `069b36ff`, 2026-11-01). Deployment remains with the operator; use the instructions below.
 
 ## Delivered
 
@@ -22,16 +22,14 @@
 | `yarn assurance:compat --select tenant-admin` | Pass |
 | `yarn docs:build` | Pass |
 | `yarn test:structure` | 138 pass |
-| Production-security harness | **Blocked**: 11/11 exposure cases pass, but human-auth recovery fails on `password-reset-throttled-request` (missing normalized `delivered-authentication-artifact-rejection` log event). |
+| Production-security harness | **Green**: run `069b36ff-c09e-47a3-b48a-af445540b8ee` exit 0; production exposure 11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17, human-auth recovery 5/5. Exact throttle and wrong-tenant probes pass with `delivered-authentication-artifact-rejection`. |
 
-Harness runs: `31bfd677-43b9-4e95-b9ba-e76d8d4b09b6`, `e99a0d4c-bc51-4a69-a8fe-5a0c1a9d3eb7`.
-The failing test and adapter are in `test-harness/assurance`, which this branch did not modify.
-Treat the failure as a pre-existing assurance blocker; do not weaken or delete the assertion.
+Harness runs: original failures `31bfd677-43b9-4e95-b9ba-e76d8d4b09b6`, `e99a0d4c-bc51-4a69-a8fe-5a0c1a9d3eb7`; repair failures `b89ea7a6` (magic-link throttle) and `26887eb3` (password-reset wrong tenant); green run `069b36ff`. The audit-visibility repair awaits the rate-limit writes and makes the observer poll within a bounded window without weakening the event/field assertions. The run is not a full security certification.
 
 ## Deployment when unblocked
 
-1. Resolve the human-auth recovery harness blocker first; rerun the production-security harness and
-   record the accepted observer result. Do not call it fully passed.
+1. The production-security blocker is resolved by run `069b36ff`; do not call that run a full
+   security certification. The original failures and repair failures remain recorded.
 2. Schedule migration `034` in a maintenance window with a verified pre-migration backup. Stop or
    upgrade every server instance before applying it; a previous build cannot supply `actor_type`.
 3. Register the three new scopes in the provider and restart every Porta instance.

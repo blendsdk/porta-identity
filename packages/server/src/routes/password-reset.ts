@@ -322,7 +322,7 @@ async function processForgotPassword(
   if (!rateLimitResult.allowed) {
     ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
-    dependencies.writeAuditLog({
+    await dependencies.writeAuditLog({
       organizationId: org.id,
       eventType: 'rate_limit.password_reset',
       eventCategory: 'security',

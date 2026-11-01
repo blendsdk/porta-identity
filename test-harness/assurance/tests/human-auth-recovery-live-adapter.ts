@@ -1,7 +1,7 @@
 /**
  * Live adapter for the ST-46 delivered-authentication-artifact recovery case.
  *
- * The adapter observes all 21 steps (three controls and fifteen probes across magic-link,
+ * The adapter observes all 18 steps (six controls and twelve probes across magic-link,
  * password-reset, and invitation) through public HTTP, MailHog, and the administrative APIs. It
  * reports only what it observes: a contradiction with the requirement is returned unchanged, so
  * the immutable live specification — not this adapter — decides whether the product passes.
@@ -158,6 +158,12 @@ const MAIL_TIMEOUT_MILLISECONDS = 20_000;
 
 /** Mailbox polling interval. */
 const MAIL_INTERVAL_MILLISECONDS = 250;
+
+/** Bounded audit-visibility window for asynchronous rejection writes. */
+const AUDIT_TIMEOUT_MILLISECONDS = 20_000;
+
+/** Audit polling interval. */
+const AUDIT_INTERVAL_MILLISECONDS = 250;
 
 /** Seeded intended and wrong-recipient synthetic identities. */
 const INTENDED_EMAIL = 'alpha-user-active@test-harness.local';
@@ -651,30 +657,40 @@ function prohibitedSideEffects(
   );
 }
 
-/** Reads the newest matching rejection event and normalizes it to the requirement's class. */
+/**
+ * Polls the audit API for the first matching rejection event within a bounded window.
+ *
+ * Audit writes are asynchronous across several routes, so one immediate read can miss a real
+ * event. Polling changes only when the observer looks, never which event or fields are required.
+ */
 async function observeRejectionAudit(
   context: LiveTenantAdminContext,
   eventTypes: readonly string[],
   since: string,
   token: string,
 ): Promise<HumanAuthStepObservation['securityLog']> {
-  for (const eventType of eventTypes) {
-    const response = await context.rawRequest(
-      'GET',
-      `/api/admin/audit?event=${encodeURIComponent(eventType)}&limit=20&since=${encodeURIComponent(since)}`,
-      'admin-full',
-    );
-    if (response.status !== 200) continue;
-    const row = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(response.body)
-      .data[0];
-    if (row === undefined) continue;
-    const forbiddenValueObserved = token.length > 0 && JSON.stringify(row).includes(token);
-    return Object.freeze({
-      event: NORMALIZED_LOG_EVENT,
-      fields: NORMALIZED_LOG_FIELDS,
-      forbiddenValueObserved,
-    });
-  }
+  const deadline = Date.now() + AUDIT_TIMEOUT_MILLISECONDS;
+  do {
+    for (const eventType of eventTypes) {
+      const response = await context.rawRequest(
+        'GET',
+        `/api/admin/audit?event=${encodeURIComponent(eventType)}&limit=20&since=${encodeURIComponent(since)}`,
+        'admin-full',
+      );
+      if (response.status !== 200) continue;
+      const row = z.object({ data: z.array(z.record(z.string(), z.unknown())) }).parse(response.body)
+        .data[0];
+      if (row === undefined) continue;
+      const forbiddenValueObserved = token.length > 0 && JSON.stringify(row).includes(token);
+      return Object.freeze({
+        event: NORMALIZED_LOG_EVENT,
+        fields: NORMALIZED_LOG_FIELDS,
+        forbiddenValueObserved,
+      });
+    }
+    if (Date.now() >= deadline) break;
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, AUDIT_INTERVAL_MILLISECONDS));
+  } while (Date.now() < deadline);
   return null;
 }
 

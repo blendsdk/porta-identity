@@ -1011,6 +1011,37 @@ describe('interaction routes', () => {
       // Should NOT send email
       expect(emailService.sendMagicLinkEmail).not.toHaveBeenCalled();
     });
+
+    it('should await the rate-limit audit before rendering the rejection', async () => {
+      vi.mocked(rateLimiter.checkRateLimit).mockResolvedValue({
+        allowed: false,
+        remaining: 0,
+        retryAfter: 300,
+      });
+
+      // The audit promise resolves in a later microtask. If the route does not
+      // await it, the renderer runs first and this assertion fails.
+      let auditResolved = false;
+      vi.mocked(auditLog.writeAuditLog).mockImplementationOnce(async () => {
+        await Promise.resolve();
+        auditResolved = true;
+      });
+      vi.mocked(templateEngine.renderPage).mockImplementationOnce(async () => {
+        expect(auditResolved).toBe(true);
+        return '<html>rendered</html>';
+      });
+
+      const provider = createMockProvider();
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/magic-link');
+      const ctx = createMockCtx({
+        body: { email: 'user@test.com', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(ctx.status).toBe(429);
+    });
   });
 
   // =========================================================================

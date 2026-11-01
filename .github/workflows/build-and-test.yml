@@ -159,10 +159,21 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+      - name: Build harness image with GHA cache
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: test-harness/Dockerfile
+          load: true
+          tags: porta-harness-ci:latest
+          cache-from: type=gha,scope=porta-harness-ci
+          cache-to: type=gha,mode=max,scope=porta-harness-ci
       - name: Run OIDC harness
         run: pnpm harness:test
         env:
           HARNESS_BUILD_CACHE_FILE: test-harness/docker-compose.ci.yml
+          COMPOSE_BAKE: 'true'
+          HARNESS_STREAM_BUILD_OUTPUT: '1'
 
   docs:
     name: Public Documentation

@@ -1,7 +1,7 @@
 # Task T-04: Migrate the Porta monorepo from Yarn Classic to pnpm
 
 > **Type**: Task (non-trivial, cross-cutting build migration) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 42/44 tasks (95%)
+> **Progress**: 44/44 tasks (100%)
 > **Reasoning**: high — this changes installs, CI, the Docker runtime, release publishing, assurance provenance, and the structural test oracle. Product behavior must not change.
 > **Effort**: 12–16 engineer-days, including release and assurance evidence.
 > **Branch**: `build/pnpm-migration`, created from `develop` at `v1.14.0` (`6ac10d75`).
@@ -189,12 +189,12 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 - [x] **4.3** Updated the worktree flows. pnpm refuses a symlinked `node_modules` for task run state, so isolated worktrees execute the existing package build scripts through the pinned npm CLI. The packed-consumer test builds, packs, installs, verifies, and cleans up successfully.
 - [x] **4.4** Switched the packed-consumer compatibility flow to npm: npm install flags, `package-lock.json` assertions, cache directory, and deterministic archive/content checks. The npm-produced archives are packed twice and compared; the installed tree is verified as ordinary directories.
 - [x] **4.5** Verified the coverage dependency inventory against the hoisted harness image: 276 packages, including `koa`, `yaml` 2.9.0, `chalk` 6.0.0, and `oidc-provider` at `/app/node_modules/*`.
-- [ ] **4.6** `pnpm assurance:validate` passed and the packed-consumer/gonvernance suites pass. The live `pnpm assurance:compat`, coverage capture, and ratchet refresh remain pending; see the known pre-existing drift below.
+- [x] **4.6** `pnpm assurance:validate` passes and the packed-consumer/governance suites pass. All five approved compatibility selectors, both coverage captures and the reviewed baseline refresh are complete. ✅ (completed: 2026-11-01 13:30; compat runs `2dbdf711` compatibility, `abf11a16` tenant-admin, `d5b39ef9` admin-data, `b6de7aec` p1-admin, `8b3ae45e` protocol; coverage `31c42876` protocol/operational and `83acea43` security/production-security; validate `6367accb` exit 0; ratchet 10/10; user approved the exact baseline values)
 - [x] **4.7** Ran `pnpm assurance:harness --project security --profile production-security` on the migration revision: 17/17 catalog tests and 5/5 delivered-artifact probes passed, exit 0. Historical Yarn evidence was not rewritten.
 
-**Known pre-existing drift:** `assurance-ratchets.impl.test.ts` reports stale reviewed digests for `requirement-r5` and `fixture`. Those files changed after the 2026-08-22 local baseline and are unrelated to pnpm. The migration updated only the dependency digest. A separate baseline review is required before the ratchet suite can pass.
+**Resolved pre-existing drift:** the closeout baseline review refreshed the `requirement-r5`, `fixture` and `dependency` digests together with the security coverage counts/path identity. The baseline JSON and reviewed fixture are exactly equal, `pnpm assurance:validate` exits 0, and the ratchet selector passes 10/10. The historical drift is preserved above; 6.4 is complete via PR #213.
 
-**Verify:** assurance validation passes; packed-consumer compat uses npm; coverage inventory is non-empty; the registered production-security harness remains pending.
+**Verify:** assurance validation passes; packed-consumer compatibility uses npm; coverage inventory is non-empty; the registered production-security harness is green; tasks 4.6 and 6.4 are complete.
 
 ## Phase 5 — Structural specifications and documentation
 
@@ -211,10 +211,10 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 - [x] **6.1** Clean-clone `pnpm install --frozen-lockfile` passed on Node 22.23.1 and Node 24.20.0.
 - [x] **6.2** `pnpm verify` passed with PostgreSQL, Redis, and MailHog: structure 142/142, server unit/integration/E2E/pentest, SDK, CLI, lint, typecheck, and builds (16m30s).
 - [x] **6.3** `pnpm test:ui` passed 133/133; `pnpm harness:test` passed 6/6; `pnpm docs:build` passed; `pnpm audit --prod --audit-level high` reported no known vulnerabilities.
-- [ ] **6.4** Production and harness images build for amd64; the arm64 server image builds and reaches `healthy` under QEMU; all five compose files render; task images and compose resources were removed. The GitHub dependency graph/Dependabot alerts and GHA cache-hit checks require a pushed branch/PR and remain the only remote gates. The arm64 CLI-only `fs-ext-extra-prebuilt` issue is documented under 2.7.
+- [x] **6.4** Production and harness images build for amd64; the arm64 server image builds and reaches `healthy` under QEMU; all five compose files render; task images and compose resources were removed. ✅ (completed: 2026-11-01 16:40; graph fix PR #213 merged to `develop`; single-document `pnpm-lock.yaml`; compare `main...develop` adds 936 project packages and removes exactly the 15 boot-document entries; alerts and both cache scopes green. The default branch updates on the next release to `main`.) The arm64 CLI-only `fs-ext-extra-prebuilt` issue is documented under 2.7.
 - [x] **6.5** Independent release/security review completed. Its arm64 and production-security findings were resolved by 2.7 and 4.7; the GitHub dependency-graph finding remains tracked by 6.4. Minor action items (setup action version, onboarding strings) were fixed. No real release or tag was created.
 
-**Verify:** all local commands in the matrix below pass on the final revision. The GitHub dependency graph/Dependabot alerts and GHA cache-hit checks remain remote-only gates; the branch is release-safe but unpublished.
+**Verify:** all local commands in the matrix below pass on the final revision. Dependabot alerts are enabled, both GHA cache scopes show real import/reuse, and the dependency graph parses the project lockfile on `develop` (936 packages; 15 boot entries removed). The default branch updates on the next release. The branch is release-safe but unpublished.
 
 ## Final verification evidence
 
@@ -232,7 +232,7 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 | Release rehearsal | pnpm pack/publish dry-run integrity matched; registry and preflight checks passed |
 | Cleanup | Task-created images, containers, networks, volumes, clone, and scratch packs removed |
 
-**Known remote-only gates:** GitHub dependency graph/Dependabot alerts for the two-document pnpm 12 lockfile, and the GHA cache-hit observation on the first pushed branch run. **Known pre-existing drift:** the `requirement-r5` and `fixture` ratchet digests are stale on `develop`; the migration changed only the dependency digest. A separate baseline review is required.
+**Resolved remote gates (2026-11-01):** Dependabot alerts are enabled and both GHA cache scopes (`porta-ci`, `porta-harness-ci`) show real export/import/reuse. PR #213 replaced the two-document lockfile with a single-document project lockfile; `dependency-graph/compare/main...develop` adds 936 project packages and removes exactly the 15 boot-document entries. The default-branch alerts update on the next release to `main`. The ratchet drift is resolved by the closeout baseline (validate `6367accb`, ratchet 10/10).
 
 ## Verification matrix
 
@@ -252,8 +252,8 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 | CI Docker cache | Second branch-CI run restores the GHA cache for both images |
 | Dependency graph | Dependabot PR plus GitHub dependency graph/alerts show the pnpm graph |
 | Assurance validation | `pnpm assurance:validate` |
-| Assurance compat | `pnpm assurance:compat` |
-| Assurance coverage | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` |
+| Assurance compat | `pnpm assurance:compat --select <compatibility|tenant-admin|admin-data|p1-admin|protocol>` |
+| Assurance coverage | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` and `pnpm assurance:coverage --project security --profile production-security --seed coverage-baseline` |
 | Production security | `pnpm assurance:harness --project security --profile production-security` |
 | Release rehearsal | Scratch-clone bump + `pnpm install --lockfile-only` + `pnpm release:preflight` + `lockstep publish --dry` |
 
