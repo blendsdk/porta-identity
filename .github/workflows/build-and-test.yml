@@ -163,6 +163,8 @@ jobs:
         run: pnpm harness:test
         env:
           HARNESS_BUILD_CACHE_FILE: test-harness/docker-compose.ci.yml
+          COMPOSE_BAKE: 'true'
+          HARNESS_STREAM_BUILD_OUTPUT: '1'
 
   docs:
     name: Public Documentation

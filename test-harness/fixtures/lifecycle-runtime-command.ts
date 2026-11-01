@@ -45,6 +45,11 @@ export class RuntimeCommandRunner {
     },
   ): Promise<CommandResult> {
     return new Promise((resolveResult, rejectResult) => {
+      const streamBuildOutput =
+        process.env.HARNESS_STREAM_BUILD_OUTPUT === '1' &&
+        command === 'docker' &&
+        args.includes('compose') &&
+        args.includes('--build');
       const child = spawn(command, args, {
         cwd: options.cwd,
         env: options.environment,
@@ -74,12 +79,18 @@ export class RuntimeCommandRunner {
       child.stdout?.on('data', (chunk: Buffer) => {
         const appended = appendBounded(stdout, chunk);
         if (appended === undefined) fail(new Error('runtime child output exceeded its bound'));
-        else stdout = appended;
+        else {
+          stdout = appended;
+          if (streamBuildOutput) process.stdout.write(chunk);
+        }
       });
       child.stderr?.on('data', (chunk: Buffer) => {
         const appended = appendBounded(stderr, chunk);
         if (appended === undefined) fail(new Error('runtime child output exceeded its bound'));
-        else stderr = appended;
+        else {
+          stderr = appended;
+          if (streamBuildOutput) process.stderr.write(chunk);
+        }
       });
       child.once('error', (error) => {
         if (settled) return;

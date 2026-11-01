@@ -519,7 +519,22 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 - **AR-12:** enable the repository dependency graph and Dependabot alerts, then re-observe. Record
   the exact prior state and the settings change; no silent or unrelated security-setting change.
 - **AR-13:** bounded repair of the existing harness cache/log path, with exact files named before
-  editing. Candidate existing paths: `test-harness/docker-compose.ci.yml`,
-  `test-harness/fixtures/lifecycle-runtime.ts`, `test-harness/fixtures/lifecycle-runtime-command.ts`,
-  `.github/workflows/build-and-test.yml`. No new workflow.
-- No repository setting or file has been changed yet in Phase 4.
+  editing. Exact files: `.github/workflows/build-and-test.yml` and
+  `test-harness/fixtures/lifecycle-runtime-command.ts`. No new workflow.
+- Changes below were applied under these approvals; no product source changed.
+
+### 4.2.1 AR-12 result
+
+| Field | Evidence |
+| --- | --- |
+| Prior state | Dependabot alerts disabled (403); GraphQL `dependencyGraphManifests` 0; SBOM endpoint 404; 84 version-update PRs target `main`, 1 targets `develop` |
+| Alerts change | `PUT /repos/blendsdk/porta-identity/vulnerability-alerts` → 204; `GET /dependabot/alerts` → 200 (0 open). `security_and_analysis.dependabot_security_updates` remains disabled; that separate feature was not authorized. |
+| Graph observation | GraphQL now reports 9 dependency-graph manifests, including `pnpm-lock.yaml` with `parseable: true`; however, its dependencies are only `@pnpm/exe.android-arm64`, `@pnpm/exe.android-x64`, `@pnpm/exe.darwin-arm64`, `@pnpm/exe.darwin-x64`, `@pnpm/exe.freebsd-x64` — the pnpm **boot document**. The project dependency graph is absent. The REST SBOM endpoint remains 404. |
+| Dependabot processing | Version-update PRs prove Dependabot parses package manifests; the `main`-targeting limitation remains: 84 base `main`, 1 base `develop`. |
+| Conclusion | Alert availability is fixed, but project lockfile ingestion is not proved. pnpm 6.4 remains blocked on the two-document lockfile boot document. No dependency-policy change (pin pnpm 11 or `pmOnFail: ignore`) was made; that requires a separate ruling. |
+
+### 4.2.2 Harness cache diagnosis and repair
+
+- Successful OIDC Harness job in run `41306784075` (harness run `ee0ba13a-7d14-40d0-9b58-217afc55d36c`) completed with six passing tests, yet GitHub Actions still has **zero** `porta-harness-ci` cache keys (869 total caches). The compose overlay is included via `HARNESS_BUILD_CACHE_FILE`, but the build output is buffered and Compose is not forcing the Bake/cache exporter.
+- Authorized bounded repair: set `COMPOSE_BAKE=true` for the harness build and add a streamed-output switch to the existing runtime command wrapper. Exact files: `.github/workflows/build-and-test.yml` and `test-harness/fixtures/lifecycle-runtime-command.ts`. No product source or new workflow.
+- The next ordinary push supplies the first export run; a subsequent ordinary push supplies the import run.
