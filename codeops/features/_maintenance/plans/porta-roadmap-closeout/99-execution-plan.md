@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 13:28
-> **Progress**: 26/44 tasks (59%)
+> **Last Updated**: 2026-11-01 13:30
+> **Progress**: 27/44 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -135,10 +135,13 @@ user gate, not preauthorized by this plan.
 
 > **Reasoning**: high — security-monitoring ingestion and build-cache proof
 > **Lenses**: data and migration; distributed and concurrent
+> **Phase baseline tree**: a8a6a2e053be9871e7f0c6170c2fcbc9ee552fb0
+> **Expected modification set**: closeout evidence; pnpm owner plan; existing harness compose/cache/log paths and GitHub repository security settings authorized by AR-12/AR-13; no product source or new CI workflow
+> **Scope mode**: strict
 
 ### 4.1 Acceptance criteria and baseline observations
 
-- [ ] 4.1.1 Freeze ST-13–15 against current package manifests/lockfile metadata, expected graph identities, alert availability and both cache scopes. Inventory existing CI/Dependabot evidence, record the known disabled graph/alerts state and zero harness-cache keys, confirm AR-12/13 authorizations and exact paths, and distinguish missing access from actual processing failure. — pnpm task 6.4; 03-02; AR-12/13.
+- [x] 4.1.1 Freeze ST-13–15 against current package manifests/lockfile metadata, expected graph identities, alert availability and both cache scopes. Inventory existing CI/Dependabot evidence, record the known disabled graph/alerts state and zero harness-cache keys, confirm AR-12/13 authorizations and exact paths, and distinguish missing access from actual processing failure. — pnpm task 6.4; 03-02; AR-12/13. ✅ (completed: 2026-11-01 13:30)
 
 ### 4.2 Prove the remote obligations
 

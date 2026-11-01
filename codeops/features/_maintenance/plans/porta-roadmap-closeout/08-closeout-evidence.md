@@ -493,3 +493,33 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 - The pnpm task is a legacy mini-plan with two-part task IDs and no `00-index.md`; the plan helper
   reports zero tasks. Manual verification is 43/44 with exactly one open task, 6.4, and no missing
   evidence for 4.6.
+
+## Phase 4 — Remote Dependency and Cache Gates
+
+### Frozen acceptance cases
+
+| Case | Frozen expectation |
+| --- | --- |
+| ST-13 | Zero alerts with absent/stale/unverifiable current-lockfile ingestion is not success; the remote gate stays open. |
+| ST-14 | Expected graph/lockfile identities, Dependabot processing, alert availability and actual cache restoration/reuse in both image scopes are required. |
+| ST-15 | A fast build, cache export or warm package store without observed eligible layer import/reuse is not proof. |
+
+### Known state before any change
+
+| Item | Observed state |
+| --- | --- |
+| Dependabot alerts | Disabled: API returns 403 “Dependabot alerts are disabled for this repository” |
+| Dependency graph | SBOM API returns 404; GraphQL `dependencyGraphManifests` count 0 |
+| Dependabot updates | Version-update PRs exist: 84 target `main`, 1 targets `develop` |
+| Harness cache | 874 GHA caches, zero keys matching `harness`; `porta-ci` keys exist; harness child output is buffered |
+| Lockfile | pnpm 12 two-document `pnpm-lock.yaml`; current `packageManager` 12.15.0 |
+
+### Authorized change set
+
+- **AR-12:** enable the repository dependency graph and Dependabot alerts, then re-observe. Record
+  the exact prior state and the settings change; no silent or unrelated security-setting change.
+- **AR-13:** bounded repair of the existing harness cache/log path, with exact files named before
+  editing. Candidate existing paths: `test-harness/docker-compose.ci.yml`,
+  `test-harness/fixtures/lifecycle-runtime.ts`, `test-harness/fixtures/lifecycle-runtime-command.ts`,
+  `.github/workflows/build-and-test.yml`. No new workflow.
+- No repository setting or file has been changed yet in Phase 4.
