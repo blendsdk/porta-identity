@@ -1,7 +1,7 @@
 # Task T-04: Migrate the Porta monorepo from Yarn Classic to pnpm
 
 > **Type**: Task (non-trivial, cross-cutting build migration) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 42/44 tasks (95%)
+> **Progress**: 43/44 tasks (98%)
 > **Reasoning**: high — this changes installs, CI, the Docker runtime, release publishing, assurance provenance, and the structural test oracle. Product behavior must not change.
 > **Effort**: 12–16 engineer-days, including release and assurance evidence.
 > **Branch**: `build/pnpm-migration`, created from `develop` at `v1.14.0` (`6ac10d75`).
@@ -189,12 +189,12 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 - [x] **4.3** Updated the worktree flows. pnpm refuses a symlinked `node_modules` for task run state, so isolated worktrees execute the existing package build scripts through the pinned npm CLI. The packed-consumer test builds, packs, installs, verifies, and cleans up successfully.
 - [x] **4.4** Switched the packed-consumer compatibility flow to npm: npm install flags, `package-lock.json` assertions, cache directory, and deterministic archive/content checks. The npm-produced archives are packed twice and compared; the installed tree is verified as ordinary directories.
 - [x] **4.5** Verified the coverage dependency inventory against the hoisted harness image: 276 packages, including `koa`, `yaml` 2.9.0, `chalk` 6.0.0, and `oidc-provider` at `/app/node_modules/*`.
-- [ ] **4.6** `pnpm assurance:validate` passed and the packed-consumer/gonvernance suites pass. The live `pnpm assurance:compat`, coverage capture, and ratchet refresh remain pending; see the known pre-existing drift below.
+- [x] **4.6** `pnpm assurance:validate` passes and the packed-consumer/governance suites pass. All five approved compatibility selectors, both coverage captures and the reviewed baseline refresh are complete. ✅ (completed: 2026-11-01 13:30; compat runs `2dbdf711` compatibility, `abf11a16` tenant-admin, `d5b39ef9` admin-data, `b6de7aec` p1-admin, `8b3ae45e` protocol; coverage `31c42876` protocol/operational and `83acea43` security/production-security; validate `6367accb` exit 0; ratchet 10/10; user approved the exact baseline values)
 - [x] **4.7** Ran `pnpm assurance:harness --project security --profile production-security` on the migration revision: 17/17 catalog tests and 5/5 delivered-artifact probes passed, exit 0. Historical Yarn evidence was not rewritten.
 
-**Known pre-existing drift:** `assurance-ratchets.impl.test.ts` reports stale reviewed digests for `requirement-r5` and `fixture`. Those files changed after the 2026-08-22 local baseline and are unrelated to pnpm. The migration updated only the dependency digest. A separate baseline review is required before the ratchet suite can pass.
+**Resolved pre-existing drift:** the closeout baseline review refreshed the `requirement-r5`, `fixture` and `dependency` digests together with the security coverage counts/path identity. The baseline JSON and reviewed fixture are exactly equal, `pnpm assurance:validate` exits 0, and the ratchet selector passes 10/10. The historical drift is preserved above; 6.4 remains for Phase 4.
 
-**Verify:** assurance validation passes; packed-consumer compat uses npm; coverage inventory is non-empty; the registered production-security harness remains pending.
+**Verify:** assurance validation passes; packed-consumer compatibility uses npm; coverage inventory is non-empty; the registered production-security harness is green; task 4.6 is complete and 6.4 remains for Phase 4.
 
 ## Phase 5 — Structural specifications and documentation
 
@@ -252,8 +252,8 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 | CI Docker cache | Second branch-CI run restores the GHA cache for both images |
 | Dependency graph | Dependabot PR plus GitHub dependency graph/alerts show the pnpm graph |
 | Assurance validation | `pnpm assurance:validate` |
-| Assurance compat | `pnpm assurance:compat` |
-| Assurance coverage | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` |
+| Assurance compat | `pnpm assurance:compat --select <compatibility|tenant-admin|admin-data|p1-admin|protocol>` |
+| Assurance coverage | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` and `pnpm assurance:coverage --project security --profile production-security --seed coverage-baseline` |
 | Production security | `pnpm assurance:harness --project security --profile production-security` |
 | Release rehearsal | Scratch-clone bump + `pnpm install --lockfile-only` + `pnpm release:preflight` + `lockstep publish --dry` |
 

@@ -476,3 +476,20 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 | Result | Validation run `6367accb-8d50-4edb-8c83-5afd7a69d1b0` exit 0; ratchet selector 10/10; worktree remained clean |
 | Proof | `test-harness/.assurance-results/6367accb-8d50-4edb-8c83-5afd7a69d1b0/validation/result.json` and `manifest.json`; logs under `/tmp/opencode/verify-3.3.2-*.log` |
 | Cleanup | Validation owns no services; its ignored run directory is removed at 3.3.3. No worktree change was made during validation. |
+
+### 3.3.3 pnpm 4.6 closeout
+
+- pnpm task 4.6 is marked complete: all five selectors, both coverage captures, the approved
+  baseline refresh, `assurance:validate` run `6367accb` (exit 0) and the 10/10 ratchet suite passed.
+  The owner plan header is 43/44; task 6.4 remains for Phase 4.
+- The owner plan now names the selector matrix, records the resolved drift, and no longer claims a
+  bare `assurance:compat` command. Lines 214/235 (6.4 remote gates) were left for Phase 4.
+- Generated Phase 3 run directories were removed after their sanitized facts were recorded:
+  compatibility results (five passing plus three failed/retried), protocol and security coverage,
+  and the validation run. The baseline's `sourceArtifact` path now points to a removed generated
+  artifact; its approved counts/digests are retained in this evidence document.
+- No task-owned containers, networks, volumes or images remain for the Phase 3 run IDs. The
+  coverage-pipeline timing failure is preserved in 3.3.1; the isolated and retry runs passed.
+- The pnpm task is a legacy mini-plan with two-part task IDs and no `00-index.md`; the plan helper
+  reports zero tasks. Manual verification is 43/44 with exactly one open task, 6.4, and no missing
+  evidence for 4.6.
