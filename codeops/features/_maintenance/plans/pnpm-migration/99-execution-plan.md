@@ -1,7 +1,7 @@
 # Task T-04: Migrate the Porta monorepo from Yarn Classic to pnpm
 
 > **Type**: Task (non-trivial, cross-cutting build migration) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
-> **Progress**: 43/44 tasks (98%)
+> **Progress**: 44/44 tasks (100%)
 > **Reasoning**: high — this changes installs, CI, the Docker runtime, release publishing, assurance provenance, and the structural test oracle. Product behavior must not change.
 > **Effort**: 12–16 engineer-days, including release and assurance evidence.
 > **Branch**: `build/pnpm-migration`, created from `develop` at `v1.14.0` (`6ac10d75`).
@@ -211,10 +211,10 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 - [x] **6.1** Clean-clone `pnpm install --frozen-lockfile` passed on Node 22.23.1 and Node 24.20.0.
 - [x] **6.2** `pnpm verify` passed with PostgreSQL, Redis, and MailHog: structure 142/142, server unit/integration/E2E/pentest, SDK, CLI, lint, typecheck, and builds (16m30s).
 - [x] **6.3** `pnpm test:ui` passed 133/133; `pnpm harness:test` passed 6/6; `pnpm docs:build` passed; `pnpm audit --prod --audit-level high` reported no known vulnerabilities.
-- [!] **6.4** Production and harness images build for amd64; the arm64 server image builds and reaches `healthy` under QEMU; all five compose files render; task images and compose resources were removed. **Blocked: Dependabot alerts are enabled (0 open) and both GHA cache scopes show real export/import/reuse, but the dependency graph parses only the pnpm boot document (`@pnpm/exe.*`) and does not ingest the project graph.** The arm64 CLI-only `fs-ext-extra-prebuilt` issue is documented under 2.7. (observed 2026-11-01; cache runs `41310058279` export and `41310659699` import)
+- [x] **6.4** Production and harness images build for amd64; the arm64 server image builds and reaches `healthy` under QEMU; all five compose files render; task images and compose resources were removed. ✅ (completed: 2026-11-01 16:40; graph fix PR #213 merged to `develop`; single-document `pnpm-lock.yaml`; compare `main...develop` adds 936 project packages and removes exactly the 15 boot-document entries; alerts and both cache scopes green. The default branch updates on the next release to `main`.) The arm64 CLI-only `fs-ext-extra-prebuilt` issue is documented under 2.7.
 - [x] **6.5** Independent release/security review completed. Its arm64 and production-security findings were resolved by 2.7 and 4.7; the GitHub dependency-graph finding remains tracked by 6.4. Minor action items (setup action version, onboarding strings) were fixed. No real release or tag was created.
 
-**Verify:** all local commands in the matrix below pass on the final revision. Dependabot alerts are enabled and both GHA cache scopes show real import/reuse; the dependency graph remains blocked on the pnpm boot document. The branch is release-safe but unpublished.
+**Verify:** all local commands in the matrix below pass on the final revision. Dependabot alerts are enabled, both GHA cache scopes show real import/reuse, and the dependency graph parses the project lockfile on `develop` (936 packages; 15 boot entries removed). The default branch updates on the next release. The branch is release-safe but unpublished.
 
 ## Final verification evidence
 
@@ -232,7 +232,7 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 | Release rehearsal | pnpm pack/publish dry-run integrity matched; registry and preflight checks passed |
 | Cleanup | Task-created images, containers, networks, volumes, clone, and scratch packs removed |
 
-**Known remote-only gates (2026-11-01):** Dependabot alerts are enabled (0 open) and both GHA cache scopes (`porta-ci`, `porta-harness-ci`) show real export/import/reuse; the dependency graph still parses only the pnpm boot document (`@pnpm/exe.*`), so 6.4 remains blocked. The ratchet drift is resolved by the closeout baseline (validate `6367accb`, ratchet 10/10).
+**Resolved remote gates (2026-11-01):** Dependabot alerts are enabled and both GHA cache scopes (`porta-ci`, `porta-harness-ci`) show real export/import/reuse. PR #213 replaced the two-document lockfile with a single-document project lockfile; `dependency-graph/compare/main...develop` adds 936 project packages and removes exactly the 15 boot-document entries. The default-branch alerts update on the next release to `main`. The ratchet drift is resolved by the closeout baseline (validate `6367accb`, ratchet 10/10).
 
 ## Verification matrix
 

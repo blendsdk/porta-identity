@@ -52,3 +52,11 @@ ingestion.
 Closeout stop ruling: on **2026-11-01 14:47** the user selected **Stop at blocked gate**. Phases 5–6
 were not started; no PR, merge, release, or `main` change was made. T-07 remains Blocked and pnpm
 6.4 remains `[!]`. A separate dependency-policy plan is required before retrying the graph gate.
+
+Fix and resume ruling: on **2026-11-01** the user asked to fix the graph problem. The accepted fix is
+`pmOnFail: ignore` plus a single-document lockfile; the `packageManager` pin and the explicit pnpm
+12.15.0 installs in CI and Docker remain. PR #213 merged to `develop` as `c4c30711`; the structure
+contract now rejects a restored boot document. `dependency-graph/compare/main...develop` shows 936
+project packages added and exactly 15 boot-document entries removed. pnpm `6.4` is complete at 44/44
+and the closeout resumed at Phase 5. The default branch updates on the next release; no release or
+`main` change was made.

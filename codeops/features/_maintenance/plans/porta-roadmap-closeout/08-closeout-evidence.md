@@ -531,8 +531,10 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 | Prior state | Dependabot alerts disabled (403); GraphQL `dependencyGraphManifests` 0; SBOM endpoint 404; 84 version-update PRs target `main`, 1 targets `develop` |
 | Alerts change | `PUT /repos/blendsdk/porta-identity/vulnerability-alerts` → 204; `GET /dependabot/alerts` → 200 (0 open). `security_and_analysis.dependabot_security_updates` remains disabled; that separate feature was not authorized. |
 | Graph observation | GraphQL now reports 9 dependency-graph manifests. The current REST SBOM endpoint returns 200 (57,215 bytes, created 2026-11-01T13:29:04Z) and includes manifest-level/direct package dependencies. However, `pnpm-lock.yaml` is `parseable: true` but exposes only `@pnpm/exe.android-arm64`, `@pnpm/exe.android-x64`, `@pnpm/exe.darwin-arm64`, `@pnpm/exe.darwin-x64`, `@pnpm/exe.freebsd-x64` — the pnpm **boot document**. The project/transitive lockfile graph (the second document) is absent. |
+| Fix | PR #213 sets `pmOnFail: ignore`, rewrites `pnpm-lock.yaml` as a single project document, and adds a structure guard. The project document is deep-equal to the previous second document; no package versions or importers changed. PR #213 merged to `develop` as `c4c30711`. |
+| Post-fix graph | `dependency-graph/compare/main...develop` reports **936 project packages added** and exactly **15 boot-document entries removed** (`@pnpm/exe.*` plus `pnpm`). The default branch `main` updates on the next release; no release or `main` change is part of this fix. |
 | Dependabot processing | Version-update PRs prove Dependabot parses package manifests; the `main`-targeting limitation remains: 84 base `main`, 1 base `develop`. |
-| Conclusion | Alert availability is fixed, but project lockfile ingestion is not proved. pnpm 6.4 remains blocked on the two-document lockfile boot document. No dependency-policy change (pin pnpm 11 or `pmOnFail: ignore`) was made; that requires a separate ruling. |
+| Conclusion | Alert availability, project graph ingestion on `develop`, and both cache scopes are proved. pnpm 6.4 is complete; the default-branch alerts update when `main` next receives the fix. |
 
 ### 4.2.2 Harness cache diagnosis and repair
 
@@ -572,11 +574,11 @@ build or a cache export alone is not a hit.
 
 ### 4.2.3 pnpm 6.4 reconciliation
 
-- Task 6.4 remains `[!]`: alerts and both cache scopes are green, but the project dependency graph
-  is not ingested. The pnpm owner plan now states the exact blocker, the alert/cache evidence and
-  the two run IDs; the 4.6 drift/compat text remains complete.
-- The maintenance `T-04` row and portfolio summary now say 4.6 complete, 6.4 blocked on the
-  dependency-graph boot document, cache scopes green. No task or release is marked complete.
+- Task 6.4 is complete after PR #213: the pnpm owner plan records the single-document fix, the
+  graph comparison, the alert/cache evidence and the release note. The 4.6 drift/compat text
+  remains complete.
+- The maintenance `T-04` row is Complete at 44/44. The closeout `T-07` row resumed as Executing;
+  no release or `main` change was made.
 
 ### 4.3.1 Independent remote-evidence review
 
@@ -586,8 +588,8 @@ build or a cache export alone is not a hit.
   job IDs plus the terminal miss rule).
 - The reviewer independently confirmed the cache import/CACHED evidence for both scopes, the
   bounded file set, consistent counters, Phase 4 cleanup, and no release/`main` change.
-- **6.4 remains blocked**: zero alerts and the boot-document manifest are not project graph
-  ingestion.
+- The reviewer blocked 6.4 at that point; PR #213 later fixed the project graph. The review remains
+  valid for the pre-fix evidence and its finding was resolved by the single-document lockfile.
 
 ### 4.3.2 Phase checkpoint
 
@@ -596,11 +598,10 @@ build or a cache export alone is not a hit.
 - Cleanup check: no Phase 4 containers, networks, volumes, or harness images remain; the worktree
   was clean before this checkpoint. Older Phase 2 images and generated result directories are
   retained and untouched.
-- Phase 4 verdict: alert availability and both cache scopes are proved; the project/transitive
-  dependency graph is **not** ingested. Task 4.2.1 and pnpm 6.4 remain blocked, so Phases 5–6
-  cannot start without a user ruling on this residual gate.
+- Phase 4 verdict: alert availability, both cache scopes, and the project graph on `develop` are
+  proved by PR #213. Task 4.2.1 and pnpm 6.4 are complete; the closeout resumed at Phase 5.
 
-## Closeout stop ruling
+## Closeout stop ruling and fix
 
 On **2026-11-01 14:47** the user chose **Stop at blocked gate**:
 
@@ -615,3 +616,8 @@ On **2026-11-01 14:47** the user chose **Stop at blocked gate**:
 - Cleanup: no Phase 4 task containers, networks, volumes, or harness images remain; generated
   Phase 3 reports were removed after evidence retention, and temporary logs are removed at session
   close.
+
+**Superseded:** on 2026-11-01 the user asked to fix the pnpm graph. PR #213 (`pmOnFail: ignore`,
+single-document lockfile, regression guard) merged to `develop` as `c4c30711`. The closeout resumed
+at Phase 5; `T-04` is Complete at 44/44 and `T-07` is Executing at 32/44. The default branch updates
+on the next release; no release or `main` change was made.

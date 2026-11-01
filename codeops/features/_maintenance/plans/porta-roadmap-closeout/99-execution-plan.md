@@ -2,9 +2,9 @@
 
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
-> **Status**: Blocked — user stop ruling 2026-11-01 14:47; Phases 5–6 not started
-> **Last Updated**: 2026-11-01 14:47
-> **Progress**: 31/44 tasks (70%)
+> **Status**: Executing — resumed after pnpm graph fix (PR #213); Phases 5–6 in progress
+> **Last Updated**: 2026-11-01 16:40
+> **Progress**: 32/44 tasks (73%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -145,14 +145,14 @@ user gate, not preauthorized by this plan.
 
 ### 4.2 Prove the remote obligations
 
-- [!] 4.2.1 Apply AR-12: record the prior disabled state, enable the dependency graph and Dependabot alerts, then verify lockfile graph ingestion, Dependabot processing and alert availability with read-only GitHub evidence. Record the `main`-targeting limitation of version-update PRs. If the settings change is declined or the graph still fails, keep 6.4 blocked; never downgrade pnpm or ignore the lockfile boot document. — ST-13/ST-14; AR-4/11/12. **Blocked: Dependabot alerts are enabled, but the graph parses only the pnpm boot document (`@pnpm/exe.*`); the project graph is not ingested.**
+- [x] 4.2.1 Apply AR-12: record the prior disabled state, enable the dependency graph and Dependabot alerts, then verify lockfile graph ingestion, Dependabot processing and alert availability with read-only GitHub evidence. Record the `main`-targeting limitation of version-update PRs. If the settings change is declined or the graph still fails, keep 6.4 blocked; never downgrade pnpm or ignore the lockfile boot document. — ST-13/ST-14; AR-4/11/12. ✅ (completed: 2026-11-01 16:40; fix PR #213 merged; compare `main...develop` shows 936 project packages added and 15 boot entries removed; alerts/cache green)
 - [x] 4.2.2 Diagnose the observed zero `porta-harness-ci` keys and buffered build output; apply the AR-13 bounded repair to the existing compose cache/log path, naming exact files. Then verify actual cached-layer reuse in both existing Docker scopes across a first export run and a subsequent import run from ordinary pushes; record job URLs, cache keys/log lines and a terminal miss rule. — ST-14/ST-15; AR-13. ✅ (completed: 2026-11-01 14:25; export `41310058279`, import `41310659699`, both scopes CACHED)
-- [x] 4.2.3 Reconcile pnpm task 6.4 and its feature row only after all original remote clauses are proved; correct the 6.4 remote-gate notes at lines 214/235, preserve any genuine access/product blocker, and leave the 4.6 drift/compat lines to 3.3.3. — pnpm owner; 03-01 Admissibility. ✅ (completed: 2026-11-01 14:26; 6.4 remains blocked on the boot document)
+- [x] 4.2.3 Reconcile pnpm task 6.4 and its feature row only after all original remote clauses are proved; correct the 6.4 remote-gate notes at lines 214/235, preserve any genuine access/product blocker, and leave the 4.6 drift/compat lines to 3.3.3. — pnpm owner; 03-01 Admissibility. ✅ (completed: 2026-11-01 16:40; 6.4 fixed by PR #213; default-branch graph updates on the next release)
 
 ### 4.3 Review and checkpoint
 
-- [x] 4.3.1 Obtain independent release/dependency evidence review; resolve findings without broadening the original gate or treating zero alerts as successful ingestion. — Phase evidence; AR-7/8. ✅ (completed: 2026-11-01 14:35; REMOTE EVIDENCE CONSISTENT after RV-021–023; 6.4 stays blocked)
-- [x] 4.3.2 Run affected/structure/document checks, confirm resource ownership cleanup and checkpoint the remote closure evidence. — 07 ✅ (completed: 2026-11-01 14:40; structure/docs pass; 6.4 remains blocked) and 03-03.
+- [x] 4.3.1 Obtain independent release/dependency evidence review; resolve findings without broadening the original gate or treating zero alerts as successful ingestion. — Phase evidence; AR-7/8. ✅ (completed: 2026-11-01 14:35; REMOTE EVIDENCE CONSISTENT after RV-021–023; 6.4 fixed after review by PR #213)
+- [x] 4.3.2 Run affected/structure/document checks, confirm resource ownership cleanup and checkpoint the remote closure evidence. — 07 ✅ (completed: 2026-11-01 14:40; structure/docs pass; 6.4 fixed by PR #213; closeout resumed) and 03-03.
 
 **Verify:** ST-13–15 plus applicable 07 checks. No new CI workflow, dependency policy or repository
 security-setting change is authorized implicitly.
