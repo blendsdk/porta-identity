@@ -246,3 +246,17 @@ Observer repair checkpoint: `observeRejectionAudit` now polls the audit API for 
 250 ms intervals. The immutable event/field assertions are unchanged. Assurance typecheck, harness
 lint, `human-auth-recovery-specs` (4 pass, 1 live skip) and structure passed. The live green run is
 pending.
+
+### Tenant green run `069b36ff`
+
+| Field | Evidence |
+| --- | --- |
+| Obligation | Exact current production-security proof for tenant task 5.1.3 |
+| Source identity | Clean checkpoint `7f0ba27d`; run `069b36ff-c09e-47a3-b48a-af445540b8ee`; profile `production-security` |
+| Scope | Full security harness: production exposure, functional, second-factor, tenant/admin and the ST-46 delivered-artifact block |
+| Observation | Exit 0. Production exposure passed 11, product failures 0, incomplete 0, execution failures 0. Functional 7/7, second-factor 4/4, tenant/admin 17/17, human-auth recovery 5/5. The ST-46 live specification passed every probe, including `magic-link-throttled-request`, `password-reset-throttled-request` and `password-reset-wrong-tenant`; each required `delivered-authentication-artifact-rejection`. No case was missing and no assertion failed. |
+| Proof | Run log `/tmp/opencode/assurance-tenant-20261101-104136.log`; run artifact `test-harness/.assurance-results/069b36ff-c09e-47a3-b48a-af445540b8ee/production-exposure/production-security/observation.json`; TAP `ok 5 - executes the delivered-artifact case...`, tests 5, pass 5, fail 0 |
+| Baseline comparison | Original failures `31bfd677` and `e99a0d4c` failed `password-reset-throttled-request`; current follow-up failures `b89ea7a6` and `26887eb3` are preserved. The green run has no incomplete observers and no new gap. The changed exit semantics (0 rather than the old expected 40) reflect the completed observer work (DEF-14/DEF-25) and the current case set; the exact case and observer comparison, not a blanket claim, is the basis for closure. |
+| Cleanup | No containers or networks matching run `069b36ff` remain. The run directory is retained for the Phase 2 review and will be removed after evidence retention; pre-existing unrelated containers were untouched. |
+| Review | Independent Phase 2 review remains 2.3.1 |
+| Consequence | 5.1.3 may close after 2.2.1 and review; the run is not described as a full security certification |

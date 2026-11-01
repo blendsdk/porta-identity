@@ -14,6 +14,7 @@
 | RV-007 | 1 | MINOR | findings-link | fixed |
 | RV-008 | 1 | OBSERVATION | failure-cause | fixed |
 | RV-009 | 1 | OBSERVATION | adjacent-record | accepted |
+| RV-010 | 2 | MAJOR | audit-visibility | fixed |
 
 RV-001 user ruling: correct the publish chronology and retain the AR-14 closure. No re-release or
 new publication was authorized. The rejected alternative was reopening task 7.1.5.
