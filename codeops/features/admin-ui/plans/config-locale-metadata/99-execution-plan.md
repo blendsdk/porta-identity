@@ -1,11 +1,11 @@
 # Task T-05: Accept server-owned configuration locale metadata
 
 > **Type**: Task (lightweight) · **Feature**: admin-ui · **CodeOps Artifact Schema**: 1
-> **Progress**: 1/2 tasks (50%)
+> **Progress**: 2/2 tasks (100%)
 > **Reasoning**: medium — bounded metadata-validation and SDK type correction
-> **Last Updated**: 2026-11-01 23:26
+> **Last Updated**: 2026-11-02 00:07
 > **Scope mode**: strict
-> **Commit mode**: ask-commit; no push
+> **Commit mode**: initially ask-commit/no push; user subsequently authorized gated release-preparation commits and pushes
 > **Phase baseline tree**: 7f8816bd378bcfb4ec0bca71e668d87d1f1680a1
 
 ## Objective
@@ -49,7 +49,7 @@ is deferred until integration, as required on a feature branch. No upstream requ
 ## Tasks
 
 - [x] T-05.1 Add locale regression specifications and confirm red; implement the focused SDK/UI correction; cover invalid metadata and real workspace selection/save/readback; update technical documentation; pass the narrow local verification and independent correctness/API-surface and input-validation reviews. Completed: 2026-11-01 22:52.
-- [!] T-05.2 After an approved verified commit, run the applicable registered packed SDK/CLI compatibility selector from a clean revision with owned test infrastructure and cleanup; record the evidence and finish the task/roadmap. Blocked: both packed `p1-admin` attempts exited setup 30 before producing compatibility evidence; harness startup requires diagnosis.
+- [x] T-05.2 After an approved verified commit, run the applicable registered packed SDK/CLI compatibility selector from a clean revision with owned test infrastructure and cleanup; record the evidence and finish the task/roadmap. Completed: 2026-11-02 00:07; all six packed journeys, independent evidence review, generated-file restoration and exact Docker/evidence cleanup passed.
 
 **Verify:** Start with `pnpm test:changed`. Iterate with the new CLI locale specification and SDK
 compiler contracts; then run `pnpm --filter @portaidentity/sdk verify`,
@@ -82,7 +82,7 @@ Verified evidence for T-05.1:
   controller and SDK runtime domain did not need changes.
 - No remote credentials or Docker resources were accessed for the implementation.
 
-Blocked evidence for T-05.2:
+Historical blocked evidence for T-05.2 (superseded by the successful continuation below):
 
 - User approved local checkpoint `f627feec` (no push), the registered packed compatibility run,
   and disposable test-only credential/TLS/build files under `test-harness/.assurance-runtime/`.
@@ -144,3 +144,72 @@ expanding the fix. Use only task-owned temporary logs under `$CODEOPS_TMPDIR`, r
 handoff, and preserve all pre-existing files and Docker resources. The baseline was a verified
 clean worktree, so its existing HEAD tree is the complete baseline without rereading or copying
 protected configuration into a temporary Git index.
+
+## Successful compatibility continuation
+
+`pnpm assurance:compat --select p1-admin` passed with exit 0 on clean source revision
+`21f69279100832eb777faeee8ec0be2a101b51a6`, using Node v24.20.0 and the original unchanged
+registered selector. The harness run was `c035774f-3e3f-4ebb-9b99-0586b99e2c36`; the admitted result
+run was `b9eecbab-6765-4625-a719-ef5d4f016465`.
+
+Invocation corrections, not product/harness changes, resolved the execution blockers:
+
+- Use `/tmp/opencode` for the existing lifecycle socket directory, keeping the generated path at
+  87 bytes instead of the rejected 174-byte task-nested path.
+- Use the documented Node 24 runtime for the P1 evidence schema. A temporary official Node
+  v24.20.0 executable was extracted only after its archive's SHA-256 matched the official checksum.
+- Use two distinct empty user/global npm configuration files. The earlier choice of `/dev/null`
+  for both was directly reproduced as npm's `double-loading config` error; with distinct files,
+  the pinned npm 11.15.0 startup check passed. Both the short-socket Node 22 run
+  `9128f9d0-4038-44f0-b4a4-17187722948d` and the first Node 24 run
+  `4ac311b5-ba09-4232-8fa3-0b18a0ebc77f` retained their setup-30 outcomes. No assertion was weakened
+  or removed and no product failure was converted to a pass.
+
+The failed admitted result runs `3aab9920-8cb4-49e7-bb61-1c51c04563a5` and
+`3f6d16de-6cf3-4470-b817-c1c1a9fd062a` both explicitly recorded `stage: preparation`, exit 30 and
+empty consumer residue. Node 24 is a separately documented schema requirement; these failed
+preparation artifacts are not evidence that either invocation reached schema validation.
+
+All six packed journeys passed, matching independent raw HTTP 200 results: SDK tenant-user
+pagination, CLI user pagination/search, CLI audit filtering, SDK signing-key listing, SDK filtered
+session pagination and CLI configuration listing.
+
+| Provenance              | Verified value                                                            |
+| ----------------------- | ------------------------------------------------------------------------- |
+| Node executable SHA-256 | `89af8424dd53e560b1933f87ba650d8bf57c83ca5a04600eefb31f416aabbae7`        |
+| Server image            | `sha256:3edf78e97d05b77032983e9f05ac8e60dc989f085e3be9b13168acdd874aa91c` |
+| Public fixture digest   | `sha256:650429e5d28dad73b5ff12ca767fab378678e1ea82fca76aeea04a10b6b219da` |
+| SDK archive SHA-256     | `c4ca5e6af65999b4da54996315b21c662ed05e588ddc47164156e4da7e4bd15a`        |
+| CLI archive SHA-256     | `6a4fae36d3307e3ad23ab4afba23bc542296ac08f9f9203fcea04dfd313a9091`        |
+
+The admitted artifact confirms unchanged primary source, installed-content/archive equality,
+no prohibited resolution, all temporary credential/home/consumer/cache removal flags true, and
+`residuePaths: []`. The four known generated public files were backed up before the continuation
+runs and restored with their original bytes and metadata. Final Docker container/network/volume/
+image inventories match the pre-run baseline exactly; only owned leftover images and anonymous
+PostgreSQL/Redis volumes were removed after normal lifecycle cleanup.
+
+PR #215's run `41359235134` on the same source revision passed all six jobs: Verify Monorepo,
+UI Tests, OIDC Harness, Public Documentation, Production Docker Build and Production Dependency
+Audit. Earlier push run `41358664102` failed UI setup with `EADDRINUSE` on port 49200 before browser
+assertions ran; its failed job `125004118249` is retained as infrastructure evidence, not hidden or
+represented as a product assertion failure. No code or assertion changed before the successful
+PR run.
+
+Finishing this branch does not authorize releasing the 66 unrelated commits then ahead on
+`develop`. The user has not selected between a full develop promotion and an isolated UI hotfix;
+that release-content decision remains separate from this completed implementation and its gates.
+
+Independent read-only correctness review matched the closeout notes to the admitted result and
+reported no findings. A security re-audit was skipped for this documentation-only closeout;
+the unchanged product correction retains its earlier no-findings input-validation audit.
+Technical-documentation closeout found no new architecture, endpoint, storage, dependency or
+integration surface: the existing configuration reference already describes the corrected
+server-owned metadata contract, so no new ADR, diagram or sidebar entry is needed.
+
+Final closeout validation passed all 158 repository structure contracts and documentation/diff
+checks. The three task-owned sanitized compatibility result directories were removed after their
+identifiers, dispositions and passing provenance were recorded here; the owned lifecycle removed
+all known short socket directories. Final source changes after `21f69279` are limited to this
+evidence and the feature-roadmap completion state. CI on the resulting documentation checkpoint
+must still be green before PR merge; no test, verification gate or release permission is waived.
