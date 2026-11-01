@@ -466,3 +466,13 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 | Assurance typecheck/lint | Passed |
 | Structure | Passed |
 | Applied-baseline review | Independent reviewer confirmed `APPLIED MATCHES APPROVED`; no extra value, path, enforcement or policy change |
+
+### 3.3.2 Clean validation
+
+| Field | Evidence |
+| --- | --- |
+| Clean checkpoint | `bc065c6b` (the `[~]` mark; baseline values in `25e08af8`) |
+| Command | `pnpm assurance:validate` and `pnpm assurance:test --select assurance-ratchets` |
+| Result | Validation run `6367accb-8d50-4edb-8c83-5afd7a69d1b0` exit 0; ratchet selector 10/10; worktree remained clean |
+| Proof | `test-harness/.assurance-results/6367accb-8d50-4edb-8c83-5afd7a69d1b0/validation/result.json` and `manifest.json`; logs under `/tmp/opencode/verify-3.3.2-*.log` |
+| Cleanup | Validation owns no services; its ignored run directory is removed at 3.3.3. No worktree change was made during validation. |
