@@ -599,3 +599,19 @@ build or a cache export alone is not a hit.
 - Phase 4 verdict: alert availability and both cache scopes are proved; the project/transitive
   dependency graph is **not** ingested. Task 4.2.1 and pnpm 6.4 remain blocked, so Phases 5–6
   cannot start without a user ruling on this residual gate.
+
+## Closeout stop ruling
+
+On **2026-11-01 14:47** the user chose **Stop at blocked gate**:
+
+- Phases 5–6 were not started. No PR exists for `chore/roadmap-closeout`; no merge into `develop`,
+  no release and no `main` change occurred.
+- T-07 is Blocked at 31/44 tasks; pnpm is 43/44 with task 6.4 `[!]`.
+- Proven in this closeout: release/deferred-invitation/tenant/assurance work, reviewed security
+  coverage baseline (`6367accb`, ratchet 10/10), Dependabot alert availability, and both GHA cache
+  scopes with real import/`CACHED`/export evidence.
+- Remaining open: the pnpm 12 project/transitive dependency graph, DEF-23/M2, and the named
+  assurance campaigns. A separate dependency-policy plan is required before retrying 6.4.
+- Cleanup: no Phase 4 task containers, networks, volumes, or harness images remain; generated
+  Phase 3 reports were removed after evidence retention, and temporary logs are removed at session
+  close.

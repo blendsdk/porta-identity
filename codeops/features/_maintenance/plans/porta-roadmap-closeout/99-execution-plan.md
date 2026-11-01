@@ -2,8 +2,8 @@
 
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
-> **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 14:40
+> **Status**: Blocked — user stop ruling 2026-11-01 14:47; Phases 5–6 not started
+> **Last Updated**: 2026-11-01 14:47
 > **Progress**: 31/44 tasks (70%)
 > **CodeOps Artifact Schema**: 1
 

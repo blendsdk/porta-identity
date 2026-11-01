@@ -48,3 +48,7 @@ RV-022 distinguishes the GHA import from local compose layer reuse and key `#2` 
 export; RV-023 adds exact job IDs and the terminal miss rule. No blocker or major finding was raised.
 **pnpm 6.4 must remain blocked**; zero alerts and the boot-document manifest are not project graph
 ingestion.
+
+Closeout stop ruling: on **2026-11-01 14:47** the user selected **Stop at blocked gate**. Phases 5–6
+were not started; no PR, merge, release, or `main` change was made. T-07 remains Blocked and pnpm
+6.4 remains `[!]`. A separate dependency-policy plan is required before retrying the graph gate.
