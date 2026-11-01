@@ -133,7 +133,7 @@ checkpoint and record the result in `08-closeout-evidence.md`:
 1. Required documents exist; `Implements` maps to `_maintenance/T-07`.
 2. Every relative Markdown link resolves; anchors and file names are current.
 3. Every AR/R/ST reference exists; local ST-1–19 are distinct from repository ST-42–73.
-4. Exactly 42 unique task IDs; phase totals are 7/6/11/6/5/7 (or the amended total after an
+4. Exactly 44 unique task IDs; phase totals are 7/8/11/6/5/7 (or the amended total after an
    authorized repair).
 5. `python3 "${CODEOPS_PLUGIN_ROOT}/scripts/codeops_plan.py" --root . --json` reports no structural
    problem for this plan; legacy zero-task reports for other plans are noted, not “fixed” by

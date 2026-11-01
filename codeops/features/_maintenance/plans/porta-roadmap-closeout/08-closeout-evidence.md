@@ -210,3 +210,21 @@ At this point the tenant gate still requires a fresh exact run. The assurance um
 candidate closures (8.7c and 9.6c), one narrow closure (9.6b log obligation only), and one
 unchanged blocker (8.4/DEF-23). M2 remains an oracle-level gap owned by the user; no successor
 credit may be described as a full assurance pass.
+
+### Tenant gate run `b89ea7a6`
+
+| Field | Evidence |
+| --- | --- |
+| Obligation | Exact production-security proof for tenant task 5.1.3, including the normalized rejection observation for the previously blocked throttle case |
+| Source identity | Clean checkpoint `052b1b76`; run `b89ea7a6-eb5d-4258-9763-ebcf35787edd`; profile `production-security` |
+| Scope | Existing security harness; all live blocks, with exact case-level inspection of `magic-link-throttled-request` and `password-reset-throttled-request` |
+| Observation | Production exposure passed 11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17. Human-auth recovery passed 4/5. `magic-link-throttled-request` failed: the 429/throttle facts passed, but the normalized audit event was `undefined` instead of `delivered-authentication-artifact-rejection`. `password-reset-throttled-request` passed. Harness exit was 21 (test failure), not the accepted exit-40 incomplete-observer path. |
+| Proof | Run log `/tmp/opencode/assurance-tenant-20261101-094841.log`; run artifact `test-harness/.assurance-results/b89ea7a6-eb5d-4258-9763-ebcf35787edd/production-exposure/production-security/observation.json`; TAP failure at `human-auth-recovery.spec.test.ts:104` |
+| Root cause | Both rate-limit routes call the asynchronous `writeAuditLog` without awaiting it (`packages/server/src/routes/interactions.ts:1031`, `packages/server/src/routes/password-reset.ts:325`). The 429 response can therefore be observed before the audit insert completes; the live observer queries immediately. The password-reset case passed by timing, which is not a stable contract. This is a real audit-visibility defect, not a reason to weaken the immutable assertion. |
+| Cleanup | The runner cleaned its owned stack; no containers or networks matching run `b89ea7a6` remain. Pre-existing unrelated containers were left untouched. |
+| Review | Repair tasks 2.1.3/2.1.4 inserted; independent Phase 2 review remains 2.3.1 |
+| Consequence | 2.1.2 remains `[~]` until the repair green run proves both throttle cases and the applicable observer set |
+
+Repair checkpoint: both routes now await `writeAuditLog` before rendering the 429. Focused route
+suites passed 58/58, server typecheck and lint passed, and structure passed. The live green run is
+recorded under 2.1.4.

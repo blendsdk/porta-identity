@@ -1028,7 +1028,7 @@ async function handleSendMagicLink(
     if (!rateLimitResult.allowed) {
       ctx.set('Retry-After', String(rateLimitResult.retryAfter));
 
-      dependencies.writeAuditLog({
+      await dependencies.writeAuditLog({
         organizationId: org.id,
         eventType: 'rate_limit.magic_link',
         eventCategory: 'security',
