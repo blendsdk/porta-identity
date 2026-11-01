@@ -312,6 +312,7 @@ pending.
 | Monitored inputs | `requirement-r5` = `codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md`; `fixture`; `dependency` = `pnpm-lock.yaml`; `sentinel` |
 | Current staleness | `requirement-r5`, `fixture` and `dependency` differ from the reviewed fixture; `sentinel` matches. No expectation was changed before the capture. |
 | Compatibility selectors | `compatibility`, `tenant-admin`, `admin-data`, `p1-admin`, `protocol`, each via `pnpm assurance:compat --select <selector>` from a clean checkpoint |
+| Compatibility environment | Isolated `HOME=/tmp/opencode/compat-home`; the real `~/.porta/credentials.json` is never read. The runner's caller-credential fingerprint checks the isolated home, and all CLI homes remain under the run-owned consumer path. |
 | Coverage captures | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` and `pnpm assurance:coverage --project security --profile production-security --seed coverage-baseline` |
 | Baseline admission | Security capture only; `local-observation-only`; `promotionAuthorized: false` in both coverage and review records |
 
