@@ -23,6 +23,8 @@
 | RV-016 | 2 | MINOR | adapter-documentation | fixed |
 | RV-017 | 2 | MINOR | audit-order-regression | fixed |
 | RV-018 | 2 | MINOR | observer-comparison | fixed |
+| RV-019 | 3 | MINOR | baseline-review-reason | fixed |
+| RV-020 | 3 | MINOR | digest-formulas | fixed |
 
 RV-001 user ruling: correct the publish chronology and retain the AR-14 closure. No re-release or
 new publication was authorized. The rejected alternative was reopening task 7.1.5.
@@ -30,3 +32,9 @@ new publication was authorized. The rejected alternative was reopening task 7.1.
 Phase 2 review: no CRITICAL or MAJOR finding. RV-011–RV-018 are minor/observational corrections,
 all fixed in the same phase. RV-014 records the exact-row portfolio deviation and amends the
 defer-all wording; RV-017 adds ordering assertions to the two existing route test files.
+
+Baseline proposal review: **APPROVE** with no blocking finding; RV-019 (review reason must name the
+RD-05 content refresh) and RV-020 (record the two digest formulas) were documentation-only and are
+fixed. No covered-count floor is lowered.
+
+Baseline user approval: **2026-11-01 13:23**, exact values in 3.2.4; no promotion authorized.

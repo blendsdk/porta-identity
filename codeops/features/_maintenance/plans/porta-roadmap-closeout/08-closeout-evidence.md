@@ -388,3 +388,65 @@ IDs. The small result JSON directories are retained for the Phase 3 review and r
 | Monitored inputs | `requirement-r5` now `sha256:06c509c014c98fc03aba7ea38ef0db42ea886267a959657d977a4ca18fb2ef18` (baseline `f17005ca…`); `fixture` now `sha256:3524d67b9c53cbe6a4599fc31994808ae3098b9a9fe7ac00d69dfde78a06cbf0` (baseline `08c5e963…`); `dependency` now `sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e` (baseline `cee6c411…`); `sentinel` unchanged `sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c` |
 | Cleanup | The run-scoped image was removed; no containers, networks or volumes remain. The capture/report directory is retained for the 3.2.4 proposal and removed at 3.3.3. |
 | Interpretation | The security capture is the only admissible ratchet input. No baseline or reviewed fixture value was changed in this task; the exact proposal and user approval are 3.2.4/3.2.5. |
+
+### 3.2.4 Baseline/fixture proposal (pending approval)
+
+No file has been changed yet. The exact proposed values are:
+
+| Field | Reviewed baseline | Current security capture |
+| --- | --- | --- |
+| `sourceRevision` | `16dae6b8412577a1c98e3f1f2ae07e20a69eee95` | `604c2a0fdd9d62a6fbfb8dd5a78ee168a82e9da7` |
+| `sourceRunId` | `53ff6f24-219a-485b-a87f-93343612aa91` | `83acea43-3440-48c9-80da-5114767148a3` |
+| `summaryDigest` | `sha256:7b48038ecc8ce95ecb59770f6dcbc1fadfda1461c99b641a07a3a2fd218c66a9` | `sha256:b3d31684ee9a79fc357ae52895e33cfc26c2b911f5d4a745b20a047c396ab10b` |
+| `normalizedPathCount` | 150 | 188 |
+| `normalizedPathDigest` | `sha256:fd7fc28f6149f51ca71b8ca6266dc140706bf2c225b877aa40252ed3b0a94e63` | `sha256:86a8366b408dfaca021a8b190d2c2b148114b6d5ab1efe8ae5a014036586df94` |
+| statements | 1,838 / 7,630 | 2,114 / 9,613 |
+| branches | 580 / 3,919 | 691 / 5,179 |
+| functions | 317 / 1,177 | 363 / 1,550 |
+| lines | 1,806 / 7,296 | 2,074 / 9,034 |
+| enforcement | `local-observation-only` | `local-observation-only` (unchanged) |
+| `promotionAuthorized` | `false` | `false` (unchanged) |
+
+Proposed review metadata:
+
+- `reviewId`: `local-observation-baseline-closeout-2026-11-01`
+- `reviewedAt`: `2026-11-01T13:23:05+01:00`
+- `reviewedBy`: `authorized-closeout-execution`
+- `reason`: refresh the reviewed local security coverage observation after the pnpm migration, the
+  RD-05 R5 requirement/content refresh, and current source expansion; covered counts increased,
+  totals expanded, no promotion.
+- `sourceArtifact`: `test-harness/.assurance-results/83acea43-3440-48c9-80da-5114767148a3/coverage/security/production-security/report/coverage-summary.json`
+- `promotionAuthorized`: `false`
+
+Proposed monitored-input digests:
+
+| Input | Current reviewed value | Proposed value |
+| --- | --- | --- |
+| `requirement-r5` | `sha256:f17005ca…` | `sha256:06c509c014c98fc03aba7ea38ef0db42ea886267a959657d977a4ca18fb2ef18` |
+| `fixture` | `sha256:08c5e963…` | `sha256:3524d67b9c53cbe6a4599fc31994808ae3098b9a9fe7ac00d69dfde78a06cbf0` |
+| `dependency` | `sha256:cee6c411…` | `sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e` |
+| `sentinel` | `sha256:6726cac4…` | unchanged `sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c` |
+
+The proposal updates both `ratchet-baselines.json` and `reviewedCoverageBaseline` /
+`reviewedStalenessDigests` in `assurance-ratchets-requirements.ts` with identical values. It does not
+change the monitored path lists, enforcement, promotion flags or CI policy.
+
+Digest formulas:
+
+- `summaryDigest` = SHA-256 over the exact bytes of
+  `.../coverage/security/production-security/report/coverage-observation.json`.
+- `normalizedPathDigest` = SHA-256 over `porta-assurance-normalized-paths-v1\0`, followed by each
+  canonical, strictly ordered normalized path and a `\0` separator.
+
+The absolute covered counts are higher for every metric. The percentage is lower because the total
+instrumented surface grew faster: statements 24.1% → 22.0%, branches 14.8% → 13.3%, functions
+26.9% → 23.4%, lines 24.8% → 23.0%. The reviewed baseline is a floor on covered counts; the proposal
+raises that floor. The old capture directory is absent, so a path-by-path removal list cannot be
+produced; the count rose 150 → 188 and all 188 paths map, so there is no evidence of removed
+coverage.
+
+Status: **approved by the user on 2026-11-01 13:23** after independent review approved the exact
+values. The reviewer recomputed all digests/counts, found no lowered covered floor or hidden path
+change, and identified only the two documentation clarifications above (now applied). The user
+approved applying the same values to both `ratchet-baselines.json` and the reviewed fixture, with
+`local-observation-only` and both promotion flags false. No file was changed before this approval.
