@@ -638,3 +638,20 @@ on the next release; no release or `main` change was made.
 
 No unproved active claim remains. The only open items are the explicit user-owned exclusions
 (DEF-23, M2, named campaigns) and the deferred Admin UI; they are not represented as complete.
+
+### 5.1.2 Count and derived-row reconciliation
+
+| Source | Header/count | Derived row | Result |
+| --- | --- | --- | --- |
+| Automated release | 11/11 | monorepo-migration `75/75` | Consistent |
+| Deferred invitation creation | 68/68; index Complete | user-invitations `3/3` (task-only `n/a`) | Consistent |
+| Tenant M2M | 56/56 | tenant-user-management `n/a` (task-only rule) | Consistent |
+| pnpm migration | 44/44 | maintenance T-04 Complete | Consistent; PR #213 recorded |
+| Test assurance | 122/123, Blocked | test-assurance `122/123`, ⛔ | Consistent; exclusions explicit |
+| Maintenance T-06 | delivery record Done | T-06 row Done | Consistent; released in v1.15.0 |
+| Portfolio | 8 feature rows | `5 / 8 done`; header updated to 16:44 | Only derived cells changed |
+
+The plan helper cannot parse the test-assurance two-part/letter-suffixed IDs and does not check
+links; those formats were inspected directly. Local link checks found 8/8 and 7/7 valid relative
+links in the portfolio and maintenance roadmaps. The owner task statuses were not rewritten by this
+reconciliation.
