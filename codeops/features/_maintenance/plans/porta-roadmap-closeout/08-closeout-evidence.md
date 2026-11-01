@@ -228,3 +228,21 @@ credit may be described as a full assurance pass.
 Repair checkpoint: both routes now await `writeAuditLog` before rendering the 429. Focused route
 suites passed 58/58, server typecheck and lint passed, and structure passed. The live green run is
 recorded under 2.1.4.
+
+### Tenant follow-up run `26887eb3`
+
+| Field | Evidence |
+| --- | --- |
+| Obligation | Same exact tenant gate after the rate-limit audit-write repair |
+| Source identity | Clean checkpoint `97e372d6`; run `26887eb3-81e0-4fd0-acf8-106c8b13e813`; profile `production-security` |
+| Scope | Exact production-security harness with the full human-auth recovery block |
+| Observation | Production exposure 11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17. Human-auth recovery 4/5. The failure moved to `password-reset-wrong-tenant`: the required `delivered-authentication-artifact-rejection` event was `undefined`. The prior run `b89ea7a6` failed at `magic-link-throttled-request` instead. |
+| Proof | Run log `/tmp/opencode/assurance-tenant-20261101-101619.log`; run artifact `test-harness/.assurance-results/26887eb3-81e0-4fd0-acf8-106c8b13e813/production-exposure/production-security/observation.json`; TAP failure at `human-auth-recovery.spec.test.ts:104` |
+| Diagnosis | The common defect is not one route: the adapter queries the audit API once immediately, while the product writes audit events asynchronously across several routes (`packages/server/src/routes/password-reset.ts:422,505`, `packages/server/src/routes/magic-link.ts:257`, and others). A different probe fails on each run. The immutable assertion must stay; the observer needs bounded polling, matching the existing mail observer. The two awaited rate-limit writes remain valid hardening. |
+| Cleanup | No containers or networks matching run `26887eb3` remain; unrelated pre-existing containers were untouched. |
+| Consequence | 2.1.2 stays `[~]`; 2.1.4 now repairs the observer and reruns the exact harness |
+
+Observer repair checkpoint: `observeRejectionAudit` now polls the audit API for up to 20 seconds at
+250 ms intervals. The immutable event/field assertions are unchanged. Assurance typecheck, harness
+lint, `human-auth-recovery-specs` (4 pass, 1 live skip) and structure passed. The live green run is
+pending.

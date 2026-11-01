@@ -3,7 +3,7 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 10:15
+> **Last Updated**: 2026-11-01 10:41
 > **Progress**: 9/44 tasks (20%)
 > **CodeOps Artifact Schema**: 1
 
@@ -83,7 +83,7 @@ Markdown-only work. An unavailable historical artifact is not a reason to releas
 - [x] 2.1.1 Freeze the retained tenant probe/observer obligations and map umbrella tasks 8.7c/9.6b/9.6c to successor evidence and M2; validate ST-4–8 before editing any outcome. — Tenant management, assurance umbrella and successors; 03-01. ✅ (completed: 2026-11-01 09:43)
 - [~] 2.1.2 Obtain exact current tenant proof from retained admissible evidence or a fresh clean-checkpoint production-security run; record every selected case, relevant rejection event, observer difference, exit and cleanup. If a failure requires repair, insert the specification/red/repair/green tasks under the current phase in this plan, following 03-02 first. — Existing `human-auth-recovery.spec.test.ts`; ST-4–6. ⏳ (implemented: 2026-11-01 09:44)
 - [x] 2.1.3 Repair the audit-visibility race: await the rate-limit rejection audit write in `packages/server/src/routes/interactions.ts` and `packages/server/src/routes/password-reset.ts` before rendering the 429; preserve the response/error shape and every existing assertion. The existing live oracle is the red proof; do not add a weaker duplicate. — 03-02 Bounded Repair; AR-4/7; ST-16. ✅ (completed: 2026-11-01 10:15)
-- [~] 2.1.4 Run the focused route unit tests and rerun the exact production-security harness; record both throttle cases, the required rejection event, observer set, exit and cleanup. If the event is still missing or an observer disappears, keep 2.1.2 blocked. — ST-5/ST-6; 07. ⏳ (implemented: 2026-11-01 10:15)
+- [~] 2.1.4 Repair the live audit observer to poll for a bounded window, then run the focused tests and rerun the exact production-security harness; record both throttle cases, wrong-tenant cases, the required rejection event, observer set, exit and cleanup. If the event is still missing or an observer disappears, keep 2.1.2 blocked. — ST-5/ST-6; 07. ⏳ (implemented: 2026-11-01 10:41)
 
 ### 2.2 Source-record reconciliation
 
