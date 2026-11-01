@@ -13,7 +13,7 @@
 
 | Feature              | Roadmap                                          | Stage Summary                                                             | Progress       | Status | Last Updated     |
 | -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------- | -------------- | ------ | ---------------- |
-| _maintenance         | [→](features/_maintenance/00-roadmap.md)         | Narrow local tests and five bug fixes merged; pnpm migration checks remain | n/a            | 🔄     | 2026-10-27 |
+| _maintenance         | [→](features/_maintenance/00-roadmap.md)         | Local tests/bugfixes merged; pnpm 4.6 complete; 6.4 blocked on dependency-graph boot document | n/a            | 🔄     | 2026-11-01 14:26 |
 | admin-ui             | [→](features/admin-ui/00-roadmap.md)             | Authentication gate planned; foundation and organization context complete | 86 / 90 (96%)  | 🔄     | 2026-08-29 11:46 |
 | monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration, publishing, and automated release complete                     | 75 / 75 (100%) | ✅     | 2026-09-25 15:21 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |

@@ -560,3 +560,11 @@ Import/reuse result: the ordinary follow-up run `41310659699` on `32b1d40a` show
 harness composition also reused the loaded image (`CACHED` layers in the `Run OIDC harness` step).
 Both `porta-ci` and `porta-harness-ci` now have real export/import/reuse evidence; no timing-only
 substitution is used.
+
+### 4.2.3 pnpm 6.4 reconciliation
+
+- Task 6.4 remains `[!]`: alerts and both cache scopes are green, but the project dependency graph
+  is not ingested. The pnpm owner plan now states the exact blocker, the alert/cache evidence and
+  the two run IDs; the 4.6 drift/compat text remains complete.
+- The maintenance `T-04` row and portfolio summary now say 4.6 complete, 6.4 blocked on the
+  dependency-graph boot document, cache scopes green. No task or release is marked complete.

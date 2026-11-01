@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 14:25
-> **Progress**: 28/44 tasks (64%)
+> **Last Updated**: 2026-11-01 14:26
+> **Progress**: 29/44 tasks (66%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -147,7 +147,7 @@ user gate, not preauthorized by this plan.
 
 - [!] 4.2.1 Apply AR-12: record the prior disabled state, enable the dependency graph and Dependabot alerts, then verify lockfile graph ingestion, Dependabot processing and alert availability with read-only GitHub evidence. Record the `main`-targeting limitation of version-update PRs. If the settings change is declined or the graph still fails, keep 6.4 blocked; never downgrade pnpm or ignore the lockfile boot document. — ST-13/ST-14; AR-4/11/12. **Blocked: Dependabot alerts are enabled, but the graph parses only the pnpm boot document (`@pnpm/exe.*`); the project graph is not ingested.**
 - [x] 4.2.2 Diagnose the observed zero `porta-harness-ci` keys and buffered build output; apply the AR-13 bounded repair to the existing compose cache/log path, naming exact files. Then verify actual cached-layer reuse in both existing Docker scopes across a first export run and a subsequent import run from ordinary pushes; record job URLs, cache keys/log lines and a terminal miss rule. — ST-14/ST-15; AR-13. ✅ (completed: 2026-11-01 14:25; export `41310058279`, import `41310659699`, both scopes CACHED)
-- [ ] 4.2.3 Reconcile pnpm task 6.4 and its feature row only after all original remote clauses are proved; correct the 6.4 remote-gate notes at lines 214/235, preserve any genuine access/product blocker, and leave the 4.6 drift/compat lines to 3.3.3. — pnpm owner; 03-01 Admissibility.
+- [x] 4.2.3 Reconcile pnpm task 6.4 and its feature row only after all original remote clauses are proved; correct the 6.4 remote-gate notes at lines 214/235, preserve any genuine access/product blocker, and leave the 4.6 drift/compat lines to 3.3.3. — pnpm owner; 03-01 Admissibility. ✅ (completed: 2026-11-01 14:26; 6.4 remains blocked on the boot document)
 
 ### 4.3 Review and checkpoint
 
