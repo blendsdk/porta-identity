@@ -33,12 +33,13 @@
   Deployment remains with the operator.
 - The promoted plan, report, feature roadmap, and portfolio row are committed on
   `feat/tenant-m2m-user-management`, based on `origin/develop`.
-- Execution completed 55/56 tasks. All product and verification gates pass (`yarn verify`, E2E,
-  pentest, compatibility, docs, structure). The remaining gate is the production-security harness:
-  its 11 production-exposure cases pass, but the human-auth recovery case
-  `password-reset-throttled-request` fails because the normalized rejection log event is missing.
-  The failing test/adapter are in `test-harness/assurance`, which this branch did not modify. See
-  `plans/tenant-m2m-user-management/08-handoff.md`; do not deploy until this is resolved.
+- Execution completed 56/56 tasks. All product and verification gates pass (`yarn verify`, E2E,
+  pentest, compatibility, docs, structure). The production-security gate is green: run `069b36ff`
+  exited 0 with 11/11 exposure cases and 5/5 human-auth recovery; the exact throttle and
+  wrong-tenant probes carry the required rejection event. The earlier 55/56 blocked state on
+  `password-reset-throttled-request` is preserved in the evidence and was resolved by the
+  audit-visibility repair. See `plans/tenant-m2m-user-management/08-handoff.md`; deployment remains
+  with the operator.
 - The plan was promoted from the Plan-mode workspace into this feature. Implementation starts from
   an up-to-date `origin/develop`, which already contains the tenant invitation prerequisite
   (PR #189). Do not use the stale local `develop` or the older `feat/tenant-user-invitations` branch.

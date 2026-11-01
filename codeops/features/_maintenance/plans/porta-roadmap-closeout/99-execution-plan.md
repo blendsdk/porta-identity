@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 11:10
-> **Progress**: 13/44 tasks (30%)
+> **Last Updated**: 2026-11-01 11:21
+> **Progress**: 14/44 tasks (32%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -92,7 +92,7 @@ Markdown-only work. An unavailable historical artifact is not a reason to releas
 
 ### 2.3 Review and validation
 
-- [ ] 2.3.1 Obtain independent security/provenance review of the case mapping and closure claims; resolve findings, retaining any required user ruling. — Phase evidence; AR-7/8/10.
+- [x] 2.3.1 Obtain independent security/provenance review of the case mapping and closure claims; resolve findings, retaining any required user ruling. — Phase evidence; AR-7/8/10. ✅ (completed: 2026-11-01 11:21)
 - [ ] 2.3.2 Run affected checks, structure and document validation; verify owned-run cleanup, record sanitized evidence and checkpoint. — 07 and 03-03; ST-19.
 
 **Verify:** exact ST-4–8 outcomes; current production-security evidence where required. For a
@@ -159,7 +159,7 @@ security-setting change is authorized implicitly.
 ### 5.1 Acceptance and completeness review
 
 - [ ] 5.1.1 Audit the complete selected-owner evidence map: active pnpm/tenant obligations proved, historical rollout proof complete and assurance exclusions precisely retained. Resolve any unproved active claim before integration. — R1–8; ST-1–18.
-- [ ] 5.1.2 Validate each touched original checklist/count against its derived feature row; apply the tenant `n/a`/task-count rule and the named T-06/portfolio/deferred-index/pnpm-owner metadata targets; verify the deferred plan's `Progress` header; inspect legacy formats directly where the helper cannot parse them; remember the helper does not check links. Keep the portfolio deferred on the feature branch. — 03-01 Legacy Counters and Metadata; ST-17/ST-18.
+- [ ] 5.1.2 Validate each touched original checklist/count against its derived feature row; apply the tenant `n/a`/task-count rule and the named T-06/portfolio/deferred-index/pnpm-owner metadata targets; verify the deferred plan's `Progress` header; inspect legacy formats directly where the helper cannot parse them; remember the helper does not check links. Update only the exact derived portfolio cells touched by this task; re-verify the full portfolio after merge. — 03-01 Legacy Counters and Metadata; ST-17/ST-18.
 
 ### 5.2 Final documentation
 

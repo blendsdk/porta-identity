@@ -1,7 +1,7 @@
 /**
  * Live adapter for the ST-46 delivered-authentication-artifact recovery case.
  *
- * The adapter observes all 21 steps (three controls and fifteen probes across magic-link,
+ * The adapter observes all 18 steps (six controls and twelve probes across magic-link,
  * password-reset, and invitation) through public HTTP, MailHog, and the administrative APIs. It
  * reports only what it observes: a contradiction with the requirement is returned unchanged, so
  * the immutable live specification — not this adapter — decides whether the product passes.
@@ -657,7 +657,6 @@ function prohibitedSideEffects(
   );
 }
 
-/** Reads the newest matching rejection event and normalizes it to the requirement's class. */
 /**
  * Polls the audit API for the first matching rejection event within a bounded window.
  *
@@ -690,9 +689,7 @@ async function observeRejectionAudit(
       });
     }
     if (Date.now() >= deadline) break;
-    await new Promise((resolvePromise) =>
-      setTimeout(resolvePromise, AUDIT_INTERVAL_MILLISECONDS),
-    );
+    await new Promise((resolvePromise) => setTimeout(resolvePromise, AUDIT_INTERVAL_MILLISECONDS));
   } while (Date.now() < deadline);
   return null;
 }

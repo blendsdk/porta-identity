@@ -235,14 +235,14 @@ Implement a service-client-only tenant user API with three scopes, full profile 
 - [x] 5.1.8 Handoff: register the new scopes, restart every Porta instance, update the tenant client scope, deploy, and test one real `client_credentials` create/update/delete cycle from the BFF. For migration `034`, record the maintenance window, verified pre-migration backup, full-stop/upgrade ordering for every instance, migration result, and post-migration audit verification. ✅ (completed: 2026-10-25 22:12) — instructions recorded in [08-handoff.md](08-handoff.md); deployment not executed.
 
 **Deliverables**:
-- [x] All security and compatibility gates recorded, including the accepted harness baseline
+- [x] All security and compatibility gates recorded, including the superseded incomplete-observer baseline and the current exit-0 run
 - [x] Migration maintenance window and backup recorded
 - [x] No task-created Docker resources or temporary artifacts remain
 - [x] Deployment/handoff instructions recorded
 
 **Verify**: `yarn verify && yarn test:pentest && yarn assurance:compat --select tenant-admin && yarn docs:build && yarn test:structure`
 
-Run the production-security harness separately against the accepted baseline; its expected exit `40` is not chained as a green gate.
+Run the production-security harness separately; the original expected exit `40` was superseded by the exit-0 run `069b36ff` after the observer comparison recorded in the closeout evidence.
 
 ---
 
@@ -272,7 +272,7 @@ the work on the stale local `develop` or the older `feat/tenant-user-invitations
 
 1. ✅ All phases completed.
 2. ✅ All verification passing (`yarn verify`, `yarn test:pentest`, `yarn assurance:compat --select tenant-admin`, `yarn docs:build`, `yarn test:structure`).
-3. ✅ The production-security harness is recorded against the accepted incomplete-observer baseline: expected exit `40`, no observer-set difference, no new gap, no failed assertion, and never described as fully passed.
+3. ✅ The production-security harness is recorded against the superseded incomplete-observer baseline and the current exit-0 run `069b36ff`: no observer-set disappearance, no new gap, no failed assertion, and never described as fully passed.
 4. ✅ No warnings or errors.
 5. ✅ No dead code or duplicate tenant auth implementation.
 6. ✅ Security hardened: tenant isolation, scope enforcement, app-bound roles, rate limiting, sanitized errors, terminal-safe CLI display, service-owned transaction-bound mutation audit.

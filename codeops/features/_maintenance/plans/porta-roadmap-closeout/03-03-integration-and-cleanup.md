@@ -25,14 +25,16 @@ At each proved source-task transition, immediately update that feature's derived
 next verification/checkpoint. Preserve completed sibling rows and all named residuals. Maintain
 the maintenance plan's own `[~]`/`[x]`/`[!]` task marks in 99 (AR-6/8/10).
 
-On the feature branch, leave `codeops/00-roadmap.md` unchanged. After integration, reconcile it
-from the actual source plans on develop using the existing roadmap workflow. Check the sync
-engine's preview and preserve hand-maintained counters; never sweep unsupported legacy formats
-into fabricated Ready/Done states (AR-8/11). At planning there was no `develop` branch protection
-and no repository ruleset. Publish the portfolio/evidence as a single docs-only commit on
-`develop` after the merge-revision CI; if protection or a ruleset is added and requires a PR, use
-a second evidence-only PR and record its head and CI. Do not bypass protection, force-push, or
-silently edit the portfolio on a feature branch.
+On the feature branch, keep `codeops/00-roadmap.md` otherwise unchanged, but update the exact
+derived rows whose source-task state changes so the portfolio does not go stale before merge. This
+is a recorded deviation from the earlier defer-all rule and is limited to the touched rows. After
+integration, re-reconcile the full portfolio from the actual source plans on develop using the
+existing roadmap workflow. Check the sync engine's preview and preserve hand-maintained counters;
+never sweep unsupported legacy formats into fabricated Ready/Done states (AR-8/11). At planning
+there was no `develop` branch protection and no repository ruleset. Publish the portfolio/evidence
+as a single docs-only commit on `develop` after the merge-revision CI; if protection or a ruleset is
+added and requires a PR, use a second evidence-only PR and record its head and CI. Do not bypass
+protection, force-push, or silently edit unrelated portfolio rows.
 
 ## Review and CI Gates
 

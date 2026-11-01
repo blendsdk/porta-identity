@@ -203,19 +203,19 @@ claim, and no failed attempt was removed. The detailed ruling ledger is [05-find
 - **M2 remains open**: control `requiredObservations`/`reachabilityObservations` are still unasserted at the oracle. No control-observation credit is transferred.
 - **Legacy helper note**: the test-assurance plan uses two-part/letter-suffixed task IDs (`8.4`, `8.7c`, `9.6b`, `9.6c`), so the installed plan helper reports zero tasks. The manual count is 122/123 with exactly one `[!]` (8.4); do not rewrite IDs or invent a parser.
 
-### ST-4–8 check
+### ST-4–8 pre-run snapshot
 
-| Case | Frozen expectation | Current assessment |
+| Case | Frozen expectation | Assessment at this snapshot |
 | --- | --- | --- |
-| ST-4 | Aggregate tenant success without a retained case-level result does not close 5.1.3 | Applies; run `1908ceb0…` alone is insufficient |
-| ST-5 | Exact tenant case, rejection observation, controls and unchanged/applicably approved case set may close after independent comparison | Awaiting fresh run |
-| ST-6 | Missing probe, weakened assertion or unexplained observer disappearance rejects closure | Applies to the fresh-run comparison |
+| ST-4 | Aggregate tenant success without a retained case-level result does not close 5.1.3 | Satisfied: aggregate-only evidence was rejected and a fresh exact run was used |
+| ST-5 | Exact tenant case, rejection observation, controls and unchanged/applicably approved case set may close after independent comparison | Satisfied by `069b36ff` (see final disposition below) |
+| ST-6 | Missing probe, weakened assertion or unexplained observer disappearance rejects closure | Satisfied: identical case sets across red/green runs; no missing probe, weakened assertion or observer disappearance |
 | ST-7 | Completed successor plus an original task with an unproved M2 control requirement stays incomplete; no blanket credit | 9.6b closes only its log obligation; M2 remains open; 8.4 stays blocked |
 | ST-8 | Successful current checks do not close DEF-23 or a named campaign | DEF-23, DEF-3/6/22, DEF-5/11/17 and the consent follow-ups remain open |
 
-### Frozen conclusion
+### Pre-run conclusion (superseded)
 
-At this point the tenant gate still requires a fresh exact run. The assurance umbrella has two
+At this snapshot the tenant gate still required a fresh exact run. The assurance umbrella had two
 candidate closures (8.7c and 9.6c), one narrow closure (9.6b log obligation only), and one
 unchanged blocker (8.4/DEF-23). M2 remains an oracle-level gap owned by the user; no successor
 credit may be described as a full assurance pass.
@@ -263,10 +263,18 @@ pending.
 | Obligation | Exact current production-security proof for tenant task 5.1.3 |
 | Source identity | Clean checkpoint `7f0ba27d`; run `069b36ff-c09e-47a3-b48a-af445540b8ee`; profile `production-security` |
 | Scope | Full security harness: production exposure, functional, second-factor, tenant/admin and the ST-46 delivered-artifact block |
-| Observer/case set | 11 production-exposure cases: `st53-untrusted-forwarded-host`, `st53-untrusted-forwarded-proto`, `st53-untrusted-forwarded-client-ip`, `st55-unconfigured-cors-origin`, `st55-unconfigured-cors-method-and-header`, `st55-production-response-policy`, `st55-production-html-csp-policy`, `st55-production-session-cookie-policy`, `st56-production-security-database-error-exposure`, `st56-production-security-cache-error-exposure`, `st56-production-security-mail-error-exposure`; 17 tenant/admin observers; the 5/5 ST-46 recovery specification covering the 21-step delivered-artifact case |
+| Observer/case set | 11 production-exposure cases: `st53-untrusted-forwarded-host`, `st53-untrusted-forwarded-proto`, `st53-untrusted-forwarded-client-ip`, `st55-unconfigured-cors-origin`, `st55-unconfigured-cors-method-and-header`, `st55-production-response-policy`, `st55-production-html-csp-policy`, `st55-production-session-cookie-policy`, `st56-production-security-database-error-exposure`, `st56-production-security-cache-error-exposure`, `st56-production-security-mail-error-exposure`; 17 tenant/admin observers; the 5/5 ST-46 recovery specification covering the 18-step (6 controls + 12 probes) delivered-artifact case |
 | Observation | Exit 0. Production exposure passed 11, product failures 0, incomplete 0, execution failures 0. Functional 7/7, second-factor 4/4, tenant/admin 17/17, human-auth recovery 5/5. The ST-46 live specification passed every probe, including `magic-link-throttled-request`, `password-reset-throttled-request` and `password-reset-wrong-tenant`; each required `delivered-authentication-artifact-rejection`. No case was missing and no assertion failed. |
 | Proof | Run log `/tmp/opencode/assurance-tenant-20261101-104136.log`; run artifact `test-harness/.assurance-results/069b36ff-c09e-47a3-b48a-af445540b8ee/production-exposure/production-security/observation.json`; TAP `ok 5 - executes the delivered-artifact case...`, tests 5, pass 5, fail 0 |
-| Baseline comparison | Original failures `31bfd677` and `e99a0d4c` failed `password-reset-throttled-request`; current follow-up failures `b89ea7a6` and `26887eb3` are preserved. The green run has no incomplete observers and no new gap. The changed exit semantics (0 rather than the old expected 40) reflect the completed observer work (DEF-14/DEF-25) and the current case set; the exact case and observer comparison, not a blanket claim, is the basis for closure. |
-| Cleanup | No containers or networks matching run `069b36ff` remain. The run directory is retained for the Phase 2 review and will be removed after evidence retention; pre-existing unrelated containers were untouched. |
-| Review | Independent Phase 2 review remains 2.3.1 |
+| Baseline comparison | Original failures `31bfd677` and `e99a0d4c` failed `password-reset-throttled-request`; current follow-up failures `b89ea7a6` and `26887eb3` are preserved. All 11 production-exposure case IDs are identical across `c9716d5b`, `ec140d4f`, `bb4eb111`, `b89ea7a6`, `26887eb3`, `069b36ff` and `14c4cf25`. The three `st53-untrusted-forwarded-*` cases no longer report unobserved state/prohibited effects (DEF-14 origin/cookie policy and DEF-25 rate-limit identity), which is why the exit changed from the old expected 40 to 0. The case set was not reduced. |
+| Cleanup | No containers or networks matching run `069b36ff` remain. The two run images created today (`porta-069b36ff…-porta` and `porta-26887eb3…-porta`) were removed; older run images from earlier sessions were left untouched. The run directory is retained for the Phase 2 review and removed at the 2.3.2 checkpoint. |
+| Review | Independent Phase 2 review completed; see `05-findings.md` (RV-011–RV-018) |
 | Consequence | 5.1.3 may close after 2.2.1 and review; the run is not described as a full security certification |
+
+**Final ST-4–8 disposition (after `069b36ff`):**
+
+- ST-4 satisfied: aggregate-only evidence was rejected; the fresh exact run supplies the case-level proof.
+- ST-5 satisfied: `069b36ff` includes the exact `password-reset-throttled-request`, `magic-link-throttled-request` and wrong-tenant probes with the required rejection event, the unchanged 11-case production-exposure set, 17 tenant/admin observers and 5/5 ST-46 recovery; cleanup passed and no assertion failed.
+- ST-6 satisfied: the case set is identical across the red/green runs; no probe was removed, no assertion weakened and no observer disappeared.
+- ST-7 satisfied narrowly: 9.6b closes only its log obligation; M2 remains open; 8.4/DEF-23 stays blocked.
+- ST-8 satisfied: DEF-23, DEF-3/6/22, DEF-5/11/17 and the consent follow-ups remain open with their owners.
