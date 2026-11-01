@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 11:26
-> **Progress**: 17/44 tasks (39%)
+> **Last Updated**: 2026-11-01 11:33
+> **Progress**: 18/44 tasks (41%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -114,7 +114,7 @@ or silently dismissed by this phase.
 
 ### 3.2 Evidence, approval and implementation
 
-- [~] 3.2.1 Run all five approved compatibility selectors serially from a clean checkpoint and retain each selector's package/source/image/fixture/cleanup proof. — Existing compatibility command; ST-12. ⏳ (implemented: 2026-11-01 11:26)
+- [x] 3.2.1 Run all five approved compatibility selectors serially from a clean checkpoint and retain each selector's package/source/image/fixture/cleanup proof. — Existing compatibility command; ST-12. ✅ (completed: 2026-11-01 11:33)
 - [ ] 3.2.2 Capture protocol/operational coverage with `coverage-baseline`; validate current pnpm dependency inventory, flush and source mapping. — Existing coverage command; ST-9.
 - [ ] 3.2.3 Capture security/production-security coverage separately; compare old/current paths, counts and monitored digests without changing the baseline. — Existing coverage command and baseline; ST-9/ST-10.
 - [ ] 3.2.4 Record the exact baseline/fixture proposal with the baseline coverage block and fixture block side by side, exact equality of source/run/digests/counts, and the two digest formulas; obtain independent review and the user's value-specific approval. Keep unexplained reductions or refused changes blocked. — `08-closeout-evidence.md`, ambiguity register; ST-10/ST-11; AR-9.

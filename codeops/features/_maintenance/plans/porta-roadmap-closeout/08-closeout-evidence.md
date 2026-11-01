@@ -328,3 +328,36 @@ All expectations above are frozen for Phase 3; only the exact approved values ma
 | Staleness failure | `changedInputs: ['requirement-r5','fixture','dependency']`; `reportAllowed: false`; 80 stale claims; `sentinel` is current |
 | Interpretation | This is the expected stale-input red, not a product regression. No expectation was edited. The baseline/fixture proposal and value-specific approval are 3.2.4/3.2.5 work. |
 | Proof | `/tmp/opencode/verify-3.1.2-ratchets.log`, TAP tests 2 and 3 |
+
+### 3.2.1 Compatibility matrix
+
+All runs used clean source revision `e78f6bc2e97a603b955527b567c2c5d6a637cda6`, fixture
+`sha256:650429e5d28dad73b5ff12ca767fab378678e1ea82fca76aeea04a10b6b219da`, and the same
+packed SDK/CLI archives (`adf5876a…` and `ac227222…`).
+
+| Selector | Result run | Node | Server image digest | Cleanup / residue |
+| --- | --- | --- | --- | --- |
+| `compatibility` | `2dbdf711-8a6d-4714-bfae-5faf29836814` | v22.23.1 | `sha256:a4638676e9e7f6eb5dcdbcd9b6d3edf05886889f6e90bff7eaec6e8392e950d7` | `ownedConsumerResidue: []`; primary tree unchanged |
+| `tenant-admin` | `abf11a16-468f-4977-872a-ef241aafd3f1` | v22.23.1 | `sha256:b46941aa08e21860c76e9c8003108b406fe01bcdd7504d260bfea88f09f98200` | `ownedConsumerResidue: []`; primary tree unchanged |
+| `admin-data` | `d5b39ef9-b631-4e7c-9334-2277533e9d60` | v22.23.1 | `sha256:8ca8e05d833f465c72b0c0d25a406f035f694a7460d69f745084767e94e32ec2` | Cleanup success; temporary homes removed, credentials unchanged, residue `[]` |
+| `p1-admin` | `b6de7aec-ac3c-4df7-a8e5-62a75e7ddc20` | v24.20.0 | `sha256:71891ec470f15a98dd95849add7c9b07b5a0c90c44b4e2f2cfababbaa54297e0` | Cleanup success; six journeys passed; residue `[]` |
+| `protocol` | `8b3ae45e-347d-41ed-9da4-bb790e4a666e` | v24.20.0 | `sha256:a6a4b80773596e6ef20835d31fde196d407232dd71358884b2afc0e52676501c` | `ownedConsumerResidue: []`; primary tree unchanged |
+
+Failures preserved:
+
+- `p1-admin` runs `7d07bdba-c6b3-43b8-83fa-7fd6183ce244` and
+  `15a06ba0-8bcf-43e8-bab4-6fe5fc5ca17f` on Node v22.23.1 exited 30 at the `surfaces` stage. Its
+  evidence schema requires Node `v24`; the Node v24 retry `b6de7aec` passed. This is a runtime
+  requirement, not a product failure.
+- `protocol` run `1eeccd21-9c32-4c89-9c26-d096552a8654` on Node v24.20.0 exited 30 at
+  `protocol-cli-browser` because the isolated HOME hid Playwright's browser cache. The retry with
+  `PLAYWRIGHT_BROWSERS_PATH=/home/gevik/.cache/ms-playwright` and the same isolated HOME passed
+  (`8b3ae45e`). No credential file was read.
+
+Runtime note: the matrix used Node v22.23.1 for the three non-P1 selectors and Node v24.20.0 for
+`p1-admin` and `protocol`; the latter is the active verification runtime and the P1 schema requires
+it. All five selectors are proved; no selector was skipped or replaced by the foundation alone.
+
+Cleanup: all eight run-scoped images (five passing and three failed/retried harness runs) were
+removed after the evidence was recorded; no containers, networks or volumes remain for those run
+IDs. The small result JSON directories are retained for the Phase 3 review and removed at 3.3.3.
