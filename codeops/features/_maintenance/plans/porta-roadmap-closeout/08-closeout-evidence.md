@@ -621,3 +621,20 @@ On **2026-11-01 14:47** the user chose **Stop at blocked gate**:
 single-document lockfile, regression guard) merged to `develop` as `c4c30711`. The closeout resumed
 at Phase 5; `T-04` is Complete at 44/44 and `T-07` is Executing at 32/44. The default branch updates
 on the next release; no release or `main` change was made.
+
+## Phase 5 — Final Source and Feature Reconciliation
+
+### 5.1.1 Completeness audit
+
+| Owner | Evidence | Disposition |
+| --- | --- | --- |
+| Release and deferred invitations | Automated release tasks 11/11; deferred invitation coverage 68/68; Phase 1 metadata reconciliation complete | Proved; no open release action |
+| Tenant user management | Tenant plan 56/56; task 5.1.3 green run `069b36ff`: exposure 11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17, recovery 5/5; prior failures preserved | Proved narrowly; not a full security certification |
+| Test assurance | Umbrella 122/123; `8.4`/DEF-23 blocked, M2 open, named campaigns deferred; 8.7c, 9.6b (log only), 9.6c closed | Explicit exclusions retained; no false completion |
+| Reviewed baseline | Source `604c2a0f`, run `83acea43`, approved values applied; validate `6367accb` exit 0; ratchet 10/10 | Proved |
+| Compatibility and coverage | Five selectors passed; protocol/security coverage captured; pnpm 4.6 complete | Proved |
+| Remote dependency/cache | Alerts enabled; both GHA cache scopes import/CACHED/export; PR #213 single-document graph: 936 project packages added, 15 boot entries removed | Proved on `develop`; default-branch alerts close on next release |
+| New security alert | Two moderate Vitest alerts (dev-only advisory, default branch); patched to 4.1.11 in root/server/SDK/CLI with `@vitest/coverage-v8` 4.1.11; unit 6,259/6,259, structure 158/158, frozen install pass | Fixed on `develop`; remote alert closure follows the next release |
+
+No unproved active claim remains. The only open items are the explicit user-owned exclusions
+(DEF-23, M2, named campaigns) and the deferred Admin UI; they are not represented as complete.

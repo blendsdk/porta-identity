@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Executing — resumed after pnpm graph fix (PR #213); Phases 5–6 in progress
-> **Last Updated**: 2026-11-01 16:40
-> **Progress**: 32/44 tasks (73%)
+> **Last Updated**: 2026-11-01 16:44
+> **Progress**: 33/44 tasks (75%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -164,7 +164,7 @@ security-setting change is authorized implicitly.
 
 ### 5.1 Acceptance and completeness review
 
-- [ ] 5.1.1 Audit the complete selected-owner evidence map: active pnpm/tenant obligations proved, historical rollout proof complete and assurance exclusions precisely retained. Resolve any unproved active claim before integration. — R1–8; ST-1–18.
+- [x] 5.1.1 Audit the complete selected-owner evidence map: active pnpm/tenant obligations proved, historical rollout proof complete and assurance exclusions precisely retained. Resolve any unproved active claim before integration. — R1–8; ST-1–18. ✅ (completed: 2026-11-01 16:44; pnpm/tenant/baseline/remote proved; two moderate Vitest alerts patched to 4.1.11; explicit exclusions retained)
 - [ ] 5.1.2 Validate each touched original checklist/count against its derived feature row; apply the tenant `n/a`/task-count rule and the named T-06/portfolio/deferred-index/pnpm-owner metadata targets; verify the deferred plan's `Progress` header; inspect legacy formats directly where the helper cannot parse them; remember the helper does not check links. Update only the exact derived portfolio cells touched by this task; re-verify the full portfolio after merge. — 03-01 Legacy Counters and Metadata; ST-17/ST-18.
 
 ### 5.2 Final documentation

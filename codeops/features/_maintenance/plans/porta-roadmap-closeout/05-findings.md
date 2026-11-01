@@ -28,6 +28,7 @@
 | RV-021 | 4 | MINOR | graph-status | fixed |
 | RV-022 | 4 | MINOR | cache-reuse-wording | fixed |
 | RV-023 | 4 | MINOR | cache-evidence-contract | fixed |
+| RV-024 | 5 | MINOR | dev-dependency-advisory | fixed |
 
 RV-001 user ruling: correct the publish chronology and retain the AR-14 closure. No re-release or
 new publication was authorized. The rejected alternative was reopening task 7.1.5.
@@ -60,3 +61,8 @@ contract now rejects a restored boot document. `dependency-graph/compare/main...
 project packages added and exactly 15 boot-document entries removed. pnpm `6.4` is complete at 44/44
 and the closeout resumed at Phase 5. The default branch updates on the next release; no release or
 `main` change was made.
+
+Phase 5.1.1 audit: two moderate Vitest alerts appeared after Dependabot alerts were enabled. The
+advisory is a dev-server path-traversal issue, patched in 4.1.11. Root, server, SDK and CLI were
+updated with `@vitest/coverage-v8` 4.1.11; unit 6,259/6,259, structure 158/158 and a frozen install
+pass. The default-branch alerts close on the next release; no active unproved claim remains.
