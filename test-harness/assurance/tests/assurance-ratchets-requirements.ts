@@ -21,7 +21,7 @@ export const reviewedCoverageBaseline = Object.freeze({
 export const reviewedStalenessDigests: Readonly<Record<StalenessTrigger, string>> = Object.freeze({
   'requirement-r5': 'sha256:06c509c014c98fc03aba7ea38ef0db42ea886267a959657d977a4ca18fb2ef18',
   fixture: 'sha256:3524d67b9c53cbe6a4599fc31994808ae3098b9a9fe7ac00d69dfde78a06cbf0',
-  dependency: 'sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e',
+  dependency: 'sha256:7735f69b8381f91fdfc0ae1333f0d4b7f0b23076fe002793f556622c7ed32c3c',
   sentinel: 'sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c',
 });
 

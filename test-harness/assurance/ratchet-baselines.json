@@ -33,7 +33,7 @@
     },
     "dependency": {
       "paths": ["pnpm-lock.yaml", "pnpm-workspace.yaml"],
-      "digest": "sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e",
+      "digest": "sha256:7735f69b8381f91fdfc0ae1333f0d4b7f0b23076fe002793f556622c7ed32c3c",
       "affectedRequirementPrefix": "*"
     },
     "sentinel": {
@@ -43,10 +43,10 @@
     }
   },
   "review": {
-    "reviewId": "local-observation-baseline-closeout-2026-11-01",
-    "reviewedAt": "2026-11-01T13:23:05+01:00",
+    "reviewId": "local-observation-baseline-dependency-refresh-2026-11-01",
+    "reviewedAt": "2026-11-01T16:54:07+01:00",
     "reviewedBy": "authorized-closeout-execution",
-    "reason": "Refresh the reviewed local security coverage observation after the pnpm migration, the RD-05 R5 requirement/content refresh, and current source expansion; covered counts increased, totals expanded, and no promotion is authorized.",
+    "reason": "Refresh only the dependency monitored input after the single-document pnpm lockfile normalization and the Vitest 4.1.11 security patch (CVE-2026-84373); requirement, fixture, sentinel, coverage counts/paths, enforcement and no-promotion policy are unchanged.",
     "sourceArtifact": "test-harness/.assurance-results/83acea43-3440-48c9-80da-5114767148a3/coverage/security/production-security/report/coverage-summary.json",
     "promotionAuthorized": false
   }

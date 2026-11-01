@@ -431,6 +431,24 @@ The proposal updates both `ratchet-baselines.json` and `reviewedCoverageBaseline
 `reviewedStalenessDigests` in `assurance-ratchets-requirements.ts` with identical values. It does not
 change the monitored path lists, enforcement, promotion flags or CI policy.
 
+#### Dependency-only refresh after the graph and Vitest fixes
+
+The single-document lockfile (PR #213) and the Vitest 4.1.11 security patch changed the monitored
+`dependency` input; the other monitored inputs and the coverage block are unchanged.
+
+| Input | Approved 13:23 value | Current value |
+| --- | --- | --- |
+| `dependency` | `sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e` | `sha256:7735f69b8381f91fdfc0ae1333f0d4b7f0b23076fe002793f556622c7ed32c3c` |
+| `requirement-r5` | `sha256:06c509c0…` | unchanged |
+| `fixture` | `sha256:3524d67b…` | unchanged |
+| `sentinel` | `sha256:6726cac4…` | unchanged |
+
+Coverage source, summary digest, 188 paths, path digest, all four counts, enforcement and both
+promotion flags remain exactly as approved. The user approved the exact dependency digest on
+**2026-11-01 16:54**; both files were updated with review reason naming both changes, and the
+ratchet suite passes 10/10. The delta attribution is recorded in `05-findings.md` (RV-025): it covers
+the single-document lockfile and the Vitest patch, not Vitest alone.
+
 Digest formulas:
 
 - `summaryDigest` = SHA-256 over the exact bytes of
@@ -631,7 +649,7 @@ on the next release; no release or `main` change was made.
 | Release and deferred invitations | Automated release tasks 11/11; deferred invitation coverage 68/68; Phase 1 metadata reconciliation complete | Proved; no open release action |
 | Tenant user management | Tenant plan 56/56; task 5.1.3 green run `069b36ff`: exposure 11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17, recovery 5/5; prior failures preserved | Proved narrowly; not a full security certification |
 | Test assurance | Umbrella 122/123; `8.4`/DEF-23 blocked, M2 open, named campaigns deferred; 8.7c, 9.6b (log only), 9.6c closed | Explicit exclusions retained; no false completion |
-| Reviewed baseline | Source `604c2a0f`, run `83acea43`, approved values applied; validate `6367accb` exit 0; ratchet 10/10 | Proved |
+| Reviewed baseline | Source `604c2a0f`, run `83acea43`, approved values applied; validate `6367accb` exit 0; dependency-only digest refresh approved by the user at 16:54; ratchet 10/10 after the refresh | Proved |
 | Compatibility and coverage | Five selectors passed; protocol/security coverage captured; pnpm 4.6 complete | Proved |
 | Remote dependency/cache | Alerts enabled; both GHA cache scopes import/CACHED/export; PR #213 single-document graph: 936 project packages added, 15 boot entries removed | Proved on `develop`; default-branch alerts close on next release |
 | New security alert | Two moderate Vitest alerts (dev-only advisory, default branch); patched to 4.1.11 in root/server/SDK/CLI with `@vitest/coverage-v8` 4.1.11; unit 6,259/6,259, structure 158/158, frozen install pass | Fixed on `develop`; remote alert closure follows the next release |

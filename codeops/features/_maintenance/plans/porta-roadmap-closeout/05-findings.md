@@ -29,6 +29,8 @@
 | RV-022 | 4 | MINOR | cache-reuse-wording | fixed |
 | RV-023 | 4 | MINOR | cache-evidence-contract | fixed |
 | RV-024 | 5 | MINOR | dev-dependency-advisory | fixed |
+| RV-025 | 5 | MINOR | digest-delta-attribution | fixed |
+| RV-026 | 5 | MINOR | stale-ratchet-claim | fixed |
 
 RV-001 user ruling: correct the publish chronology and retain the AR-14 closure. No re-release or
 new publication was authorized. The rejected alternative was reopening task 7.1.5.
@@ -66,3 +68,11 @@ Phase 5.1.1 audit: two moderate Vitest alerts appeared after Dependabot alerts w
 advisory is a dev-server path-traversal issue, patched in 4.1.11. Root, server, SDK and CLI were
 updated with `@vitest/coverage-v8` 4.1.11; unit 6,259/6,259, structure 158/158 and a frozen install
 pass. The default-branch alerts close on the next release; no active unproved claim remains.
+
+Dependency-digest review: the current `dependency` digest is `sha256:7735f69b…`, not the approved
+`sha256:c12dad3a…`. The delta covers both the PR #213 lockfile normalization and the Vitest 4.1.11
+patch; it is not Vitest-only. Only the dependency input changed; coverage counts, paths, enforcement
+and promotion flags are unchanged. The 5.1.1 table's "ratchet 10/10" was a baseline-checkpoint fact,
+not a current result; it is corrected to pending refresh. The user approved the new digest on
+2026-11-01 16:54; both baseline authorities now use `sha256:7735f69b…`, the review reason names both
+changes, and the ratchet suite passes 10/10. RV-025 and RV-026 are fixed.
