@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Executing — resumed after pnpm graph fix (PR #213); Phases 5–6 in progress
-> **Last Updated**: 2026-11-01 16:54
-> **Progress**: 35/44 tasks (80%)
+> **Last Updated**: 2026-11-01 16:58
+> **Progress**: 36/44 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -34,13 +34,13 @@ authorities for their pre-existing tasks. Do not duplicate these checkboxes in a
 | Phase | Scope | Tasks | Depends on |
 | --- | --- | ---: | --- |
 | 1 | Establish ownership and reconcile historical delivery | 7 | Approved staged plan |
-| 2 | Reconcile tenant and assurance security evidence | 6 | 1 |
+| 2 | Reconcile tenant and assurance security evidence | 8 | 1 |
 | 3 | Complete pnpm compatibility, coverage and reviewed baseline | 11 | 2 |
 | 4 | Complete remote dependency and cache evidence | 6 | 3; normal CI runs may accumulate earlier |
 | 5 | Final source-owner and feature-roadmap review | 5 | 1–4 |
 | 6 | Integrate, reconcile portfolio and verify final develop | 7 | 5 |
 
-**Total: 42 tasks.** Conditional repairs add explicit bounded tasks only when justified by an
+**Total: 44 tasks.** Conditional repairs add explicit bounded tasks only when justified by an
 actual failure. Existing source-owner aliases and paths are defined in 02.
 
 ## Phase 1 — Historical Delivery and Ownership
@@ -173,7 +173,7 @@ security-setting change is authorized implicitly.
 
 ### 5.3 Review and publication preparation
 
-- [ ] 5.3.1 Complete independent final correctness/security review of the actual diff, source-task dispositions, reviewed baseline ruling and exclusions; obtain any critical/major finding rulings. — 03-03 Review and CI Gates.
+- [x] 5.3.1 Complete independent final correctness/security review of the actual diff, source-task dispositions, reviewed baseline ruling and exclusions; obtain any critical/major finding rulings. — 03-03 Review and CI Gates. ✅ (completed: 2026-11-01 16:58; FINAL REVIEW APPROVED; RV-027–030 fixed)
 - [ ] 5.3.2 Run final applicable local gates and document checks, including the final ratchet run on the PR head; a changed monitored digest reopens 3.2.4. Checkpoint/push through the git-commit skill in push mode and open the develop PR. Keep current unobserved merge/CI events pending. — 07; ST-19.
 
 **Verify:** R1–10 acceptance mapping, no unproved active claim, no unresolved critical/major finding,
@@ -208,7 +208,7 @@ to avoid a second check.
 
 ## Completion Boundary
 
-This plan is complete when the selected active closeout obligations and all 42 tasks pass, with
+This plan is complete when the selected active closeout obligations and all 44 tasks pass, with
 any added bounded-repair tasks also verified. Remainders in AR-10 stay visibly open. If a required
 baseline ruling, historical proof or active remote gate is unavailable, stop with the precise
 blocked task instead of declaring the closeout complete.

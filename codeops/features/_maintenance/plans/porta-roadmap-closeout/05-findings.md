@@ -31,6 +31,10 @@
 | RV-024 | 5 | MINOR | dev-dependency-advisory | fixed |
 | RV-025 | 5 | MINOR | digest-delta-attribution | fixed |
 | RV-026 | 5 | MINOR | stale-ratchet-claim | fixed |
+| RV-027 | 5 | MINOR | alert-branch-attribution | fixed |
+| RV-028 | 5 | MINOR | baseline-review-reason-pr | fixed |
+| RV-029 | 5 | MINOR | stale-plan-metadata | fixed |
+| RV-030 | 5 | MINOR | cleanup-image | fixed |
 
 RV-001 user ruling: correct the publish chronology and retain the AR-14 closure. No re-release or
 new publication was authorized. The rejected alternative was reopening task 7.1.5.
@@ -76,3 +80,10 @@ and promotion flags are unchanged. The 5.1.1 table's "ratchet 10/10" was a basel
 not a current result; it is corrected to pending refresh. The user approved the new digest on
 2026-11-01 16:54; both baseline authorities now use `sha256:7735f69b…`, the review reason names both
 changes, and the ratchet suite passes 10/10. RV-025 and RV-026 are fixed.
+
+Final review: **FINAL REVIEW APPROVED**, no CRITICAL/MAJOR findings. RV-027 corrects the Vitest
+alert attribution to this PR head rather than `develop`; RV-028 adds PR #213 to the baseline review
+reason; RV-029 fixes stale phase/total/count metadata (8 Phase 2 tasks, 44 total, 123 assurance
+tasks, Executing index status); RV-030 removes the remaining closeout-owned `b89ea7a6…` image. All
+four are fixed. The broader 44-file diff was accepted as the plan-authorized bounded repairs
+(AR-4/11/13), not a scope violation.

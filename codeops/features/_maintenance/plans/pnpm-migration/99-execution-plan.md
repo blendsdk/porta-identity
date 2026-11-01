@@ -192,9 +192,9 @@ Replace Yarn Classic 1.22.22 with pnpm 12.15.0 for local development, CI, Docker
 - [x] **4.6** `pnpm assurance:validate` passes and the packed-consumer/governance suites pass. All five approved compatibility selectors, both coverage captures and the reviewed baseline refresh are complete. ✅ (completed: 2026-11-01 13:30; compat runs `2dbdf711` compatibility, `abf11a16` tenant-admin, `d5b39ef9` admin-data, `b6de7aec` p1-admin, `8b3ae45e` protocol; coverage `31c42876` protocol/operational and `83acea43` security/production-security; validate `6367accb` exit 0; ratchet 10/10; user approved the exact baseline values)
 - [x] **4.7** Ran `pnpm assurance:harness --project security --profile production-security` on the migration revision: 17/17 catalog tests and 5/5 delivered-artifact probes passed, exit 0. Historical Yarn evidence was not rewritten.
 
-**Resolved pre-existing drift:** the closeout baseline review refreshed the `requirement-r5`, `fixture` and `dependency` digests together with the security coverage counts/path identity. The baseline JSON and reviewed fixture are exactly equal, `pnpm assurance:validate` exits 0, and the ratchet selector passes 10/10. The historical drift is preserved above; 6.4 remains for Phase 4.
+**Resolved pre-existing drift:** the closeout baseline review refreshed the `requirement-r5`, `fixture` and `dependency` digests together with the security coverage counts/path identity. The baseline JSON and reviewed fixture are exactly equal, `pnpm assurance:validate` exits 0, and the ratchet selector passes 10/10. The historical drift is preserved above; 6.4 is complete via PR #213.
 
-**Verify:** assurance validation passes; packed-consumer compatibility uses npm; coverage inventory is non-empty; the registered production-security harness is green; task 4.6 is complete and 6.4 remains for Phase 4.
+**Verify:** assurance validation passes; packed-consumer compatibility uses npm; coverage inventory is non-empty; the registered production-security harness is green; tasks 4.6 and 6.4 are complete.
 
 ## Phase 5 — Structural specifications and documentation
 

@@ -46,7 +46,7 @@
     "reviewId": "local-observation-baseline-dependency-refresh-2026-11-01",
     "reviewedAt": "2026-11-01T16:54:07+01:00",
     "reviewedBy": "authorized-closeout-execution",
-    "reason": "Refresh only the dependency monitored input after the single-document pnpm lockfile normalization and the Vitest 4.1.11 security patch (CVE-2026-84373); requirement, fixture, sentinel, coverage counts/paths, enforcement and no-promotion policy are unchanged.",
+    "reason": "Refresh only the dependency monitored input after the single-document pnpm lockfile normalization (PR #213) and the Vitest 4.1.11 security patch (CVE-2026-84373); requirement, fixture, sentinel, coverage counts/paths, enforcement and no-promotion policy are unchanged.",
     "sourceArtifact": "test-harness/.assurance-results/83acea43-3440-48c9-80da-5114767148a3/coverage/security/production-security/report/coverage-summary.json",
     "promotionAuthorized": false
   }

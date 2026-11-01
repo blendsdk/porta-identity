@@ -43,7 +43,7 @@ edits the read-only CI workflow.
 |    10 | Mutation pilot and reliability qualification        |    16 |
 |    11 | Must/Should closeout and promotion proposal           |     3 |
 
-**Total: 122 tasks across 11 release-safe phases.**
+**Total: 123 tasks across 11 release-safe phases.**
 
 ## Targeted Verification Bindings
 

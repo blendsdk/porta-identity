@@ -230,7 +230,7 @@ credit may be described as a full assurance pass.
 | Observation | Production exposure passed 11/11, functional 7/7, second-factor 4/4, tenant/admin 17/17. Human-auth recovery passed 4/5. `magic-link-throttled-request` failed: the 429/throttle facts passed, but the normalized audit event was `undefined` instead of `delivered-authentication-artifact-rejection`. `password-reset-throttled-request` passed. Harness exit was 21 (test failure), not the accepted exit-40 incomplete-observer path. |
 | Proof | Run log `/tmp/opencode/assurance-tenant-20261101-094841.log`; run artifact `test-harness/.assurance-results/b89ea7a6-eb5d-4258-9763-ebcf35787edd/production-exposure/production-security/observation.json`; TAP failure at `human-auth-recovery.spec.test.ts:104` |
 | Root cause | Both rate-limit routes call the asynchronous `writeAuditLog` without awaiting it (`packages/server/src/routes/interactions.ts:1031`, `packages/server/src/routes/password-reset.ts:325`). The 429 response can therefore be observed before the audit insert completes; the live observer queries immediately. The password-reset case passed by timing, which is not a stable contract. This is a real audit-visibility defect, not a reason to weaken the immutable assertion. |
-| Cleanup | The runner cleaned its owned stack; no containers or networks matching run `b89ea7a6` remain. Pre-existing unrelated containers were left untouched. |
+| Cleanup | The runner cleaned its owned stack; no containers or networks matching run `b89ea7a6` remain. Its run image was removed at final closeout; pre-existing unrelated containers were left untouched. |
 | Review | Repair tasks 2.1.3/2.1.4 inserted; independent Phase 2 review remains 2.3.1 |
 | Consequence | 2.1.2 remains `[~]` until the repair green run proves both throttle cases and the applicable observer set |
 
@@ -267,7 +267,7 @@ pending.
 | Observation | Exit 0. Production exposure passed 11, product failures 0, incomplete 0, execution failures 0. Functional 7/7, second-factor 4/4, tenant/admin 17/17, human-auth recovery 5/5. The ST-46 live specification passed every probe, including `magic-link-throttled-request`, `password-reset-throttled-request` and `password-reset-wrong-tenant`; each required `delivered-authentication-artifact-rejection`. No case was missing and no assertion failed. |
 | Proof | Run log `/tmp/opencode/assurance-tenant-20261101-104136.log`; run artifact `test-harness/.assurance-results/069b36ff-c09e-47a3-b48a-af445540b8ee/production-exposure/production-security/observation.json`; TAP `ok 5 - executes the delivered-artifact case...`, tests 5, pass 5, fail 0 |
 | Baseline comparison | Original failures `31bfd677` and `e99a0d4c` failed `password-reset-throttled-request`; current follow-up failures `b89ea7a6` and `26887eb3` are preserved. All 11 production-exposure case IDs are identical across `c9716d5b`, `ec140d4f`, `bb4eb111`, `b89ea7a6`, `26887eb3`, `069b36ff` and `14c4cf25`. The three `st53-untrusted-forwarded-*` cases no longer report unobserved state/prohibited effects (DEF-14 origin/cookie policy and DEF-25 rate-limit identity), which is why the exit changed from the old expected 40 to 0. The case set was not reduced. |
-| Cleanup | No containers or networks matching run `069b36ff` remain. The two run images created today (`porta-069b36ff…-porta` and `porta-26887eb3…-porta`) were removed; older run images from earlier sessions were left untouched. The run directory is retained for the Phase 2 review and removed at the 2.3.2 checkpoint. |
+| Cleanup | No containers or networks matching run `069b36ff` remain. The two run images created today (`porta-069b36ff…-porta` and `porta-26887eb3…-porta`) and the earlier closeout `b89ea7a6…-porta` image were removed at final closeout; older run images from earlier sessions were left untouched. The run directory is retained for the Phase 2 review and removed at the 2.3.2 checkpoint. |
 | Review | Independent Phase 2 review completed; see `05-findings.md` (RV-011–RV-018) |
 | Consequence | 5.1.3 may close after 2.2.1 and review; the run is not described as a full security certification |
 
@@ -287,11 +287,11 @@ pending.
   references are valid; the legacy test-assurance helper zero-task result is recorded, not fixed
   by rewriting IDs.
 - Cleanup: run directories `069b36ff`, `26887eb3` and `b89ea7a6` were removed; no containers,
-  networks or volumes remain for those run IDs. The two images created at 10:16
-  (`porta-069b36ff…`, `porta-26887eb3…`) were removed; older run images were left untouched.
-  The green run log is retained under `/tmp/opencode` for the final handoff and will be removed at
-  session cleanup after its sanitized facts are recorded here.
-- Docker cleanup did not touch pre-existing unrelated stacks or the older tenant-run images.
+  networks or volumes remain for those run IDs. The three closeout-owned images
+  (`porta-069b36ff…`, `porta-26887eb3…`, `porta-b89ea7a6…`) were removed; older run images were left
+  untouched. The green run log was retained during closeout and removed after its sanitized facts
+  were recorded here.
+- Docker cleanup did not touch pre-existing unrelated stacks or older images from earlier sessions.
 
 ## Phase 3 — pnpm Compatibility, Coverage and Baseline
 
@@ -652,7 +652,7 @@ on the next release; no release or `main` change was made.
 | Reviewed baseline | Source `604c2a0f`, run `83acea43`, approved values applied; validate `6367accb` exit 0; dependency-only digest refresh approved by the user at 16:54; ratchet 10/10 after the refresh | Proved |
 | Compatibility and coverage | Five selectors passed; protocol/security coverage captured; pnpm 4.6 complete | Proved |
 | Remote dependency/cache | Alerts enabled; both GHA cache scopes import/CACHED/export; PR #213 single-document graph: 936 project packages added, 15 boot entries removed | Proved on `develop`; default-branch alerts close on next release |
-| New security alert | Two moderate Vitest alerts (dev-only advisory, default branch); patched to 4.1.11 in root/server/SDK/CLI with `@vitest/coverage-v8` 4.1.11; unit 6,259/6,259, structure 158/158, frozen install pass | Fixed on `develop`; remote alert closure follows the next release |
+| New security alert | Two moderate Vitest alerts (dev-only advisory, default branch); patched to 4.1.11 in root/server/SDK/CLI with `@vitest/coverage-v8` 4.1.11; unit 6,259/6,259, structure 158/158, frozen install pass | Patched on this PR head; `develop` receives it on merge; default-branch alerts close after the next release to `main` |
 
 No unproved active claim remains. The only open items are the explicit user-owned exclusions
 (DEF-23, M2, named campaigns) and the deferred Admin UI; they are not represented as complete.
@@ -684,10 +684,25 @@ reconciliation.
 
 | Residual | Owner | Revisit trigger |
 | --- | --- | --- |
-| Default-branch Dependabot graph/alerts still reflect the old lockfile until release | Release operator | First release containing PR #213; verify the graph has 936 project packages and the two Vitest alerts close |
+| Default-branch Dependabot graph/alerts still reflect the old lockfile and Vitest 4.1.10 until release | Release operator | First release containing PR #213 and this Vitest patch; verify the graph has 936 project packages and the two Vitest alerts close |
 | DEF-23 timing study and M2 observation-oracle gap | User | Separate approved plan or explicit acceptance |
 | Named assurance campaigns outside this plan | User | Campaign-specific plan |
 | Deferred Admin UI | User | Separate feature work; explicitly out of this closeout |
 | Future pnpm lockfile format changes | Maintainer | Structure test fails or GitHub graph drops project packages |
 
 No unapproved documentation or architecture claim was added.
+
+### 5.3.1 Final correctness/security review
+
+- Verdict: **FINAL REVIEW APPROVED**, no CRITICAL/MAJOR findings. The 44-file diff was accepted as
+  the plan-authorized bounded repairs: closeout artifacts, the Vitest 4.1.11 patch, the approved
+  dependency digest, the rate-limit audit ordering, the live observer polling and the harness
+  cache/log repair. No product-source change outside those repairs, no weakened assertion, no
+  dependency-policy change outside the approved lockfile/Vitest fixes, and no secret exposure.
+- Minor findings RV-027–RV-030 (alert branch attribution, PR #213 in the review reason, stale plan
+  metadata, remaining closeout image) are fixed in this checkpoint.
+- Independent verification: ratchet 10/10; structure 158/158; focused route suites 60/60; full CI
+  run `41323619446` on `46e04022` passed all six jobs. The final doc edits require a fresh PR-head
+  run in 5.3.2/6.1.1.
+- Residuals remain exactly as recorded in 5.2.1: default-branch alerts until release, DEF-23, M2,
+  named campaigns and deferred Admin UI.
