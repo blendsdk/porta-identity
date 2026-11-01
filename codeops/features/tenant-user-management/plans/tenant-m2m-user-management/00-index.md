@@ -1,7 +1,7 @@
 # Tenant-Scoped M2M User Management Implementation Plan
 
 > **Feature**: Let an external tenant BFF manage users in its organization with only a `client_id` and `client_secret`
-> **Status**: Plan Preflighted
+> **Status**: Complete — 56/56 tasks; production-security run `069b36ff` exit 0; deployment pending
 > **Created**: 2026-10-25 15:44
 > **Implements**: tenant-user-management/T-01
 > **CodeOps Artifact Schema**: 1

@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 11:05
-> **Progress**: 11/44 tasks (25%)
+> **Last Updated**: 2026-11-01 11:07
+> **Progress**: 12/44 tasks (27%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -87,7 +87,7 @@ Markdown-only work. An unavailable historical artifact is not a reason to releas
 
 ### 2.2 Source-record reconciliation
 
-- [ ] 2.2.1 Reconcile tenant task 5.1.3, index and handoff with the admitted exact evidence, then its feature row. Preserve the original failures and explain changed observer/exit semantics. Apply the chosen tenant counter rule (`n/a (task-only)` or a documented task count) so the feature and portfolio agree. — Tenant management owner; ST-5/ST-6.
+- [x] 2.2.1 Reconcile tenant task 5.1.3, index and handoff with the admitted exact evidence, then its feature row. Preserve the original failures and explain changed observer/exit semantics. Apply the chosen tenant counter rule (`n/a (task-only)` or a documented task count) so the feature and portfolio agree. — Tenant management owner; ST-5/ST-6. ✅ (completed: 2026-11-01 11:07)
 - [ ] 2.2.2 Reconcile the assurance umbrella's three successor-covered blockers and update its remaining-work/feature summary; leave any full obligation that depends on M2 incomplete, and retain all named AR-10 follow-ups. — Assurance umbrella and `00-remaining-work.md`; ST-7/ST-8.
 
 ### 2.3 Review and validation
