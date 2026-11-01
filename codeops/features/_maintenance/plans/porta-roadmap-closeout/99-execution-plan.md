@@ -4,7 +4,7 @@
 > **Implements**: _maintenance/T-07
 > **Status**: Executing — resumed after pnpm graph fix (PR #213); Phases 5–6 in progress
 > **Last Updated**: 2026-11-01 16:44
-> **Progress**: 34/44 tasks (77%)
+> **Progress**: 35/44 tasks (80%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -169,7 +169,7 @@ security-setting change is authorized implicitly.
 
 ### 5.2 Final documentation
 
-- [ ] 5.2.1 Reconcile only directly affected public/maintainer documentation if an approved repair changed its documented behavior; otherwise record that no architecture update is needed. Finish the plan-local evidence with explicit residual owners/revisit triggers. — `08-closeout-evidence.md`; AR-10/11.
+- [x] 5.2.1 Reconcile only directly affected public/maintainer documentation if an approved repair changed its documented behavior; otherwise record that no architecture update is needed. Finish the plan-local evidence with explicit residual owners/revisit triggers. — `08-closeout-evidence.md`; AR-10/11. ✅ (completed: 2026-11-01 16:44; no affected public docs; residual table recorded)
 
 ### 5.3 Review and publication preparation
 

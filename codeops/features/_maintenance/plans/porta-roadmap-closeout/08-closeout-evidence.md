@@ -655,3 +655,21 @@ The plan helper cannot parse the test-assurance two-part/letter-suffixed IDs and
 links; those formats were inspected directly. Local link checks found 8/8 and 7/7 valid relative
 links in the portfolio and maintenance roadmaps. The owner task statuses were not rewritten by this
 reconciliation.
+
+### 5.2.1 Documentation and residual owners
+
+- Searched `docs/`, `techdocs/`, `README.md` and contributor guidance for pnpm lockfile,
+  `pmOnFail`, dependency-graph and Vitest behavior. No public or maintainer document describes the
+  lockfile's internal document count, so no architecture or user-facing update is required. The
+  `pnpm-workspace.yaml` comment and the structure contract document the non-obvious setting.
+- Residual owners and revisit triggers:
+
+| Residual | Owner | Revisit trigger |
+| --- | --- | --- |
+| Default-branch Dependabot graph/alerts still reflect the old lockfile until release | Release operator | First release containing PR #213; verify the graph has 936 project packages and the two Vitest alerts close |
+| DEF-23 timing study and M2 observation-oracle gap | User | Separate approved plan or explicit acceptance |
+| Named assurance campaigns outside this plan | User | Campaign-specific plan |
+| Deferred Admin UI | User | Separate feature work; explicitly out of this closeout |
+| Future pnpm lockfile format changes | Maintainer | Structure test fails or GitHub graph drops project packages |
+
+No unapproved documentation or architecture claim was added.
