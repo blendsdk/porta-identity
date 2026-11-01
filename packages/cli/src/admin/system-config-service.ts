@@ -116,15 +116,19 @@ function isEntry(value: unknown): value is ConfigEntry {
       candidate.defaultValue <= candidate.maximum
     );
   }
+  // The server owns locale choices; validate their terminal safety and membership, not a local catalog.
   return (
     candidate.key === 'default_locale' &&
     candidate.valueType === 'string' &&
     candidate.unit === 'locale' &&
     Array.isArray(candidate.allowedValues) &&
-    candidate.allowedValues.length === 1 &&
-    candidate.allowedValues[0] === 'en' &&
-    candidate.value === 'en' &&
-    candidate.defaultValue === 'en'
+    candidate.allowedValues.length > 0 &&
+    candidate.allowedValues.every((locale) => safeText(locale, 32)) &&
+    new Set(candidate.allowedValues).size === candidate.allowedValues.length &&
+    typeof candidate.value === 'string' &&
+    candidate.allowedValues.includes(candidate.value) &&
+    typeof candidate.defaultValue === 'string' &&
+    candidate.allowedValues.includes(candidate.defaultValue)
   );
 }
 

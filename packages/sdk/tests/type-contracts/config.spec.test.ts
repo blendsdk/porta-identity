@@ -39,7 +39,7 @@ type ExpectedEntry = {
   readonly unit: 'seconds' | 'attempts' | 'days' | 'locale';
   readonly minimum?: number;
   readonly maximum?: number;
-  readonly allowedValues?: readonly 'en'[];
+  readonly allowedValues?: readonly string[];
   readonly applicationMode: 'runtime' | 'restart-required';
   readonly updatedAt: string;
 };
@@ -79,5 +79,10 @@ describe('configuration SDK compiler contract', () => {
   it('should expose arbitrary reads and closed native writes', () => {
     expectTypeOf<ConfigDomain>().toEqualTypeOf<ExpectedDomain>();
     expectTypeOf(checkCalls).toBeFunction();
+  });
+  // Available locale choices belong to server metadata, not an English-only SDK union.
+  it('should represent readonly English and Dutch configuration choices', () => {
+    const allowedValues: NonNullable<ConfigEntry['allowedValues']> = ['en', 'nl'];
+    expectTypeOf(allowedValues).toEqualTypeOf<readonly string[]>();
   });
 });
