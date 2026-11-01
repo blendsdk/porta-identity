@@ -372,3 +372,19 @@ IDs. The small result JSON directories are retained for the Phase 3 review and r
 | Source mapping/report | 188 normalized paths; 0 unmapped; 0 collection failures; HTML and JSON produced; merger `@bcoe/v8-coverage`; totals: statements 1,276/9,613, branches 214/5,179, functions 186/1,550, lines 1,257/9,034 |
 | Cleanup | The run-scoped image was removed; no containers, networks or volumes remain for the run IDs. The capture/report directory is retained for the security comparison and removed at 3.3.3. |
 | Interpretation | This is the protocol/operational dependency and source-mapping proof. It is **not** the security ratchet baseline (ST-9); the separate security capture is 3.2.3. |
+
+### 3.2.3 Security/production-security coverage
+
+| Field | Evidence |
+| --- | --- |
+| Command | `pnpm assurance:coverage --project security --profile production-security --seed coverage-baseline` |
+| Run | `83acea43-3440-48c9-80da-5114767148a3`; clean source revision `604c2a0fdd9d62a6fbfb8dd5a78ee168a82e9da7`; Node v22.23.2 |
+| Source/dependency identity | sourceTreeDigest `sha256:9736483dd46de578726f31163e9a5f844caac2420f23d06bc7cbbda9aac580c3`; dependencyLockDigest `sha256:b4518f55e60342105afc3145caecace0b89e04995aaf4d5eb1a4fb6c1cf97fe9`; image `sha256:9431eaa786cd7eb47db099c72cb056b1605b46cc3d1bdce413f93cf3b8eef889`; fixture `sha256:01777da74d34e6248b13ac857d531186f1144c265b182f12eb25f8adba2b5147` |
+| Inventory/flush | 276 runtime dependencies; `flushStatus: complete`; one raw file |
+| Paths/report | 188 normalized paths; 0 unmapped; 0 collection failures; report observation `coverage-observation.json`; summary digest `sha256:b3d31684ee9a79fc357ae52895e33cfc26c2b911f5d4a745b20a047c396ab10b`; normalized-path digest `sha256:86a8366b408dfaca021a8b190d2c2b148114b6d5ab1efe8ae5a014036586df94` |
+| Current counts | statements 2,114/9,613; branches 691/5,179; functions 363/1,550; lines 2,074/9,034 |
+| Reviewed baseline counts | statements 1,838/7,630; branches 580/3,919; functions 317/1,177; lines 1,806/7,296; paths 150; digest `sha256:fd7fc28f…`; sourceRevision `16dae6b8…`; run `53ff6f24…` |
+| Difference | Covered counts increased by +276 statements, +111 branches, +46 functions and +268 lines. Totals increased by +1,983 / +1,260 / +373 / +1,738, so percentage coverage is lower (statements 24.1% → 22.0%) despite more absolute coverage. Paths increased 150 → 188. The old capture directory is absent, so a path-by-path removal comparison is unavailable; the increased count and zero unmapped paths show no evidence of removed source coverage. |
+| Monitored inputs | `requirement-r5` now `sha256:06c509c014c98fc03aba7ea38ef0db42ea886267a959657d977a4ca18fb2ef18` (baseline `f17005ca…`); `fixture` now `sha256:3524d67b9c53cbe6a4599fc31994808ae3098b9a9fe7ac00d69dfde78a06cbf0` (baseline `08c5e963…`); `dependency` now `sha256:c12dad3a036533a76cd63de08c41906a12952b5f10b1b91123ef1a54e1e05d6e` (baseline `cee6c411…`); `sentinel` unchanged `sha256:6726cac4bad02ab2849ef4487e241b52ff11f84c14d237f632e5c07a3894d74c` |
+| Cleanup | The run-scoped image was removed; no containers, networks or volumes remain. The capture/report directory is retained for the 3.2.4 proposal and removed at 3.3.3. |
+| Interpretation | The security capture is the only admissible ratchet input. No baseline or reviewed fixture value was changed in this task; the exact proposal and user approval are 3.2.4/3.2.5. |
