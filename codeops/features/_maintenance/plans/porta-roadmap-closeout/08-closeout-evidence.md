@@ -162,3 +162,13 @@ verdict changed.
 
 The source-record corrections are accepted. The Phase 1 review did not broaden any original-task
 claim, and no failed attempt was removed. The detailed ruling ledger is [05-findings.md](05-findings.md).
+
+## Phase 1 Checkpoint
+
+- `pnpm test:changed` passed on 2026-11-01; structure and the affected workspace selection completed.
+- Document checklist: 12 plan documents; all relative links resolve; AR-1–15 references are valid;
+  local ST-1–19 and repository ST-42–73 are distinct; 42 unique tasks with phase totals
+  7/6/11/6/5/7; the plan helper reports no structural problem; the roadmap sync shows only the
+  expected tenant counter drift.
+- Phase 1 changed documentation and evidence only; no product source, workflow, credential or
+  generated artifact is part of the checkpoint.

@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 09:39
-> **Progress**: 6/42 tasks (14%)
+> **Last Updated**: 2026-11-01 09:41
+> **Progress**: 7/42 tasks (17%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -65,7 +65,7 @@ actual failure. Existing source-owner aliases and paths are defined in 02.
 ### 1.3 Validation and hardening
 
 - [x] 1.3.1 Independently review historical closure, unique-task counts, links and failure preservation; resolve findings before treating source tasks as verified. — `08-closeout-evidence.md`, touched owners; ST-1–3/ST-17. ✅ (completed: 2026-11-01 09:39)
-- [ ] 1.3.2 Run `pnpm test:changed` (which includes structure) and the document validation checklist; checkpoint the proved source corrections through the git-commit skill. — 07 Verification Commands; AR-7.
+- [x] 1.3.2 Run `pnpm test:changed` (which includes structure) and the document validation checklist; checkpoint the proved source corrections through the git-commit skill. — 07 Verification Commands; AR-7. ✅ (completed: 2026-11-01 09:41)
 
 **Verify:** ST-1–3/ST-17 artifact checks and the applicable 07 gates. No new automated tests for
 Markdown-only work. An unavailable historical artifact is not a reason to release again.
