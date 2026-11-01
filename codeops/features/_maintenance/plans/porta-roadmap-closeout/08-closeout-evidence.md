@@ -706,3 +706,18 @@ No unapproved documentation or architecture claim was added.
   run in 5.3.2/6.1.1.
 - Residuals remain exactly as recorded in 5.2.1: default-branch alerts until release, DEF-23, M2,
   named campaigns and deferred Admin UI.
+
+### 5.3.2 Final gates and PR
+
+| Gate | Result |
+| --- | --- |
+| Clean checkpoint | `6f7608ad`; no worktree changes during validation |
+| `pnpm assurance:validate` | Run `a99d02db-b021-4633-b515-089e0a6cbb43`, exit 0 |
+| Final ratchet | 10/10 after the approved dependency-only refresh |
+| Structure | 158/158 |
+| Unit | 6,259/6,259 |
+| Documentation | `pnpm docs:build` pass (25.10s) |
+| PR | #214, base `develop`; no merge, release or `main` change yet |
+
+The changed monitored digest reopened 3.2.4; the user approved the exact dependency-only value at
+16:54 and the ratchet is green. The PR head will be rechecked in 6.1.1 after this evidence commit.

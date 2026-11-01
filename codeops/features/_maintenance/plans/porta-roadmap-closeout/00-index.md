@@ -1,7 +1,7 @@
 # Porta Roadmap Closeout
 
 > **Feature**: Finish active verification work and reconcile stale roadmap records
-> **Status**: Executing — Phase 5.3 review; 36/44 verified
+> **Status**: Executing — Phase 6 integration; 37/44 verified
 > **Created**: 2026-10-31
 > **Implements**: _maintenance/T-07
 > **CodeOps Artifact Schema**: 1
