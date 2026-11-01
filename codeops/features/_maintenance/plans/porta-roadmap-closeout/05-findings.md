@@ -25,6 +25,9 @@
 | RV-018 | 2 | MINOR | observer-comparison | fixed |
 | RV-019 | 3 | MINOR | baseline-review-reason | fixed |
 | RV-020 | 3 | MINOR | digest-formulas | fixed |
+| RV-021 | 4 | MINOR | graph-status | fixed |
+| RV-022 | 4 | MINOR | cache-reuse-wording | fixed |
+| RV-023 | 4 | MINOR | cache-evidence-contract | fixed |
 
 RV-001 user ruling: correct the publish chronology and retain the AR-14 closure. No re-release or
 new publication was authorized. The rejected alternative was reopening task 7.1.5.
@@ -38,3 +41,10 @@ RD-05 content refresh) and RV-020 (record the two digest formulas) were document
 fixed. No covered-count floor is lowered.
 
 Baseline user approval: **2026-11-01 13:23**, exact values in 3.2.4; no promotion authorized.
+
+Phase 4 independent review: **REMOTE EVIDENCE CONSISTENT** after three minor corrections. RV-021
+records the current SBOM 200/direct-package state while keeping the project/transitive graph absent;
+RV-022 distinguishes the GHA import from local compose layer reuse and key `#2` as the run's own
+export; RV-023 adds exact job IDs and the terminal miss rule. No blocker or major finding was raised.
+**pnpm 6.4 must remain blocked**; zero alerts and the boot-document manifest are not project graph
+ingestion.

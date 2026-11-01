@@ -530,7 +530,7 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 | --- | --- |
 | Prior state | Dependabot alerts disabled (403); GraphQL `dependencyGraphManifests` 0; SBOM endpoint 404; 84 version-update PRs target `main`, 1 targets `develop` |
 | Alerts change | `PUT /repos/blendsdk/porta-identity/vulnerability-alerts` → 204; `GET /dependabot/alerts` → 200 (0 open). `security_and_analysis.dependabot_security_updates` remains disabled; that separate feature was not authorized. |
-| Graph observation | GraphQL now reports 9 dependency-graph manifests, including `pnpm-lock.yaml` with `parseable: true`; however, its dependencies are only `@pnpm/exe.android-arm64`, `@pnpm/exe.android-x64`, `@pnpm/exe.darwin-arm64`, `@pnpm/exe.darwin-x64`, `@pnpm/exe.freebsd-x64` — the pnpm **boot document**. The project dependency graph is absent. The REST SBOM endpoint remains 404. |
+| Graph observation | GraphQL now reports 9 dependency-graph manifests. The current REST SBOM endpoint returns 200 (57,215 bytes, created 2026-11-01T13:29:04Z) and includes manifest-level/direct package dependencies. However, `pnpm-lock.yaml` is `parseable: true` but exposes only `@pnpm/exe.android-arm64`, `@pnpm/exe.android-x64`, `@pnpm/exe.darwin-arm64`, `@pnpm/exe.darwin-x64`, `@pnpm/exe.freebsd-x64` — the pnpm **boot document**. The project/transitive lockfile graph (the second document) is absent. |
 | Dependabot processing | Version-update PRs prove Dependabot parses package manifests; the `main`-targeting limitation remains: 84 base `main`, 1 base `develop`. |
 | Conclusion | Alert availability is fixed, but project lockfile ingestion is not proved. pnpm 6.4 remains blocked on the two-document lockfile boot document. No dependency-policy change (pin pnpm 11 or `pmOnFail: ignore`) was made; that requires a separate ruling. |
 
@@ -556,10 +556,19 @@ nothing and remain preserved as failed attempts.
 
 Import/reuse result: the ordinary follow-up run `41310659699` on `32b1d40a` shows
 `#7 importing cache manifest from gha:11156821657715627676`, `CACHED` layers `#8`–`#31`, and
-`sending cache export`; the harness cache keys `#1` and `#2` were accessed during the run. The
-harness composition also reused the loaded image (`CACHED` layers in the `Run OIDC harness` step).
+`sending cache export`; key `#1` was imported by this run, and key `#2` was created by this run's
+export. The subsequent `Run OIDC harness` compose step shows local BuildKit `CACHED` layers, not a
+GHA import; the GHA import/reuse proof is the preceding `Build harness image with GHA cache` step.
 Both `porta-ci` and `porta-harness-ci` now have real export/import/reuse evidence; no timing-only
 substitution is used.
+
+Job evidence: harness export job `124858349745` and import job `124860145203`; production cache job
+`124858349834` (export run) and `124860145106` (import run). URLs follow
+`https://github.com/blendsdk/porta-identity/actions/runs/<run-id>/job/<job-id>`.
+
+Terminal miss rule: a cache clause stays open when the build step lacks `importing cache manifest`
+and `CACHED` layers, or when the run accesses no matching `porta-harness-ci`/`porta-ci` key. A fast
+build or a cache export alone is not a hit.
 
 ### 4.2.3 pnpm 6.4 reconciliation
 
@@ -568,3 +577,14 @@ substitution is used.
   the two run IDs; the 4.6 drift/compat text remains complete.
 - The maintenance `T-04` row and portfolio summary now say 4.6 complete, 6.4 blocked on the
   dependency-graph boot document, cache scopes green. No task or release is marked complete.
+
+### 4.3.1 Independent remote-evidence review
+
+- Verdict: **REMOTE EVIDENCE CONSISTENT** after correcting RV-021 (current SBOM 200 with
+  manifest-level/direct packages, project/transitive graph still absent), RV-022 (key `#1` imported,
+  key `#2` created by the run's export; compose `CACHED` is local layer reuse), and RV-023 (exact
+  job IDs plus the terminal miss rule).
+- The reviewer independently confirmed the cache import/CACHED evidence for both scopes, the
+  bounded file set, consistent counters, Phase 4 cleanup, and no release/`main` change.
+- **6.4 remains blocked**: zero alerts and the boot-document manifest are not project graph
+  ingestion.
