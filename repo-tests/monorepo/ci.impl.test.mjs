@@ -104,13 +104,6 @@ test('should wire service-backed and build-only jobs to their exact validation c
   assert.deepEqual(getCommands(workflow.jobs.harness), [
     'pnpm install --frozen-lockfile',
     'pnpm exec playwright install --with-deps chromium',
-    `docker buildx build \\
-  --file test-harness/Dockerfile \\
-  --tag porta-harness-ci:latest \\
-  --cache-from type=gha,scope=porta-harness-ci \\
-  --cache-to type=gha,mode=max,scope=porta-harness-ci \\
-  --load .
-`,
     'pnpm harness:test',
   ]);
   assert.deepEqual(getCommands(workflow.jobs.docs), [

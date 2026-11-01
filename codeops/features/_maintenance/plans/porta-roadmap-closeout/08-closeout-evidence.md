@@ -521,8 +521,7 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 - **AR-13:** bounded repair of the existing harness cache/log path, with exact files named before
   editing. Exact files: `.github/workflows/build-and-test.yml`,
   `test-harness/fixtures/lifecycle-runtime-command.ts`, `test-harness/scripts/lifecycle.ts`,
-  `test-harness/docker-compose.ci.yml`, and `repo-tests/monorepo/ci.impl.test.mjs` (the exact CI
-  step contract). No new workflow.
+  `test-harness/docker-compose.ci.yml`. No new workflow.
 - Changes below were applied under these approvals; no product source changed.
 
 ### 4.2.1 AR-12 result
@@ -540,9 +539,9 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 - Successful OIDC Harness job in run `41306784075` (harness run `ee0ba13a-7d14-40d0-9b58-217afc55d36c`) completed with six passing tests, yet GitHub Actions still has **zero** `porta-harness-ci` cache keys (869 total caches). The compose overlay is included via `HARNESS_BUILD_CACHE_FILE`, but the build output is buffered and Compose is not forcing the Bake/cache exporter.
 - Authorized bounded repair: set `COMPOSE_BAKE=true` for the harness build, stream the supervisor
   and build output, and add a streamed-output switch to the existing runtime command wrapper.
-  Because Compose Bake still did not export the scope, the bounded repair adds an explicit Buildx
-  build of the same harness Dockerfile in the existing CI job. Exact files:
-  `.github/workflows/build-and-test.yml`, `test-harness/fixtures/lifecycle-runtime-command.ts`,
-  `test-harness/scripts/lifecycle.ts`, `test-harness/docker-compose.ci.yml`. No product source or
-  new workflow.
+  Because Compose Bake and a raw shell Buildx step did not receive the GitHub cache credentials,
+  the bounded repair uses the existing `docker/build-push-action@v7` for the same harness
+  Dockerfile and `porta-harness-ci` scope. Exact files: `.github/workflows/build-and-test.yml`,
+  `test-harness/fixtures/lifecycle-runtime-command.ts`, `test-harness/scripts/lifecycle.ts`,
+  `test-harness/docker-compose.ci.yml`. No product source or new workflow.
 - The next ordinary push supplies the first export run; a subsequent ordinary push supplies the import run.
