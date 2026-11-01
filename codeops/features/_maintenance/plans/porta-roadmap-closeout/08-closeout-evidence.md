@@ -316,3 +316,14 @@ pending.
 | Baseline admission | Security capture only; `local-observation-only`; `promotionAuthorized: false` in both coverage and review records |
 
 All expectations above are frozen for Phase 3; only the exact approved values may change in 3.2.5.
+
+### 3.1.2 Old-baseline ratchet observation
+
+| Field | Evidence |
+| --- | --- |
+| Command | `pnpm assurance:test --select assurance-ratchets` on clean checkpoint `c611a77d` |
+| Outcome | Exit 21; 10 tests, 8 passed, 2 failed |
+| Digest failure | `requirement-r5`: expected `sha256:f17005ca28d271dbf6e14ff2b0a606fe06c7a5af654bc252c2a55b3f85ffc569`, actual `sha256:06c509c014c98fc03aba7ea38ef0db42ea886267a959657d977a4ca18fb2ef18` |
+| Staleness failure | `changedInputs: ['requirement-r5','fixture','dependency']`; `reportAllowed: false`; 80 stale claims; `sentinel` is current |
+| Interpretation | This is the expected stale-input red, not a product regression. No expectation was edited. The baseline/fixture proposal and value-specific approval are 3.2.4/3.2.5 work. |
+| Proof | `/tmp/opencode/verify-3.1.2-ratchets.log`, TAP tests 2 and 3 |
