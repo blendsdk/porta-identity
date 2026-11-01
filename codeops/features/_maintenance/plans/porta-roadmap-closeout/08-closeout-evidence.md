@@ -292,3 +292,27 @@ pending.
   The green run log is retained under `/tmp/opencode` for the final handoff and will be removed at
   session cleanup after its sanitized facts are recorded here.
 - Docker cleanup did not touch pre-existing unrelated stacks or the older tenant-run images.
+
+## Phase 3 — pnpm Compatibility, Coverage and Baseline
+
+### Frozen acceptance cases
+
+| Case | Frozen expectation |
+| --- | --- |
+| ST-9 | Protocol/operational coverage cannot substitute for the security ratchet baseline; a security/production-security capture with `coverage-baseline` is required. |
+| ST-10 | Any old/current baseline input or count difference is recorded and fails the current-input gate until an approved proposal exists; no silent regeneration. |
+| ST-11 | Approved baseline JSON and reviewed fixture must match the capture identities; enforcement stays `local-observation-only` and both promotion flags remain false. |
+| ST-12 | The bare compatibility command or only the foundation selector is insufficient; all five approved selectors must run, each with package/source/image/fixture/cleanup proof. |
+
+### Monitored inputs and selectors
+
+| Item | Frozen value / command |
+| --- | --- |
+| Baseline source | `ratchet-baselines.json` references sourceRevision `16dae6b8412577a1c98e3f1f2ae07e20a69eee95` and run `53ff6f24-219a-485b-a87f-93343612aa91`; the reviewed fixture carries the same counts/paths |
+| Monitored inputs | `requirement-r5` = `codeops/features/test-assurance/requirements/RD-05-security-risk-slice-assurance.md`; `fixture`; `dependency` = `pnpm-lock.yaml`; `sentinel` |
+| Current staleness | `requirement-r5`, `fixture` and `dependency` differ from the reviewed fixture; `sentinel` matches. No expectation was changed before the capture. |
+| Compatibility selectors | `compatibility`, `tenant-admin`, `admin-data`, `p1-admin`, `protocol`, each via `pnpm assurance:compat --select <selector>` from a clean checkpoint |
+| Coverage captures | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` and `pnpm assurance:coverage --project security --profile production-security --seed coverage-baseline` |
+| Baseline admission | Security capture only; `local-observation-only`; `promotionAuthorized: false` in both coverage and review records |
+
+All expectations above are frozen for Phase 3; only the exact approved values may change in 3.2.5.

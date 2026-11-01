@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 11:23
-> **Progress**: 15/44 tasks (34%)
+> **Last Updated**: 2026-11-01 11:24
+> **Progress**: 16/44 tasks (36%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -103,10 +103,13 @@ or silently dismissed by this phase.
 
 > **Reasoning**: high — reviewed input identities and security-coverage comparability
 > **Lenses**: data and migration; web application; distributed and concurrent
+> **Phase baseline tree**: 7c3f98e582091a4d5c2d52a0c6eac03b1ad56c87
+> **Expected modification set**: closeout evidence; ratchet baseline JSON and reviewed fixture only after the AR-9 value ruling; pnpm owner plan and metadata; generated coverage/result artifacts; no product source unless an authorized bounded repair is inserted
+> **Scope mode**: strict
 
 ### 3.1 Specifications and red observation
 
-- [ ] 3.1.1 Freeze ST-9–12 and the existing immutable ratchet/coverage specifications; inventory all monitored inputs and exact compatibility selectors without changing expectations. — `assurance-ratchets.spec.test.ts`, coverage spec files in 07, `08-closeout-evidence.md`.
+- [x] 3.1.1 Freeze ST-9–12 and the existing immutable ratchet/coverage specifications; inventory all monitored inputs and exact compatibility selectors without changing expectations. — `assurance-ratchets.spec.test.ts`, coverage spec files in 07, `08-closeout-evidence.md`. ✅ (completed: 2026-11-01 11:24)
 - [ ] 3.1.2 Run the existing ratchet selector on the old baseline; record genuine stale-input failures or a justified already-green outcome. Any uncovered regression gets an independent `.spec.test.ts` and a distinct red run before repair. — `assurance-ratchets.impl.test.ts`; 03-02 Bounded Repair Procedure.
 
 ### 3.2 Evidence, approval and implementation
