@@ -1,7 +1,7 @@
 # Deferred Invitation Creation Implementation Plan
 
 > **Feature**: Stop creating a user account at invite time; create it only when the invitation is accepted
-> **Status**: Planning Complete
+> **Status**: Complete
 > **Created**: 2026-09-26 19:31
 > **Implements**: user-invitations/T-01
 > **CodeOps Artifact Schema**: 1

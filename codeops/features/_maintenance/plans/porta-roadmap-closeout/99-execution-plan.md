@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 09:24
-> **Progress**: 3/42 tasks (7%)
+> **Last Updated**: 2026-11-01 09:25
+> **Progress**: 4/42 tasks (10%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -59,7 +59,7 @@ actual failure. Existing source-owner aliases and paths are defined in 02.
 ### 1.2 Source-record corrections
 
 - [x] 1.2.1 Reconcile automated-release tasks 4.1.1/4.1.2 and their index/header against exact historical merges/CI; retain the existing release proof and chronology. — Automated release owner in 02; ST-1/ST-3. ✅ (completed: 2026-11-01 09:24)
-- [ ] 1.2.2 Reconcile deferred-invitation 7.1.4–7.1.6 using the failed main run, the successful develop-dispatched run and the main no-op; close 7.1.5 under AR-14, close 7.1.6 only on verified artifacts, and keep a precise blocker for missing proof. Correct the plan index status and its `Progress` header to match the proved tasks. — Deferred invitations owner; ST-1–3; AR-14.
+- [x] 1.2.2 Reconcile deferred-invitation 7.1.4–7.1.6 using the failed main run, the successful develop-dispatched run and the main no-op; close 7.1.5 under AR-14, close 7.1.6 only on verified artifacts, and keep a precise blocker for missing proof. Correct the plan index status and its `Progress` header to match the proved tasks. — Deferred invitations owner; ST-1–3; AR-14. ✅ (completed: 2026-11-01 09:25)
 - [ ] 1.2.3 Correct current integration statements in the later-invitation owners, T-06/main v1.15.0 state, the user-invitations portfolio cell and the deferred-invitation index as supported; preserve past scope decisions. — Later invitations owner; 03-01 Historical Rollout Reconciliation.
 
 ### 1.3 Validation and hardening
