@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 01:36
-> **Progress**: 1/42 tasks (2%)
+> **Last Updated**: 2026-11-01 09:23
+> **Progress**: 2/42 tasks (5%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -47,11 +47,14 @@ actual failure. Existing source-owner aliases and paths are defined in 02.
 
 > **Reasoning**: high — distinguish historical provenance from present-source verification
 > **Lenses**: data and migration; distributed and concurrent
+> **Phase baseline tree**: 3844c413dddd0c255f49f6508e6540b6c6b2ed17
+> **Expected modification set**: closeout plan docs and evidence; automated-release, deferred-invitation, tenant, assurance and portfolio records; pnpm owner metadata; no product source unless an authorized bounded repair is inserted
+> **Scope mode**: strict
 
 ### 1.1 Specifications and initial evidence
 
 - [x] 1.1.1 Verify `origin/develop` is `c73cc744` (fetch first), the workspace is clean and T-07 is available; create the separate execution branch/session from `origin/develop`, promote this document set including `08-closeout-evidence.md` and `00-preflight-report.md`, and register the maintenance row. Check exact protected-path and AR-12/13 needs before runners. Protected-path check: read-only fingerprint of `~/.porta/credentials.json`; isolated homes under `test-harness/.assurance-runtime/compat`. — `00-index.md`, maintenance roadmap; 03-03 Branch and Artifact Ownership; AR-6/11/12/13. ✅ (completed: 2026-11-01 01:36)
-- [ ] 1.1.2 Freeze original task obligations and ST-1–3/ST-17 acceptance in `08-closeout-evidence.md`; inspect the candidate merge/CI/release records and record the initial stale-status or missing-proof findings. This is artifact validation, not a fabricated code-test red. — 03-01 Evidence Contract.
+- [x] 1.1.2 Freeze original task obligations and ST-1–3/ST-17 acceptance in `08-closeout-evidence.md`; inspect the candidate merge/CI/release records and record the initial stale-status or missing-proof findings. This is artifact validation, not a fabricated code-test red. — 03-01 Evidence Contract. ✅ (completed: 2026-11-01 09:23)
 
 ### 1.2 Source-record corrections
 
