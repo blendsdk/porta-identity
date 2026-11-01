@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 14:35
-> **Progress**: 30/44 tasks (68%)
+> **Last Updated**: 2026-11-01 14:40
+> **Progress**: 31/44 tasks (70%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -152,7 +152,7 @@ user gate, not preauthorized by this plan.
 ### 4.3 Review and checkpoint
 
 - [x] 4.3.1 Obtain independent release/dependency evidence review; resolve findings without broadening the original gate or treating zero alerts as successful ingestion. — Phase evidence; AR-7/8. ✅ (completed: 2026-11-01 14:35; REMOTE EVIDENCE CONSISTENT after RV-021–023; 6.4 stays blocked)
-- [ ] 4.3.2 Run affected/structure/document checks, confirm resource ownership cleanup and checkpoint the remote closure evidence. — 07 and 03-03.
+- [x] 4.3.2 Run affected/structure/document checks, confirm resource ownership cleanup and checkpoint the remote closure evidence. — 07 ✅ (completed: 2026-11-01 14:40; structure/docs pass; 6.4 remains blocked) and 03-03.
 
 **Verify:** ST-13–15 plus applicable 07 checks. No new CI workflow, dependency policy or repository
 security-setting change is authorized implicitly.

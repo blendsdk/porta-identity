@@ -588,3 +588,14 @@ build or a cache export alone is not a hit.
   bounded file set, consistent counters, Phase 4 cleanup, and no release/`main` change.
 - **6.4 remains blocked**: zero alerts and the boot-document manifest are not project graph
   ingestion.
+
+### 4.3.2 Phase checkpoint
+
+- `pnpm test:structure` passed after the review corrections; `pnpm docs:build` passed in 17.10s.
+  The export and import CI runs completed all six jobs successfully.
+- Cleanup check: no Phase 4 containers, networks, volumes, or harness images remain; the worktree
+  was clean before this checkpoint. Older Phase 2 images and generated result directories are
+  retained and untouched.
+- Phase 4 verdict: alert availability and both cache scopes are proved; the project/transitive
+  dependency graph is **not** ingested. Task 4.2.1 and pnpm 6.4 remain blocked, so Phases 5–6
+  cannot start without a user ruling on this residual gate.
