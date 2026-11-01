@@ -328,7 +328,6 @@ All expectations above are frozen for Phase 3; only the exact approved values ma
 | Staleness failure | `changedInputs: ['requirement-r5','fixture','dependency']`; `reportAllowed: false`; 80 stale claims; `sentinel` is current |
 | Interpretation | This is the expected stale-input red, not a product regression. No expectation was edited. The baseline/fixture proposal and value-specific approval are 3.2.4/3.2.5 work. |
 | Proof | `/tmp/opencode/verify-3.1.2-ratchets.log`, TAP tests 2 and 3 |
-
 ### 3.2.1 Compatibility matrix
 
 All runs used clean source revision `e78f6bc2e97a603b955527b567c2c5d6a637cda6`, fixture
@@ -361,3 +360,15 @@ it. All five selectors are proved; no selector was skipped or replaced by the fo
 Cleanup: all eight run-scoped images (five passing and three failed/retried harness runs) were
 removed after the evidence was recorded; no containers, networks or volumes remain for those run
 IDs. The small result JSON directories are retained for the Phase 3 review and removed at 3.3.3.
+
+### 3.2.2 Protocol/operational coverage
+
+| Field | Evidence |
+| --- | --- |
+| Command | `pnpm assurance:coverage --project protocol --profile operational --seed coverage-baseline` |
+| Run | `31c42876-d9fa-4427-9584-8f34cc7303a0`; clean source revision `61cc3da92edecc541f2c74d94cf47f7658bf1779`; Node v22.23.2 |
+| Source/dependency identity | sourceTreeDigest `sha256:c41423d912864196dc6d8ce65295fc9380bc5e39ddea77a969e12c50b1a2d44b`; dependencyLockDigest `sha256:b4518f55e60342105afc3145caecace0b89e04995aaf4d5eb1a4fb6c1cf97fe9`; image `sha256:01a5a7976b1a6ce93c7cc25c0bf9bd0dcd299b2c1bbfb94dcb0c4ecf258351e1`; fixture `sha256:14ffd80f869e135635f838a7d64f7035c07906fc0858f769cb927fdcb277f17f` |
+| Inventory/flush | 276 runtime dependencies; `flushStatus: complete`; one raw file; compiled output digest `sha256:82f6cef6…` |
+| Source mapping/report | 188 normalized paths; 0 unmapped; 0 collection failures; HTML and JSON produced; merger `@bcoe/v8-coverage`; totals: statements 1,276/9,613, branches 214/5,179, functions 186/1,550, lines 1,257/9,034 |
+| Cleanup | The run-scoped image was removed; no containers, networks or volumes remain for the run IDs. The capture/report directory is retained for the security comparison and removed at 3.3.3. |
+| Interpretation | This is the protocol/operational dependency and source-mapping proof. It is **not** the security ratchet baseline (ST-9); the separate security capture is 3.2.3. |
