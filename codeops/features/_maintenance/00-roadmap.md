@@ -3,7 +3,7 @@
 > **Feature-Set**: Porta Maintenance
 > **Status**: In Progress
 > **Created**: 2026-09-27
-> **Last Updated**: 2026-11-01 13:33
+> **Last Updated**: 2026-11-01 14:18
 > **Progress**: n/a (task-only feature)
 > **CodeOps Artifact Schema**: 1
 
@@ -21,4 +21,4 @@
 | T-04 | Migrate the monorepo from Yarn Classic to pnpm                          | —   | [plan](plans/pnpm-migration/99-execution-plan.md)                   | Executing | 🔄 | 2026-10-26 14:20 | Remote dependency-graph and GHA cache checks |
 | T-05 | Guard audit schema and diagnose admin mutation failures                 | —   | [plan](plans/admin-mutation-schema-guard/99-execution-plan.md)      | Done  | ✅     | 2026-10-26 15:10 | Released in v1.14.1; live migration/instance alignment remains with the operator |
 | T-06 | Narrow local tests and resolve five open bugs                           | —   | [delivery record](plans/local-tests-and-open-bugfixes/99-execution-plan.md) | Done | ✅ | 2026-11-01 09:27 | Merged to `develop`; PRs #202–#206; issues closed; released in v1.15.0 |
-| T-07 | Reconcile roadmap closeout and complete active verification | — | [plan](plans/porta-roadmap-closeout/99-execution-plan.md) | Executing | 🔄 | 2026-11-01 13:33 | Dependency graph parses pnpm boot document; harness cache repair in progress; DEF-23/M2 remain |
+| T-07 | Reconcile roadmap closeout and complete active verification | — | [plan](plans/porta-roadmap-closeout/99-execution-plan.md) | Executing | 🔄 | 2026-11-01 14:18 | Dependency graph parses pnpm boot document; harness cache export proved, import pending; DEF-23/M2 remain |

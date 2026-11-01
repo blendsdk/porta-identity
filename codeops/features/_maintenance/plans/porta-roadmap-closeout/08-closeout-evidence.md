@@ -545,3 +545,11 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
   `test-harness/fixtures/lifecycle-runtime-command.ts`, `test-harness/scripts/lifecycle.ts`,
   `test-harness/docker-compose.ci.yml`. No product source or new workflow.
 - The next ordinary push supplies the first export run; a subsequent ordinary push supplies the import run.
+
+Export result: run `41310058279` on `8eec1048` used the existing
+`docker/build-push-action@v7` for the harness Dockerfile. GitHub now holds
+`index-porta-harness-ci-1-39e3fcdd#1` (ref `refs/heads/chore/roadmap-closeout`, 15,204 bytes,
+last accessed 2026-11-01T13:13:44Z). The same run's production Docker job shows
+`importing cache manifest from gha:…`, repeated `CACHED` layers, and `sending cache export` for
+`porta-ci`, proving the existing production scope. The earlier Bake/raw-shell attempts exported
+nothing and remain preserved as failed attempts.
