@@ -454,3 +454,15 @@ approved applying the same values to both `ratchet-baselines.json` and the revie
 Applied in 3.2.5: both files now hold exactly these values; the JSON/fixture coverage blocks and all
 four monitored digests compare equal, and `pnpm assurance:test --select assurance-ratchets` passes
 10/10.
+
+### 3.3.1 Post-baseline checks
+
+| Check | Result |
+| --- | --- |
+| Ratchet selector | 10/10 passed after the applied values (3.2.6) |
+| Coverage pipeline, first run | 34/35 passed; `coverage-flush-container.impl.test.ts` hit a Docker start/stop timing deadline (`RuntimeTimeoutError`) instead of the expected non-clean-exit error |
+| Isolated flush test | 1/1 passed in 0.5s |
+| Coverage pipeline, retry | 35/35 passed; the first failure is preserved and classified as host timing, not a source regression |
+| Assurance typecheck/lint | Passed |
+| Structure | Passed |
+| Applied-baseline review | Independent reviewer confirmed `APPLIED MATCHES APPROVED`; no extra value, path, enforcement or policy change |

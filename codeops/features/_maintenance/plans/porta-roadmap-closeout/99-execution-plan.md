@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 13:26
-> **Progress**: 23/44 tasks (52%)
+> **Last Updated**: 2026-11-01 13:28
+> **Progress**: 24/44 tasks (55%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -123,7 +123,7 @@ or silently dismissed by this phase.
 
 ### 3.3 Hardening and source closeout
 
-- [ ] 3.3.1 Run relevant existing ratchet/coverage implementation checks plus affected lint/typechecks and structure; independently review the adopted baseline and any bounded repair. Add implementation tests only for a demonstrated uncovered internal failure. — Existing `.impl.test.ts` files in 07.
+- [x] 3.3.1 Run relevant existing ratchet/coverage implementation checks plus affected lint/typechecks and structure; independently review the adopted baseline and any bounded repair. Add implementation tests only for a demonstrated uncovered internal failure. — Existing `.impl.test.ts` files in 07. ✅ (completed: 2026-11-01 13:28; timing flake preserved, retry green)
 - [ ] 3.3.2 Commit a verified clean baseline checkpoint, then run current `assurance:validate` and ratchet checks without modifying the worktree; record exact outcomes and cleanup. — 03-02 and 07.
 - [ ] 3.3.3 Close pnpm task 4.6 only when the entire approved matrix is proved; update its source owner and sanitized evidence, correct the 4.6 material at lines 192/195/255 (bare `assurance:compat` and known-drift note), validate and checkpoint. Leave the 6.4 remote-gate notes at 214/235 for Phase 4. Remove only owned generated reports after review and evidence retention. — pnpm owner; ST-9–12/ST-19.
 
