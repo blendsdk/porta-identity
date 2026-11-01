@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 13:25
-> **Progress**: 22/44 tasks (50%)
+> **Last Updated**: 2026-11-01 13:26
+> **Progress**: 23/44 tasks (52%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -119,7 +119,7 @@ or silently dismissed by this phase.
 - [x] 3.2.3 Capture security/production-security coverage separately; compare old/current paths, counts and monitored digests without changing the baseline. — Existing coverage command and baseline; ST-9/ST-10. ✅ (completed: 2026-11-01 11:37)
 - [x] 3.2.4 Record the exact baseline/fixture proposal with the baseline coverage block and fixture block side by side, exact equality of source/run/digests/counts, and the two digest formulas; obtain independent review and the user's value-specific approval. Keep unexplained reductions or refused changes blocked. — `08-closeout-evidence.md`, ambiguity register; ST-10/ST-11; AR-9. ✅ (completed: 2026-11-01 13:23; independent review approve; user approved exact values)
 - [x] 3.2.5 Apply only the approved values and review metadata to `ratchet-baselines.json` and `assurance-ratchets-requirements.ts`, keeping both files synchronized and preserving monitored scopes and no-promotion invariants. — 03-02 Reviewed Baseline Update; ST-11. ✅ (completed: 2026-11-01 13:25)
-- [ ] 3.2.6 Verify the unchanged ratchet specifications and implementation checks green; for any actual behavioral repair, verify its separate regression green before adding implementation checks. — Registered ratchet selector; ST-10/ST-11/ST-16.
+- [x] 3.2.6 Verify the unchanged ratchet specifications and implementation checks green; for any actual behavioral repair, verify its separate regression green before adding implementation checks. — Registered ratchet selector; ST-10/ST-11/ST-16. ✅ (completed: 2026-11-01 13:26; 10/10)
 
 ### 3.3 Hardening and source closeout
 
