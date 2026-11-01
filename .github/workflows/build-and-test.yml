@@ -159,6 +159,14 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
+      - name: Build harness image with GHA cache
+        run: |
+          docker buildx build \
+            --file test-harness/Dockerfile \
+            --tag porta-harness-ci:latest \
+            --cache-from type=gha,scope=porta-harness-ci \
+            --cache-to type=gha,mode=max,scope=porta-harness-ci \
+            --load .
       - name: Run OIDC harness
         run: pnpm harness:test
         env:
