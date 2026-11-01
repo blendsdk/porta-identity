@@ -43,7 +43,8 @@ manual review of unsupported legacy checklist syntax is sufficient for this clos
 | [Integration and cleanup](03-03-integration-and-cleanup.md) | Ownership, commits, portfolio cascade and final CI |
 | [Testing strategy](07-testing-strategy.md) | Input-to-outcome acceptance cases and command gates |
 | [Execution plan](99-execution-plan.md) | Ordered, single-source task progress |
-| Execution evidence (`08-closeout-evidence.md`) (created during execution) | Evidence contract, observations and dispositions |
+| [Execution evidence](08-closeout-evidence.md) (created during execution) | Evidence contract, observations and dispositions |
+| [Findings ledger](05-findings.md) | Phase review findings and rulings |
 | [Preflight report](00-preflight-report.md) | Audit trail, findings and user decisions |
 
 ## Staging and Execution

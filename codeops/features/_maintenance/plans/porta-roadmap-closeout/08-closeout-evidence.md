@@ -44,7 +44,9 @@ agrees with its source tasks).
 | Scope | Historical merge and branch CI only; no new release |
 | Observation | PR state `MERGED`; push Build and Test `36117901295` success; PR Build and Test `36117923695` success; all six named jobs completed successfully |
 | Proof | GitHub PR #130 and the two run IDs above |
-| Review | Independent review pending in Phase 1 |
+| Review | Phase 1 review completed; see [05-findings.md](05-findings.md) (RV-001–RV-005) |
+| Cleanup | n/a — historical read-only review; no runner or owned resources |
+| Consequence | 4.1.1 may close; no residual |
 
 The original checkbox is stale bookkeeping. The merge and branch CI obligation is proved.
 
@@ -55,9 +57,11 @@ The original checkbox is stale bookkeeping. The merge and branch CI obligation i
 | Obligation | `develop` merged into `main`; the new workflow is present; no automatic release fires |
 | Source identity | PR #131; merge commit `fb11f971d2a1331e5418ce8e59ab638c4cac51ed`; base `main`; merged 2026-09-25T09:28:10Z |
 | Scope | Historical main merge, main CI and absence of a Release trigger on that merge |
-| Observation | PR state `MERGED`; push Build and Test `36118605247` success; docs deployment `36118605283` success; `gh run list --commit fb11f971…` returns no Release workflow run |
-| Proof | GitHub PR #131, the two run IDs, and the commit-scoped Release query |
-| Review | Independent review pending in Phase 1 |
+| Observation | PR state `MERGED`; push Build and Test `36118605247` success; docs deployment `36118605283` success; `gh run list --commit fb11f971…` returns no Release workflow run. At `fb11f971`, `.github/workflows/release.yml` is present and its only trigger is `workflow_dispatch`; the `workflow_run` token inside the workflow is part of a jq string, not a trigger. |
+| Proof | GitHub PR #131, the two run IDs, the commit-scoped Release query, and `git show fb11f971:.github/workflows/release.yml` |
+| Review | Phase 1 review completed; see [05-findings.md](05-findings.md) (RV-001–RV-005) |
+| Cleanup | n/a — historical read-only review; no runner or owned resources |
+| Consequence | 4.1.2 may close; no residual |
 
 The literal obligation is proved. The previous release (`4.1.3`, run `36137558382`, v1.9.0) remains
 the first automated release and is not re-credited.
@@ -80,36 +84,47 @@ a new release.
 | Scope | Historical main merge and the exact main branch gate |
 | Observation | PR state `MERGED`; Build and Test `36353238808` success |
 | Proof | GitHub PR #140 and main CI run `36353238808` |
-| Review | Independent review pending in Phase 1 |
+| Review | Phase 1 review completed; see [05-findings.md](05-findings.md) (RV-001–RV-005) |
+| Cleanup | n/a — historical read-only review; no runner or owned resources |
+| Consequence | 7.1.4 may close; no residual |
 
 ### Task 7.1.5 — manual Release dispatch on main
 
 | Field | Evidence |
 | --- | --- |
 | Obligation | Authorized manual Release dispatch on `main` |
-| Source identity | Failed main dispatch `36353633426` on `0c820650`; successful develop-dispatched `36357391953` on `bfaf61db`; later main no-op `36382460551` on `f30986bd`; tag `v1.11.0` = `f30986bd` |
-| Scope | Exact historical release chronology and AR-14 operational equivalence |
-| Observation | Main run `36353633426` (2026-09-27T21:58:30Z) failed at “Verify published packages”; publish, tag, GitHub Release, Docker dispatch and develop sync were skipped. Develop-dispatched run `36357391953` (23:03:31Z) succeeded: bump, detect completed release, pack, check published, publish skipped because already published, verify published packages, push tag, create GitHub Release, dispatch Docker and sync develop. The workflow checks out `ref: main`. Later main run `36382460551` succeeded as an idempotent no-op. |
-| Proof | GitHub Actions runs above; PR #140; `release.yml:37-41` |
-| Review | User approved AR-14 in preflight PF-004: 7.1.5 closes on this recorded operational equivalence, not on a literal main-branch dispatch |
+| Source identity | Main dispatch `36353633426` on `0c820650` (two attempts: attempt 1 published, attempt 2 retried); develop-dispatched `36357391953` on `bfaf61db`; later main no-op `36382460551` on `f30986bd`; tag `v1.11.0` = `f30986bd` |
+| Scope | Exact historical release chronology, both attempts, and AR-14 operational equivalence |
+| Observation | Main run `36353633426` had two attempts. Attempt 1 (2026-09-27T21:58:35Z–22:06:29Z) published all three npm packages with provenance, then failed at “Verify published packages” because the registry had not settled; tag, GitHub Release, Docker dispatch and develop sync were skipped. Attempt 2 (22:28:07Z–22:36:10Z) skipped publish and failed the same verification; its failure was a repack-integrity mismatch rather than registry lag (`release-verify-resilience` T-03.5). Develop-dispatched run `36357391953` (23:03:31Z) succeeded: bump, detect completed release, pack, check published, publish skipped because already published, verify published packages, push tag, create GitHub Release, dispatch Docker and sync develop. The workflow checks out `ref: main`. Later main run `36382460551` succeeded as an idempotent no-op. |
+| Proof | GitHub Actions run/attempt records above; PR #140; `release.yml:37-41` |
+| Review | User approved AR-14 in preflight PF-004; Phase 1 RV-001 corrected the publish chronology. 7.1.5 closes on the recorded equivalence. |
+| Cleanup | n/a — historical read-only review; no runner or owned resources |
+| Consequence | 7.1.5 may close under AR-14; the failed main attempt is preserved and no replacement release is dispatched |
 
-The failed main attempt is preserved. The successful run was dispatched on `develop`, but the
-workflow checked out `main` and completed every release side effect. No replacement release is
-dispatched.
+The failed main attempt is preserved, including the successful publish in attempt 1. The
+develop-dispatched run verified the packages and completed the tag, GitHub Release, Docker dispatch
+and develop sync. No replacement release is dispatched.
 
 ### Task 7.1.6 — verify published artifacts
 
 | Field | Evidence |
 | --- | --- |
 | Obligation | npm packages with provenance, GitHub Release, Docker image and `develop` sync |
-| Source identity | Version 1.11.0 at tag `f30986bd`; package publish times from the npm registry; Docker exact tag `1.11.0`; release run `36357391953`; Docker run `36382704347` |
+| Source identity | Version 1.11.0 at tag `f30986bd`; package publish times from the npm registry; Docker exact tag `1.11.0`; release run `36357391953`; cancelled Docker run `36357469306`; successful Docker run `36382704347` |
 | Scope | Published artifacts only; no rebuild or re-release |
-| Observation | `@portaidentity/server@1.11.0` published 2026-09-27T22:09:47Z; SDK 22:00:26Z; CLI 22:01:18Z. All three expose `dist.attestations.provenance.predicateType = https://slsa.dev/provenance/v1`. GitHub Release v1.11.0 published 2026-09-27T23:04:47Z. Docker Release run `36382704347` succeeded for `f30986bd`; Docker Hub exact tag `1.11.0` digest `sha256:35cab1cf232a2c640bbd9887377b20a6e3779c8fdab060a35613481405bf6779` (amd64 `sha256:cdbfc5e…`, arm64 `sha256:e30fe27…`). The successful release run's “Sync develop” step succeeded, and `f30986bd` is an ancestor of `origin/develop`. |
-| Proof | npm registry times/attestations; GitHub Release v1.11.0; Docker Hub tag record; runs `36357391953`/`36382704347`; `git merge-base --is-ancestor f30986bd origin/develop` |
-| Review | Independent review pending in Phase 1 |
+| Observation | `@portaidentity/server@1.11.0` published 2026-09-27T22:09:47Z; SDK 22:00:26Z; CLI 22:01:18Z. All three expose `dist.attestations.provenance.predicateType = https://slsa.dev/provenance/v1`. GitHub Release v1.11.0 published 2026-09-27T23:04:47Z. The release-dispatched Docker run `36357469306` on the same revision was cancelled; run `36382704347` re-dispatched the same revision and succeeded. Docker Hub exact tag `1.11.0` digest `sha256:35cab1cf232a2c640bbd9887377b20a6e3779c8fdab060a35613481405bf6779` (amd64 `sha256:cdbfc5e…`, arm64 `sha256:e30fe27…`), last updated 2026-09-28T05:44:02Z. The successful release run's “Sync develop” step succeeded, and `f30986bd` is an ancestor of `origin/develop`. |
+| Proof | npm registry times/attestations; GitHub Release v1.11.0; Docker Hub tag record; runs `36357391953`/`36357469306`/`36382704347`; `git merge-base --is-ancestor f30986bd origin/develop` |
+| Review | Phase 1 review completed; see [05-findings.md](05-findings.md) (RV-001–RV-005) |
+| Cleanup | n/a — historical read-only review; no runner or owned resources |
+| Consequence | 7.1.6 may close; the exact `1.11.0` tag preserves the release identity |
 
 Floating Docker tags `1.11`, `1` and `latest` have since moved to later releases; the exact
 `1.11.0` tag preserves this release identity.
+
+Adjacent record: `_maintenance/plans/release-verify-resilience/99-execution-plan.md` T-03.5 still
+names cancelled Docker run `36357469306` as the delivered dispatch. This closeout records both the
+cancelled attempt and the successful same-revision re-dispatch `36382704347`; the adjacent completed
+task is left unchanged under strict scope.
 
 ## Initial Stale-Status and Missing-Proof Findings
 
@@ -126,7 +141,24 @@ Floating Docker tags `1.11`, `1` and `latest` have since moved to later releases
 No fabricated code-test red was produced. This task is artifact validation and historical evidence
 collection.
 
-## Review State
+## Phase 1 Review
 
-Phase 1 post-phase independent review is pending. Source-record corrections in 1.2.x must not
-advance until this evidence is accepted by that review.
+An independent review rechecked every merge, run, release, registry, image and ancestry claim, the
+task arithmetic, links and the phase diff. It verified the closure arithmetic and found one major
+evidence correction plus three minor gaps and one roadmap-scope observation. All are fixed; no task
+verdict changed.
+
+| ID | Severity | Finding | Disposition |
+| --- | --- | --- | --- |
+| RV-001 | MAJOR | The failed main Release run had two attempts; attempt 1 actually published the packages, contrary to the first evidence text. | Corrected the chronology; AR-14 closure retained by user ruling; failed attempts preserved |
+| RV-002 | MINOR | The cancelled Docker Release attempt `36357469306` was omitted. | Added to the 7.1.6 chronology and proof |
+| RV-003 | MINOR | Task 4.1.2's “workflow present” clause was not evidenced. | Added the `fb11f971` workflow/trigger observation |
+| RV-004 | MINOR | The evidence tables omitted the `Cleanup` and `Consequence` contract fields. | Added both to every per-task table |
+| RV-005 | OBSERVATION | The feature notes read as a feature-wide exclusion of revocation beside completed T-03. | Scoped the sentence to the deferred-creation plan |
+| RV-006 | MINOR | PF-004's problem statement still said the main dispatch failed before publication. | Corrected to the two-attempt chronology |
+| RV-007 | MINOR | The new findings ledger was not linked from the index or evidence. | Added the index row and Markdown links |
+| RV-008 | OBSERVATION | Attempt 2's failure cause was unstated and could be misread as registry lag. | Recorded the repack-integrity cause |
+| RV-009 | OBSERVATION | An adjacent completed plan still names the cancelled Docker run as delivered. | Recorded the discrepancy here; left the adjacent task unchanged under strict scope |
+
+The source-record corrections are accepted. The Phase 1 review did not broaden any original-task
+claim, and no failed attempt was removed. The detailed ruling ledger is [05-findings.md](05-findings.md).

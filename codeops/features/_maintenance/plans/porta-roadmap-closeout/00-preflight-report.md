@@ -134,12 +134,13 @@ The table totals both iterations: 15 iteration-1 findings plus 6 iteration-2 res
 **Dimension:** Completeness Gaps / Dependency Issues
 **Location:** `02-current-state.md:41-42`; `00-ambiguity-register.md:38`; `03-01-evidence-and-reconciliation.md:50-53`; `99-execution-plan.md:57` (1.2.2); `07-testing-strategy.md:23-25` (ST-1–3).
 **Codebase evidence (read-only GitHub):**
-- Main Release run `36353633426` on `0c820650` (2026-09-27): **failed** at "Verify published packages"; "Publish with npm Trusted Publishing", "Push release commit and tag", "Create GitHub Release", "Dispatch tested Docker release", and "Sync develop" were skipped.
+- Main Release run `36353633426` on `0c820650`: attempt 1 (2026-09-27T21:58:35Z–22:06:29Z) published all three npm packages with provenance, then failed at "Verify published packages" because the registry had not settled; tag, GitHub Release, Docker dispatch and develop sync were skipped. Attempt 2 (22:28:07Z–22:36:10Z) skipped publish and failed the same verification. The develop-dispatched run `36357391953` verified the packages and completed tag, GitHub Release, Docker dispatch and develop sync.
+  **Post-execution correction (Phase 1 RV-001):** the earlier wording said publish was skipped in the main run; attempt 1 actually published. The AR-14 closure is unchanged and both attempts are preserved.
 - Successful Release run `36357391953` was dispatched on **develop** at `bfaf61db` (2026-09-27); the release workflow checks out `ref: main`.
 - Later main dispatch `36382460551` on `f30986bd` succeeded but all publication steps were skipped (no-op).
 - Tag `v1.11.0` is `f30986bd`; feature merge `27a31452` is an ancestor.
 
-**The Problem:** Task 7.1.5 says "dispatch the manual Release workflow **on main**". The actual publishing run was dispatched on develop (although the workflow checks out main), and the main dispatch failed before publication. The plan's candidate row presents a clean v1.11.0 publication and omits the failed run. The executor cannot truthfully mark 7.1.5 without a ruling on whether the develop-dispatched run satisfies "on main"; 7.1.6 artifacts may still be provable. The plan's own failure-preservation rule requires recording the failed attempt.
+**The Problem:** Task 7.1.5 says "dispatch the manual Release workflow **on main**". The main dispatch published the packages in attempt 1 but failed post-publish verification; attempt 2 failed on a repack-integrity mismatch. The successful publishing/completion run was dispatched on develop (although the workflow checks out main). The plan's candidate row presented a clean v1.11.0 publication and omitted both failed attempts. The executor cannot truthfully mark 7.1.5 without a ruling on whether the develop-dispatched completion satisfies "on main"; 7.1.6 artifacts may still be provable. The plan's own failure-preservation rule requires recording both attempts.
 
 **Options:**
 

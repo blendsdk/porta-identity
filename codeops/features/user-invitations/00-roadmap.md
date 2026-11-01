@@ -30,7 +30,8 @@
   `plans/deferred-invitation-creation/00-preflight-report.md`.
 - This feature has no upstream RD; the standalone plan's `01-requirements.md` is the owning
   requirements document. The plan declares `> **Implements**: user-invitations/T-01`.
-- Scope excludes listing/revoking pending invitations, a pending `UserStatus`, Redis storage, and
-  any new purge worker or scheduler.
+- The deferred-creation plan's scope excludes listing/revoking pending invitations, a pending
+  `UserStatus`, Redis storage, and any new purge worker or scheduler. T-03 subsequently shipped
+  revocation as a separate task.
 - Release scope: the plan's final gated phase covered `develop` → `main` and the manual Release
   dispatch for T-01; it completed in v1.11.0. T-03 remains on `develop`.
