@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Preflighted — iteration 2 verified; ready for execution; staged outside the repository
-> **Last Updated**: 2026-11-01 09:41
-> **Progress**: 7/42 tasks (17%)
+> **Last Updated**: 2026-11-01 09:43
+> **Progress**: 8/42 tasks (19%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -74,10 +74,13 @@ Markdown-only work. An unavailable historical artifact is not a reason to releas
 
 > **Reasoning**: high — exact security observations and restricted successor credit
 > **Lenses**: web application; data and migration
+> **Phase baseline tree**: 8de3ba5a626bdba82a7ff414d7084ba29ced3987
+> **Expected modification set**: closeout evidence; tenant-management plan/index/roadmap; assurance umbrella, remaining-work and feature summary; no product source unless an authorized bounded repair is inserted
+> **Scope mode**: strict
 
 ### 2.1 Specifications and baseline
 
-- [ ] 2.1.1 Freeze the retained tenant probe/observer obligations and map umbrella tasks 8.7c/9.6b/9.6c to successor evidence and M2; validate ST-4–8 before editing any outcome. — Tenant management, assurance umbrella and successors; 03-01.
+- [x] 2.1.1 Freeze the retained tenant probe/observer obligations and map umbrella tasks 8.7c/9.6b/9.6c to successor evidence and M2; validate ST-4–8 before editing any outcome. — Tenant management, assurance umbrella and successors; 03-01. ✅ (completed: 2026-11-01 09:43)
 - [ ] 2.1.2 Obtain exact current tenant proof from retained admissible evidence or a fresh clean-checkpoint production-security run; record every selected case, relevant rejection event, observer difference, exit and cleanup. If a failure requires repair, insert the specification/red/repair/green tasks under the current phase in this plan, following 03-02 first. — Existing `human-auth-recovery.spec.test.ts`; ST-4–6.
 
 ### 2.2 Source-record reconciliation

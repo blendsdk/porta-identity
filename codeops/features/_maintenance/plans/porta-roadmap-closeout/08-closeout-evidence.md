@@ -172,3 +172,41 @@ claim, and no failed attempt was removed. The detailed ruling ledger is [05-find
   expected tenant counter drift.
 - Phase 1 changed documentation and evidence only; no product source, workflow, credential or
   generated artifact is part of the checkpoint.
+
+## Phase 2 — Tenant and Assurance Evidence
+
+### Tenant task 5.1.3
+
+| Field | Frozen obligation / evidence |
+| --- | --- |
+| Obligation | Run the existing `pnpm assurance:harness --project security --profile production-security`; record run ID, observer IDs, exit, the exact `password-reset-throttled-request` case and its required normalized `delivered-authentication-artifact-rejection` event; compare the applicable observer/case set with the accepted incomplete-observer baseline; require no new gap or failed assertion; never call the run fully passed. |
+| Original failure | Retained runs `31bfd677-43b9-4e95-b9ba-e76d8d4b09b6` and `e99a0d4c-bc51-4a69-a8fe-5a0c1a9d3eb7` failed the tenant gate because `password-reset-throttled-request` lacked the normalized rejection event. |
+| Aggregate-only evidence | Later run `1908ceb0-ab5f-456d-b97a-73b4ad891865` exited 0 with production exposure 11/11, but an aggregate pass does not prove the missing case-level observation. |
+| Current requirement | Fresh clean-checkpoint production-security run with exact case/observer proof. If the case still fails or an observer disappears, keep 5.1.3 blocked and apply the bounded-repair procedure. |
+| Acceptance | ST-4 rejects aggregate-only closure; ST-5 permits closure only with the exact case, required rejection observation, controls and applicable observer set; ST-6 rejects missing probes or unexplained observer changes. |
+
+### Assurance umbrella mapping
+
+| Original task | Original obligation | Successor evidence | M2 / residual | Candidate disposition |
+| --- | --- | --- | --- | --- |
+| 8.4 | DEF-23 timing enumeration hypothesis, effect-size bound, sample-size/power rule, environment/noise contract | None; no approved statistical authority | DEF-23 remains user-owned | **Remains blocked**; do not collect timing samples or infer a threshold |
+| 8.7c | DEF-8 transient MailHog acquisition and exact sequential-use journeys for magic link, password reset and invitation: recipient/tenant, lifetime, second-use, protected-state nonmutation, exposure redaction | `def-8-sequential-use-evidence` 23/23; `st46-delivered-artifact-correction` 17/17; production-security run `14c4cf25-df3c-464f-8400-fe78241bd295` exit 0 (production-exposure 11/0/0/0; functional 7/0; second-factor 4/0; tenant-admin 17/0; recovery 5/0) with ST-46 passing | No M2 dependency in ST-46; AR-29/AR-30 corrections recorded | **Eligible to close** in 2.2.2 after review |
+| 9.6b | DEF-13 transport-level malformed headers and parser/Zod 400/413 cases need one correlated log/completion observation; raw cases retain no log credit | `def-13-live-boundary` 15/15; P1 live suite passes 15 raw + 18 admin cases; raw adapter correlates a decision or completion record by request ID and projects every required log field (`test-harness/assurance/p1/live-adapter.ts:222-257,276-311,470-488`); run `729dfdb8-88b5-48c2-808b-b7da6ebfcc67` P1 1/1, production-exposure passed=3 incomplete=3 exit 40 | M2 (control `requiredObservations`/`reachabilityObservations`) remains an oracle-level gap (`def-13-live-boundary/phase-4-review.md:30,62`). The production-exposure `correlatedLogCredit` field remains false (`production-exposure/evidence.ts:39`) and is **not** used as credit. | **Eligible to close only the log obligation**; keep M2 explicitly open |
+| 9.6c | DEF-13 administrative permission denials need one correlated audit/structured log with correlation ID, actor, action, target digest and result | `def-13-admin-denial-digest` 5/5; focused unit spec 11/11; product emits the protected target digest; P1 admin lane observes 18 cases with required log fields; run `729dfdb8…` P1 1/1 | M2 is separate and remains open | **Eligible to close** in 2.2.2 after review |
+
+### ST-4–8 check
+
+| Case | Frozen expectation | Current assessment |
+| --- | --- | --- |
+| ST-4 | Aggregate tenant success without a retained case-level result does not close 5.1.3 | Applies; run `1908ceb0…` alone is insufficient |
+| ST-5 | Exact tenant case, rejection observation, controls and unchanged/applicably approved case set may close after independent comparison | Awaiting fresh run |
+| ST-6 | Missing probe, weakened assertion or unexplained observer disappearance rejects closure | Applies to the fresh-run comparison |
+| ST-7 | Completed successor plus an original task with an unproved M2 control requirement stays incomplete; no blanket credit | 9.6b closes only its log obligation; M2 remains open; 8.4 stays blocked |
+| ST-8 | Successful current checks do not close DEF-23 or a named campaign | DEF-23, DEF-3/6/22, DEF-5/11/17 and the consent follow-ups remain open |
+
+### Frozen conclusion
+
+At this point the tenant gate still requires a fresh exact run. The assurance umbrella has two
+candidate closures (8.7c and 9.6c), one narrow closure (9.6b log obligation only), and one
+unchanged blocker (8.4/DEF-23). M2 remains an oracle-level gap owned by the user; no successor
+credit may be described as a full assurance pass.
