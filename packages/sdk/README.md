@@ -171,6 +171,31 @@ The service client must be configured with:
 `createClientCredentialsAuth` sends the client secret in the form body, so the
 client must allow `client_secret_post`.
 
+### Cancel a pending tenant invitation
+
+`users.invite()` returns the `invitationId` that `users.revokeInvitation()` later
+cancels. The same tenant transport and `org:user:invite` authority apply:
+
+```typescript
+const invitation = await tenant.users.invite({ organizationId, email });
+
+await tenant.users.revokeInvitation({
+  organizationId,
+  invitationId: invitation.invitationId,
+});
+```
+
+The method returns `Promise<void>`. An unknown, expired, used, foreign-application
+or unowned identifier resolves as an empty `204` no-op, like a real cancellation.
+Those outcomes are not distinguished through the normal status or response body,
+though the endpoint makes no constant-time guarantee. Already accepted accounts
+are not changed. Admin API invitations are unowned and cannot be cancelled here.
+Identifiers that would resolve to a `.` or `..` path segment are rejected locally
+before any request is sent. A malformed invitation identifier that reaches the
+route returns HTTP `400`; a mismatched organization or missing authority is
+rejected with `403`. The tenant route shares the strict 60/hour deletion budget. See
+[Users API — Invitation Revocation](../../docs/api/users.md#tenant-scoped-invitation-revocation).
+
 ### Tenant-scoped user management from a BFF
 
 The same `users` and `userRoles` domains manage tenant users when the transport

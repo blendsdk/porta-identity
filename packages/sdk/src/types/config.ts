@@ -58,8 +58,8 @@ export interface ConfigEntry {
   readonly minimum?: number;
   /** Inclusive upper bound for integer values. */
   readonly maximum?: number;
-  /** Exact supported strings for locale values. */
-  readonly allowedValues?: readonly 'en'[];
+  /** Exact supported locale strings advertised by the server, without a client-owned locale list. */
+  readonly allowedValues?: readonly string[];
   /** Required operational action after a successful update. */
   readonly applicationMode: ConfigApplicationMode;
   /** Last successful database update, in ISO 8601 format. */

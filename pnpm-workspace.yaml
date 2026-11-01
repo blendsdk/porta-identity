@@ -1,6 +1,10 @@
 packages:
   - 'packages/*'
 
+# Keep pnpm-lock.yaml single-document so GitHub's dependency graph can read the
+# project graph. CI and Docker still install the pinned pnpm 12.15.0 directly.
+pmOnFail: ignore
+
 nodeLinker: hoisted
 linkWorkspacePackages: true
 minimumReleaseAge: 0

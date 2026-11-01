@@ -185,6 +185,8 @@ interface InvitationTokenRow {
 /** Input for creating (or replacing) an invitation in the deferred flow. */
 export interface InsertInvitationInput {
   organizationId: string;
+  /** Authenticated tenant application allowed to revoke the invitation, absent for admin callers. */
+  applicationId?: string | null;
   email: string;
   tokenHash: string;
   expiresAt: Date;
@@ -778,8 +780,8 @@ export async function replaceInvitation(input: InsertInvitationInput): Promise<{
       const result = await pool.query<{ id: string }>(
         `INSERT INTO invitation_tokens
            (organization_id, email, token_hash, expires_at,
-            given_name, family_name, locale, details, invited_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+             given_name, family_name, locale, details, invited_by, application_id)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
          RETURNING id`,
         [
           input.organizationId,
@@ -791,6 +793,7 @@ export async function replaceInvitation(input: InsertInvitationInput): Promise<{
           input.locale ?? null,
           input.details ? JSON.stringify(input.details) : null,
           input.invitedBy ?? null,
+          input.applicationId ?? null,
         ],
       );
       logger.debug(

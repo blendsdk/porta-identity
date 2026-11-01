@@ -1,10 +1,10 @@
 # Data Model
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-10-30
 
 ## Overview
 
-Porta's data model is defined across 28 PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
+Porta's data model is defined by ordered PostgreSQL migrations in `packages/server/migrations/`. The schema implements multi-tenant isolation at the database level through foreign key relationships to the `organizations` table. All tables use UUIDs as primary keys and include `created_at`/`updated_at` timestamps.
 
 ## Entity Relationship Diagram
 
@@ -422,13 +422,14 @@ and migration 033 made the token email/organization-keyed with a nullable accoun
 | `id`              | UUID                   | Primary key                                                                   |
 | `user_id`         | UUID, nullable         | FK → users; null until the recipient accepts and the account is created       |
 | `organization_id` | UUID                   | Tenant authority for acceptance; owns the invited address                     |
+| `application_id`  | UUID, nullable         | Authenticated tenant application allowed to revoke; null grants no tenant revoke authority |
 | `email`           | CITEXT                 | Invited address; the account is created for this email at acceptance          |
 | `given_name`      | VARCHAR(255), nullable | Profile snapshot applied to the created account                               |
 | `family_name`     | VARCHAR(255), nullable | Profile snapshot applied to the created account                               |
 | `locale`          | VARCHAR(10), nullable  | Preferred locale for the invitation email                                     |
 | `token_hash`      | TEXT                   | Unique SHA-256 digest; plaintext exists only during delivery and presentation |
 | `expires_at`      | TIMESTAMPTZ            | Token expiry (invitation lifetime, default 7 days)                            |
-| `used_at`         | TIMESTAMPTZ, nullable  | Single-use marker; set inside the acceptance transaction                      |
+| `used_at`         | TIMESTAMPTZ, nullable  | Single-use marker; set by acceptance, replacement or explicit revocation      |
 | `details`         | JSONB, nullable        | Pre-assignment metadata: roles, claims, personalMessage, inviterName          |
 | `invited_by`      | UUID, nullable         | FK → users — the admin who created the invitation                             |
 | `created_at`      | TIMESTAMPTZ            | Creation time                                                                 |
@@ -436,6 +437,17 @@ and migration 033 made the token email/organization-keyed with a nullable accoun
 A partial unique index on `(organization_id, email)` where `used_at IS NULL` allows at most one
 live invitation per address while preserving replaced and accepted history. These columns live on
 the dedicated `invitation_tokens` table (not `auth_tokens`).
+
+Migration 036 adds nullable application ownership without backfill. New tenant invitations persist
+the authenticated application's UUID even when no roles are assigned; Admin and historical rows
+remain unowned. The foreign key uses `ON DELETE SET NULL`, preserving invitation lifetime when an
+application is deleted but removing tenant revocation authority. Acceptance remains organization-bound.
+
+Apply 036 during controlled maintenance after draining invitation transactions; verify its migration
+ledger entry and schema before enabling new writers. Upgrade every server before promising complete
+ownership capture: older writers safely create unowned rows. Leave the additive column on a code
+rollback. A down migration requires stopped feature writers and a verified backup; dropping/readding
+the column loses ownership permanently. Existing organization/email-wide replacement is unchanged.
 
 ## Migration Strategy
 

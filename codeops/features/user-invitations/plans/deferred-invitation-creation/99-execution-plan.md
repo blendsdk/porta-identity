@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-09-27 00:30
-> **Progress**: 65/68 tasks (96%)
+> **Last Updated**: 2026-11-01 09:24
+> **Progress**: 68/68 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -257,13 +257,13 @@ estimates)
 - [x] 7.1.1 Commit the verified work and push the feature branch (git-commit skill, push mode) ✅ (completed: 2026-09-27 00:30) — branch `feat/deferred-invitation-creation` pushed at `c3983cb5`
 - [x] 7.1.2 Open a pull request from the feature branch into `develop` and merge it through the repository flow ✅ (completed: 2026-09-27 00:30) — PR #138 merged as `27a31452`
 - [x] 7.1.3 Confirm the `Build and Test` workflow is green on `develop` HEAD ✅ (completed: 2026-09-27 00:30) — run `36276255144` green on `27a31452`
-- [ ] 7.1.4 With explicit authorization, integrate `develop` into `main` through the repository's designated flow and confirm `Build and Test` is green on `main`
-- [ ] 7.1.5 With explicit authorization, dispatch the manual `Release` workflow on `main` (this is the publication authorization)
-- [ ] 7.1.6 Verify the published artifacts: npm packages with provenance, the GitHub Release, the Docker image, and the `develop` sync
+- [x] 7.1.4 With explicit authorization, integrate `develop` into `main` through the repository's designated flow and confirm `Build and Test` is green on `main` ✅ (completed: 2026-11-01 09:24) — PR #140 merged `0c820650`; main Build and Test `36353238808` green
+- [x] 7.1.5 With explicit authorization, dispatch the manual `Release` workflow on `main` (this is the publication authorization) ✅ (completed: 2026-11-01 09:24) — AR-14: main dispatch `36353633426` attempt 1 published all three packages with provenance but failed post-publish verification; attempt 2 failed; develop-dispatched `36357391953` verified and completed tag, GitHub Release, Docker and develop sync; later main dispatch `36382460551` was an idempotent no-op
+- [x] 7.1.6 Verify the published artifacts: npm packages with provenance, the GitHub Release, the Docker image, and the `develop` sync ✅ (completed: 2026-11-01 09:24) — `@portaidentity/{server,sdk,cli}@1.11.0` have SLSA v1 provenance; GitHub Release v1.11.0 published; Docker exact tag `1.11.0` digest `sha256:35cab1cf232a2c640bbd9887377b20a6e3779c8fdab060a35613481405bf6779`; `f30986bd` is an ancestor of `origin/develop`
 
 **Deliverables**:
-- [ ] Feature released on `main`
-- [ ] `develop` synchronized
+- [x] Feature released on `main`
+- [x] `develop` synchronized
 
 **Verify**: Release workflow completes successfully; published version and GitHub Release exist; Docker image dispatched; `develop` synced.
 

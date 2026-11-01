@@ -128,6 +128,7 @@ async function start(options: readonly string[]): Promise<LifecycleExitCode> {
   const runtimeDirectory = resolve(root, 'test-harness/.assurance-runtime', runId);
   mkdirSync(runtimeDirectory, { recursive: true, mode: 0o700 });
   const logFile = openSync(resolve(runtimeDirectory, 'supervisor.log'), 'a', 0o600);
+  const streamSupervisor = process.env.HARNESS_STREAM_BUILD_OUTPUT === '1';
   const supervisorRef: { current?: ReturnType<typeof spawn> } = {};
   let interrupted: 130 | 143 | undefined;
   const forwardStartupSignal = (signal: 'SIGINT' | 'SIGTERM'): void => {
@@ -157,7 +158,7 @@ async function start(options: readonly string[]): Promise<LifecycleExitCode> {
       env: process.env,
       detached: true,
       shell: false,
-      stdio: ['ignore', logFile, logFile],
+      stdio: streamSupervisor ? ['ignore', 'inherit', 'inherit'] : ['ignore', logFile, logFile],
     },
   );
   supervisorRef.current = child;
