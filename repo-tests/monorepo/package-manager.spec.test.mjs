@@ -110,6 +110,7 @@ test('should configure the pnpm workspace for the hoisted migration', () => {
   assert.equal(workspace.minimumReleaseAge, 0);
   assert.equal(workspace.strictDepBuilds, true);
   assert.equal(workspace.engineStrict, true);
+  assert.equal(workspace.pmOnFail, 'ignore');
   assert.equal(workspace.savePrefix, '');
   assert.equal(workspace.autoInstallPeers, false);
   assert.deepEqual(workspace.skills?.dirs, []);
@@ -121,6 +122,24 @@ test('should configure the pnpm workspace for the hoisted migration', () => {
   assert.equal(workspace.overrides?.['co-body>qs'], '6.16.0');
   assert.equal(workspace.overrides?.['minimatch>brace-expansion'], '5.0.12');
   assert.equal(workspace.overrides?.['fast-copy'], '4.2.0');
+});
+
+// GitHub's dependency graph reads a pnpm lockfile as one YAML document. pnpm 12
+// prepends a boot document when it enforces the packageManager pin; pmOnFail:
+// ignore keeps the project document first and only, so the graph sees the 936
+// project packages instead of pnpm's own executables.
+test('should keep pnpm-lock.yaml single-document for dependency-graph readers', () => {
+  const documents = parseAllDocuments(
+    readFileSync(resolve(repositoryRoot, 'pnpm-lock.yaml'), 'utf8'),
+  );
+
+  assert.equal(
+    documents.length,
+    1,
+    'pnpm-lock.yaml must remain a single document so GitHub can parse the project graph',
+  );
+  const project = documents[0]?.toJSON();
+  assert.ok(project?.importers?.['.'], 'single-document lockfile must retain the root importer');
 });
 
 // Exactly one root pnpm lockfile owns the install graph; Yarn lockfiles must be gone.
