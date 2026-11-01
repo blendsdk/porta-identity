@@ -519,8 +519,9 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 - **AR-12:** enable the repository dependency graph and Dependabot alerts, then re-observe. Record
   the exact prior state and the settings change; no silent or unrelated security-setting change.
 - **AR-13:** bounded repair of the existing harness cache/log path, with exact files named before
-  editing. Exact files: `.github/workflows/build-and-test.yml` and
-  `test-harness/fixtures/lifecycle-runtime-command.ts`. No new workflow.
+  editing. Exact files: `.github/workflows/build-and-test.yml`,
+  `test-harness/fixtures/lifecycle-runtime-command.ts`, and
+  `test-harness/scripts/lifecycle.ts`. No new workflow.
 - Changes below were applied under these approvals; no product source changed.
 
 ### 4.2.1 AR-12 result
@@ -536,5 +537,9 @@ four monitored digests compare equal, and `pnpm assurance:test --select assuranc
 ### 4.2.2 Harness cache diagnosis and repair
 
 - Successful OIDC Harness job in run `41306784075` (harness run `ee0ba13a-7d14-40d0-9b58-217afc55d36c`) completed with six passing tests, yet GitHub Actions still has **zero** `porta-harness-ci` cache keys (869 total caches). The compose overlay is included via `HARNESS_BUILD_CACHE_FILE`, but the build output is buffered and Compose is not forcing the Bake/cache exporter.
-- Authorized bounded repair: set `COMPOSE_BAKE=true` for the harness build and add a streamed-output switch to the existing runtime command wrapper. Exact files: `.github/workflows/build-and-test.yml` and `test-harness/fixtures/lifecycle-runtime-command.ts`. No product source or new workflow.
+- Authorized bounded repair: set `COMPOSE_BAKE=true` for the harness build, stream the supervisor
+  and build output, and add a streamed-output switch to the existing runtime command wrapper.
+  Exact files: `.github/workflows/build-and-test.yml`,
+  `test-harness/fixtures/lifecycle-runtime-command.ts`, `test-harness/scripts/lifecycle.ts`. No
+  product source or new workflow.
 - The next ordinary push supplies the first export run; a subsequent ordinary push supplies the import run.
