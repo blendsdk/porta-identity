@@ -115,6 +115,29 @@ describe('configuration response validation', () => {
     expect(result?.at(-1)?.label).toBe('Locale');
   });
 
+  it('should copy and freeze multilingual choices without retaining the response array', () => {
+    const allowedValues = ['en', 'nl'];
+    const input = catalog().map((entry) =>
+      entry.key === 'default_locale' ? { ...entry, allowedValues, value: 'nl' } : entry,
+    );
+    const result = validateAdminConfigEntries(input);
+    const locale = result?.find((entry) => entry.key === 'default_locale');
+    expect(locale?.allowedValues).toEqual(['en', 'nl']);
+    expect(Object.isFrozen(locale?.allowedValues)).toBe(true);
+    allowedValues.push('fr');
+    expect(locale?.allowedValues).toEqual(['en', 'nl']);
+    expect(locale?.value).toBe('nl');
+  });
+
+  it('should accept a safe server-advertised locale without maintaining a client locale catalog', () => {
+    const input = catalog().map((entry) =>
+      entry.key === 'default_locale'
+        ? { ...entry, allowedValues: ['fr'], value: 'fr', defaultValue: 'fr' }
+        : entry,
+    );
+    expect(validateAdminConfigEntries(input)?.at(-1)?.value).toBe('fr');
+  });
+
   it.each([
     ['missing', catalog().slice(1)],
     ['duplicate', [...catalog().slice(1), catalog()[1]]],
@@ -160,11 +183,9 @@ describe('configuration response validation', () => {
       catalog().map((entry, index) => (index ? entry : { ...entry, applicationMode: 'automatic' })),
     ],
     [
-      'unsupported locale',
+      'unadvertised locale',
       catalog().map((entry) =>
-        entry.key === 'default_locale'
-          ? { ...entry, value: 'fr', allowedValues: ['en', 'fr'] }
-          : entry,
+        entry.key === 'default_locale' ? { ...entry, value: 'fr', allowedValues: ['en'] } : entry,
       ),
     ],
   ])('should reject the entire %s response', (_reason, input) => {

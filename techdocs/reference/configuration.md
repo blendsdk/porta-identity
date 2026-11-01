@@ -1,6 +1,6 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-10-29
+> **Last Updated**: 2026-11-01
 
 ## Overview
 
@@ -157,6 +157,13 @@ System config is managed via:
 - **API**: `GET/PUT /api/admin/config`
 - **Embedded Admin UI**: **System Configuration…** with four maximized Layout DSL tabs and one
   persistent Save/Cancel footer, using exact read/update capabilities and one changed-key batch.
+
+The SDK represents locale choices as readonly strings from the API's `allowedValues` metadata.
+The Admin UI uses those choices directly rather than keeping its own supported-language catalog.
+It requires a non-empty list of unique, terminal-safe strings of at most 32 characters, and both
+the current and default locale must appear in that list. The same validation applies to save
+readback. This accepts English-only servers and the current English/Dutch catalog without
+changing the server's authority over supported locales.
 
 Keys cannot be created, renamed or deleted through these surfaces. The API returns authoritative
 entries only: missing/corrupt/unavailable storage uses fixed `503 config_store_unavailable` with a
