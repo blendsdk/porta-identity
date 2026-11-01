@@ -1,7 +1,7 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-11-01 16:44
+> **Last Updated**: 2026-11-01 17:24
 > **Features**: 5 / 8 done
 > **CodeOps Artifact Schema**: 1
 
@@ -13,7 +13,7 @@
 
 | Feature              | Roadmap                                          | Stage Summary                                                             | Progress       | Status | Last Updated     |
 | -------------------- | ------------------------------------------------ | ------------------------------------------------------------------------- | -------------- | ------ | ---------------- |
-| _maintenance         | [→](features/_maintenance/00-roadmap.md)         | T-04 complete; T-07 Phase 5 reconciliation; Vitest advisory patched | n/a            | 🔄     | 2026-11-01 16:44 |
+| _maintenance         | [→](features/_maintenance/00-roadmap.md)         | T-04 complete; PR #214 merged; final handoff pending | n/a            | 🔄     | 2026-11-01 17:24 |
 | admin-ui             | [→](features/admin-ui/00-roadmap.md)             | Authentication gate planned; foundation and organization context complete | 86 / 90 (96%)  | 🔄     | 2026-08-29 11:46 |
 | monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration, publishing, and automated release complete                     | 75 / 75 (100%) | ✅     | 2026-09-25 15:21 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |

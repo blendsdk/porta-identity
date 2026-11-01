@@ -721,3 +721,22 @@ No unapproved documentation or architecture claim was added.
 
 The changed monitored digest reopened 3.2.4; the user approved the exact dependency-only value at
 16:54 and the ratchet is green. The PR head will be rechecked in 6.1.1 after this evidence commit.
+
+## Phase 6 — Integration, Portfolio and Final Handoff
+
+### 6.1 Integration candidate
+
+- PR #214 head `aca8d7df`; base `develop` `c4c30711`; all six required checks succeeded (the PR and
+  push runs both completed). The final ratchet on the head passes 10/10.
+- Final review `FINAL REVIEW APPROVED`; the remaining closeout-owned `b89ea7a6…` image was removed;
+  only the explicit residuals remain.
+
+### 6.2 Merge and cascade
+
+- PR #214 merged with a normal merge commit `350677eb`; neither `main` nor a release workflow was
+  touched.
+- Post-merge develop run `41325537774` on `350677eb` passed all six jobs; the ratchet selector
+  passes 10/10 on that exact revision.
+- This docs-only reconciliation commit on `develop` updates the portfolio/maintenance summary from
+  verified owners and preserves every AR-10 residual. The final handoff metadata remains 6.3.2; no
+  release or `main` change is implied.

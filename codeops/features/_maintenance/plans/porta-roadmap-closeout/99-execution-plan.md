@@ -3,8 +3,8 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
 > **Status**: Executing — resumed after pnpm graph fix (PR #213); Phases 5–6 in progress
-> **Last Updated**: 2026-11-01 17:10
-> **Progress**: 37/44 tasks (84%)
+> **Last Updated**: 2026-11-01 17:24
+> **Progress**: 42/44 tasks (95%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -186,14 +186,14 @@ and applicable 07 local gates. No blanket claim that all assurance requirements 
 
 ### 6.1 Verify the integration candidate
 
-- [ ] 6.1.1 Confirm all six CI jobs pass on the exact PR head and recheck its diff/base against the verified source; include the final ratchet run and rerun affected proof if develop changed materially or a monitored digest changed. — 03-03; ST-19.
-- [ ] 6.1.2 Confirm the selected active gates, independent reviews and cleanup have no unresolved blocker; ensure the only open items are the user-approved exclusions. — R1–10; AR-10.
+- [x] 6.1.1 Confirm all six CI jobs pass on the exact PR head and recheck its diff/base against the verified source; include the final ratchet run and rerun affected proof if develop changed materially or a monitored digest changed. — 03-03; ST-19. ✅ (completed: 2026-11-01 17:24; PR head `aca8d7df` all six checks green; base `develop` unchanged; ratchet 10/10)
+- [x] 6.1.2 Confirm the selected active gates, independent reviews and cleanup have no unresolved blocker; ensure the only open items are the user-approved exclusions. — R1–10; AR-10. ✅ (completed: 2026-11-01 17:24; final review approved; closeout image removed; residuals explicit)
 
 ### 6.2 Integrate and cascade
 
-- [ ] 6.2.1 Merge the verified PR into develop using the normal merge-commit flow; record the observed merge, without touching main or a release workflow. — AR-1/5; 03-03.
-- [ ] 6.2.2 Confirm all six post-merge develop CI jobs on the exact merge revision, run the ratchet selector on that revision, and retain the run URL. — 07 CI authoritative gate.
-- [ ] 6.2.3 On the integration branch, reconcile `codeops/00-roadmap.md` and the maintenance completion summary from verified owners; preserve all AR-10 residuals and hand-maintained counter semantics. Publish as the single docs-only commit on develop after the merge-revision CI; if protection or a ruleset requires a PR, use a second evidence-only PR and record its head/CI. — ST-17/ST-18; 03-03.
+- [x] 6.2.1 Merge the verified PR into develop using the normal merge-commit flow; record the observed merge, without touching main or a release workflow. — AR-1/5; 03-03. ✅ (completed: 2026-11-01 17:17; PR #214 merge commit `350677eb`; no `main` or release change)
+- [x] 6.2.2 Confirm all six post-merge develop CI jobs on the exact merge revision, run the ratchet selector on that revision, and retain the run URL. — 07 CI authoritative gate. ✅ (completed: 2026-11-01 17:24; run `41325537774` all six green; ratchet 10/10 on `350677eb`)
+- [x] 6.2.3 On the integration branch, reconcile `codeops/00-roadmap.md` and the maintenance completion summary from verified owners; preserve all AR-10 residuals and hand-maintained counter semantics. Publish as the single docs-only commit on develop after the merge-revision CI; if protection or a ruleset requires a PR, use a second evidence-only PR and record its head/CI. — ST-17/ST-18; 03-03. ✅ (completed: 2026-11-01 17:24; docs-only reconciliation commit on `develop`; residuals unchanged)
 
 ### 6.3 Final verification and cleanup
 
