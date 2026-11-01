@@ -553,3 +553,10 @@ last accessed 2026-11-01T13:13:44Z). The same run's production Docker job shows
 `importing cache manifest from gha:…`, repeated `CACHED` layers, and `sending cache export` for
 `porta-ci`, proving the existing production scope. The earlier Bake/raw-shell attempts exported
 nothing and remain preserved as failed attempts.
+
+Import/reuse result: the ordinary follow-up run `41310659699` on `32b1d40a` shows
+`#7 importing cache manifest from gha:11156821657715627676`, `CACHED` layers `#8`–`#31`, and
+`sending cache export`; the harness cache keys `#1` and `#2` were accessed during the run. The
+harness composition also reused the loaded image (`CACHED` layers in the `Run OIDC harness` step).
+Both `porta-ci` and `porta-harness-ci` now have real export/import/reuse evidence; no timing-only
+substitution is used.
