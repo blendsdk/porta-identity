@@ -740,3 +740,26 @@ The changed monitored digest reopened 3.2.4; the user approved the exact depende
 - This docs-only reconciliation commit on `develop` updates the portfolio/maintenance summary from
   verified owners and preserves every AR-10 residual. The final handoff metadata remains 6.3.2; no
   release or `main` change is implied.
+
+### 6.3 Final verification and handoff
+
+| Check | Result |
+| --- | --- |
+| Structure | 158/158 |
+| Final ratchet | 10/10 |
+| Metadata/link/count check | Portfolio 8/8 links, maintenance 7/7, closeout index 12/12; 44/44 tasks |
+| Cleanup | No closeout containers, networks, volumes or images; validation run `a99d02db` removed; merged branch deleted |
+| Residuals | DEF-23, M2, named campaigns and deferred Admin UI remain user-owned; default-branch graph/Vitest alerts update on the next release |
+
+The final handoff commit is this metadata/evidence commit on `develop`; its exact SHA is recorded in
+the external execution report (AR-15). No later evidence commit is made. Its final CI is observed
+after publication; if it fails, the failure is recorded and no corrective commit is made without
+explicit user authorization.
+
+## Closeout completion
+
+**44/44 tasks verified.** T-01–T-07 are complete; PR #214 merged to `develop` as `350677eb`, and
+the post-merge CI (`41325537774`) passed all six jobs. No release, `main` change or promotion was
+performed. The closeout does **not** claim that all assurance work or security certification is
+complete: DEF-23, M2, named campaigns and the deferred Admin UI remain explicitly open, and the
+default branch receives the graph/Vitest fixes on the next release.

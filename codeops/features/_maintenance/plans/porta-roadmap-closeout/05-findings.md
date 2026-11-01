@@ -87,3 +87,9 @@ reason; RV-029 fixes stale phase/total/count metadata (8 Phase 2 tasks, 44 total
 tasks, Executing index status); RV-030 removes the remaining closeout-owned `b89ea7a6…` image. All
 four are fixed. The broader 44-file diff was accepted as the plan-authorized bounded repairs
 (AR-4/11/13), not a scope violation.
+
+Final handoff: **44/44 tasks complete**; PR #214 merged to `develop` as `350677eb`; post-merge CI
+`41325537774` passed all six jobs. No release, `main` change or promotion was made. DEF-23, M2,
+named campaigns and the deferred Admin UI remain explicitly open; the default branch receives the
+graph/Vitest fixes on the next release. The final handoff commit's exact SHA and CI are recorded in
+the external execution report (AR-15).

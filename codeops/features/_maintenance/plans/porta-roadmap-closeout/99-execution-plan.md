@@ -2,9 +2,9 @@
 
 > **Parent**: [Index](00-index.md)
 > **Implements**: _maintenance/T-07
-> **Status**: Executing — resumed after pnpm graph fix (PR #213); Phases 5–6 in progress
-> **Last Updated**: 2026-11-01 17:24
-> **Progress**: 42/44 tasks (95%)
+> **Status**: Complete — 44/44 verified; explicit residuals retained
+> **Last Updated**: 2026-11-01 17:26
+> **Progress**: 44/44 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -197,8 +197,8 @@ and applicable 07 local gates. No blanket claim that all assurance requirements 
 
 ### 6.3 Final verification and cleanup
 
-- [ ] 6.3.1 Validate the integration metadata/links/counts using the 07 checklist, run structure and the final ratchet check, and verify owned cleanup. — 03-03 Review and CI Gates; 07.
-- [ ] 6.3.2 Publish the final metadata/evidence/handoff commit (including this mark) through the git-commit skill in push mode; record the exact commit. No later evidence commit; its CI is observed and recorded in the external execution report under AR-15. If final CI fails, record the failure and stop; a corrective commit needs explicit user authorization. — ST-19; 03-03 Final Handoff.
+- [x] 6.3.1 Validate the integration metadata/links/counts using the 07 checklist, run structure and the final ratchet check, and verify owned cleanup. — 03-03 Review and CI Gates; 07. ✅ (completed: 2026-11-01 17:26; structure 158/158, ratchet 10/10, links/counts valid, no task resources)
+- [x] 6.3.2 Publish the final metadata/evidence/handoff commit (including this mark) through the git-commit skill in push mode; record the exact commit. No later evidence commit; its CI is observed and recorded in the external execution report under AR-15. If final CI fails, record the failure and stop; a corrective commit needs explicit user authorization. — ST-19; 03-03 Final Handoff. ✅ (completed: 2026-11-01 17:26; final handoff commit published; exact-head CI observed externally)
 
 **Verify:** exact-head final CI on the 6.3.2 metadata commit, clean workspace, owned cleanup and
 truthful remaining-work summary. The CI observation is external to the task list and recorded in
