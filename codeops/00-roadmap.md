@@ -1,7 +1,7 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-10-27
+> **Last Updated**: 2026-11-01 09:27
 > **Features**: 0 / 0 done
 > **CodeOps Artifact Schema**: 1
 
@@ -20,7 +20,7 @@
 | sdk-server-contract-drift | [→](features/sdk-server-contract-drift/00-roadmap.md) | Contract alignment, GDPR export, and history/cursor follow-ups merged | 2 / 2 (100%) | ✅ | 2026-10-27 |
 | tenant-user-management | [→](features/tenant-user-management/00-roadmap.md) | Tenant-scoped M2M user management executed; blocked on pre-existing production-security harness recovery failure | 0 / 1 (0%) | ⛔ | 2026-10-25 |
 | test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-8 and the ST-46 correction complete     | 66 / 66 (100%) | 🔄     | 2026-09-25 01:30 |
-| user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred invitation creation merged to develop; gated release pending     | 0 / 1 (0%)     | 🔄     | 2026-09-27 00:35 |
+| user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred creation and localization released; revocation merged via PR #212 | 3 / 3 tasks (100%) | ✅     | 2026-11-01 09:27 |
 
 ## Archived
 

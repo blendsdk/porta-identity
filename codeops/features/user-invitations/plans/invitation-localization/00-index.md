@@ -90,3 +90,6 @@ The user subsequently authorized this plan's preflight corrections, report/roadm
 local commit. That authorization is recorded in the preflight report; it does not start product
 implementation. Next workflow: use the exec-plan skill when execution is authorized. Its selected
 commit/push mode and the git-commit skill govern future execution checkpoints.
+
+**Current integration (2026-11-01):** merged to `develop` via PR #210, promoted to `main` via
+PR #211 and released in v1.15.0. The historical planning authorization above is unchanged.
