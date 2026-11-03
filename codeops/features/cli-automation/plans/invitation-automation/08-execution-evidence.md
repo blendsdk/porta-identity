@@ -269,6 +269,34 @@ through production-security and packed p1-admin; outcomes are recorded only afte
 Generated harness public files have the confirmed absent baseline. Existing cached Chromium,
 isolated HOME, distinct empty npm configs and Node24 are retained. No new approval is inferred.
 
+### Clean-source claim gate results
+
+Both registered gates passed against source `63a1f68c374ed759fabcc8cb0e4e4e60b0a072d8` with
+Git clean before, between and after the runs. No tracked file changed during the gate group.
+The tracked-write freeze is now released; this evidence is recorded immediately afterwards.
+
+| Gate                | Run identity                                                                               | Outcome                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| Production-security | 31440cb4-2c5e-4f24-8e69-91065bb434c6                                                       | Exit0; exposure11/11 passed,0 product/execution failures,0 incomplete cases; other registered collectors passed |
+| Packed p1-admin     | Harness b34a5423-82bf-4ecf-836a-d83a9558c6a9; consumer2176efc8-379d-4377-9106-e8112ae85e79 | Exit0;6/6 journeys, matching archive/content identities, primaryTreeUnchanged=true, no prohibited output        |
+
+Exposure artifact: `test-harness/.assurance-results/31440cb4-2c5e-4f24-8e69-91065bb434c6/production-exposure/production-security/observation.json`,
+SHA256 `e6a01ee5e48dc754bf7b11e907487b4ab9cb262dbae6cfd1e7f82af0189fcbb5`.
+It explicitly grants no correlated decision-log credit (correlatedLogCredit=false); no broader
+observer coverage is claimed. Packed artifact:
+`test-harness/.assurance-results/2176efc8-379d-4377-9106-e8112ae85e79/compat/p1-admin/result.json`,
+SHA256 `a8e1f57c295040e5451a5735055146591193db318247680862efeb73298a8a2e`.
+Its server image is `sha256:c15dc6df6d1478a85af86ea42450ec7fe191656d8576a3d7647c09164cd8f008`.
+Packed p1-admin remains unchanged-contract adjunct evidence; the36 specifications prove new claims.
+
+Owned lifecycle teardown completed. A temporary Docker event observer recorded exact owner-labelled
+container mounts without reading environment or credentials:40 security starts and5 packed starts,
+zero capture errors. Only captured task-created residue volumes and exact run-tagged images were
+removed afterwards. Final Docker identities match30 containers/15 networks/76 volumes/92 images.
+The four public generated files were removed to restore their observed absent baseline; no user
+files or directories were removed. Packed installation/worktree cleanup is owned by the tool.
+The initial PTY observation remains retained above; neither gate nor static review erases it.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 
