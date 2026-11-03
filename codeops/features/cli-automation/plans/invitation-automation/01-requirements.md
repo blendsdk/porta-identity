@@ -35,7 +35,7 @@ are outside this plan (AR-4/12/16).
 | Resources             | Enforce 03-03 §Input bounds during actual reads, one invocation at a time, and one SDK request in flight. No new throughput/availability commitment.                                                          | AR-12/15               |
 | Security              | JSON errors cannot expose credentials, claim values, bodies, stacks, filesystem paths or submitted parser values. Validate new local inputs; retain authoritative API authz, tenant isolation and validation. | AR-12–16               |
 | Recovery              | No atomic multi-recipient guarantee. No cross-run deduplication or resume claim. Existing pending invitations can be replaced by a later invocation.                                                          | AR-12/15               |
-| Coverage              | Retain project goals:90% business logic,80% support,60% glue; use existing tools and do not change coverage configuration solely for this feature.                                                            | AR-16                  |
+| Coverage              | Retain project goals:90% business logic,80% support,60% glue; collect bounded affected-module evidence as specified in07 using invocation-only settings, without persistent coverage-policy changes.          | AR-16; PF-002          |
 | Files and credentials | Tests use isolated owned scratch space and synthetic inputs. Obtain exact current-conversation path approval before any protected file operation; this plan does not grant it.                                | AR-16; global guidance |
 
 ## Acceptance and completion

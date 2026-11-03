@@ -46,18 +46,24 @@ the cited approved requirement/specification, not the implementation.
 | ST-15 | Existing success JSON result; interactive Admin command rejects JSON                                                                                       | Success value is unchanged and no error emitted; Admin rejection still uses its original message and exit2, without new UI initialization.                                                  | R2;03-01 Integration matrix                |
 | ST-47 | Real public createCliAuth/getToken with externally mocked filesystem/HTTP: missing credentials, rejected refresh400/500, unknown refresh transport outcome | Each produces AUTHENTICATION_REQUIRED without fabricated status401 or refresh status; no body/message/credential marker leaks. No real credential file is read or created.                  | R1/3;03-01 Authentication provenance;AR-17 |
 
+ST-7/14 also retain the exact existing two-argument human handleError boundary for configuration
+and key failures; JSON alone supplies the third true argument. Frozen specifications remain intact
+(PF-004).
+
 ### Phase2 — Invitation claim input
 
-| Case  | Input / scenario                                                                                        | Expected output / behaviour                                                                                          | Source                        |
-| ----- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| ST-16 | No claim flag / empty parser input                                                                      | No claims property is added; existing invite payload/result preserved.                                               | R4;03-02 Parsing              |
-| ST-17 | Repeated `A:C:<json>` with distinct claim IDs; JSON string containing colon, object, array,0,false,null | Values are exact JSON.parse values in flag order, first two UUID separators only; one unchanged SDK invitation call. | R4;03-02 Parsing              |
-| ST-18 | Missing separators, malformed UUIDs, empty or invalid JSON; marker inside malformed JSON                | Local validation exit3 before client/SDK invocation; no raw value in JSON errors; no invented HTTP status.           | R3/4;03-02 Parsing            |
-| ST-19 | Same application/claim pair repeated, including UUID case variants                                      | Reject the entire input before any SDK call, including identical repeated values.                                    | R4;03-02 Parsing              |
-| ST-20 | JSON number `1e309`, directly or nested                                                                 | Local validation failure; no null coercion or SDK call.                                                              | R4;03-02 Parsing              |
-| ST-21 | Claim object contains `__proto__` and nested configuration-like properties                              | Retain nested JSON data; no prototype/argv/auth mutation and no value logged.                                        | R3/4;03-02 Data and authority |
-| ST-22 | Existing roles, locale and message plus valid claims                                                    | Exactly the existing shared fields plus the ordered claims; no extra catalogue HTTP calls.                           | R4;03-02 Integration          |
-| ST-23 | Single invite acknowledges sent/failed/unknown delivery                                                 | Existing deferred result shape, stdout presentation and single-command exit behaviour unchanged.                     | R2/4;03-02 Command            |
+| Case  | Input / scenario                                                                                                           | Expected output / behaviour                                                                                                                                                                                                                                                                              | Source                                        |
+| ----- | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| ST-16 | No claim flag / empty parser input                                                                                         | No claims property is added; existing invite payload/result preserved.                                                                                                                                                                                                                                   | R4;03-02 Parsing                              |
+| ST-17 | Repeated `A:C:<json>` with distinct claim IDs; JSON string containing colon, object, array,0,false,null                    | Values are exact JSON.parse values in flag order, first two UUID separators only; one unchanged SDK invitation call.                                                                                                                                                                                     | R4;03-02 Parsing                              |
+| ST-18 | Missing separators, malformed UUIDs, empty or invalid JSON; marker inside malformed JSON                                   | Local validation exit3 before client/SDK invocation; no raw value in JSON errors; no invented HTTP status.                                                                                                                                                                                               | R3/4;03-02 Parsing                            |
+| ST-19 | Same application/claim pair repeated, including UUID case variants                                                         | Reject the entire input before any SDK call, including identical repeated values.                                                                                                                                                                                                                        | R4;03-02 Parsing                              |
+| ST-20 | JSON number `1e309`, directly or nested                                                                                    | Local validation failure; no null coercion or SDK call.                                                                                                                                                                                                                                                  | R4;03-02 Parsing                              |
+| ST-21 | Claim object contains `__proto__` and nested configuration-like properties                                                 | Retain nested JSON data; no prototype/argv/auth mutation and no value logged.                                                                                                                                                                                                                            | R3/4;03-02 Data and authority                 |
+| ST-22 | Existing roles, locale and message plus valid claims                                                                       | Exactly the existing shared fields plus the ordered claims; no extra catalogue HTTP calls.                                                                                                                                                                                                               | R4;03-02 Integration                          |
+| ST-23 | Single invite acknowledges sent/failed/unknown delivery                                                                    | Existing deferred result shape, stdout presentation and single-command exit behaviour unchanged.                                                                                                                                                                                                         | R2/4;03-02 Command                            |
+| ST-49 | Actual single/bulk parser with bare `--claim`, valid assignment followed by bare `--claim`, `--claim ''`, and `--no-claim` | Missing values produce ARGUMENT_ERROR/exit1; explicit empty or non-string parsed assignments produce local VALIDATION_ERROR/exit3. Zero client/invite calls; no occurrence silently disappears. Direct helper undefined/[] still omits claims.                                                           | R3/4/6;03-02 Command/Parsing; PF-005          |
+| ST-50 | A finite nested claim parses, but the complete invitation input fails normal runtime JSON.stringify; single and bulk paths | Local VALIDATION_ERROR/exit3 before createClient or any SDK invocation; bulk emits no recipient report. Qualify the counterexample under each verification runtime, including wrapper nesting, rather than freeze a universal depth. Finite-number traversal must not throw an unclassified stack error. | R4/6;03-02 Parsing;03-03 Input bounds; PF-006 |
 
 ### Phase3 — Bulk email-file invitation
 
@@ -88,6 +94,11 @@ the cited approved requirement/specification, not the implementation.
 | ST-46 | Valid file whose literal filename contains spaces and shell metacharacters, under owned scratch root                                       | File is read as data; no shell invocation, side file or marker command execution.                                                                                                         | R6;03-03 Input bounds                        |
 | ST-48 | Real public SDK users.invite with mocked external credential/HTTP boundary fails lazily from missing credentials or failed/unknown refresh | One SDK attempt/current unknown row, remaining unattempted, authentication stop/exit2, no status. Test knows zero invitation HTTP calls; runner does not invent that knowledge or replay. | R7/8/10;03-03 Dispatch / Result schema;AR-17 |
 
+Extend ST-29 on platforms supporting FIFOs with an owned FIFO having no writer. Assert bounded
+completion, local exit3, zero client calls and descriptor/fixture cleanup. Exercise descriptor-level
+non-regular rejection, not only directory/path-stat failure; qualify nonblocking open on that
+platform without claiming unsupported flags are portable guarantees (PF-003).
+
 ## Test files
 
 All paths below are relative to packages/cli. Case ranges are references, not duplicated oracles.
@@ -98,10 +109,10 @@ All paths below are relative to packages/cli. Case ranges are references, not du
 | `tests/json-errors-entry.spec.test.ts`             | ST-5/6/15; real parser/executable failures                |
 | `tests/security/json-error-redaction.spec.test.ts` | ST-4/47; malicious marker variants for ST-6/18/45         |
 | `tests/commands/json-errors-legacy.spec.test.ts`   | ST-8–14                                                   |
-| `tests/commands/user-invite-claims.spec.test.ts`   | ST-16–23                                                  |
-| `tests/bulk-invite-input.spec.test.ts`             | ST-24–30/40/46                                            |
+| `tests/commands/user-invite-claims.spec.test.ts`   | ST-16–23/49/50, single-invite path                        |
+| `tests/bulk-invite-input.spec.test.ts`             | ST-24–30/40/46/50, bulk preflight and owned FIFO          |
 | `tests/bulk-invite.spec.test.ts`                   | ST-31–38/42–44/48                                         |
-| `tests/commands/bulk-invite.spec.test.ts`          | ST-39/41/45 and real yargs command registration           |
+| `tests/commands/bulk-invite.spec.test.ts`          | ST-39/41/45/49 and real yargs command registration        |
 | `tests/json-errors.impl.test.ts`                   | Internal classifier/format integration edges, after green |
 | `tests/invitation-claims.impl.test.ts`             | Parser edge internals, after green                        |
 | `tests/bulk-invite.impl.test.ts`                   | File-handle/loop/count implementation edges, after green  |
@@ -127,6 +138,70 @@ compatibility. No new package installation, config-policy change or release work
 | Public documentation changes                         | `pnpm docs:build`                                                                                                                                                                                                      |
 | Plan-only validation                                 | Direct Markdown formatting/link/AR/ST/task checks and `pnpm test:structure`; no services required                                                                                                                      |
 | CI authoritative merge gate                          | `pnpm verify` plus existing required jobs                                                                                                                                                                              |
+
+### Bounded coverage evidence (PF-002)
+
+The ordinary CLI verify command does not collect coverage and its configured includes omit these
+modules. After each phase is green, use existing Vitest/V8 with invocation-only includes and an
+owned external reports directory. Do not edit vitest.config.ts, change existing thresholds or
+add an assurance campaign. Record affected-file line coverage against the existing goals:
+
+| Classification | Goal | Feature modules                                                           |
+| -------------- | ---- | ------------------------------------------------------------------------- |
+| Business logic | 90%  | `src/parsers.ts`, `src/bulk-invite.ts`                                    |
+| Support        | 80%  | `src/error-format.ts`, `src/error-handler.ts`, `src/bulk-invite-input.ts` |
+| Glue           | 60%  | `src/cli.ts`, `src/index.ts`, each changed `src/commands/*.ts` module     |
+
+Use only existing/new modules present in that phase. CLI include options replace the configured
+collection set, so enumerate every affected file for that invocation and verify that its path
+appears in coverage-summary.json. Missing collection is not evidence of sufficient coverage.
+Use the complete CLI test selection for phase evidence; a narrow selector only qualifies flags.
+The existing parser suite qualified these flags during preflight, without policy changes:
+
+```bash
+pnpm --filter @portaidentity/cli exec vitest run --coverage.enabled \
+  --coverage.include src/parsers.ts --coverage.include src/error-format.ts \
+  --coverage.reporter text --coverage.reporter json-summary \
+  --coverage.reportsDirectory "$CODEOPS_TMPDIR/<owned-phase-coverage>"
+```
+
+Replace the two example include options with the exact phase file list. Retain existing configured
+thresholds, inspect each recorded percentage rather than infer it from command success, and close
+any goal shortfall before phase completion without weakening tests or thresholds. Keep generated
+coverage output only in owned scratch space and remove it after durable non-sensitive metrics
+are recorded.
+
+### Clean-source assurance sequence (PF-001)
+
+1. Finish source, specification/implementation tests, documentation and affected test inventory.
+   Run changed selection, CLI verify, structure, bounded coverage, applicable pentest and docs
+   checks; complete independent review/audit of the implemented change. Resolve findings first.
+2. Record completed local tasks and outcomes, leaving clean-provenance security/packed tasks
+   unchecked. Create an **unpublished local source commit** using git-commit without push. It is
+   not a completed phase or assurance checkpoint. Never commit intended-red or known-failing tests.
+3. Confirm the tree is clean. Run production-security assurance and packed compatibility against
+   that committed source without tracked-file edits between or during the runs. Collect temporary
+   evidence outside the repository and preserve normal harness-owned artifacts/cleanup. Do not
+   update task checkboxes while a gate requires unchanged source provenance.
+4. After both runs end and owned cleanup is checked, immediately record their exact source commit,
+   artifact identities, exit taxonomy and authorized dispositions. Only then mark their tasks
+   implemented/verified as justified. A gate task is not complete before its evidence is recorded.
+   Accepted observer gaps remain incomplete, not passes; new failures/gaps still require rulings.
+5. Verify the evidence/documentation changes and required checkpoint checks, then commit that
+   evidence and push both commits only when all required gates/dispositions permit. If product
+   source changes after a gate, make a new locally verified source commit and rerun the affected
+   gates; old evidence does not qualify the changed source. Never test the previous revision merely
+   to satisfy cleanliness or relax provenance checks.
+
+This explicitly separates a verified local source commit from phase completion, preserving
+auto-commit's no-failing-publication rule and immediate updates after each genuinely completed task.
+The source-checkpoint and following assurance tasks form one narrowly scoped provenance group.
+Record their pending state before the source commit. Defer tracked checkbox/evidence writes from
+that commit until both gate runs end; use owned temporary continuity notes for observations during
+the group. This is an explicit exception to per-task tracked writes during that interval, not an
+exception to tests, review, truthful task verification or provenance. Do not write a second
+authoritative task ledger. On interruption, the committed tasks remain pending and must be checked
+against the actual source revision and available evidence before resuming.
 
 The three security phases cover new error exposure, claim input and rate-aware mutation handling;
 unchanged product security assertions remain mandatory. A registered harness result with accepted

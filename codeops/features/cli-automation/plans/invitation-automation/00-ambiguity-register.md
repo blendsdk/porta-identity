@@ -1,7 +1,7 @@
 # Ambiguity Register: CLI Invitation Automation
 
 > **Status**: ✅ GATE PASSED — all 17 items resolved
-> **Last Updated**: 2026-11-03 15:52
+> **Last Updated**: 2026-11-03 16:35
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1
 > **Root invocation ID**: cli-invitation-automation-20261103-1515
@@ -242,3 +242,15 @@ Planning validation passed on 2026-11-03:
 No product or harness execution, security-result acceptance, release, deployment or issue mutation
 is claimed by these planning checks. No services or containers were started. Before any checkpoint,
 the final staged diff and exact allowed-file set are checked through the git-commit skill.
+
+## Formal preflight follow-up
+
+The later user invocation explicitly activated auto-design and auto-commit for formal preflight
+and approved bounded technical fixes. [00-preflight-report](00-preflight-report.md) owns its
+findings, delegated provenance and current verdict under root invocation
+`invitation-preflight-20261103`. PF-001–006 refine mechanisms from AR-13–16: clean-source checkpoint
+sequencing, bounded coverage evidence, nonblocking descriptor validation, frozen human-call shape,
+claim occurrence cardinality and complete-request encoding preflight. Affected specifications,
+ST cases and execution tasks were revised together and require the report's rescan before use.
+AR-12's approved product contract, AR-17's authentication observation and the historical authoring
+evidence above remain unchanged; preflight does not turn that history into product test evidence.

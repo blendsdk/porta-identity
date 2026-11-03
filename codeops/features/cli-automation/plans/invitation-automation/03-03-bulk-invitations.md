@@ -25,6 +25,14 @@ the descriptor in finally. Reject directories, pipes/devices, unreadable files a
 with bounded local errors, never paths or file contents in JSON errors. An explicit local file
 path is not a server-side upload or a new filesystem authority.
 
+On platforms providing O_NONBLOCK, open read-only with that flag, then immediately fstat the
+owned descriptor and reject anything that is not a regular file before reading. A path precheck
+may reject ordinary non-regular inputs earlier, but does not replace descriptor validation or
+close the check/open race. Nonblocking open prevents a no-writer FIFO from hanging before fstat.
+Qualify the platform's actual flag/open behaviour; do not claim POSIX flags give guarantees on
+unsupported platforms. Keep this a focused file-reader mechanism, not a filesystem framework
+(PF-003).
+
 Enforce at most1,048,576 raw bytes during the actual descriptor read; a preceding stat alone
 does not suffice. Decode UTF-8 strictly. Remove one leading U+FEFF, accept LF/CRLF, split into
 physical source lines, trim surrounding whitespace and ignore empty lines. An interior BOM or
@@ -49,6 +57,14 @@ Locale trimming/empty omission follows the single-invite convention. Server owne
 locale resolution and permission checks remain authoritative; local validation promises no
 atomic server preflight or multi-recipient transaction. Any local preflight failure exits3,
 produces no recipient report and performs zero SDK calls.
+
+Require a value per claim occurrence and validate runtime element types as specified in03-02.
+Before createClient, construct every complete plain invitation request and qualify its ordinary
+JSON.stringify encodability, including all shared fields and recipient-specific wrapper nesting.
+Discard encoded strings and dispatch the same prepared request objects. Encoding failure is a
+bounded local validation error/exit3 with zero SDK invocations, not an unknown recipient outcome.
+Use an explicit worklist for finite-number validation. No fixed depth policy, persistent encoded
+copy or replacement SDK serializer is introduced (PF-005/006).
 
 ## Dispatch
 

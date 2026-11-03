@@ -63,6 +63,11 @@ error before exiting; false uses the existing code path. A small `writeJsonError
 without terminating or changing exitCode for direct-return/report paths. Do not monkeypatch
 console/stderr or introduce process-global mutable output mode (AR-13).
 
+Caller integration must retain `handleError(error, argv.verbose)` in human/false mode and use
+`handleError(error, argv.verbose, true)` only in JSON mode. Do not pass an extra false argument:
+existing frozen configuration/key specifications assert the exact two-argument human boundary.
+Preserve those specifications rather than edit their expectations (PF-004).
+
 ## Parser boundary
 
 Extract only CLI construction into `src/cli.ts` so tests can instantiate the real parser without
@@ -82,7 +87,7 @@ handlers always pass their own parsed `argv.json`; the preparse is only for earl
 
 | Existing paths                                                                                                                      | Required change                                                                                                                               |
 | ----------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Every conventional command `handleError(err, argv.verbose)`                                                                         | Pass the explicit parsed JSON flag; preserve the old false/default signature for existing callers/tests.                                      |
+| Every conventional command `handleError(err, argv.verbose)`                                                                         | Keep the exact two-argument call for human/false mode; supply a third true argument only when parsed argv selects JSON.                       |
 | `user`, `user-role`, `user-claim`; `org`; `app`, `app-role`, `app-permission`, `app-claim`, `app-module`; `client`, `client-secret` | Cover every handler, not just invitation paths.                                                                                               |
 | `keys`, `sessions`, `audit`, `stats`, `config`, `bulk`, `exports`, `export`, `import`, `login`, `health`                            | Apply the same handler integration.                                                                                                           |
 | `whoami` missing credentials                                                                                                        | JSON AUTHENTICATION_REQUIRED; retain exit1 and no stdout.                                                                                     |

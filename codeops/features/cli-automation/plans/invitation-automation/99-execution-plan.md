@@ -3,9 +3,9 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
-> **Last Updated**: 2026-11-03 15:52
+> **Last Updated**: 2026-11-03 16:35
 > **Progress**: 0/49 tasks (0%)
-> **Commit mode**: --auto-commit requested; verified green checkpoints only
+> **Commit mode**: --auto-commit requested; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
 ## Implementation Phases
@@ -27,11 +27,21 @@ groups rather than hidden in one refactor (AR-16).
 > Specification expectations are immutable. An intended-red task's evidence proves red only,
 > never a green product or commit. No existing failure may be skipped or retried away.
 
-Execution uses exec-plan and the git-commit skill in push mode, not raw Git instructions in this
-document. Auto-commit applies only when all required checkpoint checks are green. Keep intended
-red work uncommitted until a green checkpoint; if execution-mode requirements conflict, obtain a
-bounded ruling before proceeding rather than publish failing tests or weaken gates. Each phase
-must finish independent review/security audit and owned-resource cleanup before phase completion.
+The only tracked-update timing exception is07's source-checkpoint/assurance provenance group:
+pre-record its pending state, freeze tracked writes from the local source commit through both
+gate runs, then immediately record the evidence and justified task states. This explicit PF-001
+ruling prevents task bookkeeping from invalidating the source being tested. No verification or
+push gate is waived.
+
+Execution uses exec-plan and the git-commit skill, not raw Git instructions in this document.
+Follow07's clean-source sequence: finish applicable local checks/review, commit source locally
+without push while assurance tasks remain pending, then run security and packed gates against
+that clean source without tracked edits between them. Record outcomes only after those runs end;
+verify and commit evidence, and push only after all required gates and dispositions permit.
+The local source commit is not phase completion or completed assurance. Keep intended-red and
+known-failing tests uncommitted; never relax provenance or publish failures. This bounded PF-001
+sequencing ruling governs the source/evidence split in auto-commit mode, without waiving a gate.
+Each phase must finish independent review/security audit and owned cleanup before completion.
 Credential/file approvals and any real service creation are checked at execution time, not granted
 by this plan. No merge, issue mutation, publishing or deployment is authorized (AR-5/16).
 
@@ -69,16 +79,16 @@ existing command tests plus the phase1 selector. Do not enlarge scope to fix unr
 - [ ] 1.2.10 Integrate handlers/structured rejection summary — `packages/cli/src/commands/exports.ts`, `export.ts`, `import.ts`; verify ST-12/14 and portability tests.
 - [ ] 1.2.11 Integrate login/health/missing-credential failures — `packages/cli/src/commands/login.ts`, `health.ts`, `whoami.ts`; verify ST-8/13 and existing auth/health tests.
 - [ ] 1.2.12 Add safe JSON diagnostic failure summary — `packages/cli/src/commands/doctor.ts`; verify ST-12 and unchanged report tests.
-- [ ] 1.2.13 Audit03-01's complete integration matrix and run phase1 green; update directly affected implementation-test call signatures without changing immutable expectations.
+- [ ] 1.2.13 Audit03-01's complete integration matrix and run phase1 green; retain exact two-argument human calls under PF-004, changing only directly affected implementation-test signatures, never immutable expectations.
 
 ### Session1.3 — Implementation tests, documentation and hardening
 
 - [ ] 1.3.1 Add internal classifier/metadata/mode tests after green — `packages/cli/tests/json-errors.impl.test.ts`; verify03-01 and07.
 - [ ] 1.3.2 Document the public error/legacy-exit contract — `docs/cli/overview.md`, `packages/cli/README.md`, relevant `techdocs/` reference; verify links and07 docs build.
-- [ ] 1.3.3 Reconcile actual owned CLI test-file inventory — `repo-tests/monorepo/server-package.spec.test.mjs`; run07 checkpoint commands without weakening structure assertions.
-- [ ] 1.3.4 Run07 phase1 security gates with registered production-security profile; record exact outcomes and owned cleanup.
-- [ ] 1.3.5 Complete independent correctness/API review and dedicated security audit; resolve findings through the authorized ruling gate and record phase1 evidence.
-- [ ] 1.3.6 Verify clean green source provenance, run07 packed adjunct with owned cleanup, and checkpoint through git-commit skill in push mode; update this plan immediately.
+- [ ] 1.3.3 Reconcile actual owned CLI test-file inventory — `repo-tests/monorepo/server-package.spec.test.mjs`; run07 local checkpoint checks, bounded coverage and pentest without weakening assertions.
+- [ ] 1.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings, and create07's unpublished locally verified source checkpoint; leave clean-provenance gates pending.
+- [ ] 1.3.5 Run phase1 registered production-security and packed p1-admin gates against the same clean committed source without tracked edits between runs; preserve temporary observations until recording evidence.
+- [ ] 1.3.6 Immediately record gate evidence, exact source identities, authorized dispositions and cleanup; run07 checkpoint checks, then evidence-commit and push via git-commit only after all gates permit.
 - [ ] 1.3.7 Validate phase1 docs/evidence links, exact resource restoration and all relevant existing CLI tests; record remaining accepted harness limitations without claiming a full pass.
 - [ ] 1.3.8 Re-evaluate phase2 scope/inputs and minimum-sufficient design against AR-12 before continuing; confirm no unauthorized dependency or support machinery entered phase1.
 
@@ -94,24 +104,24 @@ checkpoint, security, docs and packed selectors; full root verification belongs 
 
 ### Session2.1 — Specifications and red
 
-- [ ] 2.1.1 [spec-author] Write claim grammar/payload specifications ST-16–23 — `packages/cli/tests/commands/user-invite-claims.spec.test.ts`; verify from03-02, not implementation.
+- [ ] 2.1.1 [spec-author] Write claim grammar/payload/cardinality/encoding specifications ST-16–23/49/50 — `packages/cli/tests/commands/user-invite-claims.spec.test.ts`; verify from03-02, not implementation.
 - [ ] 2.1.2 Run07 phase2 selector, record intended red failures and existing no-claim passes before implementation.
 
 ### Session2.2 — Implementation and green
 
-- [ ] 2.2.1 Implement parseClaimAssignments and documented safe typing — `packages/cli/src/parsers.ts`; verify ST-17–21 and existing role parser tests.
-- [ ] 2.2.2 Register/forward the repeatable claim option before client creation — `packages/cli/src/commands/user.ts`; verify ST-16–23 green.
+- [ ] 2.2.1 Implement parseClaimAssignments, runtime element guards, worklist finite-number validation and complete-invitation encodability helper with safe typing — `packages/cli/src/parsers.ts`; verify ST-17–21/49/50 and unchanged role parser tests.
+- [ ] 2.2.2 Register repeatable claims with requiresArg and prepare/check the complete invitation before client creation — `packages/cli/src/commands/user.ts`; verify ST-16–23/49/50 green.
 
 ### Session2.3 — Implementation tests, documentation and hardening
 
 - [ ] 2.3.1 Add parser internal edge tests after green — `packages/cli/tests/invitation-claims.impl.test.ts`; run07 phase2 selector.
 - [ ] 2.3.2 Document claim quoting, repetition and deferred result — `docs/cli/users.md`, `packages/cli/README.md`; verify help, links and docs build.
-- [ ] 2.3.3 Reconcile actual new test inventory and run07 checkpoint commands — `repo-tests/monorepo/server-package.spec.test.mjs`.
-- [ ] 2.3.4 Run07 phase2 security gates, independent correctness/API review and dedicated security audit; resolve findings and record exact evidence/cleanup.
-- [ ] 2.3.5 Run07 packed adjunct from a clean green checkpoint, preserve provenance and cleanup, then checkpoint through git-commit skill in push mode.
+- [ ] 2.3.3 Reconcile actual new test inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`.
+- [ ] 2.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint with assurance tasks pending.
+- [ ] 2.3.5 Run phase2 production-security and packed p1-admin gates without tracked edits between runs; immediately record outcomes/source/cleanup/dispositions afterwards, verify and evidence-commit/push only after all gates permit.
 - [ ] 2.3.6 Verify phase2 evidence/docs and re-evaluate phase3 against AR-12; no claim-definition catalogue or server policy change is permitted.
 
-**Deliverable:** R4 and ST-16–23. **Verify:**07 phase2, checkpoint, security, docs and packed selectors.
+**Deliverable:** R4 and ST-16–23/49/50. **Verify:**07 phase2, checkpoint, coverage, security, docs and packed selectors.
 
 ## Phase3: Sequential bulk invitation
 
@@ -122,27 +132,27 @@ checkpoint, security, docs and packed selectors; full root verification belongs 
 
 ### Session3.1 — Specifications and red
 
-- [ ] 3.1.1 [spec-author] Write file/normalization specifications ST-24–30/40/46 — `packages/cli/tests/bulk-invite-input.spec.test.ts`; verify from03-03.
+- [ ] 3.1.1 [spec-author] Write file/normalization/nonblocking-FIFO/encoding specifications ST-24–30/40/46/50 — `packages/cli/tests/bulk-invite-input.spec.test.ts`; verify from03-03.
 - [ ] 3.1.2 [spec-author] Write sequential/failure/auth-provenance specifications ST-31–38/42–44/48 — `packages/cli/tests/bulk-invite.spec.test.ts`; keep SDK/HTTP/filesystem as external boundaries.
-- [ ] 3.1.3 [spec-author] Write command/report specifications ST-39/41/45 — `packages/cli/tests/commands/bulk-invite.spec.test.ts`; verify exact output/exit contract.
+- [ ] 3.1.3 [spec-author] Write command/report/cardinality specifications ST-39/41/45/49 — `packages/cli/tests/commands/bulk-invite.spec.test.ts`; verify exact output/exit contract.
 - [ ] 3.1.4 Run07 phase3 selector and record intended red before implementing any bulk code.
 
 ### Session3.2 — Implementation and green
 
-- [ ] 3.2.1 Implement bounded descriptor read, pure parsing and shared preflight — `packages/cli/src/bulk-invite-input.ts`; verify ST-24–30/40/46.
+- [ ] 3.2.1 Implement nonblocking regular-descriptor validation, bounded read, pure parsing and full prepared-request encoding preflight — `packages/cli/src/bulk-invite-input.ts`, reusing phase2 parser helpers; verify ST-24–30/40/46/50.
 - [ ] 3.2.2 Implement the direct sequential runner, safe discriminated results and counts — `packages/cli/src/bulk-invite.ts`; verify ST-31–44.
-- [ ] 3.2.3 Register/format the command and safe aggregate error — `packages/cli/src/commands/bulk-invite.ts`, `packages/cli/src/commands/bulk.ts`; verify all phase3 specs green without changing bulk execute.
+- [ ] 3.2.3 Register requiresArg claim cardinality, format the command and safe aggregate error — `packages/cli/src/commands/bulk-invite.ts`, `packages/cli/src/commands/bulk.ts`; verify all phase3 specs including ST-49 green without changing bulk execute.
 
 ### Session3.3 — Implementation tests, documentation and hardening
 
 - [ ] 3.3.1 Add bounded-read/cleanup/loop implementation edges after green — `packages/cli/tests/bulk-invite.impl.test.ts`; verify07 selectors.
 - [ ] 3.3.2 Document file, output, delivery, stop and repeat-run behaviour — `docs/cli/users.md`, `packages/cli/README.md`, relevant `techdocs/` reference; verify help/links/docs build.
-- [ ] 3.3.3 Reconcile actual inventory and run07 checkpoint checks — `repo-tests/monorepo/server-package.spec.test.mjs`; preserve all existing assertions.
-- [ ] 3.3.4 Run07 phase3 security gates, independent correctness/API/concurrency review and dedicated security audit; resolve findings and record exact cleanup/evidence.
-- [ ] 3.3.5 Run07 packed adjunct from clean green provenance, restore owned resources and checkpoint through git-commit skill in push mode.
-- [ ] 3.3.6 Complete R1–R12/ST-1–48 evidence, technical-doc review, task/feature-roadmap status and integration-time portfolio handoff; record CI requirements and no merge/release claim.
+- [ ] 3.3.3 Reconcile actual inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`; preserve all existing assertions.
+- [ ] 3.3.4 Complete independent correctness/API/concurrency review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint; leave assurance pending.
+- [ ] 3.3.5 Run phase3 production-security and packed p1-admin gates without tracked edits between runs; immediately record source/outcomes/dispositions/cleanup afterwards, verify and evidence-commit/push only after all gates permit.
+- [ ] 3.3.6 Complete R1–R12/ST-1–50 evidence, technical-doc review, task/feature-roadmap status and integration-time portfolio handoff; record CI requirements and no merge/release claim.
 
-**Deliverable:** R5–R12 and ST-24–46/48. **Verify:**07 phase3, checkpoint, security, docs and packed selectors.
+**Deliverable:** R5–R12 and ST-24–46/48–50. **Verify:**07 phase3, checkpoint, coverage, security, docs and packed selectors.
 
 ## Success criteria
 

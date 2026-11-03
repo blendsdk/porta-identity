@@ -1,7 +1,7 @@
 # CLI Invitation Automation Implementation Plan
 
 > **Feature**: CLI-wide JSON errors, invitation claim input and bulk email-file invitations
-> **Status**: Planning Complete — implementation not started
+> **Status**: Preflight Passed — implementation not started
 > **Created**: 2026-11-03
 > **Implements**: cli-automation/T-01
 > **CodeOps Artifact Schema**: 1
@@ -33,16 +33,17 @@ gates were considered and rejected. **Approved complexity:** None.
 
 ## Document Index
 
-| Document                                              | Owner                                              |
-| ----------------------------------------------------- | -------------------------------------------------- |
-| [00-ambiguity-register](00-ambiguity-register.md)     | User/delegated decisions and semantic gate         |
-| [01-requirements](01-requirements.md)                 | Scope and acceptance requirements                  |
-| [02-current-state](02-current-state.md)               | Observed source baseline and risks                 |
-| [03-01-json-errors](03-01-json-errors.md)             | Error schema and CLI-wide integration              |
-| [03-02-invitation-claims](03-02-invitation-claims.md) | Claim grammar and single-invite wiring             |
-| [03-03-bulk-invitations](03-03-bulk-invitations.md)   | File, dispatch and result contract                 |
-| [07-testing-strategy](07-testing-strategy.md)         | Immutable ST cases and verification commands       |
-| [99-execution-plan](99-execution-plan.md)             | Ordered, initially incomplete implementation tasks |
+| Document                                              | Owner                                                            |
+| ----------------------------------------------------- | ---------------------------------------------------------------- |
+| [00-ambiguity-register](00-ambiguity-register.md)     | User/delegated decisions and semantic gate                       |
+| [00-preflight-report](00-preflight-report.md)         | Formal audit findings, resolutions and reviewed-content identity |
+| [01-requirements](01-requirements.md)                 | Scope and acceptance requirements                                |
+| [02-current-state](02-current-state.md)               | Observed source baseline and risks                               |
+| [03-01-json-errors](03-01-json-errors.md)             | Error schema and CLI-wide integration                            |
+| [03-02-invitation-claims](03-02-invitation-claims.md) | Claim grammar and single-invite wiring                           |
+| [03-03-bulk-invitations](03-03-bulk-invitations.md)   | File, dispatch and result contract                               |
+| [07-testing-strategy](07-testing-strategy.md)         | Immutable ST cases and verification commands                     |
+| [99-execution-plan](99-execution-plan.md)             | Ordered, initially incomplete implementation tasks               |
 
 ## Quick Reference
 
@@ -64,5 +65,5 @@ coverage in 07. This negative specialist result never waives those gates (AR-16)
 
 [Feature roadmap](../../00-roadmap.md). Its portfolio cascade is intentionally deferred until
 integration into `develop`; this branch must not edit sibling roadmap state (AR-10/16).
-Before a later preflight or execution session, `/compact` is useful because this planning chain
+Before an execution session, `/compact` is useful because this planning chain
 contains substantial historical release and branch-cleanup context.
