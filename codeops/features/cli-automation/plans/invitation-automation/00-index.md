@@ -1,7 +1,7 @@
 # CLI Invitation Automation Implementation Plan
 
 > **Feature**: CLI-wide JSON errors, invitation claim input and bulk email-file invitations
-> **Status**: Executing — JSON-error source and clean-source gates verified; claims/bulk not started
+> **Status**: Executing — JSON errors verified; claim local gates verified, clean-source assurance pending; bulk not started
 > **Created**: 2026-11-03
 > **Implements**: cli-automation/T-01
 > **CodeOps Artifact Schema**: 1

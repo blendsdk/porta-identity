@@ -184,3 +184,96 @@ The two task-owned ignored assurance result directories were removed after their
 source/run identities and hashes were recorded here. No other result directory was touched.
 Public generated files now have an observed absent baseline under the explicit user disposition;
 subsequent runs will preserve that state.
+
+Phase1 closing progress commit `387bea5fba9ec2b87213c54247662604e16e91d6` was verified and pushed.
+CI run41715631512 on source/evidence checkpoint0ea671c2 passed all6 required jobs: full Verify
+Monorepo, UI Tests, OIDC Harness, Public Documentation, Production Docker Build and Production
+Dependency Audit. This is evidence for that checkpoint, not a claim about unimplemented later phases.
+
+## Phase2
+
+Independent author `ses_e5ccc1a38ffejc6TbS5VS3HzsX` delivered36 claim specification cases
+without reading the parser/user implementation. Contract review confirms real yargs, formatter
+and serialization; only external client/HTTP boundaries are mocked. A runtime-qualified nesting
+counterexample avoids imposing a fixed depth policy. Parent Node24 phase2 selector confirmed
+31 failed/39 passed:34 existing parser cases plus5 new compatibility cases passed. Failures cover
+missing helper exports, ordered claim dispatch, safe atomic rejection, empty/negated values,
+complete-request encoding and claims on deferred outcomes. Bare/trailing flags already fail as
+unknown arguments before registration; these green cases alone do not prove new cardinality.
+No claim implementation existed during this red run. Intended-red changes remain uncommitted.
+
+### Claim implementation and local checks
+
+The parser uses the existing UUID shape, first-two-colon splitting, explicit records and a finite
+number worklist. It rejects duplicate case-insensitive application/definition pairs before client
+creation. The complete prepared request is checked with ordinary JSON.stringify and then passed
+unchanged to the existing SDK. No fixed depth rule, custom serializer or claim catalogue was added.
+
+The first green selector had126 passes and one human-mode failure: an intercepted process.exit
+was caught by yargs and triggered a second exit. Only new local invitation rejections now print
+their bounded human diagnostic, set exitCode3 and return normally; existing shared-handler calls
+and legacy role error paths are unchanged. The immutable specifications were not edited. The
+corrected claim/parser/user selector passed127/127. Post-green internal edge tests add14 cases;
+the focused claim/parser/internal selector passed84/84.
+
+Full CLI verify passed113 files/1,657 tests, lint, typecheck and build; structure158/158 passed.
+The actual inventory rose111→113 for the independent specification and internal test files.
+Public docs build and actual user-invite help checks passed. The maintainer architecture update
+describes preparation only; no existing ADR decision or server authority was changed.
+
+An overlapping full-test coverage invocation failed the unchanged Admin PTY SIGINT restoration
+case (exit130, missing alternate-screen restoration sequence);1,656 other cases passed. The
+ordinary verification's same113-file selection passed that case. The PTY suite compiles the same
+dist tree at startup, and two full runs overlapped. This supports an interference investigation,
+not a proven root-cause claim. No test was changed or excluded. A controlled full coverage run
+without overlapping CLI builds is pending; the first failure is retained as evidence.
+
+The controlled full coverage invocation subsequently passed all1,657 tests with no excluded cases.
+Both affected paths are present in coverage-summary.json: parsers.ts100% (business-logic goal90%),
+user.ts93.6% (glue goal60%). No coverage configuration or threshold changed. The passing controlled
+run closes the current coverage gate but does not erase the earlier PTY observation or establish
+its precise root cause. Future complete CLI checks are serialized to avoid overlapping dist builds.
+
+Independent correctness/API and dedicated security reviewers are examining the complete11-file
+phase diff from baseline3c7a722f to scoped tree00e941794a3e82dffdb0860b6b2b505eb901a734. The
+temporary index was removed and the real index left unchanged; no protected file was indexed.
+Current source uses only the approved parser/command extension, with unchanged SDK/server and
+dependencies. Generated harness files were confirmed absent before the next live gate group.
+
+Correctness/API reviewer `ses_e5cbcb9b4ffeG6aklzTyu7OJw8` returned no necessary findings.
+It independently confirmed the new human diagnostic/exitCode return is valid executable behaviour,
+not merely a test workaround. The reviewer retains the unexplained initial PTY observation as a
+verification reservation; no causation, risk acceptance or phase-completion credit was granted.
+
+Dedicated security auditor `ses_e5cbc5936ffe3AKxUWIILYb6AC` returned no findings across OWASP web,
+authentication protocol and tenant-isolation profiles. It confirmed explicit nested records,
+pre-client validation, bounded diagnostics and unchanged server authority. This static audit
+does not substitute for penetration tests or the registered clean-source gates; the initial PTY
+observation remains recorded, with no risk waiver inferred from either review.
+
+The changed selection passed600 CLI tests and structure158; no SDK/server tests were affected.
+Pentest passed330/330 across47 files. Owned compose teardown removed the stack and scratch data;
+Docker identities match baseline30 containers/15 networks/76 volumes/92 images. A real human-mode
+executable check confirmed local exit3 with one bounded diagnostic, empty stdout and no raw claim
+marker or stack. All local claim gates are currently green. The initial unchanged PTY failure
+remains an unexplained repeatability observation, not a claim of a fixed defect; no failing source
+or weakened assertion is being qualified. Full CI remains mandatory before integration.
+
+### Pending clean-source claim gate group
+
+Correctness/API session ses_e5cbcb9b4ffeG6aklzTyu7OJw8 and dedicated security session
+ses_e5cbc5936ffe3AKxUWIILYb6AC returned no findings on the phase2 diff. The initial PTY observation
+and controlled verification are both retained above. No product source changed after those reviews.
+The next checkpoint is unpublished verified source only. Tracked writes freeze from that commit
+through production-security and packed p1-admin; outcomes are recorded only after both runs end.
+Generated harness public files have the confirmed absent baseline. Existing cached Chromium,
+isolated HOME, distinct empty npm configs and Node24 are retained. No new approval is inferred.
+
+CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
+full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
+
+Baseline tree `3c7a722f0d4f35a27d19d97947105ab9d695b388` is the clean phase1 closeout tree.
+Independent specification authorship precedes any claim implementation. Scope remains the
+approved repeatable qualified JSON input, duplicate rejection, finite-number worklist and
+complete-request encoding validation before client creation. No claim catalogue, new dependency,
+SDK/server policy change or new serialization framework is authorized.

@@ -458,6 +458,21 @@ The interactive Admin shell is outside this boundary and retains its existing JS
 See the [public automation contract](../../docs/cli/overview.md#automation-errors) for the fixed
 vocabulary and deliberate legacy exit-zero exceptions.
 
+## Invitation claim preparation in the CLI
+
+`packages/cli/src/parsers.ts` parses repeatable qualified JSON claims with the existing UUID
+shape guard. It retains input order and UUID spelling, rejects duplicate application/definition
+pairs case-insensitively, and traverses parsed values with an iterative worklist to reject
+non-finite numbers. Parsed objects stay inside each explicit claim record; they are never merged
+into authentication settings or command options.
+
+The single-invite command prepares one complete `InviteUserInput` and checks ordinary JSON
+encoding before constructing the SDK client. This accounts for request-wrapper nesting without
+a fixed depth limit or alternative serializer. The same plain request is passed to the existing
+SDK. No definition catalogue, server policy, schema or acceptance flow changes: invitation
+acceptance still controls account creation and claim application. See the
+[public claim input guide](../../docs/cli/users.md#invitation-claims).
+
 ## Service Layer Pattern
 
 All route handlers follow a consistent pattern:

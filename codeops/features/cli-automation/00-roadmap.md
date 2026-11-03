@@ -3,7 +3,7 @@
 > **Feature-Set**: CLI Automation
 > **Status**: In Progress
 > **Created**: 2026-11-03
-> **Last Updated**: 2026-11-03 16:35
+> **Last Updated**: 2026-11-03 21:55
 > **Progress**: n/a (standalone plan; execution progress owned by its checklist)
 > **CodeOps Artifact Schema**: 1
 
@@ -13,6 +13,6 @@
 
 ## Tracker
 
-| ID   | Title                                              | RD  | Plan                                                       | Stage     | Status | Last Updated     | Depends-on / Blocker                                                                            |
-| ---- | -------------------------------------------------- | --- | ---------------------------------------------------------- | --------- | ------ | ---------------- | ----------------------------------------------------------------------------------------------- |
-| T-01 | CLI errors, invitation claims and bulk email input | —   | [Standalone plan](plans/invitation-automation/00-index.md) | Executing | 🔄     | 2026-11-03 16:35 | [Preflight passed](plans/invitation-automation/00-preflight-report.md); see execution checklist |
+| ID   | Title                                              | RD  | Plan                                                       | Stage     | Status | Last Updated     | Depends-on / Blocker                                            |
+| ---- | -------------------------------------------------- | --- | ---------------------------------------------------------- | --------- | ------ | ---------------- | --------------------------------------------------------------- |
+| T-01 | CLI errors, invitation claims and bulk email input | —   | [Standalone plan](plans/invitation-automation/00-index.md) | Executing | 🔄     | 2026-11-03 21:55 | JSON-error phase verified; claims next; see execution checklist |

@@ -171,11 +171,28 @@ plaintext is shown once and is never retained in the workspace.
 
 `porta user invite` also accepts:
 
-| Flag                                | Description                              |
-| ----------------------------------- | ---------------------------------------- |
-| `--role <application-id>:<role-id>` | Pre-assign a role; repeat for more roles |
-| `--locale <code>`                   | Invitation locale                        |
-| `--personal-message <text>`         | Personal message in the invitation email |
+| Flag                                                      | Description                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `--role <application-id>:<role-id>`                       | Pre-assign a role; repeat for more roles                                             |
+| `--claim '<application-id>:<claim-definition-id>:<json>'` | Pre-assign a JSON claim; quote the complete assignment and repeat for distinct pairs |
+| `--locale <code>`                                         | Invitation locale                                                                    |
+| `--personal-message <text>`                               | Personal message in the invitation email                                             |
+
+```bash
+porta user invite --org <org-id> --email bob@example.com \
+  --claim '<application-id>:<claim-definition-id>:"Engineering:West"'
+```
+
+Claims preserve ordered JSON values, including arrays, objects, `false`, `0` and `null`. Only the
+first two colons separate UUIDs. Duplicate application/claim pairs are rejected case-insensitively,
+even with equal values. Malformed, non-finite or unencodable input fails locally before client
+creation; no raw claim value appears in error diagnostics. Each occurrence needs a value: missing
+values exit1, while explicit empty/negated values exit3. Server authorization and claim-type policy
+remain authoritative; no local catalogue is fetched.
+
+Invitations return `invitationId`, `email`, `emailDelivery`, `invitationSent` and `expiresAt`, not a
+user ID. The account and pre-assignments are created on acceptance. A created invitation may have
+`sent`, `failed` or `unknown` email delivery; claims do not change single-invite output or exits.
 
 **Nested: Roles** (`porta user role ...`)
 

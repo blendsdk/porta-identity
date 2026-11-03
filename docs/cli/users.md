@@ -26,6 +26,7 @@ porta user create --org <id> --email alice@example.com \
 porta user invite --org <id> --email bob@example.com \
   [--name "Bob Jones"] \
   [--role <application-id>:<role-id>] ... \
+  [--claim '<application-id>:<claim-definition-id>:<json>'] ... \
   [--locale nl] \
   [--personal-message "Welcome to the team"]
 ```
@@ -44,12 +45,37 @@ message.
 | `--email`            | ✅       | Email address                                                                                                                                                                                          |
 | `--name`             |          | Display name, split into `givenName`/`familyName` on the first space                                                                                                                                   |
 | `--role`             |          | Role to pre-assign as `<application-id>:<role-id>`. Repeat for more roles. Use `porta app list` and `porta app role list <app-id>` to find the IDs. Roles are applied when the invitation is accepted. |
-| `--locale`           |          | Optional invitation language input, such as `nl`. Rendering normalizes regional tags and falls back through organization/global defaults. |
+| `--locale`           |          | Optional invitation language input, such as `nl`. Rendering normalizes regional tags and falls back through organization/global defaults.                                                              |
 | `--personal-message` |          | Personal message included in the invitation email (max 500 characters)                                                                                                                                 |
 
 The deferred result shape is deliberate: no user exists until the invitation is
 accepted, so the command does not return a user ID. Assign additional roles after
 acceptance with `porta user roles assign`.
+
+#### Invitation claims
+
+Repeat `--claim` to pre-assign custom claim values when the invitation is accepted. Replace each
+placeholder with a real UUID and quote the entire assignment so your shell preserves JSON:
+
+```bash
+porta user invite --org <id> --email bob@example.com \
+  --claim '<application-id>:<department-claim-id>:"Engineering:West"' \
+  --claim '<application-id>:<preferences-claim-id>:{"newsletter":false}'
+```
+
+Only the first two colons separate identifiers; colons inside JSON are data. Strings, numbers,
+objects, arrays, `true`, `false` and `null` are supported using normal JavaScript JSON number
+semantics. Non-finite numbers, malformed JSON and duplicate application/claim pairs are rejected
+before client creation. Duplicate detection ignores UUID case, even when values are equal.
+Every `--claim` needs a value. Missing values are argument errors (exit1); explicitly empty or
+negated values such as `--no-claim` are local validation errors (exit3).
+
+The complete invitation must be encodable as ordinary JSON before any request is sent. Local
+claim errors identify the option and position without echoing the submitted JSON; `--json` emits
+the fixed validation envelope without an invented HTTP status. The CLI does not fetch a claim
+catalogue or change server authorization/type rules. A valid JSON value can still be rejected by
+the server's claim policy. Claims do not change the deferred invitation result or email-delivery
+meaning described above.
 
 The shipped invitation templates support English (`en`) and formal Dutch (`nl`). `--locale nl`
 requests Dutch email copy. Unsupported input falls through organization default, global default

@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
-> **Last Updated**: 2026-11-03 21:50
-> **Progress**: 26/49 tasks (53%)
+> **Last Updated**: 2026-11-03 22:17
+> **Progress**: 33/49 tasks (67%)
 > **Commit mode**: --auto-commit active by current user confirmation; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
@@ -106,27 +106,28 @@ checkpoint, security, docs and packed selectors; full root verification belongs 
 
 ## Phase2: Invitation claims
 
-> **Phase baseline tree**: Recorded after verified phase1.
+> **Phase baseline tree**: 3c7a722f0d4f35a27d19d97947105ab9d695b388 (clean phase1 closeout commit387bea5f)
+> **Scope mode**: strict — claim parser/encoding guard, single-invite wiring, focused tests, related docs, inventory and execution evidence only; no SDK/server/dependency change.
 > **Lenses**: api-surface
 > **Security profiles**: owasp-web, auth-protocol, tenant-isolation
 > **Reasoning**: high — JSON parsing and authorization-assignment payloads
 
 ### Session2.1 — Specifications and red
 
-- [ ] 2.1.1 [spec-author] Write claim grammar/payload/cardinality/encoding specifications ST-16–23/49/50 — `packages/cli/tests/commands/user-invite-claims.spec.test.ts`; verify from03-02, not implementation.
-- [ ] 2.1.2 Run07 phase2 selector, record intended red failures and existing no-claim passes before implementation.
+- [x] 2.1.1 [spec-author] Write claim grammar/payload/cardinality/encoding specifications ST-16–23/49/50 — `packages/cli/tests/commands/user-invite-claims.spec.test.ts`; verify from03-02, not implementation. ✅ (completed: 2026-11-03 22:04; independent36-case oracle reviewed against contract; only external client/HTTP mocked, encoding runtime-qualified)
+- [x] 2.1.2 Run07 phase2 selector, record intended red failures and existing no-claim passes before implementation. ✅ (completed: 2026-11-03 22:04; parent confirmed31 expected failures/39 passes;08 records compatibility-only passes and missing behaviour before implementation)
 
 ### Session2.2 — Implementation and green
 
-- [ ] 2.2.1 Implement parseClaimAssignments, runtime element guards, worklist finite-number validation and complete-invitation encodability helper with safe typing — `packages/cli/src/parsers.ts`; verify ST-17–21/49/50 and unchanged role parser tests.
-- [ ] 2.2.2 Register repeatable claims with requiresArg and prepare/check the complete invitation before client creation — `packages/cli/src/commands/user.ts`; verify ST-16–23/49/50 green.
+- [x] 2.2.1 Implement parseClaimAssignments, runtime element guards, worklist finite-number validation and complete-invitation encodability helper with safe typing — `packages/cli/src/parsers.ts`; verify ST-17–21/49/50 and unchanged role parser tests. ✅ (completed: 2026-11-03 22:07;127 claim/parser/user cases passed; worklist, explicit records, unchanged role parser and public helper documentation reviewed)
+- [x] 2.2.2 Register repeatable claims with requiresArg and prepare/check the complete invitation before client creation — `packages/cli/src/commands/user.ts`; verify ST-16–23/49/50 green. ✅ (completed: 2026-11-03 22:07;127 relevant cases passed; new local human rejection sets exitCode3 and returns without yargs reformatting; legacy roles/human calls/result shapes retained; docs self-check passed)
 
 ### Session2.3 — Implementation tests, documentation and hardening
 
-- [ ] 2.3.1 Add parser internal edge tests after green — `packages/cli/tests/invitation-claims.impl.test.ts`; run07 phase2 selector.
-- [ ] 2.3.2 Document claim quoting, repetition and deferred result — `docs/cli/users.md`, `packages/cli/README.md`; verify help, links and docs build.
-- [ ] 2.3.3 Reconcile actual new test inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`.
-- [ ] 2.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint with assurance tasks pending.
+- [x] 2.3.1 Add parser internal edge tests after green — `packages/cli/tests/invitation-claims.impl.test.ts`; run07 phase2 selector. ✅ (completed: 2026-11-03 22:09;84 claim/parser/internal cases passed;14 post-green edge cases, safe typing/docs reviewed)
+- [x] 2.3.2 Document claim quoting, repetition and deferred result — `docs/cli/users.md`, `packages/cli/README.md`; verify help, links and docs build. ✅ (completed: 2026-11-03 22:10; docs build passed, actual invite help exposes qualified repeated claims and quoting; no new document links; deferred outcome semantics reviewed)
+- [x] 2.3.3 Reconcile actual new test inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`. ✅ (completed: 2026-11-03 22:17; CLI1,657+lint/typecheck/build, structure158, changed600, pentest330; coverage parsers100%/user93.6%; inventory113; owned stack removed and all Docker identities restored; initial PTY observation retained)
+- [~] 2.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint with assurance tasks pending. ⏳ (implemented: 2026-11-03 22:17; both reviews report no findings; local gates green; pending source checkpoint begins tracked-write freeze through both assurance runs)
 - [ ] 2.3.5 Run phase2 production-security and packed p1-admin gates without tracked edits between runs; immediately record outcomes/source/cleanup/dispositions afterwards, verify and evidence-commit/push only after all gates permit.
 - [ ] 2.3.6 Verify phase2 evidence/docs and re-evaluate phase3 against AR-12; no claim-definition catalogue or server policy change is permitted.
 
