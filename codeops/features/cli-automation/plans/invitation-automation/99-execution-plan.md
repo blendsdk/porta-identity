@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
-> **Last Updated**: 2026-11-03 22:49
-> **Progress**: 36/49 tasks (73%)
+> **Last Updated**: 2026-11-03 23:51
+> **Progress**: 46/49 tasks (94%)
 > **Commit mode**: --auto-commit active by current user confirmation; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
@@ -135,30 +135,31 @@ checkpoint, security, docs and packed selectors; full root verification belongs 
 
 ## Phase3: Sequential bulk invitation
 
-> **Phase baseline tree**: Recorded after verified phase2.
+> **Phase baseline tree**: 71a38c62bc8ea8e20de7d898697f67d630403784 (clean phase2 closeout8df8f88f)
+> **Scope mode**: strict — three focused bulk modules, registration, specification/internal tests, related docs, exact inventory and execution evidence; unchanged SDK/server/dependencies/Admin UI.
 > **Lenses**: api-surface, concurrency
 > **Security profiles**: owasp-web, auth-protocol, tenant-isolation
 > **Reasoning**: high — bounded input, partial side effects and unknown delivery outcomes
 
 ### Session3.1 — Specifications and red
 
-- [ ] 3.1.1 [spec-author] Write file/normalization/nonblocking-FIFO/encoding specifications ST-24–30/40/46/50 — `packages/cli/tests/bulk-invite-input.spec.test.ts`; verify from03-03.
-- [ ] 3.1.2 [spec-author] Write sequential/failure/auth-provenance specifications ST-31–38/42–44/48 — `packages/cli/tests/bulk-invite.spec.test.ts`; keep SDK/HTTP/filesystem as external boundaries.
-- [ ] 3.1.3 [spec-author] Write command/report/cardinality specifications ST-39/41/45/49 — `packages/cli/tests/commands/bulk-invite.spec.test.ts`; verify exact output/exit contract.
-- [ ] 3.1.4 Run07 phase3 selector and record intended red before implementing any bulk code.
+- [x] 3.1.1 [spec-author] Write file/normalization/nonblocking-FIFO/encoding specifications ST-24–30/40/46/50 — `packages/cli/tests/bulk-invite-input.spec.test.ts`, `bulk-invite-file.spec.test.ts`; verify from03-03. ✅ (completed: 2026-11-03 23:10; parent contract/static review passed for file/preparation oracles before nonexistent bulk implementation; SDK read breach affects separate auth qualification, not file grammar/bounds; no assertion changed)
+- [x] 3.1.2 [spec-author] Write sequential/failure/auth-provenance specifications ST-31–38/42–44/48 — `packages/cli/tests/bulk-invite.spec.test.ts`, `bulk-invite-auth.spec.test.ts`, `bulk-invite-auth-independent.spec.test.ts`; keep SDK/HTTP/filesystem as external boundaries. ✅ (completed: 2026-11-03 23:15; clean fresh author independently supplied6 auth oracles without implementation/initial-suite reads; all original assertions retained; parent contract review passed; initial breach remains disclosed, not credited as sole independent auth evidence)
+- [x] 3.1.3 [spec-author] Write command/report/cardinality specifications ST-39/41/45/49 — `packages/cli/tests/commands/bulk-invite.spec.test.ts`, `bulk-invite-preflight.spec.test.ts`; verify exact output/exit contract. ✅ (completed: 2026-11-03 23:15; parent reviewed exact schema, derived counts, safe reports, factory failure, preflight/cardinality and human-output oracles against contract; only external boundaries mocked)
+- [x] 3.1.4 Run07 phase3 selector and record intended red before implementing any bulk code. ✅ (completed: 2026-11-03 23:15; parent confirmed55 expected failures/7 compatibility-only passes plus4 missing-module collection failures;08 owns red and authorship qualification evidence; no implementation preceded red)
 
 ### Session3.2 — Implementation and green
 
-- [ ] 3.2.1 Implement nonblocking regular-descriptor validation, bounded read, pure parsing and full prepared-request encoding preflight — `packages/cli/src/bulk-invite-input.ts`, reusing phase2 parser helpers; verify ST-24–30/40/46/50.
-- [ ] 3.2.2 Implement the direct sequential runner, safe discriminated results and counts — `packages/cli/src/bulk-invite.ts`; verify ST-31–44.
-- [ ] 3.2.3 Register requiresArg claim cardinality, format the command and safe aggregate error — `packages/cli/src/commands/bulk-invite.ts`, `packages/cli/src/commands/bulk.ts`; verify all phase3 specs including ST-49 green without changing bulk execute.
+- [x] 3.2.1 Implement nonblocking regular-descriptor validation, bounded read, pure parsing and full prepared-request encoding preflight — `packages/cli/src/bulk-invite-input.ts`, reusing phase2 parser helpers; verify ST-24–30/40/46/50. ✅ (completed: 2026-11-03 23:20;148 phase/legacy cases passed including actual FIFO, growth, raw-byte/UTF-8 bounds and shared request preflight; docs/type-safety self-check passed)
+- [x] 3.2.2 Implement the direct sequential runner, safe discriminated results and counts — `packages/cli/src/bulk-invite.ts`; verify ST-31–44. ✅ (completed: 2026-11-03 23:20;148 phase/legacy cases passed; real public-SDK auth/refresh and conservative uncertainty oracles green; outcomes/counts/public docs reviewed)
+- [x] 3.2.3 Register requiresArg claim cardinality, format the command and safe aggregate error — `packages/cli/src/commands/bulk-invite.ts`, `packages/cli/src/commands/bulk.ts`; verify all phase3 specs including ST-49 green without changing bulk execute. ✅ (completed: 2026-11-03 23:49; SA-3-001 corrected under AR-18 and closed by one scoped re-audit; full post-fix CLI1,795+lint/typecheck/build, structure158, coverage and rendering regressions pass; all original assertions retained)
 
 ### Session3.3 — Implementation tests, documentation and hardening
 
-- [ ] 3.3.1 Add bounded-read/cleanup/loop implementation edges after green — `packages/cli/tests/bulk-invite.impl.test.ts`; verify07 selectors.
-- [ ] 3.3.2 Document file, output, delivery, stop and repeat-run behaviour — `docs/cli/users.md`, `packages/cli/README.md`, relevant `techdocs/` reference; verify help/links/docs build.
-- [ ] 3.3.3 Reconcile actual inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`; preserve all existing assertions.
-- [ ] 3.3.4 Complete independent correctness/API/concurrency review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint; leave assurance pending.
+- [x] 3.3.1 Add bounded-read/cleanup/loop implementation edges after green — `packages/cli/tests/bulk-invite.impl.test.ts`; verify07 selectors. ✅ (completed: 2026-11-03 23:22;160 phase/legacy/internal cases passed;12 post-green edge cases; documentation/type-safety self-check passed)
+- [x] 3.3.2 Document file, output, delivery, stop and repeat-run behaviour — `docs/cli/users.md`, `packages/cli/README.md`, `techdocs/architecture/api-design.md`; verify help/links/docs build. ✅ (completed: 2026-11-03 23:25; public docs build/actual bulk help passed; limits, count invariants, exits, delivery/creation distinctions and manual recovery documented; maintainer intent retained)
+- [x] 3.3.3 Reconcile actual inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`; preserve all existing assertions. ✅ (completed: 2026-11-03 23:51; post-fix CLI1,795+lint/typecheck/build, structure158, changed738, pentest330; coverage100/100/96.29/88.63% meets all goals; inventory123; owned cleanup checked; unrelated concurrent networks preserved)
+- [~] 3.3.4 Complete independent correctness/API/concurrency review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint; leave assurance pending. ⏳ (implemented: 2026-11-03 23:51; major finding fixed and one re-review closed; all post-fix local gates passed; unpublished source checkpoint prepared, tracked-write freeze begins at commit through both final assurance runs)
 - [ ] 3.3.5 Run phase3 production-security and packed p1-admin gates without tracked edits between runs; immediately record source/outcomes/dispositions/cleanup afterwards, verify and evidence-commit/push only after all gates permit.
 - [ ] 3.3.6 Complete R1–R12/ST-1–50 evidence, technical-doc review, task/feature-roadmap status and integration-time portfolio handoff; record CI requirements and no merge/release claim.
 

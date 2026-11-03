@@ -210,6 +210,34 @@ user ID. The account and pre-assignments are created on acceptance. A created in
 | `porta user claim set <org-id> <user-id>`               | Set a claim value        |
 | `porta user claim remove <org-id> <user-id> <claim-id>` | Remove a claim value     |
 
+### Bulk email invitations
+
+```bash
+porta bulk invite --file ./recipients.txt --org <org-id> \
+  --claim '<application-id>:<claim-definition-id>:"Engineering"' --json
+```
+
+Use a regular UTF-8 file with one ASCII email per LF/CRLF line. The limits are 1,048,576 raw bytes
+and 1,000 unique recipients. One initial BOM, blank lines and surrounding whitespace are supported.
+Duplicate addresses collapse case-insensitively, retaining the first spelling and physical line.
+All local file/shared-option/encoding checks finish before any client or invitation call.
+
+Dispatch is sequential with no prompt, CLI retry or Retry-After wait. 409 conflicts and acknowledged
+creations continue; other rejections or uncertain outcomes stop and leave remaining rows
+unattempted. Creation and email delivery are separate: delivery can be sent, failed or unknown.
+Opaque lazy SDK authentication failures do not prove HTTP dispatch and omit unproven status.
+
+JSON stdout contains exactly `summary`, ordered `results`, and `stopReason`. Rows are `created`,
+`rejected`, `unknown` or `unattempted`; counts distinguish creation from delivery. Exit0 requires
+all created/sent, exit2 takes priority for a final auth stop, exit1 covers other incomplete normal
+results, and local preflight uses exit3 with no recipient report. Nonzero normal JSON reports add
+one safe `BATCH_INCOMPLETE` stderr envelope. Existing `bulk execute` behaviour is unchanged.
+
+Investigate unknown outcomes before rerunning: a later run calls the API again and may replace
+pending invitation links. No persistent report, automatic resume or exactly-once guarantee exists.
+Native interruption may leave no final report. See the
+[complete bulk input, report and recovery contract](https://blendsdk.github.io/porta-identity/cli/users#bulk-email-file-invitations).
+
 ### Infrastructure
 
 | Command                                       | Description                                    |

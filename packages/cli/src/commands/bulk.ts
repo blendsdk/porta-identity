@@ -26,6 +26,7 @@ import {
 } from '../error-format.js';
 import { printTable, printJson, success, warn, error as printError } from '../output.js';
 import { confirm } from '../prompt.js';
+import { bulkInviteCommand } from './bulk-invite.js';
 
 // ---------------------------------------------------------------------------
 // Arg types
@@ -45,9 +46,10 @@ interface BulkExecuteArgs extends GlobalOptions {
 
 export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
   command: 'bulk',
-  describe: 'Bulk status operations',
+  describe: 'Bulk status operations and email-file invitations',
   builder: (yargs) =>
     yargs
+      .command(bulkInviteCommand)
       .command<BulkExecuteArgs>(
         'execute',
         'Execute a bulk status operation',
@@ -160,7 +162,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           }
         },
       )
-      .demandCommand(1, 'Please specify a bulk subcommand: execute'),
+      .demandCommand(1, 'Please specify a bulk subcommand: execute or invite'),
   handler: () => {
     // No-op — subcommands handle execution
   },

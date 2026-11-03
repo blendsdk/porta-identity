@@ -125,6 +125,11 @@ prints an ordered line/email/outcome table, delivery distinctions, counts and bo
 through the existing sanitizing output helpers. Never print claims, tokens, raw exception text
 or input-file paths in the report. Duplicate rows do not get a second invitation/result entry.
 
+Recipient rows use a command-local unpadded delimiter table, sanitizing each cell before adding
+delimiters. This preserves full addresses without multiplying the longest address width across
+every row. Existing count-table and safe stop-text helpers remain unchanged. There is no new
+input acceptance limit or rendering configuration (runtime AR-18).
+
 ## Exit policy
 
 Evaluate after the complete normal report is built.0 requires every unique recipient created
@@ -132,6 +137,23 @@ with delivery sent.2 takes precedence for a final authentication/authorization s
 a client-construction authentication failure. Any other dispatched rejected/unknown/unattempted
 or failed/unknown delivery yields1. Preflight invalid input uses3 before any report/request.
 This new-command policy does not alter existing command exits in03-01.
+
+## Internal test seams
+
+These names expose the direct preparation/loop boundaries to independent tests, not a new SDK API
+or execution framework. `bulk-invite-input.ts` exports `parseBulkRecipients(text)` and async
+`readBulkRecipients(path)`, returning `{ inputRecords, duplicates, recipients }`; each recipient
+is `{ line, email }`. `prepareBulkInvitations(recipientInput, options)` returns the same counters
+and ordered recipient entries with an additional complete `input: InviteUserInput`. Options use
+the command flag names `org`, `role`, `claim`, `locale` and `personal-message`. All entries are
+prepared/encoded before the command creates its client.
+
+`bulk-invite.ts` exports async `runBulkInvitations(prepared, invite)`, where `invite` matches the
+existing SDK method, returning only the closed `BulkInviteReport`. A small direct helper
+`createUnattemptedBulkReport(prepared, error)` handles client-construction failure without inventing
+an SDK attempt. `getBulkInviteExitCode(report)` implements the existing exit table. These functions
+share the same outcome-derived summary calculation. Tests for client-construction failure use the
+real command and external factory boundary; the loop itself does not construct a client.
 
 ## Recovery
 

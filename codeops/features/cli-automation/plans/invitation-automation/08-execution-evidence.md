@@ -304,6 +304,146 @@ Phase3 re-evaluation retains exactly the approved bounded file validation, full 
 preparation, sequential existing SDK calls and uncertainty rules. No server/SDK/dependency or
 authorization catalogue change was introduced. The portfolio handoff remains deferred to integration.
 
+Phase2 closeout `8df8f88f06ce925f0970b56fb7ab09879ae14a8b` reverified CLI1,657 tests plus
+lint/typecheck/build and structure158 before push. This is the clean phase3 baseline.
+
+## Phase3
+
+Baseline tree `71a38c62bc8ea8e20de7d898697f67d630403784`. The minimum design remains three
+focused modules: bounded input/preparation, direct sequential dispatch, and command formatting.
+The owning bulk document names internal preparation/loop test seams so independent authors need
+no implementation access; these are ordinary function boundaries, not a new SDK/framework surface.
+Client-construction failure is tested at the command factory boundary rather than making the
+loop construct clients. No bulk implementation precedes specifications and observed red.
+Independent author `ses_e5c98a118ffeyoIKUYA6O7Oo8l` is authoring the three concern groups.
+
+CI41724994643 on claim evidencef0fc3d4d was cancelled after the newer closeout push superseded it.
+Replacement CI41725618447 on8df8f88f passed all6 jobs: Verify Monorepo, UI Tests, OIDC Harness,
+Public Documentation, Production Docker Build and Production Dependency Audit. This qualifies
+the phase2 closeout; pending bulk work receives no CI credit from that run.
+
+### Bulk specification qualification
+
+Initial author ses_e5c98a118ffeyoIKUYA6O7Oo8l delivered6 size-bounded test files before any bulk
+implementation. It disclosed accidental reads of forbidden SDK transport lines70–91 and auth
+lines82–180 during signature exploration. The restriction was breached even though the author
+states those implementations were not the oracle. This is not silently credited as fully
+independent authentication authorship. No protected credential access was reported.
+
+Fresh author ses_e5c890630ffewFudCqYQVCYgse is independently deriving supplemental authentication
+oracles from the approved contracts and public API/test conventions only, without reading the
+initial bulk suites or implementation. Existing assertions remain intact; no bulk source is
+written until qualification and parent-observed red. Initial file/runner/command oracles are also
+reviewed directly against the owning specification. The disclosed breach is retained, not waived.
+
+Fresh author ses_e5c890630ffewFudCqYQVCYgse delivered6 independent public-SDK authentication
+oracles in232 lines and attested no implementation or initial bulk-suite reads. These independently
+cover missing credentials, refresh400/500/transport failure, a final invitation401 after refresh,
+and recovered success continuing to another recipient. Parent contract review passed. All initial
+assertions remain; the supplemental suite supplies clean independent auth evidence rather than
+claiming the first author's read restriction was satisfied retroactively.
+
+Parent Node24 red across all7 bulk suites:55 failed/7 passed plus4 missing-module collection
+failures. Passing cases are six parser rejections that already reject the unregistered command
+and one native Linux nonblocking-FIFO qualification; they do not prove command support. Missing
+input/runner modules and unregistered command explain intended red. The independent auth suite
+also cannot collect until those modules exist. No bulk source existed during this run.
+
+### Bulk implementation and local verification
+
+The direct reader/preparation, sequential runner and command were implemented only after parent
+red. All initial and clean supplemental auth specifications passed together. First command green
+had147 passes and one human-table failure: numeric cells were not strings under the existing output
+helper contract. Converting those cells to strings fixed implementation only; the corrected
+phase/legacy selector passed148/148. Twelve post-green internal edge cases increased that selector
+to160/160, including real descriptor cleanup after stat/read/close faults and safe runtime guards.
+
+Initial complete workspace verification stopped on source lint: unnecessary regex hyphen escapes
+and unsafe throw-from-finally. The equivalent email regex was simplified and descriptor errors are
+now retained until after cleanup before throwing, preserving the first read error where applicable.
+No assertion changed. Corrected full CLI verify passed121 files/1,793 tests plus lint/typecheck/build;
+structure158/158 passed. Public docs build and actual bulk help/limit checks passed. The exact
+inventory is121 (seven new specification files, including clean auth qualification, plus one
+post-green internal test). Full coverage and pentest remain pending at this recording point.
+
+Full serial coverage passed all1,793 tests with all four affected paths collected: input100%
+(support goal80%), runner100% (business-logic goal90%), new command96% and legacy bulk88.63%
+(glue goal60%). Configuration/thresholds are unchanged. Independent correctness/API/concurrency
+review ses_e5c76d432ffeI5REbNjpOZdZoN and dedicated security audit ses_e5c766706ffeuH2T8VUgn3lARJ
+are reviewing the complete20-file phase diff against baseline71a38c62, scoped review tree
+c8a75bdcf30a44cc84f20a3e90ec0da8d1d9bd6f. Both packets explicitly include the initial author read
+breach and the clean supplemental auth qualification; no silent waiver is requested.
+
+Changed selection passed736 CLI tests plus structure158; pentest passed330/330 across47 files.
+Owned compose teardown removed all pentest containers, networks and scratch data. Containers30,
+volumes76 and images92 still match the original identities. Two unrelated networks appeared during
+concurrent work: `28b1c5da7580 codelableiden-smoke-c629e471d039-command_backend` and
+`d53801321c2b codelableiden-smoke-c629e471d039-command_frontend`. They were not created by this task
+and were left untouched. Global network identity no longer equals the original baseline; this is
+not concealed or "repaired" by removing another task's resources. A new pre-gate baseline records
+the observed17 networks, while ownership-labelled checks confirm no pentest resources remain.
+
+Correctness/API/concurrency reviewer ses_e5c76d432ffeI5REbNjpOZdZoN returned no necessary findings.
+It independently confirmed that the clean six-case auth suite replaces the affected evidence,
+not a retroactive waiver of the initial read breach. Dedicated security review remains pending.
+
+Dedicated security reviewer ses_e5c766706ffeuH2T8VUgn3lARJ found one major issue, normalized as
+SA-3-001: human auto-sized table output can multiply one accepted near-mebibyte email width
+across1,000 rows, yielding over2 billion characters and failing after side effects. Other security
+areas, including clean supplemental auth qualification, had no additional findings. Initial code
+verification for command rendering is reopened; final gates are blocked, not waived. A blind
+technical challenge and independently authored bounded rendering regression precede any correction.
+
+Runtime AR-18 records an eligible technical correction, not a risk waiver: a single sanitized
+unpadded recipient table preserves full values and approved input bounds. Blind challenger
+ses_e5c723094ffeQbbXgHGXEfpizV recommended it over a padded-budget fallback; the smaller mechanism
+avoids estimation and two paths. Existing count-table/stop helpers and JSON output stay unchanged.
+
+Independent regression author ses_e5c71caf0ffeG5ZeX6SFM1FG74 supplied a safe scaled case before
+the fix: one4,096-character local part plus99 short recipients. It reported no implementation
+reads, but disclosed using the qualified phase2 claim specification for conventions outside its
+narrow phase1-only packet allowance. That extra test-convention read is retained as a dispatch
+compliance exception; it is not a bulk implementation read or a weakened oracle. Parent contract
+review confirmed the new case derives from full-value and bounded-output requirements.
+
+Parent observed red before changing rendering:1,699,970 output bytes exceeded the fixture's
+166,750-byte generous linear ceiling; all preceding value/order/count/exit assertions passed.
+After the command-local correction, the immutable regression and existing command suites passed
+48/48. A post-green implementation case then exercised exactly1,048,576 raw input bytes and
+1,000 unique recipients in a128MiB-heap,15-second isolated child with HTTP blocked and empty HOME.
+It preserved full addresses/order/counts, returned the expected lazy-auth stop, and stayed below
+the verified1,158,576-byte human-output ceiling. The combined focused selector passed13/13.
+Inventory is now123. Full post-fix verification and the mandatory one re-review are pending.
+
+The one mandatory scoped re-review completed: base reviewer ses_e5c76d432ffeI5REbNjpOZdZoN found
+no necessary fix regressions; dedicated security auditor ses_e5c766706ffeuH2T8VUgn3lARJ closed
+SA-3-001 with no new necessary findings. Both independently confirmed full values, sanitization
+before delimiters, unchanged JSON/counts/exits/input limits and removal of width amplification.
+They reviewed scoped fix treeee1da1f50ec7667d0b6a6ff0020631ce10179d09. The convention-read exception
+remains disclosed; no implementation-tainted regression oracle was evident. This closes the
+finding, not full post-fix verification or final assurance. The findings ledger records fixed,
+not accepted risk. No third review pass is claimed or required by this closure.
+
+Post-fix serial local gates passed: CLI123 files/1,795 tests plus lint/typecheck/build;
+structure158; full coverage1,795 tests with input100%, runner100%, new command96.29%, legacy
+bulk88.63%; docs build; changed738 CLI tests plus structure158. Both exact-size and scaled human
+regressions passed in the complete runs. Post-fix pentest is still pending before the unpublished
+source checkpoint. No source change after the scoped re-review is claimed.
+
+Post-fix pentest passed330/330 across47 files. Owned compose teardown and label-scoped absence
+checks passed. The pre-assurance machine baseline is30 containers/17 networks/76 volumes/92 images;
+the two unrelated concurrent networks remain preserved. The four public generated harness files
+were confirmed absent before final live runs. All post-fix local checks and independent review
+closure are now verified. No major/critical finding or open material decision remains.
+
+### Pending final clean-source gate group
+
+The next commit is unpublished verified bulk source, not phase completion. Tracked writes freeze
+from that commit through registered production-security and packed p1-admin on the same source.
+Exact run/source/artifact identities, outcome taxonomy, correlated-log limitations and owned
+cleanup will be recorded immediately after both runs finish. No merge, release or issue mutation
+is authorized. Existing resource/credential boundaries remain in force.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 

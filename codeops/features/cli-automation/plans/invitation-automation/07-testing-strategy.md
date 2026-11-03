@@ -103,20 +103,26 @@ platform without claiming unsupported flags are portable guarantees (PF-003).
 
 All paths below are relative to packages/cli. Case ranges are references, not duplicated oracles.
 
-| File                                               | Cases / purpose                                            |
-| -------------------------------------------------- | ---------------------------------------------------------- |
-| `tests/json-errors.spec.test.ts`                   | ST-1–3,7                                                   |
-| `tests/json-errors-entry.spec.test.ts`             | ST-5/6/15; real parser/executable failures                 |
-| `tests/security/json-error-redaction.spec.test.ts` | ST-4/47; malicious marker variants for ST-6/18/45          |
-| `tests/commands/json-errors-legacy.spec.test.ts`   | ST-8–14                                                    |
-| `tests/commands/user-invite-claims.spec.test.ts`   | ST-16–23/49/50, single-invite path                         |
-| `tests/bulk-invite-input.spec.test.ts`             | ST-24–30/40/46/50, bulk preflight and owned FIFO           |
-| `tests/bulk-invite.spec.test.ts`                   | ST-31–38/42–44/48                                          |
-| `tests/commands/bulk-invite.spec.test.ts`          | ST-39/41/45/49 and real yargs command registration         |
-| `tests/json-errors.impl.test.ts`                   | Internal classifier/format integration edges, after green  |
-| `tests/json-errors-entry.impl.test.ts`             | Executable/login glue with external I/O stubs, after green |
-| `tests/invitation-claims.impl.test.ts`             | Parser edge internals, after green                         |
-| `tests/bulk-invite.impl.test.ts`                   | File-handle/loop/count implementation edges, after green   |
+| File                                                | Cases / purpose                                                      |
+| --------------------------------------------------- | -------------------------------------------------------------------- |
+| `tests/json-errors.spec.test.ts`                    | ST-1–3,7                                                             |
+| `tests/json-errors-entry.spec.test.ts`              | ST-5/6/15; real parser/executable failures                           |
+| `tests/security/json-error-redaction.spec.test.ts`  | ST-4/47; malicious marker variants for ST-6/18/45                    |
+| `tests/commands/json-errors-legacy.spec.test.ts`    | ST-8–14                                                              |
+| `tests/commands/user-invite-claims.spec.test.ts`    | ST-16–23/49/50, single-invite path                                   |
+| `tests/bulk-invite-input.spec.test.ts`              | ST-24–30/40/46/50, bulk preflight and owned FIFO                     |
+| `tests/bulk-invite-file.spec.test.ts`               | Split raw-file/descriptor/FIFO concern from input tests              |
+| `tests/bulk-invite.spec.test.ts`                    | ST-31–38/42–44/48                                                    |
+| `tests/bulk-invite-auth.spec.test.ts`               | Public SDK boundary regression; initial author read breach disclosed |
+| `tests/bulk-invite-auth-independent.spec.test.ts`   | Clean independent ST-35/48 authentication oracles                    |
+| `tests/commands/bulk-invite.spec.test.ts`           | ST-39/41/45/49 and real yargs command registration                   |
+| `tests/commands/bulk-invite-preflight.spec.test.ts` | Split atomic preflight/cardinality concern                           |
+| `tests/commands/bulk-invite-rendering.spec.test.ts` | Independent bounded/full-value human-rendering regression            |
+| `tests/commands/bulk-invite-rendering.impl.test.ts` | Exact1MiB/1,000-recipient rendering in a memory-bounded child        |
+| `tests/json-errors.impl.test.ts`                    | Internal classifier/format integration edges, after green            |
+| `tests/json-errors-entry.impl.test.ts`              | Executable/login glue with external I/O stubs, after green           |
+| `tests/invitation-claims.impl.test.ts`              | Parser edge internals, after green                                   |
+| `tests/bulk-invite.impl.test.ts`                    | File-handle/loop/count implementation edges, after green             |
 
 Split a listed concern into additional files only if needed to respect size; update the actual
 structure inventory accordingly. No source-snapshot test is a substitute for behaviour coverage.

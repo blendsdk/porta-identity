@@ -473,6 +473,30 @@ SDK. No definition catalogue, server policy, schema or acceptance flow changes: 
 acceptance still controls account creation and claim application. See the
 [public claim input guide](../../docs/cli/users.md#invitation-claims).
 
+## Bulk CLI invitation boundary
+
+The conventional CLI's bulk invitation flow composes three focused modules rather than adding
+a server bulk API. `bulk-invite-input.ts` owns regular-descriptor validation, bounded raw reads,
+strict UTF-8, physical line identity, case-insensitive deduplication and shared request preparation.
+On supported platforms, nonblocking open prevents an unwritten FIFO from hanging before fstat.
+The byte bound is enforced during reading, not just from metadata. Every complete request is
+encoded successfully before client construction; the same plain request reaches the existing SDK.
+
+`bulk-invite.ts` awaits one invitation method per recipient. It derives summary counts from
+discriminated outcome rows and validates all acknowledgement fields before declaring creation.
+Typed conflicts continue, other terminal failures stop, and uncertain dispatch remains unknown.
+Lazy SDK authentication errors cannot establish HTTP dispatch or mutation rollback. The loop
+does not manage refresh, retry, sleep or persist progress. `commands/bulk-invite.ts` owns final
+human/JSON output and exit selection, keeping construction failure separate from invoked SDK
+failure. Only current public result fields and fixed error envelopes enter reports.
+Human recipient rows use sanitized, unpadded delimiters: an accepted long address must not set
+the padding width for every other row. Address output is therefore bounded by source bytes plus
+fixed fields per recipient, without tightening the approved input limits.
+
+No transaction spans recipients, and no custom signal supervision, resume store, new authorization
+policy or delivery guarantee is introduced. See the
+[public recovery and report contract](../../docs/cli/users.md#bulk-email-file-invitations).
+
 ## Service Layer Pattern
 
 All route handlers follow a consistent pattern:
