@@ -1,7 +1,7 @@
 # CLI Invitation Automation Implementation Plan
 
 > **Feature**: CLI-wide JSON errors, invitation claim input and bulk email-file invitations
-> **Status**: Executing — JSON errors and claims verified; bulk local gates/reviews verified, final clean-source assurance pending
+> **Status**: Complete — 49/49 tasks verified; closing CI is a separately observed session-completion gate
 > **Created**: 2026-11-03
 > **Implements**: cli-automation/T-01
 > **CodeOps Artifact Schema**: 1
@@ -43,7 +43,8 @@ gates were considered and rejected. **Approved complexity:** None.
 | [03-02-invitation-claims](03-02-invitation-claims.md) | Claim grammar and single-invite wiring                           |
 | [03-03-bulk-invitations](03-03-bulk-invitations.md)   | File, dispatch and result contract                               |
 | [07-testing-strategy](07-testing-strategy.md)         | Immutable ST cases and verification commands                     |
-| [99-execution-plan](99-execution-plan.md)             | Ordered, initially incomplete implementation tasks               |
+| [08-execution-evidence](08-execution-evidence.md)     | Verification, qualifications and final acceptance mapping        |
+| [99-execution-plan](99-execution-plan.md)             | Authoritative verified task checklist                            |
 
 ## Quick Reference
 

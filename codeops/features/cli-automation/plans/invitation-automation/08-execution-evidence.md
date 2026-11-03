@@ -474,6 +474,62 @@ files were removed to restore their observed absent baseline, leaving directorie
 untouched. Temporary result files remain only until final safe metrics/hashes are recorded and
 verified; they are not committed deliverables.
 
+## Final acceptance and handoff
+
+Source `de4ff08e` and assurance evidence `86463a97` are pushed; the remote ref was confirmed.
+The evidence checkpoint reverified all 1,795 CLI tests, lint/typecheck/build and 158 structure
+checks. Both final temporary result directories were removed only after their recorded SHA256
+hashes and 11/11 exposure or 6/6 journey metrics were revalidated. Safe metrics, limitations,
+source identities and hashes above remain the durable evidence, not the deleted raw artifacts.
+
+### Requirements and specification coverage
+
+Test paths below are relative to `packages/cli/tests/`. The complete 1,795-test CLI run includes
+every listed oracle; detailed red/green provenance and qualifications remain in the phase records.
+
+| Requirements                                             | Cases                       | Verified evidence                                                                                                                                                                                                       |
+| -------------------------------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| R1–R3: classified safe errors and compatibility          | ST-1–15,47                  | `json-errors.spec.test.ts`, `json-errors-entry.spec.test.ts`, `security/json-error-redaction.spec.test.ts`, `commands/json-errors-legacy.spec.test.ts`; phase1 full local/review/security/packed and closing six-job CI |
+| R4: exact JSON claim assignments and atomic local checks | ST-16–23,49–50              | `commands/user-invite-claims.spec.test.ts`, parser tests and `invitation-claims.impl.test.ts`; phase2 full gates and six-job CI41725618447                                                                              |
+| R5–R6: shared input, file limits and complete preflight  | ST-24–30,40,46,49–50        | `bulk-invite-input.spec.test.ts`, `bulk-invite-file.spec.test.ts`, `commands/bulk-invite-preflight.spec.test.ts`; real FIFO, strict bytes/UTF-8, growth, literal paths, exact limits and pre-client encoding            |
+| R7–R8: sequential dispatch and conservative uncertainty  | ST-31–38,42–44,48           | `bulk-invite.spec.test.ts`, both auth suites and command specs; clean six-case replacement auth oracles, no retry/wait, observed 403 versus opaque auth, SDK refresh recovery                                           |
+| R9–R10: delivery, complete reports and exits             | ST-39,41,43–45              | `commands/bulk-invite.spec.test.ts`; exact fields/counts/stop metadata, construction failure and auth exit priority; rendering specifications plus bounded-child maximum-input regression                               |
+| R11: public and maintainer documentation                 | ST-42 plus help/docs checks | `docs/cli/overview.md`, `docs/cli/users.md`, CLI README and `techdocs/architecture/api-design.md`; docs build and executable help passed                                                                                |
+| R12: specification-first and review/assurance policy     | ST-1–50; all three phases   | Parent-observed red before implementation, retained assertions, independent base/security reviews, major fixed/re-audit closed, bounded coverage goals, pentest330 and same-source final gates                          |
+
+These grouped rows cover every ST identifier 1–50. Shared cases49/50 apply to both single and
+bulk commands. Supplemental auth evidence replaces affected independence credit; the initial
+forbidden read and rendering author's convention-read exception remain disclosed. Historical PTY
+and first-gate evidence limits are not erased. No assertion or security policy was weakened.
+
+### Technical-documentation impact review
+
+The review scanned all 17 technical-document sections and read the complete ADR log, comparing
+the changed CLI boundary with the unchanged server, SDK, schema, dependencies and infrastructure.
+The existing architecture diagrams, data model, integration, deployment, configuration and
+security-authority descriptions need no Bundle A structural change. API-design now documents
+the closed CLI error boundary, pre-client claim preparation, bounded reader, sequential loop,
+unknown outcomes and lossless unpadded rendering. Public examples remain in public CLI docs.
+
+No ADR decision is superseded. The direct functions and HTTP SDK boundary retain ADR-006/008;
+independent bounded evidence retains ADR-014's local/on-demand status, without CI promotion;
+application-qualified authority remains unchanged under ADR-015/017. No new service, storage,
+protocol, auth mechanism or framework warrants another architecture decision. Historical unrelated
+documentation is not silently rewritten or treated as newly verified by this feature-impact pass.
+
+### Integration and CI boundary
+
+The feature roadmap can derive Done from the completed execution checklist. Its portfolio cascade
+is deferred to integration into `develop` under AR-10/16; sibling state remains untouched. Bundles
+C → D → E are outside this completed plan. No merge, release, publishing or issue mutation occurred.
+
+The closing documentation/checklist checkpoint must pass CLI verify and structure before push.
+Its own latest six-job Build and Test run must then finish successfully, including full
+`pnpm verify`, UI, OIDC harness, public docs, production Docker build and dependency audit. Earlier
+or superseded CI cannot qualify it. That final run is observed after push; this commit does not
+invent its future identity or outcome. Final session completion also requires deletion of the
+entire owned execution scratch root after all tools and CI end, and a last Docker/resource check.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 
