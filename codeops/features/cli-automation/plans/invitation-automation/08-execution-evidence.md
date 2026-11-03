@@ -297,6 +297,13 @@ The four public generated files were removed to restore their observed absent ba
 files or directories were removed. Packed installation/worktree cleanup is owned by the tool.
 The initial PTY observation remains retained above; neither gate nor static review erases it.
 
+Claim evidence checkpoint `f0fc3d4d8b2c8e4b4eba310c0dd28efa91ce76da` reverified CLI1,657 tests
+plus lint/typecheck/build and structure158, then pushed both source and evidence with remote
+confirmation. Phase2 link/inventory/provenance/cleanup checks passed; all10 claim tasks are verified.
+Phase3 re-evaluation retains exactly the approved bounded file validation, full pre-client request
+preparation, sequential existing SDK calls and uncertainty rules. No server/SDK/dependency or
+authorization catalogue change was introduced. The portfolio handoff remains deferred to integration.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 

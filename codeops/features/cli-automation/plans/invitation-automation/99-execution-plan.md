@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
-> **Last Updated**: 2026-11-03 22:45
-> **Progress**: 34/49 tasks (69%)
+> **Last Updated**: 2026-11-03 22:49
+> **Progress**: 36/49 tasks (73%)
 > **Commit mode**: --auto-commit active by current user confirmation; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
@@ -128,8 +128,8 @@ checkpoint, security, docs and packed selectors; full root verification belongs 
 - [x] 2.3.2 Document claim quoting, repetition and deferred result — `docs/cli/users.md`, `packages/cli/README.md`; verify help, links and docs build. ✅ (completed: 2026-11-03 22:10; docs build passed, actual invite help exposes qualified repeated claims and quoting; no new document links; deferred outcome semantics reviewed)
 - [x] 2.3.3 Reconcile actual new test inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`. ✅ (completed: 2026-11-03 22:17; CLI1,657+lint/typecheck/build, structure158, changed600, pentest330; coverage parsers100%/user93.6%; inventory113; owned stack removed and all Docker identities restored; initial PTY observation retained)
 - [x] 2.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint with assurance tasks pending. ✅ (completed: 2026-11-03 22:45; no review findings; source63a1f68c qualified unchanged through both gates; tracked timing exception ended)
-- [~] 2.3.5 Run phase2 production-security and packed p1-admin gates without tracked edits between runs; immediately record outcomes/source/cleanup/dispositions afterwards, verify and evidence-commit/push only after all gates permit. ⏳ (implemented: 2026-11-03 22:45; same-source security11/11 and packed6/6 exit0; exact cleanup passed; evidence checkpoint verification/push pending)
-- [ ] 2.3.6 Verify phase2 evidence/docs and re-evaluate phase3 against AR-12; no claim-definition catalogue or server policy change is permitted.
+- [x] 2.3.5 Run phase2 production-security and packed p1-admin gates without tracked edits between runs; immediately record outcomes/source/cleanup/dispositions afterwards, verify and evidence-commit/push only after all gates permit. ✅ (completed: 2026-11-03 22:47; same-source security11/11 and packed6/6 exit0; cleanup passed; CLI1,657/structure158 reverified; source63a1f68c and evidencef0fc3d4d pushed/remote confirmed)
+- [x] 2.3.6 Verify phase2 evidence/docs and re-evaluate phase3 against AR-12; no claim-definition catalogue or server policy change is permitted. ✅ (completed: 2026-11-03 22:49; links/inventory/source/cleanup checked; SDK/server/dependencies unchanged; phase3 fits approved bounded input and direct sequential loop, no added catalogue or support machinery)
 
 **Deliverable:** R4 and ST-16–23/49/50. **Verify:**07 phase2, checkpoint, coverage, security, docs and packed selectors.
 
