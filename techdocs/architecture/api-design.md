@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-10-30
+> **Last Updated**: 2026-11-03
 
 ## Overview
 
@@ -87,27 +87,27 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 
 ### Endpoint Inventory
 
-| Route File         | Base Path                                             | Endpoints | Description                                    |
-| ------------------ | ----------------------------------------------------- | --------- | ---------------------------------------------- |
-| `organizations.ts` | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
-| `applications.ts`  | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
-| `clients.ts`       | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
-| `users.ts`         | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
-| `tenant-users.ts`  | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
-| `tenant-invitations.ts` | `/api/organizations/:orgId/invitations`          | 1         | Tenant application-bound invitation revocation |
-| `roles.ts`         | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
-| `permissions.ts`   | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
-| `user-roles.ts`    | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
-| `custom-claims.ts` | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
-| `config.ts`        | `/api/admin/config`                                   | —         | System configuration management                |
-| `keys.ts`          | `/api/admin/keys`                                     | —         | Signing key management                         |
-| `audit.ts`         | `/api/admin/audit`                                    | —         | Audit log viewer with filters                  |
-| `stats.ts`         | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
-| `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
-| `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
-| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
-| `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
-| `imports.ts`       | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
+| Route File              | Base Path                                             | Endpoints | Description                                    |
+| ----------------------- | ----------------------------------------------------- | --------- | ---------------------------------------------- |
+| `organizations.ts`      | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
+| `applications.ts`       | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
+| `clients.ts`            | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
+| `users.ts`              | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
+| `tenant-users.ts`       | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
+| `tenant-invitations.ts` | `/api/organizations/:orgId/invitations`               | 1         | Tenant application-bound invitation revocation |
+| `roles.ts`              | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
+| `permissions.ts`        | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
+| `user-roles.ts`         | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
+| `custom-claims.ts`      | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
+| `config.ts`             | `/api/admin/config`                                   | —         | System configuration management                |
+| `keys.ts`               | `/api/admin/keys`                                     | —         | Signing key management                         |
+| `audit.ts`              | `/api/admin/audit`                                    | —         | Audit log viewer with filters                  |
+| `stats.ts`              | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
+| `sessions.ts`           | `/api/admin/sessions`                                 | —         | Session management + revocation                |
+| `bulk.ts`               | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
+| `branding.ts`           | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
+| `exports.ts`            | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
+| `imports.ts`            | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
 
 ### Tenant-scoped M2M user API
 
@@ -438,6 +438,25 @@ RoleNotFoundError          → 404
 ClaimNotFoundError         → 404
 RbacValidationError        → 400
 ```
+
+### Conventional CLI error boundary
+
+The CLI keeps API results on stdout and uses a separate, closed error schema on stderr when
+JSON mode is selected. `packages/cli/src/error-format.ts` owns fixed categories/messages and
+metadata guards. `error-handler.ts` retains the human path and existing exit mapping; direct
+report-producing commands use its non-terminating writer so their legacy stdout/exits survive.
+Every conventional handler explicitly selects JSON mode. There is no mutable global output mode
+or stderr interception. `cli.ts` constructs the real yargs parser, while `index.ts` owns executable
+termination and top-level errors. A public Boolean-parser prepass selects only early argument-error
+formatting; normal handlers use their own parsed options.
+
+Opaque SDK authentication exceptions may originate before an API request or during refresh, so
+their synthetic 401 is omitted. Only observed response metadata is emitted. External exception
+messages, bodies, inputs and stacks never feed the JSON envelope, including verbose mode. No
+server API, authorization policy, SDK error hierarchy, credential format or database schema changed.
+The interactive Admin shell is outside this boundary and retains its existing JSON rejection.
+See the [public automation contract](../../docs/cli/overview.md#automation-errors) for the fixed
+vocabulary and deliberate legacy exit-zero exceptions.
 
 ## Service Layer Pattern
 

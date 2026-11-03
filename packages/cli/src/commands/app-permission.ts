@@ -92,6 +92,7 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -131,6 +132,7 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               ]),
             );
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -171,6 +173,7 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -207,6 +210,7 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               success(`Permission updated: ${permission.name}`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -248,6 +252,7 @@ export const appPermissionCommand: CommandModule<GlobalOptions, GlobalOptions> =
               }
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

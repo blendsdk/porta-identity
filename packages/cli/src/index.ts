@@ -1,130 +1,18 @@
 #!/usr/bin/env node
-
-/**
- * Porta CLI entry point.
- *
- * Sets up yargs with global options and registers all command modules.
- * This is the standalone CLI package — commands use the SDK for all
- * API communication rather than direct HTTP or database access.
- *
- * Usage: porta <command> <subcommand> [options]
- *
- * Global options:
- *   --server     Porta server URL (overrides PORTA_SERVER env and credentials)
- *   --json       Output in JSON format (default: table)
- *   --verbose    Show detailed output including stack traces on error
- *   --insecure   Skip TLS certificate verification (self-signed certs)
- *   --force      Skip confirmation prompts for destructive operations
- *
- * Bootstrap commands (no auth required):
- *   login        Authenticate with a Porta server via OIDC browser flow
- *   logout       Clear stored authentication tokens
- *   whoami       Show current authenticated identity
- *   version      Show CLI, SDK, and server version information
- *   doctor       Run diagnostic checks on CLI configuration
- *   completion   Generate shell completion script
- *
- * @module index
- */
-
-import yargs from 'yargs';
+/** Executable adapter: keep process exits and uncaught errors outside parser construction. */
 import { hideBin } from 'yargs/helpers';
-import { loginCommand } from './commands/login.js';
-import { logoutCommand } from './commands/logout.js';
-import { whoamiCommand } from './commands/whoami.js';
-import { versionCommand } from './commands/version.js';
-import { doctorCommand } from './commands/doctor.js';
-import { completionCommand } from './commands/completion.js';
-import { orgCommand } from './commands/org.js';
-import { appCommand } from './commands/app.js';
-import { clientCommand } from './commands/client.js';
-import { userCommand } from './commands/user.js';
-import { keysCommand } from './commands/keys.js';
-import { configCommand } from './commands/config.js';
-import { auditCommand } from './commands/audit.js';
-import { healthCommand } from './commands/health.js';
-import { sessionsCommand } from './commands/sessions.js';
-import { bulkCommand } from './commands/bulk.js';
-import { statsCommand } from './commands/stats.js';
-import { exportsCommand } from './commands/exports.js';
-import { exportCommand } from './commands/export.js';
-import { importCommand } from './commands/import.js';
-import { adminCommand } from './commands/admin.js';
+import { createCli, resolveJsonMode } from './cli.js';
+import { handleError } from './error-handler.js';
 
-/**
- * Builds and runs the CLI.
- *
- * Configures yargs with global options, registers all command modules,
- * and parses the command line arguments.
- */
+const args = hideBin(process.argv);
+/** Capture synchronous construction/parsing failures in the same executable error boundary. */
 async function main(): Promise<void> {
-  await yargs(hideBin(process.argv))
-    .scriptName('porta')
-    .usage('$0 <command> [options]')
-    .option('server', {
-      type: 'string',
-      describe: 'Porta server URL',
-      global: true,
-    })
-    .option('json', {
-      type: 'boolean',
-      default: false,
-      describe: 'Output in JSON format',
-      global: true,
-    })
-    .option('verbose', {
-      type: 'boolean',
-      default: false,
-      describe: 'Show detailed output',
-      global: true,
-    })
-    .option('insecure', {
-      type: 'boolean',
-      default: false,
-      describe: 'Skip TLS certificate verification',
-      global: true,
-    })
-    .option('force', {
-      type: 'boolean',
-      default: false,
-      describe: 'Skip confirmation prompts',
-      global: true,
-    })
-    // Bootstrap commands (no auth required)
-    .command(loginCommand)
-    .command(logoutCommand)
-    .command(whoamiCommand)
-    .command(versionCommand)
-    .command(doctorCommand)
-    .command(completionCommand)
-    // Domain commands (auth required)
-    .command(orgCommand)
-    .command(appCommand)
-    .command(clientCommand)
-    .command(userCommand)
-    // Infrastructure commands (auth required)
-    .command(keysCommand)
-    .command(configCommand)
-    .command(auditCommand)
-    .command(sessionsCommand)
-    .command(statsCommand)
-    .command(bulkCommand)
-    .command(exportsCommand)
-    .command(exportCommand)
-    .command(importCommand)
-    // Unauthenticated commands
-    .command(healthCommand)
-    // Embedded administration application (handles its own session)
-    .command(adminCommand)
-    .demandCommand(1, 'Please specify a command')
-    .strict()
-    .help()
-    .version(false) // Disable default --version; we use a custom version command
-    .completion('completion', false) // Enable yargs completion but hide from help (we have our own command)
-    .parse();
+  await createCli(args).parseAsync();
 }
 
-main().catch((err) => {
-  console.error(err);
+main().catch((error: unknown) => {
+  if (resolveJsonMode(args)) handleError(error, false, true);
+  // Human mode retains the established top-level diagnostics and general exit.
+  console.error(error);
   process.exit(1);
 });

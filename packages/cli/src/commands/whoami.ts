@@ -19,6 +19,8 @@ import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
 import { loadCredentials, isTokenExpired } from '../credential-store.js';
 import { printJson, warn } from '../output.js';
+import { writeJsonError } from '../error-handler.js';
+import { CliErrorCode, formatKnownCliError } from '../error-format.js';
 
 // ---------------------------------------------------------------------------
 // Command Definition
@@ -39,7 +41,8 @@ export const whoamiCommand: CommandModule<GlobalOptions, GlobalOptions> = {
     const creds = loadCredentials();
 
     if (!creds) {
-      warn('Not logged in. Run "porta login" to authenticate.');
+      if (argv.json) writeJsonError(formatKnownCliError(CliErrorCode.Authentication));
+      else warn('Not logged in. Run "porta login" to authenticate.');
       process.exit(1);
     }
 

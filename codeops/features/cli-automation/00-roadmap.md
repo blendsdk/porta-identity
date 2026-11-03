@@ -13,6 +13,6 @@
 
 ## Tracker
 
-| ID   | Title                                              | RD  | Plan                                                       | Stage   | Status | Last Updated     | Depends-on / Blocker                                                                  |
-| ---- | -------------------------------------------------- | --- | ---------------------------------------------------------- | ------- | ------ | ---------------- | ------------------------------------------------------------------------------------- |
-| T-01 | CLI errors, invitation claims and bulk email input | —   | [Standalone plan](plans/invitation-automation/00-index.md) | Backlog | ⬜     | 2026-11-03 16:35 | [Preflight passed](plans/invitation-automation/00-preflight-report.md); execution0/49 |
+| ID   | Title                                              | RD  | Plan                                                       | Stage     | Status | Last Updated     | Depends-on / Blocker                                                                            |
+| ---- | -------------------------------------------------- | --- | ---------------------------------------------------------- | --------- | ------ | ---------------- | ----------------------------------------------------------------------------------------------- |
+| T-01 | CLI errors, invitation claims and bulk email input | —   | [Standalone plan](plans/invitation-automation/00-index.md) | Executing | 🔄     | 2026-11-03 16:35 | [Preflight passed](plans/invitation-automation/00-preflight-report.md); see execution checklist |

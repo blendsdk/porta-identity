@@ -314,6 +314,26 @@ ORG_ID=$(porta org show my-org --json | jq -r '.id')
 porta user list "$ORG_ID" --json
 ```
 
+### JSON failures
+
+Conventional command failures write one newline-terminated object on stderr with fixed `code`
+and `message`, an observed HTTP `status` when known, and optional validated `requestId` or bounded
+`retryAfter` seconds. For example:
+
+```json
+{ "code": "FORBIDDEN", "message": "This operation is not permitted.", "status": 403 }
+```
+
+Raw arguments, claim values, paths, response bodies and stacks are never included, even with
+`--verbose`. Opaque SDK authentication failures omit their synthetic HTTP status. Existing stdout
+results, human formatting and exit codes remain unchanged. Legacy `bulk execute` validation/partial
+results and unhealthy JSON `health` reports can still exit 0 and carry a safe stderr summary;
+inspect their results. Doctor/import failure reports retain stdout and exit 1. Non-error warnings
+remain unchanged. The interactive Admin shell continues to reject `--json`.
+
+See the [automation error reference](https://blendsdk.github.io/porta-identity/cli/overview#automation-errors)
+for categories, metadata and legacy exit exceptions.
+
 ## Shell Completions
 
 ```bash

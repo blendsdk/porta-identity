@@ -13,7 +13,8 @@ import type { CommandModule } from 'yargs';
 import type { ConfigEntry, ConfigValue } from '@portaidentity/sdk';
 import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
-import { handleError, EXIT_VALIDATION_ERROR } from '../error-handler.js';
+import { handleError, writeJsonError, EXIT_VALIDATION_ERROR } from '../error-handler.js';
+import { formatCliError, LocalInputError } from '../error-format.js';
 import { printTable, printJson, success, formatDate, error, info } from '../output.js';
 
 // ---------------------------------------------------------------------------
@@ -106,6 +107,7 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               entries.map(entryRow),
             );
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -145,6 +147,7 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               [[...entryRow(entry), entry.description]],
             );
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -172,7 +175,8 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             const entry = await client.config.get(argv.key);
             const value = parseValue(entry, argv.value);
             if (value === undefined) {
-              error(`Expected ${entry.valueType} (${entry.unit}): ${allowedValues(entry)}.`);
+              if (argv.json) writeJsonError(formatCliError(new LocalInputError()));
+              else error(`Expected ${entry.valueType} (${entry.unit}): ${allowedValues(entry)}.`);
               process.exitCode = EXIT_VALIDATION_ERROR;
               return;
             }
@@ -188,6 +192,7 @@ export const configCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               info('Restart every Porta server instance to apply this change.');
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

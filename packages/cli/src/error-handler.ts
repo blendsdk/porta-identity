@@ -30,15 +30,20 @@ import {
   PortaServerError,
 } from '@portaidentity/sdk';
 import { error as printError } from './output.js';
+import { formatCliError, LocalInputError } from './error-format.js';
+import type { CliErrorEnvelope } from './error-format.js';
 
 // ---------------------------------------------------------------------------
 // Exit Codes
 // ---------------------------------------------------------------------------
 
-/** CLI exit codes per AR #99 */
+/** Successful command completion. */
 export const EXIT_SUCCESS = 0;
+/** A general command failure. */
 export const EXIT_GENERAL_ERROR = 1;
+/** Authentication or authorization failed. */
 export const EXIT_AUTH_ERROR = 2;
+/** The API or new local input failed validation. */
 export const EXIT_VALIDATION_ERROR = 3;
 
 // ---------------------------------------------------------------------------
@@ -54,16 +59,19 @@ export const EXIT_VALIDATION_ERROR = 3;
  *
  * @param fn - The async command handler to wrap
  * @param verbose - Whether to show detailed error output
+ * @param json - Whether to emit the fixed safe JSON error instead of human diagnostics
  * @returns A wrapped function that handles errors gracefully
  */
 export function withErrorHandling<T extends unknown[]>(
   fn: (...args: T) => Promise<void>,
   verbose = false,
+  json = false,
 ): (...args: T) => Promise<void> {
   return async (...args: T) => {
     try {
       await fn(...args);
     } catch (err) {
+      if (json) handleError(err, verbose, true);
       handleError(err, verbose);
     }
   };
@@ -77,8 +85,23 @@ export function withErrorHandling<T extends unknown[]>(
  *
  * @param err - The caught error
  * @param verbose - Whether to show detailed output
+ * @param json - Whether to discard external diagnostics and emit one safe JSON envelope
  */
-export function handleError(err: unknown, verbose = false): never {
+export function handleError(err: unknown, verbose = false, json = false): never {
+  if (json) {
+    writeJsonError(formatCliError(err));
+    if (err instanceof LocalInputError || err instanceof PortaValidationError) {
+      process.exit(EXIT_VALIDATION_ERROR);
+    }
+    if (err instanceof PortaAuthenticationError || err instanceof PortaForbiddenError) {
+      process.exit(EXIT_AUTH_ERROR);
+    }
+    process.exit(EXIT_GENERAL_ERROR);
+  }
+  if (err instanceof LocalInputError) {
+    printError(err.message);
+    process.exit(EXIT_VALIDATION_ERROR);
+  }
   // --- SDK Validation Error (400) ---
   if (err instanceof PortaValidationError) {
     printError(`Validation failed: ${err.message}`);
@@ -165,6 +188,15 @@ export function handleError(err: unknown, verbose = false): never {
   // --- Unknown error ---
   printError(`An unexpected error occurred: ${String(err)}`);
   process.exit(EXIT_GENERAL_ERROR);
+}
+
+/**
+ * Write a preformatted safe error without exiting or altering a command's legacy exit code.
+ * Callers must construct it through the closed formatter, never from arbitrary response data.
+ * @example writeJsonError(formatCliError(new Error('private diagnostics')))
+ */
+export function writeJsonError(envelope: CliErrorEnvelope): void {
+  console.error(JSON.stringify(envelope));
 }
 
 // ---------------------------------------------------------------------------

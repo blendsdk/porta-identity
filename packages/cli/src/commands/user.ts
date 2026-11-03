@@ -179,6 +179,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -251,6 +252,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -317,6 +319,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 info(`Total: ${result.total} users`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -361,6 +364,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -401,6 +405,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`User updated: ${updated.email}`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -425,6 +430,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.users.activate(argv.org, argv['user-id']);
               success(`User activated: ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -457,6 +463,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.users.deactivate(argv.org, argv['user-id']);
               success(`User deactivated: ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -492,6 +499,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.users.delete(argv['org-id'], argv['user-id']);
               success(`User deleted: ${name} (${user.email})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -521,6 +529,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               });
               success(`Password set for user: ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -563,6 +572,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

@@ -3,12 +3,19 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
-> **Last Updated**: 2026-11-03 16:35
-> **Progress**: 0/49 tasks (0%)
-> **Commit mode**: --auto-commit requested; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
+> **Last Updated**: 2026-11-03 17:41
+> **Progress**: 21/49 tasks (43%)
+> **Commit mode**: --auto-commit active by current user confirmation; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
 ## Implementation Phases
+
+Execution invocation `invitation-execution-20261103`: user requested Bundle A through completion
+and explicitly selected both --auto-design and --auto-commit for this run. Auto-design policy1
+applies to eligible implementation mechanisms only; reserved authority and strict scope remain.
+Entry validation matched all nine preflight hashes before any plan state change. Node24.20.0 is
+available for active verification. The initial changed selection passed; product source is not
+yet implemented. Phase task evidence is recorded below as work proceeds.
 
 | Phase | Title                                              | Tasks |
 | ----- | -------------------------------------------------- | ----- |
@@ -47,7 +54,8 @@ by this plan. No merge, issue mutation, publishing or deployment is authorized (
 
 ## Phase1: CLI-wide JSON errors
 
-> **Phase baseline tree**: Recorded at execution entry without indexing protected files.
+> **Phase baseline tree**: 9e9105feeaa7016c65b65eef6f1fa0555940b2ad (clean HEAD tree; protected files not indexed)
+> **Scope mode**: strict — JSON boundary, listed conventional callers, new focused tests, related public/technical docs, test inventory and execution evidence only.
 > **Lenses**: api-surface
 > **Security profiles**: owasp-web, auth-protocol, tenant-isolation
 > **Reasoning**: high — executable output compatibility and sensitive error handling
@@ -56,37 +64,38 @@ by this plan. No merge, issue mutation, publishing or deployment is authorized (
 
 References:03-01;07 ST-1–15/47;AR-13/16/17. Start with07's first local selection.
 
-- [ ] 1.1.1 [spec-author] Write formatter/human compatibility specifications ST-1–3/7 — `packages/cli/tests/json-errors.spec.test.ts`; verify against07.
-- [ ] 1.1.2 [spec-author] Write actual parser/executable specifications ST-5/6/15 — `packages/cli/tests/json-errors-entry.spec.test.ts`; verify no credential access.
-- [ ] 1.1.3 [spec-author] Write secret-marker and public SDK auth-provenance specifications ST-4/6/47 — `packages/cli/tests/security/json-error-redaction.spec.test.ts`; verify from03-01 and AR-17, without real credential access.
-- [ ] 1.1.4 [spec-author] Write direct-failure/report compatibility specifications ST-8–14 — `packages/cli/tests/commands/json-errors-legacy.spec.test.ts`; verify legacy exits/stdout.
-- [ ] 1.1.5 Run07 phase1 selector and record each intended red before implementation; document already-green legacy cases without claiming new behaviour.
+- [x] 1.1.1 [spec-author] Write formatter/human compatibility specifications ST-1–3/7 — `packages/cli/tests/json-errors.spec.test.ts`; verify against07. ✅ (completed: 2026-11-03 17:12; independent contract/static review passed)
+- [x] 1.1.2 [spec-author] Write actual parser/executable specifications ST-5/6/15 — `packages/cli/tests/json-errors-entry.spec.test.ts`; verify no credential access. ✅ (completed: 2026-11-03 17:12; independent contract/static review passed)
+- [x] 1.1.3 [spec-author] Write secret-marker and public SDK auth-provenance specifications ST-4/6/47 — `packages/cli/tests/security/json-error-redaction.spec.test.ts`; verify from03-01 and AR-17, without real credential access. ✅ (completed: 2026-11-03 17:12; independent contract/static review passed)
+- [x] 1.1.4 [spec-author] Write direct-failure/report compatibility specifications ST-8–14 — `packages/cli/tests/commands/json-errors-legacy.spec.test.ts`; verify legacy exits/stdout. ✅ (completed: 2026-11-03 17:12; independent contract/static review passed)
+- Commits deferred until a green source checkpoint, as required by07; intended-red specifications are not published.
+- [x] 1.1.5 Run07 phase1 selector and record each intended red before implementation; document already-green legacy cases without claiming new behaviour. ✅ (completed: 2026-11-03 17:12; local Node24 red confirmed:43 failed/8 passed, two missing-module collection failures;08 owns evidence)
 
 ### Session1.2 — Implementation and green
 
 References:03-01;AR-13. Each caller group preserves exact legacy semantics and runs its relevant
 existing command tests plus the phase1 selector. Do not enlarge scope to fix unrelated exits.
 
-- [ ] 1.2.1 Implement safe envelope/classifier and local input discriminators — `packages/cli/src/error-format.ts`; verify ST-1–4.
-- [ ] 1.2.2 Integrate explicit JSON and non-terminating reporting into the existing boundary — `packages/cli/src/error-handler.ts`; verify ST-1–4/7 and existing handler tests.
-- [ ] 1.2.3 Implement public-yargs mode resolution and safe parser entry — `packages/cli/src/cli.ts`, `packages/cli/src/index.ts`; verify ST-5/6/15.
-- [ ] 1.2.4 Integrate handler JSON options — `packages/cli/src/commands/user.ts`, `user-role.ts`, `user-claim.ts`; verify user command tests and ST-14.
-- [ ] 1.2.5 Integrate handler JSON options — `packages/cli/src/commands/org.ts`, `app.ts`; verify their command tests and ST-14.
-- [ ] 1.2.6 Integrate handler JSON options — `packages/cli/src/commands/app-role.ts`, `app-permission.ts`, `app-claim.ts`; verify their command tests and ST-14.
-- [ ] 1.2.7 Integrate handler JSON options — `packages/cli/src/commands/app-module.ts`, `client.ts`, `client-secret.ts`; verify their command tests and ST-14.
-- [ ] 1.2.8 Integrate handler JSON options — `packages/cli/src/commands/keys.ts`, `sessions.ts`, `audit.ts`; verify their command tests and ST-14.
-- [ ] 1.2.9 Integrate handlers/direct failures — `packages/cli/src/commands/stats.ts`, `config.ts`, `bulk.ts`; verify ST-9–11/14 and legacy tests.
-- [ ] 1.2.10 Integrate handlers/structured rejection summary — `packages/cli/src/commands/exports.ts`, `export.ts`, `import.ts`; verify ST-12/14 and portability tests.
-- [ ] 1.2.11 Integrate login/health/missing-credential failures — `packages/cli/src/commands/login.ts`, `health.ts`, `whoami.ts`; verify ST-8/13 and existing auth/health tests.
-- [ ] 1.2.12 Add safe JSON diagnostic failure summary — `packages/cli/src/commands/doctor.ts`; verify ST-12 and unchanged report tests.
-- [ ] 1.2.13 Audit03-01's complete integration matrix and run phase1 green; retain exact two-argument human calls under PF-004, changing only directly affected implementation-test signatures, never immutable expectations.
+- [x] 1.2.1 Implement safe envelope/classifier and local input discriminators — `packages/cli/src/error-format.ts`; verify ST-1–4. ✅ (completed: 2026-11-03 17:16; formatter/redaction/legacy handler selector60 tests passed; documentation self-check passed)
+- [x] 1.2.2 Integrate explicit JSON and non-terminating reporting into the existing boundary — `packages/cli/src/error-handler.ts`; verify ST-1–4/7 and existing handler tests. ✅ (completed: 2026-11-03 17:16;60 formatter/redaction/legacy handler tests passed; documentation self-check passed)
+- [x] 1.2.3 Implement public-yargs mode resolution and safe parser entry — `packages/cli/src/cli.ts`, `packages/cli/src/index.ts`; verify ST-5/6/15. ✅ (completed: 2026-11-03 17:18;36 actual-parser/executable cases passed; documentation self-check passed)
+- [x] 1.2.4 Integrate handler JSON options — `packages/cli/src/commands/user.ts`, `user-role.ts`, `user-claim.ts`; verify user command tests and ST-14. ✅ (completed: 2026-11-03 17:19;58 selected user cases passed;14 unrelated cases excluded by name selector; full phase gate pending; doc self-check passed)
+- [x] 1.2.5 Integrate handler JSON options — `packages/cli/src/commands/org.ts`, `app.ts`; verify their command tests and ST-14. ✅ (completed: 2026-11-03 17:20;55 existing +2 targeted contract cases passed; broad first selector also hit still-red future bulk/import paths, final full phase gate remains pending; doc self-check passed)
+- [x] 1.2.6 Integrate handler JSON options — `packages/cli/src/commands/app-role.ts`, `app-permission.ts`, `app-claim.ts`; verify their command tests and ST-14. ✅ (completed: 2026-11-03 17:21;45 application/RBAC cases passed; representative application JSON case passed in1.2.5; full matrix gate pending; doc self-check passed)
+- [x] 1.2.7 Integrate handler JSON options — `packages/cli/src/commands/app-module.ts`, `client.ts`, `client-secret.ts`; verify their command tests and ST-14. ✅ (completed: 2026-11-03 17:21;86 existing contract/command +1 focused JSON case passed; doc self-check passed)
+- [x] 1.2.8 Integrate handler JSON options — `packages/cli/src/commands/keys.ts`, `sessions.ts`, `audit.ts`; verify their command tests and ST-14. ✅ (completed: 2026-11-03 17:22;40 existing/frozen cases +1 focused JSON case passed; exact two-argument human key boundary retained; doc self-check passed)
+- [x] 1.2.9 Integrate handlers/direct failures — `packages/cli/src/commands/stats.ts`, `config.ts`, `bulk.ts`; verify ST-9–11/14 and legacy tests. ✅ (completed: 2026-11-03 17:23;49 existing/frozen +5 focused contract cases passed; legacy exits/order/stdout retained; doc self-check passed)
+- [x] 1.2.10 Integrate handlers/structured rejection summary — `packages/cli/src/commands/exports.ts`, `export.ts`, `import.ts`; verify ST-12/14 and portability tests. ✅ (completed: 2026-11-03 17:24;26 portability +6 exports +1 focused contract cases passed; no frozen tests changed; doc self-check passed)
+- [x] 1.2.11 Integrate login/health/missing-credential failures — `packages/cli/src/commands/login.ts`, `health.ts`, `whoami.ts`; verify ST-8/13 and existing auth/health tests. ✅ (completed: 2026-11-03 17:25;14 existing command/health +69 auth +3 focused contract cases passed; doc self-check passed)
+- [x] 1.2.12 Add safe JSON diagnostic failure summary — `packages/cli/src/commands/doctor.ts`; verify ST-12 and unchanged report tests. ✅ (completed: 2026-11-03 17:26;26 doctor/legacy contract cases passed; stdout array and exit retained; doc self-check passed)
+- [x] 1.2.13 Audit03-01's complete integration matrix and run phase1 green; retain exact two-argument human calls under PF-004, changing only directly affected implementation-test signatures, never immutable expectations. ✅ (completed: 2026-11-03 17:27;91 phase cases passed,86 callers audited; new spec ANSI regex received only an explanatory lint exemption, no assertion change; workspace checkpoint pending)
 
 ### Session1.3 — Implementation tests, documentation and hardening
 
-- [ ] 1.3.1 Add internal classifier/metadata/mode tests after green — `packages/cli/tests/json-errors.impl.test.ts`; verify03-01 and07.
-- [ ] 1.3.2 Document the public error/legacy-exit contract — `docs/cli/overview.md`, `packages/cli/README.md`, relevant `techdocs/` reference; verify links and07 docs build.
-- [ ] 1.3.3 Reconcile actual owned CLI test-file inventory — `repo-tests/monorepo/server-package.spec.test.mjs`; run07 local checkpoint checks, bounded coverage and pentest without weakening assertions.
-- [ ] 1.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings, and create07's unpublished locally verified source checkpoint; leave clean-provenance gates pending.
+- [x] 1.3.1 Add internal classifier/metadata/mode tests after green — `packages/cli/tests/json-errors.impl.test.ts`; verify03-01 and07. ✅ (completed: 2026-11-03 17:30;107 specification/internal cases passed; doc self-check passed)
+- [x] 1.3.2 Document the public error/legacy-exit contract — `docs/cli/overview.md`, `packages/cli/README.md`, `techdocs/architecture/api-design.md`; verify links and07 docs build. ✅ (completed: 2026-11-03 17:32; docs build passed; local target/heading reviewed; existing architecture intent retained, no ADR superseded)
+- [x] 1.3.3 Reconcile actual owned CLI test-file inventory — `repo-tests/monorepo/server-package.spec.test.mjs`; run07 local checkpoint checks, bounded coverage and pentest without weakening assertions. ✅ (completed: 2026-11-03 17:41; CLI verify111 files/1,607 tests +lint/typecheck/build; structure158; pentest330;28 affected modules meet coverage goals; inventory111; owned stack removed; doc self-check passed)
+- [~] 1.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings, and create07's unpublished locally verified source checkpoint; leave clean-provenance gates pending. ⏳ (implemented: 2026-11-03 17:41; both reviews report no findings; source checkpoint prepared, provenance group begins at commit; tracked updates deferred through both gates)
 - [ ] 1.3.5 Run phase1 registered production-security and packed p1-admin gates against the same clean committed source without tracked edits between runs; preserve temporary observations until recording evidence.
 - [ ] 1.3.6 Immediately record gate evidence, exact source identities, authorized dispositions and cleanup; run07 checkpoint checks, then evidence-commit and push via git-commit only after all gates permit.
 - [ ] 1.3.7 Validate phase1 docs/evidence links, exact resource restoration and all relevant existing CLI tests; record remaining accepted harness limitations without claiming a full pass.
