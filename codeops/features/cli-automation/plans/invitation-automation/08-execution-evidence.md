@@ -444,6 +444,36 @@ Exact run/source/artifact identities, outcome taxonomy, correlated-log limitatio
 cleanup will be recorded immediately after both runs finish. No merge, release or issue mutation
 is authorized. Existing resource/credential boundaries remain in force.
 
+### Final clean-source gate results
+
+Both final gates passed on unchanged committed source
+`de4ff08ecbb34043dbd6b1c39e99739d4268e72c`. Git was clean before, between and after the runs.
+Tracked-write freeze is now released; these results are recorded after the group, not claimed
+before execution. The final registered gates received no risk waiver or reduced selection.
+
+| Gate                | Run identity                                                                               | Result                                                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
+| Production-security | 15279381-1270-43b4-bbec-a9e89af2ee92                                                       | Exit0; exposure11/11,0 product/execution failures,0 incomplete cases; other registered collectors passed |
+| Packed p1-admin     | Harness3d1283c2-34ab-4469-9f5a-9a36a97f5fec; consumer b6bae187-d0cf-4461-aa34-89e7a99716ae | Exit0;6/6 journeys, matching archive content, unchanged primary tree, no prohibited output               |
+
+Exposure artifact: `test-harness/.assurance-results/15279381-1270-43b4-bbec-a9e89af2ee92/production-exposure/production-security/observation.json`;
+SHA256 `7235373e20897ea8349294b2a0286afaea14ca14e020b23e9470feec595f8733`.
+It explicitly has correlatedLogCredit=false; no correlated decision-log credit is claimed.
+Packed artifact: `test-harness/.assurance-results/b6bae187-d0cf-4461-aa34-89e7a99716ae/compat/p1-admin/result.json`;
+SHA256 `e1826aeea313bfa3a1c38c0ae59b67d22bdd7b98a32507d532c962cd278a1116`.
+Packed server image: `sha256:44ad9fed45e4ff63dba479fd08654d836771d4bf0febc2a6b536800b5fcd3ff2`.
+The packed selector remains unchanged-contract adjunct evidence; feature specifications supply
+the new bulk behaviour evidence, including authenticated public-SDK boundaries.
+
+Owned lifecycle teardown and supplementary exact event-captured residue cleanup passed:40
+security container starts and5 packed starts were captured with zero capture errors. Only owned
+volume identities and exact run-tagged images were removed. Packed installation/worktree is
+absent. All Docker identities match the immediate pre-gate baseline:30 containers/17 networks/
+76 volumes/92 images, preserving the two unrelated concurrent networks. The four public generated
+files were removed to restore their observed absent baseline, leaving directories/other files
+untouched. Temporary result files remain only until final safe metrics/hashes are recorded and
+verified; they are not committed deliverables.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 
