@@ -3,8 +3,8 @@
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
-> **Last Updated**: 2026-11-03 21:41
-> **Progress**: 23/49 tasks (47%)
+> **Last Updated**: 2026-11-03 21:50
+> **Progress**: 26/49 tasks (53%)
 > **Commit mode**: --auto-commit active by current user confirmation; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
@@ -97,9 +97,9 @@ existing command tests plus the phase1 selector. Do not enlarge scope to fix unr
 - [x] 1.3.3 Reconcile actual owned CLI test-file inventory — `repo-tests/monorepo/server-package.spec.test.mjs`; run07 local checkpoint checks, bounded coverage and pentest without weakening assertions. ✅ (completed: 2026-11-03 17:41; CLI verify111 files/1,607 tests +lint/typecheck/build; structure158; pentest330;28 affected modules meet coverage goals; inventory111; owned stack removed; doc self-check passed)
 - [x] 1.3.4 Complete independent correctness/API review and dedicated security audit, resolve findings, and create07's unpublished locally verified source checkpoint; leave clean-provenance gates pending. ✅ (completed: 2026-11-03 21:41; independent reviews found no findings; source cebfbe13 and unchanged-source group verified; tracked timing exception ended after both runs)
 - [x] 1.3.5 Run phase1 registered production-security and packed p1-admin gates against the same clean committed source without tracked edits between runs; preserve temporary observations until recording evidence. ✅ (completed: 2026-11-03 21:41; same-source qualification passed: security11/11, packed6/6, both exit0, no prohibited output; first failed attempt and log-credit limitation preserved; cleanup verified)
-- [~] 1.3.6 Immediately record gate evidence, exact source identities, authorized dispositions and cleanup; run07 checkpoint checks, then evidence-commit and push via git-commit only after all gates permit. ⏳ (implemented: 2026-11-03 21:41;08 records outcomes/provenance, first failed run and explicit generated-file cleanup disposition; evidence checkpoint verification/push pending)
-- [ ] 1.3.7 Validate phase1 docs/evidence links, exact resource restoration and all relevant existing CLI tests; record remaining accepted harness limitations without claiming a full pass.
-- [ ] 1.3.8 Re-evaluate phase2 scope/inputs and minimum-sufficient design against AR-12 before continuing; confirm no unauthorized dependency or support machinery entered phase1.
+- [x] 1.3.6 Immediately record gate evidence, exact source identities, authorized dispositions and cleanup; run07 checkpoint checks, then evidence-commit and push via git-commit only after all gates permit. ✅ (completed: 2026-11-03 21:46; CLI1,607+lint/typecheck/build and structure158 reverified; source cebfbe13 and evidence0ea671c2 pushed and remote confirmed;08 contains all dispositions)
+- [x] 1.3.7 Validate phase1 docs/evidence links, exact resource restoration and all relevant existing CLI tests; record remaining accepted harness limitations without claiming a full pass. ✅ (completed: 2026-11-03 21:46; links/current1,607-test evidence/111-file inventory/Docker identities verified; correlation-credit and initial-failure limitations explicit; generated-file cleanup follows user ruling)
+- [x] 1.3.8 Re-evaluate phase2 scope/inputs and minimum-sufficient design against AR-12 before continuing; confirm no unauthorized dependency or support machinery entered phase1. ✅ (completed: 2026-11-03 21:50; manifests/dependencies/SDK/server unchanged; only approved formatter and parser-construction seams added; phase2 fits existing211-line parsers/593-line user module; Node24 deep-input encoding counterexample qualified without a fixed depth policy)
 
 **Deliverable:** R1–R3 and ST-1–15/47, independently reviewed and verified. **Verify:**07 phase1,
 checkpoint, security, docs and packed selectors; full root verification belongs to CI.

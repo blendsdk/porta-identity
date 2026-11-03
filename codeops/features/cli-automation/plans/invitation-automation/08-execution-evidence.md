@@ -164,3 +164,23 @@ match the original30 containers,15 networks,76 volumes and92 images. The tempora
 and build worktree are absent. The four exact user-authorized generated files were removed after
 both gates; all their directories and other files remain. This is the user's explicit cleanup
 disposition, not a claim to have restored unavailable original file bytes.
+
+### Phase1 completion
+
+Source/evidence checkpoints `cebfbe13` and `0ea671c2` were pushed only after qualification. The
+evidence checkpoint re-ran full CLI verification (111 files/1,607 tests plus lint/typecheck/build)
+and structure158. Documentation links, actual inventory, unchanged implementation and Docker
+identities were checked again. All26 phase1 tasks are now verified; claims and bulk remain pending.
+
+Phase2 re-evaluation confirmed no manifest/lockfile/dependency, SDK or server source change. The
+approved claim parser and complete-input encoding check fit the existing parser/user modules
+(211/593 lines before phase2), without a catalogue, dependency or serialization framework.
+A Node24 probe confirmed finite nested JSON at depth5000 can parse yet fail complete-request
+stringification. That is qualification evidence for a runtime-dependent fixture, not a new fixed
+depth rejection rule. All public claim/duplicate/pre-client validation and deferred-result rules
+remain as approved.
+
+The two task-owned ignored assurance result directories were removed after their safe metrics,
+source/run identities and hashes were recorded here. No other result directory was touched.
+Public generated files now have an observed absent baseline under the explicit user disposition;
+subsequent runs will preserve that state.
