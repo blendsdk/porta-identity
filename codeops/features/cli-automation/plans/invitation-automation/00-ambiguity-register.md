@@ -1,6 +1,6 @@
 # Ambiguity Register: CLI Invitation Automation
 
-> **Status**: ✅ Decisions resolved — 17 planning items and 1 runtime technical ruling; SA-3-001 fixed and re-audit closed
+> **Status**: ✅ Decisions resolved — 17 planning items and 2 runtime rulings; SA-3-001 fixed and frozen-assertion repair explicitly user-approved
 > **Last Updated**: 2026-11-03 23:49
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1
@@ -49,6 +49,8 @@ outside make-plan. Execution checkpoint behaviour belongs to exec-plan.
 | 16  | Technical / workflow                    | Phase decomposition, artifacts and verification                                       | Three dependency-ordered phases with existing tools / new framework or workflow  | Authority: AI — delegated by --auto-design; existing tooling, independent reviews, no extra machinery                                                                               | ✅ Resolved |
 | 17  | Technical / observation correctness     | RV-1: SDK authentication errors do not prove HTTP401 or actual invitation dispatch    | Conservative SDK-boundary observation / SDK API expansion                        | Authority: AI — delegated by --auto-design; retain auth classification/exit2, omit unproven status and count SDK invocations without claiming HTTP dispatch                         | ✅ Resolved |
 | 18  | Technical (runtime) / bounded rendering | SA-3-001: padded human tables amplify one accepted long address across all recipients | Budgeted padded fallback / always unpadded sanitized delimiter table             | Authority: AI — delegated by current execution --auto-design; use command-local unpadded recipient table, preserve full data and existing counts/stop helpers                       | ✅ Resolved |
+
+| 19 | Testing (runtime) / frozen-oracle mechanics | Node22 accepted-value matcher overflows inside Vitest, not preparation | Explicit assertion-only freeze exception / retain known failing comparison | Authority: User — approved equivalent iterative structural assertion with unchanged fixture and expected value | ✅ Resolved |
 
 ## Resolution notes
 
@@ -286,3 +288,28 @@ evidence above remain unchanged; preflight does not turn that history into produ
 - **Policy version:**1; **Root invocation ID:** invitation-execution-20261103.
 - **Reopen triggers:** Changed accepted bounds, missing/altered report fields, unsafe delimiters,
   or any measured output amplification despite the unpadded path.
+
+## AR-19 — User-approved frozen assertion mechanics repair
+
+- **Authority:** User — selected “Approve repair (Recommended)” in the explicit frozen-specification
+  exception question during final CI diagnosis. Auto-design did not grant this exception.
+- **Scope:** Only the deep accepted-value assertion in
+  `packages/cli/tests/bulk-invite-input.spec.test.ts`; retain its runtime-qualified fixture,
+  preparation call, shape assertions, expected JSON value and all other assertions.
+- **Evidence:** Closing CI41739476424 failed that test, with1,794 other CLI tests passing.
+  Node22.23.1 reproduced the failure; isolated diagnosis showed successful depth4,000 preparation
+  and exact JSON preservation, followed by a stack overflow in Vitest's recursive equality matcher.
+- **Decision:** Replace recursive deep equality only with iterative inspection of the fixture's
+  single-element arrays: array type, prototype, length, own keys and exact terminal equality.
+  Do not reduce nesting or compare serialized strings as a substitute for structural equality.
+- **Independent challenge:** ses_e5c3b3256ffejeTK35bvPljfv8 confirmed the comparator defect and
+  required an explicit ruling before editing the frozen oracle. It warned that string-only
+  comparison can hide extra properties or non-plain values; the selected assertion retains
+  structural checks instead.
+- **Rejected alternatives:** Retry CI without correction; reduce accepted fixture depth; alter
+  product parsing/encoding; change test-runner stack limits; replace structural checks with
+  string equality. These hide the failure, alter policy or fail to preserve the oracle.
+- **Confidence:** High; verify on Node22 and24 and review the exact assertion diff. Reopen if any
+  expected structure/value becomes unchecked or production code must change.
+- **No waiver:** This authorizes test mechanics only, not changed acceptance criteria, security
+  assertions, product behaviour, a test framework or any other specification edit.

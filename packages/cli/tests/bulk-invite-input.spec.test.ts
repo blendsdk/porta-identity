@@ -133,7 +133,19 @@ describe('complete invitation preparation', () => {
     });
     expect(Object.keys(prepared).sort()).toStrictEqual(['duplicates', 'inputRecords', 'recipients']);
     expect(Object.keys(prepared.recipients[0]!).sort()).toStrictEqual(['email', 'input', 'line']);
-    expect(prepared.recipients[0]?.input.claims?.[0]?.value).toStrictEqual(JSON.parse(accepted));
+    // The fixture contains nested single-element arrays. Compare each shallow level so the
+    // assertion itself does not overflow before checking a value the native encoder accepts.
+    let actual: unknown = prepared.recipients[0]?.input.claims?.[0]?.value;
+    let expected: unknown = JSON.parse(accepted);
+    while (Array.isArray(expected)) {
+      if (!Array.isArray(actual)) throw new Error('The nested claim array shape changed.');
+      expect(Object.getPrototypeOf(actual)).toBe(Object.getPrototypeOf(expected));
+      expect(actual.length).toBe(expected.length);
+      expect(Reflect.ownKeys(actual)).toStrictEqual(Reflect.ownKeys(expected));
+      actual = actual[0];
+      expected = expected[0];
+    }
+    expect(Object.is(actual, expected)).toBe(true);
   });
 
   it('should reject finite parsed JSON when the complete request cannot be encoded', () => {

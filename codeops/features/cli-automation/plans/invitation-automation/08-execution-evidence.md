@@ -530,6 +530,54 @@ or superseded CI cannot qualify it. That final run is observed after push; this 
 invent its future identity or outcome. Final session completion also requires deletion of the
 entire owned execution scratch root after all tools and CI end, and a last Docker/resource check.
 
+### Closing CI failure — completion reopened
+
+Closing checkpoint `4c985e2cff66a95d17a98a33168fda4e9ad352fa` was pushed and remote-confirmed.
+Its Build and Test run `41739476424` failed: Verify Monorepo job `126277078509` failed at
+"Verify structure and active packages". UI Tests, OIDC Harness, Public Documentation,
+Production Docker Build and Production Dependency Audit passed, as recorded by the completed
+`gh run watch --exit-status` output. The run is not green and Bundle A is not complete.
+
+Subsequent run/job API requests repeatedly timed out connecting to `api.github.com:443`, so the
+failure details have not been obtained. No cause is inferred, no assertion is changed and no CI
+rerun is used to hide the failure. Task3.3.6 and the derived feature roadmap are reopened as
+blocked. The owned scratch root is retained temporarily for the CI watch/failure evidence and
+resumption; no test services were restarted. Previously verified local and assurance gates remain
+valid evidence for their named source, not a waiver of this failed closing gate.
+
+GitHub connectivity recovered on the next execution turn. The failed job log identifies exactly
+one failing CLI test: `bulk-invite-input.spec.test.ts` / "should accept runtime-qualified encodable
+nesting without storing encoded text"; 1,794 other CLI tests passed. The exact selector reproduced
+locally on Node22.23.1 (23 passed, 1 failed) and passed on Node24.20.0 (24 passed).
+
+An isolated scratch-only Vitest diagnostic qualified depth4,000 under Node22.23.1. Preparation,
+top-level shape checks and exact serialized nested JSON all passed. Catching only the final
+`toStrictEqual` showed the RangeError originates in Vitest's recursive `iterableEquality`/`eq`
+implementation. This establishes a matcher stack overflow, not a product preparation failure.
+The original specification and product source remain unchanged while an independent challenger
+assesses a mechanically equivalent, stack-safe assertion; no depth limit, weakened accepted value,
+custom serializer, matcher patch or CI retry is authorized by this diagnosis.
+
+Independent challenger ses_e5c3b3256ffejeTK35bvPljfv8 confirmed the matcher-localized defect and
+recommended preserving structural checks with an iterative assertion, not string comparison.
+Because specifications are frozen, the parent requested an explicit exception. The user selected
+“Approve repair (Recommended)” for exactly this assertion-only repair, unchanged fixture and
+semantics, followed by Node22/24 and closing CI verification. Runtime AR-19 records that authority.
+The repaired assertion checks every nested array's type, prototype, length and own keys, then
+exact terminal equality; production source, accepted nesting and other assertions are unchanged.
+
+The unchanged 24-case input selector now passes on both Node22.23.1 and Node24.20.0. Independent
+scoped re-review by the same challenger found no necessary findings: prototype and own-key checks
+are stricter, not weaker, and expected nesting bounds the loop. Full dual-runtime CLI verification,
+structure, changed selection and a new closing CI run remain pending at this point. A direct Git
+comparison confirms production source, SDK/server, manifests, lockfile and assurance code still
+match the qualified source; no new production-security/packed run is substituted for CI diagnosis.
+
+Repair checkpoint verification passed on both Node22.23.1 and Node24.20.0: each complete CLI
+verify ran123 files/1,795 tests plus lint/typecheck/build. Structure158 and changed738 CLI tests
+plus structure158 also passed. The repair is ready for a new commit and full closing CI; the
+failed run remains recorded and is not relabelled or retried away.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 

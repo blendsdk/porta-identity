@@ -12,6 +12,12 @@ red before implementation, then green, then add `.impl.test.ts` tests. Existing 
 security assertions cannot be weakened, skipped or retried away. Separate concerns before test
 files exceed200–300 lines. Do not grow the existing oversized general user test.
 
+One narrowly scoped user-approved exception (runtime AR-19) repairs the deep accepted-value
+assertion's recursive test matcher after Node22 exposed its own stack limit. Keep the original
+runtime-qualified fixture, preparation and expected JSON value. Compare each array level's
+prototype, length and own keys, then the exact terminal value, without recursive comparison.
+No expected product behaviour changes; this exception does not authorize other oracle edits.
+
 Use real yargs, the real formatter and the real runner. Mock only the external SDK/HTTP/filesystem
 boundary when needed. Actual executable tests cover parser failures using synthetic arguments,
 isolated empty HOME and no credential files. Neither read real operator credentials nor create
