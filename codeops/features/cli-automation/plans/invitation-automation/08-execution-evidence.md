@@ -600,6 +600,34 @@ recorded concurrent additions, the observed network count is19, not the pre-gate
 networks are preserved; no global baseline restoration is falsely claimed. No local test service
 was started for the assertion repair. Final owned scratch deletion follows the last CI/tool end.
 
+## Integration into develop
+
+The final documentation checkpoint `71149547d6a57ece29db3a83a23cc65a05eec5f9` passed all six jobs
+of CI41792422746. The previous execution turn confirmed the entire exact owned execution scratch
+root was removed, with no task-owned test resources remaining.
+
+On2026-11-04 the user explicitly requested integration through `develop`, followed by starting
+Bundle C. PR[#218](https://github.com/blendsdk/porta-identity/pull/218) targeted `develop`; all six
+PR checks passed in run41822702095 before merge. GitHub reported a clean, mergeable PR with the
+exact verified head71149547. A normal merge preserved the implementation and assurance histories;
+merge commit `89bd2dcee3e4f60a8b3dfdcfb872b7306b4f9ec1` was confirmed as merged into `develop`.
+The local integration branch fast-forwarded to that commit, and ancestry validation confirmed
+the completed Bundle A head is retained. No release, deployment or issue-state mutation occurred.
+
+The previously deferred CLI Automation portfolio row is now added on the integration branch.
+Only this feature's derived summary and the portfolio feature tally change; sibling progress,
+status and roadmap files are preserved. The installed roadmap sync engine's dry-run exposes
+pre-existing incompatibility with the legacy hand-maintained counters: it proposes0/0 portfolio
+features and an unrelated Admin UI counter change. Its write mode is therefore not applied.
+The portfolio tally is instead mechanically validated from its actual feature-status rows;
+no unrelated lifecycle stage or RD counter is reinterpreted by this scoped integration update.
+
+The integration documentation checkpoint passed `pnpm test:changed` (structure158; no affected
+unit files), complete CLI verification (123 files/1,795 tests plus lint/typecheck/build) and
+`pnpm test:structure` (158). The portfolio status-row check reports7/9 features done and confirms
+every pre-existing sibling portfolio data row is unchanged. These are narrow local selections;
+the integration branch's full CI remains the authoritative merge gate.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 

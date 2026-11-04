@@ -13,6 +13,6 @@
 
 ## Tracker
 
-| ID   | Title                                              | RD  | Plan                                                       | Stage | Status | Last Updated | Depends-on / Blocker                                                                                                 |
-| ---- | -------------------------------------------------- | --- | ---------------------------------------------------------- | ----- | ------ | ------------ | -------------------------------------------------------------------------------------------------------------------- |
-| T-01 | CLI errors, invitation claims and bulk email input | —   | [Standalone plan](plans/invitation-automation/00-index.md) | Done  | ✅     | 2026-11-04   | 49/49 verified; six-job repair CI passed; final documentation CI required; portfolio deferred to develop integration |
+| ID   | Title                                              | RD  | Plan                                                       | Stage | Status | Last Updated | Depends-on / Blocker                                                                                                     |
+| ---- | -------------------------------------------------- | --- | ---------------------------------------------------------- | ----- | ------ | ------------ | ------------------------------------------------------------------------------------------------------------------------ |
+| T-01 | CLI errors, invitation claims and bulk email input | —   | [Standalone plan](plans/invitation-automation/00-index.md) | Done  | ✅     | 2026-11-04   | 49/49 verified; final CI41792422746 and PR CI41822702095 passed all six jobs; merged via PR #218; portfolio synchronized |
