@@ -96,6 +96,7 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
                 console.log('');
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -142,6 +143,7 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
                 info(`Total: ${secrets.length} secrets`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -179,6 +181,7 @@ export const clientSecretCommand: CommandModule<GlobalOptions, GlobalOptions> = 
               await sdkClient.clients.revokeSecret(argv['client-id'], argv['secret-id']);
               success(`Secret revoked: ${argv['secret-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

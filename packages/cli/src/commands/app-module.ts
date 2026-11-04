@@ -86,6 +86,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               success(`Module added: ${mod.name} (${mod.slug})`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -124,6 +125,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               info(`Total: ${modules.length} modules`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -164,6 +166,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               success(`Module updated: ${updated.name}`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -190,6 +193,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             await client.applications.deactivateModule(argv['app-id'], argv['module-id']);
             success('Module deactivated');
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -216,6 +220,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             await client.applications.activateModule(argv['app-id'], argv['module-id']);
             success('Module activated');
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -252,6 +257,7 @@ export const appModuleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             await client.applications.deleteModule(argv['app-id'], argv['module-id']);
             success(`Module deleted: ${module.name} (${module.slug})`);
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

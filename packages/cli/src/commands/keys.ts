@@ -70,6 +70,7 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             );
             success(`${keys.length} signing key(s)`);
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -95,6 +96,7 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             );
             printKeyActivationGuidance();
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -128,6 +130,7 @@ export const keysCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             success(`Retired every active key and created one new active key: ${key.kid}`);
             printKeyActivationGuidance();
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

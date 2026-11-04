@@ -134,6 +134,46 @@ When output is piped or redirected (no TTY), each value is printed on a single
 line for easy `grep`/`awk` processing. Use `--json` for fully machine-readable
 output.
 
+## Automation errors
+
+With `--json`, conventional command failures emit one newline-terminated JSON object on stderr.
+Successful results and existing structured reports keep their original stdout shapes. Human
+output is unchanged. The interactive `porta admin` command still rejects JSON mode.
+
+```json
+{ "code": "CONFLICT", "message": "The request conflicts with existing state.", "status": 409 }
+```
+
+| Code                      | Fixed message                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------- |
+| `VALIDATION_ERROR`        | The request failed validation. (New local input: The command input is invalid.) |
+| `AUTHENTICATION_REQUIRED` | Authentication is required.                                                     |
+| `FORBIDDEN`               | This operation is not permitted.                                                |
+| `NOT_FOUND`               | The requested resource was not found.                                           |
+| `CONFLICT`                | The request conflicts with existing state.                                      |
+| `RATE_LIMITED`            | The request was rate limited.                                                   |
+| `SERVER_ERROR`            | The server could not complete the request.                                      |
+| `HTTP_ERROR`              | The HTTP request failed.                                                        |
+| `ARGUMENT_ERROR`          | Invalid command arguments.                                                      |
+| `COMMAND_FAILED`          | The command failed.                                                             |
+| `DIAGNOSTIC_FAILED`       | One or more checks failed.                                                      |
+| `BATCH_INCOMPLETE`        | The operation did not complete successfully.                                    |
+
+`code` and `message` are always present. `status` is included only for an observed HTTP response.
+Opaque SDK authentication failures omit it because missing credentials and failed refreshes do
+not establish an invitation/API HTTP 401. Optional `requestId` is a validated server UUID;
+`retryAfter` is whole seconds from zero through 2,147,483,647. Invalid metadata is omitted.
+
+JSON errors never include raw arguments, claim values, paths, response bodies, causes or stacks,
+even with `--verbose`. Argument errors do not print yargs help or rejected values. Ordinary
+non-error warnings retain their existing behaviour and are not converted into errors.
+
+Existing exits are preserved: shared handler validation uses 3, authentication/authorization 2,
+and other failures 1. `whoami` without credentials still uses 1. Compatibility exceptions remain:
+`bulk execute` local validation and partial results, and JSON `health` unhealthy reports, can
+still exit 0; inspect their reports and stderr summary. Rejected imports and failed doctor checks
+retain stdout reports and exit 1. This feature does not turn legacy exit 0 into proof of success.
+
 ## Command Reference
 
 ### Standalone CLI (`@portaidentity/cli`)

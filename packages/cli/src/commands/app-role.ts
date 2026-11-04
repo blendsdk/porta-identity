@@ -96,6 +96,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -130,6 +131,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               roles.map((role) => [role.id, role.name, role.slug, formatDate(role.createdAt)]),
             );
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -167,6 +169,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -202,6 +205,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -239,6 +243,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -268,6 +273,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             ]);
             success('Permission assigned to role');
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -304,6 +310,7 @@ export const appRoleCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               }
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

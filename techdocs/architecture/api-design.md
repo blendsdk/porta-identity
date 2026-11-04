@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-10-30
+> **Last Updated**: 2026-11-03
 
 ## Overview
 
@@ -87,27 +87,27 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 
 ### Endpoint Inventory
 
-| Route File         | Base Path                                             | Endpoints | Description                                    |
-| ------------------ | ----------------------------------------------------- | --------- | ---------------------------------------------- |
-| `organizations.ts` | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
-| `applications.ts`  | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
-| `clients.ts`       | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
-| `users.ts`         | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
-| `tenant-users.ts`  | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
-| `tenant-invitations.ts` | `/api/organizations/:orgId/invitations`          | 1         | Tenant application-bound invitation revocation |
-| `roles.ts`         | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
-| `permissions.ts`   | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
-| `user-roles.ts`    | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
-| `custom-claims.ts` | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
-| `config.ts`        | `/api/admin/config`                                   | —         | System configuration management                |
-| `keys.ts`          | `/api/admin/keys`                                     | —         | Signing key management                         |
-| `audit.ts`         | `/api/admin/audit`                                    | —         | Audit log viewer with filters                  |
-| `stats.ts`         | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
-| `sessions.ts`      | `/api/admin/sessions`                                 | —         | Session management + revocation                |
-| `bulk.ts`          | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
-| `branding.ts`      | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
-| `exports.ts`       | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
-| `imports.ts`       | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
+| Route File              | Base Path                                             | Endpoints | Description                                    |
+| ----------------------- | ----------------------------------------------------- | --------- | ---------------------------------------------- |
+| `organizations.ts`      | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
+| `applications.ts`       | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
+| `clients.ts`            | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
+| `users.ts`              | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
+| `tenant-users.ts`       | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
+| `tenant-invitations.ts` | `/api/organizations/:orgId/invitations`               | 1         | Tenant application-bound invitation revocation |
+| `roles.ts`              | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
+| `permissions.ts`        | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
+| `user-roles.ts`         | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
+| `custom-claims.ts`      | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
+| `config.ts`             | `/api/admin/config`                                   | —         | System configuration management                |
+| `keys.ts`               | `/api/admin/keys`                                     | —         | Signing key management                         |
+| `audit.ts`              | `/api/admin/audit`                                    | —         | Audit log viewer with filters                  |
+| `stats.ts`              | `/api/admin/stats`                                    | —         | Dashboard statistics (6 aggregate queries)     |
+| `sessions.ts`           | `/api/admin/sessions`                                 | —         | Session management + revocation                |
+| `bulk.ts`               | `/api/admin/bulk`                                     | —         | Bulk status operations                         |
+| `branding.ts`           | `/api/admin/organizations/:orgId/branding`            | 4         | Logo/favicon metadata, bytes, upload, deletion |
+| `exports.ts`            | `/api/admin/export`                                   | —         | Selective manifests and legacy report exports  |
+| `imports.ts`            | `/api/admin/import`                                   | —         | Manifest preview and atomic apply              |
 
 ### Tenant-scoped M2M user API
 
@@ -438,6 +438,64 @@ RoleNotFoundError          → 404
 ClaimNotFoundError         → 404
 RbacValidationError        → 400
 ```
+
+### Conventional CLI error boundary
+
+The CLI keeps API results on stdout and uses a separate, closed error schema on stderr when
+JSON mode is selected. `packages/cli/src/error-format.ts` owns fixed categories/messages and
+metadata guards. `error-handler.ts` retains the human path and existing exit mapping; direct
+report-producing commands use its non-terminating writer so their legacy stdout/exits survive.
+Every conventional handler explicitly selects JSON mode. There is no mutable global output mode
+or stderr interception. `cli.ts` constructs the real yargs parser, while `index.ts` owns executable
+termination and top-level errors. A public Boolean-parser prepass selects only early argument-error
+formatting; normal handlers use their own parsed options.
+
+Opaque SDK authentication exceptions may originate before an API request or during refresh, so
+their synthetic 401 is omitted. Only observed response metadata is emitted. External exception
+messages, bodies, inputs and stacks never feed the JSON envelope, including verbose mode. No
+server API, authorization policy, SDK error hierarchy, credential format or database schema changed.
+The interactive Admin shell is outside this boundary and retains its existing JSON rejection.
+See the [public automation contract](../../docs/cli/overview.md#automation-errors) for the fixed
+vocabulary and deliberate legacy exit-zero exceptions.
+
+## Invitation claim preparation in the CLI
+
+`packages/cli/src/parsers.ts` parses repeatable qualified JSON claims with the existing UUID
+shape guard. It retains input order and UUID spelling, rejects duplicate application/definition
+pairs case-insensitively, and traverses parsed values with an iterative worklist to reject
+non-finite numbers. Parsed objects stay inside each explicit claim record; they are never merged
+into authentication settings or command options.
+
+The single-invite command prepares one complete `InviteUserInput` and checks ordinary JSON
+encoding before constructing the SDK client. This accounts for request-wrapper nesting without
+a fixed depth limit or alternative serializer. The same plain request is passed to the existing
+SDK. No definition catalogue, server policy, schema or acceptance flow changes: invitation
+acceptance still controls account creation and claim application. See the
+[public claim input guide](../../docs/cli/users.md#invitation-claims).
+
+## Bulk CLI invitation boundary
+
+The conventional CLI's bulk invitation flow composes three focused modules rather than adding
+a server bulk API. `bulk-invite-input.ts` owns regular-descriptor validation, bounded raw reads,
+strict UTF-8, physical line identity, case-insensitive deduplication and shared request preparation.
+On supported platforms, nonblocking open prevents an unwritten FIFO from hanging before fstat.
+The byte bound is enforced during reading, not just from metadata. Every complete request is
+encoded successfully before client construction; the same plain request reaches the existing SDK.
+
+`bulk-invite.ts` awaits one invitation method per recipient. It derives summary counts from
+discriminated outcome rows and validates all acknowledgement fields before declaring creation.
+Typed conflicts continue, other terminal failures stop, and uncertain dispatch remains unknown.
+Lazy SDK authentication errors cannot establish HTTP dispatch or mutation rollback. The loop
+does not manage refresh, retry, sleep or persist progress. `commands/bulk-invite.ts` owns final
+human/JSON output and exit selection, keeping construction failure separate from invoked SDK
+failure. Only current public result fields and fixed error envelopes enter reports.
+Human recipient rows use sanitized, unpadded delimiters: an accepted long address must not set
+the padding width for every other row. Address output is therefore bounded by source bytes plus
+fixed fields per recipient, without tightening the approved input limits.
+
+No transaction spans recipients, and no custom signal supervision, resume store, new authorization
+policy or delivery guarantee is introduced. See the
+[public recovery and report contract](../../docs/cli/users.md#bulk-email-file-invitations).
 
 ## Service Layer Pattern
 

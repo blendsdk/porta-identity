@@ -114,6 +114,7 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
       success(`Logged in as ${result.identity.email || result.identity.sub}`);
       process.exit(0);
     } catch (err) {
+      if (argv.json) handleError(err, argv.verbose, true);
       handleError(err, argv.verbose);
     }
   },

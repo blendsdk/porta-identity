@@ -111,6 +111,7 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               info(`Exported ${argv['entity-type']} (${argv.format})`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

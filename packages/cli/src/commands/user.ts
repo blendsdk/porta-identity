@@ -24,11 +24,25 @@
 
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
+import type { InviteUserInput } from '@portaidentity/sdk';
 
 import { createClient } from '../client-factory.js';
-import { handleError } from '../error-handler.js';
-import { formatDate, info, printJson, printTable, success, warn } from '../output.js';
-import { parseRoleAssignments } from '../parsers.js';
+import { EXIT_VALIDATION_ERROR, handleError } from '../error-handler.js';
+import { LocalInputError } from '../error-format.js';
+import {
+  error as printError,
+  formatDate,
+  info,
+  printJson,
+  printTable,
+  success,
+  warn,
+} from '../output.js';
+import {
+  parseClaimAssignments,
+  parseRoleAssignments,
+  validateInvitationEncoding,
+} from '../parsers.js';
 import { confirm } from '../prompt.js';
 import { userClaimsCommand } from './user-claim.js';
 import { userRolesCommand } from './user-role.js';
@@ -79,10 +93,13 @@ interface UserCreateArgs extends OrgScopedArgs {
   password?: string;
 }
 
+/** Conventional invitation flags; assignments are validated before any client is created. */
 interface UserInviteArgs extends OrgScopedArgs {
   email: string;
   name?: string;
   role?: string[];
+  /** Repeatable qualified JSON claim assignments in submitted order. */
+  claim?: string[];
   locale?: string;
   'personal-message'?: string;
 }
@@ -179,6 +196,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -209,6 +227,13 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 type: 'string',
                 description: 'Invitation locale (defaults to the organization default)',
               })
+              .option('claim', {
+                type: 'string',
+                array: true,
+                requiresArg: true,
+                description:
+                  'Claim as <application-id>:<claim-definition-id>:<json>; quote each value and repeat for more claims',
+              })
               .option('personal-message', {
                 type: 'string',
                 description: 'Personal message included in the invitation email (max 500 chars)',
@@ -216,18 +241,21 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
           async (argv) => {
             try {
               const roles = parseRoleAssignments(argv.role);
+              const claims = parseClaimAssignments(argv.claim);
               const locale = argv.locale?.trim();
               const personalMessage = argv['personal-message'];
-              const sdkClient = createClient(argv);
-
-              const invitation = await sdkClient.users.invite({
+              const input: InviteUserInput = {
                 organizationId: argv.org,
                 email: argv.email,
                 ...splitName(argv.name),
                 ...(roles ? { roles } : {}),
+                ...(claims ? { claims } : {}),
                 ...(locale ? { locale } : {}),
                 ...(personalMessage ? { personalMessage } : {}),
-              });
+              };
+              validateInvitationEncoding(input);
+              const sdkClient = createClient(argv);
+              const invitation = await sdkClient.users.invite(input);
 
               if (argv.json) {
                 printJson(invitation);
@@ -251,6 +279,14 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (!argv.json && err instanceof LocalInputError) {
+                // Return after this complete local diagnostic, while retaining the validation
+                // exit code. Yargs has no further failure to format or help text to append.
+                printError(err.message);
+                process.exitCode = EXIT_VALIDATION_ERROR;
+                return;
+              }
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -317,6 +353,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 info(`Total: ${result.total} users`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -361,6 +398,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -401,6 +439,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`User updated: ${updated.email}`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -425,6 +464,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.users.activate(argv.org, argv['user-id']);
               success(`User activated: ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -457,6 +497,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.users.deactivate(argv.org, argv['user-id']);
               success(`User deactivated: ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -492,6 +533,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.users.delete(argv['org-id'], argv['user-id']);
               success(`User deleted: ${name} (${user.email})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -521,6 +563,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               });
               success(`Password set for user: ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -563,6 +606,7 @@ export const userCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

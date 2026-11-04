@@ -26,6 +26,7 @@ porta user create --org <id> --email alice@example.com \
 porta user invite --org <id> --email bob@example.com \
   [--name "Bob Jones"] \
   [--role <application-id>:<role-id>] ... \
+  [--claim '<application-id>:<claim-definition-id>:<json>'] ... \
   [--locale nl] \
   [--personal-message "Welcome to the team"]
 ```
@@ -44,12 +45,37 @@ message.
 | `--email`            | ✅       | Email address                                                                                                                                                                                          |
 | `--name`             |          | Display name, split into `givenName`/`familyName` on the first space                                                                                                                                   |
 | `--role`             |          | Role to pre-assign as `<application-id>:<role-id>`. Repeat for more roles. Use `porta app list` and `porta app role list <app-id>` to find the IDs. Roles are applied when the invitation is accepted. |
-| `--locale`           |          | Optional invitation language input, such as `nl`. Rendering normalizes regional tags and falls back through organization/global defaults. |
+| `--locale`           |          | Optional invitation language input, such as `nl`. Rendering normalizes regional tags and falls back through organization/global defaults.                                                              |
 | `--personal-message` |          | Personal message included in the invitation email (max 500 characters)                                                                                                                                 |
 
 The deferred result shape is deliberate: no user exists until the invitation is
 accepted, so the command does not return a user ID. Assign additional roles after
 acceptance with `porta user roles assign`.
+
+#### Invitation claims
+
+Repeat `--claim` to pre-assign custom claim values when the invitation is accepted. Replace each
+placeholder with a real UUID and quote the entire assignment so your shell preserves JSON:
+
+```bash
+porta user invite --org <id> --email bob@example.com \
+  --claim '<application-id>:<department-claim-id>:"Engineering:West"' \
+  --claim '<application-id>:<preferences-claim-id>:{"newsletter":false}'
+```
+
+Only the first two colons separate identifiers; colons inside JSON are data. Strings, numbers,
+objects, arrays, `true`, `false` and `null` are supported using normal JavaScript JSON number
+semantics. Non-finite numbers, malformed JSON and duplicate application/claim pairs are rejected
+before client creation. Duplicate detection ignores UUID case, even when values are equal.
+Every `--claim` needs a value. Missing values are argument errors (exit1); explicitly empty or
+negated values such as `--no-claim` are local validation errors (exit3).
+
+The complete invitation must be encodable as ordinary JSON before any request is sent. Local
+claim errors identify the option and position without echoing the submitted JSON; `--json` emits
+the fixed validation envelope without an invented HTTP status. The CLI does not fetch a claim
+catalogue or change server authorization/type rules. A valid JSON value can still be rejected by
+the server's claim policy. Claims do not change the deferred invitation result or email-delivery
+meaning described above.
 
 The shipped invitation templates support English (`en`) and formal Dutch (`nl`). `--locale nl`
 requests Dutch email copy. Unsupported input falls through organization default, global default
@@ -57,6 +83,107 @@ and English; email selection does not use browser preferences. Regional values s
 are normalized for rendering, while the stored input remains unchanged. The recipient's browser
 can override the invitation language on valid acceptance pages without changing the stored account
 locale. See [invitation language selection](../guide/custom-ui.md#invitation-language).
+
+## Bulk email-file invitations
+
+```bash
+porta bulk invite --file ./recipients.txt --org <organization-id> \
+  --role <application-id>:<role-id> \
+  --claim '<application-id>:<claim-definition-id>:"Engineering"' \
+  --locale nl --personal-message "Welcome" --json
+```
+
+`--file` and `--org` are required. Roles and claims are repeatable; each claim needs its own
+value. Global `--server`, `--insecure`, `--verbose` and `--json` retain their meaning. There is
+no confirmation prompt, concurrency option or per-recipient name/claim override.
+
+The file must be a readable regular UTF-8 file, at most **1,048,576 raw bytes** and **1,000 unique
+recipients**. These exact limits are accepted. Invalid UTF-8 and non-regular inputs, including
+pipes, are rejected. Use one ordinary ASCII email address per line with LF or CRLF endings.
+One initial BOM is allowed; blank lines and surrounding whitespace are ignored. An interior BOM
+or bare carriage return is invalid. For example:
+
+```text
+Alice@example.com
+
+alice@EXAMPLE.com
+bob@example.com
+```
+
+This input makes two SDK calls: `Alice@example.com` from line1 and `bob@example.com` from line4.
+The repeated address counts as a duplicate. Comparison ignores case but does not remove plus tags
+or merge distinct addresses. The first trimmed spelling and physical line number are retained.
+
+All file, shared-field and complete-request encoding validation finishes before client creation.
+Malformed organization/role/claim input, locale longer than 10 characters or a message longer
+than 500 characters fails locally with no recipient report and no invitation calls. Locale is
+trimmed and omitted if empty. Authorization, ownership, claim-type rules and locale resolution
+remain server decisions; this is not a multi-recipient transaction or atomic server preflight.
+
+### Dispatch and reports
+
+Invitations run sequentially, one SDK method invocation per unique address. A 409 conflict is
+reported as rejected and processing continues. Valid acknowledged creations also continue,
+including when email delivery failed or is unknown. Other client errors, rate limiting,
+authentication/authorization failure, server errors, transport failures and malformed success
+responses stop the loop; later recipients are reported as unattempted. The CLI never waits on
+Retry-After or retries an invitation. Existing SDK authentication recovery remains unchanged.
+
+JSON mode writes one stdout object with exactly `summary`, `results` and `stopReason`. Each result
+contains `line`, `email`, `outcome`, and only these additional fields:
+
+| Outcome       | Additional field | Meaning                                                                                    |
+| ------------- | ---------------- | ------------------------------------------------------------------------------------------ |
+| `created`     | `invitation`     | Existing five-field invitation result; account creation is still deferred until acceptance |
+| `rejected`    | `error`          | Safe classified error from an observed client-error response                               |
+| `unknown`     | `error`          | `OUTCOME_UNKNOWN`; creation may have committed, so do not assume rejection                 |
+| `unattempted` | None             | No SDK invitation call; report-level `stopReason` explains the stop                        |
+
+`stopReason` is null or a [safe error envelope](overview.md#automation-errors). Opaque SDK
+authentication failures count as unknown after invocation and omit unproven HTTP status, even
+when authentication may have failed before invitation HTTP dispatch. A 5xx does not prove rollback.
+Only known status and validated request metadata can appear in unknown-row errors.
+
+The summary has `inputRecords`, `uniqueRecipients`, `duplicates`, `attempted`, `created`, `sent`,
+`deliveryFailed`, `deliveryUnknown`, `rejected`, `unknown` and `unattempted`. Its invariants are:
+
+```text
+inputRecords = uniqueRecipients + duplicates
+uniqueRecipients = created + rejected + unknown + unattempted
+created = sent + deliveryFailed + deliveryUnknown
+attempted = created + rejected + unknown
+```
+
+`attempted` counts SDK method invocations, not proven HTTP requests. SDK refresh recovery may
+make more than one HTTP request inside one attempt. `deliveryUnknown` is an acknowledged
+creation with unknown email delivery; `unknown` means creation itself is uncertain. Client
+construction failure reports every recipient unattempted and zero attempts.
+
+Human mode prints the ordered line/email/outcome table, delivery distinctions, counts and bounded
+stop text. Neither mode prints claim values, input paths, tokens or raw external error text.
+Recipient rows are unpadded and tab-separated so full addresses do not multiply into excessive
+padding across the report. Counts retain the normal formatted table. Use JSON for automation.
+
+| Exit | Meaning                                                                           |
+| ---- | --------------------------------------------------------------------------------- |
+| 0    | Every unique recipient was created and email delivery was sent                    |
+| 1    | Any other incomplete normal result, including conflict or failed/unknown delivery |
+| 2    | Final authentication/authorization stop; takes priority over earlier failures     |
+| 3    | Local preflight validation failed before any report or invitation                 |
+
+Missing required flags are parser errors with exit1. A nonzero normal JSON batch writes one
+`BATCH_INCOMPLETE` envelope on stderr, carrying only safe metadata from `stopReason` when known.
+This new exit policy does not change the legacy `bulk execute` policy.
+
+### Manual recovery
+
+Investigate **unknown creation outcomes before manually rerunning**. A later normal run calls the
+SDK again; there is no persistent skip cache, resume file, automatic resend or exactly-once claim.
+The existing API can replace pending invitation links on a later otherwise-identical run.
+Investigate failed/unknown delivery separately from creation. Native interruption or termination
+may leave a request committed without a final report; no durable checkpoint is promised.
+
+## Remaining single-user commands
 
 ### `porta user list`
 

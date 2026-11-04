@@ -17,9 +17,16 @@ import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
 import type { BulkOperationResult } from '@portaidentity/sdk';
 import { createClient } from '../client-factory.js';
-import { handleError } from '../error-handler.js';
+import { handleError, writeJsonError } from '../error-handler.js';
+import {
+  CliErrorCode,
+  formatCliError,
+  formatKnownCliError,
+  LocalInputError,
+} from '../error-format.js';
 import { printTable, printJson, success, warn, error as printError } from '../output.js';
 import { confirm } from '../prompt.js';
+import { bulkInviteCommand } from './bulk-invite.js';
 
 // ---------------------------------------------------------------------------
 // Arg types
@@ -39,9 +46,10 @@ interface BulkExecuteArgs extends GlobalOptions {
 
 export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
   command: 'bulk',
-  describe: 'Bulk status operations',
+  describe: 'Bulk status operations and email-file invitations',
   builder: (yargs) =>
     yargs
+      .command(bulkInviteCommand)
       .command<BulkExecuteArgs>(
         'execute',
         'Execute a bulk status operation',
@@ -80,16 +88,19 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               .filter(Boolean);
 
             if (ids.length === 0) {
-              printError('No IDs provided');
+              if (argv.json) writeJsonError(formatCliError(new LocalInputError()));
+              else printError('No IDs provided');
               return;
             }
 
             if (argv['entity-type'] === 'users' && argv.action === 'suspend') {
-              printError('User bulk actions are activate or deactivate');
+              if (argv.json) writeJsonError(formatCliError(new LocalInputError()));
+              else printError('User bulk actions are activate or deactivate');
               return;
             }
             if (argv['entity-type'] === 'organizations' && argv.action === 'deactivate') {
-              printError('Organization bulk actions are activate or suspend');
+              if (argv.json) writeJsonError(formatCliError(new LocalInputError()));
+              else printError('Organization bulk actions are activate or suspend');
               return;
             }
 
@@ -114,7 +125,8 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             } else {
               // Route to user bulk endpoint — requires organizationId
               if (!argv['organization-id']) {
-                printError('--organization-id is required for user bulk operations');
+                if (argv.json) writeJsonError(formatCliError(new LocalInputError()));
+                else printError('--organization-id is required for user bulk operations');
                 return;
               }
               result = await client.bulk.userStatus({
@@ -126,6 +138,7 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
             if (argv.json) {
               printJson(result);
+              if (result.failed > 0) writeJsonError(formatKnownCliError(CliErrorCode.Batch));
               return;
             }
 
@@ -144,11 +157,12 @@ export const bulkCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
       )
-      .demandCommand(1, 'Please specify a bulk subcommand: execute'),
+      .demandCommand(1, 'Please specify a bulk subcommand: execute or invite'),
   handler: () => {
     // No-op — subcommands handle execution
   },

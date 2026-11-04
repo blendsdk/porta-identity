@@ -125,6 +125,7 @@ export const auditCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             );
             success(`${entries.length} audit entries`);
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

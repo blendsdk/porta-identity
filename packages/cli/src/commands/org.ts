@@ -127,6 +127,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -177,6 +178,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 info(`Total: ${result.total} organizations`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -218,6 +220,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -271,6 +274,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`Organization updated: ${updated.name} (${updated.slug})`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -304,6 +308,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await client.organizations.suspend(org.id);
               success(`Organization suspended: ${org.name} (${org.slug})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -327,6 +332,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await client.organizations.activate(org.id);
               success(`Organization activated: ${org.name} (${org.slug})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -356,6 +362,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await client.organizations.delete(argv['id-or-slug']);
               success(`Organization deleted: ${org.name} (${org.slug})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -395,6 +402,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -440,6 +448,7 @@ export const orgCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`Branding updated for: ${org.name} (${org.slug})`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

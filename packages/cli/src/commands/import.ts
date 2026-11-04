@@ -5,7 +5,8 @@ import { resolve } from 'node:path';
 import type { PortabilityManifest, PortabilityResult } from '@portaidentity/sdk';
 import type { CommandModule } from 'yargs';
 import { createClient } from '../client-factory.js';
-import { handleError } from '../error-handler.js';
+import { handleError, writeJsonError } from '../error-handler.js';
+import { CliErrorCode, formatKnownCliError } from '../error-format.js';
 import type { GlobalOptions } from '../global-options.js';
 import { printJson, printTable, success, warn } from '../output.js';
 import { confirm } from '../prompt.js';
@@ -60,6 +61,7 @@ function naturalKeyText(naturalKey: Readonly<Record<string, string>>): string {
 function printRejected(result: PortabilityResult, json: boolean): void {
   if (json) {
     printJson(result);
+    writeJsonError(formatKnownCliError(CliErrorCode.Batch));
   } else {
     printTable(
       ['Entity', 'Natural key', 'Code'],
@@ -162,6 +164,7 @@ export const importCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             }
             printApplied(applied, arguments_.json);
           } catch (error) {
+            if (arguments_.json) handleError(error, arguments_.verbose, true);
             handleError(error, arguments_.verbose);
           }
         },

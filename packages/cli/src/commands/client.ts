@@ -183,6 +183,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 }
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -252,6 +253,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 }
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -306,6 +308,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -371,6 +374,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`Client updated: ${updated.clientName} (${updated.clientId})`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -393,6 +397,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.clients.activate(current.id);
               success(`Client activated: ${current.clientName} (${current.clientId})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -424,6 +429,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.clients.deactivate(current.id);
               success(`Client deactivated: ${current.clientName} (${current.clientId})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -453,6 +459,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.clients.delete(c.id);
               success(`Client deleted: ${c.clientName} (${c.clientId})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -492,6 +499,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -529,6 +537,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       info(`Login methods for ${c.clientName}: ${display}`);
                     }
                   } catch (err) {
+                    if (argv.json) handleError(err, argv.verbose, true);
                     handleError(err, argv.verbose);
                   }
                 },
@@ -564,6 +573,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
                     success(`Login methods set for ${current.clientName}: ${argv.methods}`);
                   } catch (err) {
+                    if (argv.json) handleError(err, argv.verbose, true);
                     handleError(err, argv.verbose);
                   }
                 },
@@ -594,6 +604,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       `Login methods cleared for ${current.clientName} (will inherit from org)`,
                     );
                   } catch (err) {
+                    if (argv.json) handleError(err, argv.verbose, true);
                     handleError(err, argv.verbose);
                   }
                 },

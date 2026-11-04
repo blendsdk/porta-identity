@@ -213,6 +213,7 @@ export const exportCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               info(`${category}: ${count}`);
             }
           } catch (error) {
+            if (arguments_.json) handleError(error, arguments_.verbose, true);
             handleError(error, arguments_.verbose);
           }
         },
