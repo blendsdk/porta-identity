@@ -1,7 +1,7 @@
 # CLI Invitation Automation Implementation Plan
 
 > **Feature**: CLI-wide JSON errors, invitation claim input and bulk email-file invitations
-> **Status**: Closing — 48/49 tasks verified; user-approved test-comparator repair awaits dual-runtime verification and final CI
+> **Status**: Complete — 49/49 tasks verified; all six repair CI jobs passed; final documentation checkpoint CI observed separately
 > **Created**: 2026-11-03
 > **Implements**: cli-automation/T-01
 > **CodeOps Artifact Schema**: 1

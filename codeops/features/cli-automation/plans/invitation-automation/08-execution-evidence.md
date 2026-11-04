@@ -578,6 +578,28 @@ verify ran123 files/1,795 tests plus lint/typecheck/build. Structure158 and chan
 plus structure158 also passed. The repair is ready for a new commit and full closing CI; the
 failed run remains recorded and is not relabelled or retried away.
 
+### Verified CI repair and final closeout
+
+Repair commit `d648030dab5b8da10f9aab1489b3bf4fb443b44e` was pushed and remote-confirmed.
+Build and Test run `41791202838` completed successfully on that exact revision. All six jobs
+passed: Verify Monorepo, UI Tests, OIDC Harness, Public Documentation, Production Docker Build
+and Production Dependency Audit. This is a new qualified run after the explicitly approved
+assertion repair, not a retry or a reclassification of failed run41739476424.
+
+All product acceptance requirements and all49 execution tasks are verified again. The original
+failed CI, comparator diagnosis, user-approved exception and independent review remain above.
+Production source is unchanged from the clean-source security/packed checkpoint `de4ff08e`.
+The final documentation-only checkpoint will receive its own full CI observation after push;
+no further documentation commit is needed merely to record that future run's identity.
+
+Resource checks during the repair found no owned compose or final assurance resources. Containers,
+volumes and images still match30/76/92. Two further unrelated concurrent networks appeared:
+`8ef334eb1623 codelableiden-smoke-12179268419f-command_backend` and
+`9a55fb569478 codelableiden-smoke-12179268419f-command_frontend`. Together with the two previously
+recorded concurrent additions, the observed network count is19, not the pre-gate17. All unrelated
+networks are preserved; no global baseline restoration is falsely claimed. No local test service
+was started for the assertion repair. Final owned scratch deletion follows the last CI/tool end.
+
 CI run41716894371 on closing checkpoint387bea5f also passed all6 required jobs, including
 full Verify Monorepo. This confirms the published phase1 closeout, not pending claim/bulk work.
 

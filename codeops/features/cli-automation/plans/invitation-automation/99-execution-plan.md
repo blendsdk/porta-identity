@@ -4,7 +4,7 @@
 > **Parent**: [Index](00-index.md)
 > **Implements**: cli-automation/T-01
 > **Last Updated**: 2026-11-04
-> **Progress**: 48/49 tasks (98%)
+> **Progress**: 49/49 tasks (100%)
 > **Commit mode**: --auto-commit active by current user confirmation; unpublished locally verified source commit, then assurance-qualified evidence checkpoint and push
 > **CodeOps Artifact Schema**: 1
 
@@ -161,7 +161,7 @@ checkpoint, security, docs and packed selectors; full root verification belongs 
 - [x] 3.3.3 Reconcile actual inventory and run07 local checkpoint checks, bounded coverage and pentest — `repo-tests/monorepo/server-package.spec.test.mjs`; preserve all existing assertions. ✅ (completed: 2026-11-03 23:51; post-fix CLI1,795+lint/typecheck/build, structure158, changed738, pentest330; coverage100/100/96.29/88.63% meets all goals; inventory123; owned cleanup checked; unrelated concurrent networks preserved)
 - [x] 3.3.4 Complete independent correctness/API/concurrency review and dedicated security audit, resolve findings and create07's unpublished locally verified source checkpoint; leave assurance pending. ✅ (completed: 2026-11-04 00:21; source de4ff08e stayed clean through both final gates; independent review/re-audit closure and post-fix local checks verified; tracked timing exception ended)
 - [x] 3.3.5 Run phase3 production-security and packed p1-admin gates without tracked edits between runs; immediately record source/outcomes/dispositions/cleanup afterwards, verify and evidence-commit/push only after all gates permit. ✅ (completed: 2026-11-04; same-source security11/11 and packed6/6 exit0; CLI1,795/structure158 reverified; source de4ff08e and evidence86463a97 pushed and remote confirmed; exact owned cleanup passed)
-- [~] 3.3.6 Complete R1–R12/ST-1–50 evidence, technical-doc review, task/feature-roadmap status and integration-time portfolio handoff; record CI requirements and no merge/release claim. ⏳ (implemented: 2026-11-04; failed closing CI diagnosed as Node22 recursive test-comparator overflow; user explicitly approved an assertion-only structural repair under AR-19; fixture and product source unchanged; dual-runtime verification, closing CI and final scratch cleanup pending)
+- [x] 3.3.6 Complete R1–R12/ST-1–50 evidence, technical-doc review, task/feature-roadmap status and integration-time portfolio handoff; record CI requirements and no merge/release claim. ✅ (completed: 2026-11-04; full acceptance/docs/roadmap closeout recorded; user-approved AR-19 assertion repair verified by independent review, CLI1,795+lint/typecheck/build on Node22 and24, structure158/changed738 and all six jobs of CI41791202838 on d648030d; final documentation checkpoint CI and scratch teardown remain explicit session-completion checks; no merge/release)
 
 **Deliverable:** R5–R12 and ST-24–46/48–50. **Verify:**07 phase3, checkpoint, coverage, security, docs and packed selectors.
 
