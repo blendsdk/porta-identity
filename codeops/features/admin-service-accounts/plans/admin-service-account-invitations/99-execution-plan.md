@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 19:56
-> **Progress**: 31/65 tasks (48%)
+> **Last Updated**: 2026-11-05 21:06
+> **Progress**: 30/65 tasks (46%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -91,6 +91,10 @@ the canonical reserved definition; users/invite-service.ts and routes/invitation
 reserved human pre-assignment, including old artifacts. Focused new independent HTTP/role/invite
 oracles precede these corrections. No new endpoint, permission policy or support framework.
 
+**Necessary CI correction (AR-30):** The existing integration Vitest env block forwards its two
+already-derived test URLs explicitly; the pentest env block forwards the Redis marker required by
+its reused human fixture. Sealed fixtures, Turbo policy and read-only CI stay unchanged.
+
 **Baseline evidence:** Phase entry at cbd59bbf after the Phase1 documentation checkpoint. All
 tracked paths match HEAD. The baseline tree contains all authorized phase inputs; unrelated
 untracked scripts/pending-invitations.sql (and its previously observed editor swap) are explicitly
@@ -118,14 +122,14 @@ blanket snapshot add that reads unrelated work or protected fixtures. Scope mode
 - [x] 2.2.11 Preserve non-restorable ownerless binding marker during physical account deletion and refuse marker-erasing downgrade — users deletion integration and feature repository; ST-65. ✅ (completed: 2026-11-05 14:07;19 immutable deletion/downgrade cases pass, including denied actors, same-row non-restorable marker, no human reassignment and downgrade refusal; focused lint/server typecheck/build pass; oracle seals unchanged)
 - [x] 2.2.12 Isolate the reserved service role from human Admin-token authority — middleware/admin-auth.ts; ST-24. ✅ (completed: 2026-11-05 14:08; four immutable real-HTTP middleware cases pass for ordinary humans, reserved-only denial, classified extra-role denial and permanent post-unbinding exclusion; lint/server typecheck/build pass; external opaque lookup only, no native machine-token evidence claimed)
 - [x] 2.2.13 Exclude classified users from both bulk status lock/update SQL while preserving concealed denials and ordinary partial results — lib/bulk-operations.ts; ST-64. ✅ (completed: 2026-11-05 14:09; six immutable mixed-results and held-row-lock exclusion cases pass for activation/deactivation and both human administrator classes; both SQL predicates exclude classification; lint/server typecheck/build pass)
-- [x] 2.2.14 Verify all phase oracles green and preserve ordinary client/user regression behavior; do not claim actual machine-token outcomes before Phase3. ✅ (requalified: 2026-11-05 19:50; full server unit4,417/integration899, affected1,880 and158 structure checks pass; all original/correction seals match in both trees except recorded AR-27 supersession; complete server lint/typecheck/build pass; AR-28 approved old call-shape checks retained;424 product files,26 browser files; security/browser requalification and scoped re-review remain pending)
+- [x] 2.2.14 Verify all phase oracles green and preserve ordinary client/user regression behavior; do not claim actual machine-token outcomes before Phase3. ✅ (requalified: 2026-11-05 21:06; exact three-field AR-30 worker wiring passes focused8 integration/4 pentest controls, affected1,880/structure158 and full root pnpm verify with outer TEST variables absent: SDK610, CLI1,795, server unit4,417/integration899/E2E134/pentest334; all lint/typecheck/build tasks pass; sealed fixtures unchanged; fresh CI remains2.3.2)
 
 ### Session 2.3 — Hardening and checkpoint
 
 - [x] 2.3.1 Add implementation tests for guard failures, locks, audit rollback and concurrent promotion/credential mutations. ✅ (completed: 2026-11-05 14:32; all11 real-DB hardening cases pass with observed exact-blocker barriers, both promotion orders, overlap/live revocation, post-wait actor revocation, stronger isolation refusal, deletion races, write guards and audit rollback; focused lint/server typecheck/build and158 structure checks pass; inventory417; optional coverage command was interrupted by wrapper timeout, remains unqualified pending2.3.2)
-- [x] 2.3.2 Run relevant unit/integration/E2E/pentest and affected workspace/structure checks; no security assertion waiver. ✅ (requalified: 2026-11-05 19:56; corrected-source unit4,417/integration899/E2E134/pentest334/browser135 pass, browser retries0; affected1,880/structure158 and server lint/typecheck/build pass; docs build/local links pass; prior coverage remains dated evidence, clean-source production-security assurance still required in2.3.4)
+- [~] 2.3.2 Run relevant unit/integration/E2E/pentest and affected workspace/structure checks; no security assertion waiver. ⏳ (runner correction implemented: 2026-11-05 21:01; exact three worker-env fields AST-verified, E2E unchanged; full root pnpm verify running with outer TEST variables absent; first root run exposed the same pentest marker prerequisite and remains unqualified; fresh source CI required, no assertion waiver)
 - [x] 2.3.3 Run independent correctness/security/concurrency phase review and one scoped re-review for major fixes. ✅ (completed: 2026-11-05 19:56; both original reviewers independently closed all four findings in the one scoped re-review; no correction-introduced Critical/Major defect; exact frozen source hashes, durable ledger and artifact links verified; static review does not qualify production-security assurance)
-- [ ] 2.3.4 Update incremental technical docs, record qualified human-boundary assurance and verified source checkpoint.
+- [~] 2.3.4 Update incremental technical docs, record qualified human-boundary assurance and verified source checkpoint. ⏳ (implemented: 2026-11-05 21:01; maintainer security/data/ADR019 and reviewed source0f9cb04b committed/pushed; exact clean-source production-security exit0 with11 exposure and7/4/17/5 functional cases, no incomplete outcome; correlated-log credit remains false; assurance resources/approved short root removed, anonymous volumes removed only after user ownership confirmation; full-root runner correction/fresh CI and final evidence validation pending)
 
 **Verify:**07 Phase2 selections plus mandatory security/browser gates where affected. Public feature
 routes still remain unmounted until the next phase's complete authentication path is ready.

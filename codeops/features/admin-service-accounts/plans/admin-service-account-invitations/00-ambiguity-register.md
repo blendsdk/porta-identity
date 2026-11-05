@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ All28 decisions resolved; Phase2 corrections independently closed and runtime requalified
-> **Last Updated**: 2026-11-05 19:56
+> **Status**: ✅ All31 decisions resolved; source review/full root verification passed, fresh CI pending
+> **Last Updated**: 2026-11-05 21:06
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -57,6 +57,9 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 26 | Runtime / existing HTTP and reserved role integrations | Independent Phase2 review finds actor forwarding and reserved-role bypass gaps | Narrow existing-route propagation/error mapping and existing canonical/invitation guards | AI — delegated by --auto-design; necessary approved-contract corrections, verification/re-review pending. | ✅ Resolved |
 | 27 | Runtime / sealed HTTP observation order | Secret verification writes its own valid system audit after the mutation | Move unchanged mutation-audit assertion before independent credential verification | User explicitly approved the exact assertion reorder; no expected value or assertion removed/changed. | ✅ Resolved |
 | 28 | Runtime / older internal call shapes | Two older specifications omit newly required actor/application arguments | Extend exact call assertions and ordinary INSERT fixture only | User explicitly approved these two named specification updates and reaffirmed --auto-design --auto-commit. | ✅ Resolved |
+| 29 | Runtime / verification temporary path | Long task path exceeds Linux Unix-socket address limit before harness startup | Command-scoped short temporary root; no product/harness changes | User explicitly approved /tmp/opencode/bc-c-0f9cb04b for sockets, leases and caches with complete cleanup. | ✅ Resolved |
+| 30 | Runtime / CI test environment wiring | Turbo-filtered outer TEST variables are absent in integration/pentest workers | Pass already-derived URLs through existing env blocks; keep sealed isolation guards | AI — delegated by --auto-design; three-field test-runner correction, no workflow/product/oracle change. | ✅ Resolved |
+| 31 | Runtime / exact cleanup ownership | Two anonymous volumes lack retained run labels after harness teardown | Preserve unless ownership confirmed; remove only exact unused resources | User explicitly confirmed both named volumes belong to this run and authorized removal. | ✅ Resolved |
 
 ## Initial evidence
 
@@ -375,6 +378,77 @@ oracle rewrite or weakened assertion is authorized.
 - **Reopen triggers:** Runner transaction behavior differs, concurrent regression cannot establish
   its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
   a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
+
+## AR-31 — User-confirmed anonymous-volume cleanup
+
+- **Authority:** User selected “Confirm and remove” for exactly
+  19bbf5007edff0c8e0ae81b177529e427bcde00fb6f3569125caea355f72f952 and
+  a14a62819eea60149bccffcd1a4c359d0e1f5517fcc1ab2ed5991bfacac1d62c.
+- **Evidence/boundary:** Both were absent from the pre-run baseline and created together during
+  harness startup, but anonymous labels and retained Docker events did not independently prove
+  ownership. Parent preserved them until the user confirmed ownership. No contents were read.
+- **Action:** Confirm no container uses either volume, then remove only these exact two. Completed.
+  No global prune, unrelated-resource cleanup or broader harness change is authorized.
+
+## AR-30 — Existing integration worker test-URL wiring
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** Test-runner mechanism needed to execute the existing immutable
+  specifications under the authoritative root command. No product behavior, security policy,
+  fixture guard, dependency, infrastructure or CI workflow changes.
+- **Evidence:** Source CI42089720974 fails at client-http-fixtures.ts:86 before product assertions.
+  The read-only workflow supplies both test URLs, but Turbo's strict task environment does not
+  allowlist them. Existing Vitest integration env supplies derived DATABASE_URL/REDIS_URL only;
+  direct local category runs retained TEST_* variables and therefore missed the root-runner gap.
+- **Decision/exact scope:** In packages/server/vitest.config.ts, add TEST_DATABASE_URL:testDbUrl
+  and TEST_REDIS_URL:testRedisUrl to the existing integration project's env block. Full root
+  verification then exposes the same missing Redis marker in the pentest project's reused human
+  fixture; add TEST_REDIS_URL:testRedisUrl to that project's existing env block as well. These
+  three fields use the same already-derived URLs supplied to the real application. Keep the sealed fixtures' strict
+  equality checks unchanged, and do not edit the read-only CI workflow or Turbo policy.
+- **Rejected alternatives/counterargument:** Removing the fixture guards weakens reset safety and
+  changes sealed fixtures. Broad Turbo environment passthrough changes every task and is larger
+  than necessary. Duplicating URL derivation in test helpers would drift. Three runner fields are
+  sufficient; the important counterargument is that full root execution, not another direct
+  category run, must now demonstrate qualification.
+- **Confidence/hardening:** High for the observed precondition failure and existing env block.
+  CI provides the red evidence. Local full pnpm verify is now warranted by the test-infrastructure
+  exception; fresh source CI remains mandatory. Production review closures remain valid because
+  no product source changes. Do not infer any pass from the earlier clean-source harness while
+  it runs on the preceding revision.
+- **Reopen triggers:** An oracle/assertion must change, another environment surface is needed, or
+  full root verification reports a genuine product failure. Stop rather than broaden this ruling.
+
+The first full-root run passes integration899 and E2E134, but four human pentest cases stop at
+their unchanged explicit Redis-isolation precondition. This is the same runner root cause, not
+permission to alter an assertion or claim a successful security gate. The focused pentest selector
+and complete root command must both pass with outer TEST variables absent after the third field.
+
+The initial third-field patch matched the analogous E2E block instead of pentest; focused tests
+correctly remained red. The marker was moved to the exact pentest block and AST verification
+confirms E2E is unchanged. No assertion changed or failing run was credited. The complete root
+verification rerun remains authoritative.
+
+At2026-11-05 21:06, the exact three-field correction passes four focused human pentest cases and
+full root pnpm verify with both outer TEST variables absent: SDK610, CLI1,795 and server
+unit4,417/integration899/E2E134/pentest334, plus structure158 and every lint/typecheck/build task.
+Fresh source CI is still required; no failed run is relabeled and no sealed fixture changed.
+
+## AR-29 — User-approved command-scoped short assurance temporary root
+
+- **Authority:** User selected “Approve short temp root” for the exact path
+  /tmp/opencode/bc-c-0f9cb04b. This exception is limited to the production-security run's temporary
+  sockets, leases and caches; remove the directory after cleanup.
+- **Evidence:** The registered command exits1 before tests with tsx IPC listen EINVAL. The original
+  task path exceeds Linux's Unix-socket address limit. No product assertion or harness outcome is
+  qualified by this startup failure.
+- **Decision:** Set command-scoped CODEOPS_TMPDIR and TMPDIR to that short owner-only directory.
+  Keep logs in the existing owned task scratch. Generated credentials/TLS files stay beneath the
+  previously approved verification runtime; no operator configuration or credentials are copied.
+  Do not alter repository code, the harness, security checks, provenance or exit taxonomy.
+- **Boundary:** Reusing the long path cannot start the existing IPC boundary. Changing harness
+  code solely for this environment would be unnecessary scope. Short-root approval does not
+  authorize protected files outside the earlier exact runtime scope or any risk waiver.
 
 ## AR-28 — User-approved older specification call-shape updates
 

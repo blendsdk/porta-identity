@@ -336,3 +336,99 @@ records pass validation. The checklist now records31/65 verified tasks. The revi
 source checkpoint is authorized under auto-commit; production-security assurance must still run
 from that clean committed revision before Phase2 completion. No broader machine authority or
 whole-feature acceptance is implied.
+
+### Reviewed source checkpoint and clean-source assurance startup
+
+Reviewed source0f9cb04bda765e93c5c42f4efa75e8fedee20b37 is committed and pushed on the existing
+feature branch. Final pre-commit structure158 passes. The explicit89-path commit excludes
+unrelated pending-invitation SQL/editor work, generated output and protected files. The isolated
+HOME has no Git identity; the unchanged public author/committer metadata from this run's three
+preceding verified feature commits was supplied in process memory only. No operator identity or
+credential file was read or changed. Native hooks were not bypassed.
+
+The verification worktree's actual HEAD was still the original develop baseline4b162773, not
+the Phase1 checkpoint claimed by earlier continuity prose. All109 authorized feature-history
+file bytes nevertheless match0f9cb04b exactly. After that comparison, explicit staging and a
+non-destructive detached switch align its index/HEAD; clean-source status is confirmed. No reset,
+unknown-work deletion or protected-file copying occurs. This corrects metadata, not test source.
+
+The three owned verification containers are stopped and automatically removed; Docker container,
+network and volume listings confirm no verification-service residue. The registered production-
+security command's first attempt stops before tests with a tsx Unix-socket path-length EINVAL.
+AR-29 records user approval for the exact short command-scoped temporary root. The fresh run uses
+the same clean reviewed revision and unchanged selector/security checks. It remains unqualified
+until complete outcomes, provenance and cleanup are inspected. Source CI run42089720974 was
+observed in progress; no CI pass is claimed yet.
+
+CI42089720974 subsequently reports Verify Monorepo failure at the new fixture's strict environment
+precondition, before product assertions. Docker build, UI, dependency audit and public documentation
+jobs pass; the OIDC job was still running when inspected. The read-only workflow already supplies
+both TEST URLs. Turbo's strict environment and Vitest's integration env block omit them inside
+the worker. AR-30 adds only those two already-derived worker values; sealed fixtures/assertions,
+product code, CI and Turbo configuration stay unchanged. This test-infrastructure change warrants
+a full local pnpm verify. Three separate disposable services on previously free standard loopback
+ports are recorded for that run; they are not the production-security harness's random-port stack.
+Do not mutate the clean assurance worktree until its active run finishes.
+
+The CI environment cause is independently reproduced with a controlled synthetic-environment
+Turbo dry-run: neither TEST URL is forwarded to server verify. A local eight-case deletion
+selection with absent outer TEST variables fails at the same fixture precondition on separate
+owned standard-port services. No product assertion is qualified by that red. The active assurance
+worktree remains clean and unchanged while these diagnostics run. The correction remains exactly
+two fields in the existing integration worker env block; full root verification is still pending.
+
+### Qualified production-security evidence at0f9cb04b
+
+Run b9158b9a-c658-433b-8c5b-b0adf0b4ec79 completes with exit0. The observation artifact's exact
+commit/tree match the clean reviewed0f9cb04b revision. All11 production-exposure cases pass,
+including all three forwarding-context cases; there are zero product failures, execution failures
+or incomplete cases. No historical gap allowance is invoked. Functional blocks pass7 human-auth,
+4 second-factor,17 tenant/admin and5 recovery cases. Correlated security-decision log credit
+remains explicitly false; its diagnostic gap is not represented as observed log evidence.
+
+Container/network teardown passes. The new unused image is identified by this run's exact Compose
+tag and removed. Two anonymous volumes lacked retained ownership labels; after explicit user
+confirmation under AR-31, both unused exact resources are removed. No contents were read and no
+other volume was touched. The user-approved short temporary root is removed after runtime cleanup.
+The separate standard-port root-verification services remain owned and active for the CI fix.
+
+This result retains its actual0f9cb04b provenance. All current production source, migrations,
+templates and locales are byte-identical; the subsequent correction concerns only test-runner
+environment fields and evidence. Do not relabel the assay as having run on a later revision or
+infer native machine authority. Final feature acceptance still requires later native/packed gates.
+
+| Qualified identity | Value |
+| --- | --- |
+| Source commit |0f9cb04bda765e93c5c42f4efa75e8fedee20b37 |
+| Source tree |14bf6536974c35c10bc37d3971140f4901e6931f |
+| Assurance tool SHA256 |f0aba2f26b6d4930852b81d13e42439cbba80597e815351bb30eab452d8d263c |
+| Public fixture SHA256 |650429e5d28dad73b5ff12ca767fab378678e1ea82fca76aeea04a10b6b219da |
+| Sanitized observation SHA256 |38db32e341f052ca04594080d0513ba303f9c9d770db2977a076eda5980e761e |
+
+After exact cleanup, Docker network/volume/image sets match the pre-assurance baseline. The only
+extra containers are the three recorded root-verification services, which must be removed after
+their ongoing checks. No assurance resource is credited as cleaned merely from its exit code.
+
+### Full-root runner correction follow-up
+
+The integration correction passes its eight focused cases and affected1,880/structure158 checks.
+The first full-root run passes integration899/E2E134 but exposes the same missing Redis marker in
+the pentest worker's reused human fixture. Three fields in the existing Vitest config now provide
+the integration test-URL pair and pentest Redis marker. An initial analogous-block patch was
+detected by focused red and corrected; AST validation confirms the exact project blocks and no
+E2E change. No sealed test/fixture, production code, CI workflow or Turbo policy changes. Full
+root verification is running again with both outer TEST URL variables absent. No failing security
+precondition is waived or credited as a pass.
+
+At2026-11-05 21:06, the exact three-field correction passes four focused human pentests and the
+complete root pnpm verify under strict Turbo with both outer TEST URL variables absent. All four
+Turbo tasks succeed: SDK610 assertions, CLI1,795, server unit4,417/integration899/E2E134/pentest334,
+structure158 and lint/typecheck/build. The preceding affected run passes1,880 assertions and158
+structure checks. No security assertion/fixture changed. This is the authorized full-local
+test-infrastructure exception, not a new routine default. Fresh source CI is still pending.
+
+All three standard-port root-verification services are stopped and automatically removed after
+verification. Docker container/network/volume/image sets match the pre-assurance baseline after
+automatic removal settles. Existing operator stacks are preserved. No Phase2 runtime container,
+network, volume or image remains; the owned verification worktree/dependencies and current
+qualification artifacts remain only for the continuing Bundle C workflow and checkpoint recording.

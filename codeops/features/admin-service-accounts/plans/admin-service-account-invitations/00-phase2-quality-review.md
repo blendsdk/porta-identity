@@ -1,6 +1,6 @@
 # Phase2 Quality Review: Permanent Accounts and Lifecycle
 
-> **Status**: Source review and corrected local gates PASSED — clean-source assurance checkpoint pending
+> **Status**: Product review/full root/qualified assurance PASSED — fresh source CI/checkpoint pending
 > **Baseline checkpoint**: cbd59bbfc766b1f82a67bf691102f8533e8cc68f
 > **Complete baseline tree**: b1e6737b986a52a928bf2de5a7968bc868e01dda
 > **Scope**: Strict Phase2 lifecycle and direct existing callers; no native-token acceptance
@@ -60,6 +60,30 @@ Neither partition identified a correction-introduced Critical/Major defect. Revi
 runtime and production-security evidence were not independently rerun or qualified. Reviewers
 created no temporary artifacts or infrastructure. Their progress prose is not task authority;
 99-execution-plan.md remains the sole source for the current verified count.
+
+## CI execution discovery after the source checkpoint
+
+Source CI42089720974 fails before the new HTTP assertions because Turbo filters the outer test
+URL variables while the integration worker does not explicitly populate TEST_DATABASE_URL and
+TEST_REDIS_URL. The first full-root rerun reaches the same missing Redis marker in the pentest
+worker. AR-30 preserves sealed reset-safety guards and adds only the already-derived integration
+URL pair and pentest Redis marker to their existing env blocks. Product source and independent review
+closures are unchanged. Full root pnpm verify and fresh CI must qualify this test-runner fix;
+the earlier direct category passes are not substituted for those gates. The read-only CI workflow
+and Turbo policy remain unchanged.
+
+The final exact three-field runner correction passes full root pnpm verify at2026-11-05 21:06
+with both outer TEST URLs absent. Results: SDK610, CLI1,795, server unit4,417/integration899/
+E2E134/pentest334, structure158 and all lint/typecheck/build tasks. Fresh source CI remains pending.
+
+The clean0f9cb04b production-security run completes with exit0: all11 exposure cases,7 functional
+human-authentication,4 second-factor,17 tenant/admin and5 recovery tests pass. Its schema-validated
+artifact identifies the exact source commit/tree, no product/execution failure and no incomplete
+case. Correlated-log credit is explicitly false and is not claimed. This is evidence for that
+named revision; subsequent test-runner-only changes are not relabeled as this run. All production
+source/migration/template/locale bytes remain identical. Run containers/network, the exact unused
+run-tagged image and the two user-confirmed anonymous volumes are removed; the approved short
+temporary root is removed. Separate active root-verification services are not part of this cleanup.
 
 ## Prior runtime evidence — insufficient to close the findings
 
