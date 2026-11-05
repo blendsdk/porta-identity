@@ -81,6 +81,22 @@ schema seals are explicitly authorized fixture setup only (AR-21/22), never alte
 Original schema.migration seal:6996fd980f824c950a2757cc87f2b941a45b4a4f60525fa36f82660a7d0352fc;
 original schema.reader seal:066c1488f052c76b82834f948e13dbe170c76dbbee0c50c3b7a67b993e16bc2f.
 
+### Foundation and hardening checkpoints
+
+Foundation checkpoint acfda017 is committed/pushed with the six qualified immutable oracles and
+schema/policy/read implementation. No public route or authentication lane is mounted by it.
+Separate implementation tests add10 real database cases for parent/binding/account locks, absence
+of a binding, transaction ownership, lock release, non-finite stored timestamps, existing-install
+role seeding without human assignment, and additive-migration rollback on a reserved-name conflict.
+No oracle is modified for these tests. Actual behavioral inventory rises392→394 for those two files.
+
+The complete selected Phase1 run now passes8 files/271 assertions. Scoped feature coverage:
+96.55% statements,94.44% branches,100% functions,97.4% lines. Repository alone:90% statements,
+89.65% branches,100% functions,92.3% lines; do not describe every individual file as90% branch-covered.
+Root affected selection passes structure158 and236 affected policy assertions. Server-wide lint,
+typecheck and build pass. Independent correctness/security/migration/concurrency review is still
+pending; no Phase1 completion, production acceptance or whole-feature claim is established.
+
 Two task-owned standalone PostgreSQL17/Redis8 containers use existing local images, loopback-only
 random ports and tmpfs data with --rm. No operator service/database, new image, persistent volume
 or infrastructure dependency was used. Their IDs/ports remain only in the owned scratch state for

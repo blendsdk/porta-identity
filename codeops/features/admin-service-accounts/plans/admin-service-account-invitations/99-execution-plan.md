@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 11:20
-> **Progress**: 8/65 tasks (12%)
+> **Last Updated**: 2026-11-05 11:33
+> **Progress**: 9/65 tasks (14%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -66,7 +66,7 @@ read. Scope mode: strict. All implementation tasks remain not started until thei
 
 ### Session 1.3 — Hardening and checkpoint
 
-- [ ] 1.3.1 Add implementation tests for corrupt storage/error paths and migration rollback — focused *.impl.test.ts files.
+- [x] 1.3.1 Add implementation tests for corrupt storage/error paths and migration rollback — focused *.impl.test.ts files. ✅ (completed: 2026-11-05 11:33;10 real PostgreSQL implementation cases plus261 immutable assertions pass; feature coverage96.55% statements/94.44% branches/100% functions/97.4% lines; repository alone90% statements/89.65% branches/92.3% lines; structure158 and server lint/typecheck/build pass; physical inventory394)
 - [ ] 1.3.2 Run phase verification and independent correctness/security/migration review; resolve findings under the active policy.
 - [ ] 1.3.3 Record qualified phase evidence, incremental technical-doc impact and verified feature checkpoint.
 

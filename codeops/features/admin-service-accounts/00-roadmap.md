@@ -11,7 +11,7 @@
 
 | ID   | Title                                      | RD  | Plan                                                                   | Stage     | Status | Last Updated | Depends-on / Blocker                                         |
 | ---- | ------------------------------------------ | --- | ---------------------------------------------------------------------- | --------- | ------ | ------------ | ------------------------------------------------------------ |
-| T-01 | Invitation-only Admin API service accounts | —   | [Standalone plan](plans/admin-service-account-invitations/00-index.md) | Executing | 🔄     | 2026-11-05   | Phase1 schema/policy/read oracles green; 8/65 tasks verified |
+| T-01 | Invitation-only Admin API service accounts | —   | [Standalone plan](plans/admin-service-account-invitations/00-index.md) | Executing | 🔄     | 2026-11-05   | Phase1 hardening verified; independent review next; 9/65 tasks verified |
 
 The user approved feature-roadmap creation in the concrete contract. The portfolio cascade is
 deferred until integration into develop. Planning completion is not implementation completion.
