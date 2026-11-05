@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-04 15:33
-> **Progress**: 0/65 tasks (0%)
+> **Last Updated**: 2026-11-05 11:20
+> **Progress**: 8/65 tasks (12%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -36,7 +36,7 @@ Verify selections and evidence requirements are owned by07, not copied into ever
 
 ## Phase 1: Policy and storage
 
-> **Phase baseline tree**: record at execution entry
+> **Phase baseline tree**: 214d2a56df66af8413814e165d79497b98a4d1a3
 > **Lenses**: security, concurrency, api-surface
 > **Reasoning**: max — permanent identity classification, migration and authority data
 
@@ -45,19 +45,24 @@ Verify selections and evidence requirements are owned by07, not copied into ever
 unit/integration/implementation tests; actual repository test inventories; this plan/evidence and
 feature roadmap. No public route is mounted.
 
+**Baseline evidence:** Clean worktree at planning checkpoint d2a1c11f; the complete HEAD tree above
+is identical to the complete non-ignored worktree. Use that existing tree without rehashing protected
+tracked fixtures through the generic snapshot helper's blanket add. No original operator files are
+read. Scope mode: strict. All implementation tasks remain not started until their oracle/red gate.
+
 ### Session 1.1 — Specifications before code
 
-- [ ] 1.1.1 [spec-author] Write immutable parser/allowlist specification — server tests/unit/service-accounts/policy.spec.test.ts; ST-1–7, without live-reference or durable-replacement claims.
-- [ ] 1.1.2 [spec-author] Write immutable schema/ownership/downgrade specification — server tests/integration/service-accounts/schema.spec.test.ts; ST-9–12.
-- [ ] 1.1.3 Observe and record intended red for both oracle groups without changing expectations.
+- [x] 1.1.1 [spec-author] Write immutable parser/allowlist specification — server tests/unit/service-accounts/policy*.spec.test.ts; ST-1–7, without live-reference or durable-replacement claims. ✅ (completed: 2026-11-04 23:00; independent source-restricted author, lint/doc checks passed; three suites observed expected missing-entry red, no individual assertions executed yet; oracle identities sealed; commit waits for coherent green workspace)
+- [x] 1.1.2 [spec-author] Write immutable schema/ownership/downgrade specification — server tests/integration/service-accounts/schema*.spec.test.ts; ST-9–12. ✅ (completed: 2026-11-04 23:10; three source-restricted oracles lint/docs passed; real owned PostgreSQL red observed: three failed suites,20 failed tests; missing feature flag/table/reader and guarded absent037; assertions unchanged and identities sealed)
+- [x] 1.1.3 Observe and record intended red for both oracle groups without changing expectations. ✅ (completed: 2026-11-04 23:10; combined6-suite red confirms absent planned boundaries on owned PostgreSQL/Redis; all six sealed oracle hashes unchanged; no preimplementation runtime pass claimed)
 
 ### Session 1.2 — Implementation and green
 
-- [ ] 1.2.1 Add migration037 with permanent internal classification, binding constraints and safe downgrade refusal — migrations/037_service_account_invitations.sql.
-- [ ] 1.2.2 Define documented feature types, fixed domain errors and public entry — service-accounts/types.ts, errors.ts, index.ts.
-- [ ] 1.2.3 Implement strict bounded target/input/assignment validation — service-accounts/policy.ts.
-- [ ] 1.2.4 Add authoritative binding reads and stable lock primitives — service-accounts/repository.ts.
-- [ ] 1.2.5 Verify policy/schema oracles green, actual test inventories and affected workspace checks.
+- [x] 1.2.1 Add migration037 with permanent internal classification, binding constraints and safe downgrade refusal — migrations/037_service_account_invitations.sql. ✅ (completed: 2026-11-05 10:44;20 real PostgreSQL schema/constraint/migration cases pass including inactive-user and ownerless-marker downgrade refusal; lint/docs pass; user-authorized AR-21/22 fixture corrections preserve all assertions)
+- [x] 1.2.2 Define documented feature types, fixed domain errors and public entry — service-accounts/types.ts, errors.ts, index.ts. ✅ (completed: 2026-11-05 11:14; focused lint, server typecheck/build and documentation check pass; public projection excludes stored authorization version)
+- [x] 1.2.3 Implement strict bounded target/input/assignment validation — service-accounts/policy.ts. ✅ (completed: 2026-11-05 11:17;236 policy assertions across3 sealed independent suites pass; lint/typecheck/build/docs pass; no oracle expectation changed)
+- [x] 1.2.4 Add authoritative binding reads and stable lock primitives — service-accounts/repository.ts. ✅ (completed: 2026-11-05 11:20; all261 assertions across6 policy/schema/reader/migration suites pass; fixed corrupt-storage denial, ownerless reads and transaction visibility verified; lint/typecheck/build/docs pass; lock races remain explicit implementation-test work)
+- [x] 1.2.5 Verify policy/schema oracles green, actual test inventories and affected workspace checks. ✅ (completed: 2026-11-05 11:20; pnpm test:changed passes structure158 and236 affected policy assertions; server lint/typecheck/build pass; combined261 independent unit/integration assertions green; physical inventory392 preserves all386 old files)
 
 ### Session 1.3 — Hardening and checkpoint
 
