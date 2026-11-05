@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 21:06
-> **Progress**: 30/65 tasks (46%)
+> **Last Updated**: 2026-11-05 21:27
+> **Progress**: 32/65 tasks (49%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -127,9 +127,9 @@ blanket snapshot add that reads unrelated work or protected fixtures. Scope mode
 ### Session 2.3 — Hardening and checkpoint
 
 - [x] 2.3.1 Add implementation tests for guard failures, locks, audit rollback and concurrent promotion/credential mutations. ✅ (completed: 2026-11-05 14:32; all11 real-DB hardening cases pass with observed exact-blocker barriers, both promotion orders, overlap/live revocation, post-wait actor revocation, stronger isolation refusal, deletion races, write guards and audit rollback; focused lint/server typecheck/build and158 structure checks pass; inventory417; optional coverage command was interrupted by wrapper timeout, remains unqualified pending2.3.2)
-- [~] 2.3.2 Run relevant unit/integration/E2E/pentest and affected workspace/structure checks; no security assertion waiver. ⏳ (runner correction implemented: 2026-11-05 21:01; exact three worker-env fields AST-verified, E2E unchanged; full root pnpm verify running with outer TEST variables absent; first root run exposed the same pentest marker prerequisite and remains unqualified; fresh source CI required, no assertion waiver)
+- [x] 2.3.2 Run relevant unit/integration/E2E/pentest and affected workspace/structure checks; no security assertion waiver. ✅ (requalified: 2026-11-05 21:22; full local root verify passes with outer TEST variables absent and CI42100672395 onfa548685 fully succeeds: monorepo verify, UI, retained OIDC harness, public docs, production Docker build and dependency audit; no workflow/oracle change or security waiver; exact source/assurance qualifications recorded in08)
 - [x] 2.3.3 Run independent correctness/security/concurrency phase review and one scoped re-review for major fixes. ✅ (completed: 2026-11-05 19:56; both original reviewers independently closed all four findings in the one scoped re-review; no correction-introduced Critical/Major defect; exact frozen source hashes, durable ledger and artifact links verified; static review does not qualify production-security assurance)
-- [~] 2.3.4 Update incremental technical docs, record qualified human-boundary assurance and verified source checkpoint. ⏳ (implemented: 2026-11-05 21:01; maintainer security/data/ADR019 and reviewed source0f9cb04b committed/pushed; exact clean-source production-security exit0 with11 exposure and7/4/17/5 functional cases, no incomplete outcome; correlated-log credit remains false; assurance resources/approved short root removed, anonymous volumes removed only after user ownership confirmation; full-root runner correction/fresh CI and final evidence validation pending)
+- [x] 2.3.4 Update incremental technical docs, record qualified human-boundary assurance and verified source checkpoint. ✅ (completed: 2026-11-05 21:27; incremental security/data/ADR019 documentation, exact0f9cb04b assurance provenance and source-identical runner checkpointfa548685 qualified; full local root verification and CI42100672395 pass; final oracle/source/link/evidence checks pass; all owned runtime resources and45 completed logs/browser/assurance outputs removed; unrelated new codelab-approval-scratch container preserved; continuing-feature worktree/dependencies and small seals/continuity retained)
 
 **Verify:**07 Phase2 selections plus mandatory security/browser gates where affected. Public feature
 routes still remain unmounted until the next phase's complete authentication path is ready.

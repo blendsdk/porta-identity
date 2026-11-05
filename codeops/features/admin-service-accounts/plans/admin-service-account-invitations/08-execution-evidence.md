@@ -432,3 +432,27 @@ verification. Docker container/network/volume/image sets match the pre-assurance
 automatic removal settles. Existing operator stacks are preserved. No Phase2 runtime container,
 network, volume or image remains; the owned verification worktree/dependencies and current
 qualification artifacts remain only for the continuing Bundle C workflow and checkpoint recording.
+
+### Final Phase2 CI qualification
+
+Runner correction fa5486858d7ac313f9aa9d4818b85ca8b6602adc is committed/pushed and its owned
+verification worktree is clean. [CI42100672395](https://github.com/blendsdk/porta-identity/actions/runs/42100672395)
+fully passes monorepo verification, UI, retained OIDC harness, public documentation, production
+Docker build and dependency audit. This supersedes the failed CI fixture-precondition execution,
+not its historical record. The exact three runner fields preserve all sealed guards/assertions.
+Product source remains identical to the independently reviewed and assayed0f9cb04b revision.
+The clean0f9cb04b assay is not relabeled as a later run. Native machine-token and management
+registration remain unimplemented/unmounted; Phase3 must establish their own independent red/green.
+
+### Final artifact and cleanup validation — 2026-11-05 21:27
+
+Source/oracle identities, durable assurance qualification, local artifact links and exact owned
+runtime cleanup pass. All original operator resources are preserved. The unrelated new container
+`codelab-approval-scratch` (`62c4786ab0cd`) appeared after baseline restoration and is left untouched;
+the current global container set is therefore not claimed identical. Network/volume/image sets
+match the baseline and no task-owned container remains. Forty-five completed Phase2 logs and
+exact owned browser/assurance output directories are deleted after durable evidence capture.
+Use this evidence and the retained small qualified JSON, not the deleted raw observation path.
+The owned verification worktree, dependencies, compiler caches and small continuity/seal records
+remain only for continuing Bundle C and require final cleanup. Phase2 is qualified; Phase3 and
+whole-feature acceptance remain unestablished.

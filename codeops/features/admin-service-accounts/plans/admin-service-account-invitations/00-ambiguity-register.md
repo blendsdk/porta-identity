@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ All31 decisions resolved; source review/full root verification passed, fresh CI pending
-> **Last Updated**: 2026-11-05 21:06
+> **Status**: ✅ All31 decisions resolved; source review, full root verification and fresh CI passed
+> **Last Updated**: 2026-11-05 21:22
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints

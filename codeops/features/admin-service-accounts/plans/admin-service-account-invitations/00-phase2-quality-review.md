@@ -1,6 +1,6 @@
 # Phase2 Quality Review: Permanent Accounts and Lifecycle
 
-> **Status**: Product review/full root/qualified assurance PASSED — fresh source CI/checkpoint pending
+> **Status**: PASSED — product review, full root, source CI and bounded clean-source assurance qualified
 > **Baseline checkpoint**: cbd59bbfc766b1f82a67bf691102f8533e8cc68f
 > **Complete baseline tree**: b1e6737b986a52a928bf2de5a7968bc868e01dda
 > **Scope**: Strict Phase2 lifecycle and direct existing callers; no native-token acceptance
@@ -85,6 +85,20 @@ source/migration/template/locale bytes remain identical. Run containers/network,
 run-tagged image and the two user-confirmed anonymous volumes are removed; the approved short
 temporary root is removed. Separate active root-verification services are not part of this cleanup.
 
+## Final Phase2 source qualification
+
+Runner correction checkpoint fa5486858d7ac313f9aa9d4818b85ca8b6602adc is committed/pushed.
+[CI42100672395](https://github.com/blendsdk/porta-identity/actions/runs/42100672395) fully succeeds:
+monorepo verify, UI, retained OIDC harness, public documentation, production Docker build and
+production dependency audit. The three-field runner correction changes no product source or
+sealed oracle; production-security evidence remains explicitly attributed to0f9cb04b, whose
+production source/migrations/templates/locales match this checkpoint. No new native machine
+authority is claimed. All owned containers/networks/volumes/images are removed and the Docker
+owned baseline restored; existing operator resources remain unchanged. An unrelated new
+`codelab-approval-scratch` container appeared later and is preserved untouched, so the current
+global container set is not claimed identical. Only the owned verification
+worktree/dependencies and continuing-feature temporary evidence are retained for the next phase.
+
 ## Prior runtime evidence — insufficient to close the findings
 
 | Check | Observed result before correction |
@@ -101,5 +115,5 @@ temporary root is removed. Separate active root-verification services are not pa
 
 These selections missed the existing-route caller and reserved pre-assignment surfaces. They
 remain dated evidence, not proof of corrected source. Public management routes and native machine
-tokens are intentionally not mounted in this phase. Production-security assurance, clean source
-checkpoint, documentation and runtime teardown remain pending.
+tokens are intentionally not mounted in this phase. The later sections above record corrected
+source qualification; this historical pre-correction table does not qualify those corrections.
