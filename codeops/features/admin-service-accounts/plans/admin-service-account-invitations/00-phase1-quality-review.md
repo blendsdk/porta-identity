@@ -1,6 +1,6 @@
 # Phase1 Quality Review: Policy and Storage
 
-> **Status**: BLOCKED — SA-1-001 correction green; one scoped security re-review pending
+> **Status**: PASSED for Phase1 code — SA-1-001 independently closed at b67f25fb
 > **Source checkpoint**: 317c28ba
 > **Complete baseline tree**: 214d2a56df66af8413814e165d79497b98a4d1a3
 > **Scope**: Strict Phase1 foundation only; no future authentication/route acceptance
@@ -86,7 +86,14 @@ confirmed no residue. Docker sets match the exact pre-task baseline:30 container
 dependencies and active reviewer diff remain only for continuing feature verification; no Phase1
 or whole-feature completion is declared while this review is pending.
 
-The race correction subsequently started a fresh pair of separately named --rm/tmpfs services
-from the same existing images. They are task-owned only and currently support fix verification;
-their second teardown is pending. The earlier exact-baseline confirmation is historical, not a
-claim that no fix-run containers are active now. Their IDs remain in the owned scratch state.
+The race correction used a fresh pair of separately named --rm/tmpfs services from the same
+existing images. That second teardown is also complete: both containers/data are removed and
+the four Docker inventory sets again match the exact original baseline. No fix-run runtime remains.
+Only the ongoing-feature verification worktree/dependencies and active review diff are retained.
+
+Fix checkpoint b67f25fb is committed/pushed. The one scoped security re-review independently closed
+SA-1-001 with no other direct finding. It checked fresh snapshots, lock lifetime, both writer
+channels, exact refusal assertions and higher-isolation handling; no tests were rerun by the
+read-only reviewer. This closure supersedes pending-review history above. It is not whole-feature
+acceptance. Unrelated untracked scripts/pending-invitations.sql and its swap file
+appeared after the checkpoint; they were not created, read, changed, staged or included in review.

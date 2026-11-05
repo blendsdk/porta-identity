@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 11:55
-> **Progress**: 9/65 tasks (14%)
+> **Last Updated**: 2026-11-05 12:25
+> **Progress**: 11/65 tasks (17%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -67,8 +67,8 @@ read. Scope mode: strict. All implementation tasks remain not started until thei
 ### Session 1.3 — Hardening and checkpoint
 
 - [x] 1.3.1 Add implementation tests for corrupt storage/error paths and migration rollback — focused *.impl.test.ts files. ✅ (completed: 2026-11-05 11:33;10 real PostgreSQL implementation cases plus261 immutable assertions pass; feature coverage96.55% statements/94.44% branches/100% functions/97.4% lines; repository alone90% statements/89.65% branches/92.3% lines; structure158 and server lint/typecheck/build pass; physical inventory394)
-- [~] 1.3.2 Run phase verification and independent correctness/security/migration review; resolve findings under the active policy. ⏳ (fix implemented: 2026-11-05 11:55; independent challenger converged; three new implementation regressions confirmed red before SQL correction; complete green and one scoped security re-review pending)
-- [!] 1.3.3 Record qualified phase evidence, incremental technical-doc impact and verified feature checkpoint. Blocked: SA-1-001 must be corrected and scoped re-reviewed before phase qualification.
+- [x] 1.3.2 Run phase verification and independent correctness/security/migration review; resolve findings under the active policy. ✅ (completed: 2026-11-05 12:11; correctness/concurrency/API partition no findings; security Major SA-1-001 reproduced/fixed under challenged AR-23 and independently closed in the one scoped re-review at b67f25fb;274 selected assertions,4,417 server unit assertions, structure158, server lint/typecheck/build pass; fix-run runtime resources removed and exact Docker baseline restored)
+- [x] 1.3.3 Record qualified phase evidence, incremental technical-doc impact and verified feature checkpoint. ✅ (completed: 2026-11-05 12:25; independent code/security review qualified, SA-1-001 closed at b67f25fb; maintainer data model/ADR-018 local links, Mermaid parser and docs build pass; final structure158 pass; all Phase1 runtime services and56 completed temporary files removed, ongoing-feature verification worktree/dependencies explicitly retained; no whole-feature acceptance implied)
 
 **Verify:**07 Phase1 selections, server lint/typecheck/build, structure and migration up/down on an
 owned scratch database. Public feature remains inaccessible. Review before Phase2.

@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-09-16
+> **Last Updated**: 2026-11-05
 
 ## Overview
 
@@ -8,23 +8,24 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## Decision Log
 
-| #       | Decision                                                                            | Status                | Date       | Summary                                                         |
-| ------- | ----------------------------------------------------------------------------------- | --------------------- | ---------- | --------------------------------------------------------------- |
-| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                       | Accepted              | —          | Koa required for node-oidc-provider compatibility               |
-| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                       | Accepted              | —          | Organization slug in URL path for OIDC issuer isolation         |
-| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)             | Accepted              | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
-| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                 | Accepted              | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
-| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)             | Accepted              | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
-| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                             | Accepted              | —          | Standalone functions over classes for services                  |
-| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted              | —          | Zod schemas for fail-fast config and request validation         |
-| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                         | Accepted              | —          | Direct-DB for init/migrate, HTTP for all other commands         |
-| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Superseded by ADR-015 | —          | Original self-authentication decision                           |
-| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                         | Accepted              | —          | Consistent module layout: types, repository, cache, service     |
-| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                       | Accepted              | —          | Per-client override with org-level default inheritance          |
-| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
-| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
-| ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)         | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
-| ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)     | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
+| #       | Decision                                                                                                  | Status                | Date       | Summary                                                         |
+| ------- | --------------------------------------------------------------------------------------------------------- | --------------------- | ---------- | --------------------------------------------------------------- |
+| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                                             | Accepted              | —          | Koa required for node-oidc-provider compatibility               |
+| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                                             | Accepted              | —          | Organization slug in URL path for OIDC issuer isolation         |
+| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)                                   | Accepted              | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
+| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                                       | Accepted              | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
+| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)                                   | Accepted              | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
+| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                                                   | Accepted              | —          | Standalone functions over classes for services                  |
+| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation)                       | Accepted              | —          | Zod schemas for fail-fast config and request validation         |
+| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                                               | Accepted              | —          | Direct-DB for init/migrate, HTTP for all other commands         |
+| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)                           | Superseded by ADR-015 | —          | Original self-authentication decision                           |
+| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                                               | Accepted              | —          | Consistent module layout: types, repository, cache, service     |
+| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                                             | Accepted              | —          | Per-client override with org-level default inheritance          |
+| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)                               | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
+| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                                         | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
+| ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)                               | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
+| ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)                           | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
+| ADR-018 | [Permanent Service Identity and Binding Storage](#adr-018-permanent-service-identity-and-binding-storage) | Accepted              | 2026-11-05 | Permanent classification, bounded JSONB and retained ownership  |
 
 ---
 
@@ -420,6 +421,52 @@ prevents cross-application role escalation.
   audit is transaction-bound.
 - Historical rows whose actor user was deleted are classified `system`; future
   deletions retain `user`.
+
+---
+
+## ADR-018: Permanent Service Identity and Binding Storage
+
+**Status**: Accepted. This storage decision does not supersede human Admin authentication or
+tenant M2M authority decisions and does not, by itself, introduce a public machine-authentication lane.
+
+**Context**: An invitation-only privileged client needs durable account ownership and revocable
+authority. A removable binding or account status alone cannot establish a permanent noninteractive
+identity. Erasing a binding after physical account deletion would also make later client reassignment
+indistinguishable from initial provisioning.
+
+**Options considered**:
+
+| Option                                                             | Assessment                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Permanent user flag plus one client-owned JSONB binding            | Chosen: independent classification and ownership with the existing database boundary          |
+| Classification inferred from a disposable binding                  | Rejected: unbinding would erase the evidence needed to deny human authentication              |
+| Separate identity registry and normalized target/assignment tables | Viable but larger; the bounded policy does not justify another identity system or table graph |
+
+**Decision**: Keep a permanent internal user flag and one uniquely client/account-owned binding
+with a native JSONB policy and unpredictable authorization version. Preserve the same revoked,
+empty-policy row with a null owner after account deletion while its client survives. Do not retain
+deleted account email, adopt another account or interpret corrupt policy as fallback authority.
+Use explicit client→binding→account locks and existing transactions rather than a new coordination
+system. The trusted migration seeds the reserved role for initialized installations without human
+assignments or a generic runtime writer; native token persistence remains unchanged.
+
+**Rationale**: Classification must survive revocation and client/binding removal. Ownership history
+must survive physical account loss without another ledger. Fixed aggregate policy bounds make
+strict JSONB validation practical; application-qualified identities preserve independent application
+definitions instead of frozen permission snapshots. This requires live reference checks before
+authority is exercised, not policy repair jobs, distributed invalidation or a token-wrapper store.
+
+**Consequences**:
+
+- Existing users default to human; the classification is never a public create/update field.
+- Successful public projections exclude the authorization version and cannot fabricate a lost owner.
+- Stored policy validation is authoritative and fails closed without cached/fallback policy.
+- Operators must replace all account-unaware HTTP/worker binaries before provisioning these identities.
+- Destructive downgrade requires READ COMMITTED and transaction-held exclusive binding/users locks
+  before checking for any surviving flag or ownership row. This excludes concurrent writes but may
+  block reads; reverse-order transactions can fail safely rather than being automatically retried.
+- A separate service-only authentication and lifecycle boundary remains necessary. The schema flag
+  is not a substitute for enforcing password, recovery, token and management restrictions.
 
 ---
 

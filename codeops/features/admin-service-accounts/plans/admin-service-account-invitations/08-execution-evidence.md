@@ -106,11 +106,32 @@ dependency was used. Scratch worktree/dependencies and active reviewer diff rema
 continuing feature verification, not as a running Porta installation or completed acceptance claim.
 
 The security audit subsequently found SA-1-001, so the phase did not complete. Its separate fix
-run started two newly named task-owned tmpfs services again; final teardown is pending for that
-run. Old SQL was shown to allow concurrent committed flag/marker loss and higher-isolation DOWN;
+run used two newly named task-owned tmpfs services. Their teardown is now complete and the exact
+original Docker inventory sets are restored again. Old SQL was shown to allow concurrent committed flag/marker loss and higher-isolation DOWN;
 the corrected lock/isolation fence now passes8 files/274 assertions. See the phase quality report
-and AR-23. All immutable oracles remain at their qualified hashes. The complete server-unit and
-affected/workspace gates are running before the fix checkpoint and scoped re-review.
+and AR-23. All immutable oracles remain at their qualified hashes. Complete server unit verification
+passes251 files/4,417 assertions; affected selection, structure, lint, typecheck and build also pass.
+Fix checkpoint b67f25fb is committed/pushed; the one scoped security re-review closed SA-1-001
+with no further direct finding. Both independent partitions are qualified for Phase1 code only.
+Unrelated newly untracked scripts/pending-invitations.sql and its swap file are excluded untouched.
+
+### Phase1 documentation and cleanup
+
+The incremental opt-in update adds the binding/classification relationship, strict JSONB/read and
+rollback boundaries to techdocs/architecture/data-model.md and records the permanent-identity/
+ownership storage choice as inline ADR-018 in techdocs/decisions/index.md. Existing ADR decisions
+and statuses remain unchanged; no public endpoint, token lane or authentication exclusion is
+claimed complete by the storage-only docs. Both documents pass local-link/ADR checks and the
+installed Mermaid parser accepts the changed data-model diagram. pnpm docs:build also passes;
+that build covers public docs, so it is adjunct rather than direct rendering proof for unpublished
+techdocs. No new page/sidebar configuration or documentation dependency is introduced.
+
+Both initial and fix-run task-owned PostgreSQL/Redis pairs are removed. The final Docker container,
+network, volume and image sets exactly match their original baselines. Completed Phase1 raw logs,
+review diffs, transient oracle-seal copies, commit-message files and generated coverage/docs cache
+are removed after preserving the evidence above. The owned verification worktree and installed
+dependencies/build prerequisites remain only because the same authorized feature continues into
+Phase2; they must be removed before whole-feature completion. Unrelated user work remains untouched.
 
 Exact protected-file authorization is recorded in the continuity notes. It covers only the named
 scratch dotenv attempts and root/scratch package/provenance .npmrc reads. No original operator .env,
