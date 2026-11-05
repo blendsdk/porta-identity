@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 21:27
-> **Progress**: 32/65 tasks (49%)
+> **Last Updated**: 2026-11-05 23:34
+> **Progress**: 47/65 tasks (72%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -136,7 +136,7 @@ routes still remain unmounted until the next phase's complete authentication pat
 
 ## Phase 3: Native machine invitation and management routes
 
-> **Phase baseline tree**: record at phase entry
+> **Phase baseline tree**: 4e911e65ddd3bc9aa41151cb7d0e2dab11f98671
 > **Lenses**: security, concurrency, api-surface
 > **Reasoning**: max — native OAuth, tenant isolation, revocation and durable side effects
 
@@ -147,30 +147,43 @@ subresource; middleware/client-secret-hash.ts proof handoff; middleware/admin-mu
 outer actor/commit ownership; server registration; invitation audit/result finalization;
 focused tests/inventories/evidence/docs.
 
+**Baseline evidence:** Phase3 enters at verified Phase2 checkpoint
+fd27170625fd4653e21718eb607737244ececa31. All tracked product/test/document bytes match that
+complete HEAD tree; unrelated untracked pending-invitation SQL is excluded unread, not staged or
+snapshotted. The owned verification worktree is clean at the same checkpoint. Scope: strict.
+Read-only author preparation wrote no files and advances no task. Shared fixture interfaces must
+be frozen before authoring release; no Phase3 product implementation precedes qualified red.
+
+**Oracle interface freeze (AR-32/33):** The common real HTTP helper, exact purpose key-builder,
+closed audit projection, default-off bound-account acknowledgement reporting and existing real
+credential bridge barrier are fixed in03-03 before full independent authoring release. Existing
+human/tenant semantics, sealed fixtures/oracles and createApp signature stay unchanged. New
+helpers are focused test construction, not another runner or injectable authority framework.
+
 ### Session 3.1 — Specifications before code
 
-- [ ] 3.1.1 [spec-author] Write real native-token/issuer/metadata/lifetime, usable-token rotation/revocation and modern/legacy credential-proof barrier oracles — ST-24 machine extra-membership denial and ST-29–32/36/37/43/45/62/63; preserve ordinary-client handoff tests.
-- [ ] 3.1.2 [spec-author] Write invitation/allowlist/counter/audit/transaction-ordering oracles through the full createApp envelope, including final-audit rollback and truthful post-commit delivery — ST-33–42/44/67.
-- [ ] 3.1.3 [spec-author] Write exact management-route response/error/ownership oracles — ST-46 and relevant ST-13–18.
-- [ ] 3.1.4 Observe intended red against existing native/Admin boundaries and preserve oracle independence.
+- [x] 3.1.1 [spec-author] Write real native-token/issuer/metadata/lifetime, usable-token rotation/revocation and modern/legacy credential-proof barrier oracles — ST-24 machine extra-membership denial and ST-29–32/36/37/43/45/62/63; preserve ordinary-client handoff tests. ✅ (completed: 2026-11-05 22:31; seven specifications/85 cases plus proof helper reviewed/linted/type-checked and sealed; actual red12 existing controls/73 failures:69 feature-scope HTTP prerequisites,1 native scope prerequisite,3 unmounted management human controls; zero fixture failures/skips; four first-binding proof cases reach pause/commit/resume but fail fresh issuance, eight restoration/retirement cases stop before race; no unreached assertions credited; ordinary sealed handoff unchanged)
+- [x] 3.1.2 [spec-author] Write invitation/allowlist/counter/audit/transaction-ordering oracles through the full createApp envelope, including final-audit rollback and truthful post-commit delivery — ST-33–42/44/67. ✅ (completed: 2026-11-05 22:32; seven specifications/71 cases plus helper reviewed/linted/type-checked and sealed; actual71 failures at native feature-scope issuance, zero fixture failures/skips; later invitation/counter/audit/SMTP assertions remain unreached until implementation and are not credited as exercised)
+- [x] 3.1.3 [spec-author] Write exact management-route response/error/ownership oracles — ST-46 and relevant ST-13–18. ✅ (completed: 2026-11-05 22:05; independent79-case group reviewed/linted/doc-checked and sealed with its focused helper; real full-createApp run observes70 missing-route failures,3 native-issuance prerequisite failures and6 existing controls, zero fixture/import failures/skips; native prerequisites are not credited as machine-management wire denial; shared HTTP dependency hash frozen separately; product implementation remains absent, commit waits for coherent green)
+- [x] 3.1.4 Observe intended red against existing native/Admin boundaries and preserve oracle independence. ✅ (completed: 2026-11-05 22:32; all235 independent cases observed before source edits:18 existing controls,217 intended missing-boundary/prerequisite failures, zero fixture failures/skips; all21 new oracle/helper hashes verified and frozen, lint/type construction checks pass; unreached later assertions explicitly uncredited; coherent green required before commit)
 
 ### Session 3.2 — Implementation and green
 
-- [ ] 3.2.1 Preserve exact proven modern/legacy secret ID in raw-request-keyed trusted state and revalidate ownership/status/expiry under parent lock at feature issuance — middleware/client-secret-hash.ts and service-accounts/credential-proof.ts; ST-63.
-- [ ] 3.2.2 Implement native extra metadata and bounded TTL/issuer integration without widening ordinary token behavior — service-accounts/tokens.ts and oidc/configuration.ts.
-- [ ] 3.2.3 Implement typed native machine identity lookup and explicit invitation-only Admin middleware opt-in — focused service-accounts auth and middleware/admin-auth.ts.
-- [ ] 3.2.4 Implement authoritative transaction-bound allowlist/version/account/role checks — service-accounts/authorization.ts.
-- [ ] 3.2.5 Implement strict client-wide invitation limiting and complete finite/native-encoding validation — focused service-accounts limiter/input helpers.
-- [ ] 3.2.6 Extract/register the real invitation POST with dedicated opt-in while preserving human behavior and denying preview/other routes — routes/admin-invitations.ts, routes/users.ts, server.ts.
-- [ ] 3.2.7 Add trusted exact-operation machine audit attribution to the retained outer transaction owner and finalize delivery results after its actual commit/SMTP effects — middleware/admin-mutation-audit.ts and focused invitation result integration; ST-67.
-- [ ] 3.2.8 Add machine/account/binding attribution through existing invitation/audit contracts — users/invite-service.ts and lib/audit-log.ts.
-- [ ] 3.2.9 Add human Super Admin-only binding subresource and fixed error handling — routes/client-service-account.ts and routes/clients.ts.
-- [ ] 3.2.10 Verify all phase oracles green and retain exact token classes, tenant boundaries, credential-proof retirement and outer-commit delivery semantics.
+- [x] 3.2.1 Preserve exact proven modern/legacy secret ID in raw-request-keyed trusted state and revalidate ownership/status/expiry under parent lock at feature issuance — middleware/client-secret-hash.ts and service-accounts/credential-proof.ts; ST-63. ✅ (completed: 2026-11-05 23:34; all12 real modern/legacy proof races pass; ordinary handoff assertions unchanged; exact source/oracle hashes and full strict root gate pass)
+- [x] 3.2.2 Implement native extra metadata and bounded TTL/issuer integration without widening ordinary token behavior — service-accounts/tokens.ts and oidc/configuration.ts. ✅ (completed: 2026-11-05 23:34; native issuance/class/metadata/expiry/issuer controls pass;300-second feature and ordinary/resource TTL preserved; full lint/typecheck/build/root gate pass)
+- [x] 3.2.3 Implement typed native machine identity lookup and explicit invitation-only Admin middleware opt-in — focused service-accounts auth and middleware/admin-auth.ts. ✅ (completed: 2026-11-05 23:34; all85 native/proof cases plus protected-prefix/alias and real native Redis failure controls pass; fresh post-upload identity enforced; full root gate pass)
+- [x] 3.2.4 Implement authoritative transaction-bound allowlist/version/account/role checks — service-accounts/authorization.ts. ✅ (completed: 2026-11-05 23:34; complete live reference/membership/permission/version/assignment and real lock ordering cases pass; no cache-based authority; full root gate pass)
+- [x] 3.2.5 Implement strict client-wide invitation limiting and complete finite/native-encoding validation — focused service-accounts limiter/input helpers. ✅ (completed: 2026-11-05 23:34; all71 invitation and17 hardening cases pass, including strict shared budget/faults and supported JSON preservation with AR-35 human precedence/coverage retained; full root gate pass)
+- [x] 3.2.6 Extract/register the real invitation POST with dedicated opt-in while preserving human behavior and denying preview/other routes — routes/admin-invitations.ts, routes/users.ts, server.ts. ✅ (completed: 2026-11-05 23:34; one shared handler retains human factory path; explicit machine lane/preview/other-route isolation and ordinary regressions pass; full root gate pass)
+- [x] 3.2.7 Add trusted exact-operation machine audit attribution to the retained outer transaction owner and finalize delivery results after its actual commit/SMTP effects — middleware/admin-mutation-audit.ts and focused invitation result integration; ST-67. ✅ (completed: 2026-11-05 23:34; final-audit rollback/no-mail, actual post-commit sent/failed/unknown and paused SMTP/revocation interleavings pass; one outer owner and exact actor fields; full root gate pass)
+- [x] 3.2.8 Add machine/account/binding attribution through existing invitation/audit contracts — users/invite-service.ts and lib/audit-log.ts. ✅ (completed: 2026-11-05 23:34; both machine audits use closed attribution and null human columns; default-off acknowledgement reporting preserves ordinary human/tenant/direct results; full root gate pass)
+- [x] 3.2.9 Add human Super Admin-only binding subresource and fixed error handling — routes/client-service-account.ts and routes/clients.ts. ✅ (completed: 2026-11-05 23:34; all79 management cases pass after exact user-approved AR-34 request-only correction; lifecycle/error/ownership/rollback/projection controls pass; full root gate pass)
+- [x] 3.2.10 Verify all phase oracles green and retain exact token classes, tenant boundaries, credential-proof retirement and outer-commit delivery semantics. ✅ (completed: 2026-11-05 23:34; all235 independent cases and17 hardening cases pass within full strict pnpm verify: unit4,417/integration1,151/E2E134/pentest334/SDK610/CLI1,795/structure158; lint/types/builds pass; exact source/oracle identities verified, no unsafe added casts/planning references; assurance/review/CI and phase completion remain pending)
 
 ### Session 3.3 — Hardening and checkpoint
 
-- [ ] 3.3.1 Add implementation error/corrupt-metadata/lock/counter tests and verify real overlapping commit/revocation cases.
-- [ ] 3.3.2 Run affected checks, full applicable pentest and production-security/protocol selections from clean source; record direct versus adjunct evidence.
+- [x] 3.3.1 Add implementation error/corrupt-metadata/lock/counter tests and verify real overlapping commit/revocation cases. ✅ (completed: 2026-11-05 23:34;17 real implementation cases plus235 sealed specifications pass within full strict root verification; observed PostgreSQL COMMIT while HTTP upload remains incomplete, then actual revocation/strict expiry denial; native Redis fault/human health, corrupt policy, decompressed limits, safe aliases/single outer owner and human parser precedence verified; no production test hook; inventory443, lint/focused test interfaces pass)
+- [~] 3.3.2 Run affected checks, full applicable pentest and production-security/protocol selections from clean source; record direct versus adjunct evidence. ⏳ (local gates verified: 2026-11-05 23:34; full strict pnpm verify passes including all235 specifications/17 hardening/334 pentest; browser135 passes with retries0; locally verified source checkpoint prepared for clean committed production-security/protocol assurance; assurance and current-source CI remain pending)
 - [ ] 3.3.3 Run independent correctness/security/concurrency review and required scoped fixes/re-review.
 - [ ] 3.3.4 Update incremental architecture docs and record the verified native/Admin source checkpoint and cleanup.
 

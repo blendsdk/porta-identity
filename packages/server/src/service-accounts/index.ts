@@ -14,6 +14,20 @@ export type {
   StoredServiceAccount,
 } from './types.js';
 export { SERVICE_ACCOUNT_STATUS } from './types.js';
+export { buildServiceAccountInvitationRateLimitKey } from './rate-limit.js';
+export { isAdminInvitationRequest } from './invitation-route.js';
+export { SERVICE_ACCOUNT_INVITE_SCOPE } from './authorization.js';
+export {
+  serviceAccountClientCredentialsTtl, serviceAccountExtraTokenClaims,
+} from './tokens.js';
+export {
+  authenticateServiceAccount,
+} from './authentication.js';
+export type { ServiceAccountTokenProvider, AuthenticatedServiceAccount } from './authentication.js';
+export {
+  requireServiceAccountAuthority, authorizeServiceAccountInvitation, serviceAccountAuditMetadata,
+} from './authorization.js';
+export type { ServiceAccountAuthority } from './authorization.js';
 export {
   ServiceAccountValidationError,
   ServiceAccountAuthorizationError,

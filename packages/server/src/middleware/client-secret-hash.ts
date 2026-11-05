@@ -11,6 +11,7 @@ import {
 } from '../clients/secret-repository.js';
 import { checkRateLimitStrict } from '../auth/rate-limiter.js';
 import { TOKEN_RATE_LIMIT } from './token-rate-limiter.js';
+import { setServiceAccountCredentialProof } from '../service-accounts/credential-proof.js';
 
 const MAX_CLIENT_ID_LENGTH = 255;
 const MAX_SECRET_LENGTH = 512;
@@ -176,6 +177,10 @@ export function clientSecretHash(options: ClientSecretBridgeOptions = {}): Middl
       const presentedSha256 = clientCrypto.sha256Secret(credential.plaintext);
       const modernMatchId = await findActiveSecretIdBySha256(client.id, presentedSha256);
       if (modernMatchId !== null) {
+        setServiceAccountCredentialProof(ctx.req, {
+          clientId: client.id, publicClientId: client.clientId,
+          organizationId: tenantId, secretId: modernMatchId,
+        });
         return handOffValidatedCredential(
           credential,
           canonicalValue,
@@ -192,7 +197,7 @@ export function clientSecretHash(options: ClientSecretBridgeOptions = {}): Middl
       }
 
       legacyBatchActive = true;
-      let legacyMatched = false;
+      let legacyMatchId: string | undefined;
       try {
         const limit = await checkRateLimitStrict(
           `ratelimit:client-secret-legacy:${tenantId}:${client.id}`,
@@ -205,14 +210,18 @@ export function clientSecretHash(options: ClientSecretBridgeOptions = {}): Middl
 
         for (const legacy of legacySecrets) {
           if (await clientCrypto.verifySecretHash(legacy.hash, credential.plaintext)) {
-            legacyMatched = true;
+            legacyMatchId = legacy.id;
             break;
           }
         }
       } finally {
         legacyBatchActive = false;
       }
-      if (legacyMatched) {
+      if (legacyMatchId) {
+        setServiceAccountCredentialProof(ctx.req, {
+          clientId: client.id, publicClientId: client.clientId,
+          organizationId: tenantId, secretId: legacyMatchId,
+        });
         return handOffValidatedCredential(credential, canonicalValue, options, next);
       }
     } catch {

@@ -47,7 +47,7 @@ import { requireUserOrganization } from '../middleware/require-user-organization
 import { requireExistingOrganization } from '../middleware/require-existing-organization.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { exportUserData } from '../users/gdpr.js';
-import { inviteUser, inviteUserSchema } from '../users/invite-service.js';
+import { adminInvitationHandler } from './admin-invitations.js';
 import {
   createUserSchema,
   identifierSchema,
@@ -385,31 +385,7 @@ export function createUserRouter(): Router {
   // until the recipient accepts. Existing organization email addresses are
   // rejected instead of silently resending an invitation.
   // -------------------------------------------------------------------------
-  router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), async (ctx) => {
-    try {
-      const body = inviteUserSchema.parse(ctx.request.body);
-      const adminUser = ctx.state.adminUser;
-      if (!adminUser) {
-        ctx.throw(401, 'Authentication required');
-        return;
-      }
-
-      const result = await inviteUser({
-        organizationId: ctx.params.orgId,
-        input: body,
-        actor: {
-          kind: 'admin',
-          userId: adminUser.id,
-          displayName: adminUser.email ?? 'Admin',
-        },
-      });
-
-      ctx.status = 201;
-      ctx.body = { data: result };
-    } catch (err) {
-      handleError(ctx, err);
-    }
-  });
+  router.post('/invite', requirePermission(ADMIN_PERMISSIONS.USER_INVITE), adminInvitationHandler);
 
   // -------------------------------------------------------------------------
   // POST /invite/preview — Preview invitation email without sending

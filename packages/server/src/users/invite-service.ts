@@ -37,6 +37,8 @@ import { getOrganizationById } from '../organizations/service.js';
 import { RoleDelegationError } from '../rbac/errors.js';
 import { getPermissionsForRole } from '../rbac/role-service.js';
 import { getUserByEmail } from './service.js';
+import type { ServiceAccountAuthority } from '../service-accounts/index.js';
+import { serviceAccountAuditMetadata } from '../service-accounts/index.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -140,6 +142,8 @@ export interface InviteUserOptions {
    * Tenant callers set this to the token client's application.
    */
   readonly allowedApplicationId?: string;
+  /** Trusted authority supplied only by validated bound-account dispatch, never request JSON. */
+  readonly serviceAccountAuthority?: ServiceAccountAuthority;
 }
 
 /** Delivery outcome returned to invitation callers. */
@@ -349,6 +353,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
           preAssignedRoles: input.roles?.length ?? 0,
           preAssignedClaims: input.claims?.length ?? 0,
           actorKind: actor.kind,
+          ...(options.serviceAccountAuthority ? serviceAccountAuditMetadata(options.serviceAccountAuthority) : {}),
           ...(actor.kind === 'service' && actor.clientId
             ? { serviceClientId: actor.clientId }
             : {}),
@@ -358,6 +363,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
       const emailOptions: InvitationEmailOptions = {
         invitationId: invitation.id,
         expiresInSeconds: invitationTtl,
+        ...(options.serviceAccountAuthority ? { reportRecipientAcknowledgement: true } : {}),
       };
       if (input.personalMessage) emailOptions.personalMessage = input.personalMessage;
       emailOptions.inviterName = actor.displayName;
@@ -394,8 +400,10 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
   return {
     invitationId,
     email: input.email,
-    invitationSent: deliveryOutcome.value === 'sent',
-    emailDelivery: deliveryOutcome.value,
+    // The outer Admin transaction may still own commit and SMTP. Getters preserve the holder
+    // until actual response serialization, without adding another callback or response framework.
+    get invitationSent() { return deliveryOutcome.value === 'sent'; },
+    get emailDelivery() { return deliveryOutcome.value; },
     expiresAt: expiresAt.toISOString(),
   };
 }

@@ -30,6 +30,7 @@
  */
 
 import Router from '@koa/router';
+import { registerClientServiceAccountRoutes } from './client-service-account.js';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
@@ -265,6 +266,7 @@ export function createClientRouter(): Router {
 
   // All routes require admin authentication
   router.use(requireAdminAuth());
+  registerClientServiceAccountRoutes(router);
 
   // -------------------------------------------------------------------------
   // POST / — Create client

@@ -456,3 +456,230 @@ Use this evidence and the retained small qualified JSON, not the deleted raw obs
 The owned verification worktree, dependencies, compiler caches and small continuity/seal records
 remain only for continuing Bundle C and require final cleanup. Phase2 is qualified; Phase3 and
 whole-feature acceptance remain unestablished.
+
+## Phase3 entry — 2026-11-05
+
+Verified Phase2 metadata checkpoint fd27170625fd4653e21718eb607737244ececa31 is committed/pushed.
+The complete entry tree is4e911e65ddd3bc9aa41151cb7d0e2dab11f98671. Both original tracked state
+and the clean owned verification worktree match it; unrelated untracked SQL remains excluded
+unread. No blanket snapshot adds protected fixtures or unrelated work. Three independent authors
+completed read-only preparation without implementation/oracle reads. The native author's disclosed
+helper-body snippets came only from the explicitly permitted sealed lifecycle fixture, whose
+construction and public fixture interfaces are allowed inputs; they contain no new native-machine
+authorization oracle or implementation. Same-session authoring remains eligible under that bounded
+packet. No Phase3 product source or specification file has yet been written or released.
+
+The Phase3 entry affected gate passes1,880 assertions and158 structure checks on the clean owned
+verification checkpoint. Three separately named disposable Phase3 services are recorded with
+random loopback PostgreSQL/Redis ports, tmpfs and confirmed-free MailHog test ports; the parent
+owns teardown. The native author is released only for the frozen common HTTP helper, not native
+oracles or proof barriers. The management author may write disjoint wire specifications against
+that helper's frozen interface; its statuses are already fixed by AR-19. Invitation/native oracle
+release still waits for the bounded counter/audit/delivery/barrier challenge. No product code is
+written or authorized before independent specification red. Preparation advances no task.
+
+AR-32/33 record the completed blind interface challenge by ses_e52987e3fffe7M3p87fu5nT6ZB. It
+converges on the existing strict limiter with an exact internal-client purpose key, the closed
+flat audit identity projection, the genuine credential-free bridge pause seam, and default-off
+recipient acknowledgement reporting for validated bound invitations only. Ordinary human/tenant/
+direct delivery semantics stay unchanged. The native author was supplied the exact non-secret
+standards path after reporting it unavailable, without cache scans or protected-file access.
+All three authors now have full release for only their assigned disjoint new specifications and
+small helpers. Existing sealed oracles/helpers and all product source remain untouched. Their
+results must still pass construction review, lint, actual expected red and sealing before any
+implementation; no test task is complete merely from a release or preparation report.
+
+The unchanged ordinary native-token/credential-handoff baseline passes14 assertions across two
+real integration files before Phase3 implementation. Both original oracles remain sealed and
+unchanged; this establishes the existing HTTP/credential fixture behavior, not new machine access.
+The pushed Phase2 metadata checkpoint fd271706 also receives fully successful
+[CI42103737597](https://github.com/blendsdk/porta-identity/actions/runs/42103737597). The new Phase3
+working-tree tests are not qualified by that earlier committed CI. Completed entry/baseline logs
+are removed after recording these results; the owned Phase3 services remain active for oracle red.
+
+### Oracle construction review
+
+The management author returns three files/79 cases plus one focused helper, still unsealed.
+Construction review preserves dependency-failure503 rather than misclassifying a real audit-storage
+failure as programming500, and requires unusable old/no new credentials without inventing a
+credential-row retention policy. Plaintext-denial assertions remain after mutation-audit checks.
+Management/helper lint and documentation/reference checks pass.
+
+The shared fixture initially supplies responseTypes:[] to the existing client update API, whose
+protocol contract requires code. A sanitized stage-only diagnostic in the owned verification copy
+identifies that construction error without exposing its cause/credential values. The source-free
+author corrects only this fixture argument to ['code']; no production validator or expected security
+result changes. The real full-createApp existing human client-read control then passes. Neither
+failed construction attempt is credited as product red. Temporary instrumentation is removed by
+resynchronizing the corrected helper before full management red.
+
+The invitation author returns seven partial specifications/54 cases and a helper, pending the
+remaining existing storage/type facts. Parent supplies only the checked details.roles/claims JSON
+shape, claimType json, definition/role-permission/client column signatures and ordinary fixture
+perturbation facts, not product implementation bodies or expected behavior. The author must finish
+live-definition and JSON preservation coverage before qualification. Native full oracle authoring
+continues after shared-helper construction; no task is promoted solely for a helper correction.
+
+### Management oracle qualification — 2026-11-05 22:05
+
+The reviewed79-case group has70 intended missing-management-route failures and3 native-issuance
+prerequisite failures, with6 existing controls passing and zero fixture/import failure or skipped
+case. Controls are the existing protected human client read, retained413, missing binding GET404,
+and three existing missing-client404 responses. The three native setup failures are not credited
+as machine-management wire denials. All four management files are sealed before product source
+changes; the shared HTTP dependency is frozen separately. Commit waits for a coherent green
+workspace under the existing expected-red policy. Current SHA256 identities:
+
+| File | SHA256 |
+| --- | --- |
+| management-route-fixtures.ts |cc6f310c36d57dce0b9c2de5c20520cdd7faea5fadeecc41ef2fff6c5a3a7efc |
+| management-route.contract.spec.test.ts |ba59678ecee10df21d2dd3380304939d7f38bb0c175ab6aac86e729b2bc6d058 |
+| management-route.authorization.spec.test.ts |9814711943b2173974797c146f97592d9a41489a8278287044a1612458e127c8 |
+| management-route.ownership.spec.test.ts |f68cb1d7bbdbe96aab2f3a3122c9f635b1f590f930cab53d6188dcc00105055f |
+| machine-http-fixtures.ts |14e5b22a30c77939baf6987f1d91057170b7b48bb3b8993c27f11497d6dbdcd4 |
+
+### Native oracle construction review
+
+The native author returns seven files/85 cases plus the focused real proof-barrier helper. Initial
+lint and focused TypeScript interface checks pass. Before sealing, construction review removes
+the same unapproved credential-row retention assumption while preserving old-plaintext rejection,
+no automatic replacement and actual usable-token checks. The expiry case observes native strict
+isValid/isExpired at exp±1 and keeps actual HTTP401/no effects after300 seconds; it does not force
+native find() disappearance inside its existing15-second lookup tolerance while Redis real time
+has not advanced. This is API observation precision, not a longer feature lifetime or a provider
+clock-policy change.
+
+### Final Phase3 red qualification — 2026-11-05 22:32
+
+Native85:12 existing controls pass,73 fail (69 HTTP feature-scope prerequisites, one native
+feature-scope metadata prerequisite, three unmounted management controls). Public-client fixture
+construction was corrected to create no secret and send an unauthenticated form POST; its prior
+factory failure is excluded. Four first-binding cases reach the real credential pause/commit/
+resume but fail fresh feature issuance; eight restoration/retirement cases stop before the race.
+Invitation71: all fail at feature-token issuance, without fixture failure or skipped case. Those
+prerequisites are intended red, not proof that later policy/counter/audit/delivery assertions ran.
+Lint and focused TypeScript interfaces pass for both groups. Together with management79, all235
+cases are observed before product edits (18 existing controls,217 failures, zero skips). Oracle
+independence, file identities and unchanged product/migrations are verified before the global gate.
+
+| Frozen file | SHA256 |
+| --- | --- |
+| machine-token.issuance.spec.test.ts | 2320dab235e206c91c076cb48f5be97ee8c99a1a63f119c3e585182eec3c81b4 |
+| machine-token.metadata.spec.test.ts | dc04d180beb01a729024695d8071b49e33aca373f4f42f211487a3ea000098d9 |
+| machine-token.authority.spec.test.ts | ca857138dc977e6c883879048f376f6f5a71398696f1429457a77b8f9e23d4a4 |
+| machine-token.versions.spec.test.ts | d16da964661baba2469497839004aa020979da0ca0d996c957a0a529eeeba06f |
+| machine-token.isolation.spec.test.ts | 4db9ee9d314059b66f984beaff7c6c41f06fbbef6597c893d7709751053e864a |
+| credential-proof.modern.spec.test.ts | 0b48763ed51ce529befa99f832bba8e185afdad0ee81323dce4e74fd1459a767 |
+| credential-proof.legacy.spec.test.ts | 641169feff232cec974164529258c296a54bbe949254e922909232bee54f682a |
+| credential-proof-fixtures.ts | 3505a5e231724986af1f888096a643faa67aa3b8a3ccfc1464bfee12753c3bb7 |
+| machine-invitation-fixtures.ts | 4dc82eee9d22ec060d2bae64538081d905404460b81d1ef7312efd9f74b2d0d8 |
+| machine-invitation.admission.spec.test.ts | c727708cb97d1e518ab43a370821514bb40ed00fc89e3ef97ccad154c9889729 |
+| machine-invitation.audit.spec.test.ts | 4d4e6ad01debbdd5cc063d6997e088147256b93d12a51f3be7f55c879f004859 |
+| machine-invitation.concurrency.spec.test.ts | 38d7f509bbe7a7fbcf9bdfd644a922e432059bcbf566122c19a5c6c3a8cec6e3 |
+| machine-invitation.counter.spec.test.ts | 461956186003c728d8bdd3879ff624e906ac11b874d365624d15afb13513aa95 |
+| machine-invitation.delivery.spec.test.ts | b342d16fdc824516e719a68c39c5264f66e3192a5ad8fefc364b3abaaf989571 |
+| machine-invitation.live-definitions.spec.test.ts | be66e4e87fbc98b8c82ed00ee673c6d1fd5577ea177f656882a66f544b7bbdb8 |
+| machine-invitation.validation.spec.test.ts | f799163e051b1a07a56de4c04834ee4e096a118cfa36b530a2f194c5bf330cf2 |
+
+### First implementation feedback and authorized fixture correction
+
+The first real235-case implementation run passes232 and fails3, without skipped cases. All85
+native/proof cases pass, including both real credential branches and the previously unreached
+restoration/retirement races. The counter, final-audit rollback and held-SMTP interleavings pass.
+Server lint/typecheck and pnpm test:changed pass. This does not qualify the remaining failed gates.
+
+Two management failures expose a frozen fixture mismatch: each request replaces the initial
+two-target policy with one target but expects the original policy. Production correctly performs
+complete replacement. Under AR-34 the user explicitly approves changing only those two request
+bodies to the original fixture policy, with every assertion unchanged. The contract file's prior
+ba59678ecee10df21d2dd3380304939d7f38bb0c175ab6aac86e729b2bc6d058 seal is superseded by
+5b655f11896d65185d860bccd176fcdabc2f2058bb9240b620f2f5d9e70490d2. The earlier79-case red belongs
+to the earlier bytes; corrected bytes still require rerun. Every other seal remains unchanged.
+
+The third failure is an implementation gap: the existing global JSON parser rejects a valid nested
+__proto__ data property before machine input validation. The immutable preservation assertion is
+unchanged. A bounded independent mechanism challenge is pending; no global parser/security-policy
+relaxation or ordinary human/tenant behavior change is authorized by this discovery.
+
+The exact AR-34 two-case selector passes after correction, with the other23 cases unselected.
+Unit regressions pass server4,417, SDK610 and CLI1,795; affected tests pass1,970 plus158 structure
+checks. These are bounded in-progress results, not full phase or latest-source acceptance. The
+actual behavioral inventory is441, preserving all424 existing files plus17 new specifications.
+
+AR-35's initial independent challenge rejects relaxing the exact path for humans, and rejects
+recovering a consumed parser stream from raw error bodies. A refined composition of the existing
+authentication, bounded parser and outer audit middleware is under the same bounded challenge to
+preserve malformed/oversized unauthenticated error precedence and revalidate authority after body
+parsing. No additional parser dependency, custom serializer or generic deferred-auth framework is
+approved. All source-free specification assertions remain unchanged.
+
+### Native/Admin implementation green and hardening — 2026-11-05 23:07
+
+The complete235-case specification selection passes with zero failures/skips after the parser
+composition and transaction-availability correction. The latter keeps the original503 category
+when initial authentication storage is unavailable, while malformed/oversized parsing still wins.
+Server lint/typecheck/build,1,970 affected assertions and158 structure checks pass on that candidate.
+The later protected-prefix opt-in guard is included in the current full verification, not borrowed
+from the earlier235-case result: machine aliases outside existing Admin CORS/rate-limit prefix
+coverage cannot enter the machine lane; protected-prefix case/trailing aliases remain supported.
+
+Two focused implementation suites add17 passing cases. Real PostgreSQL parent blocking identifies
+the exact first-authentication backend, then observes its COMMIT while the HTTP JSON body remains
+incomplete. Actual binding revocation or strict native expiry occurs before body completion; fresh
+post-upload authentication denies both without invitation, user or mail. No elapsed-time success
+oracle or production hook is added. Parser cases cover human syntax/size precedence, expired genuine
+human artifacts, DB-unavailable plus oversized input, decompressed limits, escaped prototype-looking
+JSONB data without prototype mutation, safe aliases/single audit owner, original human uppercase
+coverage, preview isolation, corrupt policy and exact native Redis WRONGTYPE failure with healthy
+human lookup. One implementation-fixture correction reloads native human expiry from persisted
+provider state rather than assuming save mutates the constructor object; no specification changed.
+Focused hardening TypeScript interfaces pass. Actual inventory443 preserves all424 old files plus
+17 independent specifications and two implementation files.
+
+The full pnpm verify gate is active on an exact recorded source snapshot in the owned verification
+worktree, with outer TEST_DATABASE_URL/TEST_REDIS_URL absent. This shared-authentication/middleware
+change qualifies for the project's narrow-test exception. No full-gate, assurance, review or
+whole-feature acceptance is claimed until its actual results and later required gates qualify.
+
+### Latest strict full verification — 2026-11-05 23:34
+
+Initial full verification stops at integration global setup because strict Turbo filters random-
+port outer URLs and the runner correctly selects its defaults. No product assertion executes in
+that failed integration attempt. Keep strict Turbo, source, fixtures and worker isolation unchanged.
+After confirming5432/6379 free, replace only the two recorded owned disposable services with owned
+standard-port instances. A same-name --rm cleanup race is avoided by distinct recorded standard
+names; no unrelated container is removed. MailHog remains the same owned instance.
+
+The complete rerun with all four outer DATABASE_URL/REDIS_URL/TEST_* URLs absent passes:
+
+| Gate | Qualified result |
+| --- | --- |
+| Structure |158 pass |
+| Server unit |4,417 pass |
+| Integration |1,151 pass, including235 specifications and17 hardening cases |
+| E2E |134 pass |
+| Pentest |334 pass |
+| SDK |610 pass |
+| CLI |1,795 pass |
+| Root/workspace lint, typecheck and builds |Pass; all4 Turbo verify tasks succeed |
+
+Current source and oracle identities match the verified owned worktree. New/changed lines pass
+the documentation/reference and unsafe-cast self-check; unchanged legacy casts are not silently
+rewritten or misclassified as newly added. Final17-case implementation interfaces typecheck with
+zero owned-file errors. Only the exact user-approved AR-34 file seal is superseded; other immutable
+seals stay unchanged. No production assurance, independent Phase3 review, current-source CI or
+whole-feature completion is implied. AR-36 separately records the approved short temporary root
+for remaining assurance sockets/leases/caches, with per-run removal and unchanged fixture scope.
+
+Browser regression passes135 cases with one worker and zero retries on the same frozen production
+source. Both required independent Phase3 reviewers are active on the bounded48-file source/test/
+inventory/document diff while clean-source assurance preparation continues. Their pending static
+results do not qualify a review gate or production evidence. A coherent locally verified source
+checkpoint is prepared solely to enable clean committed provenance for registered security/protocol
+assurance; no Phase3 completion, merge, release, issue mutation or whole-feature acceptance follows.
+
+Ordinary control inputs use only supported profile scope before the new scope exists. Real proof
+fixtures qualify both modern canonical and proven credentials over HTTP before adding the feature
+scope for the race. No fixture registers the missing feature or fabricates its authority. The full
+85-case red run is pending; any later native prerequisites are separately identified rather than
+credited as an unreached credential-race assertion. The shared HTTP dependency remains unchanged.

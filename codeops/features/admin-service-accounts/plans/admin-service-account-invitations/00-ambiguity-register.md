@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ All31 decisions resolved; source review, full root verification and fresh CI passed
-> **Last Updated**: 2026-11-05 21:22
+> **Status**: ✅ All36 decisions resolved; Phase3 local root verification green
+> **Last Updated**: 2026-11-05 23:34
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -60,6 +60,11 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 29 | Runtime / verification temporary path | Long task path exceeds Linux Unix-socket address limit before harness startup | Command-scoped short temporary root; no product/harness changes | User explicitly approved /tmp/opencode/bc-c-0f9cb04b for sockets, leases and caches with complete cleanup. | ✅ Resolved |
 | 30 | Runtime / CI test environment wiring | Turbo-filtered outer TEST variables are absent in integration/pentest workers | Pass already-derived URLs through existing env blocks; keep sealed isolation guards | AI — delegated by --auto-design; three-field test-runner correction, no workflow/product/oracle change. | ✅ Resolved |
 | 31 | Runtime / exact cleanup ownership | Two anonymous volumes lack retained run labels after harness teardown | Preserve unless ownership confirmed; remove only exact unused resources | User explicitly confirmed both named volumes belong to this run and authorized removal. | ✅ Resolved |
+| 32 | Runtime / delivery observation mechanism | Truthful machine acknowledgement must not reinterpret existing human/tenant transport results | Default-off internal acknowledgement reporting, enabled only for validated bound-account invitations | AI — delegated by --auto-design; challenged narrow mechanism preserves approved result/access policy. | ✅ Resolved |
+| 33 | Runtime / oracle interface coordination | Counter failure isolation, exact audit projection and genuine credential barrier need fixed interfaces before authoring | Purpose key builder, closed flat audit metadata and existing real HTTP bridge seam | AI — delegated by --auto-design; independent challenge converged on focused existing-pattern mechanisms. | ✅ Resolved |
+| 34 | Runtime / frozen management fixture mismatch | Two requests replace two-target setup with one target while asserting original policy | Send original fixture policy in only these two requests; retain every assertion | User explicitly approved the named file/two request-body corrections, resealing and rerun. | ✅ Resolved |
+| 35 | Runtime / valid JSON preservation | Global parser rejects valid nested __proto__ data before machine validation | Exact-route existing parser/auth/audit composition, fresh post-parse identity, preserved human precedence/aliases | AI — delegated by --auto-design; independently challenged internal mechanism, no public/security policy change. | ✅ Resolved |
+| 36 | Runtime / remaining assurance temporary path | Normal task path exceeds Unix-socket length limit | Exact short temporary root for remaining Bundle C harness sockets/leases/caches; per-run cleanup | User explicitly approved /tmp/opencode/bc-c-20261105 for this purpose; fixture/TLS approval scope unchanged. | ✅ Resolved |
 
 ## Initial evidence
 
@@ -378,6 +383,152 @@ oracle rewrite or weakened assertion is authorized.
 - **Reopen triggers:** Runner transaction behavior differs, concurrent regression cannot establish
   its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
   a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
+
+## AR-36 — Remaining Bundle C assurance temporary root
+
+- **Authority:** User selected “Approve short path (Recommended)” after the exact path/purpose and
+  per-run cleanup were named. This is a workspace-hygiene exception, not a native permission bypass.
+- **Decision:** Remaining Bundle C assurance runs may use /tmp/opencode/bc-c-20261105 only for
+  harness sockets, leases and caches. Remove it after each run. No product/harness code change.
+- **Boundaries:** Existing generated fixture credentials/TLS approvals remain limited to the owned
+  verification worktree. No operator files, other credential stores or disclosure is authorized.
+- **Qualification:** Record actual source/run provenance independently of the temporary directory's
+  name; verify owned runtime cleanup before removing it.
+
+## AR-35 — Exact-operation parser composition
+
+- **Authority/eligibility:** AI — delegated by --auto-design; policy1; root bundle-c-20261104;
+  exec-plan. This realizes the approved supported-JSON contract using existing middleware only.
+  No dependency, serializer, generic auth framework, extra infrastructure or public policy change.
+- **Evidence:** The default co-body/Bourne parser rejects an own __proto__ JSON property before
+  the machine handler; native JSON.parse safely retains it as data. Invitation persistence assigns
+  claims to a fixed details.claims field and serializes into parameterized JSONB, never merges its
+  arbitrary value keys into control objects. The original global parser covers case-sensitive
+  /api/ prefixes before authentication; careless route movement changes human error precedence.
+- **Decision:** One exact POST predicate matching router case/trailing-slash aliases coordinates
+  global parser deferral, invitation opt-in and audit deferral. Only the server-global audit mount
+  enables deferInvitationToRouter; the dedicated POST invokes the unchanged default owner once
+  after parsing/final authentication, around permission checks and actual dispatch.
+- **Parser selection:** Run existing auth without invoking downstream mutation. Its short native
+  authority transaction ends before reading the body. Only validated machine state selects the
+  same100KiB JSON/form/text parser with native onProtoPoisoning ignore; claim values remain opaque
+  data. Humans/denials use the unchanged standard parser only where the old global /api/ prefix
+  covered them, preserving uppercase /API human coverage. Syntax/size errors override captured
+  authentication denials/errors; existing authentication writes no response headers. Captured
+  thrown errors use the same original audit error owner after parsing, not a new classifier.
+- **Fresh authority:** On initially authenticated requests, clear both identity lanes and rerun
+  existing authentication after bounded parsing and before the outer mutation transaction. Only
+  this second lookup supplies dispatch identity. Existing handler checks binding/version under
+  client/binding/account locks again; slow upload cannot retain expired or revoked native authority.
+  Existing Admin rate limiting stays ahead of both lookups. Machine case aliases always use the
+  outer owner; existing human prefix/audit behavior is retained.
+- **Retained-guard coverage:** Existing Admin CORS and write limiting recognize the case-sensitive
+  /api/admin/ prefix. Machine opt-in additionally requires that prefix, so an uppercase /API or
+  /api/ADMIN alias cannot acquire a new unprotected machine lane. Case aliases below the protected
+  prefix and a trailing slash still share parsing, budget and transaction ownership. Legacy human
+  alias behavior is neither widened nor rewritten. This is a necessary approved-security-boundary
+  constraint, not acceptance of an uncovered alias or a new public access policy.
+- **Rejected alternatives:** Global or path-only ignore reinterprets human input. Reading raw
+  parser-error bodies or replaying consumed streams creates unnecessary sensitive handling.
+  Unqualified auth-before-parse changes400/413 precedence; trusting parser-selection identity
+  across upload permits stale authority. A custom serializer/parser or generalized deferred-auth
+  service is unnecessary.
+- **Strongest counterargument:** Middleware order can duplicate/omit the final transaction or
+  carry an old identity. One predicate, default owner reuse and explicit identity clearing constrain
+  that risk; runtime tests must cover aliases, error precedence, upload-time revocation and rollback.
+- **Confidence/Hardening:** High static fit after blind challenger ses_e52554103ffe12DdlFj3HksKrv
+  ruled refined B conditionally eligible with these binding bounds. No reserved decision is needed
+  only while human behavior, precedence and coverage remain unchanged. Static ruling is not green.
+- **Reopen triggers:** Human result/error precedence drifts, raw-body recovery is needed, a second
+  durable owner appears, auth headers change parser responses, or any generalized support surface
+  becomes necessary. No immutable assertion changes are authorized by this mechanism.
+
+## AR-34 — Exact frozen management request correction
+
+- **Authority:** User selected “Approve correction (Recommended)” in this conversation, after the
+  exact file, two request changes, unchanged assertions, reseal and rerun were named.
+- **Evidence:** The shared bound fixture has two targets. The same-normalized-email and identical-
+  replacement cases in management-route.contract.spec.test.ts sent only lifecycle.target while
+  requiring the original two-target projection. Keeping an omitted target in production would
+  violate the approved complete-replacement contract and the other passing replacement cases.
+- **Decision:** Only those two request bodies send the original fixture targets. All expected
+  projections, security assertions, version changes and other full-replacement tests stay unchanged.
+  The prior file seal is superseded with exact provenance; other seals remain unchanged.
+- **Qualification:** Rerun the corrected cases and full group before implementation acceptance.
+  Prior red evidence remains historical; do not claim the corrected bytes ran in that older run.
+
+## AR-33 — Narrow counter, audit and credential-fixture interfaces
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** Freeze internal interfaces needed by independent Phase3 oracles for
+  already-approved rate, attribution and credential-race behavior. No product/access/retention
+  policy, public API, extra infrastructure or material support surface is introduced.
+- **Decision:** service-accounts/rate-limit.ts exports
+  `buildServiceAccountInvitationRateLimitKey(clientId: string): string`, re-exported through the
+  existing feature barrel and used by production strict limiting. The sole variable is the live
+  internal client UUID with a fixed purpose prefix; target/token/binding/version never split the
+  client-wide budget. Tests poison only that exact key in real owned Redis, not unrelated limits.
+- **Audit projection:** Both user.invited and admin.mutation.committed record actor_type client,
+  actor_id null, user_id null, actor_client_id public OAuth client ID, and live actor_client_name.
+  Reuse closed flat metadata serviceAccountId, bindingId and authorizationVersion from validated
+  authoritative state, alongside existing safe metadata. Native token namespace spelling stays
+  unchanged. No request/token spread, synthetic adminUser or human-branch change.
+- **Credential barrier:** A small test-only HTTP fixture calls actual tenant resolver, client/tenant
+  binding, credential bridge and configured native provider. Use the existing credential-free
+  afterCredentialValidation seam, preserve original URL/body/raw request identity, resolved org
+  transfer and issuer context. Do not extend createApp or inject authority. Full createApp still
+  owns invitation/audit/delivery qualification; isolated native HTTP qualifies only proof races.
+- **Evidence:** auth/rate-limiter.ts:96–114 already performs strict real INCR/EXPIRE/TTL;
+  users/invite-service.ts:340–355 uses flat metadata; lib/audit-log.ts:84–125 separates client
+  identity and user_id; server.ts:459–579 owns the real protocol envelope;
+  middleware/client-secret-hash.ts:138–146/176–216 supplies the existing genuine pause seam.
+- **Rejected alternatives:** Guessing/observing private counter keys risks faulting another
+  limiter. Nested audit metadata is viable but adds no benefit to the current flat convention.
+  A new createApp hook enlarges production API without need; ESM interception is less direct and
+  its pass-through behavior would need separate proof. No alternate runner or authority framework.
+- **Strongest counterargument:** A copied metadata projection could still use untrusted/stale
+  values. Populate it only after native and live transaction-bound checks; distinguish internal
+  and public client IDs in full-application audit tests. Preserve null user_id independently.
+- **Confidence/Hardening:** High static fit. Blind challenger ses_e52987e3fffe7M3p87fu5nT6ZB
+  converged on these three mechanisms, completing the original bounded interface challenge.
+  Real red/green, dependency-failure and lock/commit tests remain mandatory; no gate is waived.
+- **Reopen triggers:** The existing seam cannot preserve real request/issuer context, fault
+  isolation needs a new adapter/framework, or audit attribution requires a new identity lane.
+
+## AR-32 — Bound-invitation delivery acknowledgement
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** An internal mechanism for the already-approved truthful sent/failed/
+  unknown machine delivery outcome, without changing ordinary human/tenant/direct-call results.
+  No access policy, transport abstraction, retry, queue or public input is added.
+- **Evidence:** Existing EmailResult exposes accepted/rejected recipient arrays
+  (auth/email-transport.ts:49–62). sendInvitationEmail currently ignores those arrays and catches
+  transport exceptions as failed (auth/email-service.ts:412–440). Nested inviteUser copies its
+  delivery holder before the real outer commit (users/invite-service.ts:318–399). Existing unit
+  and external fixtures rely on the ordinary semantics and remain unchanged.
+- **Decision:** Add only optional internal `reportRecipientAcknowledgement` to the existing
+  InvitationEmailOptions, default absent/false. Enable it from the trusted, validated bound-account
+  invitation path only, not all `kind: service` callers (which also includes ordinary tenant
+  clients), and never from request/header/token-supplied flags. It changes reporting, not authority.
+  Accepted-only acknowledgement is sent/true; rejected-only is failed/false; neither or both is
+  unknown/false. A rejected transport Promise remains failed/false in both modes. Final response
+  reads the holder after the actual outer commit/email effect. No outcome rolls back a committed
+  invitation or adds retry/cancellation.
+- **Safe effects:** The opted-in branch must not emit an unconditional sent audit for failed or
+  unknown acknowledgement, and must not copy arbitrary transport errors or credentials into
+  audits/logs/responses. Keep ordinary delivery contracts and their sealed tests unchanged.
+- **Rejected alternatives:** Global recipient-result reinterpretation breaks preserved human and
+  tenant fixtures/contracts. Exception-code heuristics change the established failed outcome.
+  Faulting private post-commit internals to manufacture unknown violates real external-seam testing.
+  A new outcome adapter/callback framework is unnecessary.
+- **Strongest counterargument:** A caller could misuse a generic boolean. Keep enablement inside
+  the validated bound-account path and assert lane isolation; it is not an incoming schema field.
+- **Confidence:** High, subject to real full-createApp and compatibility tests.
+- **Hardening:** Blind challenger ses_e52987e3fffe7M3p87fu5nT6ZB converged on this bounded option;
+  it is an eligible technical mechanism, not a reserved product/security-policy change or material
+  new support surface. No execution gate is qualified by static challenge alone.
+- **Reopen triggers:** Need to reinterpret ordinary delivery results, infer ambiguous exception
+  outcomes, expose the option publicly, change transport APIs or add a general delivery framework.
 
 ## AR-31 — User-confirmed anonymous-volume cleanup
 
