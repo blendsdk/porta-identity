@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ GATE PASSED — all22 items resolved, including two user-approved runtime oracle-fixture corrections
-> **Last Updated**: 2026-11-05 10:43
+> **Status**: ✅ GATE PASSED — all23 decisions resolved; runtime downgrade correction remains unverified
+> **Last Updated**: 2026-11-05 11:55
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -51,6 +51,7 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 20  | Technical / delivery and verification     | Phase boundaries, lenses, migration guard and evidence                              | Existing tests/assurance and guarded rollout / new support infrastructure                                                            | Authority: AI — delegated by --auto-design; complete provenance below.                                                                               | ✅ Resolved |
 | 21  | Runtime / immutable oracle fixtures       | Three new specification fixture calls mismatch established helper signatures        | Correct only approved calls / keep affected gates blocked                                                                            | User explicitly approved the three fixture-call corrections; no assertion or expected-value change.                                                  | ✅ Resolved |
 | 22  | Runtime / immutable oracle fixture status | New migration oracle assumes createTestUser persists a status override              | Initialize requested fixture status through parameterized SQL / keep blocked                                                         | User explicitly selected “Approve status fixture (Recommended)”; preserve the inactive-account assertion and all expected values.                    | ✅ Resolved |
+| 23  | Runtime / migration consistency           | SA-1-001 downgrade checks can miss uncommitted classification/ownership             | Early exclusive table fence with fresh snapshot / weaker write fence and later upgrades                                              | AI — delegated by --auto-design; independent challenge and complete technical ruling below. No risk waiver.                                          | ✅ Resolved |
 
 ## Initial evidence
 
@@ -337,7 +338,40 @@ to accommodate the mistaken fixture was rejected as unrelated product/harness ex
 Preserve prior seals, record the authorized setup delta, and rerun all affected gates. No broader
 oracle rewrite or weakened assertion is authorized.
 
-## Preflight correction rulings — amendments to AR-18–20
+## AR-23 — Runtime atomic downgrade refusal
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** Enforce the already-approved refusal to erase any surviving service
+  classification or client ownership. This changes a migration consistency mechanism, not product
+  authority, retention policy, external action permissions or compatibility promises.
+- **Decision:** Before destructive work, reject transaction isolation other than READ COMMITTED.
+  Acquire ACCESS EXCLUSIVE on client_service_accounts, then users, before the existence check,
+  using separate top-level SQL statements and holding both through DOWN's transaction. Recheck
+  after lock waits with a fresh READ COMMITTED snapshot. Preserve existing refusal text and all
+  immutable assertions. Reproduce flag-only and marker-only races with two connections, then prove
+  intended refusal rather than generic deadlock/timeout rejection; test higher-isolation rejection.
+- **Evidence:** Migration037's current pre-check precedes destructive DDL. Existing migration024
+  already fences validation with a transaction-held table lock. src/lib/migrator.ts:25–38 supplies
+  no isolation override. Installed node-pg-migrate migrationBuilder.js:674 defaults transactions on;
+  migration.js:139–148 wraps each default migration in BEGIN/COMMIT; runner.js:152–162 also supports
+  whole-run transactions. Neither silently establishes a fresh snapshot under higher isolation.
+- **Rejected alternatives:** SHARE ROW EXCLUSIVE also excludes writes but later DROP/ALTER must
+  upgrade locks and may deadlock with readers; a cooperative advisory fence adds writer integration
+  without need. Maintenance advice alone does not enforce refusal. Silently changing isolation or
+  relying on SERIALIZABLE is not a sound stale-snapshot guard.
+- **Strongest counterargument:** Early exclusive locks block users-table reads even when DOWN
+  refuses. DOWN already needs those locks to erase schema, and it is a maintenance operation.
+  Reverse-order writer transactions can still produce a safe operation failure; never retry away
+  a deadlock or mislabel it as the intended existence refusal.
+- **Confidence/hardening:** High static confidence. Blind challenger
+  ses_e54acc8caffeH4WMMcL0Gvuw94 converged on binding→users exclusive locks and explicit isolation
+  refusal, and identified no reserved-policy decision. Actual runtime reproduction/green and the
+  one scoped security re-review remain required; this ruling is not fix verification.
+- **Reopen triggers:** Runner transaction behavior differs, concurrent regression cannot establish
+  its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
+  a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
+
+## Preflight correction rulings — amendments to AR-18–20 (historical)
 
 **Authority:** AI — delegated by --auto-design. **Policy:**1; **root:**bundle-c-20261104;
 parent make-plan → preflight → make-plan correction. These are necessary mechanisms and sequencing

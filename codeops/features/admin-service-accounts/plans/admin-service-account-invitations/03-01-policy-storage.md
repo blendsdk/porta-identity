@@ -24,6 +24,12 @@ schema/role data safely. It must not cascade-delete unrelated identity records. 
 only after all old HTTP/worker processes are drained, and never deploy old account-unaware code
 while these identities exist. No automatic deployment is part of execution.
 
+The downgrade refusal is transaction-atomic, including writers that commit while it waits.
+Under runtime AR-23, reject isolation other than READ COMMITTED; acquire ACCESS EXCLUSIVE on
+client_service_accounts then users before the existence check, as separate top-level statements.
+Retain both locks through DOWN. A fresh post-wait check must observe committed flags/markers;
+maintenance advice alone is not the write fence. No retry or universal deadlock-freedom claim.
+
 ## Policy interface
 
 New public feature entry packages/server/src/service-accounts/index.ts re-exports focused modules.

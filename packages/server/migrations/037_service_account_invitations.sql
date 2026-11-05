@@ -56,6 +56,22 @@ WHERE r.slug = 'porta-invite-service';
 
 -- Down Migration
 
+-- The refusal check must see commits made while these locks were waiting. A snapshot taken
+-- earlier under stronger isolation could miss them, even after acquiring exclusive table locks.
+DO $$
+BEGIN
+    IF current_setting('transaction_isolation') <> 'read committed' THEN
+        RAISE EXCEPTION 'Service-account downgrade requires READ COMMITTED isolation';
+    END IF;
+END;
+$$;
+
+-- DOWN already needs exclusive locks for DROP/ALTER. Acquire them before checking, in binding
+-- then account order, and retain them through the migration transaction. These separate top-level
+-- statements let the following check take a fresh READ COMMITTED snapshot after any lock wait.
+LOCK TABLE client_service_accounts IN ACCESS EXCLUSIVE MODE;
+LOCK TABLE users IN ACCESS EXCLUSIVE MODE;
+
 -- Dropping either classification or ownership history would make an older binary treat a
 -- surviving machine identity as human, or allow a client to acquire a different owner.
 DO $$

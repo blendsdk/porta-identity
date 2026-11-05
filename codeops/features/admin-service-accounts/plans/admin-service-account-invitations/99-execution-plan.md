@@ -2,7 +2,7 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 11:33
+> **Last Updated**: 2026-11-05 11:55
 > **Progress**: 9/65 tasks (14%)
 > **CodeOps Artifact Schema**: 1
 
@@ -58,7 +58,7 @@ read. Scope mode: strict. All implementation tasks remain not started until thei
 
 ### Session 1.2 — Implementation and green
 
-- [x] 1.2.1 Add migration037 with permanent internal classification, binding constraints and safe downgrade refusal — migrations/037_service_account_invitations.sql. ✅ (completed: 2026-11-05 10:44;20 real PostgreSQL schema/constraint/migration cases pass including inactive-user and ownerless-marker downgrade refusal; lint/docs pass; user-authorized AR-21/22 fixture corrections preserve all assertions)
+- [x] 1.2.1 Add migration037 with permanent internal classification, binding constraints and safe downgrade refusal — migrations/037_service_account_invitations.sql. ✅ (requalified: 2026-11-05 11:55; old SQL reproduced both committed-writer losses and higher-isolation unsafe success; corrected transaction-held binding→users fence and isolation refusal pass274 selected assertions with unchanged immutable oracles; scoped security re-review still blocks phase completion)
 - [x] 1.2.2 Define documented feature types, fixed domain errors and public entry — service-accounts/types.ts, errors.ts, index.ts. ✅ (completed: 2026-11-05 11:14; focused lint, server typecheck/build and documentation check pass; public projection excludes stored authorization version)
 - [x] 1.2.3 Implement strict bounded target/input/assignment validation — service-accounts/policy.ts. ✅ (completed: 2026-11-05 11:17;236 policy assertions across3 sealed independent suites pass; lint/typecheck/build/docs pass; no oracle expectation changed)
 - [x] 1.2.4 Add authoritative binding reads and stable lock primitives — service-accounts/repository.ts. ✅ (completed: 2026-11-05 11:20; all261 assertions across6 policy/schema/reader/migration suites pass; fixed corrupt-storage denial, ownerless reads and transaction visibility verified; lint/typecheck/build/docs pass; lock races remain explicit implementation-test work)
@@ -67,8 +67,8 @@ read. Scope mode: strict. All implementation tasks remain not started until thei
 ### Session 1.3 — Hardening and checkpoint
 
 - [x] 1.3.1 Add implementation tests for corrupt storage/error paths and migration rollback — focused *.impl.test.ts files. ✅ (completed: 2026-11-05 11:33;10 real PostgreSQL implementation cases plus261 immutable assertions pass; feature coverage96.55% statements/94.44% branches/100% functions/97.4% lines; repository alone90% statements/89.65% branches/92.3% lines; structure158 and server lint/typecheck/build pass; physical inventory394)
-- [ ] 1.3.2 Run phase verification and independent correctness/security/migration review; resolve findings under the active policy.
-- [ ] 1.3.3 Record qualified phase evidence, incremental technical-doc impact and verified feature checkpoint.
+- [~] 1.3.2 Run phase verification and independent correctness/security/migration review; resolve findings under the active policy. ⏳ (fix implemented: 2026-11-05 11:55; independent challenger converged; three new implementation regressions confirmed red before SQL correction; complete green and one scoped security re-review pending)
+- [!] 1.3.3 Record qualified phase evidence, incremental technical-doc impact and verified feature checkpoint. Blocked: SA-1-001 must be corrected and scoped re-reviewed before phase qualification.
 
 **Verify:**07 Phase1 selections, server lint/typecheck/build, structure and migration up/down on an
 owned scratch database. Public feature remains inaccessible. Review before Phase2.

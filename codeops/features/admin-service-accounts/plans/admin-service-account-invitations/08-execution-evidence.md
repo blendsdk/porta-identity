@@ -94,15 +94,23 @@ The complete selected Phase1 run now passes8 files/271 assertions. Scoped featur
 96.55% statements,94.44% branches,100% functions,97.4% lines. Repository alone:90% statements,
 89.65% branches,100% functions,92.3% lines; do not describe every individual file as90% branch-covered.
 Root affected selection passes structure158 and236 affected policy assertions. Server-wide lint,
-typecheck and build pass. Independent correctness/security/migration/concurrency review is still
-pending; no Phase1 completion, production acceptance or whole-feature claim is established.
+typecheck and build pass. Hardening checkpoint317c28ba is committed/pushed. The independent
+correctness/concurrency/API reviewer returned no findings; the security/migration audit remains
+pending. See00-phase1-quality-review for partition evidence, not a whole-feature acceptance claim.
 
-Two task-owned standalone PostgreSQL17/Redis8 containers use existing local images, loopback-only
-random ports and tmpfs data with --rm. No operator service/database, new image, persistent volume
-or infrastructure dependency was used. Their IDs/ports remain only in the owned scratch state for
-teardown; they are not product acceptance evidence. Stop/remove them before reporting phase
-completion, preserving the baseline30 containers/19 networks/76 volumes/92 images and all unrelated
-resources. Scratch worktree/dependencies/logs are retained only while active verification continues.
+Two task-owned PostgreSQL17/Redis8 containers used existing local images, loopback-only random
+ports and tmpfs data with --rm. Both are now removed, including their data. Full Docker inventory
+sets exactly match the baseline30 containers/19 networks/76 volumes/92 images; no unrelated
+resources were touched. No operator service/database, new image, persistent volume or infrastructure
+dependency was used. Scratch worktree/dependencies and active reviewer diff remain only for
+continuing feature verification, not as a running Porta installation or completed acceptance claim.
+
+The security audit subsequently found SA-1-001, so the phase did not complete. Its separate fix
+run started two newly named task-owned tmpfs services again; final teardown is pending for that
+run. Old SQL was shown to allow concurrent committed flag/marker loss and higher-isolation DOWN;
+the corrected lock/isolation fence now passes8 files/274 assertions. See the phase quality report
+and AR-23. All immutable oracles remain at their qualified hashes. The complete server-unit and
+affected/workspace gates are running before the fix checkpoint and scoped re-review.
 
 Exact protected-file authorization is recorded in the continuity notes. It covers only the named
 scratch dotenv attempts and root/scratch package/provenance .npmrc reads. No original operator .env,
