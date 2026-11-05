@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-10-30
+> **Last Updated**: 2026-11-05
 
 ## Overview
 
@@ -266,6 +266,44 @@ length policy, other callers' English errors, or the public response schema.
 
 Implementation: [invitation routes](../../packages/server/src/routes/invitation.ts) and
 [translation preparation](../../packages/server/src/auth/i18n.ts).
+
+### Permanent service-account separation
+
+Dedicated service identities use the internal `users.is_service_account` flag. Revoking a binding
+or deleting its client never turns that account into a human. Public `User` objects do not expose
+the flag; security decisions read authoritative storage rather than trusting a cached projection.
+
+| Boundary | Enforcement |
+| --- | --- |
+| Human authentication | Password checks, OIDC account lookup and human Admin token lookup reject classified users |
+| Recovery | Direct and queued issuance, existing magic/reset artifacts and password persistence reject classification |
+| Ordinary account writes | Profile, lifecycle, credential and generic role mutations reject classified targets |
+| Bulk lifecycle | Both row-lock and update SQL exclude classified users; denials preserve existing concealment |
+| Reserved membership | Canonical `porta-invite-service` is protected from generic definition changes and human role assignment, including new and already-issued invitations |
+
+The reserved role remains outside the human permission catalog. A same-slug role in another
+application remains an ordinary role. Extra memberships cannot make a classified account eligible
+for the human authentication lane.
+
+Binding management and existing mutations of any bound client or its secrets require a live human
+Super Admin. After the client row lock, one joined database statement checks the actor's current
+status, permanent classification, actual control-plane organization and canonical Super Admin
+membership, including the supported legacy identity. That READ COMMITTED statement is the
+authorization point. A revocation committed before it is observed; later concurrent revocation
+does not retroactively cancel the authorized operation. Stronger inherited isolation is refused,
+and actor or assignment locks are not held through commit.
+
+First binding and explicit restoration retire all existing credentials without sending email or
+generating a replacement secret. Active policy replacement and explicit live-secret revocation
+change the internal authority generation; overlapping credential generation does not. Physical
+owner deletion keeps a non-restorable revoked marker on the surviving client. Physical deletion
+orders its locks client→binding→organization→owned user and commits marker erasure and audit
+together. Authorization failures use fixed403 responses without internal identity details.
+
+These lifecycle guards do not themselves enable machine Admin authentication. Native machine-token
+authorization and public binding-management routes remain unmounted at this implementation stage.
+See [ADR-019](../decisions/index.md#adr-019-live-service-lifecycle-authority) and the
+[lifecycle service](../../packages/server/src/service-accounts/service.ts).
 
 ### Login Methods Enforcement
 

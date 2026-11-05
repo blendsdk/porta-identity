@@ -24,3 +24,30 @@ export class ServiceAccountStorageError extends Error {
     this.name = 'ServiceAccountStorageError';
   }
 }
+
+/** A live human Super Admin is required; supplied role/permission snapshots do not grant it. */
+export class ServiceAccountManagementError extends Error {
+  /** Construct a fixed authorization denial without identifying the rejected account. */
+  public constructor() {
+    super('Service-account management is not permitted');
+    this.name = 'ServiceAccountManagementError';
+  }
+}
+
+/** The requested client or binding is absent from authoritative storage. */
+export class ServiceAccountNotFoundError extends Error {
+  /** Construct a safe missing-resource error with no caller-supplied identifier. */
+  public constructor() {
+    super('Service-account resource was not found');
+    this.name = 'ServiceAccountNotFoundError';
+  }
+}
+
+/** Existing or physically lost ownership prevents the requested lifecycle transition. */
+export class ServiceAccountConflictError extends Error {
+  /** Construct the same fixed conflict for every lost-owner email variant. */
+  public constructor() {
+    super('Service-account ownership conflicts with this operation');
+    this.name = 'ServiceAccountConflictError';
+  }
+}

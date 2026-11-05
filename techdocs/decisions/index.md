@@ -26,6 +26,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)                               | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
 | ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)                           | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
 | ADR-018 | [Permanent Service Identity and Binding Storage](#adr-018-permanent-service-identity-and-binding-storage) | Accepted              | 2026-11-05 | Permanent classification, bounded JSONB and retained ownership  |
+| ADR-019 | [Live Service Lifecycle Authority](#adr-019-live-service-lifecycle-authority) | Accepted | 2026-11-05 | Post-lock live human authority and permanent human-flow exclusion |
 
 ---
 
@@ -467,6 +468,45 @@ authority is exercised, not policy repair jobs, distributed invalidation or a to
   block reads; reverse-order transactions can fail safely rather than being automatically retried.
 - A separate service-only authentication and lifecycle boundary remains necessary. The schema flag
   is not a substitute for enforcing password, recovery, token and management restrictions.
+
+---
+
+## ADR-019: Live Service Lifecycle Authority
+
+**Status**: Accepted. Complements ADR-018; does not supersede human Admin or tenant M2M authority.
+
+**Context**: Binding and credential changes can elevate an existing confidential client. Cached
+human identity data and route-level permission snapshots cannot authorize those changes safely.
+Existing organization/user mutations also constrain lock order. A binding-only restriction would
+leave recovery, old tokens, generic role mutations and invitation pre-assignment as alternate paths.
+
+**Decision**: Reuse existing database transactions, parent locks and audit mechanisms. After the
+client lock, validate live human Super Admin authority in one READ COMMITTED statement. Reject
+stronger inherited isolation instead of relying on an older snapshot. Do not hold actor or role
+assignment locks through commit. Physical owner deletion acquires client→binding→organization→user
+locks; ordinary classified-target mutations are denied before they enter existing user writers.
+
+Keep classification authoritative and permanent across revocation and client deletion. Enforce it
+at human authentication, recovery/artifact consumption and password persistence, not just routes.
+Protect the separate canonical reserved role with existing definition guards and exclude its
+assignment at both invitation admission and actual acceptance persistence. Keep the role outside
+the human permission catalog. Existing client handlers forward the authenticated actor explicitly.
+
+**Rationale**: A single post-wait authority statement observes completed revocation without a new
+coordination system or reverse-order actor locks. Multiple narrow guards protect existing entry
+points without adding another identity framework. Admission alone cannot protect old invitations.
+
+**Consequences**:
+
+- Revocation committed before the authority statement is observed. A later concurrent revocation
+  need not cancel an already-authorized operation; this is not commit-time authority serialization.
+- First binding and restoration retire all existing secrets. A separate existing operation creates
+  the next secret. Overlap generation preserves the version; explicit live revocation rotates it.
+- Account/binding changes and mutation audit roll back together. External mail is not sent during
+  provisioning, restoration or revocation.
+- Old account-unaware binaries remain unsafe while any classification or binding survives.
+- These lifecycle mechanisms do not grant machine Admin token authority. That lane requires its
+  own native-token, issuer, allowlist, version and operation checks before public registration.
 
 ---
 

@@ -84,6 +84,7 @@ vi.mock('../../../src/lib/audit-log.js', () => ({
         : { actorType: 'system', actorClientId: null, actorClientName: null },
 }));
 vi.mock('../../../src/users/repository.js', () => ({
+  findServiceAccountClassification: vi.fn().mockResolvedValue(false),
   incrementFailedLoginCount: boundary.increment,
   resetFailedLoginCount: boundary.reset,
   findUserByEmail: boundary.findUser,

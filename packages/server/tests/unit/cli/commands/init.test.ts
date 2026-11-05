@@ -214,7 +214,12 @@ describe('CLI Init Command', () => {
     vi.mocked(createUser).mockResolvedValue(fakeAdminUser as never);
     vi.mocked(activateUser).mockResolvedValue(undefined as never);
     vi.mocked(markEmailVerified).mockResolvedValue(undefined as never);
-    vi.mocked(insertRole).mockResolvedValue(fakeAdminRole as never);
+    vi.mocked(insertRole).mockImplementation(async (input) => ({
+      ...fakeAdminRole,
+      ...input,
+      id: input.slug === 'porta-super-admin' ? fakeAdminRole.id : `role-${input.slug}`,
+      description: input.description ?? null,
+    }));
     vi.mocked(insertPermission).mockImplementation(
       async (input: {
         applicationId: string;
@@ -266,8 +271,8 @@ describe('CLI Init Command', () => {
         expect.objectContaining({ slug: 'admin:audit:read' }),
       );
 
-      // Should create all 5 admin roles
-      expect(insertRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
+      // Seed human roles and a separate machine-only role; never grant the latter to the human.
+      expect(insertRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length + 1);
       expect(insertRole).toHaveBeenCalledWith(
         expect.objectContaining({
           applicationId: 'app-admin-id',
@@ -277,7 +282,17 @@ describe('CLI Init Command', () => {
       );
 
       // Should assign permissions to each role
-      expect(assignPermissionsToRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length);
+      expect(assignPermissionsToRole).toHaveBeenCalledTimes(ALL_ADMIN_ROLES.length + 1);
+      const invitationPermission = vi.mocked(insertPermission).mock.calls.findIndex(
+        ([input]) => input.slug === 'admin:user:invite',
+      );
+      expect(invitationPermission).toBeGreaterThanOrEqual(0);
+      expect(assignPermissionsToRole).toHaveBeenCalledWith(
+        'app-admin-id', 'role-porta-invite-service', [`perm-${invitationPermission + 1}`],
+      );
+      expect(insertRole).toHaveBeenCalledWith(expect.objectContaining({
+        applicationId: 'app-admin-id', slug: 'porta-invite-service',
+      }));
 
       expect(createClient).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -310,6 +325,9 @@ describe('CLI Init Command', () => {
         ['role-admin-id'],
         'user-admin-id',
       );
+      expect(assignRolesToUser).toHaveBeenCalledOnce();
+      expect(vi.mocked(assignRolesToUser).mock.calls.flatMap((call) => call[2]))
+        .not.toContain('role-porta-invite-service');
 
       expect(success).toHaveBeenCalledWith('Porta initialization complete!');
     });

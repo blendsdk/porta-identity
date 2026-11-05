@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-05 12:25
-> **Progress**: 11/65 tasks (17%)
+> **Last Updated**: 2026-11-05 19:56
+> **Progress**: 31/65 tasks (48%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -75,7 +75,7 @@ owned scratch database. Public feature remains inaccessible. Review before Phase
 
 ## Phase 2: Noninteractive owned accounts and lifecycle
 
-> **Phase baseline tree**: record at phase entry
+> **Phase baseline tree**: b1e6737b986a52a928bf2de5a7968bc868e01dda
 > **Lenses**: security, concurrency, api-surface
 > **Reasoning**: max — shared login/recovery and credential-promotion boundaries
 
@@ -85,34 +85,46 @@ auth/recovery/token-consumption/password/OIDC account guards; RBAC guards and fr
 mutation/secret guards; lib/bulk-operations.ts classified-user denial predicates; focused tests,
 actual inventories, evidence/docs. No unrelated refactor.
 
+**Necessary review-correction scope (AR-26):** Existing routes/clients.ts and user-error-handler.ts
+must propagate live actor identity/safe denial; rbac/role-service.ts and routes/roles.ts must protect
+the canonical reserved definition; users/invite-service.ts and routes/invitation.ts must exclude
+reserved human pre-assignment, including old artifacts. Focused new independent HTTP/role/invite
+oracles precede these corrections. No new endpoint, permission policy or support framework.
+
+**Baseline evidence:** Phase entry at cbd59bbf after the Phase1 documentation checkpoint. All
+tracked paths match HEAD. The baseline tree contains all authorized phase inputs; unrelated
+untracked scripts/pending-invitations.sql (and its previously observed editor swap) are explicitly
+excluded unread from snapshot, review, verification synchronization and staging. Do not use a
+blanket snapshot add that reads unrelated work or protected fixtures. Scope mode: strict.
+
 ### Session 2.1 — Specifications before code
 
-- [ ] 2.1.1 [spec-author] Write lifecycle/live-reference/rollback/secret-promotion and owner-deletion oracles — focused server service-accounts specs; ST-8/13–18/25/27/28/61/65/66. ST-25 proves version invariants only; usable-token outcomes belong to Phase3 ST-62.
-- [ ] 2.1.2 [spec-author] Write human authentication/recovery/artifact, generic-role and mixed bulk-mutation denial oracles — ST-19–24/26/55/56/64.
-- [ ] 2.1.3 Observe and record intended red for lifecycle and human-boundary specifications.
+- [x] 2.1.1 [spec-author] Write lifecycle/live-reference/rollback/secret-promotion and owner-deletion oracles — focused server service-accounts specs; ST-8/13–18/25/27/28/61/65/66. ST-25 proves version invariants only; usable-token outcomes belong to Phase3 ST-62. ✅ (completed: 2026-11-05 13:07; twelve source-restricted oracles plus fixture reviewed/linted/sealed;190 cases show intended missing-API red on owned PostgreSQL; direct no-mail and production deletion→downgrade chain included; no protocol-valid authentication-method-loss mutation exists through the current ordinary API; detailed races remain2.3.1)
+- [x] 2.1.2 [spec-author] Write human authentication/recovery/artifact, generic-role and mixed bulk-mutation denial oracles — ST-19–24/26/55/56/64. ✅ (completed: 2026-11-05 13:31; nine independent oracles/50 cases plus fixture reviewed/linted/sealed; pre-seal fixture-only test Redis reset corrects stale application IDs without assertion changes;25 integration and2 real-HTTP guard failures observed with23 ordinary/existing controls passing; human middleware uses external token lookup only, not native issuance proof)
+- [x] 2.1.3 Observe and record intended red for lifecycle and human-boundary specifications. ✅ (completed: 2026-11-05 13:31; sequential real-DB integration/pentest selections cover all240 new cases:215 integration plus2 HTTP failures,23 controls pass; lifecycle190 absent-API cases included; no Phase2 product implementation yet; lifecycle and human seals unchanged)
 
 ### Session 2.2 — Implementation and green
 
-- [ ] 2.2.1 Implement atomic provisioning and credential retirement SQL — service-accounts/writes.ts.
-- [ ] 2.2.2 Implement validated read/set/revoke/restore orchestration and audit — service-accounts/service.ts and index.ts.
-- [ ] 2.2.3 Add authoritative permanent-account lookup/guard without changing ordinary public User projections — users/repository.ts, service.ts, index.ts.
-- [ ] 2.2.4 Seed the reserved canonical role consistently and isolate generic role membership — cli/commands/init.ts, lib/admin-permissions.ts, rbac/user-role-service.ts.
-- [ ] 2.2.5 Guard bound-client secret generation/revocation and version invalidation under parent locking — clients/secret-service.ts and feature mutation helper.
-- [ ] 2.2.6 Guard bound-client configuration/status/delete operations and atomic eligibility-loss revocation; repair does not restore binding authority — clients/service.ts and focused mutation helper; ST-66.
-- [ ] 2.2.7 Deny service accounts in password verification and ordinary OIDC account finding — focused auth/account-finder integrations.
-- [ ] 2.2.8 Deny service accounts in queued recovery and magic/reset issuance — focused auth recovery integrations.
-- [ ] 2.2.9 Guard existing recovery-token consumption and password-setting persistence — auth/token-repository.ts and users/service.ts.
-- [ ] 2.2.10 Guard generic service-user profile/lifecycle/credential changes — focused users integrations.
-- [ ] 2.2.11 Preserve non-restorable ownerless binding marker during physical account deletion and refuse marker-erasing downgrade — users deletion integration and feature repository; ST-65.
-- [ ] 2.2.12 Isolate the reserved service role from human Admin-token authority — middleware/admin-auth.ts; ST-24.
-- [ ] 2.2.13 Exclude classified users from both bulk status lock/update SQL while preserving concealed denials and ordinary partial results — lib/bulk-operations.ts; ST-64.
-- [ ] 2.2.14 Verify all phase oracles green and preserve ordinary client/user regression behavior; do not claim actual machine-token outcomes before Phase3.
+- [x] 2.2.1 Implement atomic provisioning and credential retirement SQL — service-accounts/writes.ts. ✅ (completed: 2026-11-05 13:34; real owned-DB write exercise verifies new classification/ownership, retirement, rollback, same-owner restore and lost-owner marker; focused lint, server typecheck/build and documentation checks pass; lifecycle service oracles remain pending their orchestration implementation)
+- [x] 2.2.2 Implement validated read/set/revoke/restore orchestration and audit — service-accounts/service.ts and index.ts. ✅ (completed: 2026-11-05 13:40;91 immutable assertions across seven management/live-reference/rollback/no-mail suites pass; all oracle hashes unchanged; focused lint, server typecheck/build and documentation checks pass; bound-client mutator and human guard qualification remains in following tasks)
+- [x] 2.2.3 Add authoritative permanent-account lookup/guard without changing ordinary public User projections — users/repository.ts, service.ts, index.ts. ✅ (completed: 2026-11-05 13:42; live lookup observes permanent classification despite primed public cache, missing IDs return false and public projection remains unchanged; focused lint/server typecheck/build/docs pass)
+- [x] 2.2.4 Seed the reserved canonical role consistently and isolate generic role membership — cli/commands/init.ts, lib/admin-permissions.ts, rbac/user-role-service.ts. ✅ (requalified: 2026-11-05 17:18; all26 independent reserved-role definition/invitation regressions plus11 original membership/seeding cases pass; fresh/old invitations cannot grant reserved human membership, ordinary same-slug controls remain; lint/typecheck/build pass; scoped security re-review still required)
+- [x] 2.2.5 Guard bound-client secret generation/revocation and version invalidation under parent locking — clients/secret-service.ts and feature mutation helper. ✅ (requalified: 2026-11-05 18:49;15 credential HTTP/lifecycle assertions pass, authenticated actor forwarded and fixed403 returned; user-approved AR-27 reorders an unchanged audit assertion before verification's separate system audit, re-establishing17-failure/11-control red and recording seal supersession; lint/typecheck/build pass, scoped re-review still pending)
+- [x] 2.2.6 Guard bound-client configuration/status/delete operations and atomic eligibility-loss revocation; repair does not restore binding authority — clients/service.ts and focused mutation helper; ST-66. ✅ (requalified: 2026-11-05 18:51;119 immutable full-envelope HTTP/client authorization/eligibility/deletion assertions pass; human Super Admin operations succeed and other Admins receive fixed403 with no writes, ordinary controls preserved; lint/typecheck/build pass; scoped correctness re-review still pending)
+- [x] 2.2.7 Deny service accounts in password verification and ordinary OIDC account finding — focused auth/account-finder integrations. ✅ (completed: 2026-11-05 13:56; four immutable human-authentication cases pass for correct passwords, stale caches, permanent post-unbinding classification and ordinary controls; focused lint/server typecheck/build/docs pass; broader security/profile regressions remain2.3.2)
+- [x] 2.2.8 Deny service accounts in queued recovery and magic/reset issuance — focused auth recovery integrations. ✅ (completed: 2026-11-05 13:57; all six immutable queued/direct recovery cases pass, including stale-cache denial and ordinary real issuance/delivery controls; lint/server typecheck/build/docs pass)
+- [x] 2.2.9 Guard existing recovery-token consumption and password-setting persistence — auth/token-repository.ts and users/service.ts. ✅ (completed: 2026-11-05 14:00;14 immutable old-artifact, issuance and human authentication cases pass; old magic/reset artifacts cannot authorize a classified account and ordinary single-use/password behavior remains; lint/server typecheck/build/docs pass)
+- [x] 2.2.10 Guard generic service-user profile/lifecycle/credential changes — focused users integrations. ✅ (completed: 2026-11-05 14:03;18 immutable generic mutation/authentication/artifact assertions pass including unchanged ordinary human behavior; narrow guard retains classification outside public User projections; lint/server typecheck/build/docs pass)
+- [x] 2.2.11 Preserve non-restorable ownerless binding marker during physical account deletion and refuse marker-erasing downgrade — users deletion integration and feature repository; ST-65. ✅ (completed: 2026-11-05 14:07;19 immutable deletion/downgrade cases pass, including denied actors, same-row non-restorable marker, no human reassignment and downgrade refusal; focused lint/server typecheck/build pass; oracle seals unchanged)
+- [x] 2.2.12 Isolate the reserved service role from human Admin-token authority — middleware/admin-auth.ts; ST-24. ✅ (completed: 2026-11-05 14:08; four immutable real-HTTP middleware cases pass for ordinary humans, reserved-only denial, classified extra-role denial and permanent post-unbinding exclusion; lint/server typecheck/build pass; external opaque lookup only, no native machine-token evidence claimed)
+- [x] 2.2.13 Exclude classified users from both bulk status lock/update SQL while preserving concealed denials and ordinary partial results — lib/bulk-operations.ts; ST-64. ✅ (completed: 2026-11-05 14:09; six immutable mixed-results and held-row-lock exclusion cases pass for activation/deactivation and both human administrator classes; both SQL predicates exclude classification; lint/server typecheck/build pass)
+- [x] 2.2.14 Verify all phase oracles green and preserve ordinary client/user regression behavior; do not claim actual machine-token outcomes before Phase3. ✅ (requalified: 2026-11-05 19:50; full server unit4,417/integration899, affected1,880 and158 structure checks pass; all original/correction seals match in both trees except recorded AR-27 supersession; complete server lint/typecheck/build pass; AR-28 approved old call-shape checks retained;424 product files,26 browser files; security/browser requalification and scoped re-review remain pending)
 
 ### Session 2.3 — Hardening and checkpoint
 
-- [ ] 2.3.1 Add implementation tests for guard failures, locks, audit rollback and concurrent promotion/credential mutations.
-- [ ] 2.3.2 Run relevant unit/integration/E2E/pentest and affected workspace/structure checks; no security assertion waiver.
-- [ ] 2.3.3 Run independent correctness/security/concurrency phase review and one scoped re-review for major fixes.
+- [x] 2.3.1 Add implementation tests for guard failures, locks, audit rollback and concurrent promotion/credential mutations. ✅ (completed: 2026-11-05 14:32; all11 real-DB hardening cases pass with observed exact-blocker barriers, both promotion orders, overlap/live revocation, post-wait actor revocation, stronger isolation refusal, deletion races, write guards and audit rollback; focused lint/server typecheck/build and158 structure checks pass; inventory417; optional coverage command was interrupted by wrapper timeout, remains unqualified pending2.3.2)
+- [x] 2.3.2 Run relevant unit/integration/E2E/pentest and affected workspace/structure checks; no security assertion waiver. ✅ (requalified: 2026-11-05 19:56; corrected-source unit4,417/integration899/E2E134/pentest334/browser135 pass, browser retries0; affected1,880/structure158 and server lint/typecheck/build pass; docs build/local links pass; prior coverage remains dated evidence, clean-source production-security assurance still required in2.3.4)
+- [x] 2.3.3 Run independent correctness/security/concurrency phase review and one scoped re-review for major fixes. ✅ (completed: 2026-11-05 19:56; both original reviewers independently closed all four findings in the one scoped re-review; no correction-introduced Critical/Major defect; exact frozen source hashes, durable ledger and artifact links verified; static review does not qualify production-security assurance)
 - [ ] 2.3.4 Update incremental technical docs, record qualified human-boundary assurance and verified source checkpoint.
 
 **Verify:**07 Phase2 selections plus mandatory security/browser gates where affected. Public feature
@@ -133,7 +145,7 @@ focused tests/inventories/evidence/docs.
 
 ### Session 3.1 — Specifications before code
 
-- [ ] 3.1.1 [spec-author] Write real native-token/issuer/metadata/lifetime, usable-token rotation/revocation and modern/legacy credential-proof barrier oracles — ST-29–32/36/37/43/45/62/63; preserve ordinary-client handoff tests.
+- [ ] 3.1.1 [spec-author] Write real native-token/issuer/metadata/lifetime, usable-token rotation/revocation and modern/legacy credential-proof barrier oracles — ST-24 machine extra-membership denial and ST-29–32/36/37/43/45/62/63; preserve ordinary-client handoff tests.
 - [ ] 3.1.2 [spec-author] Write invitation/allowlist/counter/audit/transaction-ordering oracles through the full createApp envelope, including final-audit rollback and truthful post-commit delivery — ST-33–42/44/67.
 - [ ] 3.1.3 [spec-author] Write exact management-route response/error/ownership oracles — ST-46 and relevant ST-13–18.
 - [ ] 3.1.4 Observe intended red against existing native/Admin boundaries and preserve oracle independence.

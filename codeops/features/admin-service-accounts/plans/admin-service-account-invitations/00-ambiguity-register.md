@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ GATE PASSED — all23 decisions resolved; runtime downgrade correction remains unverified
-> **Last Updated**: 2026-11-05 11:55
+> **Status**: ✅ All28 decisions resolved; Phase2 corrections independently closed and runtime requalified
+> **Last Updated**: 2026-11-05 19:56
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -52,6 +52,11 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 21  | Runtime / immutable oracle fixtures       | Three new specification fixture calls mismatch established helper signatures        | Correct only approved calls / keep affected gates blocked                                                                            | User explicitly approved the three fixture-call corrections; no assertion or expected-value change.                                                  | ✅ Resolved |
 | 22  | Runtime / immutable oracle fixture status | New migration oracle assumes createTestUser persists a status override              | Initialize requested fixture status through parameterized SQL / keep blocked                                                         | User explicitly selected “Approve status fixture (Recommended)”; preserve the inactive-account assertion and all expected values.                    | ✅ Resolved |
 | 23  | Runtime / migration consistency           | SA-1-001 downgrade checks can miss uncommitted classification/ownership             | Early exclusive table fence with fresh snapshot / weaker write fence and later upgrades                                              | AI — delegated by --auto-design; independent challenge and complete technical ruling below. No risk waiver.                                          | ✅ Resolved |
+| 24 | Runtime / authorization consistency | Lifecycle actor validation and existing organization/user lock ordering | Authoritative post-lock snapshot / stronger organization→actor serialization | AI — delegated by --auto-design; independent challenge and narrow mechanism recorded below. | ✅ Resolved |
+| 25 | Runtime / regression fixtures | Older ordinary-human/unbound-client unit mocks omit new authority reads | Explicit external boundary fixture extensions; preserve old specification assertions | AI — delegated by --auto-design; independently challenged narrow correction, no risk waiver. | ✅ Resolved |
+| 26 | Runtime / existing HTTP and reserved role integrations | Independent Phase2 review finds actor forwarding and reserved-role bypass gaps | Narrow existing-route propagation/error mapping and existing canonical/invitation guards | AI — delegated by --auto-design; necessary approved-contract corrections, verification/re-review pending. | ✅ Resolved |
+| 27 | Runtime / sealed HTTP observation order | Secret verification writes its own valid system audit after the mutation | Move unchanged mutation-audit assertion before independent credential verification | User explicitly approved the exact assertion reorder; no expected value or assertion removed/changed. | ✅ Resolved |
+| 28 | Runtime / older internal call shapes | Two older specifications omit newly required actor/application arguments | Extend exact call assertions and ordinary INSERT fixture only | User explicitly approved these two named specification updates and reaffirmed --auto-design --auto-commit. | ✅ Resolved |
 
 ## Initial evidence
 
@@ -370,6 +375,157 @@ oracle rewrite or weakened assertion is authorized.
 - **Reopen triggers:** Runner transaction behavior differs, concurrent regression cannot establish
   its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
   a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
+
+## AR-28 — User-approved older specification call-shape updates
+
+- **Authority:** User explicitly answered “I approve, use --auto-commit and --auto-design” to the
+  two-file correction packet. Root bundle-c-20261104 and policy1 remain unchanged.
+- **Exact scope:** In tests/unit/routes/client-require-consent.spec.test.ts, add the existing
+  authenticated fixture actor 'admin-id' as the third updateClient argument. In
+  tests/unit/routes/invitation-deferral.spec.test.ts, add the existing application 'app-1' as the
+  third assignment SQL parameter, and match the INSERT mock before the broader FROM roles branch.
+- **Preservation:** Every existing payload, response, consent, CSRF and missing-reference assertion
+  remains. No production check is weakened; application ownership remains checked at persistence.
+  No other sealed specification update is authorized by this ruling.
+- **Adjacent implementation fixtures:** The non-spec clients.test.ts and
+  client-secret-expiry.impl.test.ts now supply and assert the same authenticated actor. These
+  retain their original payload/result checks. All four files require fresh verification.
+- **Evidence:** The preceding affected run passed158 structure checks but failed six assertions
+  across these four files due to the changed internal call shapes. New feature oracles already
+  pass the corrected real HTTP boundaries. This entry grants no failing-gate waiver.
+
+## AR-27 — User-approved sealed HTTP assertion ordering
+
+- **Authority:** User explicitly approved the proposed reorder in
+  packages/server/tests/integration/service-accounts/client-http-secrets.spec.test.ts.
+- **Problem/evidence:** The corrected generation route returns the expected201, but the test then
+  independently verifies its new secret before checking all newly added audit actors. Successful
+  verification correctly writes client.secret.verified as a system authentication event. That
+  observation is not part of the human mutation and must not be falsely attributed to its actor.
+- **Decision:** Move the existing expectClientHttpAudit assertion before
+  expectClientHttpSecretUsable in the bound generation case. Keep every assertion and expected
+  value intact. Do not change correct production audit behavior or delete test-generated audits.
+- **Verification:** The sorted complete line sets before/after are identical. Against the exact
+  pre-correction client router, all28 HTTP cases again show17 intended failures/11 controls.
+  Against corrected credential routes, all15 selected credential HTTP/lifecycle cases pass.
+- **Seal supersession:** client-http-secrets.spec.test.ts SHA256 changes from
+  c6d2f663c864acfc8a93af60e175270a86972b1166a72d920ea661b93751c2ab to
+  2790ffbc772991dbf5169d2513409492c32de2099d1ba9c00053c782a102ef38. All other new/old oracle
+  identities remain unchanged. This approval is limited to this exact reorder, not future edits.
+
+## AR-26 — Runtime existing-route and reserved-membership corrections
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** Necessary implementation corrections to already-approved human Super
+  Admin mutation access and permanent/reserved identity separation. No product/access-policy,
+  retention, acceptance waiver or optional addition is selected. No new layer/dependency/harness.
+- **Evidence:** Correctness reviewer ses_e53995e40ffeaPe64fTdRaQj87 reports RV-2-001 Major: five
+  existing client handlers omit actorId, so legitimate bound-client mutations fail. RV-2-002
+  Minor: existing client/user mappers omit the new management-denial error and return503 rather
+  than403. Security auditor ses_e5398af8cffeUhY28SndLfViJH reports SA-2-001 Major: canonical role
+  protection sets omit the separate machine role, permitting generic role-definition tampering.
+  SA-2-002 Minor: invitation admission/acceptance bypass generic membership checks and can assign
+  the reserved role to an ordinary human. Parent inspected every cited caller and confirmed.
+- **Decision:** Pass the authenticated actor ID to the five existing client service calls. Map
+  management denials to the established sanitized403 envelope in existing client/user mappers.
+  Add only the machine role to existing canonical role-protection sets, keeping it outside the
+  human permission catalog. Reject canonical reserved-role invitation admission and exclude that
+  role at actual pre-assignment persistence, including already-issued invitations. Preserve
+  ordinary roles, same-slug roles in other applications and existing best-effort acceptance.
+- **Exact focused modification scope:** routes/clients.ts, routes/user-error-handler.ts,
+  rbac/role-service.ts, routes/roles.ts, users/invite-service.ts and routes/invitation.ts; focused
+  new independent HTTP/role/invitation specifications and necessary implementation regressions;
+  actual inventory/evidence. These are direct existing callers of the approved boundaries, not
+  new endpoints or broader machine capabilities. Frozen old Phase2 oracles remain unchanged.
+- **Rejected alternatives/counterargument:** Allowing omitted actors, unioning the machine role
+  into human roles, merely hiding UI controls, or checking invitation admission without guarding
+  old persisted assignments leaves a demonstrated gap. A new global role framework is unnecessary.
+  Extra DB/HTTP coverage costs runtime but is required because service-only tests missed callers.
+- **Confidence/hardening:** High; independently grounded by the two completed review partitions.
+  Fresh source-restricted specification authors cover full createApp client HTTP and reserved-role
+  admission/acceptance before any correction is written. Actual red, green, affected security
+  requalification and one scoped re-review remain required; no finding is waived or dismissed.
+- **Reopen triggers:** A remedy changes an existing public outcome beyond the approved403/role
+  denials, needs an oracle expectation changed, weakens ordinary-client behavior or introduces
+  another support surface. Pause that remedy rather than extending this ruling.
+
+## AR-25 — Runtime ordinary-unit fixture compatibility
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** Testing mechanism within approved lifecycle behavior, not a change to
+  product expectations, access policy or the immutable specification oracle. AR-21/22's earlier
+  user approval is not expanded or reused.
+- **Evidence:** After all240 new oracles pass, affected tests expose62 older unit failures across
+  ten files. Repository/DB mocks lack newly required classification, parent/binding transaction
+  reads and reserved-role lookup. Existing protocol implementation fixtures supply only cached
+  data although mutations now read authoritative rows. No production fallback is appropriate.
+- **Decision/scope:** Extend only inspected ordinary-human/unbound-client external DB/repository
+  fixtures. Return explicit results for the named new queries; reject unrecognized queries rather
+  than globally returning empty/false. Keep all old specification assertions, error expectations,
+  authority, tenant and no-write checks unchanged. The ten files are unit/auth/system-config-
+  consumers.spec.test.ts; unit/clients/{service.test.ts,secret-service.test.ts,secret-parent-
+  integrity.spec.test.ts,protocol-compatibility.impl.test.ts}; unit/rbac/{tenant-user-roles.spec.
+  test.ts,user-role-service.test.ts}; unit/users/{service.test.ts,tenant-user-service.impl.test.ts};
+  unit/cli/commands/init.test.ts. No sealed Phase2 fixture or oracle may change.
+- **Implementation expectations:** The non-spec init test must expect the approved sixth role,
+  use distinct role IDs and additionally prove invitation-only mapping and no human service-role
+  grant. The non-spec user service test must assert the same user/hash through updateHumanPassword
+  instead of the now-inappropriate generic updateUser call; cache/audit expectations remain.
+- **Rejected alternatives/counterargument:** Skipping tests, weakening denial assertions, mocking
+  feature authorization or weakening production guards would invalidate verification. Callback
+  transaction fixtures do not prove real rollback/locks, so unchanged real-DB oracles and planned
+  hardening remain mandatory. No blanket authority to repair every future failure follows.
+- **Confidence/hardening:** High for inspected paths. Independent challenger
+  ses_e54265de5ffeqdLM6KfwZOLhRf confirmed the narrow fixture ruling and distinguished the two
+  implementation-expectation updates from oracle changes. Parent individually checks remaining
+  mapped mocks and reruns affected/unchanged sealed tests. No risk acceptance or gate waiver.
+- **Reopen triggers:** A human-facing result/error/authorization decision changes; old security
+  assertions need editing; a new sealed fixture needs alteration; or another failure lacks a
+  concrete fixture-only explanation. Stop that correction rather than expand this ruling.
+
+**Individually inspected follow-up:** The full unit run passes4,416/4,417 assertions; its sole
+failure is unit/migrations/record-deletion-lifecycle.impl.test.ts:28 searching for the obsolete
+five-role loop text. Update only that implementation selector to the actual six-role loop and
+add an explicit found-selector assertion. Preserve every initialization ordering/repeat-safety
+assertion. This is a source-text implementation check, not a security oracle or behavior change.
+
+## AR-24 — Runtime lifecycle authorization point and lock ordering
+
+- **Authority:** AI — delegated by --auto-design; policy1; root bundle-c-20261104; exec-plan.
+- **Eligibility/objective:** Internal consistency mechanism for the existing human Super Admin
+  policy. No new capability, actor registry, retention rule or stronger commit-time revocation
+  product is introduced. Preserve the approved smallest design and existing mutation signatures.
+- **Decision:** Revalidate only the supplied actor ID through one authoritative database statement
+  inside the existing transaction after acquiring the client lock. Require the live active,
+  unflagged user in the actual super-admin organization and canonical Super Admin/legacy role.
+  Ignore supplied role/permission arrays. The statement's post-wait READ COMMITTED snapshot is the
+  authorization point; a revocation committed earlier is observed, while later concurrent actor
+  revocation does not retroactively cancel the already-authorized operation. Reject unsupported
+  inherited isolation rather than relying on stale authority. Do not lock human actor rows or
+  assignments merely to hold authority through commit.
+- **Resource order:** Ordinary lifecycle remains client→binding→owned account, then required
+  roles/credentials. Existing bound client/secret methods lock the parent before checking binding
+  existence, including revoked/ownerless rows; missing actor cannot bypass that boundary. Generic
+  service-user role mutations reject permanent classification before organization/target locks.
+  Physical service-user deletion discovers a parent without a lock, then locks client→binding→
+  control-plane organization→owned user, revalidates ownership and reuses existing deletion
+  capture. Split narrow internal lock helpers where needed; no new coordination layer.
+- **Evidence:** database.ts reuses the outer transaction. user-role-service.ts:150–163 locks the
+  organization before the user; users/repository.ts:796–805,870–900 preserves that order. Actor-first
+  locks can deadlock with that path and the new user's organization FK. The existing combined
+  feature helper already locks the owned account, so it cannot precede deletion's organization lock.
+- **Rejected alternative/counterargument:** Organization→actor locking is viable but adds broad
+  serialization and stronger authority-lifetime guarantees not required by the contract. A plain
+  pre-lock route/cache check is insufficient. The chosen read-only check does not prevent every
+  deadlock; audit FK locks still matter, so early permanent generic-user denials and the distinct
+  physical-deletion order are mandatory. No automatic retry or universal deadlock-freedom claim.
+- **Confidence/hardening:** High contract fit, medium complete runtime lock coverage. Independent
+  challenger ses_e548045e3ffeNcOMVNKOrKAiiH recommended this smallest mechanism, identified the
+  generic-role and deletion cycles, and found no reserved policy choice. Real concurrency evidence
+  and the independent Phase2 review remain required.
+- **Reopen triggers:** Commit-time actor revocation is requested, stronger inherited isolation
+  cannot fail closed, classification becomes mutable, ownership reassignment appears, or a
+  generic writer must lock a classified account before rejecting it. No oracle expectation change.
 
 ## Preflight correction rulings — amendments to AR-18–20 (historical)
 

@@ -109,20 +109,46 @@ export async function findServiceAccountByClientId(
 export async function lockServiceAccountByClientId(
   clientId: string,
 ): Promise<StoredServiceAccount | null> {
+  if (!(await lockServiceAccountParent(clientId))) return null;
+  return lockServiceAccountBinding(clientId, true);
+}
+
+/**
+ * Lock the parent before checking binding existence or authorizing a client mutation.
+ *
+ * @param clientId - Validated internal client UUID.
+ * @returns Whether the parent still exists after the lock wait.
+ * @throws Error outside the existing transaction owner.
+ */
+export async function lockServiceAccountParent(clientId: string): Promise<boolean> {
   const transaction = getDatabaseTransactionClient();
   if (!transaction) throw new Error('Service-account locking requires an active database transaction');
-
   const parent = await transaction.query<{ id: string }>(
     'SELECT id FROM clients WHERE id = $1 FOR UPDATE', [clientId],
   );
-  if (parent.rows.length === 0) return null;
+  return parent.rows.length !== 0;
+}
 
+/**
+ * Lock a binding after its parent, optionally acquiring its owned account as the next lock.
+ * Physical user deletion postpones that account lock until its existing organization lock.
+ *
+ * @param clientId - Internal UUID whose parent is already locked by the caller.
+ * @param lockAccount - Whether ordinary lifecycle ordering should acquire the account now.
+ * @returns Validated binding or null for first provisioning.
+ */
+export async function lockServiceAccountBinding(
+  clientId: string,
+  lockAccount: boolean,
+): Promise<StoredServiceAccount | null> {
+  const transaction = getDatabaseTransactionClient();
+  if (!transaction) throw new Error('Service-account locking requires an active database transaction');
   const result = await transaction.query<ServiceAccountRow>(
     `${BINDING_SELECT} WHERE client_id = $1 FOR UPDATE`, [clientId],
   );
   const row = result.rows[0];
   if (!row) return null;
-  if (row.accountId !== null) {
+  if (lockAccount && row.accountId !== null) {
     const account = await transaction.query<{ id: string }>(
       'SELECT id FROM users WHERE id = $1 FOR UPDATE', [row.accountId],
     );

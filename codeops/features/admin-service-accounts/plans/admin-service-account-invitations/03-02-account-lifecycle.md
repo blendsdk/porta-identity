@@ -10,6 +10,31 @@ body user ID. Revalidate human Super Admin authority inside mutations using cano
 membership and the existing effective Super Admin role semantics. An account with the permanent
 service marker is never a human administrator, regardless of roles.
 
+### Independent-oracle interface packet
+
+The public feature barrel exposes these planned server-side signatures. This fixes the test
+interface before implementation; it does not widen the approved HTTP or SDK contract:
+
+- `getServiceAccount(clientId: string, actor: AdminUser): Promise<ServiceAccountBinding>`
+- `setServiceAccount(clientId: string, input: unknown, actor: AdminUser): Promise<ServiceAccountBinding>`
+- `revokeServiceAccount(clientId: string, actor: AdminUser): Promise<void>`
+
+`AdminUser` is the existing middleware identity with id, email, organizationId, roles:string[]
+and permissions:readonly string[]. Those role/permission arrays are not authority snapshots for
+lifecycle mutations: revalidate the actor's live account, organization and canonical role assignment.
+Missing/denied/conflicting operations throw fixed safe domain errors; exact HTTP codes remain
+AR-19/03-04's route contract. Native Date projection fields follow03-01. Existing client mutation
+and secret methods keep their actorId argument and revalidate that ID under the parent lock when
+a binding exists; an omitted actor must not bypass bound-client authority. Ordinary client calls
+keep their established behavior. No new actor registry or mutation context is introduced.
+
+Runtime AR-24 fixes the authorization point at the authoritative post-client-lock READ COMMITTED
+statement. Do not hold actor/assignment locks through commit or add a broader coordinator.
+Generic role mutations reject permanent service classification before organization/target locks.
+For physical owned-user deletion, discover the binding without a lock, then acquire client→binding→
+control-plane organization→owned user and revalidate ownership before the existing deletion capture.
+The ordinary lifecycle helper's combined account lock must not invert that deletion order.
+
 Client eligibility: active, confidential, owned by the super-admin organization and canonical
 Admin application, with client_credentials and real client-secret authentication enabled. Do not
 promote tenant/public clients or bootstrap human identities implicitly. Existing unrelated grants

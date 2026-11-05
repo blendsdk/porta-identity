@@ -133,6 +133,206 @@ are removed after preserving the evidence above. The owned verification worktree
 dependencies/build prerequisites remain only because the same authorized feature continues into
 Phase2; they must be removed before whole-feature completion. Unrelated user work remains untouched.
 
+## Phase2 entry — 2026-11-05
+
+Phase1 documentation checkpoint cbd59bbf is committed/pushed. The tracked Phase2 baseline tree is
+b1e6737b986a52a928bf2de5a7968bc868e01dda. Unrelated untracked pending-invitation SQL/editor work
+is excluded unread rather than copied into a snapshot. No tracked source drift was observed.
+The retained eight-file/274-assertion foundation selection was replayed on fresh owned PostgreSQL17
+and Redis8 services and passed before Phase2 changes. Those services use existing local images,
+loopback-only random ports, tmpfs and --rm; owned IDs/ports are recorded for teardown.
+
+Independent lifecycle author ses_e5484cf5fffebMfKNhTSy1pnfy receives the approved lifecycle/ST
+contract and the exact public interfaces before implementation. Existing fixture signatures were
+checked first, including application-ID string arguments, explicit SQL status initialization and
+the existing outer transaction requirement for client deletion. Production implementation and
+other oracle reads are forbidden. No Phase2 implementation or completed specification is credited
+until the author returns and the parent verifies it. A separate read-only challenger checks the
+minimum authority-locking mechanism against existing control-plane role/deletion ordering; it
+cannot change the approved authority policy or authorize a larger support framework.
+
+### Phase2 lifecycle oracle qualification
+
+Author ses_e5484cf5fffebMfKNhTSy1pnfy delivered twelve focused lifecycle specifications and one
+fixture helper. Parent reviewed every file against the approved contract and checked fixture APIs
+before sealing. All pass lint/documentation checks. Real owned PostgreSQL/Redis runs report12 failed
+files/190 failed cases because the planned lifecycle functions do not exist yet. No Phase2 product
+implementation precedes this red, and no runtime lifecycle behavior is qualified by it.
+
+Coverage includes exact projection/new ownership, live human authority, invalid final-reference
+rollback, secret/version transitions, audit rejection, eligibility repair, physical deletion,
+direct no-mail observation and production deletion→marker revoke→downgrade refusal. The ordinary
+client API supports only basic/post/none authentication; none is invalid for confidential clients.
+Therefore there is no protocol-valid authentication-method-loss transition to invent. Valid grant
+loss/deactivation and ineligible initial rows cover the approved eligibility boundary; later token
+authorization must still check authoritative eligibility. Detailed interleavings remain2.3.1.
+
+Independent human-boundary author ses_e54662fafffeBm9m2tEyfGLztX is active with the complete
+contract, checked public interfaces and forbidden source/oracle list. It cannot read these lifecycle
+tests. Both groups must show expected red before Phase2 product implementation begins.
+
+Lifecycle SHA256 seals below cover exact bytes under
+packages/server/tests/integration/service-accounts, including the shared fixture. No implementation
+exists when these identities are qualified; no behavior assertion has been changed to match code.
+
+| File | Qualified SHA256 |
+| --- | --- |
+| lifecycle-fixtures.ts |9841e8f05caea5570b7fa4f883175ded5e06ba2b45c4fac5d2e516a8f30b1708 |
+| lifecycle.authorization.spec.test.ts |2a5b627faa4bbc93cbf91780544d17979ae8b245ec616c856534ee6ca3e6dfef |
+| lifecycle.client-authorization.spec.test.ts |635ae5654bc798e413de8d19577a177cdaa9b004aec9e14dfc61bdf65a324f16 |
+| lifecycle.deletion-downgrade.spec.test.ts |a2f4b6a6a1cc21d6ff1a968fa46cdbad7789f002f326e97cdd6f6d4d98e72108 |
+| lifecycle.deletion.spec.test.ts |c42449b6b39a1ad1c3b860d89eca1fb304acf8cbb2ad08f0a192ddb1e0e9ca0f |
+| lifecycle.delivery.spec.test.ts |6c45a6180fefbf1e76c23070027d3f69d87c1b931efb7ce0943433a2daa811dd |
+| lifecycle.eligibility.spec.test.ts |7c6df8529af9fa7888b230e193fe8eaf35002b7b4349e1e21091a4c08acd57a8 |
+| lifecycle.live-references.spec.test.ts |0d907128a732d7444da2c8cd0fda8a2d0661a6ec519192fb20427b27d17d07a9 |
+| lifecycle.provisioning.spec.test.ts |1ca843b2a6e94574023117ef0c61d97ca9eaf5a369136c0429542092972d5477 |
+| lifecycle.restoration.spec.test.ts |1a50fe81cc0ff1aa0f8b2fd7909928ad63ef5865c6f127c6ceee46c29e77f127 |
+| lifecycle.rollback.spec.test.ts |ef2534d11f9f0d7a98e61e8bb280e68fdcd4262f1fabb40fa6eefcc3d860e829 |
+| lifecycle.secrets.spec.test.ts |5061b47680fc44be401fbed1b7dde2d5f14945d477c2e58d2432d51ae571c2e2 |
+| lifecycle.transitions.spec.test.ts |5f09be1725f9ed370dd25c543b203938d4ac0ed6456f56949a9a9f0543a42704 |
+
+### Human-boundary seals and implementation qualification
+
+Nine independent human-boundary oracles/50 cases and their fixture were qualified before product
+implementation. The sole pre-seal fixture correction clears the explicitly matched owned Redis
+database after SQL reset, so a prior fixture's cached canonical application cannot invalidate the
+ordinary-human controls. No assertions changed. Combined initial red:215 integration failures plus
+two HTTP failures;23 existing/ordinary controls pass,240 cases total.
+
+| File (integration/service-accounts unless noted) | Qualified SHA256 |
+| --- | --- |
+| human-authentication.spec.test.ts |66473dbe894c26ba322bf9aad7193b459c3cd7fa3b365552df7cb45b19cb20cd |
+| human-bulk-status.spec.test.ts |2f98e2999cd29bde59d5d38ccf915429feb453170e0670500aac0bcfe1b1dd5e |
+| human-fixtures.ts |741ab6b9562a6b1013028717d289cb0892d5cee4104ec28af7f5cfdad3f52100 |
+| human-mutations.spec.test.ts |5441621c3dc4e58594ba5baf7b8b10b76bca29897b2a161e97285543b3ee760d |
+| human-portability.spec.test.ts |6e557924fa30af09c01a005749c7192ea94cf1921f1c9ae85290833eba1bd988 |
+| human-recovery-artifacts.spec.test.ts |9f7f9c39fb5c41899f4853eefd54e80bf630502a91fe1f4fd6b117e6382a2576 |
+| human-recovery-issuance.spec.test.ts |d3a1b27880c266122900f91cfed6b709a3412983eae800cef27270920ff2efb3 |
+| human-role-memberships.spec.test.ts |40e455ab5a4f8ff9fcf0951562bea46c4a75930e351c21778a85f81f76ba1b4c |
+| human-seeding.spec.test.ts |11fdc93d1444f610a7c769492c6324ef96c11a5f2ee3058b505349976edfd8ee |
+| pentest/service-accounts-human.spec.test.ts |dba60c9b6ca7c5d43513922c8a3e2bc7b0e6082afedda6519f6fb8c9bfa2ef29 |
+
+At27/65 verified tasks, all236 Phase2 integration assertions and four real-HTTP human middleware
+assertions pass with sealed bytes unchanged. Focused checks throughout include server lint,
+typecheck and build. The12-file/73-case existing client/RBAC/auth/schema regression selection also
+passes on owned services. MailHog is required on the suite's existing fixed loopback1025/8025
+ports; random-port environment overrides alone do not cover all existing tests. Initial missing/
+mismatched-mail runs are execution failures, not qualified product failures or waived assertions.
+Only the owned MailHog container was replaced after confirming both ports free; no test config or
+operator service changed. PostgreSQL/Redis retain their isolated random ports.
+
+Actual product behavioral inventory is415 files, plus26 separate browser files. The literal
+inventory was updated from394 with all existing files preserved. Whole-workspace green remains
+pending older unit mock compatibility, regression/security/hardening gates and independent review.
+No Phase2 commit or machine-token acceptance is claimed by these focused passes.
+
+The older-unit compatibility correction is AR-25, independently challenged by
+ses_e54265de5ffeqdLM6KfwZOLhRf. Ten inspected files now pass160 assertions. Existing specification
+assertions are unchanged: only explicit ordinary-human classification and unbound-client/role DB
+responses were added. Feature authorization is not mocked. Two non-spec implementation
+expectations reflect the approved sixth role and human-only password writer; initializer
+coverage is strengthened with distinct role IDs, invitation-only mapping and no human service-role
+grant. The full unit run then exposed one additional implementation-only source-text selector
+still naming the old role loop; its selector is corrected while all repeat-safety/ordering
+assertions remain. No new feature oracle/fixture bytes changed. Final full unit/integration
+qualification remains pending until its actual command completes.
+
+### Complete Phase2 implementation gate and hardening
+
+At28/65, all240 sealed Phase2 assertions,73 existing selected integration assertions,4,417 server
+unit assertions,1,878 affected unit assertions and158 structure checks pass. Complete server lint,
+typecheck and build pass. Full integration subsequently passed93 files/834 assertions. The first
+combined category wrapper timed out before integration completed; the bounded rerun is the only
+credited full integration result. No assertion retry/waiver occurred.
+
+Task2.3.1 adds eleven real-DB implementation cases in lifecycle-concurrency.impl.test.ts and
+lifecycle-errors.impl.test.ts, using a small task-specific transaction/barrier fixture. PostgreSQL
+pg_blocking_pids and the exact parent-lock statement establish the interleavings; elapsed time is
+only a failure deadline. Both pre-binding credential retirement and post-binding live generation
+are observed, together with credential overlap/live revocation, actor-role revocation committed
+during a parent wait, stronger inherited isolation refusal, concurrent client/account deletion,
+transaction-required writes, orphan authorization and marker/audit rollback. All eleven pass;
+lint/typecheck/build and158 structure assertions pass. Actual product test inventory is now417,
+with26 unchanged browser files. These implementation tests do not modify any sealed oracle.
+
+At29/65, feature coverage, complete E2E/pentest and browser qualification remain pending. A
+coverage wrapper also timed out without qualifying that result; its standalone longer run is
+pending. Owned Chromium is prepared under the task scratch, not the operator browser cache.
+Production-security assurance and independent phase review remain obligations, not inferred passes.
+
+### Phase2 security-category results and protected-file authority
+
+The qualified coverage selection passes30 files/521 assertions:91.97% statements,86.74% branches,
+100% functions and99.11% lines for service-accounts source. Complete E2E passes22 files/134
+assertions. Complete pentest passes48 files/334 assertions, including the four real-HTTP human
+middleware cases. Browser qualification runs separately with one worker and zero retries, using
+task-owned Chromium and scratch outputs. These are separate checks, not a full pnpm verify claim.
+
+On2026-11-05 the user explicitly approved the production-security harness creating/reading/deleting
+only generated fixture-credentials.json (including atomic replacements), certs/server.key and
+certs/server.crt beneath the owned verification worktree's test-harness/.assurance-runtime/.
+The user also approved Docker's read attempt at the synthetic HOME .docker/config.json, without
+creating/copying that file. Existing exact loader/npmrc approvals remain bounded. This grants no
+operator-secret access, disclosure, commit/publication or unrelated credential-file authority.
+The harness must still run from a verified clean revision and clean its own resources.
+
 Exact protected-file authorization is recorded in the continuity notes. It covers only the named
 scratch dotenv attempts and root/scratch package/provenance .npmrc reads. No original operator .env,
 credential store or TLS/key access is approved or performed by this entry.
+
+### Phase2 review corrections — current qualification
+
+Independent reviews found RV-2-001/SA-2-001 Major and RV-2-002/SA-2-002 Minor. AR-26 authorizes
+only necessary existing-route actor propagation/safe403 and canonical reserved-role/invitation
+protections. No finding is waived. The exact six pre-correction product files are preserved for
+one scoped re-review; the original240 oracle cases and their fixtures remain unchanged.
+
+Source-restricted authors ses_e5390c27bffeESD96Bck4FRJqw and ses_e538d5f28ffehBo5A1zd7Ighup
+added seven specifications/54 cases and two small fixture helpers before correction. Qualified
+red:17 HTTP failures/11 controls and18 reserved-role failures/8 controls,35 intended failures and
+19 controls total. Before sealing, fixture interfaces were corrected to the established
+single-options inviteUser, updateRole result wrapper and explicit password-form GET step.
+Ordinary revocation asserts no active usable credential without inventing row-retention policy.
+Rendering is initialized for real-mail-seam controls. None of these construction failures was
+credited as product red.
+
+AR-27 records the user's sole sealed-test assertion reorder: observe mutation audit before
+independent credential verification adds its own legitimate system audit. Complete sorted line
+sets are identical; pre-correction HTTP red was replayed with the same17 failures/11 controls.
+The old seal c6d2f663c864acfc8a93af60e175270a86972b1166a72d920ea661b93751c2ab is retained as
+superseded evidence. Current qualified SHA256 identities under integration/service-accounts:
+
+| File | Qualified SHA256 |
+| --- | --- |
+| client-http-deletion.spec.test.ts |8598846d010198fd0121f15fa0c545423d16ef8965767039b91a3fa42dd2bf16 |
+| client-http-fixtures.ts |d4990e753b50e24493e27cbf2d32de9b89b51e998f72b0d5b93101f7160a208a |
+| client-http-mutations.spec.test.ts |5950dce1071fd7c4a4e7998d3399b4e11bd54ff8265407b872a267e3738b743e |
+| client-http-secrets.spec.test.ts |2790ffbc772991dbf5169d2513409492c32de2099d1ba9c00053c782a102ef38 |
+| reserved-role-definition-http.spec.test.ts |d6a89d449706e33fc284107127e7016bd209a48f0de4e16b2ee5a8b7171e09ef |
+| reserved-role-definition-service.spec.test.ts |1d146fa224540b18a2dd67d98604a4a4c294e51cf252cb97df538ad2079c3bbb |
+| reserved-role-fixtures.ts |c49e6a9faaef31d297112018c6f771c49a626f036c6f60fd399a5f1c5d1c3bcb |
+| reserved-role-invitation-acceptance.spec.test.ts |56d393ea44be847c15acc9226984e6e9898db7838c37915222b1d51850b892ed |
+| reserved-role-invitation-admission.spec.test.ts |ee472e6dfbe10e6af4152731feb4f8840229a702ae45b4f23256a0ae5cca6320 |
+
+Focused corrected selections pass37 reserved-role assertions,15 credential assertions and119
+HTTP/client authorization/eligibility/deletion assertions. These overlap and are not summed.
+All54 new cases pass. Actual physical inventory is424 product files plus26 browser files.
+AR-28 records the user's exact two older specification call-shape updates after the affected
+run found six failures across four older route files. Fresh affected/unit/integration/workspace
+qualification is running; prior full-suite counts do not qualify the corrected source.
+
+Corrected-source requalification on2026-11-05 19:50 passes158 structure checks,1,880 affected
+unit assertions, all4,417 server unit assertions and102 integration files/899 assertions.
+Complete server lint/typecheck/build pass. Every original and current correction oracle hash
+matches in both the working and verification trees. Fresh E2E/pentest/browser checks are running;
+their earlier results remain historical until those commands complete. Incremental maintainer
+security/data-model/ADR-019 updates pass local-link validation; the public documentation build
+also passes. No source commit, independent closure or production-security qualification yet.
+
+At2026-11-05 19:56, corrected-source E2E134, pentest334 and browser135 pass; browser retries0.
+Both original reviewers close all four findings in their one scoped re-review, with no new
+correction-introduced Critical/Major defect. Exact reviewed source identities and durable closure
+records pass validation. The checklist now records31/65 verified tasks. The reviewed coherent
+source checkpoint is authorized under auto-commit; production-security assurance must still run
+from that clean committed revision before Phase2 completion. No broader machine authority or
+whole-feature acceptance is implied.

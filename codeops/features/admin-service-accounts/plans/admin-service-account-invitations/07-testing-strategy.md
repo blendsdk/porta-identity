@@ -114,6 +114,12 @@ driver task before qualification: assurance/tests/service-account-packed.spec.te
 compat/service-account-invitations*.ts, governed by03-04. No assertion is deferred until after its
 implementation; these allocations correct the original plan before any immutable tests exist.
 
+At Phase2 entry, ST-24 is split at the existing implementation boundary: its human AccessToken
+and generic-role assertions are authored in2.1.2; its native machine extra-membership denial is
+authored in3.1.1 before machine authorization exists. A classified account denied by the human
+middleware is not evidence for the later machine-token check. This is the same specification-first
+dependency rule as ST-25/ST-62, not a deferral of the machine assertion until after implementation.
+
 Paths are package-relative. Do not grow oversized general tests. Additional focused test files
 are allowed only for these concerns; update literal structure inventories to the actual added
 files, never remove old inventory entries. Implementation tests live in separate *.impl.test.ts

@@ -148,6 +148,18 @@ from adopting another account; it retains no deleted account email or account re
 internal reads distinguish this state from an absent binding and never replace corrupt JSON with
 defaults. Mutations use client→binding→account lock order through durable commit, not external mail.
 
+Lifecycle provisioning inserts a new passwordless classified user and its reserved membership;
+it never adopts an existing address or shares an owner. The initial normalized email is immutable.
+Restoration keeps the same user and binding, reinstates only the reserved membership and retires
+all credentials. Active replacement validates every live target/reference before changing policy.
+Account, binding, credential retirement and the durable mutation audit share one transaction.
+
+Physical owner deletion uses nonlocking discovery, then client→binding→organization→owned-user
+locks to fit the existing user deletion boundary. It clears the owner and policy on the same row
+with a fresh authorization version before deleting the user. Client deletion instead cascades the
+binding but leaves the surviving user inactive and permanently classified. Neither path permits
+human reclassification or automatic account replacement.
+
 **Upgrade and rollback boundary:** Do not provision flagged identities until every HTTP and
 recovery worker runs code that enforces their noninteractive classification. Adding the schema or
 reserved role alone does not enable a machine Admin API lane. An older account-unaware binary is

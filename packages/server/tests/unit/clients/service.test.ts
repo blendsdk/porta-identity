@@ -33,6 +33,21 @@ vi.mock('../../../src/clients/validators.js', () => ({
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
 }));
+vi.mock('../../../src/lib/database.js', () => {
+  const database = {
+    query: async (sql: string, values: readonly unknown[]) => {
+      if (sql === 'SELECT id FROM clients WHERE id = $1 FOR UPDATE') return { rows: [{ id: values[0] }] };
+      if (sql.includes('SELECT EXISTS (SELECT 1 FROM client_service_accounts')) return { rows: [{ present: false }] };
+      throw new Error('Unexpected query in ordinary client fixture');
+    },
+  };
+  return {
+    getPool: () => database,
+    getDatabaseTransactionClient: () => database,
+    runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+    afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
+  };
+});
 
 vi.mock('../../../src/applications/service.js', () => ({
   getApplicationById: vi.fn(),
@@ -720,6 +735,7 @@ describe('client service', () => {
     it('passes null through when clearing the override explicitly', async () => {
       const before = createTestClient({ loginMethods: ['password'] });
       const after = createTestClient({ loginMethods: null });
+      vi.mocked(findClientById).mockResolvedValue(before);
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 
@@ -734,6 +750,7 @@ describe('client service', () => {
     it('normalizes a non-empty array before update', async () => {
       const before = createTestClient({ loginMethods: null });
       const after = createTestClient({ loginMethods: ['magic_link', 'password'] });
+      vi.mocked(findClientById).mockResolvedValue(before);
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 
@@ -757,6 +774,7 @@ describe('client service', () => {
     it('audit log records previous → new transition when field changes', async () => {
       const before = createTestClient({ loginMethods: ['password'] });
       const after = createTestClient({ loginMethods: ['password', 'magic_link'] });
+      vi.mocked(findClientById).mockResolvedValue(before);
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 

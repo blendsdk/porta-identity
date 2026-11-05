@@ -18,6 +18,9 @@ export {
   ServiceAccountValidationError,
   ServiceAccountAuthorizationError,
   ServiceAccountStorageError,
+  ServiceAccountManagementError,
+  ServiceAccountNotFoundError,
+  ServiceAccountConflictError,
 } from './errors.js';
 export {
   parseServiceAccountInput,
@@ -28,3 +31,12 @@ export {
   MAX_SERVICE_ACCOUNT_CLAIMS,
 } from './policy.js';
 export { findServiceAccountByClientId } from './repository.js';
+export { getServiceAccount, setServiceAccount, revokeServiceAccount } from './service.js';
+export {
+  lockClientServiceAccountMutation,
+  reconcileClientServiceAccount,
+  revokeServiceAccountForClientMutation,
+} from './client-mutations.js';
+export { rotateServiceAccountVersion } from './writes.js';
+export { prepareServiceAccountDeletion } from './account-deletion.js';
+export { eraseServiceAccountOwner } from './writes.js';

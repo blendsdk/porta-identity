@@ -255,7 +255,8 @@ export function requireAdminAuth(): Middleware {
     // -----------------------------------------------------------------
     // Step 4: Look up user — must be active
     // -----------------------------------------------------------------
-    // findUserForOidc returns null for non-existent or non-active users
+    // The authoritative human lookup also rejects permanent service classification, even when
+    // cached public data or an extra administrative membership would otherwise grant access.
     const user = await findUserForOidc(userId);
     if (!user) {
       recordSecurityDecision(ctx, {
@@ -290,6 +291,8 @@ export function requireAdminAuth(): Middleware {
     }
 
     const userRoles = await getUserRolesForAuthority(userId);
+    // Only human role definitions contribute permissions. The reserved invitation-service role
+    // deliberately resolves to none, regardless of its stored machine permission mapping.
     const adminRoleSlugs = userRoles
       .filter(
         (role) =>

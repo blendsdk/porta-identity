@@ -24,6 +24,7 @@ import {
   InviteUserExistsError,
 } from '../users/invite-service.js';
 import { UserEmailConflictError, UserNotFoundError, UserValidationError } from '../users/errors.js';
+import { ServiceAccountManagementError } from '../service-accounts/index.js';
 
 /** Minimal response context used by the shared mapper. */
 interface ErrorContext {
@@ -52,7 +53,7 @@ export function handleUserRouteError(
   error: unknown,
   options: UserRouteErrorOptions = {},
 ): never {
-  if (error instanceof SuperAdminProtectionError) {
+  if (error instanceof SuperAdminProtectionError || error instanceof ServiceAccountManagementError) {
     ctx.status = 403;
     ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
     return undefined as never;

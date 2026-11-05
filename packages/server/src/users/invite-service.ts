@@ -216,10 +216,14 @@ export async function validatePreAssignments(
   }
 
   for (const role of requestedRoles) {
-    const result = await pool.query('SELECT id FROM roles WHERE id = $1 AND application_id = $2', [
-      role.roleId,
-      role.applicationId,
-    ]);
+    // This path creates ordinary humans, not dedicated identities. A matching slug in an
+    // unrelated application remains ordinary; only the canonical machine membership is excluded.
+    const result = await pool.query(
+      `SELECT role.id FROM roles role JOIN applications application ON application.id = role.application_id
+       WHERE role.id = $1 AND role.application_id = $2
+         AND NOT (application.slug = 'porta-admin' AND role.slug = 'porta-invite-service')`,
+      [role.roleId, role.applicationId],
+    );
     if (result.rows.length === 0) errors.push('A role does not belong to its application');
   }
 

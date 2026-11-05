@@ -29,6 +29,12 @@ vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
 });
 
 vi.mock('../../../src/lib/database.js', () => ({
+  getPool: () => ({
+    query: async (sql: string) => {
+      if (sql.includes("role.slug = 'porta-invite-service'")) return { rows: [{ present: false }] };
+      throw new Error('Unexpected query in ordinary role fixture');
+    },
+  }),
   getDatabaseTransactionClient: vi.fn(),
   runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
 }));
@@ -46,6 +52,7 @@ vi.mock('../../../src/applications/service.js', () => ({
 }));
 
 vi.mock('../../../src/users/repository.js', () => ({
+  findServiceAccountClassification: vi.fn().mockResolvedValue(false),
   lockControlPlaneOrganization: vi.fn(),
   requireActiveSuperAdminSurvivor: vi.fn(),
 }));

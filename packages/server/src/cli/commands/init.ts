@@ -38,6 +38,7 @@ import {
   ALL_ADMIN_PERMISSIONS,
   ADMIN_ROLE_DEFINITIONS,
   ALL_ADMIN_ROLES,
+  SERVICE_ACCOUNT_ROLE_DEFINITION,
 } from '../../lib/admin-permissions.js';
 import { SUPER_ADMIN_USER_ID_KEY } from '../../lib/super-admin-protection.js';
 
@@ -298,12 +299,12 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
         console.log(`  ✅ ${permissionIdMap.size} granular permissions created`);
 
         // -----------------------------------------------------------------
-        // Step 6: Create all 5 admin roles and assign permissions
+        // Step 6: Seed human administrative roles and the separate machine-only membership.
         // -----------------------------------------------------------------
         // Each role gets a specific set of permissions as defined in
         // ADMIN_ROLE_DEFINITIONS. The super-admin role gets all permissions.
         const createdRoles = new Map<string, string>(); // slug → role ID
-        for (const roleDef of ALL_ADMIN_ROLES) {
+        for (const roleDef of [...ALL_ADMIN_ROLES, SERVICE_ACCOUNT_ROLE_DEFINITION]) {
           const role = await insertRole({
             applicationId: adminApp.id,
             name: roleDef.name,

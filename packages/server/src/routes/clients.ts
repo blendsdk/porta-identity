@@ -37,6 +37,7 @@ import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as clientService from '../clients/service.js';
 import * as secretService from '../clients/secret-service.js';
 import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
+import { ServiceAccountManagementError } from '../service-accounts/index.js';
 import * as organizationService from '../organizations/service.js';
 import type { Client } from '../clients/types.js';
 import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
@@ -225,6 +226,11 @@ function handleError(
   ctx: { status: number; body: unknown; throw: (status: number, msg: string) => never },
   err: unknown,
 ): never {
+  if (err instanceof ServiceAccountManagementError) {
+    ctx.status = 403;
+    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
+    return undefined as never;
+  }
   if (err instanceof ClientNotFoundError) {
     ctx.throw(404, 'Client not found');
   }
@@ -352,7 +358,7 @@ export function createClientRouter(): Router {
       const body = updateClientSchema.parse(ctx.request.body);
       const current = await clientService.getClientById(ctx.params.id);
       if (current && !checkIfMatch(ctx, 'client', current.id, current.updatedAt, current)) return;
-      const client = await clientService.updateClient(ctx.params.id, body);
+      const client = await clientService.updateClient(ctx.params.id, body, ctx.state.adminUser?.id);
       setETagHeader(ctx, 'client', client.id, client.updatedAt);
       ctx.body = { data: await withEffectiveLoginMethods(client) };
     } catch (err) {
@@ -378,7 +384,7 @@ export function createClientRouter(): Router {
   // -------------------------------------------------------------------------
   router.post('/:id/activate', requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE), async (ctx) => {
     try {
-      await clientService.activateClient(ctx.params.id);
+      await clientService.activateClient(ctx.params.id, ctx.state.adminUser?.id);
       ctx.status = 204;
     } catch (err) {
       handleError(ctx, err);
@@ -393,7 +399,7 @@ export function createClientRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.CLIENT_UPDATE),
     async (ctx) => {
       try {
-        await clientService.deactivateClient(ctx.params.id);
+        await clientService.deactivateClient(ctx.params.id, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -409,7 +415,7 @@ export function createClientRouter(): Router {
       const client = await requireEligibleSecretParent(ctx.params.id);
       if (!client) ctx.throw(404, 'Client not found');
       const body = createSecretSchema.parse(ctx.request.body);
-      const secret = await secretService.generateAndStore(ctx.params.id, body);
+      const secret = await secretService.generateAndStore(ctx.params.id, body, ctx.state.adminUser?.id);
       ctx.status = 201;
       ctx.body = {
         data: secret,
@@ -458,7 +464,7 @@ export function createClientRouter(): Router {
       try {
         const client = await requireEligibleSecretParent(ctx.params.id);
         if (!client) ctx.throw(404, 'Client not found');
-        await secretService.revoke(ctx.params.id, ctx.params.secretId);
+        await secretService.revoke(ctx.params.id, ctx.params.secretId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);

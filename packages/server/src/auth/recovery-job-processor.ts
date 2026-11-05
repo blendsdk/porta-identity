@@ -5,7 +5,7 @@ import { writeAuditLog } from '../lib/audit-log.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
-import { getUserByEmail } from '../users/service.js';
+import { getUserByEmail, isServiceAccount } from '../users/index.js';
 import type { User } from '../users/types.js';
 import { sendRecoveryEmailStrict } from './email-service.js';
 import { recoveryArtifactToken, revealRecoveryAddress } from './recovery-crypto.js';
@@ -44,13 +44,16 @@ export class AccountRecoveryJobProcessor implements RecoveryJobProcessor {
 
     let organization: Organization | null;
     let user: User | null;
+    let classified: boolean;
     try {
       organization = await getOrganizationById(job.organizationId);
       user = await getUserByEmail(job.organizationId, address);
+      // A cached public User has no classification field and cannot authorize recovery.
+      classified = user !== null && await isServiceAccount(user.id);
     } catch {
       throw new RecoveryJobProcessingError('database_unavailable', true);
     }
-    if (!organization || organization.status !== 'active' || !user || user.status !== 'active') {
+    if (!organization || organization.status !== 'active' || !user || user.status !== 'active' || classified) {
       return 'no_op';
     }
 

@@ -43,11 +43,14 @@ import {
   ALL_ADMIN_PERMISSIONS,
   ALL_ADMIN_ROLES,
   LEGACY_ADMIN_ROLE,
+  SERVICE_ACCOUNT_ROLE_DEFINITION,
 } from '../lib/admin-permissions.js';
 
 const ROLE_DELETED_EVENT = 'role.deleted';
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
-const ADMIN_ROLE_SLUGS = new Set([...ALL_ADMIN_ROLES.map((role) => role.slug), LEGACY_ADMIN_ROLE]);
+const ADMIN_ROLE_SLUGS = new Set([
+  ...ALL_ADMIN_ROLES.map((role) => role.slug), LEGACY_ADMIN_ROLE, SERVICE_ACCOUNT_ROLE_DEFINITION.slug,
+]);
 const ADMIN_PERMISSION_SLUGS = new Set<string>(ALL_ADMIN_PERMISSIONS);
 
 // ---------------------------------------------------------------------------
