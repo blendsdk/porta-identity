@@ -1,7 +1,7 @@
 # Task T-01: Admin Terminal Invite Role Pre-Assignment
 
 > **Type**: Task (lightweight) · **Feature**: admin-terminal · **CodeOps Artifact Schema**: 1
-> **Progress**: 0/9 tasks (0%)
+> **Progress**: 8/9 tasks (89%)
 > **Reasoning**: high — a new modal interaction crosses capability gating, exact invite payloads and
 > an existing asynchronous role catalog; the change is bounded and reuses established seams.
 
@@ -86,29 +86,39 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
 
 ### Phase 1 — Behavior oracle and red
 
-- [ ] T-01.1 Add an immutable behavior spec for capability gating, role selection, exact invite
+- [x] T-01.1 Add an immutable behavior spec for capability gating, role selection, exact invite
   payload, preview forwarding, no-roles omission and catalog-failure behavior; observe the intended
-  red against the current implementation. Keep existing invite expectations intact.
-- [ ] T-01.2 Add implementation tests for role-pair validation, duplicate rejection and exact
-  forwarding through the user service; observe the intended red.
+  red against the current implementation. Keep existing invite expectations intact. ✅ (completed:
+  12 failures/2 controls red; 6 behavior cases now green)
+- [x] T-01.2 Add implementation tests for role-pair validation, duplicate rejection and exact
+  forwarding through the user service; observe the intended red. ✅ (completed: 7 validation and
+  forwarding cases red, then green; empty selection still omitted)
 
 ### Phase 2 — Implementation and green
 
-- [ ] T-01.3 Extract `AdminUserDialogHost`, `dialogSize`, `runDialog`, `actionRow` and `inputRow`
-  into `user-dialog-support.ts`; update imports without behavior change.
-- [ ] T-01.4 Extend `AdminInviteUserInput` and `inviteInput` role validation in `user-service.ts`.
-- [ ] T-01.5 Implement the role checklist modal in `invite-role-dialog.ts`.
-- [ ] T-01.6 Wire the invite dialog row and nested modal, then pass the capability-gated catalog
-  source from `user-controller.ts`; keep existing three-parameter dialog injections working.
-- [ ] T-01.7 Re-run the behavior and implementation tests until green; run the focused CLI admin
-  suite and fix only task-caused failures.
+- [x] T-01.3 Extract `AdminUserDialogHost`, `dialogSize`, `runDialog`, `actionRow` and `inputRow`
+  into `user-dialog-support.ts`; update imports without behavior change. ✅ (completed: shared helpers
+  used by both dialog modules; existing dialog behavior unchanged)
+- [x] T-01.4 Extend `AdminInviteUserInput` and `inviteInput` role validation in `user-service.ts`.
+  ✅ (completed: exact pairs, UUIDs, closed keys, duplicate rejection, empty omission)
+- [x] T-01.5 Implement the role checklist modal in `invite-role-dialog.ts`. ✅ (completed: loading,
+  ready, failure, empty, reload, done/cancel and preserved selection)
+- [x] T-01.6 Wire the invite dialog row and nested modal, then pass the capability-gated catalog
+  source from `user-controller.ts`; keep existing three-parameter dialog injections working. ✅
+  (completed: both capabilities required; absent source hides the row; controller test covers both)
+- [x] T-01.7 Re-run the behavior and implementation tests until green; run the focused CLI admin
+  suite and fix only task-caused failures. ✅ (completed: focused 14/14; admin 942/942; existing
+  projection expectation updated for the now-supported role field)
 
 ### Phase 3 — Hardening, review and delivery
 
-- [ ] T-01.8 Update `docs/cli/users.md` and the feature/portfolio roadmap; run CLI lint, typecheck,
-  build, the focused admin suite, structure tests and the repository's affected test selection.
-- [ ] T-01.9 Obtain independent review, close necessary findings, run the full applicable gate and
-  CI, merge through `develop`, close #182 and record final evidence and cleanup.
+- [x] T-01.8 Update `docs/cli/users.md` and the feature/portfolio roadmap; run CLI lint, typecheck,
+  build, the focused admin suite, structure tests and the repository's affected test selection. ✅
+  (completed: docs build pass; CLI lint/typecheck/build pass; CLI full 1,850; structure 158; inventory
+  127)
+- [~] T-01.9 Obtain independent review, close necessary findings, run the full applicable gate and
+  CI, merge through `develop`, close #182 and record final evidence and cleanup. ⏳ (review, full
+  affected gate, PR/CI and merge pending)
 
 **Verify**: `pnpm --filter @portaidentity/cli lint && pnpm --filter @portaidentity/cli typecheck && pnpm --filter @portaidentity/cli build && pnpm --filter @portaidentity/cli test && pnpm test:structure`
 

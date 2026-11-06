@@ -4,7 +4,7 @@
 > **Status**: Active
 > **Created**: 2026-11-06
 > **Last Updated**: 2026-11-06
-> **Progress**: n/a (standalone task plan; its checklist owns progress)
+> **Progress**: 8 / 9 tasks (89%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -15,7 +15,7 @@
 
 | ID   | Title                             | RD  | Plan                                                          | Stage     | Status | Last Updated | Depends-on / Blocker |
 | ---- | --------------------------------- | --- | ------------------------------------------------------------- | --------- | ------ | ------------ | -------------------- |
-| T-01 | Invite role pre-assignment (#182) | —   | [Standalone task plan](plans/invite-role-preassignment/99-execution-plan.md) | Executing | 🔄     | 2026-11-06   | Reuses existing SDK role input, RBAC reads and application catalog; no server change |
+| T-01 | Invite role pre-assignment (#182) | —   | [Standalone task plan](plans/invite-role-preassignment/99-execution-plan.md) | Review    | 🔄     | 2026-11-06   | Implementation and local gates green; independent review and CI pending |
 
 ## Notes
 

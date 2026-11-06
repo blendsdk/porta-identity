@@ -138,33 +138,39 @@ export async function showInviteRoleDialog(
     const current = ++generation;
     state = { kind: 'loading' };
     render();
-    const applications = await source.listApplications();
-    if (closed || operationSignal.aborted || generation !== current) return;
-    if (applications.kind !== 'success') {
-      state = { kind: 'failure' };
-      render();
-      return;
-    }
-    const rolesByApplication = new Map<string, readonly AdminRole[]>();
-    const results = await Promise.all(
-      applications.value.map(async (application) => ({
-        applicationId: application.id,
-        result: await source.listRoles(application.id, operationSignal),
-      })),
-    );
-    if (closed || operationSignal.aborted || generation !== current) return;
-    for (const entry of results) {
-      if (entry.result.kind !== 'success') {
+    try {
+      const applications = await source.listApplications();
+      if (closed || operationSignal.aborted || generation !== current) return;
+      if (applications.kind !== 'success') {
         state = { kind: 'failure' };
         render();
         return;
       }
-      rolesByApplication.set(entry.applicationId, entry.result.value);
+      const rolesByApplication = new Map<string, readonly AdminRole[]>();
+      const results = await Promise.all(
+        applications.value.map(async (application) => ({
+          applicationId: application.id,
+          result: await source.listRoles(application.id, operationSignal),
+        })),
+      );
+      if (closed || operationSignal.aborted || generation !== current) return;
+      for (const entry of results) {
+        if (entry.result.kind !== 'success') {
+          state = { kind: 'failure' };
+          render();
+          return;
+        }
+        rolesByApplication.set(entry.applicationId, entry.result.value);
+      }
+      const options = flattenCatalog(applications.value, rolesByApplication);
+      choices = signal(options.map((option) => isSelected(option, selected)));
+      state = { kind: 'ready', options };
+      render();
+    } catch {
+      if (closed || operationSignal.aborted || generation !== current) return;
+      state = { kind: 'failure' };
+      render();
     }
-    const options = flattenCatalog(applications.value, rolesByApplication);
-    choices = signal(options.map((option) => isSelected(option, selected)));
-    state = { kind: 'ready', options };
-    render();
   };
 
   /** Rebuilds the modal body for the current state. */
@@ -220,7 +226,7 @@ export async function showInviteRoleDialog(
     const scroller = new Scroller({
       content: checklist,
       extent: { width: Math.max(1, width - 6), height: Math.max(1, height - 7) },
-      scrollbars: 'vertical',
+      scrollbars: 'both',
     });
     dialog.add(
       cover(
