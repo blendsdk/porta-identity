@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ All36 decisions resolved; Phase3 local root verification green
-> **Last Updated**: 2026-11-05 23:34
+> **Status**: ✅ All39 decisions resolved; expiry corrections and two fixture corrections requalifying
+> **Last Updated**: 2026-11-06 01:10
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -65,6 +65,9 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 34 | Runtime / frozen management fixture mismatch | Two requests replace two-target setup with one target while asserting original policy | Send original fixture policy in only these two requests; retain every assertion | User explicitly approved the named file/two request-body corrections, resealing and rerun. | ✅ Resolved |
 | 35 | Runtime / valid JSON preservation | Global parser rejects valid nested __proto__ data before machine validation | Exact-route existing parser/auth/audit composition, fresh post-parse identity, preserved human precedence/aliases | AI — delegated by --auto-design; independently challenged internal mechanism, no public/security policy change. | ✅ Resolved |
 | 36 | Runtime / remaining assurance temporary path | Normal task path exceeds Unix-socket length limit | Exact short temporary root for remaining Bundle C harness sockets/leases/caches; per-run cleanup | User explicitly approved /tmp/opencode/bc-c-20261105 for this purpose; fixture/TLS approval scope unchanged. | ✅ Resolved |
+| 37 | Runtime / post-lock credential expiry | RV-3-001/SA-3-001 use transaction-start time after a parent-lock wait | clock_timestamp() in the existing exact-secret predicate, retaining locks and strict expiry | AI — delegated by --auto-design; independent challenge selects current row-evaluation DB time, no policy change. | ✅ Resolved |
+| 38 | Runtime / native expiry at locked admission | SA-3-002 can retain a pre-wait validity result after token expiry | Trusted native exp on existing request-only principal; strict post-wait and final-admission checks | AI — delegated by --auto-design; independently challenged bounded mechanism, no wrapper/store/new policy. | ✅ Resolved |
+| 39 | Runtime / sealed delivery audit observation | Global before/after audit snapshot can include another invitation's unawaited write | Count `email.send.invitation` rows for this case's own invitationId; same 1/0 invariant | User explicitly approved the named file/observation change, reseal and gate rerun; no product change. | ✅ Resolved |
 
 ## Initial evidence
 
@@ -383,6 +386,91 @@ oracle rewrite or weakened assertion is authorized.
 - **Reopen triggers:** Runner transaction behavior differs, concurrent regression cannot establish
   its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
   a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
+
+## AR-39 — User-approved scoped delivery audit observation
+
+- **Authority:** User selected “Approve scoped check (Recommended)” in this conversation after the
+  exact sealed file, the failing assertion, the asynchronous-write root cause and the unchanged
+  1/0 invariant were shown. This is a verification-observation correction, not a product change.
+- **Evidence:** `sendInvitationEmail` records `email.send.invitation` without awaiting the insert.
+  The sealed delivery oracle compared global before/after audit ID sets. Under the authoritative
+  full gate, the control invitation's insert landed between those snapshots, so a rejected-only
+  case observed one “new” success audit (assertion line80: expected0, received1). The product path
+  returns before recording a success audit for rejected/unknown acknowledgements, so this is an
+  observation race, not a delivery defect.
+- **Decision:** Replace the global snapshot with a count of `email.send.invitation` rows whose
+  `metadata->>'invitationId'` equals the case's own committed invitation ID. The sent case must
+  still have exactly1 such audit and failed/unknown cases exactly0; the transport-rejection case
+  still requires0. The personal-message/leak checks are unchanged. Re-seal with a supersession
+  record and rerun the full gate.
+- **Rejected alternative:** Awaiting the product audit write would change ordinary human/tenant
+  delivery timing and could misclassify an already-sent email when the best-effort audit fails.
+- **Boundary:** No product file, assertion meaning, other oracle or ordinary behavior changes.
+  The prior seal is superseded with exact provenance; all other invitation seals stay unchanged.
+  Qualification requires the corrected file to pass alone and within a complete strict root gate.
+
+## AR-38 — Native expiry at locked dispatch admission
+
+- **Authority/eligibility:** AI — delegated by --auto-design; policy1; root bundle-c-20261104;
+  necessary correction of SA-3-002 under the existing strict300-second native expiry contract.
+  No new access policy, continuous-validity promise, persisted identity field or support surface.
+- **Decision:** Carry only readonly tokenExpiresAt epoch seconds from finite validated native exp
+  on the existing request-only AuthenticatedServiceAccount principal. Keep the persisted identity
+  namespace exactly the three UUIDs; never accept expiry from input/header/identity extras. After
+  awaited authentication authority acquisition, recheck strict expiry before returning the principal;
+  expired authentication returns null. Preserve the existing native lookup and initial checks.
+- **Final admission:** After both requireServiceAccountAuthority and authorizeServiceAccountInvitation
+  finish inside the existing transaction, compare trusted expiry again immediately before invoking
+  the feature counter. That second helper also awaits potentially blocking definition checks, so
+  checking earlier is insufficient. Expired admission returns the established fixed401, not403.
+  Preserve trusted expiry when replacing the principal's live authority in the handler; fresh
+  post-upload authentication must still replace parser-selection state rather than reusing it.
+- **Clock/boundary:** Require exp > Date.now()/1000; equality rejects. This follows the native
+  application clock, not PostgreSQL transaction time. Do not recompute lifetime, clip TTL, add grace
+  or margins, retry, or require validity through later counter I/O/persistence/COMMIT/SMTP. Already
+  admitted/committed invitations are not cancelled or recalled on later expiry.
+- **Evidence:** authentication.ts:46–55 checks before awaited authority; admin-invitations.ts:30–40,
+  109–126 reacquires and awaits authority/reference checks before counter without retained expiry.
+- **Rejected alternatives:** Retaining the whole native model is viable but exposes/couples more
+  state and is not a fresh revocation lookup. Another lookup inside locked dispatch needs extra
+  provider/token context and dependency I/O yet still needs a post-await expiry comparison. Checking
+  only after authentication misses the later dispatch wait. Reordering owners/holding auth locks
+  across upload breaks AR-35 without eliminating the need for current admission time.
+- **Strongest counterargument:** A second validity representation could be dropped or misused.
+  Limit the primitive to elapsed-time checking, preserve native validation and explicitly test the
+  principal handoff and both waits. No raw token/model/callback or lineage store is carried.
+- **Confidence/Hardening:** High. Independent challenger ses_e521d4fdaffeMPjupXMk1qc0H0 recommends
+  this smallest mechanism and confirms eligible scope. Source-free full-app post-upload and later
+  dispatch lock regressions, exact equality, unexpired positive controls and no effects must show
+  intended red before implementation, then green and the single scoped security re-review.
+- **Reopen triggers:** Need for new token wrapper/store, raw-token propagation, generalized callback,
+  continuous validity, different expiry policy or additional provider context/lookup machinery.
+
+## AR-37 — Current PostgreSQL time for exact proof expiry
+
+- **Authority/eligibility:** AI — delegated by --auto-design; policy1; root bundle-c-20261104;
+  necessary internal correction for the already-approved post-lock exact-credential expiry contract.
+  RV-3-001 and SA-3-001 are the same root cause, not two independent correction designs.
+- **Decision:** Replace only NOW() with clock_timestamp() in the existing post-lock exact-secret
+  expiry predicate. Keep strict >, nullable expiry, exact row/client/status, lock order, transaction,
+  native model, TTL and error mapping unchanged. No expiry margin, clipping, retry or new store.
+- **Evidence:** The transaction starts before parent locking (lib/database.ts:73–84); the later
+  credential query (service-accounts/tokens.ts:40–49) must not use that earlier timestamp.
+- **Rejected alternatives:** statement_timestamp() fixes the reported parent wait, but is captured
+  before any delay inside the new statement. One exact row needs no statement-wide consistency;
+  clock_timestamp() observes time at comparison for the same one-expression cost. Node comparison
+  adds cross-clock/precision concerns; restarting the transaction releases required locks. Existing
+  ordinary credential selectors also use transaction time and cannot replace exact proof validation.
+- **Boundary/counterargument:** Statement time is viable and was the initial review recommendation.
+  Current comparison time is stronger at equal cost. Neither choice guarantees continued credential
+  validity through later commit/native persistence/HTTP delivery; the approved admission point is
+  the locked exact-secret check, not continuous expiry or cancellation of committed work.
+- **Confidence/Hardening:** High. Independent blind challenger ses_e521d4fdaffeMPjupXMk1qc0H0
+  confirms eligibility and recommends this bounded option. Real modern/legacy Basic/POST red/green,
+  future/NULL expiry controls and the single scoped re-review remain required; static ruling is
+  neither a gate pass nor a waiver.
+- **Reopen triggers:** Need for application-clock comparison, expiry margins, extra locking,
+  transaction restart, changes to ordinary helpers or a new continuous-validity policy.
 
 ## AR-36 — Remaining Bundle C assurance temporary root
 

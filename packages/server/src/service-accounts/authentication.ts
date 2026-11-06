@@ -28,6 +28,8 @@ export interface AuthenticatedServiceAccount {
   readonly identity: ServiceAccountIdentity;
   /** Live locked authority established by native lookup. */
   readonly authority: ServiceAccountAuthority;
+  /** Validated native expiry in epoch seconds; only for elapsed-time admission checks. */
+  readonly tokenExpiresAt: number;
 }
 
 /**
@@ -52,5 +54,8 @@ export async function authenticateServiceAccount(
       !parsed.data.scope.split(/\s+/).includes(SERVICE_ACCOUNT_INVITE_SCOPE)) return null;
   const identity = parsed.data.extra[SERVICE_ACCOUNT_NAMESPACE];
   const authority = await runDatabaseTransaction(() => requireServiceAccountAuthority(parsed.data.clientId, identity));
-  return { identity, authority };
+  // Authority acquisition can wait on the parent lock. Reject an artifact that expired during that
+  // wait so a stale validity result never becomes admission authority.
+  if (parsed.data.exp <= Date.now() / 1000) return null;
+  return { identity, authority, tokenExpiresAt: parsed.data.exp };
 }

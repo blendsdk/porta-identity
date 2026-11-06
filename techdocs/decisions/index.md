@@ -27,6 +27,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)                           | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
 | ADR-018 | [Permanent Service Identity and Binding Storage](#adr-018-permanent-service-identity-and-binding-storage) | Accepted              | 2026-11-05 | Permanent classification, bounded JSONB and retained ownership  |
 | ADR-019 | [Live Service Lifecycle Authority](#adr-019-live-service-lifecycle-authority) | Accepted | 2026-11-05 | Post-lock live human authority and permanent human-flow exclusion |
+| ADR-020 | [Native Machine Invitation Authority](#adr-020-native-machine-invitation-authority) | Accepted | 2026-11-06 | One operation, native opaque client credentials and locked admission |
 
 ---
 
@@ -507,6 +508,71 @@ points without adding another identity framework. Admission alone cannot protect
 - Old account-unaware binaries remain unsafe while any classification or binding survives.
 - These lifecycle mechanisms do not grant machine Admin token authority. That lane requires its
   own native-token, issuer, allowlist, version and operation checks before public registration.
+
+---
+
+## ADR-020: Native Machine Invitation Authority
+
+**Status**: Accepted. Builds on [ADR-018](#adr-018-permanent-service-identity-and-binding-storage) and
+[ADR-019](#adr-019-live-service-lifecycle-authority); does not supersede human Admin or tenant M2M authority.
+
+**Context**: A small set of confidential control-plane clients needs unattended user invitations.
+Humans keep Admin authority, but extending a human session to a machine would weaken accountability
+and could let an operator credential outlive its owner. Porta already issues native opaque
+`client_credentials` tokens, so a separate machine-authentication stack is unnecessary.
+
+**Options considered**:
+
+| Option | Assessment |
+| --- | --- |
+| One native `client_credentials` operation for a bound account | Chosen: reuses the provider, locks, audit and route that already exist |
+| Long-lived API key for bound clients | Rejected: duplicates credential lifecycle and bypasses native revocation |
+| Human session delegated to the machine | Rejected: shares a human identity and cannot be scoped to one operation |
+| Broad machine Admin account | Rejected: exceeds the approved invitation-only capability |
+
+**Decision**: Allow exactly one Admin operation — the real
+`POST /api/admin/organizations/:orgId/users/invite` — for a permanently bound internal account.
+The bound client must be an eligible confidential client of the control plane and carry the
+independent `admin:user:invite` OAuth scope plus the account's live reserved permission. Tokens are
+native opaque `ClientCredentials` with a 300-second lifetime and no refresh or offline grant; the
+lane never resolves to an `AccessToken`, human `adminUser` or synthetic browser session.
+
+Credential proof stays request-only: the exact modern or legacy secret row that authenticated is
+carried to issuance, where its ownership, active state and current expiry are revalidated under the
+parent client lock. That expiry check uses current database time, not transaction-start time, so a
+credential that expires during the lock wait cannot obtain a newer generation. No plaintext,
+digest-lineage or secret identifier is persisted.
+
+Locked admission revalidates the closed account/binding/version identity, client eligibility, sole
+canonical reserved membership, the independent permission and scope, and the complete
+organization/role/claim allowlist against live ordinary references. Native expiry is checked again
+after awaited authority checks and immediately before the per-client 30/hour budget or any write.
+Only validated machines may preserve opaque JSON data keys; humans retain the standard parser and
+its malformed/oversized error precedence, and authentication is repeated after the body is read.
+
+Business and final mutation audit share the retained outer transaction with client actor columns,
+null human actor columns, and flat account/binding/version metadata. The response reports truthful
+delivery only after commit and the actual transport result. Binding management remains human Super
+Admin only.
+
+**Rationale**: One exact operation is the smallest useful unattended capability. Native tokens,
+existing locks, existing audits and the existing invitation handler avoid a second identity system,
+a permission snapshot or a delivery framework. Independent scope plus permission prevents the scope
+alone from authorizing a different client or operation.
+
+**Consequences**:
+
+- The supported-scope list grows by one value, so every provider instance must restart after deployment.
+- Only the canonical `/api/admin/` prefix and the exact invitation POST opt into machine identity; all
+  other Admin routes, previews and tenant routes remain human-only.
+- The machine account is permanently noninteractive. Revocation keeps the classification, and a new
+  authorization version makes older tokens unusable for later admission.
+- Admission is a point-in-time decision under locks. Expiry or revocation after admission does not
+  cancel committed work, recall an invitation or roll back sent mail.
+- The feature adds no refresh token, Admin UI, broader machine Admin capability, distributed cache
+  invalidation, retry workflow or new dependency.
+- Operators still need the existing host-level controls for SMTP availability; `unknown` delivery
+  reporting is internal and does not retry or hide a committed invitation.
 
 ---
 

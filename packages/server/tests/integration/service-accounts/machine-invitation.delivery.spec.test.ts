@@ -22,12 +22,21 @@ const ACKNOWLEDGEMENTS = [
   { name: 'both accepted and rejected', accepted: true, rejected: true, delivery: 'unknown' },
 ] as const;
 
-/** Observe only existing invitation-send events, not an invented outcome event taxonomy. */
-async function invitationSendAuditIds(): Promise<Set<string>> {
-  const result = await getPool().query<{ id: string }>(
-    'SELECT id FROM audit_log WHERE event_type = $1', ['email.send.invitation'],
+/**
+ * Count success-send audits attributable to exactly one invitation.
+ *
+ * The email service records this audit without awaiting its insert, so a global before/after set
+ * could observe another invitation's late write. The audit metadata carries the invitation ID;
+ * filtering by it keeps the same invariant without cross-test contamination.
+ */
+async function invitationSendAuditCount(invitationId: string): Promise<number> {
+  const result = await getPool().query<{ count: string }>(
+    "SELECT count(*) AS count FROM audit_log WHERE event_type = $1 AND metadata->>'invitationId' = $2",
+    ['email.send.invitation', invitationId],
   );
-  return new Set(result.rows.map((row) => row.id));
+  const count = Number(result.rows[0]?.count ?? '0');
+  if (!Number.isSafeInteger(count)) throw new Error('Invitation send audit count is invalid');
+  return count;
 }
 
 describe.sequential('machine invitation post-commit delivery reporting', () => {
@@ -56,7 +65,6 @@ describe.sequential('machine invitation post-commit delivery reporting', () => {
     'should finalize $delivery after the outer commit when acknowledgement is $name', async (outcome) => {
       const owned = currentSession();
       const email = `acknowledgement-${randomUUID()}@test.example`;
-      const previous = await invitationSendAuditIds();
       const mutationIds = new Set((await readInvitationAudits()).map((row) => row.id));
       let attempts = 0;
       let recipientMatches = false;
@@ -72,12 +80,11 @@ describe.sequential('machine invitation post-commit delivery reporting', () => {
       });
       try {
         const response = await postMachineInvitation(owned, email);
-        await expectMachineInvitationCreated(owned, response, email, outcome.delivery);
+        const invitation = await expectMachineInvitationCreated(owned, response, email, outcome.delivery);
         expect(attempts).toBe(1);
         expect(recipientMatches).toBe(true);
         expectMachineInvitationAudits(owned, (await readInvitationAudits()).filter((row) => !mutationIds.has(row.id)));
-        const added = [...await invitationSendAuditIds()].filter((id) => !previous.has(id));
-        expect(added.length).toBe(outcome.delivery === 'sent' ? 1 : 0);
+        expect(await invitationSendAuditCount(invitation.id)).toBe(outcome.delivery === 'sent' ? 1 : 0);
       } finally {
         setEmailTransport(null);
       }
@@ -88,7 +95,6 @@ describe.sequential('machine invitation post-commit delivery reporting', () => {
     const owned = currentSession();
     const email = `transport-rejected-${randomUUID()}@test.example`;
     const marker = `delivery-private-${randomUUID()}`;
-    const previous = await invitationSendAuditIds();
     const mutationIds = new Set((await readInvitationAudits()).map((row) => row.id));
     let attempts = 0;
     setEmailTransport({
@@ -99,11 +105,11 @@ describe.sequential('machine invitation post-commit delivery reporting', () => {
     });
     try {
       const response = await postMachineInvitation(owned, email);
-      await expectMachineInvitationCreated(owned, response, email, 'failed');
+      const invitation = await expectMachineInvitationCreated(owned, response, email, 'failed');
       expect(attempts).toBe(1);
       expectMachineInvitationAudits(owned, (await readInvitationAudits()).filter((row) => !mutationIds.has(row.id)));
       expect(response.text.includes(marker)).toBe(false);
-      expect([...await invitationSendAuditIds()].filter((id) => !previous.has(id)).length).toBe(0);
+      expect(await invitationSendAuditCount(invitation.id)).toBe(0);
       const audits = await getPool().query<{ metadata: unknown }>('SELECT metadata FROM audit_log');
       for (const row of audits.rows) expect((JSON.stringify(row.metadata) ?? '').includes(marker)).toBe(false);
     } finally {

@@ -678,6 +678,117 @@ results do not qualify a review gate or production evidence. A coherent locally 
 checkpoint is prepared solely to enable clean committed provenance for registered security/protocol
 assurance; no Phase3 completion, merge, release, issue mutation or whole-feature acceptance follows.
 
+### Reviewed checkpoint and reopened expiry gate — 2026-11-05 23:43
+
+Locally verified source7d9bcf0dc2cbe095ff4a52076c670dff781c612b is committed/pushed. The owned
+verification worktree is safely aligned clean using the exact48 authorized paths, without reset,
+discard or protected-file copying. Independent correctness review then reports Major RV-3-001:
+post-lock proof expiry uses PostgreSQL transaction-start NOW(), so natural expiration during a
+parent-lock wait may still mint privileged metadata. Prior235 specifications/17 hardening/root/
+browser passes remain dated checkpoint evidence and do not qualify this uncovered case.
+
+Affected tasks3.2.1,3.2.10 and3.3.1 reopen, reducing verified progress47→44. Task3.3.2 is blocked;
+no production/protocol assurance has started on the affected source. The original security audit
+continues on that frozen checkpoint. AR-37 records the pending bounded technical challenge and
+the source-free native author is released only for new modern/legacy Basic/POST expiry-during-lock
+specifications. Existing oracle/helper seals remain unchanged. Full review details are in
+[the Phase3 report](00-phase3-quality-review.md). No risk acceptance or completion claim follows.
+
+The security audit returns SA-3-001 (same proof-clock root as RV-3-001) and distinct Major SA-3-002:
+native strict expiry can pass while post-upload authentication or later admission waits for the
+parent. Tasks3.2.3 and3.2.6 reopen too, reducing44→42 verified. AR-37's independent challenge
+selects clock_timestamp() for the existing exact-row predicate, preserving the current transaction
+and strict nullable expiry semantics. AR-38 challenges the separate native admission mechanism.
+Source-free authors are released only for the new proof-expiry and full-application native-expiry
+lock regressions. No product correction is written before their qualified red/seals and owning
+technical resolutions. Both original reviews now await one combined scoped correction re-review;
+no third/full repeat review or risk waiver is authorized.
+
+The source-free four-case proof-expiry regression qualifies actual red on7d9bcf0d: modern/legacy
+Basic/POST all witness transaction start before scheduled expiry, actual PostgreSQL wall time
+after expiry while the exact issuance backend remains blocked, and still-owned active proven plus
+live canonical rows. After release, fresh canonical300-second issuance and durable invitation
+positive controls pass before each negative assertion. All four then fail at line181 because the
+expired proof's issued token still contains privileged identity metadata. Zero setup failures or
+skips; lint and focused TypeScript interfaces pass. Seal:
+credential-proof.expiry.spec.test.ts SHA25622ad8842f66da0fe62b66bca971ffd70f13951f297671bcf44d9458a3edd6250.
+Only after this red/seal does the original source receive AR-37's one-expression clock correction;
+the owned verification source remains uncorrected while independent future-expiry positive controls
+and the two SA-3-002 full-application oracles finish. No corrected green is claimed yet.
+
+The independent future-expiry controls finish as credential-proof.unexpired.spec.test.ts, four
+cases/105 lines. Before copying the clock fix into the owned verification worktree, all four pass
+on uncorrected7d9bcf0d: real modern/legacy Basic/POST future-expiring proofs issue300-second native
+tokens and durable invitations, with the separate canonical survivor live. Lint/focused TypeScript
+interfaces pass. The unchanged file is sealed at
+eadc2e1d75b3034e19f0c6e4a602558b366d0aecae729d812c8ea5d99d8fac17.
+
+After copying only AR-37's clock correction, all34 focused cases pass:12 existing retirement races,
+four natural-expiry lock races, four future-expiry controls and14 unchanged ordinary-client
+overlap/bridge cases. Focused source lint, server typecheck and build pass. This qualifies the
+bounded clock correction selection, not SA-3-002, full corrected-source verification, production
+assurance or independent re-review. Progress stays42 while those gates remain reopened.
+
+### Native locked-admission expiry correction — 2026-11-06
+
+Two independent source-free full-application oracles plus a focused fixture observe genuine native
+client-credentials tokens and real PostgreSQL queueing. A first held binding read blocks initial
+authentication; a reserved observer connection witnesses that backend's COMMIT while the HTTP body
+is still incomplete. A second holder then blocks fresh post-upload authentication, and an ordered
+third read is proven queued behind that native waiter. Only after those observations does the test
+advance Date: exact native expiry for the authentication-wait case and exp+1 for the later dispatch
+case. Both expected a fixed401 with no invitation, eager user, budget consumption, business/final
+mutation audit or mail beyond the positive control.
+
+On uncorrected7d9bcf0d both cases returned201 and committed the invitation, proving the defect rather
+than a setup failure. After the correction both pass inside a corrected262-case combined selection
+(the prior253 plus4 proof-expiry,4 future-expiry and the2 new cases), zero failures or skips. The
+two files are sealed at:
+
+| New file | SHA256 |
+| --- | --- |
+| machine-token.expiry-lock.spec.test.ts | b3a4073e0ff5c215d4e2f3c1b2e1dabf22c2a464964fd6caf948018c82e7035c |
+| machine-token-expiry-lock-fixtures.ts | 7704763e8818e22a5ebb30a9ab481ad52e67b2010b1e974f1993888da3d8b74e |
+
+The correction adds only a readonly trusted `tokenExpiresAt` projection from validated native exp,
+one post-authority strict comparison before authentication returns, and one final comparison after
+both locked dispatch authorization checks immediately before the budget or any mutation. Expired
+dispatch returns the established fixed401, not the authorization403. Trusted expiry is preserved in
+the live principal handoff. No token model, raw token, wrapper, extra lookup, persisted identity
+field, callback, grace period or continuous-validity policy is added. Actual behavioral inventory
+446 preserves all 424 earlier files plus 20 independent specifications and 2 implementation suites.
+
+### Corrected-source gate attempts and observation corrections
+
+The first corrected full gate passes unit4,417, SDK610, CLI1,795, structure158 and 1,160/1,161
+integration tests, but one non-sealed hardening case exceeds its5-second commit-observation bound
+under full-suite load. That implementation test now accepts the already-proven authentication
+backend being idle with no open transaction, and uses a30-second failure bound; no assertion or
+product behavior changes. Replay of both upload/expiry-lock files passes4/4.
+
+The second gate again passes1,160/1,161. The remaining failure is the sealed delivery oracle's
+global before/after audit snapshot: the email service intentionally records its success audit
+without awaiting the insert, so a control invitation's late row appeared inside the rejected-only
+case. The product path returns before recording a success audit for rejected/unknown delivery.
+Under AR-39 the user approves counting `email.send.invitation` rows for that case's own invitation
+ID; sent still requires exactly1 and failed/unknown exactly0. The corrected file passes9/9 alone,
+lints, typechecks, and is re-sealed at
+286e8e81d553a212bf2697d6e776b1a5c4d5c52e6cec948963d51deb67d6f1e4; its prior seal is superseded with
+recorded provenance and every other invitation seal is unchanged. Neither failed attempt is treated
+as product failure or waiver evidence; the complete gate must pass on final bytes.
+
+### Corrected gate green and review closure — 2026-11-06
+
+The third strict root gate passes completely with all outer database/Redis URLs absent:
+structure158, server unit4,417, integration1,161 across124 files, E2E134, pentest334, SDK610,
+CLI1,795 and all four Turbo verify tasks. Browser regression passes135 with one worker, zero
+retries. Both original reviewers then close all three Major findings on the exact post-image bytes
+(RV-3-001 by ses_e5193bf83ffeGo3EUvuuetIOfQ; SA-3-001 and SA-3-002 by ses_e5193bf82ffekOs3gM1isyENOK),
+explicitly finding no fix-introduced Critical/Major defect and no third review required. The
+technical docs gain ADR-020 and updated security/API/data-model facts for the mounted lane. Clean
+committed provenance for registered production-security/protocol assurance and current-source CI
+remain pending; no completion, merge or release is claimed.
+
 Ordinary control inputs use only supported profile scope before the new scope exists. Real proof
 fixtures qualify both modern canonical and proven credentials over HTTP before adding the feature
 scope for the race. No fixture registers the missing feature or fabricates its authority. The full

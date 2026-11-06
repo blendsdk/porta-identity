@@ -16,6 +16,11 @@ expiry before deriving binding/version metadata. Missing/retired/wrong proof can
 generation. Preserve existing ordinary-client in-flight handoff assertions unchanged. ST-63 covers
 first binding, restoration and explicit overlapping-secret revocation races (PF-007).
 
+AR-37 also covers natural proof expiry during the native issuance parent-lock wait. The exact
+post-lock row predicate compares expiry with PostgreSQL clock_timestamp(), not transaction-start
+NOW(). This is current validity at that locked check, not a new requirement for validity through
+later commit/provider persistence/HTTP delivery. Keep ordinary credential selectors unchanged.
+
 Use native asynchronous extraTokenClaims for ClientCredentials only, never rewrite AccessToken
 or return a synthetic account identity to every client. A classified binding authorizes only its
 current active confidential control-plane client and the independently required admin:user:invite
@@ -33,6 +38,14 @@ Preserve the native provider's existing lookup clock tolerance. Feature authenti
 honor the native model's strict expiry/isValid state, not mistake a model returned within lookup
 grace for usable invitation authority. Expiry specifications observe native exp−iat=300 and strict
 isExpired state at the application boundary; faking Node time does not advance Redis's wall clock.
+
+Under AR-38, retain only finite trusted native exp as tokenExpiresAt on the existing request-only
+principal. Recheck strict exp > current epoch seconds after awaited authentication authority and
+again after all locked dispatch authority/reference checks, immediately before feature counter
+admission. Equality rejects with401. Preserve that primitive in the live principal handoff; never
+accept it from inputs or add it to the closed persisted identity namespace. No native model/raw
+token wrapper, extra lookup or store is introduced. Already admitted work need not remain unexpired
+through counter I/O, persistence, COMMIT or SMTP and is not cancelled on later expiry.
 
 The Admin provider boundary gains an explicit ClientCredentials lookup. Require exact, typed
 metadata and matching native client ID, account, binding, version, active state, canonical role,

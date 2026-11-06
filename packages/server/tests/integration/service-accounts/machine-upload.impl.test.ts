@@ -55,14 +55,22 @@ async function blockedBackend(blockerPid: number): Promise<number> {
   return pid;
 }
 
-/** Observe the initial authentication COMMIT before completing the request body. */
+/**
+ * Observe the end of the initial authentication transaction before completing the body.
+ *
+ * The connection pool may reuse the backend as soon as it becomes idle, so the last command is not
+ * required to remain `COMMIT`. A previously blocked authentication backend that is now idle with no
+ * open transaction has already finished its authentication work. The bound is generous because the
+ * full repository gate runs this file under heavy shared load; it only limits failure waiting.
+ */
 async function waitForAuthenticationCommit(pid: number): Promise<void> {
-  const deadline = performance.now() + 5000;
+  const deadline = performance.now() + 30000;
   while (performance.now() < deadline) {
-    const found = await getPool().query<{ committed: boolean }>(
-      `SELECT state = 'idle' AND query = 'COMMIT' AS committed FROM pg_stat_activity WHERE pid = $1`, [pid],
+    const found = await getPool().query<{ finished: boolean }>(
+      `SELECT (state = 'idle' AND (query = 'COMMIT' OR xact_start IS NULL)) AS finished
+         FROM pg_stat_activity WHERE pid = $1`, [pid],
     );
-    if (found.rows[0]?.committed) return;
+    if (found.rows[0]?.finished) return;
     await new Promise<void>((resolve) => setImmediate(resolve));
   }
   throw new Error('Initial authentication did not commit before body completion');

@@ -30,6 +30,14 @@ export const adminInvitationHandler: Middleware = async (ctx) => {
       await runDatabaseTransaction(async () => {
         const authority = await requireServiceAccountAuthority(machine.authority.publicClientId, machine.identity);
         await authorizeServiceAccountInvitation(authority, ctx.params.orgId, input);
+        // Both checks above may wait on locks or live references. Native expiry is a point-in-time
+        // admission decision, so recheck it here, under the same transaction, before the budget or
+        // any invitation, user, audit or delivery effect.
+        if (machine.tokenExpiresAt <= Date.now() / 1000) {
+          ctx.status = 401;
+          ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+          return;
+        }
         const limit = await limitServiceAccountInvitation(authority.clientId);
         if (!limit.allowed) {
           ctx.status = 429;
@@ -37,7 +45,8 @@ export const adminInvitationHandler: Middleware = async (ctx) => {
           ctx.body = { error: 'Too many invitation requests' };
           return;
         }
-        ctx.state.serviceAccount = { identity: machine.identity, authority };
+        ctx.state.serviceAccount = { identity: machine.identity, authority,
+          tokenExpiresAt: machine.tokenExpiresAt };
         const result = await inviteUser({
           organizationId: ctx.params.orgId, input,
           actor: { kind: 'service', clientId: authority.publicClientId, displayName: authority.clientName },

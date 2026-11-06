@@ -42,9 +42,11 @@ export async function serviceAccountExtraTokenClaims(ctx: KoaContextWithOIDC, to
       if (authority.clientId !== proof.clientId || authority.organizationId !== proof.organizationId) {
         throw new ServiceAccountAuthorizationError();
       }
+      // This transaction may have waited on the parent. PostgreSQL transaction-start time is
+      // therefore too old; compare the exact proven row against current database wall time.
       const secret = await getPool().query<{ id: string }>(
         `SELECT id FROM client_secrets WHERE id = $1 AND client_id = $2 AND status = 'active'
-         AND (expires_at IS NULL OR expires_at > NOW())`, [proof.secretId, authority.clientId],
+          AND (expires_at IS NULL OR expires_at > clock_timestamp())`, [proof.secretId, authority.clientId],
       );
       if (!secret.rows.length) throw new ServiceAccountAuthorizationError();
       return { [SERVICE_ACCOUNT_NAMESPACE]: {

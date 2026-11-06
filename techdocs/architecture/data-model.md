@@ -148,6 +148,11 @@ from adopting another account; it retains no deleted account email or account re
 internal reads distinguish this state from an absent binding and never replace corrupt JSON with
 defaults. Mutations use client→binding→account lock order through durable commit, not external mail.
 
+Native machine tokens use the provider's existing Redis `ClientCredentials` model. This feature adds
+no token table, secret-lineage store, refresh artifact or per-token policy copy. Each issuance
+revalidates the exact presented credential row, and a binding replacement or revocation changes the
+authorization version that later admission requires.
+
 Lifecycle provisioning inserts a new passwordless classified user and its reserved membership;
 it never adopts an existing address or shares an owner. The initial normalized email is immutable.
 Restoration keeps the same user and binding, reinstates only the reserved membership and retires

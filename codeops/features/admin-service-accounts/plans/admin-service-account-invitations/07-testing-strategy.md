@@ -127,6 +127,15 @@ files and may inspect implementation. The parent updates each task immediately, 
 
 ## Commands and evidence
 
+Review-correction regressions extend the existing Phase3 contracts without changing any sealed
+assertion: credential-proof.expiry.spec.test.ts observes natural modern/legacy Basic/POST expiry
+while native issuance waits for its parent; credential-proof.unexpired.spec.test.ts separately
+retains future-expiry success controls alongside existing NULL controls. The full-app
+machine-token.expiry-lock.spec.test.ts observes expiry at post-upload authentication and later
+locked dispatch admission, including exact equality and unchanged counter/audit/mail baselines.
+Each new oracle is independently source-free, run against the uncorrected boundary, then sealed
+before its corresponding correction qualifies. A construction failure is not an exploit result.
+
 Start `pnpm test:changed`; if none selected, use the smallest relevant project. Per checkpoint,
 run affected workspace lint/typecheck/build plus `pnpm test:structure`; use targeted Vitest files
 with server --project unit/integration/e2e/pentest as appropriate. Authentication phases require
