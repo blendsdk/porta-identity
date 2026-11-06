@@ -119,7 +119,10 @@ export class PackedServiceAccountInvitationLiveDriver {
     const controlPlaneOrganization = requireUuid(this.entity('super-admin'), 'control plane');
     const applicationId = requireUuid(this.entity('porta-admin'), 'application');
     const email = `service-account-${randomUUID()}@test-harness.local`;
-    if (!EMAIL_PATTERN.test(email)) throw new Error('generated target is not an address');
+    const controlEmail = `service-account-control-${randomUUID()}@test-harness.local`;
+    if (!EMAIL_PATTERN.test(email) || !EMAIL_PATTERN.test(controlEmail)) {
+      throw new Error('generated target is not an address');
+    }
     const targetDigest = digest(`${organizationId}:${email}`);
     const clientName = `Service Account Journey ${randomUUID()}`;
     let createdClientId: string | undefined;
@@ -215,7 +218,7 @@ export class PackedServiceAccountInvitationLiveDriver {
       const controlStatus = await this.runControlProbe({
         token: invitation.token,
         organizationId,
-        email,
+        email: controlEmail,
       });
 
       const revocation = await api.delete(
@@ -252,7 +255,9 @@ export class PackedServiceAccountInvitationLiveDriver {
       });
       const clientRemoved = removed.status() === 204;
       createdClientId = undefined;
-      invitationRemoved = this.removeInvitation(organizationId, email);
+      invitationRemoved =
+        this.removeInvitation(organizationId, email) &&
+        this.removeInvitation(organizationId, controlEmail);
       const probesRemoved = this.removeProbes();
 
       return {
@@ -292,8 +297,9 @@ export class PackedServiceAccountInvitationLiveDriver {
           .catch(() => undefined);
       }
       if (!invitationRemoved && createdClientId === undefined) {
-        // The invitation is target-owned; remove it even when the client path failed.
+        // Invitations are target-owned; remove both even when the client path failed.
         this.removeInvitation(organizationId, email);
+        this.removeInvitation(organizationId, controlEmail);
       }
       this.removeProbes();
     }
