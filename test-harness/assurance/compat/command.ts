@@ -539,7 +539,11 @@ export async function runPackedCompatibilityFoundation(
           Reflect.get(journey, 'outcome') === 'product-failure') {
         exitCode = 20;
       }
-    } catch {
+    } catch (error) {
+      // Validation and observation messages are fixed internal text without evidence values.
+      process.stderr.write(
+        `ASSURANCE_COMPAT_EVIDENCE_FAILED: ${error instanceof Error ? error.message : 'invalid evidence'}\n`,
+      );
       exitCode = 30;
       stage = 'surfaces';
     }
