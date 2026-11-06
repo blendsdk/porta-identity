@@ -1,6 +1,6 @@
 # Phase4 Quality Review: SDK, CLI and Packed Journey
 
-> **Status**: Blocked — critical evidence-assembly defect and major evidence gaps; fixes in review
+> **Status**: All findings fixed; final authoritative run and CI pending
 > **Baseline tree**: 3adb8ffe2feae9404ed9b0cd9d4c9ee40ad79643
 > **Reviewed head**: 58d480f6d893527c57cd77d2e7ced0cde74d9a47
 > **CodeOps Artifact Schema**: 1
@@ -35,7 +35,8 @@ public/maintainer documentation. The server one-operation machine lane is unchan
 
 ## Verification after correction
 
-SDK670, CLI1,834, packed validator11, assurance lint and typecheck all pass. The authoritative
-compatibility selector, docs build and final CI must pass on the corrected committed bytes before
-this review can close. A single scoped re-review of P4-01–06 / SA-4-001–006 is required; minors are
-fixed in the same batch and listed for confirmation.
+SDK670, CLI1,834, packed validator11, assurance lint and typecheck, structure158 and affected
+checks pass. The first authoritative selector run passes, and the scoped re-review closed every
+Critical/Major plus all minors except failure-path cleanup. That residual (P4-07/SA-4-003) now
+removes client, permanent account and both invitations unconditionally in `finally`; the final
+selector run and current-source CI must pass on the corrected bytes before this review closes.

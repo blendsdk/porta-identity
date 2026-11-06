@@ -620,7 +620,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(clientServiceAccountCommand)
         .demandCommand(
           1,
-          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret',
+          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret, service-account',
         )
     );
   },

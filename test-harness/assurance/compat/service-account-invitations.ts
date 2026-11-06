@@ -406,6 +406,8 @@ export interface PackedServiceAccountInvitationJourneyFacts {
   readonly deliveryOutcome: 'sent' | 'failed' | 'unknown';
   /** Owned client deletion succeeded. */
   readonly clientRemoved: boolean;
+  /** Owned permanent account row removal succeeded. */
+  readonly accountRemoved: boolean;
   /** Owned invitation row removal succeeded. */
   readonly invitationRemoved: boolean;
   /** All owner-only probe files were removed. */
@@ -437,13 +439,17 @@ function requireObservedJourney(facts: PackedServiceAccountInvitationJourneyFact
     facts.invitationCountAfterAttempt === facts.invitationCountAfterCreate &&
     facts.replayPending &&
     facts.replayRecordDigest === facts.recordDigest;
-  if (!denied && facts.replayStatus !== 201) {
+  if (facts.replayStatus === 201) {
+    throw new Error('packed replay was authorized after revocation');
+  }
+  if (!denied) {
     throw new Error(`packed replay was not a definite denial (${facts.replayStatus})`);
   }
-  if (!unchanged && facts.replayStatus !== 201) {
+  if (!unchanged) {
     throw new Error('packed replay denial changed durable state');
   }
-  if (!facts.clientRemoved || !facts.invitationRemoved || !facts.probesRemoved) {
+  if (!facts.clientRemoved || !facts.accountRemoved || !facts.invitationRemoved ||
+      !facts.probesRemoved) {
     throw new Error('packed journey cleanup is incomplete');
   }
 }

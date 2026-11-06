@@ -126,7 +126,9 @@ export class PackedServiceAccountInvitationLiveDriver {
     const targetDigest = digest(`${organizationId}:${email}`);
     const clientName = `Service Account Journey ${randomUUID()}`;
     let createdClientId: string | undefined;
+    let serviceAccountId: string | undefined;
     let invitationRemoved = false;
+    let accountRemoved = false;
 
     try {
       const created = await api.post(`${this.baseUrl}/api/admin/clients`, {
@@ -161,7 +163,7 @@ export class PackedServiceAccountInvitationLiveDriver {
       );
       if (bindingResponse.status() !== 201) throw new Error('owned binding was not created');
       const binding = this.readDataRecord(await bindingResponse.json(), 'binding create');
-      const serviceAccountId = requireUuid(
+      serviceAccountId = requireUuid(
         requireString(binding.serviceAccountId, 'binding account'),
         'binding account',
       );
@@ -255,6 +257,7 @@ export class PackedServiceAccountInvitationLiveDriver {
       });
       const clientRemoved = removed.status() === 204;
       createdClientId = undefined;
+      accountRemoved = clientRemoved && this.removeServiceAccount(serviceAccountId);
       invitationRemoved =
         this.removeInvitation(organizationId, email) &&
         this.removeInvitation(organizationId, controlEmail);
@@ -285,6 +288,7 @@ export class PackedServiceAccountInvitationLiveDriver {
         targetDigest,
         deliveryOutcome: invitation.deliveryOutcome,
         clientRemoved,
+        accountRemoved,
         invitationRemoved,
         probesRemoved,
       };
@@ -296,10 +300,14 @@ export class PackedServiceAccountInvitationLiveDriver {
           })
           .catch(() => undefined);
       }
-      if (!invitationRemoved && createdClientId === undefined) {
-        // Invitations are target-owned; remove both even when the client path failed.
+      // Target-owned invitations and the permanent account are removed even when a later step
+      // throws; cleanup evidence is only considered complete after these attempts.
+      if (!invitationRemoved) {
         this.removeInvitation(organizationId, email);
         this.removeInvitation(organizationId, controlEmail);
+      }
+      if (!accountRemoved && serviceAccountId !== undefined) {
+        this.removeServiceAccount(serviceAccountId);
       }
       this.removeProbes();
     }
@@ -693,6 +701,20 @@ try {
           AND lower(email) = lower('${email}')`,
     );
     return this.observeInvitationCount(organizationId, email) === 0;
+  }
+
+  /** Remove the owned permanent account row and report whether it is gone. */
+  private removeServiceAccount(accountId: string): boolean {
+    this.psql(
+      this.postgresContainer(),
+      `DELETE FROM users WHERE id = '${requireUuid(accountId, 'service account')}'
+         AND is_service_account = true`,
+    );
+    const value = this.psql(
+      this.postgresContainer(),
+      `SELECT count(*) FROM users WHERE id = '${requireUuid(accountId, 'service account')}'`,
+    ).trim();
+    return value === '0';
   }
 
   /** Run one count query and require a safe integer. */

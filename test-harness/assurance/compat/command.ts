@@ -518,7 +518,8 @@ export async function runPackedCompatibilityFoundation(
         cleanup: {
           terminalOutcome: 'success',
           ownedFixtureDataRemoved:
-            serviceAccountFacts.clientRemoved && serviceAccountFacts.invitationRemoved,
+            serviceAccountFacts.clientRemoved && serviceAccountFacts.accountRemoved &&
+            serviceAccountFacts.invitationRemoved,
           consumerRemoved,
           buildWorktreeRemoved: true,
           secretMaterialRemoved:
