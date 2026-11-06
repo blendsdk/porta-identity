@@ -789,6 +789,22 @@ technical docs gain ADR-020 and updated security/API/data-model facts for the mo
 committed provenance for registered production-security/protocol assurance and current-source CI
 remain pending; no completion, merge or release is claimed.
 
+Corrected source checkpoint ac83422bc5898808e17fd4389d9ac8f858b613ca is committed and pushed; the
+owned verification worktree is clean at that exact tree. Six Phase3 tasks are promoted, taking the
+checklist to48/65. Registered production-security harness assurance is then run from the clean
+checkpoint with the AR-36 short temporary root. Its exit taxonomy is recorded verbatim: zero means
+qualified; the accepted forty status is valid only for the previously recorded forwarding-context
+observer gaps, and any other nonzero remains terminal. Protocol production-security, docs build,
+runtime teardown and current-source CI follow before Phase3 can close.
+
+CI on that checkpoint passes UI, public documentation, production Docker build, dependency audit and
+the retained OIDC harness, but its Verify Monorepo job reports one structure failure: two new
+pure-fragment links in techdocs/architecture/security.md resolve to a non-existent
+architecture/index.md under the repository's stricter link checker. The links are corrected to the
+file-qualified `security.md#bound-machine-invitations` form; local structure tests pass. This is a
+documentation-link defect only, with no executable-source delta; the follow-up commit and its CI
+are recorded separately rather than treating the failed checkpoint as green.
+
 Ordinary control inputs use only supported profile scope before the new scope exists. Real proof
 fixtures qualify both modern canonical and proven credentials over HTTP before adding the feature
 scope for the race. No fixture registers the missing feature or fabricates its authority. The full

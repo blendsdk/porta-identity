@@ -175,7 +175,7 @@ revealing lookup details.
 One exception is deliberate: the real invitation POST accepts a native opaque `ClientCredentials`
 token from a permanently bound service account. That lane never resolves to an `AccessToken`, never
 sets a human `adminUser`, and grants no other Admin operation. See
-[bound machine invitations](#bound-machine-invitations).
+[bound machine invitations](security.md#bound-machine-invitations).
 
 ### Admin mutation request admission
 
@@ -349,7 +349,7 @@ orders its locks client→binding→organization→owned user and commits marker
 together. Authorization failures use fixed403 responses without internal identity details.
 
 These lifecycle guards do not themselves grant machine Admin authentication. The invitation-only
-native lane is described under [bound machine invitations](#bound-machine-invitations); it reuses
+native lane is described under [bound machine invitations](security.md#bound-machine-invitations); it reuses
 these binding, classification and revocation guards and adds no broader machine capability.
 See [ADR-019](../decisions/index.md#adr-019-live-service-lifecycle-authority) and the
 [lifecycle service](../../packages/server/src/service-accounts/service.ts).
