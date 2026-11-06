@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ All40 decisions resolved; Phase3 assurance green, final CI/cleanup pending
-> **Last Updated**: 2026-11-06 03:20
+> **Status**: ✅ All41 decisions resolved; Phase4 implementation and packed assurance in progress
+> **Last Updated**: 2026-11-06 09:22
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -69,6 +69,7 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 38 | Runtime / native expiry at locked admission | SA-3-002 can retain a pre-wait validity result after token expiry | Trusted native exp on existing request-only principal; strict post-wait and final-admission checks | AI — delegated by --auto-design; independently challenged bounded mechanism, no wrapper/store/new policy. | ✅ Resolved |
 | 39 | Runtime / sealed delivery audit observation | Global before/after audit snapshot can include another invitation's unawaited write | Count `email.send.invitation` rows for this case's own invitationId; same 1/0 invariant | User explicitly approved the named file/observation change, reseal and gate rerun; no product change. | ✅ Resolved |
 | 40 | Runtime / sealed unencodable-request fixture | First overflow depth of the test's own stack is encodable in the server handler on CI | Grow the same nested request to the largest failing power-of-two depth within 100 KiB | User explicitly approved the named file/input-construction change; assertion 400/no-effects unchanged. | ✅ Resolved |
+| 41 | Runtime / packed oracle type predicate | Three `assert.throws(..., undefined, label)` calls do not satisfy Node `AssertPredicate` | Use `Error` as the predicate; validation must still throw | User explicitly approved the type-only predicate correction; assertion meaning unchanged. | ✅ Resolved |
 
 ## Initial evidence
 
@@ -387,6 +388,19 @@ oracle rewrite or weakened assertion is authorized.
 - **Reopen triggers:** Runner transaction behavior differs, concurrent regression cannot establish
   its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
   a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
+
+## AR-41 — User-approved packed oracle predicate typing
+
+- **Authority:** User selected “Fix predicates (Recommended)” after the exact file, three call sites
+  and the type-only nature were shown.
+- **Evidence:** The assurance typecheck rejects `assert.throws(fn, undefined, label)` because the
+  second argument must be an `AssertPredicate`. Runtime behavior already asserted that validation
+  throws.
+- **Decision:** Pass `Error` as the predicate at the three call sites. Every mutation must still
+  throw an `Error`; no accepted evidence or rejection rule changes. The file is re-sealed with a
+  supersession record; assurance lint and types pass and the validator suite passes11/11.
+- **Boundary:** Test-only typing correction; no product, assertion meaning, other oracle or policy
+  change.
 
 ## AR-40 — User-approved unencodable-request fixture depth
 

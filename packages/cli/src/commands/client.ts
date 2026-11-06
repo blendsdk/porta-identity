@@ -31,6 +31,7 @@ import { printTable, printJson, success, warn, info, formatDate } from '../outpu
 import { confirm } from '../prompt.js';
 import { parseLoginMethodsFlag, parseCommaSeparated } from '../parsers.js';
 import { clientSecretCommand } from './client-secret.js';
+import { clientServiceAccountCommand } from './client-service-account.js';
 
 // ---------------------------------------------------------------------------
 // Argument type extensions
@@ -615,6 +616,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
         // ── nested subcommand groups ────────────────────────────────────
         .command(clientSecretCommand)
+        .command(clientServiceAccountCommand)
         .demandCommand(
           1,
           'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret',

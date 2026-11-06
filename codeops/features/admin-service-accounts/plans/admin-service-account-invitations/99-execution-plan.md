@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-06 08:43
-> **Progress**: 50/65 tasks (77%)
+> **Last Updated**: 2026-11-06 09:22
+> **Progress**: 58/65 tasks (89%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -192,7 +192,7 @@ or ordinary packed journey as direct proof of new machine invitation authority.
 
 ## Phase 4: SDK, CLI and completion qualification
 
-> **Phase baseline tree**: record at phase entry
+> **Phase baseline tree**: 3adb8ffe2feae9404ed9b0cd9d4c9ee40ad79643
 > **Lenses**: security, api-surface, concurrency
 > **Reasoning**: max — public compatibility, complete package provenance and final acceptance
 
@@ -204,19 +204,19 @@ this feature roadmap/evidence. Portfolio remains deferred; no release/merge/issu
 
 ### Session 4.1 — Specifications before code
 
-- [ ] 4.1.1 [spec-author] Write SDK exact request/response/traversal/type contract oracles — ST-47/48/54.
-- [ ] 4.1.2 [spec-author] Write CLI input/output/authentication/error/compatibility oracles — ST-49–54/59.
-- [ ] 4.1.3 [spec-author] Write the direct packed machine journey/evidence oracle before its driver — test-harness/assurance/tests/service-account-packed.spec.test.ts; ST-57 and03-04, independently observing durable invitation and post-revocation denial.
-- [ ] 4.1.4 Observe intended red without changing existing SDK/CLI behavior or frozen expectations.
+- [x] 4.1.1 [spec-author] Write SDK exact request/response/traversal/type contract oracles — ST-47/48/54. ✅ (completed: 2026-11-06 09:22; three source-free files/61 cases sealed; intended red55 missing-method failures with5 existing/type controls passing and10 expected typecheck errors; lint passes; type oracle registered and inventory60)
+- [x] 4.1.2 [spec-author] Write CLI input/output/authentication/error/compatibility oracles — ST-49–54/59. ✅ (completed: 2026-11-06 09:22; two source-free files/39 cases sealed; intended red38 command/input failures with1 ordinary control passing; CLI typecheck already passes; lint passes; inventory125)
+- [x] 4.1.3 [spec-author] Write the direct packed machine journey/evidence oracle before its driver — test-harness/assurance/tests/service-account-packed.spec.test.ts; ST-57 and03-04, independently observing durable invitation and post-revocation denial. ✅ (completed: 2026-11-06 09:22; source-free700-line/11-case oracle sealed; intended red module absence; user-approved type-only predicate correction resealed; validator now passes11/11)
+- [x] 4.1.4 Observe intended red without changing existing SDK/CLI behavior or frozen expectations. ✅ (completed: 2026-11-06 09:22; SDK55 failures/5 controls, CLI38/1, packed module absent; zero fixture failures; ordinary SDK610 and CLI1,795 baselines unchanged)
 
 ### Session 4.2 — Implementation and green
 
-- [ ] 4.2.1 Add SDK public binding/input types and exports — sdk/src/types/client-service-accounts.ts and barrels.
-- [ ] 4.2.2 Add guarded client get/set/revoke methods and safe path handling — sdk/src/domains/clients.ts and focused helper.
-- [ ] 4.2.3 Add bounded UTF-8 policy input/pre-client validation — focused CLI service-account input module.
-- [ ] 4.2.4 Add direct conventional CLI get/set/revoke, safe JSON/human output and client registration — cli/src/commands/client-service-account.ts and client.ts.
-- [ ] 4.2.5 Deliver the focused packed SDK machine journey and evidence collector/validator within the existing compatibility selector, preserving credential-isolation evidence and cleanup — assurance/compat/service-account-invitations-live.ts, service-account-invitations.ts and command.ts; ST-57.
-- [ ] 4.2.6 Verify all SDK/CLI/packed-driver oracles green, actual inventories and affected workspace checks.
+- [x] 4.2.1 Add SDK public binding/input types and exports — sdk/src/types/client-service-accounts.ts and barrels. ✅ (completed: 2026-11-06 09:22; documented binding/target/role/claim/input types exported from the types barrel and root; type oracle green)
+- [x] 4.2.2 Add guarded client get/set/revoke methods and safe path handling — sdk/src/domains/clients.ts and focused helper. ✅ (completed: 2026-11-06 09:22; GET/PUT/DELETE with encoded single segment, dot-segment rejection, closed response validators and unwrapped data;61 oracle cases green; SDK full670 pass; lint/typecheck/build pass)
+- [x] 4.2.3 Add bounded UTF-8 policy input/pre-client validation — focused CLI service-account input module. ✅ (completed: 2026-11-06 09:22; O_NONBLOCK regular-file read,100 KiB bound, fatal UTF-8, strict JSON shape/UUID/email/count/duplicate checks and LocalInputError before client construction;23 input cases green)
+- [x] 4.2.4 Add direct conventional CLI get/set/revoke, safe JSON/human output and client registration — cli/src/commands/client-service-account.ts and client.ts. ✅ (completed: 2026-11-06 09:22; one direct mutation/no preflight, JSON/human sanitized output, fixed revoke confirmation, shared non-throwing error classification and parser exit ownership;39 cases and CLI full1,834 pass; lint/typecheck pass)
+- [~] 4.2.5 Deliver the focused packed SDK machine journey and evidence collector/validator within the existing compatibility selector, preserving credential-isolation evidence and cleanup — assurance/compat/service-account-invitations-live.ts, service-account-invitations.ts and command.ts; ST-57. ⏳ (implemented: 2026-11-06 09:22; closed validator11/11, live driver and compatibility wiring implemented with direct PostgreSQL observation; assurance lint/types pass; live compatibility selector run, product exit mapping and cleanup evidence pending)
+- [~] 4.2.6 Verify all SDK/CLI/packed-driver oracles green, actual inventories and affected workspace checks. ⏳ (in progress: 2026-11-06 09:22; SDK670, CLI1,834 and packed validator11 green; structure/affected checks running; live packed journey still pending in4.2.5)
 
 ### Session 4.3 — Hardening and final evidence
 

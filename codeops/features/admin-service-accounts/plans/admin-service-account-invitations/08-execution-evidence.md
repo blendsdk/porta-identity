@@ -805,6 +805,29 @@ file-qualified `security.md#bound-machine-invitations` form; local structure tes
 documentation-link defect only, with no executable-source delta; the follow-up commit and its CI
 are recorded separately rather than treating the failed checkpoint as green.
 
+
+### Phase4 SDK/CLI/packed oracles and implementation — 2026-11-06
+
+Six source-free Phase4 oracle files were sealed before implementation: three SDK files (61 cases),
+two CLI files (39 cases) and the packed evidence oracle (11 cases). Intended red was observed
+without editing existing expectations: SDK55 missing-method failures with5 existing/type controls
+passing and10 expected typecheck errors; CLI38 command/input failures with one ordinary control
+passing; the packed oracle failed only because its validator module was absent.
+
+The SDK now exports documented binding/target/role/claim/input types and guarded get/set/revoke
+methods using one encoded segment, dot-segment rejection and closed response validators. The CLI
+adds bounded O_NONBLOCK regular-file reading, fatal UTF-8, strict policy/UUID/email/count/duplicate
+validation before SDK construction, direct get/set/revoke commands with sanitized human output and
+exact JSON results, and shared non-throwing error classification so parser ownership stays with the
+executable. The packed journey validator is closed and passes11/11; the live driver uses public
+management HTTP, a prepared packed provider, a short-lived replay token and a direct PostgreSQL
+read, then removes probes and the owned client in `finally`.
+
+Verification so far: SDK full670, CLI full1,834, SDK/CLI lint/typecheck/build, assurance lint and
+typecheck and the packed validator11 all pass. Actual inventories are SDK60 and CLI125. Live
+compatibility-selector execution, docs, independent review, production/packed assurance and final
+CI remain pending; the typecheck-only predicate correction is recorded as AR-41.
+
 ### Clean-source assurance evidence
 
 Registered `pnpm assurance:harness --project security --profile production-security` runs from the

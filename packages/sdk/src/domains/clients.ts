@@ -12,12 +12,15 @@ import type {
   ClientSecret,
   GenerateSecretInput,
   GeneratedSecret,
+  ClientServiceAccount,
+  SetClientServiceAccountInput,
   ListParams,
   PaginatedResponse,
   ETagResponse,
   HistoryParams,
   HistoryResult,
 } from '../types/index.js';
+import { PortaError } from '../errors/index.js';
 import { listAll } from '../pagination/index.js';
 import {
   etagHeaders,
@@ -77,8 +80,7 @@ function isClient(value: unknown): value is Client {
   );
 }
 
-/** Validate secret metadata that never contains plaintext. */
-function isClientSecret(value: unknown): value is ClientSecret {
+/** Validate secret metadata that never contains plaintext. */function isClientSecret(value: unknown): value is ClientSecret {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
@@ -104,6 +106,61 @@ function isGeneratedSecret(value: unknown): value is GeneratedSecret {
   );
 }
 
+/** Validate one application-qualified role reference in a binding policy. */
+function isServiceAccountRole(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.applicationId === 'string' &&
+    typeof value.roleId === 'string'
+  );
+}
+
+/** Validate one application-qualified claim-definition reference in a binding policy. */
+function isServiceAccountClaim(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.applicationId === 'string' &&
+    typeof value.claimDefinitionId === 'string'
+  );
+}
+
+/** Validate one complete organization target with both assignment collections. */
+function isServiceAccountTarget(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    typeof value.organizationId === 'string' &&
+    Array.isArray(value.allowedRoles) &&
+    value.allowedRoles.every(isServiceAccountRole) &&
+    Array.isArray(value.allowedClaimDefinitions) &&
+    value.allowedClaimDefinitions.every(isServiceAccountClaim)
+  );
+}
+
+/** Validate the complete secret-free binding returned by reads and writes. */
+function isClientServiceAccount(value: unknown): value is ClientServiceAccount {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.clientId === 'string' &&
+    typeof value.serviceAccountId === 'string' &&
+    typeof value.accountEmail === 'string' &&
+    (value.status === 'active' || value.status === 'revoked') &&
+    Array.isArray(value.targets) &&
+    value.targets.every(isServiceAccountTarget) &&
+    typeof value.createdAt === 'string' &&
+    typeof value.updatedAt === 'string'
+  );
+}
+
+/** Encode one client identifier and reject dot segments that fetch would normalize. */
+function serviceAccountSegment(id: string): string {
+  const encoded = encodeURIComponent(id);
+  if (encoded === '.' || encoded === '..') {
+    throw new PortaError('Service-account identifiers are invalid.');
+  }
+  return encoded;
+}
+
 /** Validate one client history entry. */
 interface ClientCreateResult {
   /** Validated client projection. */
@@ -114,8 +171,7 @@ interface ClientCreateResult {
 
 /** Validate the relationship between client type and its optional one-time secret. */
 function isClientCreateResult(value: unknown): value is ClientCreateResult {
-  if (!isRecord(value) || !isClient(value.client)) return false;
-  if (value.client.clientType === 'confidential') return isGeneratedSecret(value.secret);
+  if (!isRecord(value) || !isClient(value.client)) return false;  if (value.client.clientType === 'confidential') return isGeneratedSecret(value.secret);
   return value.secret === undefined || value.secret === null;
 }
 
@@ -144,6 +200,15 @@ export interface ClientsDomain {
   generateSecret(clientId: string, input?: GenerateSecretInput): Promise<GeneratedSecret>;
   /** Permanently delete one secret through the retained parent-qualified route. */
   revokeSecret(clientId: string, secretId: string): Promise<void>;
+  /** Read the secret-free service-account binding for one client. */
+  getServiceAccount(id: string): Promise<ClientServiceAccount>;
+  /** Replace the complete binding policy for one client. */
+  setServiceAccount(
+    id: string,
+    input: SetClientServiceAccountInput,
+  ): Promise<ClientServiceAccount>;
+  /** Revoke the binding while keeping its permanent ownership history. */
+  revokeServiceAccount(id: string): Promise<void>;
 }
 
 /** Create the client operations backed by one HTTP transport. */
@@ -233,6 +298,30 @@ export function createClientsDomain(transport: HttpTransport): ClientsDomain {
       await transport.request({
         method: 'POST',
         path: `${base}/${clientId}/secrets/${secretId}/revoke`,
+      });
+    },
+
+    async getServiceAccount(id) {
+      const res = await transport.request({
+        method: 'GET',
+        path: `${base}/${serviceAccountSegment(id)}/service-account`,
+      });
+      return requireData(res.body, isClientServiceAccount);
+    },
+
+    async setServiceAccount(id, input) {
+      const res = await transport.request({
+        method: 'PUT',
+        path: `${base}/${serviceAccountSegment(id)}/service-account`,
+        body: input,
+      });
+      return requireData(res.body, isClientServiceAccount);
+    },
+
+    async revokeServiceAccount(id) {
+      await transport.request({
+        method: 'DELETE',
+        path: `${base}/${serviceAccountSegment(id)}/service-account`,
       });
     },
   };
