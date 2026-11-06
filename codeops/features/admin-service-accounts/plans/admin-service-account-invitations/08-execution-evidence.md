@@ -826,6 +826,17 @@ same nested shape and growing it to the largest failing power-of-two depth withi
 56bf32ecd03f4f9f52de4fae2f15d0767eaaf794474d30a8c93cc3ea1792b257 with the prior seal superseded.
 No product byte or assertion changed; final CI must pass on the corrected test bytes.
 
+Final CI run 42181182909 on 9a2c3360 succeeds for all six jobs: Verify Monorepo (structure, lint,
+typechecks, full server/SDK/CLI suites, pentest, E2E), UI Tests, Public Documentation, Production
+Docker Build, Production Dependency Audit and the retained OIDC Harness. This is the authoritative
+current-source gate; earlier checkpoint failures are not reused as evidence.
+
+Cleanup removes exactly the three recorded owned containers (standard-port PostgreSQL, Redis and
+MailHog), the AR-36 short temporary root, one completed assurance run directory and27 completed raw
+logs. `docker ps -a`, networks and volumes show no remaining task-owned resource; unrelated operator
+containers and the unread untracked pending-invitations.sql are preserved. The owned verification
+worktree, its dependencies and small seals/provenance remain the continuing feature workspace.
+
 Ordinary control inputs use only supported profile scope before the new scope exists. Real proof
 fixtures qualify both modern canonical and proven credentials over HTTP before adding the feature
 scope for the race. No fixture registers the missing feature or fabricates its authority. The full

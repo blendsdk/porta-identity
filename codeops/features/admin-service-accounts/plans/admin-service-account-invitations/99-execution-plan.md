@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-06 02:24
-> **Progress**: 48/65 tasks (74%)
+> **Last Updated**: 2026-11-06 08:43
+> **Progress**: 50/65 tasks (77%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -183,9 +183,9 @@ helpers are focused test construction, not another runner or injectable authorit
 ### Session 3.3 — Hardening and checkpoint
 
 - [x] 3.3.1 Add implementation error/corrupt-metadata/lock/counter tests and verify real overlapping commit/revocation cases. ✅ (completed: 2026-11-06 02:24;17 implementation cases plus new natural-expiry lock/evidence actually observe initial authentication commit while body upload is incomplete, then revocation/expiry denial; corrected combined262 cases and strict root gate pass; one load-only 5-second observation bound was hardened without assertion change; inventory446; no production hook)
-- [!] 3.3.2 Run affected checks, full applicable pentest and production-security/protocol selections from clean source; record direct versus adjunct evidence. Blocked: clean committed corrected source required for registered assurance provenance. (corrected strict root and browser gates pass; production-security/protocol and current-source CI not started)
+- [x] 3.3.2 Run affected checks, full applicable pentest and production-security/protocol selections from clean source; record direct versus adjunct evidence. ✅ (completed: 2026-11-06 08:43; strict local root structure158/unit4,417/integration1,161/E2E134/pentest334/SDK610/CLI1,795 plus browser135/retries0; registered security production-security exit0 with7/4/17/5 cases and11 exposure passes, zero product/incomplete/execution failures; protocol exit0 15/15; executable-identical assured tree recorded; final CI42181182909 on9a2c3360 all six jobs success; no gap waived)
 - [x] 3.3.3 Run independent correctness/security/concurrency review and required scoped fixes/re-review. ✅ (completed: 2026-11-06 02:24; original correctness/security reviews produced RV-3-001 and SA-3-001/SA-3-002; AR-37/38 corrections verified after independent red; one scoped re-review closed all three with no fix-introduced Critical/Major and no third review; AR-39 records the user-approved sealed delivery-audit observation correction; static closure does not qualify assurance/CI)
-- [~] 3.3.4 Update incremental architecture docs and record the verified native/Admin source checkpoint and cleanup. ⏳ (implemented: 2026-11-06 02:24; ADR-020 plus security/API/data-model facts updated; clean corrected checkpoint commit, assurance, docs build and owned runtime cleanup pending)
+- [x] 3.3.4 Update incremental architecture docs and record the verified native/Admin source checkpoint and cleanup. ✅ (completed: 2026-11-06 08:43; ADR-020 plus security/API/data-model facts, docs build pass; corrected checkpoint ac83422bc5898808e17fd4389d9ac8f858b613ca and final9a2c33602c4f9019cbe4b32ccfccfee441cbd3b4; all three owned containers, AR-36 short temp, one assurance run dir and27 completed logs removed with clean docker state; unrelated resources/SQL preserved)
 
 **Verify:**07 Phase3 selections and mandatory assurance gates. Do not credit the model diagnostic
 or ordinary packed journey as direct proof of new machine invitation authority.
