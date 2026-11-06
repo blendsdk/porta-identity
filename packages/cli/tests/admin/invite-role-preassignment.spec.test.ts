@@ -341,6 +341,36 @@ describe('terminal invitation role pre-assignment', () => {
     await expect(operation).resolves.toEqual({ kind: 'cancel' });
   });
 
+  it('should focus Reload after a catalog failure', async () => {
+    const root = createApplication({ viewport: { width: 80, height: 24 } });
+    const source: RoleSource = {
+      async listApplications() {
+        return { kind: 'failure', failure: 'unavailable' };
+      },
+      async listRoles() {
+        return { kind: 'failure', failure: 'unavailable' };
+      },
+    };
+    const operation = showInviteUserDialog(
+      root,
+      new AbortController().signal,
+      async () => ({ kind: 'failure', failure: 'unavailable' }),
+      source,
+    );
+    await settle();
+    click(root, button(root, 'Select…'));
+    await settle();
+
+    const focused = root.loop.getFocused();
+    expect(focused).toBeInstanceOf(Button);
+    expect((focused as Button).activation.label).toBe('Reload');
+
+    root.loop.endModal('cancel');
+    await settle();
+    root.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
+  });
+
   it('should reveal a role beyond the first viewport in a large catalog', async () => {
     const root = createApplication({ viewport: { width: 80, height: 24 } });
     const roles = Array.from({ length: 25 }, (_unused, index) => roleAt(index + 1));

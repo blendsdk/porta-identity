@@ -438,7 +438,7 @@ export function createAdminUserController(
   };
 
   /** Builds the invitation role source only when every required capability is live. */
-  const inviteRoleSource = (): AdminInviteRoleSource | undefined => {
+  const inviteRoleSource = (signal: AbortSignal): AdminInviteRoleSource | undefined => {
     const current = options.readState();
     if (
       current.kind !== 'authenticated' ||
@@ -451,15 +451,21 @@ export function createAdminUserController(
     const applications = options.readApplicationOperations?.();
     const rbac = options.readRbacOperations?.();
     if (!applications || !rbac) return undefined;
+    const sessionEpoch = currentSessionEpoch;
+    /** Only the session that opened this dialog may turn a late denial into reauthentication. */
+    const ownsSession = (readSignal?: AbortSignal): boolean =>
+      !signal.aborted &&
+      readSignal?.aborted !== true &&
+      currentSessionEpoch === sessionEpoch;
     return {
       listApplications: async () => {
         const result = await applications.listAll();
-        if (result.kind === 'session-invalid') sessionInvalid();
+        if (result.kind === 'session-invalid' && ownsSession()) sessionInvalid();
         return result;
       },
-      listRoles: async (id, signal) => {
-        const result = await rbac.listRoles(id, signal);
-        if (result.kind === 'session-invalid') sessionInvalid();
+      listRoles: async (id, readSignal) => {
+        const result = await rbac.listRoles(id, readSignal);
+        if (result.kind === 'session-invalid' && ownsSession(readSignal)) sessionInvalid();
         return result;
       },
     };
@@ -806,7 +812,7 @@ export function createAdminUserController(
               sessionInvalid();
               return { kind: 'failure', failure: 'unauthorized' };
             },
-            inviteRoleSource(),
+            inviteRoleSource(signal),
           ),
         (choice) => {
           return choice.kind === 'invite'

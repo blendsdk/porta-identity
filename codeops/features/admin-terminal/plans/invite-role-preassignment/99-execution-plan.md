@@ -34,12 +34,13 @@ In scope:
   combinations, preserves the previous selection on cancel, and shows fixed load-failure text.
 - The user controller passes the role catalog source only when the verified session has the two
   required capabilities; existing injected dialog seams remain compatible.
-- The preview callback receives the same selected roles as the final invite.
+- The email preview stays independent from role assignment; the final invitation forwards the exact
+  selected roles.
 - Behavior specs, implementation tests, user documentation, independent review and CI.
 
 Out of scope:
 
-- Custom-claim selection in the terminal dialog; server/SDK/OIDC changes; role creation or
+- Custom-claim selection in the terminal dialog; SDK/OIDC changes; role creation or
   assignment after invitation; role editing from the invite dialog; bulk invitation changes;
   retries or optimistic concurrency; the retired web GUI.
 
@@ -50,7 +51,7 @@ Out of scope:
 | D1  | Roles only, no claims | GitHub #182 acceptance criteria name roles; claims are already available through the conventional CLI and remain a separate follow-up. |
 | D2  | One nested checklist modal, not inline multi-select | The invite form already fills a 24-line terminal; a focused modal keeps the primary form readable and reuses the existing `CheckGroup`, `Scroller` and modal seams. |
 | D3  | Load the complete readable catalog once when the checklist opens | The existing role dialog already reads the application catalog and per-application roles. This task needs a finite selection set, not incremental server-side role assignment. |
-| D4  | Gate on both `canAssignRoles` and `canReadApplications` | Matches the existing role dialog's capability boundary and issue #182. Missing capabilities hide the feature rather than producing an avoidable failure. |
+| D4  | Gate on `canAssignRoles`, `canReadApplications` and `canReadRoles` | Matches the existing role dialog and the server role-read permission. Missing capabilities hide the feature rather than producing an avoidable failure. |
 | D5  | Keep invite usable without roles when catalog loading fails | Roles are optional in the invitation contract; a role-read outage must not block an otherwise valid invitation. The failure is shown locally and no retry loop is added. |
 | D6  | Reject duplicate and malformed role pairs before dispatch | Duplicate pairs are meaningless and a malformed pair would otherwise become a server validation error after a user has completed the form. |
 | D7  | No new role-count limit | The server owns the accepted set and the catalog is finite. The existing conventional CLI `--role` flag also has no local count limit; this change follows that contract. |
@@ -78,11 +79,11 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
 4. **Dialog integration.** Add an optional `roleSource` parameter to `showInviteUserDialog`. When
    present, render a one-line "Roles: N selected" row and a "Select…" button; the button opens the
    checklist modal. The current selection is retained across Preview and validation failures. The
-   collected input includes `roles` only when the selection is non-empty. Preview forwards the same
-   input.
+   collected input includes `roles` only when the selection is non-empty. The email preview omits
+   roles because it renders content only; the final invitation remains authoritative.
 5. **Controller wiring.** Extend `AdminUserControllerDialogs.invite` with an optional fourth
    parameter. The controller builds the source from `readState()`, `readApplicationOperations()` and
-   `readRbacOperations()` only when authenticated and both capabilities are true; otherwise it
+   `readRbacOperations()` only when authenticated and all three capabilities are true; otherwise it
    passes `undefined`. No extra network call is made when the feature is unavailable.
 6. **Server authorization correction.** Reuse one canonical Admin role delegation check in the
    direct user-role route and the shared invitation workflow. A human invitation carrying roles
@@ -97,7 +98,7 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
 ### Phase 1 — Behavior oracle and red
 
 - [x] T-01.1 Add an immutable behavior spec for capability gating, role selection, exact invite
-  payload, preview forwarding, no-roles omission and catalog-failure behavior; observe the intended
+  payload, email-preview independence, no-roles omission and catalog-failure behavior; observe the intended
   red against the current implementation. Keep existing invite expectations intact. ✅ (completed:
   12 failures/2 controls red; 6 behavior cases now green)
 - [x] T-01.2 Add implementation tests for role-pair validation, duplicate rejection and exact
@@ -115,7 +116,8 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
   ready, failure, empty, reload, done/cancel and preserved selection)
 - [x] T-01.6 Wire the invite dialog row and nested modal, then pass the capability-gated catalog
   source from `user-controller.ts`; keep existing three-parameter dialog injections working. ✅
-  (completed: both capabilities required; absent source hides the row; controller test covers both)
+  (completed: all three capabilities required; absent source hides the row; controller tests cover
+  each missing capability and the stale-session guard)
 - [x] T-01.7 Re-run the behavior and implementation tests until green; run the focused CLI admin
   suite and fix only task-caused failures. ✅ (completed: focused 14/14; admin 942/942; existing
   projection expectation updated for the now-supported role field)

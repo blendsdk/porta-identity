@@ -21,7 +21,7 @@
 
 - The supported `porta admin` application is the embedded terminal UI in `packages/cli/src/admin`.
   The retired web GUI is archived under `codeops/features/admin-ui`.
-- This task closes the remaining invitation pre-assignment parity gap: the conventional CLI already
-  accepts `--role` and `--claim`, while the terminal invite dialog accepts neither.
+- This task closes the remaining role pre-assignment parity gap: the terminal invite dialog now
+  accepts application roles like the conventional CLI.
 - Scope is roles only, matching GitHub #182. Claim pre-assignment from the terminal dialog remains
   out of scope until separately requested.

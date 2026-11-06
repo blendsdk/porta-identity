@@ -493,6 +493,40 @@ describe('admin user workflow', () => {
     expect(sources[0]).toBeUndefined();
   });
 
+  it('should quarantine a late catalog 401 after session replacement', async () => {
+    let resolveRoles: ((value: { kind: 'session-invalid' }) => void) | undefined;
+    const roleRead = new Promise<{ kind: 'session-invalid' }>((resolve) => {
+      resolveRoles = resolve;
+    });
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: true,
+          canReadRoles: true,
+        },
+      }),
+      rbac: { listRoles: vi.fn(async () => roleRead) } as unknown as AdminRbacOperations,
+      applications: {
+        listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
+      },
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          await source?.listRoles('33333333-3333-4333-8333-333333333333');
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+    mounted.controller.syncContext(authenticated(), 2);
+    resolveRoles?.({ kind: 'session-invalid' });
+    await settle();
+
+    expect(mounted.requestAuthentication).not.toHaveBeenCalled();
+  });
+
   it('should omit the role source when a required operations seam is absent', async () => {
     const sources: Array<AdminInviteRoleSource | undefined> = [];
     const mounted = harness({

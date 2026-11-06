@@ -17,6 +17,7 @@ import {
   grow,
   Scroller,
   signal,
+  stringWidth,
   Text,
 } from '@jsvision/ui';
 import type { CheckGroupOptions, Size2D, View } from '@jsvision/ui';
@@ -297,7 +298,7 @@ export async function showInviteRoleDialog(
       (index) => scrollerRef.current?.revealRow(index),
     );
     const scroller = new RoleChecklistScroller(checklist, {
-      width: Math.max(...labels.map((label) => label.length), 1) + 6,
+      width: Math.max(...labels.map((label) => stringWidth(label)), 1) + 6,
       height: labels.length,
     });
     scrollerRef.current = scroller;
