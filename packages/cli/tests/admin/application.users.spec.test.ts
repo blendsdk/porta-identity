@@ -435,7 +435,7 @@ describe('admin user workflow', () => {
     expect(mounted.mounted.at(-1)).toBeNull();
   });
 
-  it('should pass the role source only when both assignment capabilities are present', async () => {
+  it('should pass the role source only when all three required capabilities are present', async () => {
     const listAll = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
     const listRoles = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
     const sources: Array<AdminInviteRoleSource | undefined> = [];

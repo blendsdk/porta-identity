@@ -24,7 +24,7 @@
 | SA-5  | MINOR    | preview divergence | The email preview received roles even though the server preview schema ignores them, so it could imply a grant was checked. | Fixed: the dialog and service strip roles from the email preview; final invitation validation remains authoritative. |
 | SA-6  | MINOR    | recovery copy | Failure text said the invitation would be sent without roles even when a previous selection was preserved. | Fixed: the text now says the current selection is unchanged, and session-invalid is mapped to authentication (F3). |
 | N1    | MAJOR    | session lifecycle | A late catalog `session-invalid` from a replaced session could invalidate the new session. | Fixed: the source captures the session epoch and the dialog signal; stale or aborted results do not request authentication. A late-401 spec covers session replacement. |
-| N2    | MAJOR    | structure inventory | The physical server-test inventory expected 448 files but the correction adds three tests (449). | Fixed: inventory updated to 449; structure rerun. |
+| N2    | MAJOR    | structure inventory | The physical server-test inventory expected 448 files but the correction adds three test files (449). | Fixed: inventory updated to 449; structure rerun. |
 | R1    | MINOR    | label width | Checklist width used UTF-16 length instead of terminal display width. | Fixed: `stringWidth` measures the longest label. |
 | R2    | MINOR    | focus evidence | The findings ledger claimed recovery-focus coverage that the specs did not assert. | Fixed: a catalog-failure spec asserts the Reload button is focused. |
 | R3    | MINOR    | docs drift | CLI docs and the plan still described the old two-capability/preview-roles behavior. | Fixed: docs, plan, roadmap and this ledger now describe the three-capability gate and email-only preview. |
@@ -33,14 +33,14 @@
 
 | Gate | Result |
 | ---- | ------ |
-| Focused CLI admin suite | 951 passed before the final stale-session/recovery additions; full CLI 1,859 |
+| Focused CLI admin suite | 953 passed |
 | Focused server unit specs | 20 passed (delegation, invitation wiring, human role-assign gate) |
 | CLI lint/typecheck/build | Passed |
 | Server lint/typecheck/build | Passed |
 | Server unit (full) | 4,427 passed |
 | E2E | 134 passed |
 | Structure / docs build | 158 / passed |
-| CLI full suite | 1,859 passed |
+| CLI full suite | 1,861 passed |
 | Server integration / pentest | 1,164 / 334 passed |
 | Independent re-review | Scoped correctness and security re-reviews returned; corrections below |
 | CI | Pending |

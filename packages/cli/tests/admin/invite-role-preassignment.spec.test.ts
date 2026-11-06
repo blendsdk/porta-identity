@@ -1,9 +1,10 @@
 /**
  * Immutable behavior contract for role pre-assignment in the terminal invitation dialog.
  *
- * These cases derive from GitHub #182: role selection is available only with the role-assign and
- * application-read capabilities, the exact selected pairs reach the invite payload and preview, and
- * a failed catalog read never blocks an otherwise valid invitation.
+ * These cases derive from GitHub #182: role selection is available only with the role-assign,
+ * application-read and role-read capabilities; the exact selected pairs reach the invite payload;
+ * the email preview remains independent; and a failed catalog read never blocks an otherwise valid
+ * invitation.
  */
 
 import {
