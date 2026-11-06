@@ -1,7 +1,7 @@
 # Task T-01: Admin Terminal Invite Role Pre-Assignment
 
 > **Type**: Task (lightweight) · **Feature**: admin-terminal · **CodeOps Artifact Schema**: 1
-> **Progress**: 8/9 tasks (89%)
+> **Progress**: 9/10 tasks (90%)
 > **Reasoning**: high — a new modal interaction crosses capability gating, exact invite payloads and
 > an existing asynchronous role catalog; the change is bounded and reuses established seams.
 
@@ -9,8 +9,10 @@
 
 Let an administrator select one or more application roles in the `porta admin` user-invitation
 dialog and send the exact validated `roles` array with `users.invite`. The selection is available
-only when the current verified session has both `canAssignRoles` and `canReadApplications`; no
-server, SDK or public wire contract changes. Closes GitHub #182.
+only when the current verified session has `canAssignRoles`, `canReadApplications` and
+`canReadRoles`. The independent security review also found a pre-existing canonical-role
+delegation gap on the invitation path; this task includes the necessary server-side correction so
+the feature cannot expose a super-admin escalation. Closes GitHub #182.
 
 **Smallest viable design:** Keep the existing invite form and add one compact "Roles" row that opens
 one focused checklist modal. The checklist reuses the existing application catalog read and
@@ -21,6 +23,9 @@ the invitation, no retries, no second role-assignment path, and no new dependenc
 
 In scope:
 
+- Server invitation authorization applies the existing canonical Admin delegation ceiling and
+  requires `admin:role:assign` for human role-bearing invitations. The bound machine lane keeps its
+  approved binding-policy authority and the same delegation ceiling.
 - `AdminInviteUserInput` gains the SDK's existing `roles` shape and the invite payload validation
   accepts exact `{applicationId, roleId}` pairs, rejects malformed pairs and duplicate pairs, and
   omits the property when no role is selected.
@@ -79,8 +84,13 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
    parameter. The controller builds the source from `readState()`, `readApplicationOperations()` and
    `readRbacOperations()` only when authenticated and both capabilities are true; otherwise it
    passes `undefined`. No extra network call is made when the feature is unavailable.
-6. **Documentation.** Update `docs/cli/users.md` to describe the invite role selector, its
-   capability requirements, optionality and the fact that assignments apply on acceptance.
+6. **Server authorization correction.** Reuse one canonical Admin role delegation check in the
+   direct user-role route and the shared invitation workflow. A human invitation carrying roles
+   also requires `admin:role:assign`; the machine lane keeps its approved binding policy. Rejection
+   happens before invitation persistence, email delivery or audit effects.
+7. **Documentation.** Update `docs/cli/users.md` to describe the invite role selector, its
+   capability requirements, optionality and the fact that assignments apply on acceptance; update
+   `docs/api/users.md` with the role-assign requirement and delegation ceiling.
 
 ## Tasks
 
@@ -116,11 +126,16 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
   build, the focused admin suite, structure tests and the repository's affected test selection. ✅
   (completed: docs build pass; CLI lint/typecheck/build pass; CLI full 1,850; structure 158; inventory
   127)
-- [~] T-01.9 Obtain independent review, close necessary findings, run the full applicable gate and
-  CI, merge through `develop`, close #182 and record final evidence and cleanup. ⏳ (review, full
-  affected gate, PR/CI and merge pending)
+- [x] T-01.9 Apply the security-review corrections: canonical Admin delegation ceiling on the
+  invitation path, `admin:role:assign` for human role-bearing invitations, and the role checklist's
+  read-capability, reserved-role, label, focus, extent, preview and recovery fixes. ✅ (completed:
+  2026-11-06; focused server specs 20 passed, focused CLI admin suite 951 passed, lint/typecheck
+  passed; full gate in T-01.10)
+- [~] T-01.10 Obtain scoped re-review, run the full applicable server/CLI gate and CI, merge through
+  `develop`, close #182 and record final evidence and cleanup. ⏳ (re-review, full affected gate,
+  PR/CI and merge pending)
 
-**Verify**: `pnpm --filter @portaidentity/cli lint && pnpm --filter @portaidentity/cli typecheck && pnpm --filter @portaidentity/cli build && pnpm --filter @portaidentity/cli test && pnpm test:structure`
+**Verify**: `pnpm --filter @portaidentity/cli lint && pnpm --filter @portaidentity/cli typecheck && pnpm --filter @portaidentity/cli build && pnpm --filter @portaidentity/cli test && pnpm --filter @portaidentity/server lint && pnpm --filter @portaidentity/server typecheck && pnpm --filter @portaidentity/server test && pnpm test:structure`
 
 ## Evidence plan
 

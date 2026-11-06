@@ -4,7 +4,7 @@
 > **Status**: Active
 > **Created**: 2026-11-06
 > **Last Updated**: 2026-11-06
-> **Progress**: 8 / 9 tasks (89%)
+> **Progress**: 9 / 10 tasks (90%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -15,7 +15,7 @@
 
 | ID   | Title                             | RD  | Plan                                                          | Stage     | Status | Last Updated | Depends-on / Blocker |
 | ---- | --------------------------------- | --- | ------------------------------------------------------------- | --------- | ------ | ------------ | -------------------- |
-| T-01 | Invite role pre-assignment (#182) | —   | [Standalone task plan](plans/invite-role-preassignment/99-execution-plan.md) | Review    | 🔄     | 2026-11-06   | Implementation and local gates green; independent review and CI pending |
+| T-01 | Invite role pre-assignment (#182) | —   | [Standalone task plan](plans/invite-role-preassignment/99-execution-plan.md) | Review    | 🔄     | 2026-11-06   | Review corrections and focused gates green; scoped re-review, full gate and CI pending |
 
 ## Notes
 

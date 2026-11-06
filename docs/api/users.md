@@ -38,7 +38,11 @@ POST /api/admin/organizations/:orgId/users
 POST /api/admin/organizations/:orgId/users/invite
 ```
 
-**Permission:** `admin:user:invite`
+**Permission:** `admin:user:invite`. When `roles` is present, the caller must also hold
+`admin:role:assign`. A canonical Admin role may be pre-assigned only when the caller already holds
+every permission that role grants; broader roles are rejected before any invitation is created.
+Bound machine accounts remain governed by their approved binding policy and the same delegation
+ceiling, not by the human Admin route permission.
 
 Creates a pending invitation and sends an enhanced invitation email. No account is created at invite time; the recipient's account is created only when they accept the invitation and set a password. Supports optional personal message, role/claim pre-assignment, and inviter tracking. Pre-assigned roles and claims are stored with the invitation and automatically applied on acceptance.
 

@@ -107,7 +107,7 @@ describe('invitation role validation', () => {
     expect(invite).not.toHaveBeenCalled();
   });
 
-  it('forwards roles to the invitation preview as well as the mutation', async () => {
+  it('keeps the email preview independent from role assignment', async () => {
     const invitePreview = vi
       .fn()
       .mockResolvedValue({ subject: 'Welcome', text: 'Hello', html: '<b>Hello</b>' });
@@ -121,7 +121,6 @@ describe('invitation role validation', () => {
     expect(invitePreview).toHaveBeenCalledExactlyOnceWith({
       organizationId,
       email: 'person@example.test',
-      roles: [{ applicationId, roleId }],
     });
   });
 });

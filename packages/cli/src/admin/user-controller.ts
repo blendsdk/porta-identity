@@ -437,13 +437,14 @@ export function createAdminUserController(
     );
   };
 
-  /** Builds the invitation role source only when both required capabilities are live. */
+  /** Builds the invitation role source only when every required capability is live. */
   const inviteRoleSource = (): AdminInviteRoleSource | undefined => {
     const current = options.readState();
     if (
       current.kind !== 'authenticated' ||
       !current.capabilities.canAssignRoles ||
-      !current.capabilities.canReadApplications
+      !current.capabilities.canReadApplications ||
+      !current.capabilities.canReadRoles
     ) {
       return undefined;
     }
@@ -451,8 +452,16 @@ export function createAdminUserController(
     const rbac = options.readRbacOperations?.();
     if (!applications || !rbac) return undefined;
     return {
-      listApplications: () => applications.listAll(),
-      listRoles: (id, signal) => rbac.listRoles(id, signal),
+      listApplications: async () => {
+        const result = await applications.listAll();
+        if (result.kind === 'session-invalid') sessionInvalid();
+        return result;
+      },
+      listRoles: async (id, signal) => {
+        const result = await rbac.listRoles(id, signal);
+        if (result.kind === 'session-invalid') sessionInvalid();
+        return result;
+      },
     };
   };
 

@@ -75,6 +75,16 @@ const operatorRole: AdminRole = {
   slug: 'operator',
 };
 
+/** Builds one distinct role for a large-catalog case. */
+function roleAt(index: number): AdminRole {
+  return {
+    ...billingRole,
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+    name: `Role ${index}`,
+    slug: `role-${index}`,
+  };
+}
+
 /** Returns a live catalog with one role set per application. */
 function roleSource(): RoleSource {
   return {
@@ -203,7 +213,7 @@ describe('terminal invitation role pre-assignment', () => {
     });
   });
 
-  it('should forward the selected roles to the preview as well as the invitation', async () => {
+  it('should keep the email preview independent while forwarding roles to the invitation', async () => {
     const root = createApplication({ viewport: { width: 80, height: 24 } });
     const preview = vi.fn(async () => ({
       kind: 'success' as const,
@@ -234,10 +244,7 @@ describe('terminal invitation role pre-assignment', () => {
       await settle();
     }
     expect(root.desktop.activeWindow()).not.toBe(inviteDialog);
-    expect(preview).toHaveBeenCalledWith({
-      email: 'alice@example.test',
-      roles: [{ applicationId, roleId }],
-    });
+    expect(preview).toHaveBeenCalledWith({ email: 'alice@example.test' });
     root.loop.endModal('ok');
     await settle();
 
@@ -312,5 +319,157 @@ describe('terminal invitation role pre-assignment', () => {
       kind: 'invite',
       input: { roles: [{ applicationId, roleId }] },
     });
+  });
+
+  it('should focus the checklist after the catalog loads', async () => {
+    const root = createApplication({ viewport: { width: 80, height: 24 } });
+    const operation = showInviteUserDialog(
+      root,
+      new AbortController().signal,
+      async () => ({ kind: 'failure', failure: 'unavailable' }),
+      roleSource(),
+    );
+    await settle();
+    click(root, button(root, 'Select…'));
+    await settle();
+
+    expect(root.loop.getFocused()).toBeInstanceOf(CheckGroup);
+
+    root.loop.endModal('cancel');
+    await settle();
+    root.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('should reveal a role beyond the first viewport in a large catalog', async () => {
+    const root = createApplication({ viewport: { width: 80, height: 24 } });
+    const roles = Array.from({ length: 25 }, (_unused, index) => roleAt(index + 1));
+    const source: RoleSource = {
+      async listApplications() {
+        return { kind: 'success', value: [application] };
+      },
+      async listRoles() {
+        return { kind: 'success', value: roles };
+      },
+    };
+    const operation = showInviteUserDialog(
+      root,
+      new AbortController().signal,
+      async () => ({ kind: 'failure', failure: 'unavailable' }),
+      source,
+    );
+    await settle();
+    click(root, button(root, 'Select…'));
+    await settle();
+
+    const checklist = activeForm(root).checks[0];
+    if (!checklist) throw new Error('Role checklist is missing.');
+    root.loop.focusView(checklist);
+    for (let index = 0; index < 24; index += 1) {
+      root.loop.dispatch({ type: 'key', key: 'down', ctrl: false, alt: false, shift: false });
+    }
+    await settle();
+    expect(frameText(root)).toContain('Role 25');
+
+    root.loop.endModal('cancel');
+    await settle();
+    root.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('should omit the reserved invitation machine role from the checklist', async () => {
+    const root = createApplication({ viewport: { width: 80, height: 24 } });
+    const source: RoleSource = {
+      async listApplications() {
+        return { kind: 'success', value: [{ ...application, slug: 'porta-admin' }] };
+      },
+      async listRoles() {
+        return {
+          kind: 'success',
+          value: [{ ...billingRole, slug: 'porta-invite-service' }],
+        };
+      },
+    };
+    const operation = showInviteUserDialog(
+      root,
+      new AbortController().signal,
+      async () => ({ kind: 'failure', failure: 'unavailable' }),
+      source,
+    );
+    await settle();
+    click(root, button(root, 'Select…'));
+    await settle();
+
+    expect(frameText(root)).toContain('No roles available');
+    expect(frameText(root)).not.toContain('invite-service');
+
+    root.loop.endModal('cancel');
+    await settle();
+    root.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('should neutralize bidi formatting and accelerator markers in role labels', async () => {
+    const root = createApplication({ viewport: { width: 80, height: 24 } });
+    const source: RoleSource = {
+      async listApplications() {
+        return { kind: 'success', value: [application] };
+      },
+      async listRoles() {
+        return {
+          kind: 'success',
+          value: [{ ...billingRole, name: 'Evil\u202e~A~', slug: 'evil-role' }],
+        };
+      },
+    };
+    const operation = showInviteUserDialog(
+      root,
+      new AbortController().signal,
+      async () => ({ kind: 'failure', failure: 'unavailable' }),
+      source,
+    );
+    await settle();
+    click(root, button(root, 'Select…'));
+    await settle();
+
+    const text = frameText(root);
+    expect(text).not.toContain('\u202e');
+    expect(text).toContain('\ufffd');
+    expect(text).not.toContain('~A~');
+
+    root.loop.endModal('cancel');
+    await settle();
+    root.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
+  });
+
+  it('should disable role selection while a preview request is in flight', async () => {
+    const root = createApplication({ viewport: { width: 80, height: 24 } });
+    let resolvePreview: ((value: { kind: 'failure'; failure: 'unavailable' }) => void) | undefined;
+    const preview = vi.fn(
+      () =>
+        new Promise<{ kind: 'failure'; failure: 'unavailable' }>((resolve) => {
+          resolvePreview = resolve;
+        }),
+    );
+    const operation = showInviteUserDialog(
+      root,
+      new AbortController().signal,
+      preview,
+      roleSource(),
+    );
+    await settle();
+    activeForm(root).inputs[0]?.getValueSignal().set('alice@example.test');
+    click(root, button(root, 'Preview'));
+    await settle();
+
+    expect(button(root, 'Select…').state.disabled).toBe(true);
+
+    resolvePreview?.({ kind: 'failure', failure: 'unavailable' });
+    await settle();
+    expect(button(root, 'Select…').state.disabled).toBe(false);
+
+    root.loop.endModal('cancel');
+    await expect(operation).resolves.toEqual({ kind: 'cancel' });
   });
 });

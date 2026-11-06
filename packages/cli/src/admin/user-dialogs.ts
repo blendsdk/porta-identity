@@ -240,7 +240,7 @@ export async function showInviteUserDialog(
   ];
   const personalMessageMemo = new Memo({ value: personalMessage });
   const dialog = new Dialog({ title: 'Invite user', width, height, centered: true });
-  let previewBusy = false;
+  const previewBusy = signal(false);
   let parentOpen = true;
   let previewGeneration = 0;
   const collect = (): AdminInviteUserInput | undefined => {
@@ -266,22 +266,30 @@ export async function showInviteUserDialog(
         : {}),
     };
   };
+  /** Builds the email-preview projection; role validation belongs to the invitation mutation. */
+  const previewInput = (): AdminInviteUserInput | undefined => {
+    const input = collect();
+    if (!input) return undefined;
+    const preview = { ...input };
+    delete preview.roles;
+    return preview;
+  };
   const openRoles = async (): Promise<void> => {
-    if (!roleSource) return;
+    if (!roleSource || previewBusy()) return;
     const result = await showInviteRoleDialog(host, operationSignal, roleSource, selectedRoles);
     if (!parentOpen || operationSignal.aborted || result.kind !== 'done') return;
     selectedRoles = result.roles;
     rolesSummary.set(selectedRoles.length === 0 ? 'None' : `${selectedRoles.length} selected`);
   };
   const previewButton = new Button('~P~review', {
-    disabled: () => previewBusy,
+    disabled: () => previewBusy(),
     onClick: () => {
-      const input = collect();
-      if (!input || previewBusy) {
+      const input = previewInput();
+      if (!input || previewBusy()) {
         message.set('Validation failed');
         return;
       }
-      previewBusy = true;
+      previewBusy.set(true);
       const generation = ++previewGeneration;
       void loadPreview(input)
         .then(async (result) => {
@@ -298,18 +306,21 @@ export async function showInviteUserDialog(
             );
         })
         .finally(() => {
-      if (parentOpen && generation === previewGeneration) previewBusy = false;
+        if (parentOpen && generation === previewGeneration) previewBusy.set(false);
         });
     },
   });
   const inviteButton = new Button('~I~nvite', {
     command: Commands.ok,
     default: true,
-    disabled: () => previewBusy,
+    disabled: () => previewBusy(),
   });
   const cancelButton = new Button('Cancel', { command: Commands.cancel });
   const selectRolesButton = roleSource
-    ? new Button('~S~elect…', { onClick: () => void openRoles() })
+    ? new Button('~S~elect…', {
+        disabled: () => previewBusy(),
+        onClick: () => void openRoles(),
+      })
     : undefined;
   dialog.add(
     cover(
@@ -358,7 +369,7 @@ export async function showInviteUserDialog(
     while (true) {
       const command = await runDialog(host, dialog, operationSignal);
       if (command !== Commands.ok) return { kind: 'cancel' };
-      if (previewBusy) continue;
+      if (previewBusy()) continue;
       const input = collect();
       if (input) return { kind: 'invite', input };
       message.set('Validation failed');

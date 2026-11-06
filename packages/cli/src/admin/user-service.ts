@@ -682,8 +682,12 @@ export function createAdminUserOperations(
     async previewInvitation(organizationId, input) {
       const payload = inviteInput(organizationId, input);
       if (!payload) return { kind: 'failure', failure: 'validation' };
+      // The preview renders email content only. Roles are validated and applied by the invitation
+      // mutation, not by this read, so the preview cannot imply that a role grant was checked.
+      const previewPayload: InviteUserInput = { ...payload };
+      delete previewPayload.roles;
       try {
-        const candidate = objectValue(await domain().invitePreview(payload));
+        const candidate = objectValue(await domain().invitePreview(previewPayload));
         if (
           !candidate ||
           !isText(candidate.subject, 255) ||

@@ -183,7 +183,6 @@ describe('admin user service implementation', () => {
     expect(invitePreview).toHaveBeenCalledWith({
       organizationId,
       email: 'person@example.test',
-      roles: [validRole],
     });
     expect(update).toHaveBeenCalledWith(
       organizationId,

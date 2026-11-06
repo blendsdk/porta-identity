@@ -19,6 +19,7 @@ import {
   signal,
   Text,
 } from '@jsvision/ui';
+import type { CheckGroupOptions, Size2D, View } from '@jsvision/ui';
 
 import type {
   AdminApplication,
@@ -28,12 +29,49 @@ import type { AdminRbacReadResult, AdminRole } from './rbac-state.js';
 import { actionRow, dialogSize, runDialog } from './user-dialog-support.js';
 import type { AdminUserDialogHost } from './user-dialog-support.js';
 
+/** Check group that keeps the moved-to row visible inside its scroller. */
+class RevealingCheckGroup extends CheckGroup {
+  /** Creates a checklist whose selection movement reveals the selected row. */
+  public constructor(
+    options: CheckGroupOptions,
+    private readonly reveal: (index: number) => void,
+  ) {
+    super(options);
+  }
+
+  /** Reveal the newly selected row after the base class updates its marker. */
+  protected override movedTo(index: number): void {
+    super.movedTo(index);
+    this.reveal(index);
+  }
+}
+
+/** Scroller that can reveal one checklist row without owning layout state elsewhere. */
+class RoleChecklistScroller extends Scroller {
+  /** Creates a viewport over the complete checklist extent. */
+  public constructor(content: CheckGroup, extent: Size2D) {
+    super({ content, extent, scrollbars: 'both' });
+  }
+
+  /** Scrolls only as far as needed to show one selected row. */
+  public revealRow(index: number): void {
+    if (this.vpH <= 0) return;
+    const offset = this.dy.peek();
+    if (index < offset) this.dy.set(index);
+    else if (index + 1 > offset + this.vpH) {
+      this.dy.set(Math.min(this.maxY, index + 1 - this.vpH));
+    }
+  }
+}
+
 /** One role option with the labels needed by the terminal checklist. */
 export interface AdminInviteRoleOption {
   /** Internal application UUID. */
   readonly applicationId: string;
   /** Application display name used only for presentation. */
   readonly applicationName: string;
+  /** Immutable application slug used to disambiguate equal display names. */
+  readonly applicationSlug: string;
   /** Internal role UUID. */
   readonly roleId: string;
   /** Role display name. */
@@ -64,6 +102,21 @@ type RoleDialogState =
   | { readonly kind: 'ready'; readonly options: readonly AdminInviteRoleOption[] }
   | { readonly kind: 'failure' };
 
+/** Replaces invisible formatting and accelerator markers in one untrusted label. */
+function safeLabel(value: string): string {
+  return Array.from(value, (character) => {
+    const code = character.codePointAt(0) ?? 0;
+    const invisible =
+      code === 0x061c ||
+      code === 0xfeff ||
+      (code >= 0x200b && code <= 0x200f) ||
+      (code >= 0x202a && code <= 0x202e) ||
+      (code >= 0x2066 && code <= 0x2069);
+    if (invisible) return '\ufffd';
+    return character === '~' ? '\u02dc' : character;
+  }).join('');
+}
+
 /** Builds one flat option list from the readable application and role catalog. */
 function flattenCatalog(
   applications: readonly AdminApplication[],
@@ -72,9 +125,11 @@ function flattenCatalog(
   const options: AdminInviteRoleOption[] = [];
   for (const application of applications) {
     for (const role of rolesByApplication.get(application.id) ?? []) {
+      if (application.slug === 'porta-admin' && role.slug === 'porta-invite-service') continue;
       options.push({
         applicationId: application.id,
         applicationName: application.name,
+        applicationSlug: application.slug,
         roleId: role.id,
         roleName: role.name,
         roleSlug: role.slug,
@@ -125,6 +180,13 @@ export async function showInviteRoleDialog(
   /** Removes every rendered child before rebuilding the modal body. */
   const clear = (): void => {
     for (const child of [...dialog.children]) dialog.remove(child);
+  };
+
+  /** Focuses one target when the current render is mounted. */
+  const focusSoon = (view: View): void => {
+    view.onMount(() => {
+      if (!closed && !operationSignal.aborted) host.loop.focusView(view);
+    });
   };
 
   /** Returns the options currently checked by the operator. */
@@ -178,56 +240,67 @@ export async function showInviteRoleDialog(
     if (closed) return;
     clear();
     if (state.kind === 'loading') {
+      const cancel = new Button('Cancel', { command: Commands.cancel });
       dialog.add(
         cover(
           col(
             { gap: 1, padding: 1 },
             fixed(new Text('Loading roles…'), 1),
-            actionRow(new Button('Cancel', { command: Commands.cancel })),
+            actionRow(cancel),
           ),
         ),
       );
+      focusSoon(cancel);
       return;
     }
     if (state.kind === 'failure') {
+      const reload = new Button('Reload', { onClick: () => void load() });
       dialog.add(
         cover(
           col(
             { gap: 1, padding: 1 },
             fixed(new Text('Role options unavailable'), 1),
-            fixed(
-              new Text('The invitation can still be sent without roles.'),
-              1,
+            fixed(new Text('Your current role selection is unchanged.'), 1),
+            actionRow(
+              reload,
+              new Button('Done', { command: Commands.ok }),
+              new Button('Cancel', { command: Commands.cancel }),
             ),
-            actionRow(new Button('Reload', { onClick: () => void load() }), new Button('Done', { command: Commands.ok }), new Button('Cancel', { command: Commands.cancel })),
           ),
         ),
       );
+      focusSoon(reload);
       return;
     }
     if (state.options.length === 0) {
+      const done = new Button('Done', { command: Commands.ok });
       dialog.add(
         cover(
           col(
             { gap: 1, padding: 1 },
             fixed(new Text('No roles available'), 1),
-            actionRow(new Button('Done', { command: Commands.ok }), new Button('Cancel', { command: Commands.cancel })),
+            actionRow(done, new Button('Cancel', { command: Commands.cancel })),
           ),
         ),
       );
+      focusSoon(done);
       return;
     }
-    const checklist = new CheckGroup({
-      labels: state.options.map(
-        (option) => `${option.applicationName} — ${option.roleName} (${option.roleSlug})`,
-      ),
-      value: choices,
+    const labels = state.options.map(
+      (option) =>
+        `${safeLabel(option.applicationName)} (${safeLabel(option.applicationSlug)}) — ` +
+        `${safeLabel(option.roleName)} (${safeLabel(option.roleSlug)})`,
+    );
+    const scrollerRef: { current?: RoleChecklistScroller } = {};
+    const checklist = new RevealingCheckGroup(
+      { labels, value: choices },
+      (index) => scrollerRef.current?.revealRow(index),
+    );
+    const scroller = new RoleChecklistScroller(checklist, {
+      width: Math.max(...labels.map((label) => label.length), 1) + 6,
+      height: labels.length,
     });
-    const scroller = new Scroller({
-      content: checklist,
-      extent: { width: Math.max(1, width - 6), height: Math.max(1, height - 7) },
-      scrollbars: 'both',
-    });
+    scrollerRef.current = scroller;
     dialog.add(
       cover(
         col(
@@ -241,6 +314,7 @@ export async function showInviteRoleDialog(
         ),
       ),
     );
+    focusSoon(checklist);
   };
 
   /** Reads the final state through a closure so TypeScript does not freeze the initial render. */
