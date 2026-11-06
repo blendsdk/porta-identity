@@ -437,8 +437,11 @@ function requireObservedJourney(facts: PackedServiceAccountInvitationJourneyFact
     facts.invitationCountAfterAttempt === facts.invitationCountAfterCreate &&
     facts.replayPending &&
     facts.replayRecordDigest === facts.recordDigest;
-  if (!denied || !unchanged) {
-    if (facts.replayStatus !== 201) throw new Error('packed replay was not a definite denial');
+  if (!denied && facts.replayStatus !== 201) {
+    throw new Error(`packed replay was not a definite denial (${facts.replayStatus})`);
+  }
+  if (!unchanged && facts.replayStatus !== 201) {
+    throw new Error('packed replay denial changed durable state');
   }
   if (!facts.clientRemoved || !facts.invitationRemoved || !facts.probesRemoved) {
     throw new Error('packed journey cleanup is incomplete');
