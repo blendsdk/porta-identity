@@ -232,6 +232,23 @@ Machine tokens never become browser sessions or human `adminUser` values, and th
 classified account remains denied in every human authentication, recovery and token-consumption
 flow.
 
+### Invitation role delegation
+
+Role pre-assignment is an assignment authority, not a side effect of invitation authority. A human
+invitation that carries `roles` requires both `admin:user:invite` and `admin:role:assign`. The
+invitation workflow then applies the same canonical Admin delegation ceiling as direct role
+assignment: a role defined by the `porta-admin` application may be pre-assigned only when the actor
+already holds every permission that role grants. `porta-super-admin` therefore cannot be granted by
+a user administrator. Rejection occurs before invitation persistence, email delivery and audit
+effects.
+
+The bound machine lane keeps its approved binding-policy authority rather than the human
+role-assign permission. Its organization-scoped allowlist is validated against live ordinary
+references, the canonical invitation machine role remains excluded, and the same canonical-role
+delegation ceiling is applied using the machine account's reserved permission. The assignment is
+stored with the invitation and applied only on acceptance; accepted users never gain the reserved
+machine membership.
+
 ### Public branding isolation
 
 The anonymous `GET /:orgSlug/branding/:type` route exposes only validated image bytes. It performs
