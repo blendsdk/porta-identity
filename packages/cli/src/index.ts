@@ -12,6 +12,13 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   if (resolveJsonMode(args)) handleError(error, false, true);
+  // The parser prints its own bounded diagnostic before throwing. Do not repeat it or add a stack.
+  const isParserDiagnostic =
+    typeof error === 'object' && error !== null && Reflect.get(error, 'name') === 'YError';
+  if (isParserDiagnostic) {
+    process.exitCode = 1;
+    return;
+  }
   // Human mode retains the established top-level diagnostics and general exit.
   console.error(error);
   process.exit(1);

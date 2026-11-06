@@ -53,6 +53,15 @@ export type {
   GeneratedSecret,
 } from './clients.js';
 
+// Client service-account bindings
+export type {
+  ClientServiceAccount,
+  ClientServiceAccountTarget,
+  ClientServiceAccountRoleReference,
+  ClientServiceAccountClaimReference,
+  SetClientServiceAccountInput,
+} from './client-service-accounts.js';
+
 // Users
 export type {
   User,

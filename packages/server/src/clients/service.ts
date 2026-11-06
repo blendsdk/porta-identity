@@ -61,12 +61,35 @@ import { normalizeLoginMethods } from './resolve-login-methods.js';
 
 import { verify } from './secret-service.js';
 import { writeAuditLog } from '../lib/audit-log.js';
+import type { AuditLogEntry } from '../lib/audit-log.js';
 import { ClientNotFoundError, ClientValidationError } from './errors.js';
 import { getApplicationById } from '../applications/service.js';
 import { getOrganizationById } from '../organizations/service.js';
-import { getDatabaseTransactionClient } from '../lib/database.js';
+import { afterDatabaseCommit, getDatabaseTransactionClient, getPool, runDatabaseTransaction } from '../lib/database.js';
 import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
+import {
+  lockClientServiceAccountMutation,
+  reconcileClientServiceAccount,
+  revokeServiceAccountForClientMutation,
+} from '../service-accounts/index.js';
+import type { StoredServiceAccount } from '../service-accounts/index.js';
+
+/** Keep bound-client audit mandatory while retaining ordinary compatibility event semantics. */
+async function writeClientMutationAudit(
+  entry: AuditLogEntry,
+  binding: StoredServiceAccount | null,
+): Promise<void> {
+  if (!binding) return writeAuditLog(entry);
+  await writeAuditLogInTransaction(getPool(), {
+    ...entry,
+    metadata: {
+      ...entry.metadata,
+      bindingId: binding.id,
+      serviceAccountId: binding.accountId,
+    },
+  });
+}
 
 // ===========================================================================
 // Validation helpers (private)
@@ -322,6 +345,8 @@ export async function getClientByClientId(clientId: string): Promise<Client | nu
  * Update a client's configurable fields.
  *
  * Validates redirect URIs if they are being changed.
+ * A client with any service-account ownership requires live human Super Admin authority under
+ * its parent lock. Eligibility loss revokes owned authority atomically; repair cannot restore it.
  *
  * @param id - Client internal UUID
  * @param input - Fields to update
@@ -335,6 +360,27 @@ export async function updateClient(
   input: UpdateClientInput,
   actorId?: string,
 ): Promise<Client> {
+  return runDatabaseTransaction(async () => {
+    const binding = await lockClientServiceAccountMutation(id, actorId);
+    const { client, metadata } = await applyClientUpdate(id, input);
+    if (binding) await reconcileClientServiceAccount(binding);
+    await afterDatabaseCommit(async () => {
+      await invalidateClientCache(client.clientId, client.id);
+      await cacheClient(client);
+    });
+    await writeClientMutationAudit({
+      organizationId: client.organizationId, eventType: 'client.updated',
+      eventCategory: 'admin', actorId, metadata,
+    }, binding);
+    return client;
+  });
+}
+
+/** Validate the complete current protocol under the parent lock, then apply only supplied fields. */
+async function applyClientUpdate(
+  id: string,
+  input: UpdateClientInput,
+): Promise<{ client: Client; metadata: Record<string, unknown> }> {
   // Validate redirect URIs if provided
   if (input.redirectUris) {
     const uriValidation = validateRedirectUris(input.redirectUris, false);
@@ -353,7 +399,7 @@ export async function updateClient(
     input.requirePkce,
   ].some((value) => value !== undefined);
   if (changesProtocol) {
-    const existing = await getClientById(id);
+    const existing = await findClientById(id);
     if (!existing) throw new ClientNotFoundError(id);
     requireCompatibleProtocol({
       clientType: existing.clientType,
@@ -384,8 +430,8 @@ export async function updateClient(
 
   // Validate + normalize the login-method override if the caller passed the
   // key (including `null` = clear). Capture the previous value first for the
-  // audit log diff — we use the cache-aware accessor so stale reads don't
-  // sneak in; if the client doesn't exist the repo update below will throw
+  // audit log diff from authoritative storage under the parent lock; if the client doesn't exist
+  // the repository update below will throw
   // and we short-circuit before audit.
   let previousLoginMethods: LoginMethod[] | null | undefined;
   if (Object.prototype.hasOwnProperty.call(input, 'loginMethods')) {
@@ -394,7 +440,7 @@ export async function updateClient(
     // returned when the key is absent, which we already filtered out).
     updateData.loginMethods = normalized;
 
-    const existing = await getClientById(id);
+    const existing = await findClientById(id);
     if (existing) {
       previousLoginMethods = existing.loginMethods;
     }
@@ -410,13 +456,8 @@ export async function updateClient(
     throw err;
   }
 
-  // Invalidate old cache and re-cache the updated version
-  await invalidateClientCache(client.clientId, client.id);
-  await cacheClient(client);
-
-  // Audit log (fire-and-forget) — record the old → new login-methods
-  // transition only when the field actually changed, so audit history
-  // stays readable for updates that touch other fields.
+  // Record only changed field identities and a supplied login-method override. The caller owns
+  // the appropriate durable or compatibility audit and post-commit cache work.
   const auditMetadata: Record<string, unknown> = {
     clientDbId: client.id,
     clientId: client.clientId,
@@ -427,15 +468,7 @@ export async function updateClient(
     auditMetadata.newLoginMethods = client.loginMethods;
   }
 
-  await writeAuditLog({
-    organizationId: client.organizationId,
-    eventType: 'client.updated',
-    eventCategory: 'admin',
-    actorId,
-    metadata: auditMetadata,
-  });
-
-  return client;
+  return { client, metadata: auditMetadata };
 }
 
 // ---------------------------------------------------------------------------
@@ -506,21 +539,20 @@ async function loadClientForStatusChange(id: string): Promise<Client> {
  * @throws ClientValidationError if not currently active
  */
 export async function deactivateClient(id: string, actorId?: string): Promise<void> {
-  const client = await loadClientForStatusChange(id);
-
-  if (client.status !== 'active') {
-    throw new ClientValidationError(`Cannot deactivate client from status: ${client.status}`);
-  }
-
-  await repoUpdateClient(id, { status: 'inactive' });
-  await invalidateClientCache(client.clientId, client.id);
-
-  await writeAuditLog({
-    organizationId: client.organizationId,
-    eventType: 'client.deactivated',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { clientDbId: client.id, clientId: client.clientId },
+  await runDatabaseTransaction(async () => {
+    const binding = await lockClientServiceAccountMutation(id, actorId);
+    const client = await loadClientForStatusChange(id);
+    if (client.status !== 'active') {
+      throw new ClientValidationError(`Cannot deactivate client from status: ${client.status}`);
+    }
+    await repoUpdateClient(id, { status: 'inactive' });
+    if (binding) await revokeServiceAccountForClientMutation(binding);
+    await afterDatabaseCommit(() => invalidateClientCache(client.clientId, client.id));
+    await writeClientMutationAudit({
+      organizationId: client.organizationId,
+      eventType: 'client.deactivated', eventCategory: 'admin', actorId,
+      metadata: { clientDbId: client.id, clientId: client.clientId },
+    }, binding);
   });
 }
 
@@ -533,21 +565,20 @@ export async function deactivateClient(id: string, actorId?: string): Promise<vo
  * @throws ClientValidationError if not currently inactive
  */
 export async function activateClient(id: string, actorId?: string): Promise<void> {
-  const client = await loadClientForStatusChange(id);
-
-  if (client.status !== 'inactive') {
-    throw new ClientValidationError(`Cannot activate client from status: ${client.status}`);
-  }
-
-  await repoUpdateClient(id, { status: 'active' });
-  await invalidateClientCache(client.clientId, client.id);
-
-  await writeAuditLog({
-    organizationId: client.organizationId,
-    eventType: 'client.activated',
-    eventCategory: 'admin',
-    actorId,
-    metadata: { clientDbId: client.id, clientId: client.clientId },
+  await runDatabaseTransaction(async () => {
+    const binding = await lockClientServiceAccountMutation(id, actorId);
+    const client = await loadClientForStatusChange(id);
+    if (client.status !== 'inactive') {
+      throw new ClientValidationError(`Cannot activate client from status: ${client.status}`);
+    }
+    await repoUpdateClient(id, { status: 'active' });
+    // Client repair never restores a revoked service binding or its account.
+    await afterDatabaseCommit(() => invalidateClientCache(client.clientId, client.id));
+    await writeClientMutationAudit({
+      organizationId: client.organizationId,
+      eventType: 'client.activated', eventCategory: 'admin', actorId,
+      metadata: { clientDbId: client.id, clientId: client.clientId },
+    }, binding);
   });
 }
 
@@ -669,6 +700,8 @@ export async function verifyClientSecret(clientId: string, plaintext: string): P
 export async function deleteClient(id: string, actorId?: string): Promise<ClientDeletionCapture> {
   const transaction = getDatabaseTransactionClient();
   if (!transaction) throw new Error('Client deletion requires an active database transaction');
+  const binding = await lockClientServiceAccountMutation(id, actorId);
+  if (binding) await revokeServiceAccountForClientMutation(binding);
   const capture = await captureClientForDeletion(id);
   if (!capture) throw new ClientNotFoundError(id);
   await transaction.query(
@@ -687,6 +720,7 @@ export async function deleteClient(id: string, actorId?: string): Promise<Client
       clientId: capture.client.clientId,
       applicationId: capture.client.applicationId,
       status: capture.client.status,
+      ...(binding ? { bindingId: binding.id, serviceAccountId: binding.accountId } : {}),
     },
   });
   await deleteCapturedClient(id);

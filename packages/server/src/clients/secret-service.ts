@@ -13,7 +13,8 @@
  *   - Only Argon2id hashes are persisted in the database
  *   - Verification iterates ALL active secrets (no short-circuit)
  *   - Failed verifications are logged as security events
- *   - All operations use fire-and-forget audit logging
+ *   - Bound-client credential mutations require live human Super Admin authority
+ *     and commit their audit atomically; ordinary compatibility events remain best-effort
  *
  * This service is consumed by:
  *   - The client service (initial secret on confidential client creation)
@@ -32,7 +33,12 @@ import {
   cleanupExpiredSecrets,
 } from './secret-repository.js';
 import { generateSecret, hashSecret, sha256Secret, verifySecretHash } from './crypto.js';
-import { writeAuditLog } from '../lib/audit-log.js';
+import { writeAuditLog, writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { getPool, runDatabaseTransaction } from '../lib/database.js';
+import {
+  lockClientServiceAccountMutation,
+  rotateServiceAccountVersion,
+} from '../service-accounts/index.js';
 import { logger } from '../lib/logger.js';
 import { ClientNotFoundError } from './errors.js';
 
@@ -69,37 +75,40 @@ export async function generateAndStore(
   // Compute SHA-256 for oidc-provider client authentication
   const secretSha256 = sha256Secret(plaintext);
 
-  // Insert into database
-  const secret = await insertSecret({
-    clientId: clientDbId,
-    secretHash,
-    secretSha256,
-    label: input.label ?? null,
-    expiresAt: input.expiresAt ?? null,
-  });
-
-  // Audit log (fire-and-forget)
-  await writeAuditLog({
-    eventType: 'client.secret.generated',
-    eventCategory: 'admin',
-    actorId,
-    metadata: {
+  return runDatabaseTransaction(async () => {
+    const binding = await lockClientServiceAccountMutation(clientDbId, actorId);
+    const secret = await insertSecret({
       clientId: clientDbId,
-      secretId: secret.id,
-      label: secret.label,
-      expiresAt: secret.expiresAt?.toISOString() ?? null,
-    },
-  });
+      secretHash,
+      secretSha256,
+      label: input.label ?? null,
+      expiresAt: input.expiresAt ?? null,
+    });
 
-  // Return with plaintext — this is the ONLY time it's available
-  return {
-    id: secret.id,
-    clientId: secret.clientId,
-    label: secret.label,
-    plaintext,
-    expiresAt: secret.expiresAt,
-    createdAt: secret.createdAt,
-  };
+    const entry = {
+      eventType: 'client.secret.generated',
+      eventCategory: 'admin',
+      actorId,
+      metadata: {
+        clientId: clientDbId,
+        secretId: secret.id,
+        label: secret.label,
+        expiresAt: secret.expiresAt?.toISOString() ?? null,
+      },
+    };
+    if (binding) await writeAuditLogInTransaction(getPool(), entry);
+    else await writeAuditLog(entry);
+
+    // Return with plaintext — this is the ONLY time it's available.
+    return {
+      id: secret.id,
+      clientId: secret.clientId,
+      label: secret.label,
+      plaintext,
+      expiresAt: secret.expiresAt,
+      createdAt: secret.createdAt,
+    };
+  });
 }
 
 // ===========================================================================
@@ -182,21 +191,29 @@ export async function revoke(
   secretId: string,
   actorId?: string,
 ): Promise<void> {
-  const existing = await findSecretById(clientDbId, secretId);
-  if (!existing || existing.clientId !== clientDbId) throw new ClientNotFoundError(secretId);
-  const secret = await repoRevokeSecret(clientDbId, secretId);
-  if (!secret) throw new ClientNotFoundError(secretId);
+  return runDatabaseTransaction(async () => {
+    const binding = await lockClientServiceAccountMutation(clientDbId, actorId);
+    const existing = await findSecretById(clientDbId, secretId);
+    if (!existing || existing.clientId !== clientDbId) throw new ClientNotFoundError(secretId);
+    const secret = await repoRevokeSecret(clientDbId, secretId);
+    if (!secret) throw new ClientNotFoundError(secretId);
 
-  // Audit log (fire-and-forget)
-  await writeAuditLog({
-    eventType: 'client.secret.deleted',
-    eventCategory: 'admin',
-    actorId,
-    metadata: {
-      clientId: secret.clientId,
-      secretId: secret.id,
-      label: secret.label,
-    },
+    if (binding && existing.status === 'active' &&
+        (existing.expiresAt === null || existing.expiresAt.getTime() > Date.now())) {
+      await rotateServiceAccountVersion(binding);
+    }
+    const entry = {
+      eventType: 'client.secret.deleted',
+      eventCategory: 'admin',
+      actorId,
+      metadata: {
+        clientId: secret.clientId,
+        secretId: secret.id,
+        label: secret.label,
+      },
+    };
+    if (binding) await writeAuditLogInTransaction(getPool(), entry);
+    else await writeAuditLog(entry);
   });
 }
 

@@ -33,6 +33,9 @@ import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
 import { clearSessionCookies } from '../middleware/prompt-login-reset.js';
 import {
+  SERVICE_ACCOUNT_INVITE_SCOPE, serviceAccountClientCredentialsTtl, serviceAccountExtraTokenClaims,
+} from '../service-accounts/index.js';
+import {
   TENANT_INVITE_SCOPE,
   TENANT_USER_DELETE_SCOPE,
   TENANT_USER_READ_SCOPE,
@@ -520,6 +523,7 @@ export function buildProviderConfiguration(
     // Token TTLs from system_config table
     ttl: {
       AccessToken: ttl.accessToken,
+      ClientCredentials: serviceAccountClientCredentialsTtl,
       AuthorizationCode: ttl.authorizationCode,
       IdToken: ttl.idToken,
       RefreshToken: ttl.refreshToken,
@@ -561,6 +565,7 @@ export function buildProviderConfiguration(
       'phone',
       'offline_access',
       TENANT_INVITE_SCOPE,
+      SERVICE_ACCOUNT_INVITE_SCOPE,
       TENANT_USER_READ_SCOPE,
       TENANT_USER_WRITE_SCOPE,
       TENANT_USER_DELETE_SCOPE,
@@ -648,6 +653,7 @@ export function buildProviderConfiguration(
     // Extra client metadata properties — tell the provider to preserve
     // these custom fields from the adapter's findClient response.
     // Without this, node-oidc-provider strips all unknown properties.
+    extraTokenClaims: serviceAccountExtraTokenClaims,
     extraClientMetadata: {
       properties: [
         'organizationId',

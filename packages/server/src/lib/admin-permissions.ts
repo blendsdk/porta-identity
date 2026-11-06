@@ -234,6 +234,17 @@ export const ADMIN_ROLE_DEFINITIONS: Record<string, AdminRoleDefinition> = {
 export const ALL_ADMIN_ROLES: readonly AdminRoleDefinition[] =
   Object.values(ADMIN_ROLE_DEFINITIONS);
 
+/**
+ * Reserved machine membership seeded with human roles but never resolved as a human capability.
+ * Keeping it outside ALL_ADMIN_ROLES prevents a human AccessToken from inheriting its permission.
+ */
+export const SERVICE_ACCOUNT_ROLE_DEFINITION: AdminRoleDefinition = {
+  slug: 'porta-invite-service',
+  name: 'Invitation Service',
+  description: 'Reserved noninteractive invitation-only service-account role',
+  permissions: [ADMIN_PERMISSIONS.USER_INVITE],
+};
+
 // ============================================================================
 // Legacy Compatibility
 // ============================================================================

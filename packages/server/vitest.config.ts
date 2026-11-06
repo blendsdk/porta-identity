@@ -116,6 +116,8 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDbUrl,
             REDIS_URL: testRedisUrl,
+            TEST_DATABASE_URL: testDbUrl,
+            TEST_REDIS_URL: testRedisUrl,
             ISSUER_BASE_URL: 'https://porta.local:3443',
             COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
             SMTP_HOST: 'localhost',
@@ -169,6 +171,7 @@ export default defineConfig({
           env: {
             DATABASE_URL: testDbUrl,
             REDIS_URL: testRedisUrl,
+            TEST_REDIS_URL: testRedisUrl,
             ISSUER_BASE_URL: 'https://localhost:0',
             COOKIE_KEYS: 'test-cookie-key-1,test-cookie-key-2',
             SMTP_HOST: 'localhost',

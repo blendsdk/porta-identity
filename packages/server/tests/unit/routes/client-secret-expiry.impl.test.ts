@@ -94,7 +94,7 @@ function context(body: object, params: Record<string, string> = {}) {
     params,
     query: {},
     request: { body },
-    state: { organization: { isSuperAdmin: true } },
+    state: { organization: { isSuperAdmin: true }, adminUser: { id: 'admin-id' } },
     status: 200,
     body: undefined,
     throw(status: number, message: string): never {
@@ -156,6 +156,6 @@ describe('client secret expiry route implementation', () => {
       vi.fn(),
     ]);
 
-    expect(secretService.generateAndStore).toHaveBeenCalledWith(CLIENT_ID, { label });
+    expect(secretService.generateAndStore).toHaveBeenCalledWith(CLIENT_ID, { label }, 'admin-id');
   });
 });

@@ -106,7 +106,7 @@ async function rollback(client: PoolClient): Promise<void> {
   await client.query('ROLLBACK');
 }
 
-/** Build the tenant-qualified row lock for the closed entity catalog. */
+/** Build tenant-qualified locks; permanent service users are excluded before any row lock. */
 async function lockCurrentStatus(
   client: PoolClient,
   input: BulkStatusChangeInput,
@@ -115,7 +115,7 @@ async function lockCurrentStatus(
   if (input.entityType === 'user') {
     const result = await client.query<{ status: string }>(
       `SELECT status FROM users
-       WHERE id = $1 AND organization_id = $2
+       WHERE id = $1 AND organization_id = $2 AND NOT is_service_account
        FOR UPDATE`,
       [id, input.organizationId],
     );
@@ -139,7 +139,7 @@ async function updateStatus(
   if (input.entityType === 'user') {
     await client.query(
       `UPDATE users SET status = $1, updated_at = NOW()
-       WHERE id = $2 AND organization_id = $3`,
+        WHERE id = $2 AND organization_id = $3 AND NOT is_service_account`,
       [nextStatus, id, input.organizationId],
     );
     return;

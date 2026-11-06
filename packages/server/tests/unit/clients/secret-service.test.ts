@@ -22,6 +22,20 @@ vi.mock('../../../src/clients/crypto.js', () => ({
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
 }));
+vi.mock('../../../src/lib/database.js', () => {
+  const database = {
+    query: async (sql: string, values: readonly unknown[]) => {
+      if (sql === 'SELECT id FROM clients WHERE id = $1 FOR UPDATE') return { rows: [{ id: values[0] }] };
+      if (sql.includes('SELECT EXISTS (SELECT 1 FROM client_service_accounts')) return { rows: [{ present: false }] };
+      throw new Error('Unexpected query in ordinary client-secret fixture');
+    },
+  };
+  return {
+    getPool: () => database,
+    getDatabaseTransactionClient: () => database,
+    runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  };
+});
 
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: { warn: vi.fn(), error: vi.fn(), info: vi.fn() },

@@ -69,7 +69,14 @@ export function printTable(headers: string[], rows: string[][]): void {
  * @param data - Any JSON-serializable value
  */
 export function printJson(data: unknown): void {
-  console.log(JSON.stringify(data, null, 2));
+  // JSON.stringify escapes C0 controls but leaves C1, bidi and line separators raw. Escape those
+  // invisible code points so a stored label cannot control a terminal or log viewer; JSON.parse
+  // restores every original value exactly.
+  const rendered = JSON.stringify(data, null, 2).replace(
+    /[\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g,
+    (character) => `\\u${(character.codePointAt(0) ?? 0).toString(16).padStart(4, '0')}`,
+  );
+  console.log(rendered);
 }
 
 /**

@@ -219,6 +219,7 @@ describe('client requireConsent administrative specification', () => {
     expect(clientService.updateClient).toHaveBeenCalledWith(
       CLIENT_ID,
       expect.objectContaining({ requireConsent: true }),
+      'admin-id',
     );
     expect(ctx.body).toMatchObject({ data: { requireConsent: true } });
   });

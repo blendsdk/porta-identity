@@ -25,10 +25,11 @@ describe('record deletion lifecycle implementation', () => {
     const init = await read('src/cli/commands/init.ts');
     const guard = init.indexOf("getApplicationBySlug('porta-admin')");
     const permissionLoop = init.indexOf('for (const permSlug of ALL_ADMIN_PERMISSIONS)');
-    const roleLoop = init.indexOf('for (const roleDef of ALL_ADMIN_ROLES)');
+    const roleLoop = init.indexOf('for (const roleDef of [...ALL_ADMIN_ROLES, SERVICE_ACCOUNT_ROLE_DEFINITION])');
     const mapping = init.indexOf('await assignPermissionsToRole');
 
     expect(guard).toBeGreaterThan(-1);
+    expect(roleLoop).toBeGreaterThan(-1);
     expect(init.slice(guard, permissionLoop)).toContain('System already initialized');
     expect(guard).toBeLessThan(permissionLoop);
     expect(permissionLoop).toBeLessThan(roleLoop);

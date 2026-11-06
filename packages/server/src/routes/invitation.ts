@@ -540,13 +540,18 @@ async function applyPreAssignments(
           continue;
         }
 
-        // Insert user-role mapping (ON CONFLICT DO NOTHING for idempotency)
-        await pool.query(
+        // Old invitations may predate current admission rules. Exclude the canonical machine
+        // membership at the actual write, while retaining best-effort ordinary assignments.
+        const assigned = await pool.query(
           `INSERT INTO user_roles (user_id, role_id)
-           VALUES ($1, $2)
-           ON CONFLICT (user_id, role_id) DO NOTHING`,
-          [userId, role.roleId],
+           SELECT $1, role.id FROM roles role
+           JOIN applications application ON application.id = role.application_id
+           WHERE role.id = $2 AND role.application_id = $3
+             AND NOT (application.slug = 'porta-admin' AND role.slug = 'porta-invite-service')
+           ON CONFLICT (user_id, role_id) DO NOTHING RETURNING role_id`,
+          [userId, role.roleId, role.applicationId],
         );
+        if (assigned.rowCount === 0) continue;
 
         logger.debug({ event: 'invitation-role-applied' }, 'Invitation role assignment applied');
       } catch {

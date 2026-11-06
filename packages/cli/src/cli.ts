@@ -111,7 +111,9 @@ export function createCli(args: readonly string[]): Argv<GlobalOptions> {
     .strict()
     .help()
     .version(false) // Disable default --version; we use a custom version command
-    .completion('completion', false); // The public completion command owns its help entry.
+    .completion('completion', false) // The public completion command owns its help entry.
+    // Handlers and the executable own termination; help and parse results return to the caller.
+    .exitProcess(false);
   if (resolveJsonMode(args)) {
     parser.fail(() => {
       // Discard yargs' raw text. The executable formats this trusted discriminator once.

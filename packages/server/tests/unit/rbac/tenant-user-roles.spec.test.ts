@@ -42,11 +42,18 @@ vi.mock('../../../src/applications/service.js', () => ({
 }));
 
 vi.mock('../../../src/users/repository.js', () => ({
+  findServiceAccountClassification: vi.fn().mockResolvedValue(false),
   lockControlPlaneOrganization: dependencies.lockControlPlaneOrganization,
   requireActiveSuperAdminSurvivor: dependencies.requireActiveSuperAdminSurvivor,
 }));
 
 vi.mock('../../../src/lib/database.js', () => ({
+  getPool: () => ({
+    query: async (sql: string) => {
+      if (sql.includes("role.slug = 'porta-invite-service'")) return { rows: [{ present: false }] };
+      throw new Error('Unexpected query in ordinary tenant-role fixture');
+    },
+  }),
   getDatabaseTransactionClient: () => ({ query: vi.fn() }),
   runDatabaseTransaction: (work: () => Promise<unknown>) =>
     dependencies.runDatabaseTransaction(work),

@@ -37,12 +37,18 @@ When a request reaches an Admin API endpoint, the `admin-auth` middleware perfor
 
 If any check fails, the middleware returns `401 Unauthorized` or `403 Forbidden`.
 
-### Client credentials are not supported
+### Client credentials: one bound invitation operation only
 
-Client-credentials tokens carry no `accountId`, so they never pass step 3 and every
-`/api/admin/*` request returns `401`. A service account for the Admin API is not
-available yet. Use a dedicated admin user with a refresh token, or a short-lived
-access token for batch jobs.
+Ordinary client-credentials tokens carry no `accountId`, so they never pass step 3 and every
+`/api/admin/*` request returns `401`. The single exception is the real invitation POST
+(`POST /api/admin/organizations/:orgId/users/invite`) for a confidential control-plane client
+with a live service-account binding. That lane requires the `admin:user:invite` scope and the
+bound account's live reserved permission, a 300-second native token, and an allowlisted target;
+all other Admin operations, including binding management, remain human-only.
+
+Use a dedicated admin user with a refresh token, or a short-lived access token, for every other
+batch job. Machine invitation setup and SDK examples are documented in
+[Clients](/api/clients#service-account-bindings) and [Node SDK](/guide/sdk-node#machine-invitations).
 
 The supported patterns are:
 

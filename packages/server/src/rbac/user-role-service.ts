@@ -25,7 +25,7 @@ import {
 import { auditFields, writeAuditLogInTransaction } from '../lib/audit-log.js';
 import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
 import type { Role, Permission, UserRole } from './types.js';
-import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
+import { getDatabaseTransactionClient, getPool, runDatabaseTransaction } from '../lib/database.js';
 import { registerAuthorityCleanup } from '../lib/deletion-cleanup.js';
 import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
 import { getApplicationBySlug } from '../applications/service.js';
@@ -36,12 +36,31 @@ import {
 } from '../lib/admin-permissions.js';
 import { RoleApplicationBoundaryError, RoleDelegationError, RoleNotFoundError } from './errors.js';
 import { UserNotFoundError } from '../users/errors.js';
+import { isServiceAccount } from '../users/index.js';
 import {
   lockControlPlaneOrganization,
   requireActiveSuperAdminSurvivor,
 } from '../users/repository.js';
 
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
+
+/**
+ * Reject permanent machine targets and reserved memberships before organization/user locks.
+ * Classification cannot become false and human accounts cannot be promoted, so this early
+ * authoritative check does not rely on a mutable public User cache or create a conversion race.
+ * It also avoids inverting lifecycle account locks against generic control-plane organization locks.
+ */
+async function requireHumanRoleMutation(userId: string, roleIds: readonly string[]): Promise<void> {
+  if (await isServiceAccount(userId)) throw new RoleDelegationError();
+  const reserved = await getPool().query<{ present: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1 FROM roles role JOIN applications application ON application.id = role.application_id
+       WHERE role.id = ANY($1::uuid[]) AND application.slug = 'porta-admin'
+         AND role.slug = 'porta-invite-service'
+     ) AS present`, [roleIds],
+  );
+  if (reserved.rows[0]?.present) throw new RoleDelegationError();
+}
 
 /** Inputs for one user-role mutation. */
 export interface UserRoleMutationOptions {
@@ -97,6 +116,7 @@ export async function assignRolesToUser(options: UserRoleMutationOptions): Promi
   if (requestedRoleIds.length === 0) return;
 
   await runDatabaseTransaction(async () => {
+    await requireHumanRoleMutation(userId, requestedRoleIds);
     const targets = await requireUserRoleTargets(organizationId, userId, requestedRoleIds);
     requireRoleActorBoundary(actor, targets, allowedApplicationId);
     if (actor.kind === 'user' && !allowedApplicationId) {
@@ -148,6 +168,7 @@ export async function removeRolesFromUser(
   if (roleIds.length === 0) return { reauthenticationRequired: false };
 
   return runDatabaseTransaction(async () => {
+    await requireHumanRoleMutation(userId, roleIds);
     await lockControlPlaneOrganization(organizationId);
     const targets = await requireUserRoleTargets(organizationId, userId, [...roleIds]);
     requireRoleActorBoundary(actor, targets, allowedApplicationId);

@@ -181,11 +181,25 @@ export async function findUserByEmail(orgId: string, email: string): Promise<Use
 }
 
 /**
- * Get the password hash for a user (active users only).
+ * Read permanent machine classification without consulting a cached public User projection.
+ *
+ * @param userId - Internal user UUID.
+ * @returns True only for a surviving permanently classified account, even after unbinding.
+ * @example const classified = await findServiceAccountClassification(userId);
+ */
+export async function findServiceAccountClassification(userId: string): Promise<boolean> {
+  const result = await getPool().query<{ classified: boolean }>(
+    'SELECT is_service_account AS classified FROM users WHERE id = $1', [userId],
+  );
+  return result.rows[0]?.classified === true;
+}
+
+/**
+ * Get the password hash for an active human account.
  *
  * Returns the raw Argon2id hash for password verification. Only returns
  * the hash if the user status is 'active' — inactive and automatically
- * locked users cannot authenticate.
+ * locked or permanently noninteractive users cannot authenticate.
  *
  * This is the only function that exposes password_hash; the User
  * interface replaces it with a `hasPassword` boolean.
@@ -197,12 +211,28 @@ export async function getPasswordHash(userId: string): Promise<string | null> {
   const pool = getPool();
 
   const result = await pool.query<{ password_hash: string | null }>(
-    "SELECT password_hash FROM users WHERE id = $1 AND status = 'active'",
+    "SELECT password_hash FROM users WHERE id = $1 AND status = 'active' AND NOT is_service_account",
     [userId],
   );
 
   if (result.rows.length === 0) return null;
   return result.rows[0].password_hash;
+}
+
+/**
+ * Persist a password only while the target remains a human account at the actual SQL write.
+ * A prior service/cache check alone cannot guard a delayed password hash operation.
+ *
+ * @param userId - Internal user UUID.
+ * @param passwordHash - Validated Argon2id password digest, never plaintext.
+ * @returns Whether one eligible human account was updated.
+ */
+export async function updateHumanPassword(userId: string, passwordHash: string): Promise<boolean> {
+  const result = await getPool().query(
+    `UPDATE users SET password_hash = $2, password_changed_at = NOW()
+     WHERE id = $1 AND NOT is_service_account RETURNING id`, [userId, passwordHash],
+  );
+  return result.rowCount === 1;
 }
 
 // ---------------------------------------------------------------------------
@@ -691,8 +721,9 @@ export async function recordEligiblePasswordFailure(
            ELSE locked_reason
          END
      WHERE id = $1
-       AND status = 'active'
-     RETURNING status, failed_login_count`,
+        AND status = 'active'
+        AND NOT is_service_account
+      RETURNING status, failed_login_count`,
     [id, maxAttempts],
   );
 
@@ -722,9 +753,10 @@ export async function unlockEligiblePasswordAccount(
          locked_reason = NULL,
          failed_login_count = 0,
          last_failed_login_at = NULL
-     WHERE id = $1
-       AND status = 'locked'
-       AND locked_reason = 'auto_lockout'
+      WHERE id = $1
+        AND status = 'locked'
+        AND NOT is_service_account
+        AND locked_reason = 'auto_lockout'
        AND locked_at <= $2`,
     [id, lockedBefore],
   );

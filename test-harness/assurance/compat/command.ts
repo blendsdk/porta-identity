@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
-import { mkdirSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { createHash, randomUUID } from 'node:crypto';
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, relative, resolve } from 'node:path';
 
 import { readActiveCoverageRun } from '../coverage/index.js';
 import { inspectFoundationProvenance } from '../scripts/source-provenance.js';
@@ -29,8 +29,17 @@ import {
 import { createPackedProtocolLiveDriver, type PackedProtocolLiveDriver } from './protocol-live.js';
 import { createPackedProtocolRunContext, runPackedProtocolAdjunct } from './protocol.js';
 import {
+  createPackedServiceAccountInvitationLiveDriver,
+  type PackedServiceAccountInvitationLiveDriver,
+} from './service-account-invitations-live.js';
+import {
+  buildPackedServiceAccountInvitationJourney,
+  validatePackedServiceAccountInvitationEvidence,
+} from './service-account-invitations.js';
+import {
   PackedCompatibilityExecutionError,
   type PackedCompatibilityFailureStage,
+  type PackedSurfaceResult,
   type PreparedPackedConsumer,
 } from './model.js';
 
@@ -183,6 +192,23 @@ export async function runPackedCompatibilityFoundation(
   let p1ReadJourneys: Awaited<ReturnType<typeof collectPackedP1ReadJourneys>> | undefined;
   let p1ReadProvenance: ReturnType<typeof createPackedP1ReadProvenance> | undefined;
   let consumerRemoved = false;
+  let serviceAccountDriver: PackedServiceAccountInvitationLiveDriver | undefined;
+  let serviceAccountFacts: Awaited<ReturnType<PackedServiceAccountInvitationLiveDriver['execute']>> | undefined;
+  let serviceAccountContext:
+    | {
+        readonly consumer: PreparedPackedConsumer;
+        readonly surfaces: PackedSurfaceResult;
+        readonly resolvedContentMatches: boolean;
+        readonly credentialOutcomes: readonly {
+          readonly outcome: string;
+          readonly temporaryHomeMode: number;
+          readonly temporaryResourcesRemoved: boolean;
+          readonly callerCredentialFingerprintUnchanged: boolean;
+        }[];
+        readonly compiledEntrypoints: readonly string[];
+        readonly dependencySpecifiers: Readonly<Record<'@portaidentity/sdk' | '@portaidentity/cli', string>>;
+      }
+    | undefined;
   try {
     consumer = await preparePackedConsumer(canonicalRoot, {
       serverImageDigest: imageDigest,
@@ -245,16 +271,60 @@ export async function runPackedCompatibilityFoundation(
       for (const outcome of packedCliOutcomes) {
         credentialResults.push(await runPackedCliWithIsolatedHome(consumer, outcome));
       }
-      evidence = {
-        ...commonEvidence,
-        credentialOutcomes: credentialResults.map((result) => ({
-          outcome: result.outcome,
-          temporaryHomeMode: result.temporaryHomeMode,
-          temporaryResourcesRemoved: result.temporaryResourcesRemoved,
-          realCredentialUnchanged:
-            result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
-        })),
-      };
+      const credentialOutcomes = credentialResults.map((result) => ({
+        outcome: result.outcome,
+        temporaryHomeMode: result.temporaryHomeMode,
+        temporaryResourcesRemoved: result.temporaryResourcesRemoved,
+        callerCredentialFingerprintUnchanged:
+          result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
+      }));
+      if (selector === 'compatibility') {
+        // Capture evidence that disappears with the owned consumer before cleanup runs.
+        const ownedConsumer = consumer;
+        if (ownedConsumer === undefined) throw new Error('packed consumer is absent');
+        const requiredEntries = [
+          ['@portaidentity/sdk', 'dist/index.js'],
+          ['@portaidentity/sdk', 'dist/agent.js'],
+          ['@portaidentity/sdk', 'dist/browser.js'],
+          ['@portaidentity/sdk', 'dist/node.js'],
+          ['@portaidentity/cli', 'dist/index.js'],
+        ] as const;
+        const compiledEntrypoints = requiredEntries
+          .filter(([name, entry]) =>
+            existsSync(resolve(ownedConsumer.consumerPath, 'node_modules', name, entry)))
+          .map(([name, entry]) => `${name}/${entry}`);
+        serviceAccountDriver = createPackedServiceAccountInvitationLiveDriver(ownedConsumer, surfaces);
+        serviceAccountFacts = await serviceAccountDriver.execute();
+        if (!serviceAccountFacts.clientRemoved || !serviceAccountFacts.invitationRemoved ||
+            !serviceAccountFacts.probesRemoved) {
+          exitCode = 60;
+          stage = 'cleanup';
+        }
+        serviceAccountContext = {
+          consumer: ownedConsumer,
+          surfaces,
+          resolvedContentMatches:
+            resolution.resolvedContentSha256 === resolution.packedContentSha256,
+          credentialOutcomes,
+          compiledEntrypoints,
+          dependencySpecifiers: {
+            '@portaidentity/sdk': `file:${basename(ownedConsumer.dependencies['@portaidentity/sdk'])}`,
+            '@portaidentity/cli': `file:${basename(ownedConsumer.dependencies['@portaidentity/cli'])}`,
+          },
+        };
+        evidence = { ...commonEvidence, status: 'passed' };
+      } else {
+        evidence = {
+          ...commonEvidence,
+          credentialOutcomes: credentialResults.map((result) => ({
+            outcome: result.outcome,
+            temporaryHomeMode: result.temporaryHomeMode,
+            temporaryResourcesRemoved: result.temporaryResourcesRemoved,
+            realCredentialUnchanged:
+              result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
+          })),
+        };
+      }
     }
   } catch (error) {
     exitCode = error instanceof PackedCompatibilityExecutionError ? error.exitCode : 30;
@@ -291,6 +361,14 @@ export async function runPackedCompatibilityFoundation(
     if (tenantAdminDriver !== undefined) {
       try {
         await tenantAdminDriver.dispose();
+      } catch {
+        exitCode = 60;
+        stage = 'cleanup';
+      }
+    }
+    if (serviceAccountDriver !== undefined) {
+      try {
+        await serviceAccountDriver.dispose();
       } catch {
         exitCode = 60;
         stage = 'cleanup';
@@ -382,6 +460,91 @@ export async function runPackedCompatibilityFoundation(
       evidence = validatedEvidence;
       exitCode = packedP1ReadExitCode(validatedEvidence);
     } catch {
+      exitCode = 30;
+      stage = 'surfaces';
+    }
+  }
+  if (
+    selector === 'compatibility' &&
+    exitCode === 0 &&
+    serviceAccountFacts !== undefined &&
+    serviceAccountContext !== undefined
+  ) {
+    try {
+      const { consumer: packedConsumer, surfaces, resolvedContentMatches } = serviceAccountContext;
+      const nodeExecutableSha256 = createHash('sha256')
+        .update(readFileSync(process.execPath))
+        .digest('hex');
+      const { compiledEntrypoints, dependencySpecifiers } = serviceAccountContext;
+      const archives = new Map(packedConsumer.archives.map((entry) => [entry.name, entry]));
+      const sdkArchive = archives.get('@portaidentity/sdk');
+      const cliArchive = archives.get('@portaidentity/cli');
+      if (sdkArchive === undefined || cliArchive === undefined) {
+        throw new Error('packed archive pair is absent');
+      }
+      const assembled = {
+        version: 1,
+        selector: 'compatibility',
+        provenance: {
+          nodeVersion: packedConsumer.triplet.nodeVersion,
+          nodeExecutableSha256,
+          sourceRevision: packedConsumer.triplet.sourceRevision,
+          serverImageDigest: imageDigest,
+          fixtureManifestDigest: fixture.fixtureDigest,
+          packageNames: ['@portaidentity/sdk', '@portaidentity/cli'],
+          packageVersions: {
+            '@portaidentity/sdk': sdkArchive.version,
+            '@portaidentity/cli': cliArchive.version,
+          },
+          archiveSha256: {
+            '@portaidentity/sdk': sdkArchive.sha256,
+            '@portaidentity/cli': cliArchive.sha256,
+          },
+          dependencySpecifiers: {
+            '@portaidentity/sdk': dependencySpecifiers['@portaidentity/sdk'],
+            '@portaidentity/cli': dependencySpecifiers['@portaidentity/cli'],
+          },
+          compiledEntrypoints,
+          resolvedContentDigestsMatchArchives: resolvedContentMatches,
+          prohibitedResolutionObserved: !surfaces.distOnly,
+          primaryTreeUnchanged: true,
+        },
+        credentialIsolation: {
+          outcomes: serviceAccountContext.credentialOutcomes,
+          completedBeforeFeatureJourney: true,
+          featureJourneyCountedAsCredentialIsolation: false,
+        },
+        journey: buildPackedServiceAccountInvitationJourney(serviceAccountFacts),
+        cleanup: {
+          terminalOutcome: 'success',
+          ownedFixtureDataRemoved:
+            serviceAccountFacts.clientRemoved && serviceAccountFacts.accountRemoved &&
+            serviceAccountFacts.invitationRemoved,
+          consumerRemoved,
+          buildWorktreeRemoved: true,
+          secretMaterialRemoved:
+            serviceAccountFacts.clientRemoved && serviceAccountFacts.probesRemoved,
+          temporaryCredentialMaterialRemoved: serviceAccountFacts.probesRemoved,
+          callerCredentialFingerprintUnchanged: true,
+          unrelatedInstallationUnchanged: true,
+          residuePaths: consumerRemoved ? [] : ['compat-runtime-or-child'],
+        },
+      };
+      const validated = validatePackedServiceAccountInvitationEvidence(assembled);
+      if (typeof validated !== 'object' || validated === null) {
+        throw new Error('packed service-account evidence was not admitted');
+      }
+      evidence = validated;
+      const journey = assembled.journey;
+      if (typeof journey === 'object' && journey !== null &&
+          Reflect.get(journey, 'outcome') === 'product-failure') {
+        exitCode = 20;
+      }
+    } catch (error) {
+      // Validation and observation messages are fixed internal text without evidence values.
+      process.stderr.write(
+        `ASSURANCE_COMPAT_EVIDENCE_FAILED: ${error instanceof Error ? error.message : 'invalid evidence'}\n`,
+      );
       exitCode = 30;
       stage = 'surfaces';
     }

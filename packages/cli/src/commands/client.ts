@@ -18,6 +18,7 @@
  *   porta client login-methods set <client-id> --methods "password,magic_link"
  *   porta client login-methods clear <client-id>
  *   porta client secret <subcommand> ...
+ *   porta client service-account get|set|revoke <client-id>
  *
  * @module commands/client
  */
@@ -31,6 +32,7 @@ import { printTable, printJson, success, warn, info, formatDate } from '../outpu
 import { confirm } from '../prompt.js';
 import { parseLoginMethodsFlag, parseCommaSeparated } from '../parsers.js';
 import { clientSecretCommand } from './client-secret.js';
+import { clientServiceAccountCommand } from './client-service-account.js';
 
 // ---------------------------------------------------------------------------
 // Argument type extensions
@@ -615,9 +617,10 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
         // ── nested subcommand groups ────────────────────────────────────
         .command(clientSecretCommand)
+        .command(clientServiceAccountCommand)
         .demandCommand(
           1,
-          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret',
+          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret, service-account',
         )
     );
   },

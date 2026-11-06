@@ -3,6 +3,7 @@ import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { logAdminMutationFailure } from '../lib/admin-mutation-diagnostics.js';
 import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
 import { normalizedRouteTemplate, recordSecurityDecision } from '../security/decision-context.js';
+import { isAdminInvitationRequest, serviceAccountAuditMetadata } from '../service-accounts/index.js';
 
 const MUTATION_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 const SELF_MANAGED_MUTATION_PREFIXES = [
@@ -38,9 +39,19 @@ function ownsAdministrativeMutation(method: string, path: string): boolean {
  * excluded here. Every other state-changing admin request shares one request-local PostgreSQL
  * client across repository calls.
  */
-export function adminMutationAudit(): Middleware {
+export function adminMutationAudit(options: {
+  /** Only the server-global mount defers the exact POST to its dedicated router's same owner. */
+  deferInvitationToRouter?: boolean;
+} = {}): Middleware {
   return async (ctx, next) => {
-    if (!ownsAdministrativeMutation(ctx.method, ctx.path)) {
+    if (options.deferInvitationToRouter && isAdminInvitationRequest(ctx.method, ctx.path)) {
+      await next();
+      return;
+    }
+    // Keep existing human prefix behavior. A validated machine alias must nevertheless use the
+    // same durable owner; otherwise a case variant could bypass the final generic audit.
+    const machineInvitation = ctx.state.serviceAccount && isAdminInvitationRequest(ctx.method, ctx.path);
+    if (!ownsAdministrativeMutation(ctx.method, ctx.path) && !machineInvitation) {
       await next();
       return;
     }
@@ -52,6 +63,21 @@ export function adminMutationAudit(): Middleware {
 
         const client = getDatabaseTransactionClient();
         if (!client) throw new Error('Administrative mutation transaction is unavailable');
+        const machine = ctx.state.serviceAccount;
+        if (machine) {
+          if (!isAdminInvitationRequest(ctx.method, ctx.path)) {
+            throw new Error('Machine mutation is not permitted');
+          }
+          await writeAuditLogInTransaction(client, {
+            organizationId: machine.authority.organizationId,
+            actorType: 'client', actorClientId: machine.authority.publicClientId,
+            actorClientName: machine.authority.clientName,
+            eventType: 'admin.mutation.committed', eventCategory: 'admin',
+            metadata: { method: ctx.method, routeTemplate: normalizedRouteTemplate(ctx),
+              ...serviceAccountAuditMetadata(machine.authority) },
+          });
+          return;
+        }
         const actor = ctx.state.adminUser;
         if (!actor) throw new Error('Administrative mutation actor is unavailable');
         const liveActor = await client.query<{ id: string; organization_id: string }>(

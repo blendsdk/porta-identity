@@ -91,8 +91,9 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | ----------------------- | ----------------------------------------------------- | --------- | ---------------------------------------------- |
 | `organizations.ts`      | `/api/admin/organizations`                            | 10        | Org CRUD + status lifecycle + branding         |
 | `applications.ts`       | `/api/admin/applications`                             | 11        | App CRUD + status + modules                    |
-| `clients.ts`            | `/api/admin/clients`                                  | 10        | Client CRUD + status + secrets                 |
+| `clients.ts`            | `/api/admin/clients`                                  | 13        | Client CRUD + status + secrets + binding       |
 | `users.ts`              | `/api/admin/organizations/:orgId/users`               | 13        | User CRUD + status + password + login tracking |
+| `admin-invitations.ts`  | `/api/admin/organizations/:orgId/users`               | 1         | Exact invitation POST with human/machine lanes |
 | `tenant-users.ts`       | `/api/organizations/:orgId/users`                     | 12        | Tenant M2M user CRUD, lifecycle, roles, invite |
 | `tenant-invitations.ts` | `/api/organizations/:orgId/invitations`               | 1         | Tenant application-bound invitation revocation |
 | `roles.ts`              | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
@@ -142,6 +143,36 @@ the default admin prefix gains no cancellation authority, and the SDK rejects id
 resolve to `.` or `..` before sending. See
 [revocation security](security.md#tenant-invitation-revocation) and
 [storage/rollout](data-model.md) for the ownership, audit and race boundaries.
+
+### Bound service-account invitation authority
+
+The client router exposes one human-only binding subresource under the internal client UUID (not the
+public OAuth client ID). All three operations require a live human Super Admin; no route permission
+delegates them to a service account.
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/admin/clients/:id/service-account` | `{data: binding}` |
+| `PUT` | `/api/admin/clients/:id/service-account` | `201` first binding, `200` replacement, `{data: binding}` |
+| `DELETE` | `/api/admin/clients/:id/service-account` | `204` |
+
+`PUT` accepts only the strict policy (`targets` plus the initial required `accountEmail`) and never a
+credential, version or arbitrary permission. A replaced policy is complete; omitted targets are not
+retained. Bindings project status, email, targets and timestamps, never the internal authorization
+version or secret material. Validation, ownership conflict, not-found and storage errors use fixed
+bodies and preserve the existing `403`/`413`/`429` boundaries.
+
+Exactly one Admin operation accepts native machine identity: the real
+`POST /api/admin/organizations/:orgId/users/invite`. A bound client authenticates with an opaque
+`client_credentials` token carrying `admin:user:invite`; the permanently classified account must also
+hold the same live reserved permission. Tokens last 300 seconds, have no refresh grant, and are
+limited to 30 invitations per hour per internal client across targets and token generations. Every
+other Admin operation, the invitation preview and tenant routes remain human-only.
+
+The response follows the ordinary invitation contract: `201` with `email`, `expiresAt`,
+`invitationId`, `invitationSent` and `emailDelivery`. Expired or invalid machine credentials receive a
+fixed `401`; missing live binding/account/policy authority receives a fixed `403`; neither exposes
+lookup or policy details.
 
 ### Organization branding assets
 
