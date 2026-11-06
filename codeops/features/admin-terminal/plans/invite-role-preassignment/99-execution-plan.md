@@ -1,7 +1,7 @@
 # Task T-01: Admin Terminal Invite Role Pre-Assignment
 
 > **Type**: Task (lightweight) · **Feature**: admin-terminal · **CodeOps Artifact Schema**: 1
-> **Progress**: 9/10 tasks (90%)
+> **Progress**: 10/10 tasks (100%)
 > **Reasoning**: high — a new modal interaction crosses capability gating, exact invite payloads and
 > an existing asynchronous role catalog; the change is bounded and reuses established seams.
 
@@ -133,9 +133,12 @@ changed. The issue's acceptance criteria remain the authoritative behavior basel
   read-capability, reserved-role, label, focus, extent, preview and recovery fixes. ✅ (completed:
   2026-11-06; focused server specs 20 passed, focused CLI admin suite 951 passed, lint/typecheck
   passed; full gate in T-01.10)
-- [~] T-01.10 Obtain scoped re-review, run the full applicable server/CLI gate and CI, merge through
-  `develop`, close #182 and record final evidence and cleanup. ⏳ (re-review, full affected gate,
-  PR/CI and merge pending)
+- [x] T-01.10 Obtain scoped re-review, run the full applicable server/CLI gate and CI, merge through
+  `develop`, close #182 and record final evidence and cleanup. ✅ (completed: 2026-11-06; scoped
+  correctness/security re-reviews closed every finding; CLI1,861, server unit4,427,
+  integration1,164, pentest334, E2E134, structure158, lint/typecheck/build and docs pass; PR #221
+  all six CI jobs pass; production-security exits0 with 11/11 exposure passes and no incomplete
+  cases; merge and issue closure are the final integration actions)
 
 **Verify**: `pnpm --filter @portaidentity/cli lint && pnpm --filter @portaidentity/cli typecheck && pnpm --filter @portaidentity/cli build && pnpm --filter @portaidentity/cli test && pnpm --filter @portaidentity/server lint && pnpm --filter @portaidentity/server typecheck && pnpm --filter @portaidentity/server test && pnpm test:structure`
 

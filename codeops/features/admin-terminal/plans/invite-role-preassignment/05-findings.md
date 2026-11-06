@@ -40,6 +40,7 @@
 | Server unit (full) | 4,427 passed |
 | E2E | 134 passed |
 | Structure / docs build | 158 / passed |
+| Production-security assurance | Exit 0; 33 cases + 11 exposure passes, 0 incomplete |
 | CLI full suite | 1,861 passed |
 | Server integration / pentest | 1,164 / 334 passed |
 | Independent re-review | Scoped correctness and security re-reviews returned; corrections below |
