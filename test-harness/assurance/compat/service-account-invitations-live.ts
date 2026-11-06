@@ -115,17 +115,20 @@ export class PackedServiceAccountInvitationLiveDriver {
           grantTypes: ['client_credentials'],
           responseTypes: ['code'],
           scope: FEATURE_SCOPE,
-          tokenEndpointAuthMethod: 'client_secret_basic',
+          tokenEndpointAuthMethod: 'client_secret_post',
           requirePkce: false,
         },
       });
       if (created.status() !== 201) throw new Error('owned journey client was not created');
       const createdBody = await created.json();
-      const client = this.readPath(createdBody, ['data', 'client']);
-      createdClientId = requireString(client.id, 'owned client id');
-      const publicClientId = requireString(client.clientId, 'owned public client id');
-      const initialSecret = this.readPath(createdBody, ['data', 'secret']);
-      requireString(initialSecret.plaintext, 'initial client secret');
+      const clientValue = this.readField(createdBody, ['data', 'client'], 'client create');
+      if (!isRecord(clientValue)) throw new Error('packed client create response has no client');
+      createdClientId = requireString(clientValue.id, 'owned client id');
+      const publicClientId = requireString(clientValue.clientId, 'owned public client id');
+      requireString(
+        this.readField(createdBody, ['data', 'secret', 'plaintext'], 'initial secret'),
+        'initial client secret',
+      );
 
       const bindingResponse = await api.put(
         `${this.endpoints.porta}/api/admin/clients/${createdClientId}/service-account`,
@@ -150,19 +153,18 @@ export class PackedServiceAccountInvitationLiveDriver {
       );
       if (replacement.status() !== 201) throw new Error('replacement secret was not created');
       const replacementSecret = requireString(
-        this.readPath(await replacement.json(), ['data', 'plaintext']),
+        this.readField(await replacement.json(), ['data', 'plaintext'], 'replacement secret'),
         'replacement client secret',
       );
       const secretDigest = digest(replacementSecret);
 
-      const directToken = await api.post(`${this.endpoints.porta}${TOKEN_PATH}`, {
-        headers: {
-          Authorization: `Basic ${Buffer.from(
-            `${publicClientId}:${replacementSecret}`,
-          ).toString('base64')}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
+      const directToken = await api.post(`${this.endpoints.porta.replace(/\/$/, '')}${TOKEN_PATH}`, {
+        form: {
+          grant_type: 'client_credentials',
+          client_id: publicClientId,
+          client_secret: replacementSecret,
+          scope: FEATURE_SCOPE,
         },
-        form: { grant_type: 'client_credentials', scope: FEATURE_SCOPE },
       });
       if (directToken.status() !== 200) throw new Error('packed feature token request failed');
       const tokenBody = (await directToken.json()) as Record<string, unknown>;
@@ -193,7 +195,7 @@ export class PackedServiceAccountInvitationLiveDriver {
       );
       if (revoked.status() !== 200) throw new Error('revoked binding was not readable');
       const bindingStatusAfter = requireString(
-        this.readPath(await revoked.json(), ['data', 'status']),
+        this.readField(await revoked.json(), ['data', 'status'], 'binding read'),
         'binding status after revocation',
       );
 
@@ -251,14 +253,13 @@ export class PackedServiceAccountInvitationLiveDriver {
     return value;
   }
 
-  /** Read a nested response field and refuse an unexpected shape. */
-  private readPath(value: unknown, path: readonly string[]): Record<string, unknown> {
+  /** Read one nested response field, rejecting any missing object on the way. */
+  private readField(value: unknown, path: readonly string[], label: string): unknown {
     let current: unknown = value;
     for (const key of path) {
-      if (!isRecord(current)) throw new Error('packed management response has an unexpected shape');
+      if (!isRecord(current)) throw new Error(`packed ${label} response has an unexpected shape`);
       current = current[key];
     }
-    if (!isRecord(current)) throw new Error('packed management response has an unexpected shape');
     return current;
   }
 
@@ -292,27 +293,38 @@ export class PackedServiceAccountInvitationLiveDriver {
 import { createPortaClient } from '@portaidentity/sdk';
 import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
 const input = JSON.parse(process.argv[2]);
+const describe = (error) => typeof error?.status === 'number' ? 'status-' + error.status : 'exception';
 const auth = createClientCredentialsAuth({
   tokenEndpoint: input.server + '/porta-admin/token',
   clientId: input.clientId,
   clientSecret: input.clientSecret,
   scope: 'admin:user:invite',
 });
-const token = await auth.getToken();
-const client = createPortaClient({ transport: createNodeTransport({ baseUrl: input.server, auth }) });
-const result = await client.users.invite({ organizationId: input.organizationId, email: input.email });
-console.log(JSON.stringify({ token, delivery: result.emailDelivery }));
+let token;
+try {
+  token = await auth.getToken();
+} catch (error) {
+  console.log(JSON.stringify({ failed: 'token-' + describe(error) }));
+  process.exit(0);
+}
+try {
+  const client = createPortaClient({ transport: createNodeTransport({ baseUrl: input.server, auth }) });
+  const result = await client.users.invite({ organizationId: input.organizationId, email: input.email });
+  console.log(JSON.stringify({ token, delivery: result.emailDelivery }));
+} catch (error) {
+  console.log(JSON.stringify({ failed: 'invite-' + describe(error) }));
+}
 `);
     try {
       const result = await runManagedChild(process.execPath, [probe, JSON.stringify({
-        server: this.endpoints.porta,
+        server: this.endpoints.porta.replace(/\/$/, ''),
         clientId: input.clientId,
         clientSecret: input.clientSecret,
         organizationId: input.organizationId,
         email: input.email,
       })], {
         cwd: this.consumer.consumerPath,
-        env: process.env,
+        env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
         stdio: 'pipe',
         maxOutputBytes: PROBE_OUTPUT_BYTES,
         timeoutMilliseconds: 60_000,
@@ -323,6 +335,9 @@ console.log(JSON.stringify({ token, delivery: result.emailDelivery }));
         throw new Error('packed SDK invitation journey failed');
       }
       const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
+      if (parsed.failed !== undefined) {
+        throw new Error(`packed SDK invitation ${requireString(parsed.failed, 'probe failure')}`);
+      }
       const token = requireString(parsed.token, 'packed native token');
       const delivery = requireString(parsed.delivery, 'packed delivery outcome');
       if (delivery !== 'sent' && delivery !== 'failed' && delivery !== 'unknown') {
@@ -356,13 +371,13 @@ try {
 `);
     try {
       const result = await runManagedChild(process.execPath, [probe, JSON.stringify({
-        server: this.endpoints.porta,
+        server: this.endpoints.porta.replace(/\/$/, ''),
         token: input.token,
         organizationId: input.organizationId,
         email: input.email,
       })], {
         cwd: this.consumer.consumerPath,
-        env: process.env,
+        env: { ...process.env, NODE_TLS_REJECT_UNAUTHORIZED: '0' },
         stdio: 'pipe',
         maxOutputBytes: PROBE_OUTPUT_BYTES,
         timeoutMilliseconds: 60_000,

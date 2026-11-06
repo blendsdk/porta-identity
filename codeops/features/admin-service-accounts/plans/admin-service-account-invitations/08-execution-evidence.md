@@ -828,6 +828,25 @@ typecheck and the packed validator11 all pass. Actual inventories are SDK60 and 
 compatibility-selector execution, docs, independent review, production/packed assurance and final
 CI remain pending; the typecheck-only predicate correction is recorded as AR-41.
 
+
+### Packed journey live qualification — 2026-11-06
+
+The first compatibility attempts failed before tests for a harness-invocation reason: npm rejects
+the same path supplied as both user and global config, which `/dev/null` triggered. Two distinct
+empty owner-only npm config files fix the invocation; no repository or product change is involved.
+Once preparation ran, a strict response reader rejected leaf strings, the journey client used
+`client_secret_basic` while the packed provider sends `client_secret_post`, and the owned
+self-signed endpoint needed the same TLS exception the packed CLI uses. After those implementation
+corrections, the journey executed end to end against the real operational stack: initial binding
+201, replacement secret 201, packed provider token 200 with scope `admin:user:invite` and 300-second
+lifetime, invitation 201 with sent delivery, direct PostgreSQL row pending with count1 and no eager
+user, revocation 204 with status `revoked`, and replay of the previously issued token denied403
+with the invitation count and record digest unchanged. The driver now reports only closed failure
+stages; no token, plaintext or raw response enters evidence.
+
+The authoritative `pnpm assurance:compat --select compatibility` run remains pending on the final
+committed bytes; the debug run is not claimed as compatibility evidence.
+
 ### Clean-source assurance evidence
 
 Registered `pnpm assurance:harness --project security --profile production-security` runs from the

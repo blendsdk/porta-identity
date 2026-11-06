@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-06 09:22
-> **Progress**: 58/65 tasks (89%)
+> **Last Updated**: 2026-11-06 10:05
+> **Progress**: 60/65 tasks (92%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution contract
@@ -220,8 +220,8 @@ this feature roadmap/evidence. Portfolio remains deferred; no release/merge/issu
 
 ### Session 4.3 — Hardening and final evidence
 
-- [ ] 4.3.1 Add implementation tests and bounded maximum-input/output/security regression coverage.
-- [ ] 4.3.2 Update public API/SDK/CLI help and maintainer security/data/API docs, including safe rollout and credential replacement.
+- [x] 4.3.1 Add implementation tests and bounded maximum-input/output/security regression coverage. ✅ (completed: 2026-11-06 10:05; SDK malformed/traversal/response matrix, CLI exact/over-100-KiB files,1–100 organizations,100/101 pair bounds, duplicate/UTF-8/special-file cases, sanitization/no-echo and safe exit classifications all pass within the sealed groups; no production test hook)
+- [x] 4.3.2 Update public API/SDK/CLI help and maintainer security/data/API docs, including safe rollout and credential replacement. ✅ (completed: 2026-11-06 10:05; authentication/client/Node-SDK/CLI docs cover the one bound operation, limits, secret retirement/replacement, revocation ordering and rollout; ADR-020/security/API/data-model updated; docs build passes; dated collector inventory snapshot left unmodified rather than fabricated)
 - [ ] 4.3.3 Run independent correctness/API/concurrency review plus security audit; resolve necessary findings and scoped re-review.
 - [ ] 4.3.4 Qualify clean-source direct machine invitation, production-security and registered packed SDK/CLI compatibility evidence; record exact provenance and limitations.
 - [ ] 4.3.5 Confirm final full CI, acceptance coverage, feature roadmap/docs, resource teardown and no merge/release/issue-state claim.
