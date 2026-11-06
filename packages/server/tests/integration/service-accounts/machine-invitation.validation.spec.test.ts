@@ -92,20 +92,31 @@ describe.sequential('machine invitation request validation', () => {
     return claim.value;
   }
 
-  /** Let the native serializer select a failing depth while the HTTP byte limit bounds fixture growth. */
+  /**
+   * Let the native serializer select a failing depth while the HTTP byte limit bounds fixture growth.
+   *
+   * The first depth that overflows this test process's call stack is not necessarily unencodable in
+   * the server handler, which runs with a different remaining stack. After the shape first fails,
+   * keep growing it to the largest power-of-two depth that still fits the request byte limit, so any
+   * realistic handler stack also fails natively instead of accepting the request.
+   */
   function unencodableJsonRequest(email: string): string {
+    let selected: string | undefined;
     for (let depth = 1; ; depth *= 2) {
       const raw = rawJsonClaim(email, '['.repeat(depth) + '0' + ']'.repeat(depth));
-      if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) {
-        throw new Error('This runtime has no native encoding failure within the request byte limit');
-      }
+      if (Buffer.byteLength(raw, 'utf8') > MAX_BODY_BYTES) break;
       const parsed: unknown = JSON.parse(raw);
-      try { JSON.stringify(parsed); }
-      catch (error) {
-        if (error instanceof RangeError) return raw;
-        throw error;
+      try {
+        JSON.stringify(parsed);
+      } catch (error) {
+        if (!(error instanceof RangeError)) throw error;
+        selected = raw;
+        continue;
       }
+      if (selected) break;
     }
+    if (!selected) throw new Error('This runtime has no native encoding failure within the request byte limit');
+    return selected;
   }
 
   /** Rejection must not echo input, token material or internal error context. */

@@ -1,7 +1,7 @@
 # Ambiguity Register: Admin Service-Account Invitations
 
-> **Status**: ✅ All39 decisions resolved; expiry corrections and two fixture corrections requalifying
-> **Last Updated**: 2026-11-06 01:10
+> **Status**: ✅ All40 decisions resolved; Phase3 assurance green, final CI/cleanup pending
+> **Last Updated**: 2026-11-06 03:20
 > **CodeOps Artifact Schema**: 1
 > **Mode**: auto-design · policy version 1 · root invocation bundle-c-20261104
 > **Workflow**: make-plan → exec-plan; user-selected auto-commit for verified feature checkpoints
@@ -68,6 +68,7 @@ confirmed; approval of recommendations does not invent answers that were not act
 | 37 | Runtime / post-lock credential expiry | RV-3-001/SA-3-001 use transaction-start time after a parent-lock wait | clock_timestamp() in the existing exact-secret predicate, retaining locks and strict expiry | AI — delegated by --auto-design; independent challenge selects current row-evaluation DB time, no policy change. | ✅ Resolved |
 | 38 | Runtime / native expiry at locked admission | SA-3-002 can retain a pre-wait validity result after token expiry | Trusted native exp on existing request-only principal; strict post-wait and final-admission checks | AI — delegated by --auto-design; independently challenged bounded mechanism, no wrapper/store/new policy. | ✅ Resolved |
 | 39 | Runtime / sealed delivery audit observation | Global before/after audit snapshot can include another invitation's unawaited write | Count `email.send.invitation` rows for this case's own invitationId; same 1/0 invariant | User explicitly approved the named file/observation change, reseal and gate rerun; no product change. | ✅ Resolved |
+| 40 | Runtime / sealed unencodable-request fixture | First overflow depth of the test's own stack is encodable in the server handler on CI | Grow the same nested request to the largest failing power-of-two depth within 100 KiB | User explicitly approved the named file/input-construction change; assertion 400/no-effects unchanged. | ✅ Resolved |
 
 ## Initial evidence
 
@@ -387,8 +388,25 @@ oracle rewrite or weakened assertion is authorized.
   its blocking barrier/intended refusal, unexpected writer ordering causes material failure, or
   a larger fencing framework becomes necessary. No new infrastructure or existing-oracle rewrite.
 
-## AR-39 — User-approved scoped delivery audit observation
+## AR-40 — User-approved unencodable-request fixture depth
 
+- **Authority:** User selected “Deepen the fixture (Recommended)” after the exact sealed file, the
+  failing assertion, the stack-dependent input construction and the unchanged 400/no-effects
+  invariant were shown. This is a fixture-construction change, not a product or policy decision.
+- **Evidence:** The helper doubled an array nesting depth until this test process's own
+  `JSON.stringify` threw, then sent that exact body. The server handler runs with a different
+  remaining stack, so on CI it still encoded the value and correctly returned 201; the assertion
+  expected 400 from the test process's boundary. The same test failed on the earlier checkpoint, so
+  this is not a correction regression. Local runs consistently overflowed at the selected depth.
+- **Decision:** After the shape first fails locally, keep growing it through power-of-two depths
+  while the complete request stays within the existing 100 KiB limit, and send the largest failing
+  depth (~32k, well beyond any handler stack). The assertion remains 400 with no invitation, user,
+  audit or mail effects; the positive 1024-depth preservation case is unchanged.
+- **Boundary:** No product file, error mapping, byte limit, assertion meaning or other oracle
+  changes. The prior seal is superseded with exact provenance; all other seals stay unchanged.
+  Qualification requires the case to pass alone, the file to lint/typecheck and the final CI to pass.
+
+## AR-39 — User-approved scoped delivery audit observation
 - **Authority:** User selected “Approve scoped check (Recommended)” in this conversation after the
   exact sealed file, the failing assertion, the asynchronous-write root cause and the unchanged
   1/0 invariant were shown. This is a verification-observation correction, not a product change.

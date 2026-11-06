@@ -805,6 +805,27 @@ file-qualified `security.md#bound-machine-invitations` form; local structure tes
 documentation-link defect only, with no executable-source delta; the follow-up commit and its CI
 are recorded separately rather than treating the failed checkpoint as green.
 
+### Clean-source assurance evidence
+
+Registered `pnpm assurance:harness --project security --profile production-security` runs from the
+clean owned worktree at ac83422b with the AR-36 short temporary root. It exits0 with 7 human-auth,
+4 second-factor, 17 tenant/admin and 5 validation/security cases passing, plus 11 production-exposure
+passes and zero product, incomplete or execution failures. This is better than the earlier accepted
+three-gap forwarding context; no new gap is waived, and the exposure artifact is retained under
+`test-harness/.assurance-results/7ddfd8b7-de1a-4980-9f5e-ead373e187dd/production-exposure/production-security/observation.json`.
+The final HEAD 9d0ef031 differs from that assured commit only in techdocs/security.md link syntax and
+this evidence document; the executable/tests/docker/scripts delta is verified empty. Protocol
+production-security then runs from the final clean commit to cover the SDK-independent OIDC slice
+and exits0 with 15 cases passing and zero failures. Neither run waives a new gap.
+
+CI on 9d0ef031 exposes one further sealed-oracle construction defect: the natively-unencodable
+request case used the first depth that overflowed the test process's own stack, which the server
+handler could still encode, so it correctly returned201. Under AR-40 the user approves keeping the
+same nested shape and growing it to the largest failing power-of-two depth within the existing
+100 KiB limit. The case passes alone, lints and typechecks, and is re-sealed at
+56bf32ecd03f4f9f52de4fae2f15d0767eaaf794474d30a8c93cc3ea1792b257 with the prior seal superseded.
+No product byte or assertion changed; final CI must pass on the corrected test bytes.
+
 Ordinary control inputs use only supported profile scope before the new scope exists. Real proof
 fixtures qualify both modern canonical and proven credentials over HTTP before adding the feature
 scope for the race. No fixture registers the missing feature or fabricates its authority. The full
