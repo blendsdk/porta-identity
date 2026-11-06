@@ -308,8 +308,8 @@ export async function runPackedCompatibilityFoundation(
           credentialOutcomes,
           compiledEntrypoints,
           dependencySpecifiers: {
-            '@portaidentity/sdk': basename(ownedConsumer.dependencies['@portaidentity/sdk']),
-            '@portaidentity/cli': basename(ownedConsumer.dependencies['@portaidentity/cli']),
+            '@portaidentity/sdk': `file:${basename(ownedConsumer.dependencies['@portaidentity/sdk'])}`,
+            '@portaidentity/cli': `file:${basename(ownedConsumer.dependencies['@portaidentity/cli'])}`,
           },
         };
         evidence = { ...commonEvidence, status: 'passed' };
