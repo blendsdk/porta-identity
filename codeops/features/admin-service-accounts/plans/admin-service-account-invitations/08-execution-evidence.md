@@ -847,6 +847,34 @@ stages; no token, plaintext or raw response enters evidence.
 The authoritative `pnpm assurance:compat --select compatibility` run remains pending on the final
 committed bytes; the debug run is not claimed as compatibility evidence.
 
+
+### Authoritative packed compatibility evidence — 2026-11-06
+
+`pnpm assurance:compat --select compatibility` exits0 from clean committed source at e0fcc10d with
+result artifact `test-harness/.assurance-results/0d3fca3b-87b5-4d6d-bf3d-1fe0c79ef2db/compat/compatibility/result.json`.
+The admitted evidence records the journey outcome `passed`: initial binding201, replacement secret
+201, packed-provider token200 with `admin:user:invite` and300 seconds, invitation201 with sent
+delivery, durable row `pending` with count1 and no eager user, a pre-revocation positive control,
+revocation204 with status `revoked`, replay403 denied with the same count and record digest, and all
+cleanup booleans true. Provenance contains all five compiled entries and local `file:` basename
+dependency specifiers. The review correction batch was verified by SDK670/CLI1,834/validator11 and
+assurance lint/typecheck before this run; the scoped re-review and final CI remain pending.
+
+
+### Phase4 review closure and final compatibility run
+
+Both original Phase4 reviewers confirmed every Critical/Major and all minors closed after the fix
+batch; the one residual cleanup failure path was corrected and re-reviewed as CLOSED (P4-07,
+SA-4-003). The final authoritative `pnpm assurance:compat --select compatibility` run on
+0bdd69e21fb62c4dfceea4b5353f152cf18139f6 exits0 with artifact
+`test-harness/.assurance-results/1d359563-4185-4c40-8475-aec2ac5483ab/compat/compatibility/result.json`:
+journey passed, binding201, secret201, scoped300 token, invitation201 sent, durable pending count1
+with no eager user, positive control authorized, revocation204 revoked, replay403 with unchanged
+count/pending/digest, and all cleanup booleans true including removal of client, permanent account,
+both invitations and probe material. The reviewers also accepted three non-blocking minor exit-
+taxonomy/ordering observations as report-only; no Critical/Major remains. Current-source CI is the
+last open gate.
+
 ### Clean-source assurance evidence
 
 Registered `pnpm assurance:harness --project security --profile production-security` runs from the

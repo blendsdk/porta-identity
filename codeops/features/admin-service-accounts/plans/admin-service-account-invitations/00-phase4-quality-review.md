@@ -1,6 +1,6 @@
 # Phase4 Quality Review: SDK, CLI and Packed Journey
 
-> **Status**: All findings fixed; final authoritative run and CI pending
+> **Status**: All findings closed; final authoritative run passes; current-source CI pending
 > **Baseline tree**: 3adb8ffe2feae9404ed9b0cd9d4c9ee40ad79643
 > **Reviewed head**: 58d480f6d893527c57cd77d2e7ced0cde74d9a47
 > **CodeOps Artifact Schema**: 1
@@ -38,5 +38,6 @@ public/maintainer documentation. The server one-operation machine lane is unchan
 SDK670, CLI1,834, packed validator11, assurance lint and typecheck, structure158 and affected
 checks pass. The first authoritative selector run passes, and the scoped re-review closed every
 Critical/Major plus all minors except failure-path cleanup. That residual (P4-07/SA-4-003) now
-removes client, permanent account and both invitations unconditionally in `finally`; the final
-selector run and current-source CI must pass on the corrected bytes before this review closes.
+removes client, permanent account and both invitations unconditionally in `finally`. The final
+selector run at 0bdd69e2 exits0 with artifact 1d359563 and all cleanup true; both original reviewers
+closed P4-07/SA-4-003. Only current-source CI remains.
