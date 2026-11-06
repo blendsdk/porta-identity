@@ -21,8 +21,8 @@ export type AdminCreateUserInput = Omit<CreateUserInput, 'organizationId'> & {
   readonly passwordConfirmation?: string;
 };
 
-/** Local invitation input without authorization assignments or a second organization source. */
-export type AdminInviteUserInput = Omit<InviteUserInput, 'organizationId' | 'roles' | 'claims'>;
+/** Local invitation input with the existing role pre-assignment shape. */
+export type AdminInviteUserInput = Omit<InviteUserInput, 'organizationId' | 'claims'>;
 
 /** Local password input with a confirmation that is never sent to Porta. */
 export interface AdminSetPasswordInput {

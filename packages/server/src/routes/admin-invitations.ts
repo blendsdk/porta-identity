@@ -8,7 +8,7 @@ import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { adminMutationAudit } from '../middleware/admin-mutation-audit.js';
 import {
-  authorizeServiceAccountInvitation, requireServiceAccountAuthority,
+  authorizeServiceAccountInvitation, requireServiceAccountAuthority, SERVICE_ACCOUNT_INVITE_SCOPE,
   ServiceAccountAuthorizationError, ServiceAccountStorageError, ServiceAccountValidationError,
 } from '../service-accounts/index.js';
 import { validateServiceAccountInvitationJson } from '../service-accounts/invitation-input.js';
@@ -49,7 +49,11 @@ export const adminInvitationHandler: Middleware = async (ctx) => {
           tokenExpiresAt: machine.tokenExpiresAt };
         const result = await inviteUser({
           organizationId: ctx.params.orgId, input,
-          actor: { kind: 'service', clientId: authority.publicClientId, displayName: authority.clientName },
+          actor: {
+            kind: 'service', clientId: authority.publicClientId,
+            displayName: authority.clientName,
+            permissions: new Set([SERVICE_ACCOUNT_INVITE_SCOPE]),
+          },
           serviceAccountAuthority: authority,
         });
         ctx.status = 201;
@@ -59,9 +63,19 @@ export const adminInvitationHandler: Middleware = async (ctx) => {
     }
     const admin = ctx.state.adminUser;
     if (!admin) { ctx.throw(401, 'Authentication required'); return; }
+    // Role pre-assignment is an assignment authority, not a side effect of invitation authority.
+    // Machine accounts remain governed by their approved binding policy and the delegation check in
+    // the shared invitation workflow.
+    if (!canAssignRolesOnInvite(input, admin.permissions)) {
+      ctx.throw(403, 'Forbidden');
+      return;
+    }
     const result = await inviteUser({
       organizationId: ctx.params.orgId, input,
-      actor: { kind: 'admin', userId: admin.id, displayName: admin.email ?? 'Admin' },
+      actor: {
+        kind: 'admin', userId: admin.id, displayName: admin.email ?? 'Admin',
+        permissions: new Set(admin.permissions),
+      },
     });
     ctx.status = 201;
     ctx.body = { data: result };
@@ -75,6 +89,25 @@ export const adminInvitationHandler: Middleware = async (ctx) => {
     handleUserRouteError(ctx, error);
   }
 };
+
+/**
+ * Returns whether a human administrator may include role pre-assignments in an invitation.
+ *
+ * Invitation authority alone cannot grant roles; the caller must also hold the direct role-assign
+ * permission. Machine accounts are evaluated by their binding policy instead and do not use this
+ * human gate.
+ *
+ * @param input - Validated invitation request.
+ * @param permissions - Live permissions resolved for the human administrator.
+ * @returns True when the request carries no roles or the caller may assign roles.
+ * @example canAssignRolesOnInvite({ roles: [] }, ['admin:user:invite']) // true
+ */
+export function canAssignRolesOnInvite(
+  input: { readonly roles?: readonly unknown[] },
+  permissions: readonly string[],
+): boolean {
+  return !input.roles?.length || permissions.includes(ADMIN_PERMISSIONS.ROLE_ASSIGN);
+}
 
 /** Register only the real POST with explicit machine opt-in and unchanged human permission checks. */
 export function createAdminInvitationRouter(): Router {

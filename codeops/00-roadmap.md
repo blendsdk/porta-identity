@@ -2,7 +2,7 @@
 
 > **Status**: Active
 > **Last Updated**: 2026-11-06
-> **Features**: 8 / 9 done (1 blocked)
+> **Features**: 9 / 10 done (1 blocked)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -15,6 +15,7 @@
 | ------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------- | ------ | ---------------- |
 | _maintenance         | [→](features/_maintenance/00-roadmap.md)         | All T-01–T-07 complete; residual assurance work user-owned | n/a            | ✅     | 2026-11-01 17:26 |
 | admin-service-accounts | [→](features/admin-service-accounts/00-roadmap.md) | Invitation-only Admin service accounts complete; merged via PR #219 with green CI | 65 / 65 tasks (100%) | ✅ | 2026-11-06 |
+| admin-terminal | [→](features/admin-terminal/00-roadmap.md) | Invite role pre-assignment (#182) complete; PR #221 gates green | 10 / 10 tasks (100%) | ✅ | 2026-11-06 |
 | cli-automation            | [→](features/cli-automation/00-roadmap.md)            | Bundle A merged into develop via PR #218; all 49 implementation tasks verified                 | n/a (49/49 tasks; standalone plan) | ✅     | 2026-11-04       |
 | monorepo-migration   | [→](features/monorepo-migration/00-roadmap.md)   | Migration, publishing, and automated release complete                     | 75 / 75 (100%) | ✅     | 2026-09-25 15:21 |
 | production-readiness | [→](features/production-readiness/00-roadmap.md) | Production security, portability and global configuration complete        | 3 / 3 (100%)   | ✅     | 2026-09-21 01:04 |

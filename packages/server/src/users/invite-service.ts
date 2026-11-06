@@ -34,6 +34,7 @@ import {
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { logger } from '../lib/logger.js';
 import { getOrganizationById } from '../organizations/service.js';
+import { requireCanonicalRoleDelegation } from '../rbac/admin-role-delegation.js';
 import { RoleDelegationError } from '../rbac/errors.js';
 import { getPermissionsForRole } from '../rbac/role-service.js';
 import { getUserByEmail } from './service.js';
@@ -294,6 +295,16 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
     allowedApplicationId,
   );
   if (preAssignmentErrors.length > 0) throw new InvitePreAssignmentError();
+
+  // Canonical Admin roles carry a code-defined permission set. An invitation must never grant a
+  // role that exceeds the actor's own authority, whether the actor is a human administrator or a
+  // bound machine account. Ordinary roles remain governed by their existing ownership checks.
+  if (input.roles?.length) {
+    await requireCanonicalRoleDelegation(
+      input.roles.map((role) => role.roleId),
+      actor.permissions ?? new Set<string>(),
+    );
+  }
 
   if (allowedApplicationId && actor.permissions) {
     await requireRolesWithinPermissionSet(

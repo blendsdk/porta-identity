@@ -248,6 +248,12 @@ corresponding permission. The detail view also offers **Roles** when the adminis
 roles. That modal lists direct assignments across applications and allows assignments and removals
 only when the corresponding capability is available. Import and export are not part of this screen.
 
+The invite dialog also offers a **Roles** selector when the administrator can assign roles, read
+applications and read roles. The checklist is optional: checked roles are sent with the invitation and applied
+when it is accepted, while an invitation without roles remains valid. If the role catalog cannot be
+read, the dialog reports that role options are unavailable and still allows the invitation to be
+sent. The selector never retries automatically and never assigns roles before acceptance.
+
 ---
 
 ## User Roles

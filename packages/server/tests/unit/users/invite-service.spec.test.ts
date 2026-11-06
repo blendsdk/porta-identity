@@ -16,6 +16,10 @@ const transaction = vi.hoisted(() => ({
   query: vi.fn(),
 }));
 
+const delegation = vi.hoisted(() => ({
+  requireCanonicalRoleDelegation: vi.fn(),
+}));
+
 const dependencies = vi.hoisted(() => ({
   getOrganizationById: vi.fn(),
   getUserByEmail: vi.fn(),
@@ -104,6 +108,8 @@ vi.mock('../../../src/rbac/role-service.js', () => ({
   getPermissionsForRole: dependencies.getPermissionsForRole,
 }));
 
+vi.mock('../../../src/rbac/admin-role-delegation.js', () => delegation);
+
 vi.mock('../../../src/config/index.js', () => ({
   config: { issuerBaseUrl: 'https://auth.example.com' },
 }));
@@ -150,6 +156,7 @@ beforeEach(() => {
   dependencies.getSystemConfigNumber.mockResolvedValue(3600);
   dependencies.writeAuditLogInTransaction.mockResolvedValue(undefined);
   dependencies.getPermissionsForRole.mockResolvedValue([]);
+  delegation.requireCanonicalRoleDelegation.mockResolvedValue(undefined);
   pool.query.mockImplementation(async (sql: string) => {
     if (sql.includes('FROM applications')) return { rows: [{ id: APP_ID }] };
     if (sql.includes('FROM roles')) return { rows: [{ id: ROLE_ID }] };
@@ -350,5 +357,50 @@ describe('inviteUser', () => {
         actor: ADMIN_ACTOR,
       }),
     ).rejects.toMatchObject({ name: 'InviteConflictError' });
+  });
+
+  it('passes the live actor permissions to the canonical role delegation check', async () => {
+    const permissions = new Set(['admin:user:invite', 'admin:role:assign']);
+    await inviteUser({
+      organizationId: ORG_ID,
+      input: {
+        email: 'new.user@example.com',
+        roles: [{ applicationId: APP_ID, roleId: ROLE_ID }],
+      },
+      actor: { ...ADMIN_ACTOR, permissions },
+    });
+
+    expect(delegation.requireCanonicalRoleDelegation).toHaveBeenCalledWith(
+      [ROLE_ID],
+      permissions,
+    );
+  });
+
+  it('rejects an invitation when canonical role delegation is not permitted', async () => {
+    delegation.requireCanonicalRoleDelegation.mockRejectedValue(new RoleDelegationError());
+
+    await expect(
+      inviteUser({
+        organizationId: ORG_ID,
+        input: {
+          email: 'new.user@example.com',
+          roles: [{ applicationId: APP_ID, roleId: ROLE_ID }],
+        },
+        actor: { ...ADMIN_ACTOR, permissions: new Set(['admin:user:invite']) },
+      }),
+    ).rejects.toBeInstanceOf(RoleDelegationError);
+
+    expect(dependencies.replaceInvitation).not.toHaveBeenCalled();
+    expect(dependencies.sendInvitationEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not consult canonical delegation when no roles are requested', async () => {
+    await inviteUser({
+      organizationId: ORG_ID,
+      input: { email: 'new.user@example.com' },
+      actor: ADMIN_ACTOR,
+    });
+
+    expect(delegation.requireCanonicalRoleDelegation).not.toHaveBeenCalled();
   });
 });
