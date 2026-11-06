@@ -11,8 +11,8 @@
 
 | ID   | Title                                      | RD  | Plan                                                                   | Stage     | Status | Last Updated | Depends-on / Blocker                                                   |
 | ---- | ------------------------------------------ | --- | ---------------------------------------------------------------------- | --------- | ------ | ------------ | ---------------------------------------------------------------------- |
-| T-01 | Invitation-only Admin API service accounts | —   | [Standalone plan](plans/admin-service-account-invitations/00-index.md) | Executing | 🔄 | 2026-11-06 | 64/65; reviews and assurance green; final CI and teardown remaining |
-| ↳ RV-3-001 | Post-lock credential expiry | — | [Finding ledger](plans/admin-service-account-invitations/05-findings.md) | Done | ✅ | 2026-11-06 | Closed on corrected bytes; AR-37 clock_timestamp after independent red |
+| T-01 | Invitation-only Admin API service accounts | —   | [Standalone plan](plans/admin-service-account-invitations/00-index.md) | Done | ✅ | 2026-11-06 | 65/65; reviews, assurance, compatibility and CI green; owned runtime removed |
+| ↳ RV-3-001 | Post-lock credential expiry | — | [Finding ledger](plans/admin-service-account-invitations/05-findings.md) | Done | ✅ | 2026-11-06 | Closed after correction and scoped re-review |
 | ↳ SA-3-002 | Native token expiry at locked admission | — | [Finding ledger](plans/admin-service-account-invitations/05-findings.md) | Done | ✅ | 2026-11-06 | Closed on corrected bytes; AR-38 admission checks after post-wait authorization |
 
 The user approved feature-roadmap creation in the concrete contract. The portfolio cascade is

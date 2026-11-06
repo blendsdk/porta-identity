@@ -912,3 +912,15 @@ fixtures qualify both modern canonical and proven credentials over HTTP before a
 scope for the race. No fixture registers the missing feature or fabricates its authority. The full
 85-case red run is pending; any later native prerequisites are separately identified rather than
 credited as an unreached credential-race assertion. The shared HTTP dependency remains unchanged.
+
+### Final acceptance — 2026-11-06 11:46
+
+CI run 42201771739 on code head0bdd69e2 and CI run 42203468101 on evidence head5683d33e both pass
+Verify Monorepo, UI Tests, Public Documentation, Production Docker Build, Production Dependency
+Audit and the retained OIDC Harness. SDK670, CLI1,834, packed validator11, structure158, the strict
+local root/browser gates and the Phase3 production-security/protocol assurance are qualified. All
+Critical/Major and minor review findings are closed; three non-blocking exit-taxonomy/ordering
+observations remain report-only. Sixty-seven owned runtime artifacts, the AR-36 short temporary root
+and all harness resources were removed; no owned container, network or volume remains. The unread
+untracked pending-invitations.sql and unrelated operator resources are preserved. No merge, release
+or issue-state change is made or implied.
