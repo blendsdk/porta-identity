@@ -22,6 +22,7 @@ import { reportHumanError, reportJsonError } from '../error-handler.js';
 import { printJson, success, info, formatDate, sanitizeTerminalText } from '../output.js';
 import {
   readServiceAccountPolicyFile,
+  requireServiceAccountClientId,
   requireServiceAccountEmail,
 } from './client-service-account-input.js';
 
@@ -89,8 +90,9 @@ export const clientServiceAccountCommand: CommandModule<GlobalOptions, GlobalOpt
           }),
         async (argv) => {
           try {
+            const clientId = requireServiceAccountClientId(argv['client-id']);
             const client = createClient(argv);
-            const binding = await client.clients.getServiceAccount(argv['client-id']);
+            const binding = await client.clients.getServiceAccount(clientId);
             if (argv.json) printJson(binding);
             else printBinding(binding);
           } catch (error) {
@@ -119,12 +121,13 @@ export const clientServiceAccountCommand: CommandModule<GlobalOptions, GlobalOpt
             }),
         async (argv) => {
           try {
+            const clientId = requireServiceAccountClientId(argv['client-id']);
             const email =
               argv.email === undefined ? undefined : requireServiceAccountEmail(argv.email);
             const policy = await readServiceAccountPolicyFile(argv['policy-file']);
             const client = createClient(argv);
             const input = email === undefined ? policy : { ...policy, accountEmail: email };
-            const binding = await client.clients.setServiceAccount(argv['client-id'], input);
+            const binding = await client.clients.setServiceAccount(clientId, input);
             if (argv.json) printJson(binding);
             else success(`Service-account binding saved: ${sanitizeTerminalText(binding.id)}`);
           } catch (error) {
@@ -143,12 +146,13 @@ export const clientServiceAccountCommand: CommandModule<GlobalOptions, GlobalOpt
           }),
         async (argv) => {
           try {
+            const clientId = requireServiceAccountClientId(argv['client-id']);
             const client = createClient(argv);
-            await client.clients.revokeServiceAccount(argv['client-id']);
+            await client.clients.revokeServiceAccount(clientId);
             if (argv.json) {
-              printJson({ clientId: argv['client-id'], status: 'revoked' });
+              printJson({ clientId, status: 'revoked' });
             } else {
-              success(`Service-account binding revoked for ${sanitizeTerminalText(argv['client-id'])}`);
+              success(`Service-account binding revoked for ${sanitizeTerminalText(clientId)}`);
             }
           } catch (error) {
             fail(argv, error);

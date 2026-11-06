@@ -191,6 +191,18 @@ export async function readServiceAccountPolicyFile(
  * @throws LocalInputError when the value is not a plausible address.
  */
 export function requireServiceAccountEmail(value: string): string {
-  if (value.length > 320 || !EMAIL_PATTERN.test(value)) throw new LocalInputError();
+  if (value.length > 255 || !EMAIL_PATTERN.test(value)) throw new LocalInputError();
+  return value;
+}
+
+/**
+ * Validate the client identifier before any SDK client is constructed.
+ *
+ * @param value - Positional internal client UUID.
+ * @returns The original identifier when it is a UUID.
+ * @throws LocalInputError for dot segments or non-UUID text.
+ */
+export function requireServiceAccountClientId(value: string): string {
+  if (value === '.' || value === '..' || !UUID_PATTERN.test(value)) throw new LocalInputError();
   return value;
 }

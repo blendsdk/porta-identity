@@ -18,6 +18,7 @@
  *   porta client login-methods set <client-id> --methods "password,magic_link"
  *   porta client login-methods clear <client-id>
  *   porta client secret <subcommand> ...
+ *   porta client service-account get|set|revoke <client-id>
  *
  * @module commands/client
  */

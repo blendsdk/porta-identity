@@ -80,7 +80,8 @@ function isClient(value: unknown): value is Client {
   );
 }
 
-/** Validate secret metadata that never contains plaintext. */function isClientSecret(value: unknown): value is ClientSecret {
+/** Validate secret metadata that never contains plaintext. */
+function isClientSecret(value: unknown): value is ClientSecret {
   return (
     isRecord(value) &&
     typeof value.id === 'string' &&
@@ -106,10 +107,24 @@ function isGeneratedSecret(value: unknown): value is GeneratedSecret {
   );
 }
 
+/** Maximum distinct organizations in one binding policy. */
+const MAX_SERVICE_ACCOUNT_TARGETS = 100;
+
+/** Maximum role and claim-definition occurrences across one binding policy. */
+const MAX_SERVICE_ACCOUNT_PAIRS = 100;
+
+/** Require exactly the documented object keys so internal fields cannot pass through. */
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
 /** Validate one application-qualified role reference in a binding policy. */
 function isServiceAccountRole(value: unknown): boolean {
   return (
     isRecord(value) &&
+    hasExactKeys(value, ['applicationId', 'roleId']) &&
     typeof value.applicationId === 'string' &&
     typeof value.roleId === 'string'
   );
@@ -119,6 +134,7 @@ function isServiceAccountRole(value: unknown): boolean {
 function isServiceAccountClaim(value: unknown): boolean {
   return (
     isRecord(value) &&
+    hasExactKeys(value, ['applicationId', 'claimDefinitionId']) &&
     typeof value.applicationId === 'string' &&
     typeof value.claimDefinitionId === 'string'
   );
@@ -128,6 +144,7 @@ function isServiceAccountClaim(value: unknown): boolean {
 function isServiceAccountTarget(value: unknown): boolean {
   return (
     isRecord(value) &&
+    hasExactKeys(value, ['organizationId', 'allowedRoles', 'allowedClaimDefinitions']) &&
     typeof value.organizationId === 'string' &&
     Array.isArray(value.allowedRoles) &&
     value.allowedRoles.every(isServiceAccountRole) &&
@@ -136,20 +153,36 @@ function isServiceAccountTarget(value: unknown): boolean {
   );
 }
 
-/** Validate the complete secret-free binding returned by reads and writes. */
+/** Validate the complete secret-free binding, including closed keys and policy bounds. */
 function isClientServiceAccount(value: unknown): value is ClientServiceAccount {
-  return (
-    isRecord(value) &&
-    typeof value.id === 'string' &&
-    typeof value.clientId === 'string' &&
-    typeof value.serviceAccountId === 'string' &&
-    typeof value.accountEmail === 'string' &&
-    (value.status === 'active' || value.status === 'revoked') &&
-    Array.isArray(value.targets) &&
-    value.targets.every(isServiceAccountTarget) &&
-    typeof value.createdAt === 'string' &&
-    typeof value.updatedAt === 'string'
-  );
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'id', 'clientId', 'serviceAccountId', 'accountEmail', 'status', 'targets',
+      'createdAt', 'updatedAt',
+    ]) ||
+    typeof value.id !== 'string' ||
+    typeof value.clientId !== 'string' ||
+    typeof value.serviceAccountId !== 'string' ||
+    typeof value.accountEmail !== 'string' ||
+    value.accountEmail.length === 0 ||
+    (value.status !== 'active' && value.status !== 'revoked') ||
+    !Array.isArray(value.targets) ||
+    value.targets.length < 1 ||
+    value.targets.length > MAX_SERVICE_ACCOUNT_TARGETS ||
+    !value.targets.every(isServiceAccountTarget) ||
+    typeof value.createdAt !== 'string' ||
+    typeof value.updatedAt !== 'string'
+  ) {
+    return false;
+  }
+  let rolePairs = 0;
+  let claimPairs = 0;
+  for (const target of value.targets) {
+    rolePairs += target.allowedRoles.length;
+    claimPairs += target.allowedClaimDefinitions.length;
+  }
+  return rolePairs <= MAX_SERVICE_ACCOUNT_PAIRS && claimPairs <= MAX_SERVICE_ACCOUNT_PAIRS;
 }
 
 /** Encode one client identifier and reject dot segments that fetch would normalize. */
@@ -171,7 +204,8 @@ interface ClientCreateResult {
 
 /** Validate the relationship between client type and its optional one-time secret. */
 function isClientCreateResult(value: unknown): value is ClientCreateResult {
-  if (!isRecord(value) || !isClient(value.client)) return false;  if (value.client.clientType === 'confidential') return isGeneratedSecret(value.secret);
+  if (!isRecord(value) || !isClient(value.client)) return false;
+  if (value.client.clientType === 'confidential') return isGeneratedSecret(value.secret);
   return value.secret === undefined || value.secret === null;
 }
 
@@ -319,10 +353,13 @@ export function createClientsDomain(transport: HttpTransport): ClientsDomain {
     },
 
     async revokeServiceAccount(id) {
-      await transport.request({
+      const res = await transport.request({
         method: 'DELETE',
         path: `${base}/${serviceAccountSegment(id)}/service-account`,
       });
+      if (res.status !== 204) {
+        throw new PortaError('Porta API returned an unexpected revocation status.');
+      }
     },
   };
 }

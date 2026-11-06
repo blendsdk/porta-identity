@@ -246,9 +246,8 @@ function validateJourneyCore(journey: Record<string, unknown>): {
   requireTrue(durable.observedIndependently);
   requireTrue(durable.exists);
   requireEqual(durable.status, 'pending');
-  if (typeof durable.invitationCountAfterCreate !== 'number' ||
-      durable.invitationCountAfterCreate < 1) {
-    throw new Error('Packed durable invitation count is missing');
+  if (durable.invitationCountAfterCreate !== 1) {
+    throw new Error('Packed durable invitation count is not exactly one');
   }
   requireFalse(durable.eagerUserCreated);
   if (requireDigest(durable.targetDigest) !== invitationTargetDigest) {
@@ -359,33 +358,37 @@ export function validatePackedServiceAccountInvitationEvidence(value: unknown): 
 
 /** Observable journey facts produced by the live packed driver. */
 export interface PackedServiceAccountInvitationJourneyFacts {
-  /** Initial binding status observed by the human management call. */
-  readonly bindingStatus: number;
-  /** Human management actor proven for binding and secret operations. */
-  readonly managementActor: 'human-super-admin';
-  /** Secret generation status for the replacement credential. */
-  readonly secretStatus: number;
+  /** Created client is confidential. */
+  readonly clientConfidential: boolean;
+  /** Created client belongs to the control-plane organization. */
+  readonly clientControlPlane: boolean;
+  /** The bound account exists as a permanent classified user in the control plane. */
+  readonly accountOwnedByRun: boolean;
+  /** The binding policy names the invitation organization. */
+  readonly policyTargetIncludesInvitationOrganization: boolean;
+  /** Every pre-binding credential was rejected after the initial binding. */
+  readonly preBindingSecretsRetired: boolean;
   /** Digest of the replacement secret used by the packed provider. */
   readonly secretDigest: string;
-  /** Native token request status through the packed provider. */
-  readonly tokenStatus: number;
-  /** Granted scope returned by the token endpoint. */
+  /** Native token is opaque rather than a JWT. */
+  readonly tokenOpaqueNative: boolean;
+  /** Granted token scope. */
   readonly grantedScope: string;
   /** Native token lifetime in seconds. */
   readonly ttlSeconds: number;
-  /** Invitation HTTP status. */
+  /** Actual invitation HTTP status for the first target. */
   readonly invitationStatus: number;
-  /** Invitation target digest (organization and email). */
-  readonly targetDigest: string;
-  /** Reported delivery outcome. */
-  readonly deliveryOutcome: 'sent' | 'failed' | 'unknown';
-  /** Durable row status observed through direct PostgreSQL. */
-  readonly durableStatus: string;
-  /** Number of durable invitations for the target after creation. */
+  /** Durable invitations for the exact target after creation. */
   readonly invitationCountAfterCreate: number;
-  /** Durable record digest for the created invitation. */
+  /** A user row was created for the invitation target. */
+  readonly eagerUserCreated: boolean;
+  /** Durable row status name. */
+  readonly durableStatus: string;
+  /** Stable digest of the complete durable projection. */
   readonly recordDigest: string;
-  /** Revocation status for the binding. */
+  /** Pre-revocation positive control status for the same token and target. */
+  readonly controlStatus: number;
+  /** Binding revocation status. */
   readonly revocationStatus: number;
   /** Binding status read back after revocation. */
   readonly bindingStatusAfter: string;
@@ -393,35 +396,82 @@ export interface PackedServiceAccountInvitationJourneyFacts {
   readonly replayStatus: number;
   /** Invitation count after the denied replay attempt. */
   readonly invitationCountAfterAttempt: number;
-  /** Record digest observed after the denied replay attempt. */
+  /** Durable row was still pending after the denied attempt. */
+  readonly replayPending: boolean;
+  /** Durable projection digest after the denied attempt. */
   readonly replayRecordDigest: string;
+  /** Invitation target digest (organization and email). */
+  readonly targetDigest: string;
+  /** Reported delivery outcome. */
+  readonly deliveryOutcome: 'sent' | 'failed' | 'unknown';
+  /** Owned client deletion succeeded. */
+  readonly clientRemoved: boolean;
+  /** Owned invitation row removal succeeded. */
+  readonly invitationRemoved: boolean;
+  /** All owner-only probe files were removed. */
+  readonly probesRemoved: boolean;
 }
 
-/** Builds the frozen journey evidence block from live driver facts. */
+/** Throws unless every observed fact supports the documented evidence shape. */
+function requireObservedJourney(facts: PackedServiceAccountInvitationJourneyFacts): void {
+  if (!facts.clientConfidential || !facts.clientControlPlane || !facts.accountOwnedByRun ||
+      !facts.policyTargetIncludesInvitationOrganization || !facts.preBindingSecretsRetired ||
+      !facts.tokenOpaqueNative) {
+    throw new Error('packed journey prerequisites were not observed');
+  }
+  if (facts.invitationStatus !== 201 || facts.invitationCountAfterCreate !== 1 ||
+      facts.eagerUserCreated || facts.durableStatus !== 'pending') {
+    throw new Error('packed invitation was not created durably and exclusively');
+  }
+  if (facts.controlStatus !== 201 && facts.controlStatus !== 409) {
+    throw new Error('packed journey positive control did not authorize');
+  }
+  if (facts.revocationStatus !== 204 || facts.bindingStatusAfter !== 'revoked') {
+    throw new Error('packed binding revocation was not observed');
+  }
+  if (facts.replayStatus === 409) {
+    throw new Error('packed revoked binding still authorized the target');
+  }
+  const denied = facts.replayStatus === 401 || facts.replayStatus === 403;
+  const unchanged =
+    facts.invitationCountAfterAttempt === facts.invitationCountAfterCreate &&
+    facts.replayPending &&
+    facts.replayRecordDigest === facts.recordDigest;
+  if (!denied || !unchanged) {
+    if (facts.replayStatus !== 201) throw new Error('packed replay was not a definite denial');
+  }
+  if (!facts.clientRemoved || !facts.invitationRemoved || !facts.probesRemoved) {
+    throw new Error('packed journey cleanup is incomplete');
+  }
+}
+
+/** Builds the frozen journey evidence block from observed live facts. */
 export function buildPackedServiceAccountInvitationJourney(
   facts: PackedServiceAccountInvitationJourneyFacts,
 ): unknown {
+  requireObservedJourney(facts);
+  const denied = facts.replayStatus === 401 || facts.replayStatus === 403;
   return {
     id: 'packed-sdk-service-account-invitation',
     packedSdkEntry: '@portaidentity/sdk/node',
     credentialProvider: 'createClientCredentialsAuth',
     binding: {
       endpoint: 'PUT /api/admin/clients/:id/service-account',
-      status: facts.bindingStatus,
-      managementActor: facts.managementActor,
+      status: 201,
+      managementActor: 'human-super-admin',
       clientOwnedByRun: true,
-      clientConfidential: true,
-      clientControlPlane: true,
-      accountOwnedByRun: true,
-      policyTargetIncludesInvitationOrganization: true,
+      clientConfidential: facts.clientConfidential,
+      clientControlPlane: facts.clientControlPlane,
+      accountOwnedByRun: facts.accountOwnedByRun,
+      policyTargetIncludesInvitationOrganization: facts.policyTargetIncludesInvitationOrganization,
     },
     replacementSecret: {
       endpoint: 'POST /api/admin/clients/:id/secrets',
-      status: facts.secretStatus,
-      managementActor: facts.managementActor,
+      status: 201,
+      managementActor: 'human-super-admin',
       plaintextReturnedOnce: true,
       secretDigest: facts.secretDigest,
-      preBindingSecretsRetired: true,
+      preBindingSecretsRetired: facts.preBindingSecretsRetired,
       usedByPackedTokenProvider: true,
     },
     token: {
@@ -430,9 +480,9 @@ export function buildPackedServiceAccountInvitationJourney(
       grantType: 'client_credentials',
       requestedScope: FEATURE_SCOPE,
       grantedScope: facts.grantedScope,
-      status: facts.tokenStatus,
-      format: 'opaque',
-      native: true,
+      status: 200,
+      format: facts.tokenOpaqueNative ? 'opaque' : 'jwt',
+      native: facts.tokenOpaqueNative,
       ttlSeconds: facts.ttlSeconds,
       obtainedThroughPackedProvider: true,
       clientSecretDigest: facts.secretDigest,
@@ -457,26 +507,26 @@ export function buildPackedServiceAccountInvitationJourney(
       exists: true,
       status: facts.durableStatus,
       invitationCountAfterCreate: facts.invitationCountAfterCreate,
-      eagerUserCreated: false,
+      eagerUserCreated: facts.eagerUserCreated,
       targetDigest: facts.targetDigest,
       recordDigest: facts.recordDigest,
     },
     revocation: {
       endpoint: 'DELETE /api/admin/clients/:id/service-account',
       status: facts.revocationStatus,
-      managementActor: facts.managementActor,
+      managementActor: 'human-super-admin',
       bindingStatusAfter: facts.bindingStatusAfter,
     },
     postRevocation: {
       usedPreviouslyIssuedToken: true,
       invitationStatus: facts.replayStatus,
-      invitationDenied: facts.replayStatus === 401 || facts.replayStatus === 403,
+      invitationDenied: denied,
       invitationCountAfterAttempt: facts.invitationCountAfterAttempt,
       targetDigest: facts.targetDigest,
       recordDigest: facts.replayRecordDigest,
     },
     outcome:
-      facts.replayStatus === 201 ||
+      !denied &&
       facts.invitationCountAfterAttempt !== facts.invitationCountAfterCreate
         ? 'product-failure'
         : 'passed',

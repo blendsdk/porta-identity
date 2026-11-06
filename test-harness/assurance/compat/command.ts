@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { basename, relative, resolve } from 'node:path';
 
 import { readActiveCoverageRun } from '../coverage/index.js';
 import { inspectFoundationProvenance } from '../scripts/source-provenance.js';
@@ -205,6 +205,8 @@ export async function runPackedCompatibilityFoundation(
           readonly temporaryResourcesRemoved: boolean;
           readonly callerCredentialFingerprintUnchanged: boolean;
         }[];
+        readonly compiledEntrypoints: readonly string[];
+        readonly dependencySpecifiers: Readonly<Record<'@portaidentity/sdk' | '@portaidentity/cli', string>>;
       }
     | undefined;
   try {
@@ -276,16 +278,53 @@ export async function runPackedCompatibilityFoundation(
         callerCredentialFingerprintUnchanged:
           result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
       }));
-      serviceAccountDriver = createPackedServiceAccountInvitationLiveDriver(consumer, surfaces);
-      serviceAccountFacts = await serviceAccountDriver.execute();
-      serviceAccountContext = {
-        consumer,
-        surfaces,
-        resolvedContentMatches:
-          resolution.resolvedContentSha256 === resolution.packedContentSha256,
-        credentialOutcomes,
-      };
-      evidence = { ...commonEvidence, status: 'passed' };
+      if (selector === 'compatibility') {
+        // Capture evidence that disappears with the owned consumer before cleanup runs.
+        const ownedConsumer = consumer;
+        if (ownedConsumer === undefined) throw new Error('packed consumer is absent');
+        const requiredEntries = [
+          ['@portaidentity/sdk', 'dist/index.js'],
+          ['@portaidentity/sdk', 'dist/agent.js'],
+          ['@portaidentity/sdk', 'dist/browser.js'],
+          ['@portaidentity/sdk', 'dist/node.js'],
+          ['@portaidentity/cli', 'dist/index.js'],
+        ] as const;
+        const compiledEntrypoints = requiredEntries
+          .filter(([name, entry]) =>
+            existsSync(resolve(ownedConsumer.consumerPath, 'node_modules', name, entry)))
+          .map(([name, entry]) => `${name}/${entry}`);
+        serviceAccountDriver = createPackedServiceAccountInvitationLiveDriver(ownedConsumer, surfaces);
+        serviceAccountFacts = await serviceAccountDriver.execute();
+        if (!serviceAccountFacts.clientRemoved || !serviceAccountFacts.invitationRemoved ||
+            !serviceAccountFacts.probesRemoved) {
+          exitCode = 60;
+          stage = 'cleanup';
+        }
+        serviceAccountContext = {
+          consumer: ownedConsumer,
+          surfaces,
+          resolvedContentMatches:
+            resolution.resolvedContentSha256 === resolution.packedContentSha256,
+          credentialOutcomes,
+          compiledEntrypoints,
+          dependencySpecifiers: {
+            '@portaidentity/sdk': basename(ownedConsumer.dependencies['@portaidentity/sdk']),
+            '@portaidentity/cli': basename(ownedConsumer.dependencies['@portaidentity/cli']),
+          },
+        };
+        evidence = { ...commonEvidence, status: 'passed' };
+      } else {
+        evidence = {
+          ...commonEvidence,
+          credentialOutcomes: credentialResults.map((result) => ({
+            outcome: result.outcome,
+            temporaryHomeMode: result.temporaryHomeMode,
+            temporaryResourcesRemoved: result.temporaryResourcesRemoved,
+            realCredentialUnchanged:
+              result.callerCredentialFingerprintBefore === result.callerCredentialFingerprintAfter,
+          })),
+        };
+      }
     }
   } catch (error) {
     exitCode = error instanceof PackedCompatibilityExecutionError ? error.exitCode : 30;
@@ -436,19 +475,7 @@ export async function runPackedCompatibilityFoundation(
       const nodeExecutableSha256 = createHash('sha256')
         .update(readFileSync(process.execPath))
         .digest('hex');
-      const requiredEntries = [
-        ['@portaidentity/sdk', 'dist/index.js'],
-        ['@portaidentity/sdk', 'dist/agent.js'],
-        ['@portaidentity/sdk', 'dist/browser.js'],
-        ['@portaidentity/sdk', 'dist/node.js'],
-        ['@portaidentity/cli', 'dist/index.js'],
-      ] as const;
-      const compiledEntrypoints = requiredEntries
-        .filter(([name, entry]) =>
-          existsSync(
-            resolve(packedConsumer.consumerPath, 'node_modules', name, entry),
-          ))
-        .map(([name, entry]) => `${name}/${entry}`);
+      const { compiledEntrypoints, dependencySpecifiers } = serviceAccountContext;
       const archives = new Map(packedConsumer.archives.map((entry) => [entry.name, entry]));
       const sdkArchive = archives.get('@portaidentity/sdk');
       const cliArchive = archives.get('@portaidentity/cli');
@@ -474,8 +501,8 @@ export async function runPackedCompatibilityFoundation(
             '@portaidentity/cli': cliArchive.sha256,
           },
           dependencySpecifiers: {
-            '@portaidentity/sdk': packedConsumer.dependencies['@portaidentity/sdk'],
-            '@portaidentity/cli': packedConsumer.dependencies['@portaidentity/cli'],
+            '@portaidentity/sdk': dependencySpecifiers['@portaidentity/sdk'],
+            '@portaidentity/cli': dependencySpecifiers['@portaidentity/cli'],
           },
           compiledEntrypoints,
           resolvedContentDigestsMatchArchives: resolvedContentMatches,
@@ -490,11 +517,13 @@ export async function runPackedCompatibilityFoundation(
         journey: buildPackedServiceAccountInvitationJourney(serviceAccountFacts),
         cleanup: {
           terminalOutcome: 'success',
-          ownedFixtureDataRemoved: true,
+          ownedFixtureDataRemoved:
+            serviceAccountFacts.clientRemoved && serviceAccountFacts.invitationRemoved,
           consumerRemoved,
           buildWorktreeRemoved: true,
-          secretMaterialRemoved: true,
-          temporaryCredentialMaterialRemoved: true,
+          secretMaterialRemoved:
+            serviceAccountFacts.clientRemoved && serviceAccountFacts.probesRemoved,
+          temporaryCredentialMaterialRemoved: serviceAccountFacts.probesRemoved,
           callerCredentialFingerprintUnchanged: true,
           unrelatedInstallationUnchanged: true,
           residuePaths: consumerRemoved ? [] : ['compat-runtime-or-child'],
