@@ -464,6 +464,38 @@ function createInput(
   return payload;
 }
 
+/** Validates the optional role pre-assignment set without accepting duplicates. */
+function inviteRoles(value: unknown): InviteUserInput['roles'] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const seen = new Set<string>();
+  const roles: NonNullable<InviteUserInput['roles']> = [];
+  for (const entry of value) {
+    const record = objectValue(entry);
+    if (
+      !record ||
+      Object.keys(record).length !== 2 ||
+      !('applicationId' in record) ||
+      !('roleId' in record)
+    ) {
+      return undefined;
+    }
+    const { applicationId, roleId } = record;
+    if (
+      typeof applicationId !== 'string' ||
+      !UUID.test(applicationId) ||
+      typeof roleId !== 'string' ||
+      !UUID.test(roleId)
+    ) {
+      return undefined;
+    }
+    const key = `${applicationId.toLowerCase()}:${roleId.toLowerCase()}`;
+    if (seen.has(key)) return undefined;
+    seen.add(key);
+    roles.push({ applicationId, roleId });
+  }
+  return roles;
+}
+
 /** Builds an exact validated invitation payload. */
 function inviteInput(
   organizationId: string,
@@ -489,6 +521,11 @@ function inviteInput(
   if (input.familyName !== undefined) payload.familyName = input.familyName;
   if (input.locale !== undefined) payload.locale = input.locale;
   if (input.personalMessage !== undefined) payload.personalMessage = input.personalMessage;
+  if (value.roles !== undefined) {
+    const roles = inviteRoles(value.roles);
+    if (roles === undefined) return undefined;
+    if (roles.length > 0) payload.roles = roles;
+  }
   return payload;
 }
 

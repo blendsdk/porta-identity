@@ -3,6 +3,7 @@
 import type { View } from '@jsvision/ui';
 
 import type { AdminApplicationOperations } from './application-service.js';
+import type { AdminInviteRoleSource } from './invite-role-dialog.js';
 import type { AdminRbacOperations } from './rbac-service.js';
 import type { AdminConnectionState } from './state.js';
 import type {
@@ -31,6 +32,7 @@ export interface AdminUserControllerDialogs {
     host: AdminUserDialogHost,
     signal: AbortSignal,
     preview: (input: AdminInviteUserInput) => ReturnType<AdminUserOperations['previewInvitation']>,
+    roleSource?: AdminInviteRoleSource,
   ) => Promise<InviteUserDialogResult>;
   /** Collects touched profile edits. */
   readonly edit: (

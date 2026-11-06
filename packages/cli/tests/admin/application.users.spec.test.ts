@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ADMIN_COMMANDS } from '../../src/admin/presentation.js';
 import type { AdminConnectionState } from '../../src/admin/state.js';
+import type { AdminApplicationOperations } from '../../src/admin/application-service.js';
+import type { AdminInviteRoleSource } from '../../src/admin/invite-role-dialog.js';
+import type { AdminRbacOperations } from '../../src/admin/rbac-service.js';
 import type { AdminUserOperations } from '../../src/admin/user-service.js';
 import type { AdminUserViewState } from '../../src/admin/user-state.js';
 import {
@@ -114,6 +117,8 @@ function harness(
     readonly state?: AdminConnectionState;
     readonly operations?: Partial<AdminUserOperations>;
     readonly dialogs?: Partial<AdminUserControllerDialogs>;
+    readonly rbac?: AdminRbacOperations;
+    readonly applications?: Pick<AdminApplicationOperations, 'listAll'>;
     readonly applicationBusy?: boolean;
   } = {},
 ) {
@@ -159,6 +164,8 @@ function harness(
     host: application,
     readState: () => state,
     readOperations: () => operations,
+    readRbacOperations: () => overrides.rbac,
+    readApplicationOperations: () => overrides.applications,
     mountWorkspace: (content) => mounted.push(content),
     isApplicationBusy: () => overrides.applicationBusy === true,
     setDialogBusy: (value) => busy.push(value),
@@ -426,6 +433,60 @@ describe('admin user workflow', () => {
 
     expect(mounted.requestAuthentication).toHaveBeenCalledOnce();
     expect(mounted.mounted.at(-1)).toBeNull();
+  });
+
+  it('should pass the role source only when both assignment capabilities are present', async () => {
+    const listAll = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
+    const listRoles = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
+    const sources: Array<AdminInviteRoleSource | undefined> = [];
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: true,
+        },
+      }),
+      rbac: { listRoles } as unknown as AdminRbacOperations,
+      applications: { listAll },
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          sources.push(source);
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+
+    expect(sources[0]).toBeDefined();
+    await sources[0]?.listApplications();
+    expect(listAll).toHaveBeenCalledOnce();
+    await sources[0]?.listRoles('33333333-3333-4333-8333-333333333333');
+    expect(listRoles).toHaveBeenCalledOnce();
+  });
+
+  it('should omit the role source when either assignment capability is missing', async () => {
+    const sources: Array<AdminInviteRoleSource | undefined> = [];
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: false,
+        },
+      }),
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          sources.push(source);
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+
+    expect(sources[0]).toBeUndefined();
   });
 
   it('should quarantine a late invitation-preview 401 after session replacement', async () => {
