@@ -1,7 +1,7 @@
 # Roadmap: Admin Service Accounts
 
 > **Feature-Set**: Admin Service Accounts
-> **Status**: Executing
+> **Status**: Complete
 > **Created**: 2026-11-04
 > **Last Updated**: 2026-11-06
 > **Progress**: n/a (standalone plan; execution checklist owns task progress)
