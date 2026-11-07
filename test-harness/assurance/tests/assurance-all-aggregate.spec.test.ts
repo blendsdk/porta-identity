@@ -168,7 +168,7 @@ test('rolls up every item exactly once without laundering defects or authority g
     assuranceAllKnownGapRegistry.map((gap) => gap.id),
     [
       'protocol-independent-observation-gaps',
-      'enumeration-timing-contract-unapproved',
+      'enumeration-timing-evidence-not-planned',
       'totp-same-window-replay-authority',
       'correlated-security-decision-observer-incomplete',
       'source-variation-campaign-not-executed',

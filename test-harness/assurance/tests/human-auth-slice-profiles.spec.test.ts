@@ -66,10 +66,10 @@ test('defines the exact versioned human-authentication slice catalog', () => {
   }
 });
 
-test('blocks unapproved timing work while freezing only functional enumeration fields', () => {
+test('forbids timing evidence while freezing only functional enumeration fields', () => {
   assert.deepEqual(functionalEnumerationTimingPolicy, {
-    gapId: 'enumeration-timing-contract-unapproved',
-    status: 'blocked',
+    gapId: 'enumeration-timing-evidence-not-planned',
+    status: 'accepted-limitation',
     allowedObservationFields: [
       'public-status',
       'public-body-schema',

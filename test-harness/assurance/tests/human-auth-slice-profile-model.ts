@@ -78,10 +78,10 @@ export interface HumanAuthClaimRequirement {
   readonly evidenceStatus: 'specification-only';
 }
 
-/** Explicit authority decision that prevents opportunistic enumeration timing measurements. */
+/** Retired timing campaign: latency sampling stays forbidden and the limitation stays explicit. */
 export const functionalEnumerationTimingPolicy = Object.freeze({
-  gapId: 'enumeration-timing-contract-unapproved',
-  status: 'blocked' as const,
+  gapId: 'enumeration-timing-evidence-not-planned',
+  status: 'accepted-limitation' as const,
   allowedObservationFields: Object.freeze([
     'public-status',
     'public-body-schema',

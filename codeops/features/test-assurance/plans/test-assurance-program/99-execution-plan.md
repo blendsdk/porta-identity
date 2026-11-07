@@ -1,9 +1,9 @@
 # Execution Plan: Porta Test Assurance Program
 
 > **Parent**: [Plan Index](00-index.md)
-> **Status**: Blocked — DEF-23 remains; named deferred campaigns outside this plan
-> **Last Updated**: 2026-11-01 11:09
-> **Progress**: 122/123 tasks (99%)
+> **Status**: Complete — DEF-23 retired not planned under AR-116; named deferred campaigns outside this plan
+> **Last Updated**: 2026-11-07
+> **Progress**: 123/123 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Execution Contract
@@ -879,10 +879,11 @@ assurance.
       structure passed 68/68, assurance typecheck/lint/formatting passed, and `yarn verify` passed
       233 server files / 3,382 tests, 31 SDK files / 404 tests, and 29 CLI files / 355 tests.
       ✅ (completed: 2026-08-19 23:35)
-- [!] 8.4 Blocked: DEF-23 has no independently approved enumeration hypothesis, effect-size bound,
-      sample-size/power rule, or environment/noise contract. Do not collect timing samples or infer
-      a threshold from Porta behavior. Functional status/body/header enumeration and equivalent
-      limit-key checks remain in Tasks 8.2–8.3 and 8.6–8.9.
+- [x] 8.4 DEF-23 closed not planned under AR-116: no statistical timing contract was approved and
+      no samples are collected or credited. Functional status, body, header, cookie, error, and
+      rate-limit equivalence plus design-level fixed-work equivalence remain mandatory. The
+      limitation "statistical timing indistinguishability has not been established" is retained.
+      ✅ (closed not planned: 2026-11-07)
 - [x] 8.5 Inventory which supported recovery artifacts currently reject sequential reuse through
       a real public boundary, without treating invalid-token probes or conditional assertions as
       consumed-artifact evidence. Keep concurrent-consume, response-loss, and restart-consistency
@@ -1008,6 +1009,11 @@ remains blocked under DEF-9, the timing-distribution edge remains blocked under 
 variation sensitivity remains deferred under DEF-11. None of those remaining gaps receives
 assurance credit. The independent phase review and completed corrections are recorded in
 [16-phase-8-quality-review.md](16-phase-8-quality-review.md).
+
+**Subsequent closure (2026-11-07):** the paragraph above records the Phase 8 gate as it stood on
+2026-08-20. DEF-8 and DEF-9 were corrected by their named follow-up plans; DEF-23 is retired not
+planned under AR-116 with an explicit statistical-timing limitation. No retired gap receives
+assurance credit.
 
 ## Phase 9: P1 Validation, Exposure, and Administrative Data
 

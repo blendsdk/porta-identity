@@ -293,10 +293,11 @@ tools and are not blocking CI, release, or merge gates.
 A separately authorized product-remediation plan repaired four findings discovered by these
 boundaries: enumeration work asymmetry, cross-tenant magic-link acceptance, ambiguous
 bulk/import/export behavior, and missing terminal decision events for the covered request set.
-Clean black-box and packed-client checkpoints rerun the affected boundaries. Statistical timing,
-TOTP same-window replay, forwarding observers, protocol observations, dependency behavior, and
-real command-stage signals remain explicit gaps; the repairs do not turn ADR-014 into a
-certification or a workflow-promotion decision.
+Clean black-box and packed-client checkpoints rerun the affected boundaries. Statistical timing
+remains an explicit accepted limitation with no timing claim. TOTP same-window replay, forwarding
+observers, protocol observations, dependency behavior, and real command-stage signals remain
+explicit gaps; the repairs do not turn ADR-014 into a certification or a workflow-promotion
+decision.
 
 **Consequences**:
 
