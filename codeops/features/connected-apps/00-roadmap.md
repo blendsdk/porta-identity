@@ -1,10 +1,10 @@
 # Roadmap: Connected Apps
 
 > **Feature-Set**: Connected Apps
-> **Status**: Active
+> **Status**: Complete
 > **Created**: 2026-11-07
 > **Last Updated**: 2026-11-07
-> **Progress**: 5 / 6 tasks (83%)
+> **Progress**: 6 / 6 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -15,7 +15,7 @@
 
 | ID   | Title                                   | RD  | Plan                                                    | Stage     | Status | Last Updated | Depends-on / Blocker |
 | ---- | --------------------------------------- | --- | ------------------------------------------------------- | --------- | ------ | ------------ | -------------------- |
-| T-01 | Admin connected-apps list and revoke (#155) | —   | [Standalone task plan](plans/connected-apps-admin/99-execution-plan.md) | Review    | 🔄     | 2026-11-07   | Implementation and local gates green; independent review and CI pending |
+| T-01 | Admin connected-apps list and revoke (#155) | —   | [Standalone task plan](plans/connected-apps-admin/99-execution-plan.md) | Done      | ✅     | 2026-11-07   | 6/6; reviews, local gates and PR CI green |
 
 ## Notes
 

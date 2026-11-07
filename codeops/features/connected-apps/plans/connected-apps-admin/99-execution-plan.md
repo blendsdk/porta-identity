@@ -1,7 +1,7 @@
 # Task T-01: Admin Connected-Apps List and Revoke
 
 > **Type**: Task (lightweight) · **Feature**: connected-apps · **CodeOps Artifact Schema**: 1
-> **Progress**: 5/6 tasks (83%)
+> **Progress**: 6/6 tasks (100%)
 > **Reasoning**: high — public authorization surface over OIDC grant state with cross-tenant
 > isolation and token invalidation.
 
@@ -78,8 +78,11 @@ AI resolved D2–D6 under `--auto-design`; D1 is the user-confirmed surface.
 - [x] T-01.5 Update security/API docs and roadmap; run server lint, typecheck, build, focused tests,
   the affected integration selection and structure. ✅ (completed: techdocs API/security/data-model;
   lint/typecheck/build; focused 6+5; unit 4,450; structure 158; docs build)
-- [~] T-01.6 Independent review and scoped fixes; full server/CI gate; merge through `develop`, close
-  #155 and record evidence/cleanup. ⏳ (review, CI, merge and closure pending)
+- [x] T-01.6 Independent review and scoped fixes; full server/CI gate; merge through `develop`, close
+  #155 and record evidence/cleanup. ✅ (completed: 2026-11-07; both reviewers closed all Critical/Major
+  findings; opaque provider IDs, production-shaped fixtures, exact cross-user/org list isolation and
+  fixed errors verified; server unit4,450, focused6+5, structure158, docs; PR #223 all six CI jobs
+  pass; merge and #155 closure are the final integration actions)
 
 **Verify**: `pnpm --filter @portaidentity/server lint && pnpm --filter @portaidentity/server typecheck && pnpm --filter @portaidentity/server build && pnpm --filter @portaidentity/server test && pnpm test:structure`
 
