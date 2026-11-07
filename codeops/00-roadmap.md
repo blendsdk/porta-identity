@@ -1,7 +1,7 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-11-06
+> **Last Updated**: 2026-11-07
 > **Features**: 11 / 12 done (1 blocked)
 > **CodeOps Artifact Schema**: 1
 
@@ -23,7 +23,7 @@
 | resource-servers | [→](features/resource-servers/00-roadmap.md) | Per-application resource-server scopes and audience (#156) complete | 7 / 7 tasks (100%) | ✅ | 2026-11-07 |
 | sdk-server-contract-drift | [→](features/sdk-server-contract-drift/00-roadmap.md) | Contract alignment, GDPR export, and history/cursor follow-ups merged | 2 / 2 (100%) | ✅ | 2026-10-27 |
 | tenant-user-management | [→](features/tenant-user-management/00-roadmap.md) | Tenant-scoped M2M user management complete; production-security gate green; deployment pending | n/a | ✅     | 2026-11-01 11:06 |
-| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; 8.7c/9.6b/9.6c closed; DEF-23 and named campaigns remain | 122 / 123 tasks (99%) | ⛔     | 2026-11-01 11:09 |
+| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-6 in final review; only DEF-23 timing authority remains; named deferred campaigns closed not planned | 122 / 123 tasks (99%) | ⛔     | 2026-11-07 |
 | user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred creation and localization released; revocation merged via PR #212 | 3 / 3 tasks (100%) | ✅     | 2026-11-01 09:27 |
 
 ## Archived

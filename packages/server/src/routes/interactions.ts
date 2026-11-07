@@ -1268,7 +1268,15 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     };
 
     await renderAndRespond(ctx, 'consent', context);
-  } catch {
+  } catch (error) {
+    // This handler renders an expiry page instead of rethrowing, so the router-level missing-
+    // interaction observer never sees the rejection. Emit the same privacy-safe event here.
+    if (isMissingInteraction(error)) {
+      observeProtocolSecurityRejection({
+        request: ctx.req,
+        eventClass: 'interaction-context-rejected',
+      });
+    }
     logger.error({ event: 'consent-page-failed' }, 'Consent page rendering failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }
@@ -1383,7 +1391,15 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
         mergeWithLastSubmission: false,
       });
     }
-  } catch {
+  } catch (error) {
+    // The handler renders an expiry page instead of rethrowing, so emit the same privacy-safe
+    // event the router-level missing-interaction middleware uses for other handlers.
+    if (isMissingInteraction(error)) {
+      observeProtocolSecurityRejection({
+        request: ctx.req,
+        eventClass: 'interaction-context-rejected',
+      });
+    }
     logger.error({ event: 'consent-processing-failed' }, 'Consent processing failed');
     await renderErrorPage(ctx, 'errors.interaction_expired');
   }

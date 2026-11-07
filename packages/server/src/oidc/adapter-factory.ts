@@ -264,7 +264,7 @@ export function createAdapterFactory() {
               await cleanupRedisGrants(grantIds);
 
               logger.info(
-                { sessionId: id, grantIds },
+                { grantCount: grantIds.length },
                 'Session destroy: cascade-deleted grants and tokens',
               );
             }
@@ -274,7 +274,7 @@ export function createAdapterFactory() {
           // The user must always be able to log out; orphaned tokens will
           // expire naturally via their TTLs.
           logger.error(
-            { err, sessionId: id },
+            { errorName: err instanceof Error ? err.name : 'unknown' },
             'Session destroy: cascade cleanup failed (proceeding with session deletion)',
           );
         }

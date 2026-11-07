@@ -13,10 +13,22 @@ import {
 import { executeLiveContextCase } from './oidc-token-cases-live-context.js';
 import {
   assertComplete,
+  requireRecovery,
   sanitizeExternal,
   verifyIssuedIdToken,
+  withRecovery,
   type StepEvidence,
 } from './oidc-token-cases-live-support.js';
+import {
+  clientStateRejected,
+  freshClientState,
+  newGrant,
+  recoverConsumedCode,
+  recoverFreshAuthorization,
+  recoverGrantUnchanged,
+  recoverTrustedToken,
+  requireStateUnchanged,
+} from './protocol-live-recovery.js';
 
 import type {
   OidcTokenCasesContract,
@@ -27,10 +39,19 @@ import type {
   ProtocolStepRequirement,
 } from './oidc-token-cases-contract.js';
 
-/** Closed non-server observation used when rejection occurs in the independent relying party. */
-const localSecurityLog = Object.freeze({
+/**
+ * Closed client-side rejection observation used only when the relying party rejects before any
+ * server request exists. It is deliberately labeled as a local observation; server rejections use
+ * the parsed structured log instead.
+ */
+const clientSecurityLog = Object.freeze({
   event: 'protocol-security-rejection',
-  fields: Object.freeze(['synthetic-correlation-id', 'event-class', 'public-client-id-digest']),
+  fields: Object.freeze([
+    'client-side-rejection',
+    'synthetic-correlation-id',
+    'event-class',
+    'public-client-id-digest',
+  ]),
 });
 
 /** Creates the live raw-HTTP and independent-JOSE adapter for the active retained harness run. */
@@ -108,14 +129,23 @@ function observation(
   requirement: ProtocolCaseRequirement,
   step: ProtocolStepRequirement,
   evidence: StepEvidence,
-  recoveryObserved: string | null,
 ): ProtocolStepObservation {
-  const securityLog =
-    step.controlId === undefined
-      ? null
-      : evidence.response === undefined
-        ? localSecurityLog
-        : context.securityLog(evidence.response, evidence.forbiddenValues ?? []);
+  let securityLog: ProtocolStepObservation['securityLog'];
+  try {
+    if (step.controlId === undefined) {
+      securityLog = null;
+    } else if (evidence.response === undefined) {
+      context.scanLogsForForbiddenValues(evidence.forbiddenValues ?? []);
+      securityLog = clientSecurityLog;
+    } else {
+      securityLog = context.securityLog(evidence.response, evidence.forbiddenValues ?? []);
+    }
+  } catch (error) {
+    throw new Error(
+      `${step.id}: ${error instanceof Error ? error.message : 'security-log observation failed'}`,
+      { cause: error },
+    );
+  }
   return Object.freeze({
     id: step.id,
     transport: step.transport,
@@ -126,7 +156,7 @@ function observation(
         ? Object.freeze({})
         : occurredSideEffects(requirement.prohibitedSideEffects, evidence.facts),
     securityLog,
-    recoveryObserved,
+    recoveryObserved: step.controlId === undefined ? null : requireRecovery(evidence),
   });
 }
 
@@ -137,16 +167,10 @@ async function observeLiveCase(
 ): Promise<ProtocolCaseObservation> {
   const evidence = await executeCase(context, requirement);
   const controls = requirement.controls.map((step) =>
-    observation(context, requirement, step, requiredEvidence(evidence, step.id), null),
+    observation(context, requirement, step, requiredEvidence(evidence, step.id)),
   );
   const probes = requirement.probes.map((step) =>
-    observation(
-      context,
-      requirement,
-      step,
-      requiredEvidence(evidence, step.id),
-      requirement.recoveryExpectation,
-    ),
+    observation(context, requirement, step, requiredEvidence(evidence, step.id)),
   );
   return Object.freeze({ sentinelId: requirement.sentinelId, controls, probes });
 }
@@ -300,7 +324,17 @@ async function executeSt33(
     response: wrongVerifier.sanitized,
     forbiddenValues: [wrongVerifierCode.code, wrongVerifierCode.verifier],
   });
-  await context.issueCode('alpha');
+  const recovery = await recoverFreshAuthorization(context);
+  for (const id of [
+    'missing-pkce',
+    'plain-pkce',
+    'one-character-redirect-change',
+    'wrong-pkce-verifier',
+  ]) {
+    const evidence = result.get(id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(id, withRecovery(evidence, recovery));
+  }
   assertComplete(requirement, result);
   return result;
 }
@@ -361,6 +395,17 @@ async function executeSt34(
     response: concurrent.values.find(({ tokens }) => tokens === null)?.sanitized,
     forbiddenValues: [concurrentCode.code, concurrentCode.verifier],
   });
+  const recovery = await recoverConsumedCode(context);
+  for (const id of [
+    'wrong-client-redemption',
+    'wrong-redirect-redemption',
+    'sequential-code-replay',
+    'concurrent-code-redemption',
+  ]) {
+    const evidence = result.get(id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(id, withRecovery(evidence, recovery));
+  }
   assertComplete(requirement, result);
   return result;
 }
@@ -389,6 +434,7 @@ async function executeSt35(
   requirement: ProtocolCaseRequirement,
 ): Promise<ReadonlyMap<string, StepEvidence>> {
   const result = new Map<string, StepEvidence>();
+  const alphaUserId = context.fixtureUserId('alpha');
   const stateCode = await context.issueCode('alpha', 'public', {
     state: 'client-generated-state-a',
   });
@@ -405,9 +451,17 @@ async function executeSt35(
   result.set('requested-nonce-control', {
     facts: { result: verified.accepted ? 'accepted' : 'rejected', idTokenNonce: nonceCode.nonce },
   });
+  const confidentialClient = context.client('alpha', 'confidential');
+  await context.revokeClientGrants('alpha', alphaUserId, confidentialClient.clientId);
+  const beforeConsent = await context.userState('alpha', alphaUserId);
   const consentCode = await context.issueCode('alpha', 'confidential');
+  const consentGrant = newGrant(
+    beforeConsent,
+    await context.userState('alpha', alphaUserId),
+    confidentialClient.clientId,
+  );
   result.set('same-interaction-consent-control', {
-    facts: { result: 'accepted', grantCreated: consentCode.code.length > 0 },
+    facts: { result: 'accepted', grantCreated: true },
   });
   const confidentialCode = await context.issueCode('alpha', 'confidential');
   const confidentialTokens = await context.exchangeCode(confidentialCode);
@@ -418,24 +472,49 @@ async function executeSt35(
       clientAuthenticated: confidentialTokens.tokens !== null,
     },
   });
+
+  // The client stores the state it sent, receives a callback with a substituted value, and
+  // rejects it. The server state is snapshotted after the authorization and after that decision.
+  const substituted = await context.issueCode('alpha', 'public', { state: freshClientState() });
+  const beforeSubstitution = await context.userState('alpha', substituted.subject);
+  const clientRejected = clientStateRejected(substituted.state, 'attacker-state');
+  const afterSubstitution = await context.userState('alpha', substituted.subject);
+  requireStateUnchanged(beforeSubstitution, afterSubstitution);
   result.set('state-substitution-client-rejection', {
     facts: {
-      result: 'client-rejected',
+      result: clientRejected ? 'client-rejected' : 'invalid-outcome',
       sessionCreated: false,
       consentStateChanged: false,
       tokenIssuedCount: 0,
       identityDisclosed: false,
     },
+    forbiddenValues: [substituted.code, substituted.verifier, substituted.state],
   });
+
+  // One valid pending public interaction is presented with the confidential session cookie.
+  const pendingPublic = await context.pendingInteractionUid(
+    'alpha',
+    context.client('alpha', 'public'),
+  );
+  const consentCookie = consentCode.sessionCookies
+    ?.map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join('; ');
+  const beforeCrossInteraction = await context.userState('alpha', consentCode.subject);
   const crossInteractionRaw = await (
     await context.api()
-  ).get(`${context.endpoints.porta}/interaction/cross-interaction/consent`, {
+  ).post(`${context.endpoints.porta}/interaction/${pendingPublic}/confirm`, {
+    form: { _csrf: 'wrong-interaction', decision: 'approve' },
+    ...(consentCookie === undefined || consentCookie.length === 0
+      ? {}
+      : { headers: { Cookie: consentCookie } }),
     maxRedirects: 0,
   });
   const crossInteraction = await sanitizeExternal(crossInteractionRaw, context);
+  const afterCrossInteraction = await context.userState('alpha', consentCode.subject);
+  requireStateUnchanged(beforeCrossInteraction, afterCrossInteraction);
   result.set('cross-interaction-consent', {
     facts: {
-      result: 'rejected',
+      result: crossInteraction.status >= 400 ? 'rejected' : 'accepted',
       grantCreated: false,
       consentStateChanged: false,
       sessionCreated: false,
@@ -443,13 +522,16 @@ async function executeSt35(
       identityDisclosed: false,
     },
     response: crossInteraction,
+    forbiddenValues: [...(consentCode.sessionCookies ?? []).map((cookie) => cookie.value)],
   });
+
   const authCode = await context.issueCode('alpha', 'confidential');
   for (const [id, secret] of [
     ['missing-confidential-client-authentication', undefined],
     ['wrong-confidential-client-secret', 'wrong-client-secret'],
   ] as const) {
     const api = await context.api();
+    const before = await context.userState('alpha', authCode.subject);
     const response = await api.post(`${context.endpoints.porta}/alpha/token`, {
       form: {
         grant_type: 'authorization_code',
@@ -461,6 +543,8 @@ async function executeSt35(
       },
     });
     const sanitized = await sanitizeExternal(response, context);
+    const after = await context.userState('alpha', authCode.subject);
+    requireStateUnchanged(before, after);
     result.set(id, {
       facts: {
         result: 'rejected',
@@ -474,6 +558,18 @@ async function executeSt35(
       response: sanitized,
       forbiddenValues: [authCode.code, authCode.verifier, secret ?? ''],
     });
+  }
+
+  const recovery = await recoverGrantUnchanged(context, 'alpha', consentCode.subject, consentGrant);
+  for (const id of [
+    'state-substitution-client-rejection',
+    'cross-interaction-consent',
+    'missing-confidential-client-authentication',
+    'wrong-confidential-client-secret',
+  ]) {
+    const evidence = result.get(id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(id, withRecovery(evidence, recovery));
   }
   assertComplete(requirement, result);
   return result;
@@ -595,6 +691,12 @@ async function executeSt37(
       },
       forbiddenValues: [token],
     });
+  }
+  const recovery = await recoverTrustedToken(context, code, exchanged.tokens);
+  for (const step of requirement.probes) {
+    const evidence = result.get(step.id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(step.id, withRecovery(evidence, recovery));
   }
   assertComplete(requirement, result);
   return result;
