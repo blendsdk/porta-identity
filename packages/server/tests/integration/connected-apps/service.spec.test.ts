@@ -80,14 +80,16 @@ describe('connected apps list', () => {
     expect(apps[0]?.createdAt).toBeTypeOf('string');
   });
 
-  it('excludes expired grants and other users or organizations', async () => {
+  it('returns only the exact user and organization live grants', async () => {
     const ownerOrganization = await createTestOrganization();
     const ownerApplication = await createTestApplication();
     const ownerClient = await createTestClient(ownerOrganization.id, ownerApplication.id);
     const owner = await createTestUser(ownerOrganization.id);
-    await connected(ownerOrganization.id, owner.id, ownerClient.clientId, {
-      expired: true,
-    });
+    const ownerLive = await connected(ownerOrganization.id, owner.id, ownerClient.clientId);
+    await connected(ownerOrganization.id, owner.id, ownerClient.clientId, { expired: true });
+
+    const sameOrganizationUser = await createTestUser(ownerOrganization.id);
+    await connected(ownerOrganization.id, sameOrganizationUser.id, ownerClient.clientId);
 
     const otherOrganization = await createTestOrganization();
     const otherApplication = await createTestApplication();
@@ -95,7 +97,12 @@ describe('connected apps list', () => {
     const otherUser = await createTestUser(otherOrganization.id);
     await connected(otherOrganization.id, otherUser.id, otherClient.clientId);
 
-    expect(await listConnectedApps(ownerOrganization.id, owner.id)).toEqual([]);
+    // A grant for the owner user whose client belongs to another organization must not appear.
+    await connected(otherOrganization.id, owner.id, otherClient.clientId);
+
+    const ownerApps = await listConnectedApps(ownerOrganization.id, owner.id);
+    expect(ownerApps.map((app) => app.grantId)).toEqual([ownerLive.grantId]);
+    expect(await listConnectedApps(ownerOrganization.id, sameOrganizationUser.id)).toHaveLength(1);
     expect(await listConnectedApps(otherOrganization.id, otherUser.id)).toHaveLength(1);
   });
 });

@@ -51,10 +51,10 @@ AI resolved D2–D6 under `--auto-design`; D1 is the user-confirmed surface.
 
 ## Technical design
 
-1. **Service.** `packages/server/src/connected-apps/service.ts` validates UUIDs, queries live Grant
+1. **Service.** `packages/server/src/connected-apps/service.ts` validates organization/user UUIDs and bounded opaque grant IDs, queries live Grant
    payloads joined to the owning client and organization, extracts granted scopes from `openid.scope`
    and resource scopes, and maps fixed fields. Revoke first proves the grant belongs to the exact
-   user/organization/client, then calls `revokeGrantsByIds([grantId])`.
+   user/organization/client, then deletes the Grant row and every artifact sharing its `grant_id` in one transaction.
 2. **Routes.** `packages/server/src/routes/connected-apps.ts` registers the two routes with
    `requireAdminAuth`, the existing permission middleware and `requireUserOrganization`. Validation
    and storage errors use fixed bodies; unknown or foreign grants return `404`.

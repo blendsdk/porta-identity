@@ -196,7 +196,7 @@ One organization/user-scoped subresource lists and disconnects the user's live O
 | Method | Route | Permission | Result |
 | --- | --- | --- | --- |
 | `GET` | `/api/admin/organizations/:orgId/users/:userId/connected-apps` | `admin:user:read` | `{data: connectedApps}` |
-| `DELETE` | `/api/admin/organizations/:orgId/users/:userId/connected-apps/:grantId` | `admin:user:update` | `204` or fixed `404` |
+| `DELETE` | `/api/admin/organizations/:orgId/users/:userId/connected-apps/:grantId` | `admin:user:update` | `204`; fixed `400`, `404` or `503` |
 
 Each item reports the grant ID, public client ID, client name, application ID, granted scopes,
 creation time and expiry. Expired grants are excluded. The target user must belong to the requested
@@ -204,8 +204,9 @@ organization; a grant from another user or organization is indistinguishable fro
 Revocation deletes the Grant and every access/refresh artifact sharing its `grant_id`; the user and
 client rows remain. Because the OIDC session references its authorized Grants, the shared browser
 session may fail authority and require reauthentication; unrelated user/client data is not deleted.
-Malformed input returns `400`, an unknown or foreign grant returns `404`, and storage failure returns
-`503`. List and revoke responses contain no token, secret or provider internals.
+Malformed route identifiers return `400` after a valid target user is established, an unknown or
+foreign target user or grant returns `404`, and storage failure returns `503`. Grant IDs are opaque
+provider values, not UUIDs. List and revoke responses contain no token, secret or provider internals.
 
 ### Organization branding assets
 
