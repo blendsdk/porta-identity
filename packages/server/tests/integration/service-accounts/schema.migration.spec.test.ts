@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { runner } from 'node-pg-migrate';
 import type { RunnerOption } from 'node-pg-migrate';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getPool } from '../../../src/lib/database.js';
 import { truncateAllTables } from '../helpers/database.js';
 import {
@@ -13,7 +13,7 @@ import {
   createTestUser,
 } from '../helpers/factories.js';
 
-/** The exact migration must be latest before a one-step downgrade can be safe. */
+/** The service-account feature migration remains independently reversible after later migrations. */
 const FEATURE_MIGRATION = '037_service_account_invitations';
 
 /** Refuse implicit database fallbacks; the parent run must supply its isolated test database. */
@@ -25,15 +25,14 @@ function getMigrationDatabaseUrl(): string {
   return databaseUrl;
 }
 
-/** Fail before any rollback if the feature migration is absent or a later migration is installed. */
-async function assertFeatureMigrationIsLatest(): Promise<void> {
+/** Fail before any rollback if the feature migration is absent. */
+async function assertFeatureMigrationIsApplied(): Promise<void> {
   getMigrationDatabaseUrl();
   const result = await getPool().query<{ name: string }>(
-    'SELECT name FROM pgmigrations ORDER BY id DESC LIMIT 1',
+    'SELECT name FROM pgmigrations WHERE name LIKE $1',
+    [`${FEATURE_MIGRATION}%`],
   );
-  expect(result.rows[0]?.name, 'Only the installed service-account migration may be rolled back.').toBe(
-    FEATURE_MIGRATION,
-  );
+  expect(result.rows, 'The service-account migration must be installed.').toHaveLength(1);
 }
 
 /**
@@ -41,13 +40,15 @@ async function assertFeatureMigrationIsLatest(): Promise<void> {
  * A refused downgrade must not abort the application pool's subsequent assertions.
  */
 async function migrate(direction: 'up' | 'down'): Promise<void> {
-  if (direction === 'down') await assertFeatureMigrationIsLatest();
+  if (direction === 'down') await assertFeatureMigrationIsApplied();
   const options: RunnerOption = {
     databaseUrl: getMigrationDatabaseUrl(),
     migrationsTable: 'pgmigrations',
     dir: join(process.cwd(), 'migrations'),
     direction,
-    count: direction === 'down' ? 1 : Infinity,
+    file: FEATURE_MIGRATION,
+    count: 1,
+    checkOrder: false,
     log: () => {},
     decamelize: false,
   };
@@ -95,7 +96,8 @@ async function readMarker(id: string) {
 
 describe('Service-account migration safety', () => {
   beforeEach(async () => {
-    await assertFeatureMigrationIsLatest();
+    await migrate('up');
+    await assertFeatureMigrationIsApplied();
     await truncateAllTables();
   });
 
@@ -146,7 +148,7 @@ describe('Service-account migration safety', () => {
 
       try {
         await expect(migrate('down')).rejects.toThrow(Error);
-        await assertFeatureMigrationIsLatest();
+        await assertFeatureMigrationIsApplied();
         const user = await getPool().query<{ status: string; is_service_account: boolean }>(
           'SELECT status, is_service_account FROM users WHERE id = $1',
           [fixture.user.id],
@@ -181,7 +183,7 @@ describe('Service-account migration safety', () => {
 
     try {
       await expect(migrate('down')).rejects.toThrow(Error);
-      await assertFeatureMigrationIsLatest();
+      await assertFeatureMigrationIsApplied();
       expect(await readMarker(id)).toEqual(marker);
       const remainingFlags = await getPool().query<{ count: number }>(
         'SELECT count(*)::int AS count FROM users WHERE is_service_account = TRUE',
@@ -218,7 +220,7 @@ describe('Service-account migration safety', () => {
       );
 
       await migrate('up');
-      await assertFeatureMigrationIsLatest();
+      await assertFeatureMigrationIsApplied();
       const restored = await getPool().query<{ is_service_account: boolean }>(
         'SELECT is_service_account FROM users WHERE id = $1',
         [fixture.user.id],
@@ -236,4 +238,8 @@ describe('Service-account migration safety', () => {
       await migrate('up');
     }
   });
+});
+
+afterAll(async () => {
+  await migrate('up');
 });

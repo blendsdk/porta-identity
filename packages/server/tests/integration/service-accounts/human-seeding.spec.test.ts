@@ -3,7 +3,7 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { runner } from 'node-pg-migrate';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getPool } from '../../../src/lib/database.js';
 import { truncateAllTables } from '../helpers/database.js';
 import {
@@ -29,6 +29,21 @@ function isolatedDatabaseUrl(): string {
     throw new Error('Seeding verification requires matching explicit isolated test database URLs');
   }
   return databaseUrl;
+}
+
+/** Ensure the service-account migration remains installed after targeted reversals. */
+async function ensureSeedingMigration(): Promise<void> {
+  await runner({
+    databaseUrl: isolatedDatabaseUrl(),
+    dir: join(process.cwd(), 'migrations'),
+    migrationsTable: 'pgmigrations',
+    direction: 'up',
+    file: '037_service_account_invitations',
+    count: 1,
+    checkOrder: false,
+    log: () => {},
+    decamelize: false,
+  });
 }
 
 /** Inspect canonical seed semantics, not generated role identifiers or descriptive labels. */
@@ -67,7 +82,10 @@ async function expectNoHumanServiceGrants(): Promise<void> {
 }
 
 describe('Reserved role seeding preserves human identities', () => {
-  beforeEach(resetHumanFixtures);
+  beforeEach(async () => {
+    await ensureSeedingMigration();
+    await resetHumanFixtures();
+  });
   afterEach(truncateAllTables);
 
   it('should seed only invitation authority and no human grant when current source initializes a fresh installation', async () => {
@@ -116,10 +134,12 @@ describe('Reserved role seeding preserves human identities', () => {
 
   it('should seed the same reserved definition without changing existing humans when the additive migration is reapplied', async () => {
     const databaseUrl = isolatedDatabaseUrl();
-    const latest = await getPool().query<{ name: string }>(
-      'SELECT name FROM pgmigrations ORDER BY id DESC LIMIT 1',
+    await ensureSeedingMigration();
+    const applied = await getPool().query<{ name: string }>(
+      'SELECT name FROM pgmigrations WHERE name LIKE $1',
+      ['037_service_account_invitations%'],
     );
-    expect(latest.rows[0]?.name).toMatch(/^037_service_account_invitations(?:\.sql)?$/);
+    expect(applied.rows).toHaveLength(1);
     const organizationId = await controlPlaneOrganizationId();
     const application = await createTestApplication({ name: 'Porta Admin', slug: 'porta-admin' });
     const ordinaryRole = await createTestRole(application.id, { slug: 'ordinary-existing-role' });
@@ -132,6 +152,8 @@ describe('Reserved role seeding preserves human identities', () => {
       migrationsTable: 'pgmigrations',
       log: () => {},
       decamelize: false,
+      file: '037_service_account_invitations',
+      checkOrder: false,
     };
 
     try {
@@ -157,4 +179,8 @@ describe('Reserved role seeding preserves human identities', () => {
       await runner({ ...options, direction: 'up', count: Infinity });
     }
   });
+});
+
+afterAll(async () => {
+  await ensureSeedingMigration();
 });

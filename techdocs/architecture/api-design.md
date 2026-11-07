@@ -174,6 +174,18 @@ The response follows the ordinary invitation contract: `201` with `email`, `expi
 fixed `401`; missing live binding/account/policy authority receives a fixed `403`; neither exposes
 lookup or policy details.
 
+### Resource indicators
+
+Clients may send an RFC 8707 `resource` parameter on authorization and token requests. Porta
+resolves the absolute URI against an application-owned resource server row and restricts the access
+token to that server's registered scopes and audience. Unknown or wrong-owner resources return
+`invalid_target`; custom scopes outside the registry return `invalid_scope`. Requests without a
+`resource` parameter keep the existing unrestricted token behavior, and the email preview and other
+unrelated flows are unchanged.
+
+There is no Admin API for resource-server management in this release; configuration rows are
+deployment data consumed by the existing OIDC provider callback.
+
 ### Organization branding assets
 
 Branding assets are direct organization subresources:

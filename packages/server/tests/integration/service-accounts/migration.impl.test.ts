@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { runner } from 'node-pg-migrate';
 import { Client } from 'pg';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { getPool } from '../../../src/lib/database.js';
 import { truncateAllTables } from '../helpers/database.js';
 import {
@@ -14,6 +14,9 @@ import {
   createTestUser,
 } from '../helpers/factories.js';
 
+/** The service-account feature migration remains independently reversible after later migrations. */
+const FEATURE_MIGRATION = '037_service_account_invitations';
+
 /** Execute only the owned feature migration, refusing implicit or earlier-database fallbacks. */
 async function migrate(direction: 'up' | 'down', applicationName?: string): Promise<void> {
   const databaseUrl = process.env.TEST_DATABASE_URL;
@@ -21,16 +24,17 @@ async function migrate(direction: 'up' | 'down', applicationName?: string): Prom
     throw new Error('Migration checks require an explicit isolated test database');
   }
   if (direction === 'down') {
-    const latest = await getPool().query<{ name: string }>(
-      'SELECT name FROM pgmigrations ORDER BY id DESC LIMIT 1',
+    const applied = await getPool().query<{ name: string }>(
+      'SELECT name FROM pgmigrations WHERE name LIKE $1',
+      [`${FEATURE_MIGRATION}%`],
     );
-    expect(latest.rows[0]?.name).toBe('037_service_account_invitations');
+    expect(applied.rows, 'The service-account migration must already be applied').toHaveLength(1);
   }
   const migrationUrl = new URL(databaseUrl);
   if (applicationName) migrationUrl.searchParams.set('application_name', applicationName);
   await runner({
     databaseUrl: migrationUrl.toString(), migrationsTable: 'pgmigrations', dir: join(process.cwd(), 'migrations'),
-    direction, count: direction === 'down' ? 1 : Infinity, log: () => {}, decamelize: false,
+    direction, file: FEATURE_MIGRATION, count: 1, checkOrder: false, log: () => {}, decamelize: false,
   });
 }
 
@@ -55,10 +59,12 @@ beforeEach(async () => {
   if (process.env.NODE_ENV !== 'test' || !databaseUrl || databaseUrl !== process.env.DATABASE_URL) {
     throw new Error('Migration checks require an explicit isolated test database');
   }
-  const latest = await getPool().query<{ name: string }>(
-    'SELECT name FROM pgmigrations ORDER BY id DESC LIMIT 1',
+  await migrate('up');
+  const applied = await getPool().query<{ name: string }>(
+    'SELECT name FROM pgmigrations WHERE name LIKE $1',
+    [`${FEATURE_MIGRATION}%`],
   );
-  expect(latest.rows[0]?.name).toBe('037_service_account_invitations');
+  expect(applied.rows).toHaveLength(1);
   await truncateAllTables();
 });
 
@@ -98,10 +104,11 @@ describe('service-account role migration integration', () => {
         expect(await pending).toMatchObject({
           message: 'Remove all service-account identities and bindings before downgrade',
         });
-        const latest = await getPool().query<{ name: string }>(
-          'SELECT name FROM pgmigrations ORDER BY id DESC LIMIT 1',
+        const applied = await getPool().query<{ name: string }>(
+          'SELECT name FROM pgmigrations WHERE name LIKE $1',
+          [`${FEATURE_MIGRATION}%`],
         );
-        expect(latest.rows[0]?.name).toBe('037_service_account_invitations');
+        expect(applied.rows).toHaveLength(1);
         if (kind === 'flag') {
           const flags = await getPool().query<{ is_service_account: boolean }>(
             'SELECT is_service_account FROM users WHERE id = $1', [user.id],
@@ -135,7 +142,8 @@ describe('service-account role migration integration', () => {
       await connection.query('SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL REPEATABLE READ');
       await expect(runner({
         dbClient: connection, migrationsTable: 'pgmigrations', dir: join(process.cwd(), 'migrations'),
-        direction: 'down', count: 1, log: () => {}, decamelize: false,
+        direction: 'down', file: FEATURE_MIGRATION, count: 1, checkOrder: false,
+        log: () => {}, decamelize: false,
       })).rejects.toMatchObject({
         message: 'Service-account downgrade requires READ COMMITTED isolation',
       });
@@ -209,4 +217,8 @@ describe('service-account role migration integration', () => {
         await migrate('up');
       }
     });
+});
+
+afterAll(async () => {
+  await migrate('up');
 });
