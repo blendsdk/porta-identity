@@ -22,7 +22,7 @@
 | RD-05 | Why out of this plan |
 | ----- | --- |
 | R5.12 | Concurrent-consume, response-loss, and restart consistency remain the deferred consistency catalog (DEF-3). |
-| R5.6 | Enumeration timing distributions stay diagnostic (DEF-23). |
+| R5.6 | Enumeration timing distributions stay diagnostic (DEF-23 retired under AR-116). |
 | R5.9 | P1 administrative-data claims are unaffected by this correction. |
 
 ## Plan-local decisions

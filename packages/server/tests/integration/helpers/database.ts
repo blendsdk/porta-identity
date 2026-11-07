@@ -10,12 +10,34 @@
  * depend on (super-admin org, system_config defaults).
  */
 
+import { setTimeout as delay } from 'node:timers/promises';
 import { getPool } from '../../../src/lib/database.js';
 import { SYSTEM_CONFIG_CATALOG } from '../../../src/lib/system-config-catalog.js';
 
 // ---------------------------------------------------------------------------
 // Truncation
 // ---------------------------------------------------------------------------
+
+/** PostgreSQL SQLSTATE for a detected deadlock. */
+const POSTGRES_DEADLOCK = '40P01';
+
+/** Bounded attempts for a truncate that races live test-server work. */
+const TRUNCATE_ATTEMPTS = 4;
+
+/**
+ * Detect a PostgreSQL deadlock without assuming an error implementation type.
+ *
+ * @param error - Value thrown by the database client.
+ * @returns True only when the value carries the PostgreSQL deadlock code.
+ */
+function isDeadlock(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    error.code === POSTGRES_DEADLOCK
+  );
+}
 
 /**
  * Truncate all application tables in a single statement.
@@ -26,29 +48,43 @@ import { SYSTEM_CONFIG_CATALOG } from '../../../src/lib/system-config-catalog.js
  * other infrastructure tables.
  *
  * Called in beforeEach() to ensure complete isolation between tests.
+ *
+ * The live test server runs a recovery worker and may still settle a
+ * transaction while the next test starts. PostgreSQL can then report a
+ * lock-order deadlock even though both statements are valid. Retrying the
+ * complete TRUNCATE after a short bounded delay is safe and keeps that test
+ * lifecycle race from being reported as a product failure.
  */
 export async function truncateAllTables(): Promise<void> {
   const pool = getPool();
 
-  // Truncate all application tables in one statement.
-  // CASCADE handles FK dependencies automatically.
-  // Order doesn't matter with CASCADE, but we list leaf tables first
-  // for documentation clarity.
-  await pool.query(`
-    TRUNCATE TABLE
-      audit_log,
-      two_factor_recovery_codes, two_factor_otp_codes, user_totp,
-      custom_claim_values, custom_claim_definitions,
-      user_roles, role_permissions, permissions, roles,
-      magic_link_tokens, password_reset_tokens, invitation_tokens,
-      client_secrets, clients,
-      users,
-      resource_server_scopes, resource_server_namespace, resource_servers,
-      application_modules, applications,
-      organizations,
-      oidc_payloads, signing_keys, system_config
-    CASCADE
-  `);
+  for (let attempt = 1; attempt <= TRUNCATE_ATTEMPTS; attempt += 1) {
+    try {
+      // Truncate all application tables in one statement.
+      // CASCADE handles FK dependencies automatically.
+      // Order doesn't matter with CASCADE, but we list leaf tables first
+      // for documentation clarity.
+      await pool.query(`
+        TRUNCATE TABLE
+          audit_log,
+          two_factor_recovery_codes, two_factor_otp_codes, user_totp,
+          custom_claim_values, custom_claim_definitions,
+          user_roles, role_permissions, permissions, roles,
+          magic_link_tokens, password_reset_tokens, invitation_tokens,
+          client_secrets, clients,
+          users,
+          resource_server_scopes, resource_server_namespace, resource_servers,
+          application_modules, applications,
+          organizations,
+          oidc_payloads, signing_keys, system_config
+        CASCADE
+      `);
+      return;
+    } catch (error) {
+      if (!isDeadlock(error) || attempt === TRUNCATE_ATTEMPTS) throw error;
+      await delay(attempt * 50);
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------

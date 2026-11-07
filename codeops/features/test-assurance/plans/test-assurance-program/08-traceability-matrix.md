@@ -100,7 +100,7 @@ plan repaired four product roots without changing those claim identities:
 
 | Root | Requirement / claim | Remediation tasks | Admitted boundary | Residual status |
 | --- | --- | --- | --- | --- |
-| Enumeration work asymmetry | R5.6 / CLAIM-R5-06 | product-remediation 1.1–1.16 | Design-level fixed-work and public functional controls | Statistical timing remains non-gating and authority-blocked |
+| Enumeration work asymmetry | R5.6 / CLAIM-R5-06 | product-remediation 1.1–1.16 | Design-level fixed-work and public functional controls | Statistical timing remains non-gating; DEF-23 retired not planned under AR-116 with an explicit unqualified limitation |
 | Cross-tenant magic-link acceptance | R5.7 / CLAIM-R5-07 | product-remediation 2.1–2.9 | Tenant/interaction/client authority, atomic consume, replay and failure controls | Other R5.7 artifact/consistency gaps remain independent |
 | Bulk/import/export contract ambiguity | R5.9 / CLAIM-R5-09 | product-remediation 3.1–3.10 | Server, SDK/CLI, raw P1, packed-client, transaction and export controls | The obsolete contract-unapproved gap is removed; unrelated P1 defects remain |
 | Missing terminal decision event | R5.17 / CLAIM-R5-17 | product-remediation 4.1–4.11 | Server-backed terminal-event tuples, privacy, sink failure and durable audit atomicity | External production-security log correlation remains unqualified; no aggregate claim credit is awarded |

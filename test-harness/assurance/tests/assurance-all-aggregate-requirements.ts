@@ -170,10 +170,10 @@ export const assuranceAllKnownGapRegistry: readonly AssuranceAllKnownGapRegistra
       conclusion: 'unqualified',
     },
     {
-      id: 'enumeration-timing-contract-unapproved',
-      authority: 'authority-blocked',
+      id: 'enumeration-timing-evidence-not-planned',
+      authority: 'stale-or-no-go-evidence',
       statusSource: 'approved-program-gap-register',
-      conclusion: 'blocked',
+      conclusion: 'unqualified',
     },
     {
       id: 'totp-same-window-replay-authority',
@@ -407,7 +407,7 @@ const assuranceAllAggregateItemsFixture: readonly AssuranceAllItemEvidence[] = O
 export const assuranceAllAggregateEvidenceFixture: AssuranceAllAggregateEvidence = Object.freeze({
   schemaVersion: 1,
   registryVersion: 1,
-  registryDigest: 'sha256:3ed1b88c9e7fcdea9c203f683c2216988163907d3a1d83377b6bfe9a88bc74d7',
+  registryDigest: 'sha256:2184e1a3ca647c2aa4b7d510ead0536bb25356209e3beb7916a021ebe7450d48',
   baselineRevision: 'b'.repeat(40),
   baselineTreeDigest: `sha256:${'c'.repeat(64)}`,
   children: Object.freeze(

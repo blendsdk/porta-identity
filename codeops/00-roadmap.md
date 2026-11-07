@@ -2,7 +2,7 @@
 
 > **Status**: Active
 > **Last Updated**: 2026-11-07
-> **Features**: 11 / 12 done (1 blocked)
+> **Features**: 12 / 12 done
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -23,7 +23,7 @@
 | resource-servers | [→](features/resource-servers/00-roadmap.md) | Per-application resource-server scopes and audience (#156) complete | 7 / 7 tasks (100%) | ✅ | 2026-11-07 |
 | sdk-server-contract-drift | [→](features/sdk-server-contract-drift/00-roadmap.md) | Contract alignment, GDPR export, and history/cursor follow-ups merged | 2 / 2 (100%) | ✅ | 2026-10-27 |
 | tenant-user-management | [→](features/tenant-user-management/00-roadmap.md) | Tenant-scoped M2M user management complete; production-security gate green; deployment pending | n/a | ✅     | 2026-11-01 11:06 |
-| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | Product remediation complete; DEF-6 complete; only DEF-23 timing authority remains; named deferred campaigns closed not planned | 122 / 123 tasks (99%) | ⛔     | 2026-11-07 |
+| test-assurance       | [→](features/test-assurance/00-roadmap.md)       | DEF-23 retired not planned under AR-116; all named campaigns closed; M2 and timing remain explicit limitations | 123 / 123 tasks (100%) | ✅     | 2026-11-07 |
 | user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred creation and localization released; revocation merged via PR #212 | 3 / 3 tasks (100%) | ✅     | 2026-11-01 09:27 |
 
 ## Archived
