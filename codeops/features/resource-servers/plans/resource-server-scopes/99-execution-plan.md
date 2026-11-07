@@ -1,7 +1,7 @@
 # Task T-01: Per-Application Resource-Server Scopes and Audience
 
 > **Type**: Task (lightweight) · **Feature**: resource-servers · **CodeOps Artifact Schema**: 1
-> **Progress**: 6/7 tasks (86%)
+> **Progress**: 7/7 tasks (100%)
 > **Reasoning**: high — token audience and scope resolution are security-sensitive, but the model
 > is bounded to one table pair, one resolver and the existing provider callback.
 
@@ -83,8 +83,11 @@ AI resolved D2–D7 under `--auto-design`; D1–D3 were user-confirmed product d
 - [x] T-01.6 Update security/API docs and roadmap; run server lint, typecheck, build, focused tests,
   the affected integration selection and structure. ✅ (completed: techdocs security/api/data-model;
   server unit 4,445; integration 1,168; E2E 134; pentest 334; structure 158; docs build)
-- [~] T-01.7 Independent review and scoped fixes; full server/CI gate; merge through `develop`, close
-  #156 and record evidence/cleanup. ⏳ (review, final CI, merge and closure pending)
+- [x] T-01.7 Independent review and scoped fixes; full server/CI gate; merge through `develop`, close
+  #156 and record evidence/cleanup. ✅ (completed: 2026-11-07; both reviewers closed all
+  Critical/Major findings; server unit4,445/integration1,105+68-alone/E2E139/pentest336/structure158;
+  PR #222 all six CI jobs pass; production-security exits0 with11/11 exposure passes; merge and #156
+  closure are the final integration actions)
 
 **Verify**: `pnpm --filter @portaidentity/server lint && pnpm --filter @portaidentity/server typecheck && pnpm --filter @portaidentity/server build && pnpm --filter @portaidentity/server test && pnpm test:structure`
 

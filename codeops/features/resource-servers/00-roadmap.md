@@ -1,10 +1,10 @@
 # Roadmap: Resource Servers
 
 > **Feature-Set**: Resource Servers
-> **Status**: Active
+> **Status**: Complete
 > **Created**: 2026-11-07
 > **Last Updated**: 2026-11-07
-> **Progress**: 6 / 7 tasks (86%)
+> **Progress**: 7 / 7 tasks (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -15,7 +15,7 @@
 
 | ID   | Title                                      | RD  | Plan                                                    | Stage     | Status | Last Updated | Depends-on / Blocker |
 | ---- | ------------------------------------------ | --- | ------------------------------------------------------- | --------- | ------ | ------------ | -------------------- |
-| T-01 | Per-application resource-server scopes and audience (#156) | —   | [Standalone task plan](plans/resource-server-scopes/99-execution-plan.md) | Review    | 🔄     | 2026-11-07   | Implementation and local gates green; independent review and CI pending |
+| T-01 | Per-application resource-server scopes and audience (#156) | —   | [Standalone task plan](plans/resource-server-scopes/99-execution-plan.md) | Done      | ✅     | 2026-11-07   | 7/7; reviews, full gates, PR CI and production-security assurance green |
 
 ## Notes
 

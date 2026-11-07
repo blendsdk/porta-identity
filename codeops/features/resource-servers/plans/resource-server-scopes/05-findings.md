@@ -30,7 +30,8 @@
 | Server pentest | 336 passed |
 | Structure / docs build | 158 / passed |
 | Independent review | F1–F6 and SA-1/SA-3 closed; SA-2 residual verification recorded |
-| CI | Pending |
+| CI | PR #222 all six jobs passed |
+| Production-security assurance | Exit 0; 33 cases + 11 exposure passes, 0 incomplete |
 
 ## Notes
 
