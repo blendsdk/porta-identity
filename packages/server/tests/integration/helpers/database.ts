@@ -43,6 +43,7 @@ export async function truncateAllTables(): Promise<void> {
       magic_link_tokens, password_reset_tokens, invitation_tokens,
       client_secrets, clients,
       users,
+      resource_server_scopes, resource_server_namespace, resource_servers,
       application_modules, applications,
       organizations,
       oidc_payloads, signing_keys, system_config

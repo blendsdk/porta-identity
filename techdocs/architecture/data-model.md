@@ -119,6 +119,22 @@ Confidential clients can keep overlapping active secrets during rotation, with a
 is still confidential and non-revoked, then counts and inserts within the same short transaction.
 Secret list and mutation queries always qualify both the client and secret identifiers.
 
+### Resource Servers
+
+Migration038 adds application-owned resource servers and their explicit custom-scope registry.
+A client may request only a resource server owned by the same application. Standard OIDC protocol
+scopes remain available without being repeated in every registry.
+
+| Table | Key columns | Boundary |
+| --- | --- | --- |
+| `resource_servers` | `application_id`, `slug`, `identifier`, `audience` | Absolute-URI identifier is globally unique; audience defaults to the identifier and is the access-token `aud` |
+| `resource_server_scopes` | `resource_server_id`, `scope` | One explicit custom scope per row; cascade-deleted with its resource server |
+| `resource_server_namespace` | `value`, `resource_server_id` | One primary-key namespace for every identifier and audience; prevents cross-column collisions |
+
+A trigger supplies the identifier when `audience` is omitted. A `resource_server_namespace` primary
+key registers every identifier and audience, so concurrent writers cannot create a cross-application
+audience collision; the namespace is deleted with its resource server.
+
 ### Invitation Service-Account Storage
 
 Migration037 adds one `client_service_accounts` row per explicitly owned client and a permanent

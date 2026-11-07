@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { fileURLToPath } from 'node:url';
 import { runner } from 'node-pg-migrate';
 import type { RunnerOption } from 'node-pg-migrate';
@@ -14,6 +14,7 @@ import {
   lifecycleSecurityFingerprint,
   readLifecycleAccount,
 } from './lifecycle-fixtures.js';
+import { restoreMigrationOrder } from './migration-order.js';
 
 /** The sole applied migration this destructive specification is permitted to reverse. */
 const LIFECYCLE_MIGRATION_NAME = '037_service_account_invitations';
@@ -27,15 +28,30 @@ function requireTestDatabaseUrl(): string {
   return testUrl;
 }
 
-/** Refuse to reverse an unrelated schema revision, including any later applied migration. */
-async function requireLatestLifecycleMigration(): Promise<void> {
+/** Require the owned feature migration to be installed; later migrations remain independent. */
+async function requireLifecycleMigrationApplied(): Promise<void> {
   const result = await getPool().query<{ name: string }>(
-    'SELECT name FROM pgmigrations ORDER BY id DESC LIMIT 1',
+    'SELECT name FROM pgmigrations WHERE name LIKE $1',
+    [`${LIFECYCLE_MIGRATION_NAME}%`],
   );
-  const name = result.rows[0]?.name.replace(/\.sql$/u, '');
-  if (name !== LIFECYCLE_MIGRATION_NAME) {
-    throw new Error('Lifecycle downgrade requires its migration to be the latest applied revision');
+  if (result.rows.length !== 1) {
+    throw new Error('Lifecycle downgrade requires its migration to be installed');
   }
+}
+
+/** Reapply the owned migration after an intentionally refused downgrade. */
+async function ensureLifecycleMigration(): Promise<void> {
+  await runner({
+    databaseUrl: requireTestDatabaseUrl(),
+    migrationsTable: 'pgmigrations',
+    dir: fileURLToPath(new URL('../../../migrations/', import.meta.url)),
+    direction: 'up',
+    file: LIFECYCLE_MIGRATION_NAME,
+    count: 1,
+    checkOrder: false,
+    log: () => {},
+    decamelize: false,
+  });
 }
 
 /** Fingerprint every migration-ledger row without exposing its stored values in assertion output. */
@@ -120,7 +136,8 @@ async function publicSchemaFingerprint(): Promise<string> {
 describe('service-account lifecycle deletion downgrade refusal', () => {
   it('should preserve the marker, security rows, schema and ledger when downgrade follows deletion and revoke', async () => {
     const databaseUrl = requireTestDatabaseUrl();
-    await requireLatestLifecycleMigration();
+    await ensureLifecycleMigration();
+    await requireLifecycleMigrationApplied();
     const fixture = await createLifecycleFixture();
     const created = await setServiceAccount(fixture.client.id, {
       accountEmail: fixture.accountEmail,
@@ -146,7 +163,8 @@ describe('service-account lifecycle deletion downgrade refusal', () => {
     );
     expect(flaggedUsers.rows[0].count).toBe(0);
 
-    await requireLatestLifecycleMigration();
+    await ensureLifecycleMigration();
+    await requireLifecycleMigrationApplied();
     const securityBefore = await lifecycleSecurityFingerprint();
     const schemaBefore = await publicSchemaFingerprint();
     const ledgerBefore = await migrationLedgerFingerprint();
@@ -155,7 +173,9 @@ describe('service-account lifecycle deletion downgrade refusal', () => {
       migrationsTable: 'pgmigrations',
       dir: fileURLToPath(new URL('../../../migrations/', import.meta.url)),
       direction: 'down',
+      file: LIFECYCLE_MIGRATION_NAME,
       count: 1,
+      checkOrder: false,
       log: () => {},
       decamelize: false,
     };
@@ -169,4 +189,9 @@ describe('service-account lifecycle deletion downgrade refusal', () => {
       await runner({ ...options, direction: 'up' });
     }
   });
+});
+
+afterAll(async () => {
+  await ensureLifecycleMigration();
+  await restoreMigrationOrder();
 });

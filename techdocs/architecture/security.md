@@ -249,6 +249,26 @@ delegation ceiling is applied using the machine account's reserved permission. T
 stored with the invitation and applied only on acceptance; accepted users never gain the reserved
 machine membership.
 
+### Resource-server audience resolution
+
+Resource indicators (RFC 8707) are resolved against application-owned `resource_servers` rows. A
+client may request only a resource server whose `application_id` matches the client's existing
+internal application metadata. The requested value must be an absolute URI without a fragment and
+must match the stored identifier exactly; unknown or wrong-owner resources receive
+`invalid_target`.
+
+The resolver returns the allowed scope set: the protocol-owned OIDC scopes plus the resource
+server's explicit custom-scope registry. The issued token carries only the requested and granted
+subset. A requested custom scope outside the registry receives `invalid_scope`. Access tokens remain
+opaque and use the existing access-token TTL. A resource-bound token carries an audience and is for
+that resource server; the userinfo endpoint accepts only non-audience tokens, so an OIDC flow that
+needs `/me` uses a separate no-resource authorization. When a request carries no `resource`
+parameter, the existing unrestricted token behavior is preserved and no resource-server lookup
+occurs.
+
+Resource servers are configuration data; no Admin management surface is added by this model. The
+resolver is reusable by a later surface and does not cache policy outside PostgreSQL.
+
 ### Public branding isolation
 
 The anonymous `GET /:orgSlug/branding/:type` route exposes only validated image bytes. It performs
