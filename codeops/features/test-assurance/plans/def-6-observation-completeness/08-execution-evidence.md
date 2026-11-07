@@ -39,7 +39,7 @@
 | Server lint / typecheck / build | Passed |
 | Harness ESLint / typecheck | Passed (pre-existing unrelated BFF harness errors excluded) |
 | Independent scoped re-review | Round 2 closed N1–N8 and the final review closed SA-5/SA-7/R6; R1–R5/R7 accepted |
-| CI | Pending |
+| CI | PR #224 all six jobs passed; post-merge CI `42363015714` success; merged as `5698bef0`; #121 closed |
 
 ## Review closure
 
@@ -64,4 +64,5 @@ bounded-log residuals. The full disposition, including residuals R1–R5 and R7 
 - Residuals R1 (global keys), R2 (local log edges), R3 (simulated callback), R5 (file size),
   R7 (remaining interaction catches/rate limit) is recorded; R6 is retired.
 - Owned scratch PostgreSQL, Redis and MailHog containers are removed after the runs.
-- No merge to `main`, release, or unrelated issue-state change was performed.
+- The squash merge is `5698bef0`; #121 is closed. No merge to `main`, release, or unrelated
+  issue-state change was performed.
