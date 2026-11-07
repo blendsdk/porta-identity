@@ -13,6 +13,7 @@ import {
   createTestRole,
   createTestUser,
 } from '../helpers/factories.js';
+import { restoreMigrationOrder } from './migration-order.js';
 
 /** The service-account feature migration remains independently reversible after later migrations. */
 const FEATURE_MIGRATION = '037_service_account_invitations';
@@ -221,4 +222,5 @@ describe('service-account role migration integration', () => {
 
 afterAll(async () => {
   await migrate('up');
+  await restoreMigrationOrder();
 });

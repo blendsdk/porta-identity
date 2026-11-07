@@ -127,8 +127,11 @@ scopes remain available without being repeated in every registry.
 
 | Table | Key columns | Boundary |
 | --- | --- | --- |
-| `resource_servers` | `application_id`, `slug`, `identifier`, `audience` | Absolute-URI identifier is globally unique; audience is the access-token `aud` |
+| `resource_servers` | `application_id`, `slug`, `identifier`, `audience` | Absolute-URI identifier is globally unique; audience defaults to the identifier and is the access-token `aud` |
 | `resource_server_scopes` | `resource_server_id`, `scope` | One explicit custom scope per row; cascade-deleted with its resource server |
+
+A trigger supplies the identifier when `audience` is omitted and rejects any audience that collides
+with another resource's identifier (or the reverse), keeping one trust namespace.
 
 ### Invitation Service-Account Storage
 

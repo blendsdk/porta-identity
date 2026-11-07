@@ -18,6 +18,7 @@ import {
   humanUserFingerprint,
   resetHumanFixtures,
 } from './human-fixtures.js';
+import { restoreMigrationOrder } from './migration-order.js';
 
 /** Use an asynchronous child so the test worker retains control of cleanup and time limits. */
 const execFileAsync = promisify(execFile);
@@ -183,4 +184,5 @@ describe('Reserved role seeding preserves human identities', () => {
 
 afterAll(async () => {
   await ensureSeedingMigration();
+  await restoreMigrationOrder();
 });

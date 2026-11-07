@@ -61,9 +61,6 @@ export async function setup(): Promise<void> {
     dir: migrationsDir,
     direction: 'up',
     count: Infinity,
-    // Migration specs deliberately reverse one feature migration while a later unrelated
-    // migration remains applied. Production migration commands retain their normal order check.
-    checkOrder: false,
     // Suppress migration output during tests
     log: () => {},
     decamelize: false,

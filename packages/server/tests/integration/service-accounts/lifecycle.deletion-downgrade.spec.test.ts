@@ -14,6 +14,7 @@ import {
   lifecycleSecurityFingerprint,
   readLifecycleAccount,
 } from './lifecycle-fixtures.js';
+import { restoreMigrationOrder } from './migration-order.js';
 
 /** The sole applied migration this destructive specification is permitted to reverse. */
 const LIFECYCLE_MIGRATION_NAME = '037_service_account_invitations';
@@ -192,4 +193,5 @@ describe('service-account lifecycle deletion downgrade refusal', () => {
 
 afterAll(async () => {
   await ensureLifecycleMigration();
+  await restoreMigrationOrder();
 });

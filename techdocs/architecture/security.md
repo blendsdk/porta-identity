@@ -257,11 +257,14 @@ internal application metadata. The requested value must be an absolute URI witho
 must match the stored identifier exactly; unknown or wrong-owner resources receive
 `invalid_target`.
 
-The returned access-token scope is the union of the protocol-owned OIDC scopes and the resource
-server's explicit custom-scope registry. A requested custom scope outside that registry receives
-`invalid_scope`. Access tokens remain opaque and use the existing access-token TTL. When a request
-carries no `resource` parameter, the existing unrestricted token behavior is preserved and no
-resource-server lookup occurs.
+The resolver returns the allowed scope set: the protocol-owned OIDC scopes plus the resource
+server's explicit custom-scope registry. The issued token carries only the requested and granted
+subset. A requested custom scope outside the registry receives `invalid_scope`. Access tokens remain
+opaque and use the existing access-token TTL. A resource-bound token carries an audience and is for
+that resource server; the userinfo endpoint accepts only non-audience tokens, so an OIDC flow that
+needs `/me` uses a separate no-resource authorization. When a request carries no `resource`
+parameter, the existing unrestricted token behavior is preserved and no resource-server lookup
+occurs.
 
 Resource servers are configuration data; no Admin management surface is added by this model. The
 resolver is reusable by a later surface and does not cache policy outside PostgreSQL.

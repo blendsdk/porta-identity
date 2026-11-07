@@ -3,8 +3,9 @@
  *
  * A client may request only a resource server owned by the same application. Resolution is exact:
  * the requested absolute URI and the client's application identity must match one row. The returned
- * scope set combines the protocol-owned OIDC scopes with the resource server's explicit registry,
- * so resource-bound OIDC flows can still issue an ID token and userinfo access.
+ * scope set combines the protocol-owned OIDC scopes with the resource server's explicit registry.
+ * The issued token carries only requested/granted scopes; a resource-bound token has an audience and
+ * is for that resource server. Userinfo requires a separate no-resource authorization.
  */
 
 import { errors } from 'oidc-provider';

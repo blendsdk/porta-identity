@@ -26,6 +26,7 @@
 - No `resource` parameter preserves the existing unrestricted token behavior. The model adds
   audience restriction only when a client explicitly requests a registered resource.
 - Scope registry is explicit per resource server. Standard OIDC scopes remain available so a
-  resource-bound OIDC flow can still issue an ID token and userinfo access.
+  resource-bound OIDC flow can still issue an ID token. Userinfo needs a separate no-resource
+  authorization because audience-bearing tokens are for their resource server.
 - The admin management surface is not part of #156; this task owns the server model, resolution and
   verification. A later surface can reuse the repository/service.
