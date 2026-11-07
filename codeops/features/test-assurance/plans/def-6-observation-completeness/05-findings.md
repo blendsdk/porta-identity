@@ -80,8 +80,8 @@ items are recorded as named residuals.
 | Structure | 158 passed |
 | Server lint / typecheck / build | Passed |
 | Harness ESLint / typecheck | Passed (pre-existing unrelated BFF harness errors excluded) |
-| Independent scoped re-review | Round 2 closed N1–N8; final review closed SA-5/SA-7/R6; R1–R5/R7 accepted |
-| CI | Pending |
+| Independent scoped re-review | Round 2 closed N1–N8; final review closed SA-5/SA-7/R6; R1–R5/R7 accepted; #121 closed |
+| CI | PR #224 all six jobs passed; post-merge CI `42363015714` success; merged as `5698bef0` |
 
 ## Notes
 

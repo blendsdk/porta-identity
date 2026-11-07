@@ -24,9 +24,9 @@ not-planned campaigns remain as named limitations, not open work.
    authorized before a pre-measurement hypothesis, effect-size bound, sample-size/power rule and
    noise/invalid-run contract are approved.
 
-## Final review and closed campaigns
+## Completed and closed campaigns
 
-- **DEF-6** — in final review with residuals R1–R5 and R7 (R6 retired) in
+- **DEF-6** — complete with residuals R1–R5 and R7 (R6 retired) in
   [the DEF-6 findings](../plans/def-6-observation-completeness/05-findings.md).
 - **DEF-3** — closed not planned under AR-80; the atomic consume defect is fixed and replay-tested.
 - **DEF-22** — closed not planned under AR-108/AR-115; CI promotion is withheld and no assurance
