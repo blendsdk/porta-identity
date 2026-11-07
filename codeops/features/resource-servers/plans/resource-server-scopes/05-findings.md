@@ -14,22 +14,22 @@
 | F5 | MINOR | schema validation | SQL accepted over-2,048-character and some URL-invalid values. | Fixed: length constraints added; the service keeps full URL validation. SQL-seeded rows must satisfy the service model. |
 | F6 | MINOR | migration-test order | The global integration setup disabled migration order checks to tolerate targeted reversal. | Fixed: the global check is restored; migration specs repair only their two ledger rows after ensuring both schemas are applied. |
 | SA-1 | MINOR | audience namespace | One row's audience could equal another resource's identifier, allowing an audience collision; a read-then-write trigger was not concurrency-safe. | Fixed: a `resource_server_namespace` primary key enforces the shared namespace for concurrent writers; schema tests cover collisions and the default. |
-| SA-2 | MINOR | verification | The first E2E/pentest set did not prove registered-but-unrequested scope minimization or the reverse wrong-owner direction. | Fixed: distinct scopes are registered and only one requested; the owner client also requests another application's registered resource; the no-resource audience is asserted absent. |
+| SA-2 | MINOR | verification | The first E2E/pentest set did not prove registered-but-unrequested scope minimization or the reverse wrong-owner direction. | Partially fixed: distinct scopes are registered and only one requested; the owner client also requests another application's registered resource; the no-resource audience is asserted absent. Authorization-code, refresh resource-switch and `/me` cases remain residual because interactive login belongs to the browser harness. |
 
 ## Verification
 
 | Gate | Result |
 | --- | --- |
 | Focused resolver/config | 13 passed |
-| Focused integration | 4 passed |
-| Migration/038 schema specs | 18 passed |
-| New E2E / pentest | 4 / 2 passed |
+| Focused integration | 4 resolver cases passed |
+| Migration/038 schema specs | 18 passed; 038 schema suite 6 passed including concurrency |
+| New E2E / pentest | 5 / 2 passed; full E2E 139 and pentest 336 |
 | Server unit | 4,445 passed |
 | Server integration | 1,105 passed + 68 skipped only when the long suite hit a local Redis timeout; the skipped file passes 68/68 alone |
-| Server E2E | 138 passed |
+| Server E2E | 139 passed |
 | Server pentest | 336 passed |
 | Structure / docs build | 158 / passed |
-| Independent review | Findings above addressed; scoped re-review pending |
+| Independent review | F1–F6 and SA-1/SA-3 closed; SA-2 residual verification recorded |
 | CI | Pending |
 
 ## Notes

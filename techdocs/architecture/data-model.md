@@ -129,6 +129,7 @@ scopes remain available without being repeated in every registry.
 | --- | --- | --- |
 | `resource_servers` | `application_id`, `slug`, `identifier`, `audience` | Absolute-URI identifier is globally unique; audience defaults to the identifier and is the access-token `aud` |
 | `resource_server_scopes` | `resource_server_id`, `scope` | One explicit custom scope per row; cascade-deleted with its resource server |
+| `resource_server_namespace` | `value`, `resource_server_id` | One primary-key namespace for every identifier and audience; prevents cross-column collisions |
 
 A trigger supplies the identifier when `audience` is omitted. A `resource_server_namespace` primary
 key registers every identifier and audience, so concurrent writers cannot create a cross-application

@@ -83,6 +83,8 @@ describe('resource server schema', () => {
     const other = await createTestApplication();
     await expect(createResource(other.id, secondIdentifier, `https://other-${randomUUID()}.example.test`))
       .rejects.toThrow();
+    await expect(createResource(other.id, `https://reverse-${randomUUID()}.example.test`, firstIdentifier))
+      .rejects.toThrow();
   });
 
   it('serializes concurrent inserts that would collide in the shared namespace', async () => {
@@ -112,7 +114,9 @@ describe('resource server schema', () => {
         )
         .then(() => null, (error: unknown) => error);
       await first.query('COMMIT');
-      expect(await pending).toBeInstanceOf(Error);
+      const failure = await pending;
+      expect(failure).toBeInstanceOf(Error);
+      expect(failure instanceof Error ? Reflect.get(failure, 'code') : undefined).toBe('23505');
       await second.query('ROLLBACK');
     } finally {
       await first.end();
