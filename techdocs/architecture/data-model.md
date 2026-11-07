@@ -135,6 +135,13 @@ A trigger supplies the identifier when `audience` is omitted. A `resource_server
 key registers every identifier and audience, so concurrent writers cannot create a cross-application
 audience collision; the namespace is deleted with its resource server.
 
+### OIDC Grants and Connected Apps
+
+Connected applications reuse the provider's `oidc_payloads` Grant rows. A Grant payload carries the
+account, client, OIDC scope and resource scopes; access and refresh tokens reference it through the
+indexed `grant_id` column. The admin list joins the payload to `clients` for tenant and display
+data; revoke deletes the Grant row and all artifacts sharing its `grant_id` in one transaction.
+
 ### Invitation Service-Account Storage
 
 Migration037 adds one `client_service_accounts` row per explicitly owned client and a permanent

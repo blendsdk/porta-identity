@@ -269,6 +269,15 @@ occurs.
 Resource servers are configuration data; no Admin management surface is added by this model. The
 resolver is reusable by a later surface and does not cache policy outside PostgreSQL.
 
+### Connected-app grant authority
+
+The admin connected-apps subresource resolves one user through `requireUserOrganization` before any
+provider grant is read. The list query joins the Grant payload to the client table and filters by
+the exact organization, user and live grant expiry; a grant belonging to another user or tenant is
+not returned. Revocation repeats the same ownership predicate under a row lock, then deletes the
+Grant and every `oidc_payloads` row sharing its `grant_id` in one transaction. It does not delete the
+user, client or browser session, and token/refresh artifacts stop resolving after commit.
+
 ### Public branding isolation
 
 The anonymous `GET /:orgSlug/branding/:type` route exposes only validated image bytes. It performs

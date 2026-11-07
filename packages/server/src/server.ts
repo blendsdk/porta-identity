@@ -53,6 +53,7 @@ import { createInvitationRouter } from './routes/invitation.js';
 import { createRoleRouter } from './routes/roles.js';
 import { createPermissionRouter } from './routes/permissions.js';
 import { createUserRoleRouter } from './routes/user-roles.js';
+import { createConnectedAppsRouter } from './routes/connected-apps.js';
 import { createCustomClaimRouter } from './routes/custom-claims.js';
 import { createTwoFactorRouter } from './routes/two-factor.js';
 import { createConfigRouter } from './routes/config.js';
@@ -334,6 +335,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   const userRoleRouter = createUserRoleRouter();
   app.use(userRoleRouter.routes());
   app.use(userRoleRouter.allowedMethods());
+
+  // Connected apps at /api/admin/organizations/:orgId/users/:userId/connected-apps
+  const connectedAppsRouter = createConnectedAppsRouter();
+  app.use(connectedAppsRouter.routes());
+  app.use(connectedAppsRouter.allowedMethods());
 
   // 2FA admin — user-level management (status, disable, reset, regenerate)
   // Mounted at /api/admin/organizations/:orgId/users/:userId/two-factor

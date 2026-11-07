@@ -99,6 +99,7 @@ security artifacts, including client credentials, sessions, and tokens. The reta
 | `roles.ts`              | `/api/admin/applications/:appId/roles`                | 9         | Role CRUD + permission assignment              |
 | `permissions.ts`        | `/api/admin/applications/:appId/permissions`          | 6         | Permission CRUD                                |
 | `user-roles.ts`         | `/api/admin/organizations/:orgId/users/:userId/roles` | 4         | User-role assignment                           |
+| `connected-apps.ts`     | `/api/admin/organizations/:orgId/users/:userId/connected-apps` | 2 | Connected OIDC app list and grant revoke |
 | `custom-claims.ts`      | `/api/admin/applications/:appId/claims`               | 9         | Claim definitions + user values                |
 | `config.ts`             | `/api/admin/config`                                   | —         | System configuration management                |
 | `keys.ts`               | `/api/admin/keys`                                     | —         | Signing key management                         |
@@ -187,6 +188,22 @@ and other unrelated flows are unchanged.
 
 There is no Admin API for resource-server management in this release; configuration rows are
 deployment data consumed by the existing OIDC provider callback.
+
+### Connected applications
+
+One organization/user-scoped subresource lists and disconnects the user's live OIDC grants.
+
+| Method | Route | Permission | Result |
+| --- | --- | --- | --- |
+| `GET` | `/api/admin/organizations/:orgId/users/:userId/connected-apps` | `admin:user:read` | `{data: connectedApps}` |
+| `DELETE` | `/api/admin/organizations/:orgId/users/:userId/connected-apps/:grantId` | `admin:user:update` | `204` or fixed `404` |
+
+Each item reports the grant ID, public client ID, client name, application ID, granted scopes,
+creation time and expiry. Expired grants are excluded. The target user must belong to the requested
+organization; a grant from another user or organization is indistinguishable from an unknown grant.
+Revocation deletes the Grant and every access/refresh artifact sharing its `grant_id`, but keeps the
+user, client and browser session. List and revoke responses contain no token, secret or provider
+internals.
 
 ### Organization branding assets
 
