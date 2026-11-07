@@ -3,6 +3,7 @@
 import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { runner } from 'node-pg-migrate';
+import { Client } from 'pg';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
 import { getPool } from '../../../src/lib/database.js';
@@ -81,7 +82,42 @@ describe('resource server schema', () => {
 
     const other = await createTestApplication();
     await expect(createResource(other.id, secondIdentifier, `https://other-${randomUUID()}.example.test`))
-      .rejects.toThrow(/audience must not collide/);
+      .rejects.toThrow();
+  });
+
+  it('serializes concurrent inserts that would collide in the shared namespace', async () => {
+    const databaseUrl = process.env.TEST_DATABASE_URL;
+    if (!databaseUrl) throw new Error('Schema checks require the test database URL');
+    const firstApplication = await createTestApplication();
+    const secondApplication = await createTestApplication();
+    const firstIdentifier = `https://first-${randomUUID()}.example.test`;
+    const shared = `https://shared-${randomUUID()}.example.test`;
+    const third = `https://third-${randomUUID()}.example.test`;
+    const first = new Client({ connectionString: databaseUrl });
+    const second = new Client({ connectionString: databaseUrl });
+    await Promise.all([first.connect(), second.connect()]);
+    try {
+      await first.query('BEGIN');
+      await first.query(
+        `INSERT INTO resource_servers (application_id, slug, name, identifier, audience)
+         VALUES ($1, $2, 'First', $3, $4)`,
+        [firstApplication.id, `resource-${randomUUID()}`, firstIdentifier, shared],
+      );
+      await second.query('BEGIN');
+      const pending = second
+        .query(
+          `INSERT INTO resource_servers (application_id, slug, name, identifier, audience)
+           VALUES ($1, $2, 'Second', $3, $4)`,
+          [secondApplication.id, `resource-${randomUUID()}`, shared, third],
+        )
+        .then(() => null, (error: unknown) => error);
+      await first.query('COMMIT');
+      expect(await pending).toBeInstanceOf(Error);
+      await second.query('ROLLBACK');
+    } finally {
+      await first.end();
+      await second.end();
+    }
   });
 
   it('rejects relative, fragmented, oversized and malformed scope values', async () => {

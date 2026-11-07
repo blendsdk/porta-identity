@@ -35,27 +35,47 @@ COMMENT ON COLUMN resource_servers.audience IS
 
 CREATE INDEX resource_servers_application_id_idx ON resource_servers (application_id);
 
--- One audience namespace prevents an application from naming another application's resource as
--- its token audience. The same trigger supplies the documented audience default (the identifier).
-CREATE FUNCTION validate_resource_server() RETURNS trigger AS $$
+-- One database-enforced namespace prevents an application from naming another application's
+-- resource as its token audience. A row contributes both its identifier and audience exactly once;
+-- concurrent writers serialize on the primary key rather than relying on a read-then-write check.
+CREATE TABLE resource_server_namespace (
+    value              TEXT PRIMARY KEY,
+    resource_server_id UUID NOT NULL REFERENCES resource_servers(id) ON DELETE CASCADE
+);
+
+CREATE FUNCTION default_resource_server_audience() RETURNS trigger AS $$
 BEGIN
     IF NEW.audience IS NULL THEN
         NEW.audience := NEW.identifier;
-    END IF;
-    IF EXISTS (
-        SELECT 1 FROM resource_servers
-         WHERE id <> NEW.id
-           AND (identifier = NEW.audience OR audience = NEW.identifier)
-    ) THEN
-        RAISE EXCEPTION 'Resource server audience must not collide with another identifier';
     END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER validate_resource_server
+CREATE TRIGGER default_resource_server_audience
     BEFORE INSERT OR UPDATE ON resource_servers
-    FOR EACH ROW EXECUTE FUNCTION validate_resource_server();
+    FOR EACH ROW EXECUTE FUNCTION default_resource_server_audience();
+
+CREATE FUNCTION maintain_resource_server_namespace() RETURNS trigger AS $$
+BEGIN
+    IF TG_OP IN ('UPDATE', 'DELETE') THEN
+        DELETE FROM resource_server_namespace WHERE resource_server_id = OLD.id;
+    END IF;
+    IF TG_OP IN ('INSERT', 'UPDATE') THEN
+        INSERT INTO resource_server_namespace (value, resource_server_id)
+            VALUES (NEW.identifier, NEW.id);
+        IF NEW.audience <> NEW.identifier THEN
+            INSERT INTO resource_server_namespace (value, resource_server_id)
+                VALUES (NEW.audience, NEW.id);
+        END IF;
+    END IF;
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER maintain_resource_server_namespace
+    AFTER INSERT OR UPDATE OR DELETE ON resource_servers
+    FOR EACH ROW EXECUTE FUNCTION maintain_resource_server_namespace();
 
 CREATE TABLE resource_server_scopes (
     resource_server_id UUID NOT NULL REFERENCES resource_servers(id) ON DELETE CASCADE,
@@ -74,5 +94,7 @@ CREATE TRIGGER set_updated_at
 -- Down Migration
 
 DROP TABLE resource_server_scopes;
+DROP TABLE resource_server_namespace;
 DROP TABLE resource_servers;
-DROP FUNCTION IF EXISTS validate_resource_server();
+DROP FUNCTION IF EXISTS maintain_resource_server_namespace();
+DROP FUNCTION IF EXISTS default_resource_server_audience();

@@ -38,8 +38,8 @@ beforeEach(async () => {
   await truncateAllTables();
   await seedBaseData();
   const organization = await createTestOrganization();
-  owner = await createFixture(organization.id, organization.slug, ['billing:read']);
-  other = await createFixture(organization.id, organization.slug, ['billing:read']);
+  owner = await createFixture(organization.id, organization.slug, ['billing:read', 'billing:write']);
+  other = await createFixture(organization.id, organization.slug, ['billing:read', 'billing:write']);
 });
 
 /** Creates one application client and one distinct-audience resource server. */
@@ -94,6 +94,7 @@ describe('Resource indicator E2E', () => {
 
     expect(introspection.active).toBe(true);
     expect(introspection.scope).toContain('billing:read');
+    expect(introspection.scope).not.toContain('billing:write');
     expect(introspection.aud).toBe(owner.audience);
   });
 
@@ -105,10 +106,18 @@ describe('Resource indicator E2E', () => {
     );
   });
 
+  it('rejects the owning client requesting a resource registered to another application', async () => {
+    const oidc = client(owner);
+
+    await expect(oidc.clientCredentials('billing:read', other.identifier)).rejects.toThrow(
+      /invalid_target/,
+    );
+  });
+
   it('rejects an unregistered custom scope for the owning client', async () => {
     const oidc = client(owner);
 
-    await expect(oidc.clientCredentials('billing:write', owner.identifier)).rejects.toThrow(
+    await expect(oidc.clientCredentials('billing:admin', owner.identifier)).rejects.toThrow(
       /invalid_scope/,
     );
   });
@@ -120,6 +129,6 @@ describe('Resource indicator E2E', () => {
 
     expect(introspection.active).toBe(true);
     expect(introspection.scope).toContain('openid');
-    expect(introspection.aud).not.toBe(owner.audience);
+    expect(introspection.aud).toBeUndefined();
   });
 });
