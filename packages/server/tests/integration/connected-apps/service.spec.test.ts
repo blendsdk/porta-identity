@@ -1,6 +1,6 @@
 /** Specification tests for the admin connected-apps service. */
 
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 import { getPool } from '../../../src/lib/database.js';
@@ -29,7 +29,7 @@ async function connected(
   clientId: string,
   options: { readonly expired?: boolean } = {},
 ): Promise<ConnectedFixture> {
-  const grantId = randomUUID();
+  const grantId = randomBytes(32).toString('base64url');
   const tokenId = randomUUID();
   const refreshId = randomUUID();
   const expiresAt = options.expired ? new Date(Date.now() - 3_600_000) : null;
@@ -41,7 +41,7 @@ async function connected(
   };
   await getPool().query(
     `INSERT INTO oidc_payloads (id, type, payload, grant_id, expires_at)
-     VALUES ($1, 'Grant', $2, $1, $3)`,
+     VALUES ($1, 'Grant', $2, NULL, $3)`,
     [grantId, payload, expiresAt],
   );
   await getPool().query(
@@ -117,6 +117,11 @@ describe('connected apps revoke', () => {
       [fixture.grantId],
     );
     expect(remaining.rows[0]?.count).toBe('0');
+    const grant = await getPool().query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM oidc_payloads WHERE id = $1 AND type = 'Grant'",
+      [fixture.grantId],
+    );
+    expect(grant.rows[0]?.count).toBe('0');
     const userRow = await getPool().query('SELECT id FROM users WHERE id = $1', [user.id]);
     const clientRow = await getPool().query('SELECT id FROM clients WHERE id = $1', [client.id]);
     expect(userRow.rows).toHaveLength(1);
@@ -147,6 +152,11 @@ describe('connected apps revoke', () => {
       'SELECT count(*)::text AS count FROM oidc_payloads WHERE grant_id = $1',
       [fixture.grantId],
     );
-    expect(remaining.rows[0]?.count).toBe('3');
+    expect(remaining.rows[0]?.count).toBe('2');
+    const grant = await getPool().query<{ count: string }>(
+      "SELECT count(*)::text AS count FROM oidc_payloads WHERE id = $1 AND type = 'Grant'",
+      [fixture.grantId],
+    );
+    expect(grant.rows[0]?.count).toBe('1');
   });
 });

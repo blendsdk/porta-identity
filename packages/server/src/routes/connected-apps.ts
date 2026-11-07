@@ -10,6 +10,7 @@ import Router from '@koa/router';
 import { z } from 'zod';
 
 import { listConnectedApps, revokeConnectedApp } from '../connected-apps/service.js';
+import { logger } from '../lib/logger.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
@@ -22,7 +23,9 @@ const userParams = z.object({
 });
 
 /** One connected-app grant route parameters. */
-const grantParams = userParams.extend({ grantId: z.string().uuid() });
+const grantParams = userParams.extend({
+  grantId: z.string().min(1).max(255).regex(/^[A-Za-z0-9_-]+$/),
+});
 
 /** Minimal context shape needed for fixed route failures. */
 interface RouteContext {
@@ -37,6 +40,10 @@ function handleError(ctx: RouteContext, error: unknown): void {
     ctx.body = { error: 'Connected app request is invalid' };
     return;
   }
+  logger.error(
+    { event: 'connected_apps_operation_failed', errorName: error instanceof Error ? error.name : 'unknown' },
+    'Connected-app operation failed',
+  );
   ctx.status = 503;
   ctx.body = { error: 'Connected app operation failed' };
 }

@@ -201,9 +201,11 @@ One organization/user-scoped subresource lists and disconnects the user's live O
 Each item reports the grant ID, public client ID, client name, application ID, granted scopes,
 creation time and expiry. Expired grants are excluded. The target user must belong to the requested
 organization; a grant from another user or organization is indistinguishable from an unknown grant.
-Revocation deletes the Grant and every access/refresh artifact sharing its `grant_id`, but keeps the
-user, client and browser session. List and revoke responses contain no token, secret or provider
-internals.
+Revocation deletes the Grant and every access/refresh artifact sharing its `grant_id`; the user and
+client rows remain. Because the OIDC session references its authorized Grants, the shared browser
+session may fail authority and require reauthentication; unrelated user/client data is not deleted.
+Malformed input returns `400`, an unknown or foreign grant returns `404`, and storage failure returns
+`503`. List and revoke responses contain no token, secret or provider internals.
 
 ### Organization branding assets
 

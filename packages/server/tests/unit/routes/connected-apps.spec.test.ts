@@ -13,7 +13,7 @@ import { createConnectedAppsRouter } from '../../../src/routes/connected-apps.js
 
 const organizationId = '11111111-1111-4111-8111-111111111111';
 const userId = '22222222-2222-4222-8222-222222222222';
-const grantId = '33333333-3333-4333-8333-333333333333';
+const grantId = 'AbCdEfGhIjKlMnOpQrStUvWxYz0123456789_-abcd';
 
 /** Returns the terminal handler for one method/path pair. */
 function handler(method: 'GET' | 'DELETE') {

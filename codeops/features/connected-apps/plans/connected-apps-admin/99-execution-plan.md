@@ -44,7 +44,7 @@ Out of scope:
 | D2  | Use existing `admin:user:read` for list and `admin:user:update` for revoke | Avoids a new permission and matches the user-owned resource. |
 | D3  | A connected app is one live OIDC Grant | The provider already stores exactly this authorization state; no duplicate table. |
 | D4  | Revoke deletes the grant and all `oidc_payloads` rows sharing its `grant_id` | Reuses the established grant-wide cleanup path; access and refresh artifacts stop resolving. |
-| D5  | Do not delete the user, client or browser session | Disconnecting one app must not destroy unrelated authority. |
+| D5  | Do not delete user/client rows; revoking a Grant may invalidate the shared browser session authority | Deleting a Grant makes the session authority check fail closed; the user reauthenticates. No cross-tenant data or user/client rows are deleted. |
 | D6  | Exclude expired grants from the list | Expired grants are not connectable authority. |
 
 AI resolved D2–D6 under `--auto-design`; D1 is the user-confirmed surface.

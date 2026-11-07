@@ -3,8 +3,8 @@
  *
  * A connected app is a live provider Grant. Listing reads the existing `oidc_payloads` rows and
  * joins the owning client so the result is always scoped to one user and organization. Revoking
- * deletes the Grant and every artifact sharing its `grant_id`; it never deletes the user, client or
- * browser session.
+ * deletes the Grant and every artifact sharing its `grant_id`; it never deletes the user or client.
+ * The shared OIDC session may fail its authority check and require reauthentication.
  */
 
 import { getPool, runDatabaseTransaction } from '../lib/database.js';
@@ -30,8 +30,11 @@ export interface ConnectedApp {
 /** Shape accepted from the provider's JSON payload. */
 type Payload = Record<string, unknown>;
 
-/** UUID accepted for the user, organization and grant identifiers. */
+/** UUID accepted for the user and organization identifiers. */
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Provider-compatible opaque grant identifier. */
+const GRANT_ID = /^[A-Za-z0-9_-]{1,255}$/;
 
 /** Returns true for a plain object, never an array or null. */
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -130,7 +133,7 @@ export async function revokeConnectedApp(
   userId: string,
   grantId: string,
 ): Promise<boolean> {
-  if (!UUID.test(organizationId) || !UUID.test(userId) || !UUID.test(grantId)) return false;
+  if (!UUID.test(organizationId) || !UUID.test(userId) || !GRANT_ID.test(grantId)) return false;
 
   return runDatabaseTransaction(async () => {
     const owned = await getPool().query<{ id: string }>(
