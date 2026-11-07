@@ -1,6 +1,10 @@
+import { randomBytes } from 'node:crypto';
+
+import { keySetsDistinct } from './protocol-live-jwks.js';
 import { rejectOpaqueTokenAtRelyingParty } from './protocol-live-jose.js';
 import {
   LiveProtocolContext,
+  livePkceChallenge,
   runOverlapping,
   type LiveAuthorizationCode,
   type LiveTokenSet,
@@ -9,8 +13,19 @@ import {
   assertComplete,
   sanitizeExternal,
   verifyIssuedIdToken,
+  withRecovery,
   type StepEvidence,
 } from './oidc-token-cases-live-support.js';
+import {
+  newGrant,
+  recoverCorrectArtifact,
+  recoverGrantUnchanged,
+  recoverJwksIdentity,
+  recoverPredecessorInvalid,
+  recoverSessionEnded,
+  requireStateUnchanged,
+  verifyTokenAtTenant,
+} from './protocol-live-recovery.js';
 
 import type { ProtocolCaseRequirement } from './oidc-token-cases-contract.js';
 
@@ -108,6 +123,7 @@ async function executeSt38(
       tokenIssuedCount: 0,
       stateChanged: false,
     },
+    forbiddenValues: [tokens.access_token],
   });
   const opaqueAsCode: LiveAuthorizationCode = { ...code, code: tokens.access_token };
   const codeAttempt = await context.exchangeCode(opaqueAsCode);
@@ -134,6 +150,12 @@ async function executeSt38(
     response: refreshAttempt.sanitized,
     forbiddenValues: [tokens.id_token],
   });
+  const recovery = await recoverCorrectArtifact(context, 'alpha', tokens.access_token);
+  for (const step of requirement.probes) {
+    const evidence = result.get(step.id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(step.id, withRecovery(evidence, recovery));
+  }
   assertComplete(requirement, result);
   return result;
 }
@@ -206,6 +228,17 @@ async function executeSt39(
     response: concurrent.values.find(({ tokens }) => tokens === null)?.sanitized,
     forbiddenValues: [concurrentArtifacts.tokens.refresh_token],
   });
+  const recovery = await recoverPredecessorInvalid(
+    context,
+    'alpha',
+    first.code.client,
+    first.tokens.refresh_token,
+  );
+  for (const id of ['sequential-predecessor-replay', 'concurrent-predecessor-replay']) {
+    const evidence = result.get(id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(id, withRecovery(evidence, recovery));
+  }
   assertComplete(requirement, result);
   return result;
 }
@@ -215,18 +248,34 @@ function tenantFromIssuer(issuer: string): string {
   return new URL(issuer).pathname.split('/').filter(Boolean).at(-1) ?? 'none';
 }
 
-/** Collects independent discovery and JWKS endpoint identities for one tenant. */
-async function issuerFacts(context: LiveProtocolContext, tenant: 'alpha' | 'bravo') {
+/** Collects independent discovery and trusted-key membership for one tenant. */
+async function issuerFacts(
+  context: LiveProtocolContext,
+  tenant: 'alpha' | 'bravo',
+  other: 'alpha' | 'bravo',
+  code: LiveAuthorizationCode,
+  tokens: LiveTokenSet | null,
+) {
+  const [ownKeyIds, otherKeyIds] = await Promise.all([
+    context.jwksKeyIdentities(tenant),
+    context.jwksKeyIdentities(other),
+  ]);
   const discovery = await context.discovery(tenant);
-  await context.jwks(tenant);
   const observed = tenantFromIssuer(discovery.issuer);
-  const jwksPath = new URL(discovery.jwks_uri).pathname.split('/').filter(Boolean);
-  const jwksIssuer = jwksPath.at(-2) ?? 'none';
+  if (observed !== tenant) throw new Error('tenant discovery issuer changed');
+  const [ownToken, crossToken] = await Promise.all([
+    verifyTokenAtTenant(context, code, tokens, tenant),
+    verifyTokenAtTenant(context, code, tokens, other),
+  ]);
+  if (!ownToken || crossToken) {
+    throw new Error('tenant token failed exact issuer-context verification');
+  }
   return Object.freeze({
     result: 'accepted',
-    issuer: observed,
+    issuer: tenant,
     discoveryIssuer: observed,
-    jwksIssuer,
+    jwksIssuer: tenant,
+    jwksKeySetDistinct: keySetsDistinct(ownKeyIds, otherKeyIds),
   });
 }
 
@@ -235,11 +284,25 @@ async function executeSt40(
   context: LiveProtocolContext,
   requirement: ProtocolCaseRequirement,
 ): Promise<ReadonlyMap<string, StepEvidence>> {
-  const alpha = await issuerFacts(context, 'alpha');
-  const bravo = await issuerFacts(context, 'bravo');
+  const alphaArtifacts = await issueTokenArtifacts(context, 'alpha');
+  const bravoArtifacts = await issueTokenArtifacts(context, 'bravo');
+  const alpha = await issuerFacts(
+    context,
+    'alpha',
+    'bravo',
+    alphaArtifacts.code,
+    alphaArtifacts.tokens,
+  );
+  const bravo = await issuerFacts(
+    context,
+    'bravo',
+    'alpha',
+    bravoArtifacts.code,
+    bravoArtifacts.tokens,
+  );
   const concurrent = await runOverlapping([
-    () => issuerFacts(context, 'alpha'),
-    () => issuerFacts(context, 'bravo'),
+    () => issuerFacts(context, 'alpha', 'bravo', alphaArtifacts.code, alphaArtifacts.tokens),
+    () => issuerFacts(context, 'bravo', 'alpha', bravoArtifacts.code, bravoArtifacts.tokens),
   ]);
   const [concurrentAlpha, concurrentBravo] = concurrent.values;
   if (concurrentAlpha === undefined || concurrentBravo === undefined) {
@@ -259,16 +322,29 @@ async function executeSt40(
           alphaIssuer: concurrentAlpha.issuer,
           alphaDiscoveryIssuer: concurrentAlpha.discoveryIssuer,
           alphaJwksIssuer: concurrentAlpha.jwksIssuer,
+          alphaJwksKeySetDistinct: concurrentAlpha.jwksKeySetDistinct,
           bravoIssuer: concurrentBravo.issuer,
           bravoDiscoveryIssuer: concurrentBravo.discoveryIssuer,
           bravoJwksIssuer: concurrentBravo.jwksIssuer,
+          bravoJwksKeySetDistinct: concurrentBravo.jwksKeySetDistinct,
           crossTalkDetected,
           attackerKeyFetchCount: 0,
           sessionCreated: false,
         },
+        forbiddenValues: [alphaArtifacts.tokens.id_token, bravoArtifacts.tokens.id_token],
       },
     ],
   ]);
+  const recovery = await recoverJwksIdentity(
+    context,
+    alphaArtifacts.code,
+    alphaArtifacts.tokens,
+    bravoArtifacts.code,
+    bravoArtifacts.tokens,
+  );
+  const evidence = result.get('concurrent-alpha-bravo-issuer-contexts');
+  if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+  result.set('concurrent-alpha-bravo-issuer-contexts', withRecovery(evidence, recovery));
   assertComplete(requirement, result);
   return result;
 }
@@ -278,35 +354,96 @@ async function executeSt41(
   context: LiveProtocolContext,
   requirement: ProtocolCaseRequirement,
 ): Promise<ReadonlyMap<string, StepEvidence>> {
-  const { tokens } = await issueTokenArtifacts(context);
+  const alphaUserId = context.fixtureUserId('alpha');
+  const bravoUserId = context.fixtureUserId('bravo');
+  const alphaClient = context.client('alpha', 'confidential');
+  const bravoClient = context.client('bravo', 'confidential');
+  await Promise.all([
+    context.revokeClientGrants('alpha', alphaUserId, alphaClient.clientId),
+    context.revokeClientGrants('bravo', bravoUserId, bravoClient.clientId),
+  ]);
+  const alphaStateBefore = await context.userState('alpha', alphaUserId);
+  const bravoStateBefore = await context.userState('bravo', bravoUserId);
+  const alphaSessionsBefore = await context.adminSessions(alphaUserId);
+  const alphaArtifacts = await issueTokenArtifacts(context, 'alpha');
   const bravoArtifacts = await issueTokenArtifacts(context, 'bravo');
+  const alphaGrant = newGrant(
+    alphaStateBefore,
+    await context.userState('alpha', alphaUserId),
+    alphaClient.clientId,
+  );
+  const bravoGrant = newGrant(
+    bravoStateBefore,
+    await context.userState('bravo', bravoUserId),
+    bravoClient.clientId,
+  );
+  const createdSessions = (await context.adminSessions(alphaUserId)).filter(
+    (session) => !alphaSessionsBefore.some((before) => before.sessionId === session.sessionId),
+  );
+  if (createdSessions.length !== 1) {
+    throw new Error('expected exactly one new alpha session');
+  }
+  const currentSession = createdSessions[0]!.sessionId;
   const result = new Map<string, StepEvidence>();
-  const userinfo = await context.userinfo('alpha', tokens.access_token);
+  const userinfo = await context.userinfo('alpha', alphaArtifacts.tokens.access_token);
   result.set('userinfo-same-context-control', {
     facts: {
       result: userinfo.disclosed ? 'accepted' : 'rejected',
-      identityOrganization: userinfo.disclosed ? 'alpha' : 'none',
+      identityOrganization:
+        userinfo.disclosed && userinfo.subject === alphaArtifacts.code.subject ? 'alpha' : 'none',
     },
   });
   result.set('consent-same-context-control', {
-    facts: { result: 'accepted', consentStateChanged: true },
+    facts: { result: 'accepted', consentStateChanged: alphaGrant.grantId.length > 0 },
   });
-  const discovery = await context.discovery('alpha');
-  const api = await context.api();
-  const logout = await api.get(
-    discovery.end_session_endpoint ?? `${context.endpoints.porta}/alpha/session/end`,
-    {
-      params: { id_token_hint: tokens.id_token },
-      maxRedirects: 0,
-    },
+
+  // Logout must remove the session that the current artifact flow just created.
+  const logout = await context.logout(
+    'alpha',
+    alphaArtifacts.tokens.id_token,
+    alphaArtifacts.code.sessionCookies ?? [],
   );
+  await recoverSessionEnded(context, alphaUserId, [currentSession]);
   result.set('logout-same-context-control', {
     facts: {
-      result: logout.status() < 400 ? 'accepted' : 'rejected',
-      sessionEnded: logout.status() < 400,
+      result: logout.completed ? 'accepted' : 'rejected',
+      sessionEnded: true,
     },
   });
+  const api = await context.api();
+  const alphaCookie = alphaArtifacts.code.sessionCookies
+    ?.map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join('; ');
+
+  // The captured browser cookie must not authenticate after the same-context logout.
+  if (alphaCookie !== undefined && alphaCookie.length > 0) {
+    const replayClient = context.client('alpha', 'public');
+    const replayVerifier = randomBytes(48).toString('base64url');
+    const replay = await api.get(`${context.endpoints.porta}/alpha/auth`, {
+      params: {
+        client_id: replayClient.clientId,
+        redirect_uri: replayClient.redirectUri,
+        response_type: 'code',
+        scope: 'openid',
+        state: randomBytes(18).toString('base64url'),
+        nonce: randomBytes(18).toString('base64url'),
+        code_challenge: livePkceChallenge(replayVerifier),
+        code_challenge_method: 'S256',
+        prompt: 'none',
+      },
+      headers: { Cookie: alphaCookie },
+      maxRedirects: 0,
+    });
+    const replayLocation = replay.headers().location ?? '';
+    if (new URL(replayLocation, context.endpoints.porta).searchParams.get('code') !== null) {
+      throw new Error('logged-out session replay issued a code');
+    }
+  }
+
+  const beforeWrongClient = await context.userState('alpha', alphaUserId);
   const wrongClient = await context.userinfo('alpha', bravoArtifacts.tokens.access_token);
+  const afterWrongClient = await context.userState('alpha', alphaUserId);
+  requireStateUnchanged(beforeWrongClient, afterWrongClient);
   result.set('userinfo-wrong-client', {
     facts: {
       result: wrongClient.disclosed ? 'accepted' : 'rejected',
@@ -318,9 +455,16 @@ async function executeSt41(
       opaqueJwtParseAttempted: false,
     },
     response: wrongClient.response,
-    forbiddenValues: [bravoArtifacts.tokens.access_token],
+    forbiddenValues: [
+      bravoArtifacts.tokens.access_token,
+      ...(alphaArtifacts.code.sessionCookies ?? []).map((cookie) => cookie.value),
+    ],
   });
-  const wrongTenant = await context.userinfo('bravo', tokens.access_token);
+
+  const beforeWrongTenant = await context.userState('bravo', bravoUserId);
+  const wrongTenant = await context.userinfo('bravo', alphaArtifacts.tokens.access_token);
+  const afterWrongTenant = await context.userState('bravo', bravoUserId);
+  requireStateUnchanged(beforeWrongTenant, afterWrongTenant);
   result.set('userinfo-wrong-tenant', {
     facts: {
       result: wrongTenant.disclosed ? 'accepted' : 'rejected',
@@ -332,12 +476,33 @@ async function executeSt41(
       opaqueJwtParseAttempted: false,
     },
     response: wrongTenant.response,
-    forbiddenValues: [tokens.access_token],
+    forbiddenValues: [alphaArtifacts.tokens.access_token],
   });
-  const consentWrong = await api.get(
-    `${context.endpoints.porta}/interaction/invalid-session/consent`,
-    { maxRedirects: 0 },
+
+  // Attempt the consent decision on a valid pending alpha interaction with the valid bravo cookie.
+  const pendingAlpha = await context.pendingInteractionUid(
+    'alpha',
+    context.client('alpha', 'public'),
   );
+  const bravoCookie = bravoArtifacts.code.sessionCookies
+    ?.map((cookie) => `${cookie.name}=${cookie.value}`)
+    .join('; ');
+  const beforeConsentWrongAlpha = await context.userState('alpha', alphaUserId);
+  const beforeConsentWrongBravo = await context.userState('bravo', bravoUserId);
+  const consentWrong = await api.post(
+    `${context.endpoints.porta}/interaction/${pendingAlpha}/confirm`,
+    {
+      form: { _csrf: 'wrong-session', decision: 'approve' },
+      ...(bravoCookie === undefined || bravoCookie.length === 0
+        ? {}
+        : { headers: { Cookie: bravoCookie } }),
+      maxRedirects: 0,
+    },
+  );
+  const afterConsentWrongAlpha = await context.userState('alpha', alphaUserId);
+  const afterConsentWrongBravo = await context.userState('bravo', bravoUserId);
+  requireStateUnchanged(beforeConsentWrongAlpha, afterConsentWrongAlpha);
+  requireStateUnchanged(beforeConsentWrongBravo, afterConsentWrongBravo);
   result.set('consent-wrong-session', {
     facts: {
       result: consentWrong.status() >= 400 ? 'rejected' : 'accepted',
@@ -349,18 +514,20 @@ async function executeSt41(
       stateChanged: false,
     },
     response: await sanitizeExternal(consentWrong, context),
+    forbiddenValues: [...(bravoArtifacts.code.sessionCookies ?? []).map((cookie) => cookie.value)],
   });
-  const bravoDiscovery = await context.discovery('bravo');
-  const wrongLogout = await api.get(
-    bravoDiscovery.end_session_endpoint ?? `${context.endpoints.porta}/bravo/session/end`,
-    {
-      params: { id_token_hint: tokens.id_token },
-      maxRedirects: 0,
-    },
+
+  const beforeWrongLogout = await context.userState('bravo', bravoUserId);
+  const wrongLogout = await context.logout(
+    'bravo',
+    alphaArtifacts.tokens.id_token,
+    bravoArtifacts.code.sessionCookies ?? [],
   );
+  const afterWrongLogout = await context.userState('bravo', bravoUserId);
+  requireStateUnchanged(beforeWrongLogout, afterWrongLogout);
   result.set('logout-wrong-client-tenant-session', {
     facts: {
-      result: wrongLogout.status() >= 400 ? 'rejected' : 'accepted',
+      result: wrongLogout.completed ? 'accepted' : 'rejected',
       identityDisclosed: false,
       sessionStateChanged: false,
       sessionCreated: false,
@@ -368,9 +535,24 @@ async function executeSt41(
       tokenIssuedCount: 0,
       opaqueJwtParseAttempted: false,
     },
-    response: await sanitizeExternal(wrongLogout, context),
-    forbiddenValues: [tokens.id_token],
+    response: wrongLogout.response,
+    forbiddenValues: [
+      alphaArtifacts.tokens.id_token,
+      ...(bravoArtifacts.code.sessionCookies ?? []).map((cookie) => cookie.value),
+    ],
   });
+
+  const recovery = await recoverGrantUnchanged(context, 'bravo', bravoUserId, bravoGrant);
+  for (const id of [
+    'userinfo-wrong-client',
+    'userinfo-wrong-tenant',
+    'consent-wrong-session',
+    'logout-wrong-client-tenant-session',
+  ]) {
+    const evidence = result.get(id);
+    if (evidence === undefined) throw new Error('live protocol probe evidence is absent');
+    result.set(id, withRecovery(evidence, recovery));
+  }
   assertComplete(requirement, result);
   return result;
 }

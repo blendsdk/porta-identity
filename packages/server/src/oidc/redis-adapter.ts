@@ -188,8 +188,9 @@ export class RedisAdapter {
 
     try {
       return JSON.parse(data) as AdapterPayload;
-    } catch (error) {
-      logger.warn({ key: this.key(id), error }, 'Invalid JSON in Redis OIDC payload');
+    } catch {
+      // The key contains the internal session ID and the payload may contain credentials.
+      logger.warn({ model: this.name }, 'Invalid JSON in Redis OIDC payload');
       return undefined;
     }
   }

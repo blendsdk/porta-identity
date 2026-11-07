@@ -68,6 +68,11 @@ vi.mock('../../../src/auth/i18n.js', () => ({
   getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
 }));
 
+const observeProtocolSecurityRejection = vi.hoisted(() => vi.fn());
+vi.mock('../../../src/oidc/protocol-security-observer.js', () => ({
+  observeProtocolSecurityRejection,
+}));
+
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: vi.fn().mockResolvedValue('<html>rendered</html>'),
 }));
@@ -1335,6 +1340,46 @@ describe('interaction routes', () => {
       );
       expect(ctx.status).toBe(400);
     });
+
+    it('should emit an interaction rejection event when the interaction is missing', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockRejectedValue(
+        Object.assign(new Error('Session not found'), {
+          name: 'SessionNotFound',
+          status: 400,
+        }),
+      );
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid/consent');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(observeProtocolSecurityRejection).toHaveBeenCalledWith({
+        request: ctx.req,
+        eventClass: 'interaction-context-rejected',
+      });
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.any(String) }),
+      );
+      expect(ctx.status).toBe(400);
+    });
+
+    it('should not emit an interaction rejection event for a non-missing provider error', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockRejectedValue(new Error('Expired'));
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid/consent');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(observeProtocolSecurityRejection).not.toHaveBeenCalled();
+      expect(ctx.status).toBe(400);
+    });
   });
 
   // =========================================================================
@@ -1369,6 +1414,30 @@ describe('interaction routes', () => {
       expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'user.consent.granted' }),
       );
+    });
+
+    it('should emit an interaction rejection event when the confirmation interaction is missing', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockRejectedValue(
+        Object.assign(new Error('Session not found'), {
+          name: 'SessionNotFound',
+          status: 400,
+        }),
+      );
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/confirm');
+      const ctx = createMockCtx({
+        body: { decision: 'approve', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(observeProtocolSecurityRejection).toHaveBeenCalledWith({
+        request: ctx.req,
+        eventClass: 'interaction-context-rejected',
+      });
+      expect(ctx.status).toBe(400);
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
     });
 
     it('should deny consent with access_denied error', async () => {
