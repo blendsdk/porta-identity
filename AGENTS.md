@@ -224,3 +224,8 @@ integrating through the repository's designated integration flow.
   plans.
 - Keep maintainer architecture documentation under `techdocs/`. Do not add the marker to the public
   `docs/index.md` or mix maintainer architecture content into the published documentation tree.
+
+<!-- CODEOPS-SPECIALISTS:START -->
+Specialist agents (routing: `codeops/codeops.json`; briefs: `codeops/specialists/`):
+- `oidc-provider-reviewer` — "Reviews node-oidc-provider model and interaction contracts that generic reviewers miss." (Required for: OIDC provider model, interaction/consent, grant lifecycle, and token/JWKS boundary changes.)
+<!-- CODEOPS-SPECIALISTS:END -->
