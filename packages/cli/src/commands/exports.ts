@@ -14,6 +14,7 @@ import type { GlobalOptions } from '../global-options.js';
 import { createClient } from '../client-factory.js';
 import { handleError } from '../error-handler.js';
 import { success, info } from '../output.js';
+import { sanitizeInteractiveExport } from '../terminal-export.js';
 
 // ---------------------------------------------------------------------------
 // Arg types
@@ -103,14 +104,17 @@ export const exportsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               fs.writeFileSync(argv.output, content, 'utf-8');
               success(`Exported ${argv['entity-type']} to ${argv.output}`);
             } else {
-              // Write to stdout
-              process.stdout.write(content);
-              if (!content.endsWith('\n')) {
+              // A terminal renders control bytes, so display a sanitized copy. Files and
+              // noninteractive pipelines keep the exact export bytes for machine consumers.
+              const display = sanitizeInteractiveExport(content, Boolean(process.stdout.isTTY));
+              process.stdout.write(display);
+              if (!display.endsWith('\n')) {
                 process.stdout.write('\n');
               }
               info(`Exported ${argv['entity-type']} (${argv.format})`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

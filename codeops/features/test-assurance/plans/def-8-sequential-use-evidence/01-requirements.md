@@ -21,7 +21,7 @@
 | RD-05 | Why out of this plan                                                                                                                                                                                    |
 | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | R5.12 | This plan covers the **sequential** delivered-artifact lane only. Concurrent-consume, response-loss, and restart consistency remain the deferred consistency catalog (ST-49, `evidenceAllowed: false`). |
-| R5.6  | Enumeration-resistance timing distributions stay diagnostic (DEF-23, policy-blocked). This plan adds no timing credit.                                                                                  |
+| R5.6  | Enumeration-resistance timing distributions stay diagnostic (DEF-23 retired under AR-116). This plan adds no timing credit.                                                                             |
 
 ## Plan-local decisions
 

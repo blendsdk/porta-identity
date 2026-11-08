@@ -12,12 +12,15 @@ import type {
   ClientSecret,
   GenerateSecretInput,
   GeneratedSecret,
+  ClientServiceAccount,
+  SetClientServiceAccountInput,
   ListParams,
   PaginatedResponse,
   ETagResponse,
   HistoryParams,
   HistoryResult,
 } from '../types/index.js';
+import { PortaError } from '../errors/index.js';
 import { listAll } from '../pagination/index.js';
 import {
   etagHeaders,
@@ -104,6 +107,93 @@ function isGeneratedSecret(value: unknown): value is GeneratedSecret {
   );
 }
 
+/** Maximum distinct organizations in one binding policy. */
+const MAX_SERVICE_ACCOUNT_TARGETS = 100;
+
+/** Maximum role and claim-definition occurrences across one binding policy. */
+const MAX_SERVICE_ACCOUNT_PAIRS = 100;
+
+/** Require exactly the documented object keys so internal fields cannot pass through. */
+function hasExactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+/** Validate one application-qualified role reference in a binding policy. */
+function isServiceAccountRole(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['applicationId', 'roleId']) &&
+    typeof value.applicationId === 'string' &&
+    typeof value.roleId === 'string'
+  );
+}
+
+/** Validate one application-qualified claim-definition reference in a binding policy. */
+function isServiceAccountClaim(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['applicationId', 'claimDefinitionId']) &&
+    typeof value.applicationId === 'string' &&
+    typeof value.claimDefinitionId === 'string'
+  );
+}
+
+/** Validate one complete organization target with both assignment collections. */
+function isServiceAccountTarget(value: unknown): boolean {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, ['organizationId', 'allowedRoles', 'allowedClaimDefinitions']) &&
+    typeof value.organizationId === 'string' &&
+    Array.isArray(value.allowedRoles) &&
+    value.allowedRoles.every(isServiceAccountRole) &&
+    Array.isArray(value.allowedClaimDefinitions) &&
+    value.allowedClaimDefinitions.every(isServiceAccountClaim)
+  );
+}
+
+/** Validate the complete secret-free binding, including closed keys and policy bounds. */
+function isClientServiceAccount(value: unknown): value is ClientServiceAccount {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'id', 'clientId', 'serviceAccountId', 'accountEmail', 'status', 'targets',
+      'createdAt', 'updatedAt',
+    ]) ||
+    typeof value.id !== 'string' ||
+    typeof value.clientId !== 'string' ||
+    typeof value.serviceAccountId !== 'string' ||
+    typeof value.accountEmail !== 'string' ||
+    value.accountEmail.length === 0 ||
+    (value.status !== 'active' && value.status !== 'revoked') ||
+    !Array.isArray(value.targets) ||
+    value.targets.length < 1 ||
+    value.targets.length > MAX_SERVICE_ACCOUNT_TARGETS ||
+    !value.targets.every(isServiceAccountTarget) ||
+    typeof value.createdAt !== 'string' ||
+    typeof value.updatedAt !== 'string'
+  ) {
+    return false;
+  }
+  let rolePairs = 0;
+  let claimPairs = 0;
+  for (const target of value.targets) {
+    rolePairs += target.allowedRoles.length;
+    claimPairs += target.allowedClaimDefinitions.length;
+  }
+  return rolePairs <= MAX_SERVICE_ACCOUNT_PAIRS && claimPairs <= MAX_SERVICE_ACCOUNT_PAIRS;
+}
+
+/** Encode one client identifier and reject dot segments that fetch would normalize. */
+function serviceAccountSegment(id: string): string {
+  const encoded = encodeURIComponent(id);
+  if (encoded === '.' || encoded === '..') {
+    throw new PortaError('Service-account identifiers are invalid.');
+  }
+  return encoded;
+}
+
 /** Validate one client history entry. */
 interface ClientCreateResult {
   /** Validated client projection. */
@@ -144,6 +234,15 @@ export interface ClientsDomain {
   generateSecret(clientId: string, input?: GenerateSecretInput): Promise<GeneratedSecret>;
   /** Permanently delete one secret through the retained parent-qualified route. */
   revokeSecret(clientId: string, secretId: string): Promise<void>;
+  /** Read the secret-free service-account binding for one client. */
+  getServiceAccount(id: string): Promise<ClientServiceAccount>;
+  /** Replace the complete binding policy for one client. */
+  setServiceAccount(
+    id: string,
+    input: SetClientServiceAccountInput,
+  ): Promise<ClientServiceAccount>;
+  /** Revoke the binding while keeping its permanent ownership history. */
+  revokeServiceAccount(id: string): Promise<void>;
 }
 
 /** Create the client operations backed by one HTTP transport. */
@@ -234,6 +333,33 @@ export function createClientsDomain(transport: HttpTransport): ClientsDomain {
         method: 'POST',
         path: `${base}/${clientId}/secrets/${secretId}/revoke`,
       });
+    },
+
+    async getServiceAccount(id) {
+      const res = await transport.request({
+        method: 'GET',
+        path: `${base}/${serviceAccountSegment(id)}/service-account`,
+      });
+      return requireData(res.body, isClientServiceAccount);
+    },
+
+    async setServiceAccount(id, input) {
+      const res = await transport.request({
+        method: 'PUT',
+        path: `${base}/${serviceAccountSegment(id)}/service-account`,
+        body: input,
+      });
+      return requireData(res.body, isClientServiceAccount);
+    },
+
+    async revokeServiceAccount(id) {
+      const res = await transport.request({
+        method: 'DELETE',
+        path: `${base}/${serviceAccountSegment(id)}/service-account`,
+      });
+      if (res.status !== 204) {
+        throw new PortaError('Porta API returned an unexpected revocation status.');
+      }
     },
   };
 }

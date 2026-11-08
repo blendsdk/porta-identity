@@ -143,3 +143,43 @@ POST /api/admin/clients/:id/secrets/:secretId/revoke
 ```
 
 **Response:** `200 OK`
+
+## Service-account bindings
+
+One confidential control-plane client can be bound to a permanently noninteractive account for the
+single invitation operation. These subresource routes use the internal client UUID, return
+secret-free bindings, and always require a live human Super Admin.
+
+| Method | Route | Result |
+| --- | --- | --- |
+| `GET` | `/api/admin/clients/:id/service-account` | `{data: binding}` |
+| `PUT` | `/api/admin/clients/:id/service-account` | `201` first binding, `200` replacement |
+| `DELETE` | `/api/admin/clients/:id/service-account` | `204` |
+
+`PUT` takes `{accountEmail?, targets}`. `accountEmail` is required for the first binding and is
+immutable afterwards. `targets` is the complete replacement allowlist: 1–100 ordinary
+organizations, at most 100 role pairs and 100 claim-definition pairs in total, with
+application-qualified references. Unknown fields, duplicates and non-UUID identifiers are rejected.
+
+The first binding and an explicit restoration retire every existing credential of that client
+without generating a replacement. Create the next secret through the existing secret endpoint.
+Generating an overlapping secret does not change the authorization generation; explicitly revoking
+a live secret does, so tokens issued from earlier credentials stop working for later admission.
+Revoking the binding keeps the permanent ownership row and invalidates its generation.
+
+```bash
+curl -X PUT "$PORTA/api/admin/clients/$CLIENT_ID/service-account" \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"accountEmail":"service.account@example.com","targets":[{"organizationId":"'$ORG_ID'","allowedRoles":[],"allowedClaimDefinitions":[]}]}'
+```
+
+After binding, the client can obtain a native token and invite into the allowlisted organizations.
+Use the `admin:user:invite` scope explicitly; the token lasts 300 seconds and has no refresh grant.
+The client-wide budget is 30 invitations per hour across targets. Every other Admin route remains
+human-only.
+
+For rollout, replace account-unaware server instances before creating bindings, keep the binding
+revoked until the client is ready, and re-check delivery and audit after the first invitation.
+Binding revocation is immediate for later attempts but does not recall invitations that were
+already committed or mail that was already handed to the transport.

@@ -175,10 +175,10 @@ export const aggregateKnownGaps: readonly AssuranceAllKnownGapRegistration[] = O
     conclusion: 'unqualified',
   },
   {
-    id: 'enumeration-timing-contract-unapproved',
-    authority: 'authority-blocked',
+    id: 'enumeration-timing-evidence-not-planned',
+    authority: 'stale-or-no-go-evidence',
     statusSource: 'approved-program-gap-register',
-    conclusion: 'blocked',
+    conclusion: 'unqualified',
   },
   {
     id: 'totp-same-window-replay-authority',

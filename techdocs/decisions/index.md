@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-09-16
+> **Last Updated**: 2026-11-05
 
 ## Overview
 
@@ -8,23 +8,26 @@ This page tracks all significant architecture decisions made during Porta's deve
 
 ## Decision Log
 
-| #       | Decision                                                                            | Status                | Date       | Summary                                                         |
-| ------- | ----------------------------------------------------------------------------------- | --------------------- | ---------- | --------------------------------------------------------------- |
-| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                       | Accepted              | —          | Koa required for node-oidc-provider compatibility               |
-| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                       | Accepted              | —          | Organization slug in URL path for OIDC issuer isolation         |
-| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)             | Accepted              | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
-| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                 | Accepted              | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
-| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)             | Accepted              | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
-| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                             | Accepted              | —          | Standalone functions over classes for services                  |
-| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation) | Accepted              | —          | Zod schemas for fail-fast config and request validation         |
-| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                         | Accepted              | —          | Direct-DB for init/migrate, HTTP for all other commands         |
-| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)     | Superseded by ADR-015 | —          | Original self-authentication decision                           |
-| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                         | Accepted              | —          | Consistent module layout: types, repository, cache, service     |
-| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                       | Accepted              | —          | Per-client override with org-level default inheritance          |
-| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)         | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
-| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                   | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
-| ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)         | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
-| ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)     | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
+| #       | Decision                                                                                                  | Status                | Date       | Summary                                                         |
+| ------- | --------------------------------------------------------------------------------------------------------- | --------------------- | ---------- | --------------------------------------------------------------- |
+| ADR-001 | [Koa over Express](#adr-001-koa-over-express)                                                             | Accepted              | —          | Koa required for node-oidc-provider compatibility               |
+| ADR-002 | [Path-Based Multi-Tenancy](#adr-002-path-based-multi-tenancy)                                             | Accepted              | —          | Organization slug in URL path for OIDC issuer isolation         |
+| ADR-003 | [Hybrid OIDC Adapters](#adr-003-hybrid-oidc-adapters-redis--postgresql)                                   | Accepted              | —          | Redis for short-lived, PostgreSQL for long-lived OIDC artifacts |
+| ADR-004 | [ES256 Token Signing](#adr-004-es256-token-signing)                                                       | Accepted              | —          | ECDSA P-256 for all JWT signing, no algorithm negotiation       |
+| ADR-005 | [Argon2id for Password Hashing](#adr-005-argon2id-for-password-hashing)                                   | Accepted              | —          | Argon2id over bcrypt/scrypt for memory-hard hashing             |
+| ADR-006 | [Functional Code Style](#adr-006-functional-code-style)                                                   | Accepted              | —          | Standalone functions over classes for services                  |
+| ADR-007 | [Zod for Config and Input Validation](#adr-007-zod-for-config-and-input-validation)                       | Accepted              | —          | Zod schemas for fail-fast config and request validation         |
+| ADR-008 | [Dual-Mode CLI Bootstrap](#adr-008-dual-mode-cli-bootstrap)                                               | Accepted              | —          | Direct-DB for init/migrate, HTTP for all other commands         |
+| ADR-009 | [Self-Authentication for Admin API](#adr-009-self-authentication-for-admin-api)                           | Superseded by ADR-015 | —          | Original self-authentication decision                           |
+| ADR-010 | [Domain Module Structure](#adr-010-domain-module-structure)                                               | Accepted              | —          | Consistent module layout: types, repository, cache, service     |
+| ADR-011 | [Login Methods Resolution](#adr-011-login-methods-resolution)                                             | Accepted              | —          | Per-client override with org-level default inheritance          |
+| ADR-012 | [Client Secret Two-Layer Hashing](#adr-012-client-secret-two-layer-hashing)                               | Accepted              | —          | SHA-256 pre-hash + Argon2id for OIDC compatibility              |
+| ADR-014 | [Independent Test Assurance](#adr-014-independent-test-assurance)                                         | Accepted (local only) | 2026-08-09 | Risk-sliced local/on-demand evidence; no CI promotion           |
+| ADR-015 | [Application-Qualified Authority](#adr-015-application-qualified-authority)                               | Accepted              | 2026-09-09 | Opaque Admin tokens and application-owned authorization         |
+| ADR-016 | [Closed Global Operational Catalog](#adr-016-closed-global-operational-catalog)                           | Accepted              | 2026-09-16 | Native bounded policy with an existing process-local cache      |
+| ADR-018 | [Permanent Service Identity and Binding Storage](#adr-018-permanent-service-identity-and-binding-storage) | Accepted              | 2026-11-05 | Permanent classification, bounded JSONB and retained ownership  |
+| ADR-019 | [Live Service Lifecycle Authority](#adr-019-live-service-lifecycle-authority) | Accepted | 2026-11-05 | Post-lock live human authority and permanent human-flow exclusion |
+| ADR-020 | [Native Machine Invitation Authority](#adr-020-native-machine-invitation-authority) | Accepted | 2026-11-06 | One operation, native opaque client credentials and locked admission |
 
 ---
 
@@ -290,10 +293,11 @@ tools and are not blocking CI, release, or merge gates.
 A separately authorized product-remediation plan repaired four findings discovered by these
 boundaries: enumeration work asymmetry, cross-tenant magic-link acceptance, ambiguous
 bulk/import/export behavior, and missing terminal decision events for the covered request set.
-Clean black-box and packed-client checkpoints rerun the affected boundaries. Statistical timing,
-TOTP same-window replay, forwarding observers, protocol observations, dependency behavior, and
-real command-stage signals remain explicit gaps; the repairs do not turn ADR-014 into a
-certification or a workflow-promotion decision.
+Clean black-box and packed-client checkpoints rerun the affected boundaries. Statistical timing
+remains an explicit accepted limitation with no timing claim. TOTP same-window replay, forwarding
+observers, protocol observations, dependency behavior, and real command-stage signals remain
+explicit gaps; the repairs do not turn ADR-014 into a certification or a workflow-promotion
+decision.
 
 **Consequences**:
 
@@ -420,6 +424,156 @@ prevents cross-application role escalation.
   audit is transaction-bound.
 - Historical rows whose actor user was deleted are classified `system`; future
   deletions retain `user`.
+
+---
+
+## ADR-018: Permanent Service Identity and Binding Storage
+
+**Status**: Accepted. This storage decision does not supersede human Admin authentication or
+tenant M2M authority decisions and does not, by itself, introduce a public machine-authentication lane.
+
+**Context**: An invitation-only privileged client needs durable account ownership and revocable
+authority. A removable binding or account status alone cannot establish a permanent noninteractive
+identity. Erasing a binding after physical account deletion would also make later client reassignment
+indistinguishable from initial provisioning.
+
+**Options considered**:
+
+| Option                                                             | Assessment                                                                                    |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| Permanent user flag plus one client-owned JSONB binding            | Chosen: independent classification and ownership with the existing database boundary          |
+| Classification inferred from a disposable binding                  | Rejected: unbinding would erase the evidence needed to deny human authentication              |
+| Separate identity registry and normalized target/assignment tables | Viable but larger; the bounded policy does not justify another identity system or table graph |
+
+**Decision**: Keep a permanent internal user flag and one uniquely client/account-owned binding
+with a native JSONB policy and unpredictable authorization version. Preserve the same revoked,
+empty-policy row with a null owner after account deletion while its client survives. Do not retain
+deleted account email, adopt another account or interpret corrupt policy as fallback authority.
+Use explicit client→binding→account locks and existing transactions rather than a new coordination
+system. The trusted migration seeds the reserved role for initialized installations without human
+assignments or a generic runtime writer; native token persistence remains unchanged.
+
+**Rationale**: Classification must survive revocation and client/binding removal. Ownership history
+must survive physical account loss without another ledger. Fixed aggregate policy bounds make
+strict JSONB validation practical; application-qualified identities preserve independent application
+definitions instead of frozen permission snapshots. This requires live reference checks before
+authority is exercised, not policy repair jobs, distributed invalidation or a token-wrapper store.
+
+**Consequences**:
+
+- Existing users default to human; the classification is never a public create/update field.
+- Successful public projections exclude the authorization version and cannot fabricate a lost owner.
+- Stored policy validation is authoritative and fails closed without cached/fallback policy.
+- Operators must replace all account-unaware HTTP/worker binaries before provisioning these identities.
+- Destructive downgrade requires READ COMMITTED and transaction-held exclusive binding/users locks
+  before checking for any surviving flag or ownership row. This excludes concurrent writes but may
+  block reads; reverse-order transactions can fail safely rather than being automatically retried.
+- A separate service-only authentication and lifecycle boundary remains necessary. The schema flag
+  is not a substitute for enforcing password, recovery, token and management restrictions.
+
+---
+
+## ADR-019: Live Service Lifecycle Authority
+
+**Status**: Accepted. Complements ADR-018; does not supersede human Admin or tenant M2M authority.
+
+**Context**: Binding and credential changes can elevate an existing confidential client. Cached
+human identity data and route-level permission snapshots cannot authorize those changes safely.
+Existing organization/user mutations also constrain lock order. A binding-only restriction would
+leave recovery, old tokens, generic role mutations and invitation pre-assignment as alternate paths.
+
+**Decision**: Reuse existing database transactions, parent locks and audit mechanisms. After the
+client lock, validate live human Super Admin authority in one READ COMMITTED statement. Reject
+stronger inherited isolation instead of relying on an older snapshot. Do not hold actor or role
+assignment locks through commit. Physical owner deletion acquires client→binding→organization→user
+locks; ordinary classified-target mutations are denied before they enter existing user writers.
+
+Keep classification authoritative and permanent across revocation and client deletion. Enforce it
+at human authentication, recovery/artifact consumption and password persistence, not just routes.
+Protect the separate canonical reserved role with existing definition guards and exclude its
+assignment at both invitation admission and actual acceptance persistence. Keep the role outside
+the human permission catalog. Existing client handlers forward the authenticated actor explicitly.
+
+**Rationale**: A single post-wait authority statement observes completed revocation without a new
+coordination system or reverse-order actor locks. Multiple narrow guards protect existing entry
+points without adding another identity framework. Admission alone cannot protect old invitations.
+
+**Consequences**:
+
+- Revocation committed before the authority statement is observed. A later concurrent revocation
+  need not cancel an already-authorized operation; this is not commit-time authority serialization.
+- First binding and restoration retire all existing secrets. A separate existing operation creates
+  the next secret. Overlap generation preserves the version; explicit live revocation rotates it.
+- Account/binding changes and mutation audit roll back together. External mail is not sent during
+  provisioning, restoration or revocation.
+- Old account-unaware binaries remain unsafe while any classification or binding survives.
+- These lifecycle mechanisms do not grant machine Admin token authority. That lane requires its
+  own native-token, issuer, allowlist, version and operation checks before public registration.
+
+---
+
+## ADR-020: Native Machine Invitation Authority
+
+**Status**: Accepted. Builds on [ADR-018](#adr-018-permanent-service-identity-and-binding-storage) and
+[ADR-019](#adr-019-live-service-lifecycle-authority); does not supersede human Admin or tenant M2M authority.
+
+**Context**: A small set of confidential control-plane clients needs unattended user invitations.
+Humans keep Admin authority, but extending a human session to a machine would weaken accountability
+and could let an operator credential outlive its owner. Porta already issues native opaque
+`client_credentials` tokens, so a separate machine-authentication stack is unnecessary.
+
+**Options considered**:
+
+| Option | Assessment |
+| --- | --- |
+| One native `client_credentials` operation for a bound account | Chosen: reuses the provider, locks, audit and route that already exist |
+| Long-lived API key for bound clients | Rejected: duplicates credential lifecycle and bypasses native revocation |
+| Human session delegated to the machine | Rejected: shares a human identity and cannot be scoped to one operation |
+| Broad machine Admin account | Rejected: exceeds the approved invitation-only capability |
+
+**Decision**: Allow exactly one Admin operation — the real
+`POST /api/admin/organizations/:orgId/users/invite` — for a permanently bound internal account.
+The bound client must be an eligible confidential client of the control plane and carry the
+independent `admin:user:invite` OAuth scope plus the account's live reserved permission. Tokens are
+native opaque `ClientCredentials` with a 300-second lifetime and no refresh or offline grant; the
+lane never resolves to an `AccessToken`, human `adminUser` or synthetic browser session.
+
+Credential proof stays request-only: the exact modern or legacy secret row that authenticated is
+carried to issuance, where its ownership, active state and current expiry are revalidated under the
+parent client lock. That expiry check uses current database time, not transaction-start time, so a
+credential that expires during the lock wait cannot obtain a newer generation. No plaintext,
+digest-lineage or secret identifier is persisted.
+
+Locked admission revalidates the closed account/binding/version identity, client eligibility, sole
+canonical reserved membership, the independent permission and scope, and the complete
+organization/role/claim allowlist against live ordinary references. Native expiry is checked again
+after awaited authority checks and immediately before the per-client 30/hour budget or any write.
+Only validated machines may preserve opaque JSON data keys; humans retain the standard parser and
+its malformed/oversized error precedence, and authentication is repeated after the body is read.
+
+Business and final mutation audit share the retained outer transaction with client actor columns,
+null human actor columns, and flat account/binding/version metadata. The response reports truthful
+delivery only after commit and the actual transport result. Binding management remains human Super
+Admin only.
+
+**Rationale**: One exact operation is the smallest useful unattended capability. Native tokens,
+existing locks, existing audits and the existing invitation handler avoid a second identity system,
+a permission snapshot or a delivery framework. Independent scope plus permission prevents the scope
+alone from authorizing a different client or operation.
+
+**Consequences**:
+
+- The supported-scope list grows by one value, so every provider instance must restart after deployment.
+- Only the canonical `/api/admin/` prefix and the exact invitation POST opt into machine identity; all
+  other Admin routes, previews and tenant routes remain human-only.
+- The machine account is permanently noninteractive. Revocation keeps the classification, and a new
+  authorization version makes older tokens unusable for later admission.
+- Admission is a point-in-time decision under locks. Expiry or revocation after admission does not
+  cancel committed work, recall an invitation or roll back sent mail.
+- The feature adds no refresh token, Admin UI, broader machine Admin capability, distributed cache
+  invalidation, retry workflow or new dependency.
+- Operators still need the existing host-level controls for SMTP availability; `unknown` delivery
+  reporting is internal and does not retry or hide a committed invitation.
 
 ---
 

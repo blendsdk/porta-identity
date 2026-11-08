@@ -79,6 +79,20 @@ function referencesDeletedAuthority(
     return true;
   }
 
+  if (isRecord(payload.session) && hasReference(userIds, payload.session.accountId)) return true;
+
+  if (isRecord(payload.result)) {
+    if (isRecord(payload.result.login) && hasReference(userIds, payload.result.login.accountId)) {
+      return true;
+    }
+    if (
+      isRecord(payload.result.twoFactor) &&
+      hasReference(userIds, payload.result.twoFactor.pendingAccountId)
+    ) {
+      return true;
+    }
+  }
+
   if (!isRecord(payload.authorizations)) return false;
   return Object.entries(payload.authorizations).some(
     ([clientId, authorization]) =>

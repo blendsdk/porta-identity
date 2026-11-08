@@ -171,11 +171,28 @@ plaintext is shown once and is never retained in the workspace.
 
 `porta user invite` also accepts:
 
-| Flag                                | Description                              |
-| ----------------------------------- | ---------------------------------------- |
-| `--role <application-id>:<role-id>` | Pre-assign a role; repeat for more roles |
-| `--locale <code>`                   | Invitation locale                        |
-| `--personal-message <text>`         | Personal message in the invitation email |
+| Flag                                                      | Description                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `--role <application-id>:<role-id>`                       | Pre-assign a role; repeat for more roles                                             |
+| `--claim '<application-id>:<claim-definition-id>:<json>'` | Pre-assign a JSON claim; quote the complete assignment and repeat for distinct pairs |
+| `--locale <code>`                                         | Invitation locale                                                                    |
+| `--personal-message <text>`                               | Personal message in the invitation email                                             |
+
+```bash
+porta user invite --org <org-id> --email bob@example.com \
+  --claim '<application-id>:<claim-definition-id>:"Engineering:West"'
+```
+
+Claims preserve ordered JSON values, including arrays, objects, `false`, `0` and `null`. Only the
+first two colons separate UUIDs. Duplicate application/claim pairs are rejected case-insensitively,
+even with equal values. Malformed, non-finite or unencodable input fails locally before client
+creation; no raw claim value appears in error diagnostics. Each occurrence needs a value: missing
+values exit1, while explicit empty/negated values exit3. Server authorization and claim-type policy
+remain authoritative; no local catalogue is fetched.
+
+Invitations return `invitationId`, `email`, `emailDelivery`, `invitationSent` and `expiresAt`, not a
+user ID. The account and pre-assignments are created on acceptance. A created invitation may have
+`sent`, `failed` or `unknown` email delivery; claims do not change single-invite output or exits.
 
 **Nested: Roles** (`porta user role ...`)
 
@@ -192,6 +209,34 @@ plaintext is shown once and is never retained in the workspace.
 | `porta user claim list <org-id> <user-id>`              | List user's claim values |
 | `porta user claim set <org-id> <user-id>`               | Set a claim value        |
 | `porta user claim remove <org-id> <user-id> <claim-id>` | Remove a claim value     |
+
+### Bulk email invitations
+
+```bash
+porta bulk invite --file ./recipients.txt --org <org-id> \
+  --claim '<application-id>:<claim-definition-id>:"Engineering"' --json
+```
+
+Use a regular UTF-8 file with one ASCII email per LF/CRLF line. The limits are 1,048,576 raw bytes
+and 1,000 unique recipients. One initial BOM, blank lines and surrounding whitespace are supported.
+Duplicate addresses collapse case-insensitively, retaining the first spelling and physical line.
+All local file/shared-option/encoding checks finish before any client or invitation call.
+
+Dispatch is sequential with no prompt, CLI retry or Retry-After wait. 409 conflicts and acknowledged
+creations continue; other rejections or uncertain outcomes stop and leave remaining rows
+unattempted. Creation and email delivery are separate: delivery can be sent, failed or unknown.
+Opaque lazy SDK authentication failures do not prove HTTP dispatch and omit unproven status.
+
+JSON stdout contains exactly `summary`, ordered `results`, and `stopReason`. Rows are `created`,
+`rejected`, `unknown` or `unattempted`; counts distinguish creation from delivery. Exit0 requires
+all created/sent, exit2 takes priority for a final auth stop, exit1 covers other incomplete normal
+results, and local preflight uses exit3 with no recipient report. Nonzero normal JSON reports add
+one safe `BATCH_INCOMPLETE` stderr envelope. Existing `bulk execute` behaviour is unchanged.
+
+Investigate unknown outcomes before rerunning: a later run calls the API again and may replace
+pending invitation links. No persistent report, automatic resume or exactly-once guarantee exists.
+Native interruption may leave no final report. See the
+[complete bulk input, report and recovery contract](https://blendsdk.github.io/porta-identity/cli/users#bulk-email-file-invitations).
 
 ### Infrastructure
 
@@ -313,6 +358,26 @@ porta org list --json | jq '.[].slug'
 ORG_ID=$(porta org show my-org --json | jq -r '.id')
 porta user list "$ORG_ID" --json
 ```
+
+### JSON failures
+
+Conventional command failures write one newline-terminated object on stderr with fixed `code`
+and `message`, an observed HTTP `status` when known, and optional validated `requestId` or bounded
+`retryAfter` seconds. For example:
+
+```json
+{ "code": "FORBIDDEN", "message": "This operation is not permitted.", "status": 403 }
+```
+
+Raw arguments, claim values, paths, response bodies and stacks are never included, even with
+`--verbose`. Opaque SDK authentication failures omit their synthetic HTTP status. Existing stdout
+results, human formatting and exit codes remain unchanged. Legacy `bulk execute` validation/partial
+results and unhealthy JSON `health` reports can still exit 0 and carry a safe stderr summary;
+inspect their results. Doctor/import failure reports retain stdout and exit 1. Non-error warnings
+remain unchanged. The interactive Admin shell continues to reject `--json`.
+
+See the [automation error reference](https://blendsdk.github.io/porta-identity/cli/overview#automation-errors)
+for categories, metadata and legacy exit exceptions.
 
 ## Shell Completions
 

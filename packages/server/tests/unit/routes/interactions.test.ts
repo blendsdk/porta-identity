@@ -68,11 +68,17 @@ vi.mock('../../../src/auth/i18n.js', () => ({
   getTranslationFunction: vi.fn().mockReturnValue((key: string) => `t:${key}`),
 }));
 
+const observeProtocolSecurityRejection = vi.hoisted(() => vi.fn());
+vi.mock('../../../src/oidc/protocol-security-observer.js', () => ({
+  observeProtocolSecurityRejection,
+}));
+
 vi.mock('../../../src/auth/template-engine.js', () => ({
   renderPage: vi.fn().mockResolvedValue('<html>rendered</html>'),
 }));
 
 vi.mock('../../../src/users/service.js', () => ({
+  findUserForOidc: vi.fn(),
   getUserByEmail: vi.fn(),
   prepareUserForPasswordLogin: vi.fn(),
   verifyUserPassword: vi.fn(),
@@ -81,6 +87,14 @@ vi.mock('../../../src/users/service.js', () => ({
   recordFailedLogin: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
   recordPasswordFailure: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
   checkAutoUnlock: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock('../../../src/users/repository.js', () => ({
+  findUserById: vi.fn().mockResolvedValue({
+    id: 'user-uuid-1',
+    organizationId: 'org-uuid-1',
+    status: 'active',
+  }),
 }));
 
 vi.mock('../../../src/lib/system-config.js', () => ({
@@ -103,6 +117,11 @@ vi.mock('../../../src/lib/logger.js', () => ({
 vi.mock('../../../src/two-factor/service.js', () => ({
   requiresTwoFactor: vi.fn().mockReturnValue(false),
   determineTwoFactorMethod: vi.fn().mockReturnValue(null),
+  resolveTwoFactorPlan: vi.fn().mockReturnValue({
+    action: 'none',
+    challengeMethod: null,
+    requiredMethod: null,
+  }),
   sendOtpCode: vi.fn().mockResolvedValue('123456'),
 }));
 
@@ -135,6 +154,7 @@ import { getRedis } from '../../../src/lib/redis.js';
 import * as magicLinkSession from '../../../src/auth/magic-link-session.js';
 import * as tokenRepo from '../../../src/auth/token-repository.js';
 import * as userService from '../../../src/users/service.js';
+import { findUserById } from '../../../src/users/repository.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
 import * as templateEngine from '../../../src/auth/template-engine.js';
 import type { Organization } from '../../../src/organizations/types.js';
@@ -1290,6 +1310,33 @@ describe('interaction routes', () => {
       );
     });
 
+    it('should refuse a consent grant when the session account belongs to another tenant', async () => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: 'user-uuid-1',
+        organizationId: 'org-uuid-foreign',
+      } as never);
+      const provider = createMockProvider();
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'First-Party App',
+          organizationId: 'org-uuid-1',
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid/consent');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(provider.Grant).not.toHaveBeenCalled();
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.any(String) }),
+      );
+    });
+
     it('should render consent page for third-party client', async () => {
       const provider = createMockProvider();
       // The client requires consent, so the page renders instead of auto-consent.
@@ -1335,6 +1382,46 @@ describe('interaction routes', () => {
       );
       expect(ctx.status).toBe(400);
     });
+
+    it('should emit an interaction rejection event when the interaction is missing', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockRejectedValue(
+        Object.assign(new Error('Session not found'), {
+          name: 'SessionNotFound',
+          status: 400,
+        }),
+      );
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid/consent');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(observeProtocolSecurityRejection).toHaveBeenCalledWith({
+        request: ctx.req,
+        eventClass: 'interaction-context-rejected',
+      });
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.any(String) }),
+      );
+      expect(ctx.status).toBe(400);
+    });
+
+    it('should not emit an interaction rejection event for a non-missing provider error', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockRejectedValue(new Error('Expired'));
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid/consent');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(observeProtocolSecurityRejection).not.toHaveBeenCalled();
+      expect(ctx.status).toBe(400);
+    });
   });
 
   // =========================================================================
@@ -1369,6 +1456,52 @@ describe('interaction routes', () => {
       expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'user.consent.granted' }),
       );
+    });
+
+    it('should refuse explicit consent approval from a foreign tenant session', async () => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: 'user-uuid-1',
+        organizationId: 'org-uuid-foreign',
+      } as never);
+      const provider = createMockProvider();
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/confirm');
+      const ctx = createMockCtx({
+        body: { decision: 'approve', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(provider.Grant).not.toHaveBeenCalled();
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.any(String) }),
+      );
+    });
+
+    it('should emit an interaction rejection event when the confirmation interaction is missing', async () => {
+      const provider = createMockProvider();
+      provider.interactionDetails.mockRejectedValue(
+        Object.assign(new Error('Session not found'), {
+          name: 'SessionNotFound',
+          status: 400,
+        }),
+      );
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/confirm');
+      const ctx = createMockCtx({
+        body: { decision: 'approve', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(observeProtocolSecurityRejection).toHaveBeenCalledWith({
+        request: ctx.req,
+        eventClass: 'interaction-context-rejected',
+      });
+      expect(ctx.status).toBe(400);
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
     });
 
     it('should deny consent with access_denied error', async () => {

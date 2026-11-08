@@ -52,11 +52,11 @@ the applicable lifecycle and cleanup checks succeed.
 
 This checkpoint is deliberately **not** certification and does not claim that Porta has no exploit
 paths. The authorized enumeration-work, magic-link authority, administrative-data, and covered
-terminal-decision product roots are corrected and rerunnable. Product defects and unresolved
-contracts remain separately recorded, including statistical timing authority, TOTP replay
-semantics, external terminal-event correlation, protocol/forwarding/dependency observation gaps,
-public nginx version disclosure, SDK cursor
-pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
+terminal-decision product roots are corrected and rerunnable. Statistical timing remains an explicit
+accepted limitation: no timing samples are collected and no timing claim is awarded. Other product
+defects and unresolved contracts remain separately recorded, including TOTP replay semantics,
+external terminal-event correlation, protocol/forwarding/dependency observation gaps, public nginx
+version disclosure, SDK cursor pagination mismatch, and administrative session-identifier exposure. The resumed reliability work
 completed the bounded mutation-tool pilot, protocol-model command/signal matrix, 100-run
 protocol-candidate qualification, local ratchets, and exhaustive local aggregate/UI collection.
 Real alias-stage signal injection remains unqualified, and the CI-promotion output is proposal-only.
@@ -172,7 +172,7 @@ The penetration project sends attack-oriented requests to a full Porta server an
 
 | Attack family              | Cases | Claimed attack coverage                                                                                      |
 | -------------------------- | ----: | ------------------------------------------------------------------------------------------------------------ |
-| Authentication bypass      |    34 | Brute force, login-method bypass, session attacks, SQL injection in auth flows, and timing comparisons       |
+| Authentication bypass      |    34 | Brute force, login-method bypass, session attacks, SQL injection in auth flows, and functional enumeration equivalence |
 | Infrastructure             |    34 | CORS, security headers, information disclosure, and HTTP method tampering                                    |
 | OIDC attacks               |    34 | Code injection, PKCE bypass, redirect manipulation, refresh replay, scope escalation, and token substitution |
 | Admin security             |    33 | IDOR, mass assignment, privilege escalation, 2FA administration, and unauthenticated access                  |
@@ -180,11 +180,15 @@ The penetration project sends attack-oriented requests to a full Porta server an
 | Magic-link attacks         |    19 | Enumeration, host-header injection, token entropy/prediction, and replay                                     |
 | Cryptographic attacks      |    18 | JWT algorithm confusion, payload manipulation, and attacker-controlled key references                        |
 | Multi-tenant attacks       |    17 | Cross-tenant authentication, slug injection, and tenant enumeration                                          |
-| OIDC client authentication |    11 | Secret validation, malformed credentials, ambiguity, timing, and cross-tenant probing                        |
+| OIDC client authentication |    11 | Secret validation, malformed credentials, ambiguity, and cross-tenant probing                                |
 
 The test names cover the expected identity-provider threat categories broadly. Assertion strength
 varies: the current files include conditional early returns and numerous broad “allowed status” or
 “not 500” checks. Those are recorded as quality risks rather than removed from this inventory.
+
+Wall-clock timing comparisons were retired on 2026-11-07. No statistical timing contract exists, so
+existing and absent identities are compared by exact public status, page schema, headers, cookies,
+and rate-limit behavior instead. Timing is not a pass/fail criterion.
 
 ## Browser UI Tests
 

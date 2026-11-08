@@ -42,6 +42,8 @@ import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createClientRouter } from './routes/clients.js';
 import { createUserRouter, createStandaloneUserRouter } from './routes/users.js';
+import { createAdminInvitationRouter } from './routes/admin-invitations.js';
+import { isAdminInvitationRequest } from './service-accounts/index.js';
 import { createTenantUsersRouter } from './routes/tenant-users.js';
 import { createTenantInvitationsRouter } from './routes/tenant-invitations.js';
 import { createInteractionRouter } from './routes/interactions.js';
@@ -51,6 +53,7 @@ import { createInvitationRouter } from './routes/invitation.js';
 import { createRoleRouter } from './routes/roles.js';
 import { createPermissionRouter } from './routes/permissions.js';
 import { createUserRoleRouter } from './routes/user-roles.js';
+import { createConnectedAppsRouter } from './routes/connected-apps.js';
 import { createCustomClaimRouter } from './routes/custom-claims.js';
 import { createTwoFactorRouter } from './routes/two-factor.js';
 import { createConfigRouter } from './routes/config.js';
@@ -164,6 +167,9 @@ export function createApp(oidcProvider?: Provider): Koa {
     textLimit: '100kb',
   });
   app.use(async (ctx, next) => {
+    // The dedicated invitation router selects the unchanged human parser or the validated
+    // machine data parser. It preserves parser-error precedence before its durable transaction.
+    if (isAdminInvitationRequest(ctx.method, ctx.path)) return next();
     const isManifestImport = ctx.method === 'POST' && /^\/api\/admin\/import\/?$/i.test(ctx.path);
     if (
       !isManifestImport &&
@@ -248,7 +254,7 @@ export function createApp(oidcProvider?: Provider): Koa {
   app.use(metadataRouter.routes());
   app.use(metadataRouter.allowedMethods());
 
-  app.use(adminMutationAudit());
+  app.use(adminMutationAudit({ deferInvitationToRouter: true }));
 
   // Set the OIDC provider for admin auth middleware — enables opaque access
   // token validation via provider.AccessToken.find() for all /api/admin/* routes.
@@ -288,6 +294,9 @@ export function createApp(oidcProvider?: Provider): Koa {
 
   // User management API — requires admin authentication
   // Mounted at /api/admin/organizations/:orgId/users (see routes/users.ts)
+  const adminInvitationRouter = createAdminInvitationRouter();
+  app.use(adminInvitationRouter.routes());
+  app.use(adminInvitationRouter.allowedMethods());
   const userRouter = createUserRouter();
   app.use(userRouter.routes());
   app.use(userRouter.allowedMethods());
@@ -326,6 +335,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   const userRoleRouter = createUserRoleRouter();
   app.use(userRoleRouter.routes());
   app.use(userRoleRouter.allowedMethods());
+
+  // Connected apps at /api/admin/organizations/:orgId/users/:userId/connected-apps
+  const connectedAppsRouter = createConnectedAppsRouter();
+  app.use(connectedAppsRouter.routes());
+  app.use(connectedAppsRouter.allowedMethods());
 
   // 2FA admin — user-level management (status, disable, reset, regenerate)
   // Mounted at /api/admin/organizations/:orgId/users/:userId/two-factor

@@ -152,10 +152,14 @@ describe('admin user service implementation', () => {
       organizationId: '22222222-2222-4222-8222-222222222222',
       roles: [{ applicationId: 'app', roleId: 'admin' }],
     };
+    const validRole = {
+      applicationId: '33333333-3333-4333-8333-333333333333',
+      roleId: '44444444-4444-4444-8444-444444444444',
+    };
     const hostileInvite = {
       email: 'person@example.test',
       organizationId: '22222222-2222-4222-8222-222222222222',
-      roles: [{ applicationId: 'app', roleId: 'admin' }],
+      roles: [validRole],
       claims: [{ applicationId: 'app', claimDefinitionId: 'admin', value: true }],
     };
     const hostileUpdate = {
@@ -171,8 +175,15 @@ describe('admin user service implementation', () => {
     await operations.update(organizationId, userId, hostileUpdate);
 
     expect(create).toHaveBeenCalledWith({ organizationId, email: 'person@example.test' });
-    expect(invite).toHaveBeenCalledWith({ organizationId, email: 'person@example.test' });
-    expect(invitePreview).toHaveBeenCalledWith({ organizationId, email: 'person@example.test' });
+    expect(invite).toHaveBeenCalledWith({
+      organizationId,
+      email: 'person@example.test',
+      roles: [validRole],
+    });
+    expect(invitePreview).toHaveBeenCalledWith({
+      organizationId,
+      email: 'person@example.test',
+    });
     expect(update).toHaveBeenCalledWith(
       organizationId,
       userId,

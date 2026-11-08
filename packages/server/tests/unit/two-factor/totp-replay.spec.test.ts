@@ -324,16 +324,15 @@ describe('password login interaction boundary', () => {
     };
     const prepare = vi.fn().mockResolvedValue(user);
     const verifyPassword = vi.fn().mockResolvedValue(true);
-    const requires = vi.fn().mockReturnValue(true);
-    const determine = vi.fn().mockReturnValue('totp');
     const events: string[] = [];
     prepare.mockImplementation(async () => {
       events.push('prepare');
       return user;
     });
-    requires.mockImplementation(() => {
+
+    const resolvePlan = vi.fn(() => {
       events.push('policy');
-      return true;
+      return { action: 'enroll', challengeMethod: 'totp', requiredMethod: 'totp' };
     });
 
     vi.doMock('../../../src/users/service.js', () => ({
@@ -343,8 +342,7 @@ describe('password login interaction boundary', () => {
       recordPasswordFailure: vi.fn(),
     }));
     vi.doMock('../../../src/two-factor/service.js', () => ({
-      requiresTwoFactor: requires,
-      determineTwoFactorMethod: determine,
+      resolveTwoFactorPlan: resolvePlan,
       sendOtpCode: vi.fn(),
     }));
     vi.doMock('../../../src/auth/csrf.js', () => ({
@@ -447,13 +445,20 @@ describe('password login interaction boundary', () => {
 
     expect(prepare).toHaveBeenCalledWith(organizationId, user.email);
     expect(verifyPassword).toHaveBeenCalledWith(user.id, 'valid-password');
-    expect(requires).toHaveBeenCalledWith(context.state.organization, user);
-    expect(determine).toHaveBeenCalledWith(context.state.organization, user);
+    expect(resolvePlan).toHaveBeenCalledWith(context.state.organization, user);
     expect(events).toEqual(['prepare', 'policy']);
     expect(provider.interactionResult).toHaveBeenCalledWith(
       context.req,
       context.res,
-      { twoFactor: { pendingAccountId: user.id, method: 'totp', email: user.email } },
+      {
+        twoFactor: {
+          pendingAccountId: user.id,
+          method: 'totp',
+          email: user.email,
+          purpose: 'enrollment',
+          requiredMethod: 'totp',
+        },
+      },
       { mergeWithLastSubmission: true },
     );
   });

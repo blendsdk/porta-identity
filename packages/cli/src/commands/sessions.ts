@@ -93,6 +93,7 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             );
             success(`${sessions.length} session(s)`);
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -128,6 +129,7 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
             success(`Revoked session ${truncate(argv.id, 12)}`);
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -167,6 +169,7 @@ export const sessionsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               `Revoked ${result.revoked} session(s) for user ${truncate(argv['user-id'], 12)}`,
             );
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

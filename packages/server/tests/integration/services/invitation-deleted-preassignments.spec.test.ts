@@ -4,6 +4,7 @@ import { setEmailTransport } from '../../../src/auth/email-service.js';
 import { initI18n } from '../../../src/auth/i18n.js';
 import { replaceInvitation } from '../../../src/auth/token-repository.js';
 import { generateToken } from '../../../src/auth/tokens.js';
+import { ADMIN_PERMISSIONS } from '../../../src/lib/admin-permissions.js';
 import { getPool } from '../../../src/lib/database.js';
 import { initTemplateEngine } from '../../../src/auth/template-engine.js';
 import { createInvitationRouter } from '../../../src/routes/invitation.js';
@@ -178,6 +179,7 @@ describe('invitation continuity after optional preassignment deletion', () => {
         givenName: administrator.givenName,
         familyName: administrator.familyName,
         email: administrator.email,
+        permissions: Object.values(ADMIN_PERMISSIONS),
       },
     });
 
@@ -229,6 +231,7 @@ describe('invitation continuity after optional preassignment deletion', () => {
           givenName: administrator.givenName,
           familyName: administrator.familyName,
           email: administrator.email,
+          permissions: Object.values(ADMIN_PERMISSIONS),
         },
       });
 

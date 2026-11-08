@@ -598,12 +598,12 @@ describe('deferred invitation routes', () => {
         email: INVITATION.email,
       });
       poolQuery.mockImplementation(async (sql: string, params?: unknown[]) => {
+        if (String(sql).includes('INSERT INTO user_roles')) return { rows: [], rowCount: 1 };
         if (String(sql).includes('FROM roles')) {
           return params?.[0] === LIVE_ROLE_ID
             ? { rows: [{ id: LIVE_ROLE_ID }], rowCount: 1 }
             : { rows: [], rowCount: 0 };
         }
-        if (String(sql).includes('INSERT INTO user_roles')) return { rows: [], rowCount: 1 };
         return { rows: [], rowCount: 0 };
       });
       const ctx = createMockCtx({ body: validBody() });
@@ -618,7 +618,7 @@ describe('deferred invitation routes', () => {
         String(sql).includes('INSERT INTO user_roles'),
       );
       expect(roleInserts).toHaveLength(1);
-      expect(roleInserts[0][1]).toEqual(['user-1', LIVE_ROLE_ID]);
+      expect(roleInserts[0][1]).toEqual(['user-1', LIVE_ROLE_ID, 'app-1']);
     });
   });
 });

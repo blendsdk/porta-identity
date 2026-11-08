@@ -22,6 +22,7 @@ import { createAdminUserWorkspace } from './user-workspace.js';
 import type { AdminUserIntent, AdminUserWorkspace } from './user-workspace.js';
 import { openAdminUserRoleWorkflow } from './user-role-controller.js';
 import type { AdminUserRoleWorkflow } from './user-role-controller.js';
+import type { AdminInviteRoleSource } from './invite-role-dialog.js';
 import { ADMIN_COMMANDS } from './presentation.js';
 import type {
   AdminUserController,
@@ -436,6 +437,40 @@ export function createAdminUserController(
     );
   };
 
+  /** Builds the invitation role source only when every required capability is live. */
+  const inviteRoleSource = (signal: AbortSignal): AdminInviteRoleSource | undefined => {
+    const current = options.readState();
+    if (
+      current.kind !== 'authenticated' ||
+      !current.capabilities.canAssignRoles ||
+      !current.capabilities.canReadApplications ||
+      !current.capabilities.canReadRoles
+    ) {
+      return undefined;
+    }
+    const applications = options.readApplicationOperations?.();
+    const rbac = options.readRbacOperations?.();
+    if (!applications || !rbac) return undefined;
+    const sessionEpoch = currentSessionEpoch;
+    /** Only the session that opened this dialog may turn a late denial into reauthentication. */
+    const ownsSession = (readSignal?: AbortSignal): boolean =>
+      !signal.aborted &&
+      readSignal?.aborted !== true &&
+      currentSessionEpoch === sessionEpoch;
+    return {
+      listApplications: async () => {
+        const result = await applications.listAll();
+        if (result.kind === 'session-invalid' && ownsSession()) sessionInvalid();
+        return result;
+      },
+      listRoles: async (id, readSignal) => {
+        const result = await rbac.listRoles(id, readSignal);
+        if (result.kind === 'session-invalid' && ownsSession(readSignal)) sessionInvalid();
+        return result;
+      },
+    };
+  };
+
   /** Opens the selected user's direct role assignments through the feature-local owner. */
   const openUserRoles = (): void => {
     if (dialogBusy || operation || options.isApplicationBusy()) return;
@@ -767,13 +802,18 @@ export function createAdminUserController(
       const selectedOrganization = current.organization.id;
       void runMutation(
         (signal) =>
-          dialogs.invite(options.host, signal, async (input) => {
-            const result = await operations.previewInvitation(selectedOrganization, input);
-            if (signal.aborted) return { kind: 'failure', failure: 'unavailable' };
-            if (result.kind !== 'session-invalid') return result;
-            sessionInvalid();
-            return { kind: 'failure', failure: 'unauthorized' };
-          }),
+          dialogs.invite(
+            options.host,
+            signal,
+            async (input) => {
+              const result = await operations.previewInvitation(selectedOrganization, input);
+              if (signal.aborted) return { kind: 'failure', failure: 'unavailable' };
+              if (result.kind !== 'session-invalid') return result;
+              sessionInvalid();
+              return { kind: 'failure', failure: 'unauthorized' };
+            },
+            inviteRoleSource(signal),
+          ),
         (choice) => {
           return choice.kind === 'invite'
             ? operations.invite(selectedOrganization, choice.input)

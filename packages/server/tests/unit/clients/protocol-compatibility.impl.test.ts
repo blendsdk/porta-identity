@@ -22,6 +22,21 @@ vi.mock('../../../src/clients/crypto.js', () => ({
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({ writeAuditLog: vi.fn() }));
+vi.mock('../../../src/lib/database.js', () => {
+  const database = {
+    query: async (sql: string, values: readonly unknown[]) => {
+      if (sql === 'SELECT id FROM clients WHERE id = $1 FOR UPDATE') return { rows: [{ id: values[0] }] };
+      if (sql.includes('SELECT EXISTS (SELECT 1 FROM client_service_accounts')) return { rows: [{ present: false }] };
+      throw new Error('Unexpected query in protocol update fixture');
+    },
+  };
+  return {
+    getPool: () => database,
+    getDatabaseTransactionClient: () => database,
+    runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+    afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
+  };
+});
 vi.mock('../../../src/applications/service.js', () => ({ getApplicationById: vi.fn() }));
 vi.mock('../../../src/organizations/service.js', () => ({ getOrganizationById: vi.fn() }));
 vi.mock('../../../src/clients/secret-service.js', () => ({ verify: vi.fn() }));
@@ -30,7 +45,7 @@ vi.mock('../../../src/clients/secret-repository.js', () => ({
 }));
 
 import { getCachedClientById } from '../../../src/clients/cache.js';
-import { updateClient as updateClientRow } from '../../../src/clients/repository.js';
+import { findClientById, updateClient as updateClientRow } from '../../../src/clients/repository.js';
 import { updateClient } from '../../../src/clients/service.js';
 import { validateClientProtocolCompatibility } from '../../../src/clients/validators.js';
 
@@ -110,6 +125,7 @@ describe('client protocol partial-update merging', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('rejects an invalid partial update after merging persisted public-client fields', async () => {
+    vi.mocked(findClientById).mockResolvedValue(persistedClient());
     vi.mocked(getCachedClientById).mockResolvedValue(persistedClient());
 
     await expect(updateClient('client-id', { requirePkce: false })).rejects.toThrow(
@@ -125,6 +141,7 @@ describe('client protocol partial-update merging', () => {
       requirePkce: false,
     });
     const updated = { ...existing, allowedOrigins: ['https://new.example.test'] };
+    vi.mocked(findClientById).mockResolvedValue(existing);
     vi.mocked(getCachedClientById).mockResolvedValue(existing);
     vi.mocked(updateClientRow).mockResolvedValue(updated);
 

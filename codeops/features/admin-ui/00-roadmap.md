@@ -1,15 +1,15 @@
 # Roadmap: Porta Admin UI
 
 > **Feature-Set**: Porta Admin UI
-> **Status**: Active
+> **Status**: Archived — the web GUI was retired; `porta admin` is the terminal UI owned by the CLI package
 > **Created**: 2026-08-27
-> **Last Updated**: 2026-11-02 00:07
-> **Progress**: 12 / 15 (80%)
+> **Last Updated**: 2026-11-06
+> **Progress**: 12 / 15 historical (3 remaining rows retired, not planned)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
 
-⬜ Backlog · ✏️ RD Drafted · 🔎 RD Preflighted · 📋 Plan Created · 🔬 Plan Preflighted · 🔄 Executing · ✅ Done · ⛔ Blocked · ⏸️ Deferred
+⬜ Backlog · ✏️ RD Drafted · 🔎 RD Preflighted · 📋 Plan Created · 🔬 Plan Preflighted · 🔄 Executing · ✅ Done · ⛔ Blocked · ⏸️ Deferred · 📦 Archived
 
 ## Tracker
 
@@ -26,14 +26,24 @@
 | RD-04 | Applications and OIDC clients                | [RD-04](requirements/RD-04-applications-and-oidc-clients.md)       | [oidc-client-workflow-redesign](plans/oidc-client-workflow-redesign/00-index.md)     | Done    | ✅     | 2026-09-08 13:39 | RD-02                |
 | RD-05 | Roles and permissions                        | [RD-05](requirements/RD-05-roles-and-permissions.md)               | [roles-and-permissions](plans/roles-and-permissions/00-index.md)                     | Done    | ✅     | 2026-09-10 14:40 | RD-03, RD-04, RD-10  |
 | RD-06 | Organization settings and branding           | [RD-06](requirements/RD-06-organization-settings-and-branding.md)  | [organization-settings-branding](plans/organization-settings-branding/00-index.md)   | Done    | ✅     | 2026-09-11 22:26 | RD-02, RD-04         |
-| RD-07 | Sessions and authentication security         | —                                                                  | —                                                                                    | Backlog | ⬜     | 2026-08-29 13:13 | RD-03                |
-| RD-08 | Audit and activity                           | —                                                                  | —                                                                                    | Backlog | ⬜     | 2026-08-29 13:13 | RD-02                |
-| RD-09 | Advanced operational tools                   | —                                                                  | —                                                                                    | Backlog | ⬜     | 2026-08-29 13:13 | RD-06, RD-08         |
+| RD-07 | Sessions and authentication security         | —                                                                  | —                                                                                    | Archived | 📦     | 2026-11-06 | Retired with the GUI workspace; terminal `porta admin` is covered by CLI plans |
+| RD-08 | Audit and activity                           | —                                                                  | —                                                                                    | Archived | 📦     | 2026-11-06 | Retired with the GUI workspace; terminal `porta admin` is covered by CLI plans |
+| RD-09 | Advanced operational tools                   | —                                                                  | —                                                                                    | Archived | 📦     | 2026-11-06 | Retired with the GUI workspace; terminal `porta admin` is covered by CLI plans |
 | RD-10 | Record deletion and lifecycle simplification | [RD-10](requirements/RD-10-application-module-client-deletion.md)  | [plan](plans/application-module-client-deletion/00-index.md)                         | Done    | ✅     | 2026-09-06 21:54 | RD-02, RD-03, RD-04  |
 
 Backlog rows intentionally describe capabilities only. Each item is scoped immediately before
 implementation so the Admin UI grows one useful feature at a time without speculative framework
 or screen design.
+
+## Retirement note
+
+The standalone web GUI this roadmap planned was removed from the active monorepo. The current
+workspace contains only `packages/server`, `packages/sdk` and `packages/cli`; the embedded
+`porta admin` terminal application lives in `packages/cli/src/admin` and is verified by the CLI
+test suites. RD-07, RD-08 and RD-09 were never scoped and are archived rather than implemented.
+The historical completion rows remain for provenance. See
+`techdocs/reference/retired-playgrounds.md` and the repository guidance for the supported
+terminal Admin UI operating model.
 
 ## Future feature map
 

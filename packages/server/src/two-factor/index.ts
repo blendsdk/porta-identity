@@ -85,6 +85,7 @@ export {
 // Service
 export {
   setupEmailOtp,
+  completeEmailFactorMigration,
   setupTotp,
   getPendingTotpSetupInfo,
   confirmTotpSetup,
@@ -97,4 +98,5 @@ export {
   regenerateRecoveryCodes,
   requiresTwoFactor,
   determineTwoFactorMethod,
+  resolveTwoFactorPlan,
 } from './service.js';

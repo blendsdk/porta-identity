@@ -97,6 +97,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -152,6 +153,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 }
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -188,6 +190,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -231,6 +234,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`Application updated: ${updated.name} (${updated.slug})`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -252,6 +256,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await client.applications.activate(app.id);
               success(`Application activated: ${app.name} (${app.slug})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -282,6 +287,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await client.applications.deactivate(app.id);
               success(`Application deactivated: ${app.name} (${app.slug})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -311,6 +317,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await client.applications.delete(app.id);
               success(`Application deleted: ${app.name} (${app.slug})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -349,6 +356,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

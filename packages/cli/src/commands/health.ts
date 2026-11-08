@@ -8,9 +8,11 @@
  */
 
 import type { CommandModule } from 'yargs';
+import { PortaHttpError } from '@portaidentity/sdk';
 import type { GlobalOptions } from '../global-options.js';
 import { resolveServerUrl } from '../global-options.js';
-import { handleError } from '../error-handler.js';
+import { handleError, writeJsonError } from '../error-handler.js';
+import { CliErrorCode, formatCliError, formatKnownCliError } from '../error-format.js';
 import { printJson, success, error as printError } from '../output.js';
 
 // ---------------------------------------------------------------------------
@@ -50,6 +52,12 @@ export const healthCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
       if (argv.json) {
         printJson(body);
+        if (!response.ok) {
+          // This boundary observed the response directly, unlike opaque SDK auth exceptions.
+          writeJsonError(formatCliError(new PortaHttpError(response.status, '')));
+        } else if (body.status !== 'ok' && body.status !== 'healthy') {
+          writeJsonError(formatKnownCliError(CliErrorCode.Diagnostic, { status: response.status }));
+        }
         return;
       }
 
@@ -65,6 +73,7 @@ export const healthCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         process.exitCode = 1;
       }
     } catch (err) {
+      if (argv.json) handleError(err, argv.verbose, true);
       handleError(err, argv.verbose);
     }
   },

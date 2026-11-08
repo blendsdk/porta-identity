@@ -190,6 +190,7 @@ describe('client requireConsent administrative specification', () => {
 
     expect(clientService.createClient).toHaveBeenCalledWith(
       expect.objectContaining({ requireConsent: true }),
+      'admin-id',
     );
     expect(ctx.body).toMatchObject({ data: { client: { requireConsent: true } } });
   });
@@ -204,6 +205,7 @@ describe('client requireConsent administrative specification', () => {
 
     expect(clientService.createClient).toHaveBeenCalledWith(
       expect.objectContaining({ requireConsent: false }),
+      'admin-id',
     );
     expect(ctx.body).toMatchObject({ data: { client: { requireConsent: false } } });
   });
@@ -219,6 +221,7 @@ describe('client requireConsent administrative specification', () => {
     expect(clientService.updateClient).toHaveBeenCalledWith(
       CLIENT_ID,
       expect.objectContaining({ requireConsent: true }),
+      'admin-id',
     );
     expect(ctx.body).toMatchObject({ data: { requireConsent: true } });
   });

@@ -34,7 +34,11 @@ import {
   loadPasswordResetRateLimitConfig,
 } from '../auth/rate-limiter.js';
 import { hashToken } from '../auth/tokens.js';
-import { findValidTokenForOrganization, markTokenUsed } from '../auth/token-repository.js';
+import {
+  consumePasswordResetToken,
+  findValidTokenForOrganization,
+  invalidateOtherPasswordResetTokens,
+} from '../auth/token-repository.js';
 import { sendPasswordChangedEmail } from '../auth/email-service.js';
 import { enqueueAccountRecovery } from '../auth/recovery-service.js';
 import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
@@ -43,7 +47,10 @@ import type { TemplateContext } from '../auth/template-engine.js';
 import { resolveEffectiveBranding } from '../auth/effective-branding.js';
 import { getUserById, setUserPassword } from '../users/service.js';
 import { validatePassword } from '../users/password.js';
-import { writeAuditLog } from '../lib/audit-log.js';
+import { writeAuditLog, writeAuditLogInTransaction } from '../lib/audit-log.js';
+import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
+import { registerAuthorityCleanup } from '../lib/deletion-cleanup.js';
+import { revokeAffectedAuthorityInTransaction } from '../lib/authority-revocation.js';
 import { logger } from '../lib/logger.js';
 import type { Organization } from '../organizations/types.js';
 import { tenantResolver } from '../middleware/tenant-resolver.js';
@@ -52,6 +59,9 @@ import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
+
+/** Internal signal that a competing submission consumed the reset token first. */
+class ResetTokenAlreadyConsumedError extends Error {}
 
 /** Extended Koa context with organization from tenant resolver */
 interface AuthContext extends Context {
@@ -535,13 +545,36 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
   }
 
   try {
-    // Step 5: Set the new password
-    await setUserPassword(tokenRecord.userId, password);
+    // Step 5: Consume the reset token, replace the password, retire other recovery links, and
+    // revoke prior authority in one transaction. Any failure rolls back every mutation, so an
+    // attacker cannot keep old tokens or sessions after a partially applied recovery.
+    await runDatabaseTransaction(async () => {
+      if (!(await consumePasswordResetToken(tokenRecord.id))) {
+        throw new ResetTokenAlreadyConsumedError();
+      }
+      await setUserPassword(tokenRecord.userId, password);
+      await invalidateOtherPasswordResetTokens(tokenRecord.userId);
+      const revoked = await revokeAffectedAuthorityInTransaction([tokenRecord.userId]);
+      await registerAuthorityCleanup({
+        userIds: [tokenRecord.userId],
+        grantIds: revoked.grantIds,
+        roleIds: [],
+        revokeOidcState: true,
+      });
 
-    // Step 6: Mark token as used (single-use)
-    await markTokenUsed('password_reset_tokens', tokenRecord.id);
+      const transaction = getDatabaseTransactionClient();
+      if (!transaction) throw new Error('Password reset requires an active transaction');
+      await writeAuditLogInTransaction(transaction, {
+        organizationId: org.id,
+        userId: tokenRecord.userId,
+        eventType: 'user.password_reset.completed',
+        eventCategory: 'security',
+        description: 'Password reset completed successfully',
+        ipAddress: ctx.ip,
+      });
+    });
 
-    // Step 7: Send password-changed confirmation email
+    // Step 6: Send password-changed confirmation email after the authoritative commit.
     const user = await getUserById(tokenRecord.userId);
     if (user) {
       sendPasswordChangedEmail(
@@ -551,17 +584,7 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
       );
     }
 
-    // Step 8: Audit log
-    writeAuditLog({
-      organizationId: org.id,
-      userId: tokenRecord.userId,
-      eventType: 'user.password_reset.completed',
-      eventCategory: 'security',
-      description: 'Password reset completed successfully',
-      ipAddress: ctx.ip,
-    });
-
-    // Step 9: Render success page
+    // Step 7: Render success page
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
     const context: TemplateContext = {
@@ -574,7 +597,11 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     };
 
     await renderAndRespond(ctx, 'reset-success', context);
-  } catch {
+  } catch (error) {
+    if (error instanceof ResetTokenAlreadyConsumedError) {
+      await renderErrorPageForAuth(ctx, org, locale, t, t('errors.reset_link_expired'));
+      return;
+    }
     logger.error({ event: 'password-reset-processing-failed' }, 'Password reset processing failed');
     await renderResetFormWithError(ctx, org, locale, t, tokenPlaintext, t('errors.generic'));
   }

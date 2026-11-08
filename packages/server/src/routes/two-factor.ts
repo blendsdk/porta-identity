@@ -43,6 +43,8 @@ import {
   getPendingTotpSetupInfo,
   setupEmailOtp,
   confirmTotpSetup,
+  resolveTwoFactorPlan,
+  completeEmailFactorMigration,
 } from '../two-factor/service.js';
 import { UnsupportedTotpConfigurationError } from '../two-factor/errors.js';
 import { writeAuditLog } from '../lib/audit-log.js';
@@ -67,6 +69,21 @@ interface PendingTwoFactor {
   pendingAccountId: string;
   method: 'email' | 'totp';
   email: string;
+  /** Trusted interaction purpose; legacy states without one are rejected. */
+  purpose: 'challenge' | 'enrollment' | 'migration';
+  /** Required target factor for policy migration. */
+  requiredMethod?: 'email' | 'totp';
+  /** Set only after the existing factor was successfully proven. */
+  challengeVerified?: boolean;
+  /** Keep the previous TOTP row until the new email factor is proven. */
+  preserveTotp?: boolean;
+}
+
+/** Trusted setup authority derived from current policy and persisted enrollment. */
+interface SetupAuthority {
+  methods: readonly ('email' | 'totp')[];
+  target: 'email' | 'totp' | null;
+  allowReplaceExisting: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -155,7 +172,56 @@ function getPendingTwoFactor(interaction: {
   if (!result?.twoFactor) return null;
   const tf = result.twoFactor as PendingTwoFactor;
   if (!tf.pendingAccountId || !tf.method || !tf.email) return null;
+  if (tf.purpose !== 'challenge' && tf.purpose !== 'enrollment' && tf.purpose !== 'migration') {
+    // Legacy in-flight interactions have no trusted purpose. Restarting is safer than inferring
+    // enrollment authority from an old URL or method.
+    return null;
+  }
   return tf;
+}
+
+/**
+ * Derive setup authority from the current policy and persisted user state.
+ *
+ * Existing-factor migration is only reachable after the challenge was proven. An enrollment is
+ * limited to the policy's required method, or to either method for `required_any`.
+ *
+ * @param org - Organization with the current policy.
+ * @param user - Persisted user state.
+ * @param pending - Trusted interaction state.
+ * @returns Allowed setup methods, or null when setup is not authorized.
+ */
+async function resolveSetupAuthority(
+  org: Organization,
+  pending: PendingTwoFactor,
+): Promise<{ authority: SetupAuthority; user: NonNullable<Awaited<ReturnType<typeof findUserById>>> } | null> {
+  const user = await findUserById(pending.pendingAccountId);
+  if (!user) return null;
+  const plan = resolveTwoFactorPlan(org, user);
+
+  if (plan.action === 'challenge') {
+    if (plan.requiredMethod === null) return null;
+    if (pending.purpose !== 'migration' || pending.challengeVerified !== true) return null;
+    return {
+      user,
+      authority: {
+        methods: [plan.requiredMethod],
+        target: plan.requiredMethod,
+        allowReplaceExisting: true,
+      },
+    };
+  }
+
+  if (plan.action === 'enroll') {
+    if (pending.purpose !== 'enrollment') return null;
+    const methods = plan.requiredMethod ? [plan.requiredMethod] : (['email', 'totp'] as const);
+    return {
+      user,
+      authority: { methods, target: plan.requiredMethod, allowReplaceExisting: false },
+    };
+  }
+
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -206,6 +272,21 @@ export function createTwoFactorRouter(provider: Provider): Router {
 // Route handlers
 // ---------------------------------------------------------------------------
 
+/** Return whether current persisted enrollment still satisfies the pending challenge. */
+async function currentChallengeIsValid(
+  org: Organization,
+  pending: PendingTwoFactor,
+): Promise<boolean> {
+  const current = await findUserById(pending.pendingAccountId);
+  if (!current || current.status !== 'active') return false;
+  const plan = resolveTwoFactorPlan(org, current);
+  if (plan.action !== 'challenge' || plan.challengeMethod !== pending.method) return false;
+  if (pending.requiredMethod && pending.requiredMethod !== pending.method) {
+    return plan.requiredMethod === pending.requiredMethod;
+  }
+  return plan.requiredMethod === null || plan.requiredMethod === pending.method;
+}
+
 /**
  * Show the 2FA verification page.
  *
@@ -233,6 +314,11 @@ async function showTwoFactor(ctx: TwoFactorContext, provider: Provider): Promise
     if (!pending) {
       // No pending 2FA — redirect back to login
       ctx.redirect(`/interaction/${interaction.uid}`);
+      return;
+    }
+    if (pending.purpose !== 'challenge') {
+      // Enrollment and verified migration are completed on the setup page.
+      ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
       return;
     }
 
@@ -306,6 +392,12 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
 
     if (!pending) {
       ctx.redirect(`/interaction/${interaction.uid}`);
+      return;
+    }
+    if (pending.purpose !== 'challenge') {
+      // A first enrollment or a verified migration is completed on the setup page. A challenge
+      // submission must never finish login for either purpose.
+      ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
       return;
     }
 
@@ -420,7 +512,62 @@ async function verifyTwoFactor(ctx: TwoFactorContext, provider: Provider): Promi
       return;
     }
 
-    // 2FA verified successfully — complete login
+    // An enrolled factor that no longer satisfies policy was proven above. Do not finish login:
+    // the required method must be enrolled and proven first. Revalidate current persisted state
+    // so an administrative reset or policy change during the challenge cannot be bypassed.
+    const stillValid = await currentChallengeIsValid(org, pending);
+    if (!stillValid) {
+      writeAuditLog({
+        organizationId: org.id,
+        userId: pending.pendingAccountId,
+        eventType: '2fa.verify.stale',
+        eventCategory: 'security',
+        description: 'Two-factor challenge no longer matches current enrollment or policy',
+        ipAddress: ctx.ip,
+      });
+      ctx.status = 400;
+      ctx.body = 'Interaction expired';
+      return;
+    }
+
+    if (pending.requiredMethod && pending.method !== pending.requiredMethod) {
+      await provider.interactionResult(
+        ctx.req,
+        ctx.res,
+        {
+          twoFactor: {
+            ...pending,
+            purpose: 'migration',
+            method: pending.requiredMethod,
+            challengeVerified: true,
+          },
+        },
+        { mergeWithLastSubmission: true },
+      );
+      writeAuditLog({
+        organizationId: org.id,
+        userId: pending.pendingAccountId,
+        eventType: '2fa.challenge.migration_required',
+        eventCategory: 'security',
+        description: 'Existing factor verified; required method enrollment pending',
+        ipAddress: ctx.ip,
+      });
+      ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
+      return;
+    }
+
+    // 2FA verified successfully — finish any deferred factor cleanup, then complete login.
+    if (pending.preserveTotp) {
+      try {
+        await completeEmailFactorMigration(pending.pendingAccountId);
+      } catch {
+        // The old TOTP row does not authorize login while the email method is active.
+        logger.warn(
+          { event: 'email-factor-migration-cleanup-failed' },
+          'Deferred TOTP cleanup failed',
+        );
+      }
+    }
     await recordLogin(pending.pendingAccountId);
 
     writeAuditLog({
@@ -472,7 +619,7 @@ async function resendOtpCode(ctx: TwoFactorContext, provider: Provider): Promise
 
     const pending = getPendingTwoFactor(interaction);
 
-    if (!pending || pending.method !== 'email') {
+    if (!pending || pending.purpose !== 'challenge' || pending.method !== 'email') {
       ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
       return;
     }
@@ -569,27 +716,41 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
     const csrfToken = generateCsrfToken();
     setCsrfCookie(ctx, csrfToken);
 
-    // Check for existing pending TOTP setup (avoids regenerating on page reload/error retry)
-    const existingSetup = await getPendingTotpSetupInfo(
-      pending.pendingAccountId,
-      pending.email,
-      org.slug,
-    );
+    const resolved = await resolveSetupAuthority(org, pending);
+    if (!resolved) {
+      // Challenge first, or restart an interaction whose policy no longer needs setup.
+      ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
+      return;
+    }
+    const { authority: setup, user } = resolved;
+    const allowTotp = setup.methods.includes('totp');
+    const allowEmail = setup.methods.includes('email');
 
-    let qrCodeDataUri: string;
-    let totpSecret: string;
+    let qrCodeDataUri: string | undefined;
+    let totpSecret: string | undefined;
     let recoveryCodes: string[] | undefined;
 
-    if (existingSetup) {
-      // Reuse existing pending setup — don't regenerate the secret
-      qrCodeDataUri = existingSetup.qrCodeDataUri;
-      totpSecret = existingSetup.totpUri?.split('secret=')[1]?.split('&')[0] ?? '';
-    } else {
-      // No pending setup — generate a fresh one
-      const setupResult = await setupTotp(pending.pendingAccountId, pending.email, org.slug);
-      qrCodeDataUri = setupResult.qrCodeDataUri!;
-      totpSecret = setupResult.totpUri?.split('secret=')[1]?.split('&')[0] ?? '';
-      recoveryCodes = setupResult.recoveryCodes;
+    if (allowTotp) {
+      const existingSetup = await getPendingTotpSetupInfo(
+        user.id,
+        pending.email,
+        org.slug,
+        { allowReplaceExisting: setup.allowReplaceExisting },
+      );
+
+      if (existingSetup) {
+        // Reuse existing pending setup — don't regenerate the secret
+        qrCodeDataUri = existingSetup.qrCodeDataUri;
+        totpSecret = existingSetup.totpUri?.split('secret=')[1]?.split('&')[0] ?? '';
+      } else {
+        // No pending setup — generate a fresh one
+        const setupResult = await setupTotp(user.id, pending.email, org.slug, {
+          allowReplaceExisting: setup.allowReplaceExisting,
+        });
+        qrCodeDataUri = setupResult.qrCodeDataUri!;
+        totpSecret = setupResult.totpUri?.split('secret=')[1]?.split('&')[0] ?? '';
+        recoveryCodes = setupResult.recoveryCodes;
+      }
     }
 
     // Check for error indicator from failed verification redirect
@@ -604,7 +765,9 @@ async function showTwoFactorSetup(ctx: TwoFactorContext, provider: Provider): Pr
         params: {} as Record<string, unknown>,
         client: { clientName: '' },
       },
-      method: 'totp',
+      method: setup.target ?? 'totp',
+      allowTotp,
+      allowEmail,
       qrCodeDataUri,
       totpSecret,
       recoveryCodes,
@@ -635,8 +798,6 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
   const code = (body.code ?? '').trim();
   const submittedCsrf = body._csrf ?? '';
   const storedCsrf = getCsrfFromCookie(ctx) ?? '';
-  // setupMethod determines whether to use TOTP or email OTP for setup
-  const setupMethod = body.setupMethod ?? 'totp';
 
   try {
     const interaction = await provider.interactionDetails(ctx.req, ctx.res);
@@ -671,13 +832,36 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       return;
     }
 
+    const resolved = await resolveSetupAuthority(org, pending);
+    if (!resolved) {
+      ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
+      return;
+    }
+    const { authority: setup, user } = resolved;
+    const requestedMethod = body.setupMethod;
+    const setupMethod =
+      requestedMethod === 'email' || requestedMethod === 'totp'
+        ? requestedMethod
+        : (setup.target ?? 'totp');
+    if (!setup.methods.includes(setupMethod)) {
+      ctx.status = 400;
+      ctx.body = 'Two-factor setup method is not allowed';
+      return;
+    }
+
     if (setupMethod === 'email') {
-      // Email OTP setup — just enable it (no confirmation code needed)
-      await setupEmailOtp(pending.pendingAccountId, org.id);
+      // Email OTP setup — enable it, then prove the mailbox. A migration keeps the previous
+      // verified TOTP row until the mailbox is proven, so a delivery failure cannot lock the
+      // user out of their existing factor.
+      const preserveTotp = setup.allowReplaceExisting;
+      await setupEmailOtp(user.id, org.id, {
+        allowReplaceExisting: setup.allowReplaceExisting,
+        preserveExistingTotp: preserveTotp,
+      });
 
       writeAuditLog({
         organizationId: org.id,
-        userId: pending.pendingAccountId,
+        userId: user.id,
         eventType: '2fa.setup.email.complete',
         eventCategory: 'authentication',
         description: '2FA email OTP setup completed during login',
@@ -686,14 +870,13 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
 
       // Now send the first OTP and redirect to verification
       try {
-        const otpCode = await sendOtpCode(pending.pendingAccountId, pending.email, org.id);
-        const user = await findUserById(pending.pendingAccountId);
+        const otpCode = await sendOtpCode(user.id, pending.email, org.id);
         sendOtpCodeEmail(
           {
-            id: pending.pendingAccountId,
+            id: user.id,
             email: pending.email,
-            givenName: user?.givenName,
-            familyName: user?.familyName,
+            givenName: user.givenName,
+            familyName: user.familyName,
           },
           org,
           otpCode,
@@ -704,12 +887,19 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
         logger.warn({ event: 'two-factor-setup-otp-failed' }, 'Setup OTP delivery failed');
       }
 
-      // Update the interaction pending method to email
+      // The mailbox factor is now the challenge; login completes only after OTP verification.
       await provider.interactionResult(
         ctx.req,
         ctx.res,
         {
-          twoFactor: { ...pending, method: 'email' },
+          twoFactor: {
+            ...pending,
+            purpose: 'challenge',
+            method: 'email',
+            requiredMethod: 'email',
+            challengeVerified: true,
+            ...(preserveTotp ? { preserveTotp: true } : {}),
+          },
         },
         { mergeWithLastSubmission: true },
       );
@@ -754,7 +944,9 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
 
     let confirmed: boolean;
     try {
-      confirmed = await confirmTotpSetup(pending.pendingAccountId, code);
+      confirmed = await confirmTotpSetup(user.id, code, {
+        allowReplaceExisting: setup.allowReplaceExisting,
+      });
     } catch (error) {
       if (error instanceof UnsupportedTotpConfigurationError) {
         logUnsupportedTotpConfiguration();
@@ -784,6 +976,30 @@ async function processTwoFactorSetup(ctx: TwoFactorContext, provider: Provider):
       });
       // Redirect back to setup with error indicator
       ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup?error=invalid_code`);
+      return;
+    }
+
+    // Revalidate current persisted enrollment and policy before completing login. A concurrent
+    // administrative reset or policy change must not be satisfied by the stale interaction.
+    const currentUser = await findUserById(user.id);
+    const currentPlan = currentUser ? resolveTwoFactorPlan(org, currentUser) : null;
+    if (
+      !currentPlan ||
+      !currentUser ||
+      currentPlan.action !== 'challenge' ||
+      currentPlan.requiredMethod !== null ||
+      currentPlan.challengeMethod !== currentUser.twoFactorMethod
+    ) {
+      writeAuditLog({
+        organizationId: org.id,
+        userId: user.id,
+        eventType: '2fa.setup.stale',
+        eventCategory: 'security',
+        description: 'Two-factor setup no longer matches current enrollment or policy',
+        ipAddress: ctx.ip,
+      });
+      ctx.status = 400;
+      ctx.body = 'Interaction expired';
       return;
     }
 
@@ -844,6 +1060,7 @@ async function renderTotpSetupWithError(
     pending.pendingAccountId,
     pending.email,
     ctx.state.organization.slug,
+    { allowReplaceExisting: pending.purpose === 'migration' },
   );
   if (!setup) {
     throw new Error('Pending TOTP setup is unavailable');
@@ -861,6 +1078,8 @@ async function renderTotpSetupWithError(
       client: { clientName: '' },
     },
     method: 'totp',
+    allowTotp: true,
+    allowEmail: false,
     qrCodeDataUri: setup.qrCodeDataUri,
     totpSecret: setup.totpSecret,
     flash: { error: errorMessage },

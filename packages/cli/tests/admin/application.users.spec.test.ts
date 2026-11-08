@@ -5,6 +5,9 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ADMIN_COMMANDS } from '../../src/admin/presentation.js';
 import type { AdminConnectionState } from '../../src/admin/state.js';
+import type { AdminApplicationOperations } from '../../src/admin/application-service.js';
+import type { AdminInviteRoleSource } from '../../src/admin/invite-role-dialog.js';
+import type { AdminRbacOperations } from '../../src/admin/rbac-service.js';
 import type { AdminUserOperations } from '../../src/admin/user-service.js';
 import type { AdminUserViewState } from '../../src/admin/user-state.js';
 import {
@@ -114,6 +117,8 @@ function harness(
     readonly state?: AdminConnectionState;
     readonly operations?: Partial<AdminUserOperations>;
     readonly dialogs?: Partial<AdminUserControllerDialogs>;
+    readonly rbac?: AdminRbacOperations;
+    readonly applications?: Pick<AdminApplicationOperations, 'listAll'>;
     readonly applicationBusy?: boolean;
   } = {},
 ) {
@@ -159,6 +164,8 @@ function harness(
     host: application,
     readState: () => state,
     readOperations: () => operations,
+    readRbacOperations: () => overrides.rbac,
+    readApplicationOperations: () => overrides.applications,
     mountWorkspace: (content) => mounted.push(content),
     isApplicationBusy: () => overrides.applicationBusy === true,
     setDialogBusy: (value) => busy.push(value),
@@ -426,6 +433,151 @@ describe('admin user workflow', () => {
 
     expect(mounted.requestAuthentication).toHaveBeenCalledOnce();
     expect(mounted.mounted.at(-1)).toBeNull();
+  });
+
+  it('should pass the role source only when all three required capabilities are present', async () => {
+    const listAll = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
+    const listRoles = vi.fn().mockResolvedValue({ kind: 'success', value: [] });
+    const sources: Array<AdminInviteRoleSource | undefined> = [];
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: true,
+          canReadRoles: true,
+        },
+      }),
+      rbac: { listRoles } as unknown as AdminRbacOperations,
+      applications: { listAll },
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          sources.push(source);
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+
+    expect(sources[0]).toBeDefined();
+    await sources[0]?.listApplications();
+    expect(listAll).toHaveBeenCalledOnce();
+    await sources[0]?.listRoles('33333333-3333-4333-8333-333333333333');
+    expect(listRoles).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ['application read', { canAssignRoles: true, canReadApplications: false, canReadRoles: true }],
+    ['role assign', { canAssignRoles: false, canReadApplications: true, canReadRoles: true }],
+    ['role read', { canAssignRoles: true, canReadApplications: true, canReadRoles: false }],
+  ])('should omit the role source when %s capability is missing', async (_label, capabilities) => {
+    const sources: Array<AdminInviteRoleSource | undefined> = [];
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          ...capabilities,
+        },
+      }),
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          sources.push(source);
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+
+    expect(sources[0]).toBeUndefined();
+  });
+
+  it('should quarantine a late catalog 401 after session replacement', async () => {
+    let resolveRoles: ((value: { kind: 'session-invalid' }) => void) | undefined;
+    const roleRead = new Promise<{ kind: 'session-invalid' }>((resolve) => {
+      resolveRoles = resolve;
+    });
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: true,
+          canReadRoles: true,
+        },
+      }),
+      rbac: { listRoles: vi.fn(async () => roleRead) } as unknown as AdminRbacOperations,
+      applications: {
+        listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
+      },
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          await source?.listRoles('33333333-3333-4333-8333-333333333333');
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+    mounted.controller.syncContext(authenticated(), 2);
+    resolveRoles?.({ kind: 'session-invalid' });
+    await settle();
+
+    expect(mounted.requestAuthentication).not.toHaveBeenCalled();
+  });
+
+  it('should omit the role source when a required operations seam is absent', async () => {
+    const sources: Array<AdminInviteRoleSource | undefined> = [];
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: true,
+          canReadRoles: true,
+        },
+      }),
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          sources.push(source);
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+
+    expect(sources[0]).toBeUndefined();
+  });
+
+  it('should enter authentication when a role catalog read loses the session', async () => {
+    const mounted = harness({
+      state: authenticated({
+        capabilities: {
+          ...authenticated().capabilities,
+          canAssignRoles: true,
+          canReadApplications: true,
+          canReadRoles: true,
+        },
+      }),
+      rbac: {
+        listRoles: vi.fn().mockResolvedValue({ kind: 'session-invalid' }),
+      } as unknown as AdminRbacOperations,
+      applications: {
+        listAll: vi.fn().mockResolvedValue({ kind: 'success', value: [] }),
+      },
+      dialogs: {
+        invite: vi.fn(async (_host, _signal, _preview, source) => {
+          await source?.listRoles('33333333-3333-4333-8333-333333333333');
+          return { kind: 'cancel' };
+        }),
+      },
+    });
+    mounted.controller.handleCommand(ADMIN_COMMANDS.inviteUser);
+    await settle();
+
+    expect(mounted.requestAuthentication).toHaveBeenCalledOnce();
   });
 
   it('should quarantine a late invitation-preview 401 after session replacement', async () => {

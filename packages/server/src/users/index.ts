@@ -39,6 +39,7 @@ export {
   checkAutoUnlock,
   findUserForOidc,
 } from './service.js';
+export { isServiceAccount } from './service-account-guard.js';
 
 // Invitation acceptance (deferred user creation)
 export { acceptInvitation } from './invitation-service.js';

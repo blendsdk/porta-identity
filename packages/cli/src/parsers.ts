@@ -8,6 +8,9 @@
  * @module parsers
  */
 
+import type { InviteUserInput } from '@portaidentity/sdk';
+import { LocalInputError } from './error-format.js';
+
 // ---------------------------------------------------------------------------
 // Login Methods Parser
 // ---------------------------------------------------------------------------
@@ -176,6 +179,92 @@ export function parseRoleAssignments(values?: string[]): RolePreAssignment[] | u
 
     return { applicationId, roleId };
   });
+}
+
+/**
+ * Reject non-finite numbers in parsed JSON without recursive traversal.
+ * JSON.parse creates only plain arrays/objects, so reading their own values cannot invoke
+ * user-defined code. A worklist handles deep input without exhausting the JavaScript stack.
+ */
+function validateFiniteClaimValue(value: unknown, position: number): void {
+  const pending: unknown[] = [value];
+  while (pending.length > 0) {
+    const current = pending.pop();
+    if (typeof current === 'number' && !Number.isFinite(current)) {
+      throw new LocalInputError(`--claim ${position} must contain only finite JSON numbers.`);
+    }
+    if (current !== null && typeof current === 'object') {
+      for (const child of Object.values(current)) pending.push(child);
+    }
+  }
+}
+
+/**
+ * Parse ordered repeatable application/claim/JSON assignments before creating an SDK client.
+ * Only the first two colons separate fields; all remaining text belongs to the JSON value.
+ * Identifier spelling is retained, while duplicate detection is case-insensitive.
+ *
+ * @param values - Raw flag values; omitted or empty arrays add no claims
+ * @returns Explicit claim records in input order, or undefined when omitted
+ * @throws LocalInputError for malformed values, duplicate pairs or non-finite JSON numbers
+ * @example
+ * parseClaimAssignments(['11111111-1111-4111-8111-111111111111:22222222-2222-4222-8222-222222222222:"Engineering:West"'])
+ */
+export function parseClaimAssignments(values?: string[]): InviteUserInput['claims'] {
+  if (values === undefined) return undefined;
+  if (!Array.isArray(values)) throw new LocalInputError('--claim 1 must contain an assignment.');
+  if (values.length === 0) return undefined;
+
+  const seen = new Set<string>();
+  return values.map((assignment: unknown, index) => {
+    const position = index + 1;
+    if (typeof assignment !== 'string') {
+      throw new LocalInputError(`--claim ${position} must contain a string assignment.`);
+    }
+    const first = assignment.indexOf(':');
+    const second = first < 0 ? -1 : assignment.indexOf(':', first + 1);
+    if (first < 0 || second < 0) {
+      throw new LocalInputError(
+        `--claim ${position} must use <application-id>:<claim-definition-id>:<json>.`,
+      );
+    }
+    const applicationId = assignment.slice(0, first).trim();
+    const claimDefinitionId = assignment.slice(first + 1, second).trim();
+    if (!UUID.test(applicationId) || !UUID.test(claimDefinitionId)) {
+      throw new LocalInputError(`--claim ${position} must contain two valid UUIDs.`);
+    }
+    let value: unknown;
+    try {
+      value = JSON.parse(assignment.slice(second + 1));
+    } catch {
+      throw new LocalInputError(`--claim ${position} must contain valid JSON.`);
+    }
+    validateFiniteClaimValue(value, position);
+    const pair = `${applicationId.toLowerCase()}:${claimDefinitionId.toLowerCase()}`;
+    if (seen.has(pair)) {
+      throw new LocalInputError(`--claim ${position} repeats an application and claim pair.`);
+    }
+    seen.add(pair);
+    // Never merge the parsed value into request options: prototype-like keys stay nested data.
+    return { applicationId, claimDefinitionId, value };
+  });
+}
+
+/**
+ * Check that ordinary JSON encoding can handle the complete prepared SDK invitation request.
+ * Wrapper nesting matters: a parsed claim may be too deep when placed inside the request.
+ * The encoded body is discarded; the caller dispatches the same plain input through the SDK.
+ *
+ * @param input - Complete invitation input, including recipient and all optional fields
+ * @throws LocalInputError when ordinary JSON.stringify cannot encode the full request
+ * @example validateInvitationEncoding({ organizationId: 'org-id', email: 'person@example.com' })
+ */
+export function validateInvitationEncoding(input: InviteUserInput): void {
+  try {
+    JSON.stringify(input);
+  } catch {
+    throw new LocalInputError('The invitation input cannot be encoded as JSON.');
+  }
 }
 
 // ---------------------------------------------------------------------------

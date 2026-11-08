@@ -27,14 +27,16 @@ import Router from '@koa/router';
 import { z } from 'zod';
 import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
-import { ADMIN_PERMISSIONS, ALL_ADMIN_ROLES } from '../lib/admin-permissions.js';
+import { ADMIN_PERMISSIONS, ALL_ADMIN_ROLES, SERVICE_ACCOUNT_ROLE_DEFINITION } from '../lib/admin-permissions.js';
 import { getApplicationBySlug } from '../applications/service.js';
 import * as roleService from '../rbac/role-service.js';
 import * as userRoleService from '../rbac/user-role-service.js';
 import { RoleNotFoundError, PermissionNotFoundError, RbacValidationError } from '../rbac/errors.js';
 
 const ADMIN_APPLICATION_SLUG = 'porta-admin';
-const ADMIN_ROLE_SLUGS = new Set(ALL_ADMIN_ROLES.map((role) => role.slug));
+const ADMIN_ROLE_SLUGS = new Set([
+  ...ALL_ADMIN_ROLES.map((role) => role.slug), SERVICE_ACCOUNT_ROLE_DEFINITION.slug,
+]);
 
 // ---------------------------------------------------------------------------
 // Validation schemas

@@ -33,6 +33,21 @@ vi.mock('../../../src/clients/validators.js', () => ({
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
 }));
+vi.mock('../../../src/lib/database.js', () => {
+  const database = {
+    query: async (sql: string, values: readonly unknown[]) => {
+      if (sql === 'SELECT id FROM clients WHERE id = $1 FOR UPDATE') return { rows: [{ id: values[0] }] };
+      if (sql.includes('SELECT EXISTS (SELECT 1 FROM client_service_accounts')) return { rows: [{ present: false }] };
+      throw new Error('Unexpected query in ordinary client fixture');
+    },
+  };
+  return {
+    getPool: () => database,
+    getDatabaseTransactionClient: () => database,
+    runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+    afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
+  };
+});
 
 vi.mock('../../../src/applications/service.js', () => ({
   getApplicationById: vi.fn(),
@@ -44,6 +59,10 @@ vi.mock('../../../src/organizations/service.js', () => ({
 
 vi.mock('../../../src/clients/secret-service.js', () => ({
   verify: vi.fn(),
+}));
+
+vi.mock('../../../src/rbac/admin-authority-ceiling.js', () => ({
+  getCanonicalAdminPermissions: vi.fn(),
 }));
 
 vi.mock('../../../src/clients/secret-repository.js', () => ({
@@ -69,6 +88,8 @@ import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import { getApplicationById } from '../../../src/applications/service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
 import { verify } from '../../../src/clients/secret-service.js';
+import { getCanonicalAdminPermissions } from '../../../src/rbac/admin-authority-ceiling.js';
+import { ALL_ADMIN_PERMISSIONS } from '../../../src/lib/admin-permissions.js';
 import {
   createClient,
   getClientById,
@@ -200,6 +221,48 @@ describe('client service', () => {
       await expect(createClient(createTestInput())).rejects.toThrow('Application is not active');
     });
 
+    it('should reject a delegated administrator creating a canonical Admin client', async () => {
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeOrg,
+        isSuperAdmin: true,
+      });
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeApp,
+        slug: 'porta-admin',
+      });
+      (getCanonicalAdminPermissions as ReturnType<typeof vi.fn>).mockResolvedValue(
+        new Set(['admin:client:create', 'admin:app:read']),
+      );
+
+      await expect(createClient(createTestInput(), 'app-admin')).rejects.toMatchObject({
+        name: 'ControlPlaneClientAuthorityError',
+        status: 403,
+      });
+      expect(insertClient).not.toHaveBeenCalled();
+    });
+
+    it('should allow a full Super Admin to create a canonical Admin client', async () => {
+      const client = createTestClient({ organizationId: 'org-admin', applicationId: 'app-admin' });
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeOrg,
+        id: 'org-admin',
+        isSuperAdmin: true,
+      });
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeApp,
+        id: 'app-admin',
+        slug: 'porta-admin',
+      });
+      (getCanonicalAdminPermissions as ReturnType<typeof vi.fn>).mockResolvedValue(
+        new Set(ALL_ADMIN_PERMISSIONS),
+      );
+      (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      await expect(createClient(createTestInput(), 'super-admin')).resolves.toMatchObject({
+        client,
+      });
+    });
+
     it('should throw when redirect URIs are invalid', async () => {
       (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeOrg);
       (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeApp);
@@ -325,6 +388,9 @@ describe('client service', () => {
   describe('updateClient', () => {
     it('should update and invalidate+re-cache', async () => {
       const updated = createTestClient({ clientName: 'Renamed App' });
+      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeOrg);
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeApp);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
 
       const result = await updateClient(
@@ -720,6 +786,7 @@ describe('client service', () => {
     it('passes null through when clearing the override explicitly', async () => {
       const before = createTestClient({ loginMethods: ['password'] });
       const after = createTestClient({ loginMethods: null });
+      vi.mocked(findClientById).mockResolvedValue(before);
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 
@@ -734,6 +801,7 @@ describe('client service', () => {
     it('normalizes a non-empty array before update', async () => {
       const before = createTestClient({ loginMethods: null });
       const after = createTestClient({ loginMethods: ['magic_link', 'password'] });
+      vi.mocked(findClientById).mockResolvedValue(before);
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 
@@ -757,6 +825,7 @@ describe('client service', () => {
     it('audit log records previous → new transition when field changes', async () => {
       const before = createTestClient({ loginMethods: ['password'] });
       const after = createTestClient({ loginMethods: ['password', 'magic_link'] });
+      vi.mocked(findClientById).mockResolvedValue(before);
       (getCachedClientById as ReturnType<typeof vi.fn>).mockResolvedValue(before);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(after);
 

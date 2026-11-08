@@ -253,9 +253,10 @@ export async function sendPasswordResetEmail(
  * Delivery outcome reported after one invitation email attempt.
  *
  * `sent` means the configured transport accepted the message. `failed` means rendering or transport
- * failed after the audit record was written. Neither outcome changes the already-created invitation.
+ * failed after the audit record was written. Bound invitations can also report `unknown` when the
+ * recipient acknowledgement is absent or contradictory. No outcome undoes a committed invitation.
  */
-export type InvitationEmailDelivery = 'sent' | 'failed';
+export type InvitationEmailDelivery = 'sent' | 'failed' | 'unknown';
 
 /**
  * Optional parameters for enhanced invitation emails.
@@ -264,6 +265,8 @@ export type InvitationEmailDelivery = 'sent' | 'failed';
  * metadata display in the invitation email.
  */
 export interface InvitationEmailOptions {
+  /** Internal bound-invitation reporting; ordinary callers preserve historical transport semantics. */
+  reportRecipientAcknowledgement?: boolean;
   /** Configured invitation lifetime in seconds; rendered as a human-readable expiry */
   expiresInSeconds: number;
   /** Optional personal message from the admin (HTML-escaped before rendering) */
@@ -388,7 +391,7 @@ async function buildInvitationContext(
  * @param inviteUrl - Full URL the user clicks to accept the invitation
  * @param locale - Explicit invitation language; missing/unsupported input uses current defaults
  * @param options - Required expiry plus optional personal message and inviter name
- * @returns `sent` when the transport accepted the message, otherwise `failed`
+ * @returns Delivery outcome; recipient acknowledgement is inspected only with the internal opt-in.
  * @example
  * await sendInvitationEmail(recipient, organization, inviteUrl, 'nl', { expiresInSeconds: 604800 });
  */
@@ -409,25 +412,44 @@ export async function sendInvitationEmail(
     );
     const { html, text } = await renderEmail('invitation', org.slug, context);
 
-    await getTransport().send({
+    const acknowledgement = await getTransport().send({
       to: user.email,
       subject,
       html,
       text,
     });
 
+    if (options.reportRecipientAcknowledgement) {
+      const accepted = acknowledgement.accepted.includes(user.email);
+      const rejected = acknowledgement.rejected.includes(user.email);
+      if (!accepted || rejected) {
+        const delivery = rejected && !accepted ? 'failed' : 'unknown';
+        writeAuditLog({ organizationId: org.id, eventType: `email.send.${delivery}`,
+          eventCategory: 'auth', metadata: { invitationId: options.invitationId } });
+        return delivery;
+      }
+    }
+
     writeAuditLog({
       organizationId: org.id,
       userId: user.id,
       eventType: 'email.send.invitation',
       eventCategory: 'auth',
-      description: `Invitation email sent to ${user.email}`,
+      description: options.reportRecipientAcknowledgement ? 'Invitation email sent' : `Invitation email sent to ${user.email}`,
       metadata: options?.invitationId ? { invitationId: options.invitationId } : undefined,
     });
 
-    logger.debug({ userId: user.id, email: user.email }, 'Invitation email sent');
+    if (!options.reportRecipientAcknowledgement) {
+      logger.debug({ userId: user.id, email: user.email }, 'Invitation email sent');
+    }
     return 'sent';
   } catch (error) {
+    if (options.reportRecipientAcknowledgement) {
+      logger.warn({ event: 'invitation-email-failed', invitationId: options.invitationId }, 'Invitation email delivery failed');
+      writeAuditLog({ organizationId: org.id, eventType: 'email.send.failed', eventCategory: 'auth',
+        metadata: { invitationId: options.invitationId, template: 'invitation' } });
+      return 'failed';
+    }
     logger.warn({ error, userId: user.id, email: user.email }, 'Failed to send invitation email');
     writeAuditLog({
       organizationId: org.id,

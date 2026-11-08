@@ -91,6 +91,7 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -126,16 +127,12 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
             } else {
               printTable(
                 ['ID', 'Name', 'Type', 'Created'],
-                result.data.map((c) => [
-                  c.id,
-                  c.claimName,
-                  c.claimType,
-                  formatDate(c.createdAt),
-                ]),
+                result.data.map((c) => [c.id, c.claimName, c.claimType, formatDate(c.createdAt)]),
               );
               info(`Total: ${result.total} claim definitions`);
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -177,6 +174,7 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
             }
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },
@@ -198,19 +196,20 @@ export const appClaimCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               description: 'Claim definition ID',
             }),
         async (argv) => {
-            try {
-              const client = createClient(argv);
-              const claim = await client.customClaims.get(argv['app-id'], argv['claim-id']);
-              const confirmed = await confirm(
-                `Keep claim "${claim.claimName}" (${claim.claimType}), or Delete ${claim.claimName}? This permanently deletes its user values.`,
-              );
-              if (!confirmed) {
-                warn('Operation cancelled');
-                return;
-              }
-              await client.customClaims.delete(argv['app-id'], argv['claim-id']);
-              success(`Claim definition deleted: ${claim.claimName} (${claim.claimType})`);
+          try {
+            const client = createClient(argv);
+            const claim = await client.customClaims.get(argv['app-id'], argv['claim-id']);
+            const confirmed = await confirm(
+              `Keep claim "${claim.claimName}" (${claim.claimType}), or Delete ${claim.claimName}? This permanently deletes its user values.`,
+            );
+            if (!confirmed) {
+              warn('Operation cancelled');
+              return;
+            }
+            await client.customClaims.delete(argv['app-id'], argv['claim-id']);
+            success(`Claim definition deleted: ${claim.claimName} (${claim.claimType})`);
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

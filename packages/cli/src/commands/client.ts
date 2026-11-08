@@ -18,6 +18,7 @@
  *   porta client login-methods set <client-id> --methods "password,magic_link"
  *   porta client login-methods clear <client-id>
  *   porta client secret <subcommand> ...
+ *   porta client service-account get|set|revoke <client-id>
  *
  * @module commands/client
  */
@@ -31,6 +32,7 @@ import { printTable, printJson, success, warn, info, formatDate } from '../outpu
 import { confirm } from '../prompt.js';
 import { parseLoginMethodsFlag, parseCommaSeparated } from '../parsers.js';
 import { clientSecretCommand } from './client-secret.js';
+import { clientServiceAccountCommand } from './client-service-account.js';
 
 // ---------------------------------------------------------------------------
 // Argument type extensions
@@ -183,6 +185,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 }
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -252,6 +255,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 }
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -306,6 +310,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -371,6 +376,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 success(`Client updated: ${updated.clientName} (${updated.clientId})`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -393,6 +399,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.clients.activate(current.id);
               success(`Client activated: ${current.clientName} (${current.clientId})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -424,6 +431,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.clients.deactivate(current.id);
               success(`Client deactivated: ${current.clientName} (${current.clientId})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -453,6 +461,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.clients.delete(c.id);
               success(`Client deleted: ${c.clientName} (${c.clientId})`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -492,6 +501,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 );
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -529,6 +539,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       info(`Login methods for ${c.clientName}: ${display}`);
                     }
                   } catch (err) {
+                    if (argv.json) handleError(err, argv.verbose, true);
                     handleError(err, argv.verbose);
                   }
                 },
@@ -564,6 +575,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
                     success(`Login methods set for ${current.clientName}: ${argv.methods}`);
                   } catch (err) {
+                    if (argv.json) handleError(err, argv.verbose, true);
                     handleError(err, argv.verbose);
                   }
                 },
@@ -594,6 +606,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                       `Login methods cleared for ${current.clientName} (will inherit from org)`,
                     );
                   } catch (err) {
+                    if (argv.json) handleError(err, argv.verbose, true);
                     handleError(err, argv.verbose);
                   }
                 },
@@ -604,9 +617,10 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
         // ── nested subcommand groups ────────────────────────────────────
         .command(clientSecretCommand)
+        .command(clientServiceAccountCommand)
         .demandCommand(
           1,
-          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret',
+          'Specify a client subcommand: create, list, get, update, activate, deactivate, delete, history, login-methods, secret, service-account',
         )
     );
   },

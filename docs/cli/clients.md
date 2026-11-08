@@ -175,3 +175,29 @@ porta client login-methods clear --client-id <id>
 ```
 
 Removes the client-specific override, causing the client to inherit login methods from its organization.
+
+## Service-account bindings
+
+Manage the invitation-only machine binding of one client. These commands use your existing human
+administrator login; they never obtain or save a machine credential, never read the binding before
+a replacement, and never retry a mutation.
+
+```bash
+porta client service-account get <client-id>
+porta client service-account set <client-id> --policy-file ./service-account.json [--email service.account@example.com]
+porta client service-account revoke <client-id>
+```
+
+`--policy-file` is a UTF-8 JSON document `{targets:[...]}` of at most 100 KiB. The CLI validates
+shape, UUIDs, email, counts and duplicates before it contacts the server; failures exit with the
+normal validation status and do not echo the path or file content.
+
+`--email` is required for the first binding and is immutable afterwards. A replacement sends the
+complete policy; omitted organizations are removed. The first binding and an explicit restoration
+retire existing client secrets, so create the replacement secret afterwards with
+`porta client secret generate`.
+
+`--json` prints the unwrapped binding for get/set and exactly
+`{"clientId":"<internal UUID>","status":"revoked"}` for a successful revoke, including a repeated
+revoke. Human output sanitizes control characters without truncating long values. No secret,
+internal authorization version or machine token appears in either mode.

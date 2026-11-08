@@ -34,9 +34,12 @@ import {
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { logger } from '../lib/logger.js';
 import { getOrganizationById } from '../organizations/service.js';
+import { requireCanonicalRoleDelegation } from '../rbac/admin-role-delegation.js';
 import { RoleDelegationError } from '../rbac/errors.js';
 import { getPermissionsForRole } from '../rbac/role-service.js';
 import { getUserByEmail } from './service.js';
+import type { ServiceAccountAuthority } from '../service-accounts/index.js';
+import { serviceAccountAuditMetadata } from '../service-accounts/index.js';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -140,6 +143,8 @@ export interface InviteUserOptions {
    * Tenant callers set this to the token client's application.
    */
   readonly allowedApplicationId?: string;
+  /** Trusted authority supplied only by validated bound-account dispatch, never request JSON. */
+  readonly serviceAccountAuthority?: ServiceAccountAuthority;
 }
 
 /** Delivery outcome returned to invitation callers. */
@@ -216,10 +221,14 @@ export async function validatePreAssignments(
   }
 
   for (const role of requestedRoles) {
-    const result = await pool.query('SELECT id FROM roles WHERE id = $1 AND application_id = $2', [
-      role.roleId,
-      role.applicationId,
-    ]);
+    // This path creates ordinary humans, not dedicated identities. A matching slug in an
+    // unrelated application remains ordinary; only the canonical machine membership is excluded.
+    const result = await pool.query(
+      `SELECT role.id FROM roles role JOIN applications application ON application.id = role.application_id
+       WHERE role.id = $1 AND role.application_id = $2
+         AND NOT (application.slug = 'porta-admin' AND role.slug = 'porta-invite-service')`,
+      [role.roleId, role.applicationId],
+    );
     if (result.rows.length === 0) errors.push('A role does not belong to its application');
   }
 
@@ -287,6 +296,16 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
   );
   if (preAssignmentErrors.length > 0) throw new InvitePreAssignmentError();
 
+  // Canonical Admin roles carry a code-defined permission set. An invitation must never grant a
+  // role that exceeds the actor's own authority, whether the actor is a human administrator or a
+  // bound machine account. Ordinary roles remain governed by their existing ownership checks.
+  if (input.roles?.length) {
+    await requireCanonicalRoleDelegation(
+      input.roles.map((role) => role.roleId),
+      actor.permissions ?? new Set<string>(),
+    );
+  }
+
   if (allowedApplicationId && actor.permissions) {
     await requireRolesWithinPermissionSet(
       allowedApplicationId,
@@ -345,6 +364,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
           preAssignedRoles: input.roles?.length ?? 0,
           preAssignedClaims: input.claims?.length ?? 0,
           actorKind: actor.kind,
+          ...(options.serviceAccountAuthority ? serviceAccountAuditMetadata(options.serviceAccountAuthority) : {}),
           ...(actor.kind === 'service' && actor.clientId
             ? { serviceClientId: actor.clientId }
             : {}),
@@ -354,6 +374,7 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
       const emailOptions: InvitationEmailOptions = {
         invitationId: invitation.id,
         expiresInSeconds: invitationTtl,
+        ...(options.serviceAccountAuthority ? { reportRecipientAcknowledgement: true } : {}),
       };
       if (input.personalMessage) emailOptions.personalMessage = input.personalMessage;
       emailOptions.inviterName = actor.displayName;
@@ -390,8 +411,10 @@ export async function inviteUser(options: InviteUserOptions): Promise<InviteUser
   return {
     invitationId,
     email: input.email,
-    invitationSent: deliveryOutcome.value === 'sent',
-    emailDelivery: deliveryOutcome.value,
+    // The outer Admin transaction may still own commit and SMTP. Getters preserve the holder
+    // until actual response serialization, without adding another callback or response framework.
+    get invitationSent() { return deliveryOutcome.value === 'sent'; },
+    get emailDelivery() { return deliveryOutcome.value; },
     expiresAt: expiresAt.toISOString(),
   };
 }

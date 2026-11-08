@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock all dependencies
 vi.mock('../../../src/users/repository.js', () => ({
+  findServiceAccountClassification: vi.fn().mockResolvedValue(false),
+  updateHumanPassword: vi.fn().mockResolvedValue(true),
   insertUser: vi.fn(),
   findUserById: vi.fn(),
   findUserByEmail: vi.fn(),
@@ -38,6 +40,10 @@ vi.mock('../../../src/lib/database.js', () => ({
   runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
   getDatabaseTransactionClient: () => ({ query: vi.fn() }),
   afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
+}));
+
+vi.mock('../../../src/rbac/admin-authority-ceiling.js', () => ({
+  requireActorMayManageUser: vi.fn().mockResolvedValue(undefined),
 }));
 
 import * as repo from '../../../src/users/repository.js';
@@ -374,18 +380,13 @@ describe('user service', () => {
   describe('setUserPassword', () => {
     it('should hash and store password', async () => {
       (pw.validatePassword as ReturnType<typeof vi.fn>).mockReturnValue({ isValid: true });
-      (repo.updateUser as ReturnType<typeof vi.fn>).mockResolvedValue(createTestUser());
-
       await setUserPassword('user-uuid-1', 'new_secure_password');
 
       expect(pw.validatePassword).toHaveBeenCalledWith('new_secure_password');
       expect(pw.hashPassword).toHaveBeenCalledWith('new_secure_password');
-      expect(repo.updateUser).toHaveBeenCalledWith(
-        'user-uuid-1',
-        expect.objectContaining({
-          passwordHash: '$argon2id$hashed',
-        }),
-      );
+      expect(repo.updateHumanPassword).toHaveBeenCalledWith('user-uuid-1', '$argon2id$hashed');
+      expect(cache.invalidateUserCache).toHaveBeenCalledWith('user-uuid-1');
+      expect(writeAuditLog).toHaveBeenCalledWith(expect.objectContaining({ eventType: 'user.password.set' }));
     });
 
     it('should reject invalid password length', async () => {

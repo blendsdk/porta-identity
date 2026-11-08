@@ -8,6 +8,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../../src/users/repository.js', () => ({
+  findServiceAccountClassification: vi.fn().mockResolvedValue(false),
   insertUser: vi.fn(),
   findUserById: vi.fn(),
   findUserByEmail: vi.fn(),
@@ -50,7 +51,13 @@ vi.mock('../../../src/lib/audit-log.js', async (importOriginal) => {
 
 vi.mock('../../../src/lib/database.js', () => ({
   getPool: vi.fn(),
-  getDatabaseTransactionClient: () => ({ query: vi.fn() }),
+  getDatabaseTransactionClient: () => ({
+    query: vi.fn(async (sql: string) => {
+      if (sql.includes('LEFT JOIN client_service_accounts')) return { rows: [] };
+      if (sql.includes('UPDATE admin_sessions') || sql.includes('DELETE FROM oidc_payloads')) return { rows: [] };
+      throw new Error('Unexpected query in ordinary user-deletion fixture');
+    }),
+  }),
   runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
   afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
 }));

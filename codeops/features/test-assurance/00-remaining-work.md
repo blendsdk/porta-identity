@@ -14,14 +14,23 @@
 | DEF-21           | Consent is now trust-driven: a per-client `requireConsent` flag (default false) shows the consent page for third-party clients, `prompt=consent` is honored only when a new item is requested, and granted scopes are remembered; see the [def-21-consent-flag](plans/def-21-consent-flag/00-index.md) plan. The SDK/CLI/admin-UI flag surfaces are delivered by the [consent-flag-surfaces](../admin-ui/plans/consent-flag-surfaces/00-index.md) plan; remaining follow-ups: connected-apps list/revoke and resource-server scopes/audience |
 | DEF-8            | Live ST-46 adapter observes all 18 delivered-artifact steps (6 controls + 12 probes) through public HTTP, MailHog, and the admin APIs, and the invitation rejection audit and organization-scoped invitation lookup are fixed. Production-security harness run `666e83dd-2a10-42f3-8849-a2e67ce6df2a` (production-exposure passed=11, product/incomplete/execution failures=0; functional 7/7) records ST-46 failing truthfully at `password-reset-wrong-recipient` (AR-29) with the invitation wrong-recipient and invitation-throttle findings (AR-29/AR-30) recorded rather than weakened; AR-29/AR-30 are corrected by the [st46-delivered-artifact-correction](plans/st46-delivered-artifact-correction/99-execution-plan.md) plan (production-security run `14c4cf25-df3c-464f-8400-fe78241bd295` exits 0 with ST-46 passing); see the [def-8-sequential-use-evidence](plans/def-8-sequential-use-evidence/99-execution-plan.md) plan. Umbrella 8.7c closed 2026-11-01. |
 
-**Program status (2026-11-01):** umbrella 122/123; 8.7c, 9.6b (log obligation) and 9.6c are
-closed; only 8.4/DEF-23 remains; M2 and the named deferred campaigns remain open.
+**Program status (2026-11-07):** umbrella 123/123; no open test-assurance work. DEF-23 is retired
+not planned under AR-116. Statistical timing indistinguishability has not been established and
+remains an explicit limitation; no timing samples are collected or credited. DEF-6 is complete with
+residuals R1–R5 and R7 (R6 retired). M2 and the previously closed campaigns remain named
+limitations, not open work.
 
-## Suggested sequencing
+## Completed and closed campaigns
 
-1. **DEF-3, DEF-6, DEF-22** — protocol and command-signal campaigns.
-2. **DEF-5, DEF-11, DEF-17** — source-variation sensitivity registries.
-3. **Connected-apps list/revoke and resource-server scopes/audience** — remaining DEF-21
-   follow-ups; the SDK/CLI/admin-UI flag surfaces are delivered by the
-   [consent-flag-surfaces](../admin-ui/plans/consent-flag-surfaces/00-index.md) plan.
-4. **DEF-23** — security-authority ruling that gates "fully production ready".
+- **DEF-23** — closed not planned under AR-116. The unapproved statistical timing campaign is
+  retired; functional public equivalence and design-level fixed-work equivalence remain mandatory,
+  and the timing limitation stays explicit in the aggregate registry.
+- **DEF-6** — complete with residuals R1–R5 and R7 (R6 retired) in
+  [the DEF-6 findings](../plans/def-6-observation-completeness/05-findings.md).
+- **DEF-3** — closed not planned under AR-80; the atomic consume defect is fixed and replay-tested.
+- **DEF-22** — closed not planned under AR-108/AR-115; CI promotion is withheld and no assurance
+  command runs in CI.
+- **DEF-5, DEF-11, DEF-17** — closed not planned under AR-81; the program removed disposable source
+  variations.
+- **DEF-20** — no-go tracking; the mutation pilot recorded `runner-incompatible`.
+- **Connected-apps and resource-server follow-ups** — delivered in PRs #222 and #223.

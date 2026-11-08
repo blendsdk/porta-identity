@@ -62,6 +62,7 @@ vi.mock('../../../src/two-factor/repository.js', () => ({
   findActiveOtpCodes: vi.fn().mockResolvedValue([]),
   markOtpCodeUsed: vi.fn().mockResolvedValue(undefined),
   deleteExpiredOtpCodes: vi.fn().mockResolvedValue(0),
+  deleteAllOtpCodes: vi.fn().mockResolvedValue(0),
   countActiveOtpCodes: vi.fn().mockResolvedValue(0),
   insertRecoveryCodes: vi.fn().mockResolvedValue(undefined),
   findUnusedRecoveryCodes: vi.fn().mockResolvedValue([]),
@@ -89,6 +90,7 @@ import {
   setupEmailOtp,
   setupTotp,
   confirmTotpSetup,
+  getPendingTotpSetupInfo,
   sendOtpCode,
   verifyOtp,
   verifyTotp,
@@ -98,6 +100,7 @@ import {
   regenerateRecoveryCodes,
   requiresTwoFactor,
   determineTwoFactorMethod,
+  resolveTwoFactorPlan,
 } from '../../../src/two-factor/service.js';
 import { findUserById, updateUser } from '../../../src/users/repository.js';
 import {
@@ -108,6 +111,7 @@ import {
   findUnusedRecoveryCodes,
   countActiveOtpCodes,
   countUnusedRecoveryCodes,
+  deleteAllOtpCodes,
 } from '../../../src/two-factor/repository.js';
 import { getCachedTwoFactorStatus } from '../../../src/two-factor/cache.js';
 import { verifyOtpCode } from '../../../src/two-factor/otp.js';
@@ -425,6 +429,7 @@ describe('two-factor service', () => {
 
       await disableTwoFactor('user-1');
 
+      expect(deleteAllOtpCodes).toHaveBeenCalledWith('user-1');
       expect(updateUser).toHaveBeenCalledWith('user-1', {
         twoFactorEnabled: false,
         twoFactorMethod: null,
@@ -560,6 +565,98 @@ describe('two-factor service', () => {
           { twoFactorEnabled: false, twoFactorMethod: null },
         ),
       ).toBeNull();
+    });
+  });
+
+  describe('resolveTwoFactorPlan', () => {
+    it('should require the configured method for an unenrolled user', () => {
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_email' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toEqual({ action: 'enroll', challengeMethod: 'email', requiredMethod: 'email' });
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_totp' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toEqual({ action: 'enroll', challengeMethod: 'totp', requiredMethod: 'totp' });
+    });
+
+    it('should allow a method choice only for required_any', () => {
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_any' },
+          { twoFactorEnabled: false, twoFactorMethod: null },
+        ),
+      ).toEqual({ action: 'enroll', challengeMethod: null, requiredMethod: null });
+    });
+
+    it('should challenge an incompatible enrolled factor before migration', () => {
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_totp' },
+          { twoFactorEnabled: true, twoFactorMethod: 'email' },
+        ),
+      ).toEqual({ action: 'challenge', challengeMethod: 'email', requiredMethod: 'totp' });
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_email' },
+          { twoFactorEnabled: true, twoFactorMethod: 'totp' },
+        ),
+      ).toEqual({ action: 'challenge', challengeMethod: 'totp', requiredMethod: 'email' });
+    });
+
+    it('should accept an enrolled factor that satisfies the current policy', () => {
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_any' },
+          { twoFactorEnabled: true, twoFactorMethod: 'email' },
+        ),
+      ).toEqual({ action: 'challenge', challengeMethod: 'email', requiredMethod: null });
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'optional' },
+          { twoFactorEnabled: true, twoFactorMethod: 'totp' },
+        ),
+      ).toEqual({ action: 'challenge', challengeMethod: 'totp', requiredMethod: null });
+    });
+
+    it('should not silently satisfy a required policy with an enabled flag but no method', () => {
+      expect(
+        resolveTwoFactorPlan(
+          { twoFactorPolicy: 'required_email' },
+          { twoFactorEnabled: true, twoFactorMethod: null },
+        ),
+      ).toEqual({ action: 'enroll', challengeMethod: 'email', requiredMethod: 'email' });
+    });
+  });
+
+  // An abandoned TOTP row must never be usable to replace an already enrolled factor.
+  describe('enrollment authority guards', () => {
+    it('should not reveal pending TOTP setup to an enrolled user', async () => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        twoFactorEnabled: true,
+        twoFactorMethod: 'email',
+      } as never);
+
+      await expect(
+        getPendingTotpSetupInfo('user-1', 'user@example.com', 'acme'),
+      ).resolves.toBeNull();
+    });
+
+    it('should not confirm a pending TOTP enrollment for an enrolled user', async () => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: 'user-1',
+        twoFactorEnabled: true,
+        twoFactorMethod: 'email',
+      } as never);
+
+      await expect(confirmTotpSetup('user-1', '123456')).rejects.toThrow(
+        TwoFactorAlreadyEnabledError,
+      );
     });
   });
 });

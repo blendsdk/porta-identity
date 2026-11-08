@@ -32,3 +32,19 @@ export class ClientValidationError extends Error {
     this.name = 'ClientValidationError';
   }
 }
+
+/**
+ * Thrown when a non-Super-Admin attempts to create or modify a control-plane client.
+ *
+ * Carries 403 so the route mapper rejects the operation without revealing the reserved client's
+ * configuration or the actor's missing permissions.
+ */
+export class ControlPlaneClientAuthorityError extends Error {
+  /** HTTP status for the sanitized rejection. */
+  readonly status = 403;
+
+  constructor() {
+    super('Control-plane client management requires full Super Admin authority');
+    this.name = 'ControlPlaneClientAuthorityError';
+  }
+}

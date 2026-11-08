@@ -318,6 +318,35 @@ const porta = createPortaClient({
 });
 ```
 
+## Machine invitations
+
+A bound service-account client can invite through the same SDK client surface using a native
+client-credentials provider. Request the feature scope explicitly; tokens last 300 seconds and have
+no refresh grant.
+
+```typescript
+import { createPortaClient } from '@portaidentity/sdk';
+import { createNodeTransport, createClientCredentialsAuth } from '@portaidentity/sdk/node';
+
+const auth = createClientCredentialsAuth({
+  tokenEndpoint: 'https://identity.example.com/porta-admin/token',
+  clientId: process.env.PORTA_MACHINE_CLIENT_ID!,
+  clientSecret: process.env.PORTA_MACHINE_CLIENT_SECRET!,
+  scope: 'admin:user:invite',
+});
+
+const porta = createPortaClient({
+  transport: createNodeTransport({ baseUrl: 'https://identity.example.com', auth }),
+});
+
+await porta.users.invite({ organizationId: process.env.PORTA_TARGET_ORG!, email: 'person@example.com' });
+```
+
+The organization and every role or claim assignment must be on the binding's allowlist. The shared
+budget is 30 invitations per hour per client. Revoking the binding stops later attempts but does not
+recall committed invitations. You can manage bindings over HTTP or with
+`porta client service-account`; see [Clients](/api/clients#service-account-bindings).
+
 ## See Also
 
 - [SDK Overview](/guide/sdk) — Installation, quick start, full API reference

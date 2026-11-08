@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-10-30
+> **Last Updated**: 2026-11-05
 
 ## Overview
 
@@ -165,12 +165,23 @@ The admin API authenticates against Porta's own OIDC tokens:
    `AccessToken` model
 3. Middleware loads the active user and verifies membership in the super-admin organization
 4. Middleware resolves the canonical `porta-admin` application
-5. Only recognized built-in roles assigned from that application contribute code-defined Admin
+5. The token's issuing client must be active, owned by that canonical application, and belong to
+   the super-admin organization; ordinary application tokens grant no Admin authority
+6. Only recognized built-in roles assigned from that application contribute code-defined Admin
    capabilities; a matching role slug from another application grants nothing
+
+Creating or changing a canonical control-plane client requires the complete Super Admin permission
+set. This prevents a delegated App Admin from registering a client that would inherit the token
+boundary.
 
 This self-authentication pattern means Porta has **no external auth dependency** for its admin API.
 Missing, expired, revoked, or rejected tokens receive a fixed authentication failure without
 revealing lookup details.
+
+One exception is deliberate: the real invitation POST accepts a native opaque `ClientCredentials`
+token from a permanently bound service account. That lane never resolves to an `AccessToken`, never
+sets a human `adminUser`, and grants no other Admin operation. See
+[bound machine invitations](security.md#bound-machine-invitations).
 
 ### Admin mutation request admission
 
@@ -183,6 +194,97 @@ limit. Only exact logo/favicon `PUT` routes receive the 3 MiB encoded-body allow
 Authentication and operation-specific permission checks still run before resource lookup. Branding
 asset routes then validate and resolve the organization, so callers without the required capability
 cannot use response differences to discover organization existence.
+
+The exact invitation POST is the only route whose body parsing is deferred to its dedicated router.
+It authenticates once to select the parser, reads the bounded body, then authenticates again before
+the mutation transaction. Denied requests are still parsed first where the original `/api/` prefix
+covered them, so malformed or oversized bodies keep their existing `400`/`413` precedence. Only a
+validated machine identity may preserve prototype-looking JSON data as opaque values; human requests
+retain the standard parser rejection.
+
+### Bound machine invitations
+
+Exactly one Admin operation is available to machine credentials:
+`POST /api/admin/organizations/:orgId/users/invite`. Every other Admin route, the invitation preview
+and tenant routes remain human-only.
+
+| Boundary | Enforcement |
+| --- | --- |
+| Token | Native opaque `ClientCredentials`, 300 seconds, no refresh or offline grant |
+| Scope | `admin:user:invite` on the client, checked independently of the account permission |
+| Client | Eligible confidential client in the control-plane organization with an active binding |
+| Account | Permanent noninteractive account with the sole canonical reserved membership |
+| Policy | Complete organization/role/claim allowlist and live ordinary references |
+| Budget | 30 invitations per hour per internal client, shared across targets and token generations |
+
+The exact credential that authenticated is retained only in request-scoped state. Under the parent
+client lock, issuance revalidates that secret row's ownership, active state and current expiry using
+`clock_timestamp()`, so a proof that expires during the lock wait cannot receive a newer generation.
+No plaintext, digest lineage or secret identifier is stored.
+
+Locked admission checks the closed account/binding/version identity, live authority, the independent
+permission and scope, and the complete assignment set. Native expiry is compared again after awaited
+authorization and immediately before the budget or any write; equality is rejected with the fixed
+`401`. This is a point-in-time admission decision: expiry or revocation after admission does not
+cancel committed work, recall an invitation or undo sent mail.
+
+Successful invitations commit the business and final mutation audit in the retained outer
+transaction, with client actor columns, null human actor columns and flat binding metadata. Delivery
+results (`sent`, `failed`, `unknown` for the internal acknowledgement mode) are reported after the
+commit and the actual transport outcome. Binding creation, replacement and revocation remain human
+Super Admin operations.
+
+Machine tokens never become browser sessions or human `adminUser` values, and the permanently
+classified account remains denied in every human authentication, recovery and token-consumption
+flow.
+
+### Invitation role delegation
+
+Role pre-assignment is an assignment authority, not a side effect of invitation authority. A human
+invitation that carries `roles` requires both `admin:user:invite` and `admin:role:assign`. The
+invitation workflow then applies the same canonical Admin delegation ceiling as direct role
+assignment: a role defined by the `porta-admin` application may be pre-assigned only when the actor
+already holds every permission that role grants. `porta-super-admin` therefore cannot be granted by
+a user administrator. Rejection occurs before invitation persistence, email delivery and audit
+effects.
+
+The bound machine lane keeps its approved binding-policy authority rather than the human
+role-assign permission. Its organization-scoped allowlist is validated against live ordinary
+references, the canonical invitation machine role remains excluded, and the same canonical-role
+delegation ceiling is applied using the machine account's reserved permission. The assignment is
+stored with the invitation and applied only on acceptance; accepted users never gain the reserved
+machine membership.
+
+### Resource-server audience resolution
+
+Resource indicators (RFC 8707) are resolved against application-owned `resource_servers` rows. A
+client may request only a resource server whose `application_id` matches the client's existing
+internal application metadata. The requested value must be an absolute URI without a fragment and
+must match the stored identifier exactly; unknown or wrong-owner resources receive
+`invalid_target`.
+
+The resolver returns the allowed scope set: the protocol-owned OIDC scopes plus the resource
+server's explicit custom-scope registry. The issued token carries only the requested and granted
+subset. A requested custom scope outside the registry receives `invalid_scope`. Access tokens remain
+opaque and use the existing access-token TTL. A resource-bound token carries an audience and is for
+that resource server; the userinfo endpoint accepts only non-audience tokens, so an OIDC flow that
+needs `/me` uses a separate no-resource authorization. When a request carries no `resource`
+parameter, the existing unrestricted token behavior is preserved and no resource-server lookup
+occurs.
+
+Resource servers are configuration data; no Admin management surface is added by this model. The
+resolver is reusable by a later surface and does not cache policy outside PostgreSQL.
+
+### Connected-app grant authority
+
+The admin connected-apps subresource resolves one user through `requireUserOrganization` before any
+provider grant is read. The list query joins the Grant payload to the client table and filters by
+the exact organization, user and live grant expiry; a grant belonging to another user or tenant is
+not returned. Revocation repeats the same ownership predicate under a row lock, then deletes the
+Grant and every `oidc_payloads` row sharing its `grant_id` in one transaction. It does not delete the
+user or client rows, and token/refresh artifacts stop resolving after commit. The shared OIDC
+session references its authorized Grants, so it may fail the session authority check and require
+reauthentication; this is a fail-closed consequence, not cross-tenant access.
 
 ### Public branding isolation
 
@@ -197,6 +299,10 @@ precedence over validated configured URLs, followed by the existing text and col
 HTML routes copy the resolver's unique image origins into request state, and the security-header
 middleware adds only those validated origins to `img-src`. The base policy continues to allow
 same-origin and `data:` images for uploaded assets and TOTP QR codes.
+
+Custom branding CSS is presentation data only. A value containing `<` is rejected because it can
+end the raw-text style element and introduce markup; previously stored unsafe values are omitted
+by the resolver until replaced.
 
 ### Magic Link Authentication
 
@@ -266,6 +372,45 @@ length policy, other callers' English errors, or the public response schema.
 
 Implementation: [invitation routes](../../packages/server/src/routes/invitation.ts) and
 [translation preparation](../../packages/server/src/auth/i18n.ts).
+
+### Permanent service-account separation
+
+Dedicated service identities use the internal `users.is_service_account` flag. Revoking a binding
+or deleting its client never turns that account into a human. Public `User` objects do not expose
+the flag; security decisions read authoritative storage rather than trusting a cached projection.
+
+| Boundary | Enforcement |
+| --- | --- |
+| Human authentication | Password checks, OIDC account lookup and human Admin token lookup reject classified users |
+| Recovery | Direct and queued issuance, existing magic/reset artifacts and password persistence reject classification |
+| Ordinary account writes | Profile, lifecycle, credential and generic role mutations reject classified targets |
+| Bulk lifecycle | Both row-lock and update SQL exclude classified users; denials preserve existing concealment |
+| Reserved membership | Canonical `porta-invite-service` is protected from generic definition changes and human role assignment, including new and already-issued invitations |
+
+The reserved role remains outside the human permission catalog. A same-slug role in another
+application remains an ordinary role. Extra memberships cannot make a classified account eligible
+for the human authentication lane.
+
+Binding management and existing mutations of any bound client or its secrets require a live human
+Super Admin. After the client row lock, one joined database statement checks the actor's current
+status, permanent classification, actual control-plane organization and canonical Super Admin
+membership, including the supported legacy identity. That READ COMMITTED statement is the
+authorization point. A revocation committed before it is observed; later concurrent revocation
+does not retroactively cancel the authorized operation. Stronger inherited isolation is refused,
+and actor or assignment locks are not held through commit.
+
+First binding and explicit restoration retire all existing credentials without sending email or
+generating a replacement secret. Active policy replacement and explicit live-secret revocation
+change the internal authority generation; overlapping credential generation does not. Physical
+owner deletion keeps a non-restorable revoked marker on the surviving client. Physical deletion
+orders its locks client→binding→organization→owned user and commits marker erasure and audit
+together. Authorization failures use fixed403 responses without internal identity details.
+
+These lifecycle guards do not themselves grant machine Admin authentication. The invitation-only
+native lane is described under [bound machine invitations](security.md#bound-machine-invitations); it reuses
+these binding, classification and revocation guards and adds no broader machine capability.
+See [ADR-019](../decisions/index.md#adr-019-live-service-lifecycle-authority) and the
+[lifecycle service](../../packages/server/src/service-accounts/service.ts).
 
 ### Login Methods Enforcement
 

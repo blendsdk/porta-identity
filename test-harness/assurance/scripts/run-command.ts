@@ -87,7 +87,8 @@ const redCommands: Readonly<
   Record<string, { readonly display: string; readonly args: readonly string[] }>
 > = {
   'lifecycle-current-failure': {
-    display: 'pnpm exec tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
+    display:
+      'pnpm exec tsx --test test-harness/assurance/tests/lifecycle-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -96,7 +97,8 @@ const redCommands: Readonly<
     ],
   },
   'fixture-current-failure': {
-    display: 'pnpm exec tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
+    display:
+      'pnpm exec tsx --test test-harness/assurance/tests/fixture-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -105,7 +107,8 @@ const redCommands: Readonly<
     ],
   },
   'coverage-current-failure': {
-    display: 'pnpm exec tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
+    display:
+      'pnpm exec tsx --test test-harness/assurance/tests/coverage-current-surface.spec.test.ts',
     args: [
       '--import',
       'tsx',
@@ -198,6 +201,9 @@ const protocolSpecificationFiles = [
   'test-harness/assurance/tests/oidc-token-slice-profiles.spec.test.ts',
   'test-harness/assurance/tests/oidc-token-boundaries.spec.test.ts',
   'test-harness/assurance/tests/protocol-consistency.spec.test.ts',
+  'test-harness/assurance/tests/protocol-live-jwks.spec.test.ts',
+  'test-harness/assurance/tests/protocol-live-log.spec.test.ts',
+  'test-harness/assurance/tests/protocol-live-recovery.spec.test.ts',
 ] as const;
 
 /** Protocol specifications that currently have a live public-boundary adapter. */

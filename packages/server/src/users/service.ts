@@ -20,6 +20,7 @@
 
 import { auditFields, writeAuditLog } from '../lib/audit-log.js';
 import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
+import { requireActorMayManageUser } from '../rbac/admin-authority-ceiling.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { cacheUser, getCachedUserById, invalidateUserCache } from './cache.js';
@@ -34,6 +35,7 @@ import type { ListUsersCursorOptions, UpdateUserData } from './repository.js';
 import {
   emailExists,
   getPasswordHash,
+  updateHumanPassword,
   incrementFailedLoginCount,
   insertUser,
   findUserByEmail as repoFindByEmail,
@@ -63,6 +65,8 @@ import type {
   User,
   UserListOptions,
 } from './types.js';
+import { isServiceAccount, requireInteractiveUser } from './service-account-guard.js';
+import { eraseServiceAccountOwner, prepareServiceAccountDeletion } from '../service-accounts/index.js';
 
 /** Fixed UUID that can never identify a persisted account. */
 const NON_ACCOUNT_USER_ID = '00000000-0000-0000-0000-000000000000';
@@ -247,6 +251,12 @@ export async function updateUser(
   actor?: AuditActor,
   auditContext?: AuditRequestContext,
 ): Promise<User> {
+  await requireInteractiveUser(id);
+  // An email identity change is a recovery-path change. Apply the same ceiling as credential
+  // recovery before a lower-authority administrator can alter a stronger administrator's address.
+  if (actor?.kind === 'user' && (input.email !== undefined || input.emailVerified === true)) {
+    await requireActorMayManageUser(actor.userId, id);
+  }
   const updateData: UpdateUserData = {};
   if (input.email !== undefined) updateData.email = input.email;
   if (input.emailVerified !== undefined) updateData.emailVerified = input.emailVerified;
@@ -381,6 +391,7 @@ export async function deactivateUser(
   actor?: AuditActor,
   auditContext?: AuditRequestContext,
 ): Promise<void> {
+  await requireInteractiveUser(id);
   return runDatabaseTransaction(async () => {
     const user = await loadUserForStatusChange(id);
 
@@ -417,6 +428,7 @@ export async function activateUser(
   actor?: AuditActor,
   auditContext?: AuditRequestContext,
 ): Promise<void> {
+  await requireInteractiveUser(id);
   return runDatabaseTransaction(async () => {
     const user = await loadUserForStatusChange(id);
 
@@ -459,6 +471,8 @@ export async function setUserPassword(
   password: string,
   actorId?: string,
 ): Promise<void> {
+  await requireInteractiveUser(id);
+  if (actorId) await requireActorMayManageUser(actorId, id);
   const validation = validatePassword(password);
   if (!validation.isValid) {
     throw new UserValidationError(validation.error!);
@@ -466,10 +480,10 @@ export async function setUserPassword(
 
   const hash = await hashPassword(password);
 
-  await repoUpdate(id, {
-    passwordHash: hash,
-    passwordChangedAt: new Date(),
-  });
+  if (!(await updateHumanPassword(id, hash))) {
+    if (await isServiceAccount(id)) throw new UserValidationError('User operation is not permitted');
+    throw new UserNotFoundError(id);
+  }
   await invalidateUserCache(id);
 
   await writeAuditLog({
@@ -484,7 +498,7 @@ export async function setUserPassword(
  * Verify a user's password.
  *
  * Returns false if the user has no password (passwordless), is not
- * active, or if the password doesn't match. No audit log is written —
+ * active, is permanently noninteractive, or if the password doesn't match. No audit log is written —
  * login tracking is handled separately by recordLogin().
  *
  * @param id - User UUID
@@ -555,7 +569,10 @@ export async function prepareUserForPasswordLogin(
     });
   }
 
-  return getUserByEmail(organizationId, email);
+  const current = await getUserByEmail(organizationId, email);
+  // Execute the same authoritative classification read for present and absent identities.
+  const classified = await isServiceAccount(current?.id ?? NON_ACCOUNT_USER_ID);
+  return classified ? null : current;
 }
 
 /**
@@ -565,8 +582,11 @@ export async function prepareUserForPasswordLogin(
  *
  * @param id - User UUID
  * @param actorId - UUID of the user performing the action
+ * @throws AdminAuthorityCeilingError when an administrator targets a stronger administrator
  */
 export async function clearUserPassword(id: string, actorId?: string): Promise<void> {
+  await requireInteractiveUser(id);
+  if (actorId) await requireActorMayManageUser(actorId, id);
   await repoUpdate(id, {
     passwordHash: null,
     passwordChangedAt: null,
@@ -592,6 +612,8 @@ export async function clearUserPassword(id: string, actorId?: string): Promise<v
  * @param actorId - UUID of the user performing the action
  */
 export async function markEmailVerified(id: string, actorId?: string): Promise<void> {
+  await requireInteractiveUser(id);
+  if (actorId) await requireActorMayManageUser(actorId, id);
   await repoUpdate(id, { emailVerified: true });
   await invalidateUserCache(id);
 
@@ -610,6 +632,7 @@ export async function markEmailVerified(id: string, actorId?: string): Promise<v
  * @param id - User UUID
  */
 export async function markEmailUnverified(id: string): Promise<void> {
+  await requireInteractiveUser(id);
   await repoUpdate(id, { emailVerified: false });
   await invalidateUserCache(id);
 }
@@ -752,7 +775,7 @@ export async function checkAutoUnlock(user: User): Promise<boolean> {
 /**
  * Find a user for OIDC token/userinfo operations.
  *
- * Returns the user only if their status is 'active'. Non-active users
+ * Returns the user only if active and not permanently noninteractive. Non-active users
  * should not be able to obtain tokens or access the userinfo endpoint.
  * Used by the upgraded account-finder.ts.
  *
@@ -766,7 +789,7 @@ export async function findUserForOidc(sub: string): Promise<User | null> {
   if (!user) return null;
 
   // Only active users can interact with OIDC endpoints
-  if (user.status !== 'active') return null;
+  if (user.status !== 'active' || await isServiceAccount(sub)) return null;
 
   return user;
 }
@@ -795,8 +818,12 @@ export async function deleteUser(
     // this service deliberately cannot bypass that control-plane guard.
     const client = getDatabaseTransactionClient();
     if (!client) throw new Error('User deletion requires an active database transaction');
+    const binding = await prepareServiceAccountDeletion(
+      organizationId, userId, actor?.kind === 'user' ? actor.userId : undefined,
+    );
     const capture = await deleteUserCapture(organizationId, userId);
     if (!capture) throw new UserNotFoundError(userId);
+    if (binding) await eraseServiceAccountOwner(binding);
     await client.query(
       `UPDATE admin_sessions SET revoked_at = NOW()
        WHERE user_id = ANY($1::uuid[]) AND revoked_at IS NULL`,
@@ -819,6 +846,7 @@ export async function deleteUser(
         userId,
         email: capture.user.email,
         status: capture.user.status,
+        ...(binding ? { bindingId: binding.id, clientId: binding.clientId } : {}),
       },
     });
     await deleteCapturedUser(organizationId, userId);

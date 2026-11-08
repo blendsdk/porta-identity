@@ -10,6 +10,8 @@ import {
   readProtectedRuntimeCredential,
   readPublicRuntimeFixtureManifest,
 } from '../../fixtures/fixture-runtime-files.js';
+import { jwksIdentities } from './protocol-live-jwks.js';
+import { parseProtocolSecurityLog } from './protocol-live-log.js';
 
 import type {
   FixtureClient,
@@ -71,6 +73,8 @@ export interface LiveAuthorizationCode {
   readonly subject: string;
   /** Redirect status observed from the authorization endpoint. */
   readonly authorizationStatus: number;
+  /** Browser session cookies retained only for a same-session logout observation. */
+  readonly sessionCookies?: readonly { readonly name: string; readonly value: string }[];
 }
 
 /** Parsed token endpoint response retained only for the current scenario. */
@@ -89,6 +93,81 @@ export interface LiveProtocolResponse {
   /** Underlying response retained only for bounded follow-up parsing. */
   readonly response: APIResponse;
 }
+
+/** One live administrative session projection with no secret material. */
+export interface LiveAdminSession {
+  /** Non-secret public session identifier. */
+  readonly sessionId: string;
+  /** Authenticated user UUID, or null before authentication completes. */
+  readonly userId: string | null;
+  /** Internal client UUID when one client is tracked. */
+  readonly clientId: string | null;
+  /** Organization UUID associated with the session. */
+  readonly organizationId: string | null;
+  /** Provider grant identifier, when the session published one. */
+  readonly grantId: string | null;
+  /** Session creation timestamp. */
+  readonly createdAt: string;
+  /** Session expiry timestamp. */
+  readonly expiresAt: string;
+  /** Revocation timestamp, or null while active. */
+  readonly revokedAt: string | null;
+}
+
+/** One live connected application projection with no token material. */
+export interface LiveConnectedApp {
+  /** Provider grant identifier. */
+  readonly grantId: string;
+  /** Public OAuth client identifier. */
+  readonly clientId: string;
+  /** Human-readable client name. */
+  readonly clientName: string;
+  /** Internal application UUID. */
+  readonly applicationId: string;
+  /** Granted OIDC and resource scopes. */
+  readonly scopes: readonly string[];
+  /** Grant creation timestamp. */
+  readonly createdAt: string;
+  /** Grant expiry timestamp, or null for a non-expiring grant. */
+  readonly expiresAt: string | null;
+}
+
+/** Independent session and consent state for one user and tenant. */
+export interface LiveUserState {
+  /** Active public sessions for the user. */
+  readonly activeSessions: readonly LiveAdminSession[];
+  /** Live connected applications for the user. */
+  readonly connectedApps: readonly LiveConnectedApp[];
+}
+
+/** Validates one administrative session record. */
+const adminSessionSchema = z.object({
+  sessionId: z.string().min(1),
+  userId: z.string().uuid().nullable(),
+  clientId: z.string().uuid().nullable(),
+  organizationId: z.string().uuid().nullable(),
+  grantId: z.string().min(1).nullable(),
+  createdAt: z.string().min(1),
+  expiresAt: z.string().min(1),
+  revokedAt: z.string().nullable(),
+});
+
+/** Validates the paginated administrative session envelope. */
+const adminSessionsSchema = z.object({ data: z.array(adminSessionSchema) });
+
+/** Validates one connected-app record. */
+const connectedAppSchema = z.object({
+  grantId: z.string().min(1),
+  clientId: z.string().min(1),
+  clientName: z.string(),
+  applicationId: z.string().uuid(),
+  scopes: z.array(z.string()),
+  createdAt: z.string().min(1),
+  expiresAt: z.string().nullable(),
+});
+
+/** Validates the connected-app list envelope. */
+const connectedAppsSchema = z.object({ data: z.array(connectedAppSchema) });
 
 /** Creates the RFC 7636 S256 challenge for one verifier. */
 export function livePkceChallenge(verifier: string): string {
@@ -160,6 +239,15 @@ export class LiveProtocolContext {
     const value = this.entities.get(alias);
     if (value === undefined) throw new Error('required protocol fixture identity is absent');
     return value;
+  }
+
+  /** Returns the fixture user UUID used by the ordinary browser authorization flow. */
+  public fixtureUserId(tenant: 'alpha' | 'bravo'): string {
+    const user = this.manifest[tenant].users.find(
+      (candidate) => candidate.state === 'active' && !candidate.twoFactorEnabled,
+    );
+    if (user === undefined) throw new Error('required protocol user fixture is absent');
+    return this.entity(user.id);
   }
 
   /** Resolves a valid tenant client and its protected secret at the last possible moment. */
@@ -267,6 +355,9 @@ export class LiveProtocolContext {
       if (authorizationStatus === undefined) {
         throw new Error('protocol authorization redirect status was not observed');
       }
+      const sessionCookies = (await browserContext.cookies())
+        .filter((cookie) => cookie.name.startsWith('_session'))
+        .map((cookie) => ({ name: cookie.name, value: cookie.value }));
       return Object.freeze({
         tenant,
         client,
@@ -276,6 +367,7 @@ export class LiveProtocolContext {
         nonce,
         subject: this.entity(user.id),
         authorizationStatus,
+        sessionCookies: Object.freeze(sessionCookies),
       });
     } finally {
       await browser.close();
@@ -334,12 +426,59 @@ export class LiveProtocolContext {
   public async userinfo(
     tenant: 'alpha' | 'bravo',
     artifact: string,
-  ): Promise<{ readonly response: LiveProtocolResponse; readonly disclosed: boolean }> {
+  ): Promise<{
+    readonly response: LiveProtocolResponse;
+    readonly disclosed: boolean;
+    readonly subject: string | null;
+  }> {
     const api = await this.api();
     const raw = await api.get(`${this.endpoints.porta}/${tenant}/me`, {
       headers: { Authorization: `Bearer ${artifact}` },
     });
-    return Object.freeze({ response: await this.sanitize(raw), disclosed: raw.ok() });
+    if (!raw.ok()) {
+      return Object.freeze({
+        response: await this.sanitize(raw),
+        disclosed: false,
+        subject: null,
+      });
+    }
+    const body: unknown = await raw.json().catch(() => ({}));
+    const candidate =
+      typeof body === 'object' && body !== null && !Array.isArray(body)
+        ? Reflect.get(body, 'sub')
+        : undefined;
+    const subject = typeof candidate === 'string' ? candidate : null;
+    const response: LiveProtocolResponse = Object.freeze({
+      status: raw.status(),
+      error: null,
+      location: null,
+      requestId: raw.headers()['x-request-id'] ?? null,
+      response: raw,
+    });
+    return Object.freeze({ response, disclosed: true, subject });
+  }
+
+  /** Creates one valid pending interaction and returns its provider UID. */
+  public async pendingInteractionUid(
+    tenant: 'alpha' | 'bravo',
+    client: LiveProtocolClient,
+  ): Promise<string> {
+    const verifier = randomBytes(48).toString('base64url');
+    const response = await this.authorizeRaw(tenant, {
+      client_id: client.clientId,
+      redirect_uri: client.redirectUri,
+      response_type: 'code',
+      scope: 'openid profile email offline_access',
+      state: randomBytes(18).toString('base64url'),
+      nonce: randomBytes(18).toString('base64url'),
+      code_challenge: livePkceChallenge(verifier),
+      code_challenge_method: 'S256',
+      prompt: 'login',
+    });
+    const match =
+      response.location === null ? null : /\/interaction\/([^/]+)/u.exec(response.location);
+    if (match?.[1] === undefined) throw new Error('pending interaction was not created');
+    return match[1];
   }
 
   /** Sends a raw authorization request without following redirects. */
@@ -353,13 +492,115 @@ export class LiveProtocolContext {
     return this.sanitize(await api.get(url.toString(), { maxRedirects: 0 }));
   }
 
-  /** Proves a correlated privacy-safe rejection event exists without retaining its values. */
-  public securityLog(
-    response: LiveProtocolResponse,
-    forbiddenValues: readonly string[],
-  ): { readonly event: string; readonly fields: readonly string[] } {
-    if (response.requestId === null) throw new Error('protocol response omitted correlation');
-    const logs = execFileSync(
+  /** Reads the full administrative fixture token without retaining it in evidence. */
+  private adminToken(): string {
+    const actor = this.manifest.superAdmin.actors.find(
+      (candidate) => candidate.permissionSet === 'full',
+    );
+    if (actor === undefined) throw new Error('full administrative fixture actor is absent');
+    return readProtectedRuntimeCredential(
+      this.endpoints.credentialManifestPath,
+      actor.tokenCredentialRef,
+    );
+  }
+
+  /** Performs one authenticated public Admin API read. */
+  private async adminGet(path: string): Promise<APIResponse> {
+    const api = await this.api();
+    return api.get(`${this.endpoints.porta}${path}`, {
+      headers: { Authorization: `Bearer ${this.adminToken()}` },
+      maxRedirects: 0,
+    });
+  }
+
+  /** Performs one authenticated public Admin API delete. */
+  private async adminDelete(path: string): Promise<APIResponse> {
+    const api = await this.api();
+    return api.delete(`${this.endpoints.porta}${path}`, {
+      headers: { Authorization: `Bearer ${this.adminToken()}` },
+      maxRedirects: 0,
+    });
+  }
+
+  /**
+   * Lists sessions for one user through the public Admin API.
+   *
+   * The user UUID is globally unique, so the observation does not depend on the session
+   * tracking row retaining an organization value.
+   */
+  public async adminSessions(
+    userId: string,
+    activeOnly = true,
+  ): Promise<readonly LiveAdminSession[]> {
+    const query = new URLSearchParams({
+      userId,
+      activeOnly: activeOnly ? 'true' : 'false',
+      pageSize: '100',
+    });
+    const response = await this.adminGet(`/api/admin/sessions?${query.toString()}`);
+    if (!response.ok()) throw new Error('administrative session read failed');
+    const sessions = adminSessionsSchema.parse(await response.json()).data;
+    if (sessions.some((session) => session.userId !== null && session.userId !== userId)) {
+      throw new Error('administrative session read returned another user');
+    }
+    return Object.freeze(sessions);
+  }
+
+  /** Lists the user's live connected applications through the public Admin API. */
+  public async adminConnectedApps(
+    tenant: 'alpha' | 'bravo',
+    userId: string,
+  ): Promise<readonly LiveConnectedApp[]> {
+    const organizationId = this.entity(tenant);
+    const response = await this.adminGet(
+      `/api/admin/organizations/${organizationId}/users/${userId}/connected-apps`,
+    );
+    if (!response.ok()) throw new Error('administrative connected-app read failed');
+    return Object.freeze(connectedAppsSchema.parse(await response.json()).data);
+  }
+
+  /** Captures the independent session and consent state for one user and tenant. */
+  public async userState(tenant: 'alpha' | 'bravo', userId: string): Promise<LiveUserState> {
+    const [activeSessions, connectedApps] = await Promise.all([
+      this.adminSessions(userId),
+      this.adminConnectedApps(tenant, userId),
+    ]);
+    return Object.freeze({ activeSessions, connectedApps });
+  }
+
+  /** Returns the stable content identities in one tenant's trusted JWKS document. */
+  public async jwksKeyIdentities(tenant: 'alpha' | 'bravo'): Promise<readonly string[]> {
+    return jwksIdentities(await this.jwks(tenant));
+  }
+
+  /** Revokes every live grant for one user and client through the public Admin API. */
+  public async revokeClientGrants(
+    tenant: 'alpha' | 'bravo',
+    userId: string,
+    clientId: string,
+  ): Promise<number> {
+    const organizationId = this.entity(tenant);
+    const apps = await this.adminConnectedApps(tenant, userId);
+    const matching = apps.filter((app) => app.clientId === clientId);
+    for (const app of matching) {
+      const response = await this.adminDelete(
+        `/api/admin/organizations/${organizationId}/users/${userId}/connected-apps/${app.grantId}`,
+      );
+      if (!response.ok() && response.status() !== 404) {
+        throw new Error('connected-app reset failed');
+      }
+    }
+    return matching.length;
+  }
+
+  /**
+   * Restarts the owned Porta process and waits for its discovery endpoint.
+   *
+   * The lifecycle supervisor owns the restart. The process start time must change, so a no-op
+   * restart cannot be reported as fresh-process evidence.
+   */
+  public async restartServer(): Promise<void> {
+    const container = execFileSync(
       'docker',
       [
         'compose',
@@ -367,27 +608,159 @@ export class LiveProtocolContext {
         this.endpoints.composeProject,
         '-f',
         'test-harness/docker-compose.yml',
-        'logs',
-        '--no-color',
-        '--since',
-        '5m',
+        'ps',
+        '-q',
         'porta',
       ],
-      { cwd: process.cwd(), encoding: 'utf8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+      { cwd: process.cwd(), encoding: 'utf8', timeout: 30_000 },
+    ).trim();
+    if (container.length === 0) throw new Error('protocol server container is absent');
+    const startedBefore = execFileSync(
+      'docker',
+      ['inspect', '-f', '{{.State.StartedAt}}', container],
+      { cwd: process.cwd(), encoding: 'utf8', timeout: 30_000 },
+    ).trim();
+    execFileSync(
+      process.execPath,
+      ['--import', 'tsx', 'test-harness/scripts/lifecycle.ts', 'restart-porta'],
+      {
+        cwd: process.cwd(),
+        env: process.env,
+        stdio: 'ignore',
+        timeout: 120_000,
+      },
     );
-    if (!logs.includes(response.requestId) || !logs.includes('protocol-security-rejection')) {
-      throw new Error('correlated protocol rejection event is absent');
+    const deadline = Date.now() + 60_000;
+    let ready = false;
+    while (Date.now() < deadline) {
+      try {
+        const api = await this.api();
+        const response = await api.get(
+          `${this.endpoints.porta}/alpha/.well-known/openid-configuration`,
+          { timeout: 5_000 },
+        );
+        if (response.ok()) {
+          ready = true;
+          break;
+        }
+      } catch {
+        // The process is still starting.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
     }
+    if (!ready) throw new Error('protocol server did not become ready after restart');
+    const startedAfter = execFileSync(
+      'docker',
+      ['inspect', '-f', '{{.State.StartedAt}}', container],
+      { cwd: process.cwd(), encoding: 'utf8', timeout: 30_000 },
+    ).trim();
+    if (startedAfter === startedBefore) {
+      throw new Error('protocol server restart was not observed');
+    }
+  }
+
+  /** Performs the real confirmation-form logout with the originating browser session cookies. */
+  public async logout(
+    tenant: 'alpha' | 'bravo',
+    idToken: string,
+    sessionCookies: readonly { readonly name: string; readonly value: string }[],
+  ): Promise<{
+    readonly status: number;
+    readonly completed: boolean;
+    readonly response: LiveProtocolResponse;
+  }> {
+    const discovery = await this.discovery(tenant);
+    const api = await this.api();
+    const cookie = sessionCookies.map((value) => `${value.name}=${value.value}`).join('; ');
+    const headers: Record<string, string> = cookie.length === 0 ? {} : { Cookie: cookie };
+    const endSessionUrl = new URL(
+      discovery.end_session_endpoint ?? `${this.endpoints.porta}/${tenant}/session/end`,
+    );
+    if (endSessionUrl.origin !== new URL(this.endpoints.porta).origin) {
+      throw new Error('end-session endpoint changed origin');
+    }
+    const confirmation = await api.get(endSessionUrl.toString(), {
+      params: { id_token_hint: idToken },
+      headers,
+      maxRedirects: 0,
+    });
+    const html = await confirmation.text().catch(() => '');
+    const forms = [...html.matchAll(/<form\b[^>]*action="([^"]+)"[^>]*>([\s\S]*?)<\/form>/giu)];
+    const logoutForm = forms.find(([, , body]) => /name="xsrf"/iu.test(body ?? ''));
+    const action = logoutForm?.[1];
+    const formBody = logoutForm?.[2] ?? '';
+    if (action === undefined) {
+      const response = await this.sanitize(confirmation);
+      return Object.freeze({
+        status: response.status,
+        completed: response.status < 300,
+        response,
+      });
+    }
+    const form: Record<string, string> = { logout: 'yes' };
+    for (const input of formBody.matchAll(/<input\b[^>]*>/giu)) {
+      const name = /name="([^"]+)"/iu.exec(input[0])?.[1];
+      const value = /value="([^"]*)"/iu.exec(input[0])?.[1] ?? '';
+      if (name !== undefined) form[name] = value;
+    }
+    const actionUrl = new URL(action.replaceAll('&amp;', '&'), this.endpoints.porta);
+    if (actionUrl.origin !== new URL(this.endpoints.porta).origin) {
+      throw new Error('logout form action changed origin');
+    }
+    const completed = await api.post(actionUrl.toString(), {
+      form,
+      headers,
+      maxRedirects: 0,
+    });
+    const response = await this.sanitize(completed);
+    return Object.freeze({
+      status: response.status,
+      completed: response.status < 400,
+      response,
+    });
+  }
+
+  /** Reads the bounded compose log stream without exposing command errors. */
+  private readLogs(): string {
+    try {
+      return execFileSync(
+        'docker',
+        [
+          'compose',
+          '-p',
+          this.endpoints.composeProject,
+          '-f',
+          'test-harness/docker-compose.yml',
+          'logs',
+          '--no-color',
+          '--since',
+          '5m',
+          'porta',
+        ],
+        { cwd: process.cwd(), encoding: 'utf8', timeout: 30_000, maxBuffer: 4 * 1024 * 1024 },
+      );
+    } catch {
+      throw new Error('protocol security log read failed');
+    }
+  }
+
+  /** Fails when any ephemeral artifact appears in the captured server logs. */
+  public scanLogsForForbiddenValues(forbiddenValues: readonly string[]): void {
+    const logs = this.readLogs();
     for (const value of forbiddenValues) {
       if (value.length > 0 && logs.includes(value)) {
         throw new Error('protocol logs retained a forbidden artifact');
       }
     }
-    const fields = ['synthetic-correlation-id', 'event-class', 'public-client-id-digest'] as const;
-    if (fields.some((field) => !logs.includes(field))) {
-      throw new Error('protocol rejection event omitted a required field');
-    }
-    return Object.freeze({ event: 'protocol-security-rejection', fields });
+  }
+
+  /** Proves exactly one correlated privacy-safe rejection event without retaining its values. */
+  public securityLog(
+    response: LiveProtocolResponse,
+    forbiddenValues: readonly string[],
+  ): { readonly event: string; readonly fields: readonly string[] } {
+    if (response.requestId === null) throw new Error('protocol response omitted correlation');
+    return parseProtocolSecurityLog(this.readLogs(), response.requestId, forbiddenValues);
   }
 
   /** Releases the reusable request context. */

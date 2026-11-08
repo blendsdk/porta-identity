@@ -17,8 +17,9 @@
  *   3. Resolve super-admin organization
  *   4. Look up user — must be active
  *   5. Verify user belongs to the super-admin organization
- *   6. Verify the user has a recognized role from the canonical Admin application
- *   7. Set ctx.state.adminUser and proceed
+ *   6. Verify the token's issuing client is an active canonical Admin client
+ *   7. Verify the user has a recognized role from the canonical Admin application
+ *   8. Set ctx.state.adminUser and proceed
  *
  * Response codes:
  *   401 — Missing/invalid Bearer token, expired, revoked, unknown user
@@ -32,19 +33,22 @@ import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRolesForAuthority } from '../rbac/user-role-service.js';
 import { getApplicationBySlug } from '../applications/service.js';
+import { getClientByClientId } from '../clients/service.js';
 import { logger } from '../lib/logger.js';
 import {
   getPermissionsForAdminRole,
   resolvePermissionsFromRoles,
 } from '../lib/admin-permissions.js';
 import { recordSecurityDecision, recordSecurityReference } from '../security/decision-context.js';
+import { authenticateServiceAccount, isAdminInvitationRequest, ServiceAccountAuthorizationError } from '../service-accounts/index.js';
+import type { AuthenticatedServiceAccount, ServiceAccountTokenProvider } from '../service-accounts/index.js';
 
 // ---------------------------------------------------------------------------
 // OIDC provider reference — set at startup via setAdminAuthProvider()
 // ---------------------------------------------------------------------------
 
 /** Minimal opaque-token lookup boundary required from the OIDC provider. */
-export interface AdminAccessTokenProvider {
+export interface AdminAccessTokenProvider extends ServiceAccountTokenProvider {
   /** Provider model used to resolve one opaque access token. */
   readonly AccessToken: {
     /** Resolve a token without exposing its storage mechanism to middleware. */
@@ -132,6 +136,8 @@ declare module 'koa' {
     organization?: Organization;
     /** Authenticated admin identity — set by requireAdminAuth middleware on /api/admin/* routes */
     adminUser?: AdminUser;
+    /** Dedicated exact-operation machine identity; never used by generic human routers. */
+    serviceAccount?: AuthenticatedServiceAccount;
   }
 }
 
@@ -153,9 +159,10 @@ const ADMIN_APPLICATION_SLUG = 'porta-admin';
  * On success, sets ctx.state.adminUser with the authenticated identity.
  * On failure, responds with 401 (unauthenticated) or 403 (unauthorized).
  *
+ * @param options - Explicit opt-in for the real invitation POST only; absent means human-only.
  * @returns Koa middleware
  */
-export function requireAdminAuth(): Middleware {
+export function requireAdminAuth(options: { allowServiceAccountInvitation?: boolean } = {}): Middleware {
   return async (ctx, next) => {
     // -----------------------------------------------------------------
     // Step 1: Extract Bearer token from Authorization header
@@ -205,21 +212,44 @@ export function requireAdminAuth(): Middleware {
       return;
     }
 
-    let userId: string;
+    let userId: string | undefined;
+    let tokenClientId: string | undefined;
     try {
       const accessToken = await _provider.AccessToken.find(token);
-      if (!accessToken || !accessToken.accountId) {
-        logger.debug('Admin auth: access token not found or missing accountId');
-        recordSecurityDecision(ctx, {
-          decisionPoint: 'authentication',
-          reasonCode: 'authentication-required',
-          outcome: 'deny',
-        });
-        ctx.status = 401;
-        ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
-        return;
+      // Existing Admin CORS and rate protection recognize this case-sensitive prefix. Keep
+      // machine opt-in inside their coverage; legacy human router aliases are not broadened.
+      if (!accessToken && options.allowServiceAccountInvitation && ctx.path.startsWith('/api/admin/') &&
+          isAdminInvitationRequest(ctx.method, ctx.path)) {
+        try {
+          const machine = await authenticateServiceAccount(_provider, token);
+          if (machine) ctx.state.serviceAccount = machine;
+        } catch (error) {
+          ctx.status = error instanceof ServiceAccountAuthorizationError ? 403 : 503;
+          ctx.body = { error: ctx.status === 403 ? 'Forbidden' : 'Service unavailable' };
+          return;
+        }
+        if (ctx.state.serviceAccount) userId = undefined;
+        else {
+          ctx.status = 401;
+          ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+          return;
+        }
+      } else {
+        if (!accessToken || !accessToken.accountId) {
+          logger.debug('Admin auth: access token not found or missing accountId');
+          recordSecurityDecision(ctx, {
+            decisionPoint: 'authentication',
+            reasonCode: 'authentication-required',
+            outcome: 'deny',
+          });
+          ctx.status = 401;
+          ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+          return;
+        }
+        userId = accessToken.accountId;
+        const issuingClientId = Reflect.get(accessToken, 'clientId');
+        tokenClientId = typeof issuingClientId === 'string' ? issuingClientId : undefined;
       }
-      userId = accessToken.accountId;
     } catch {
       // Intentionally vague error message — don't reveal internal details.
       // Log the real error server-side for debugging.
@@ -233,6 +263,13 @@ export function requireAdminAuth(): Middleware {
       ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
       return;
     }
+
+    // Do not catch downstream errors as token lookup failures: the outer transaction owns them.
+    if (ctx.state.serviceAccount) {
+      await next();
+      return;
+    }
+    if (!userId) return;
 
     // -----------------------------------------------------------------
     // Step 3: Resolve super-admin organization
@@ -255,7 +292,8 @@ export function requireAdminAuth(): Middleware {
     // -----------------------------------------------------------------
     // Step 4: Look up user — must be active
     // -----------------------------------------------------------------
-    // findUserForOidc returns null for non-existent or non-active users
+    // The authoritative human lookup also rejects permanent service classification, even when
+    // cached public data or an extra administrative membership would otherwise grant access.
     const user = await findUserForOidc(userId);
     if (!user) {
       recordSecurityDecision(ctx, {
@@ -289,7 +327,33 @@ export function requireAdminAuth(): Middleware {
       return;
     }
 
+    // -----------------------------------------------------------------
+    // Step 6: Verify the token's issuing client is reserved administrative authority.
+    // -----------------------------------------------------------------
+    // A genuine token from an ordinary application proves only the subject's consent to that
+    // application. Administrative authority requires a live client registered to the canonical
+    // Admin application in the control-plane organization.
+    const client =
+      tokenClientId === undefined ? null : await getClientByClientId(tokenClientId);
+    if (
+      !client ||
+      client.status !== 'active' ||
+      client.applicationId !== adminApplication.id ||
+      client.organizationId !== superAdminOrg.id
+    ) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-required',
+        outcome: 'deny',
+      });
+      ctx.status = 401;
+      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
+      return;
+    }
+
     const userRoles = await getUserRolesForAuthority(userId);
+    // Only human role definitions contribute permissions. The reserved invitation-service role
+    // deliberately resolves to none, regardless of its stored machine permission mapping.
     const adminRoleSlugs = userRoles
       .filter(
         (role) =>

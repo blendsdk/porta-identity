@@ -35,6 +35,7 @@ import { requireAdminAuth } from '../middleware/admin-auth.js';
 import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS, isSuperAdminRole } from '../lib/admin-permissions.js';
 import { guardSuperAdmin } from '../lib/super-admin-protection.js';
+import { requireActorMayManageUser } from '../rbac/admin-authority-ceiling.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { getTwoFactorStatus, disableTwoFactor, regenerateRecoveryCodes, getTwoFactorSummary } from '../two-factor/service.js';
 import type { TwoFactorPolicy } from '../two-factor/types.js';
@@ -126,6 +127,7 @@ export function createTwoFactorUserAdminRouter(): Router {
 
     // Super-admin protection (AR #74)
     await guardSuperAdmin(user.id, 'manage-2fa');
+    if (ctx.state.adminUser) await requireActorMayManageUser(ctx.state.adminUser.id, user.id);
 
     // Get current status for audit log before disabling
     const status = await getTwoFactorStatus(user.id);
@@ -167,6 +169,7 @@ export function createTwoFactorUserAdminRouter(): Router {
 
     // Super-admin protection (AR #74)
     await guardSuperAdmin(user.id, 'manage-2fa');
+    if (ctx.state.adminUser) await requireActorMayManageUser(ctx.state.adminUser.id, user.id);
 
     // Get current status for audit log before resetting
     const status = await getTwoFactorStatus(user.id);
@@ -208,6 +211,7 @@ export function createTwoFactorUserAdminRouter(): Router {
 
     // Super-admin protection (AR #74)
     await guardSuperAdmin(user.id, 'manage-2fa');
+    if (ctx.state.adminUser) await requireActorMayManageUser(ctx.state.adminUser.id, user.id);
 
     let codes: string[];
     try {

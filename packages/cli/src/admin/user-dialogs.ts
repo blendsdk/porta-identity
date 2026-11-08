@@ -20,7 +20,7 @@ import {
   TabView,
   Text,
 } from '@jsvision/ui';
-import type { EventLoop, ModalDialogHost, Tab, View } from '@jsvision/ui';
+import type { Tab, View } from '@jsvision/ui';
 
 import type {
   AdminCreateUserInput,
@@ -30,8 +30,17 @@ import type {
 } from './user-service.js';
 import type { AdminInvitationPreview, AdminUserDetail } from './user-state.js';
 import type { AdminOrganizationContext } from './state.js';
-import { runAbortableAdminDialog } from './application-runtime.js';
 import { deleteActionLabel, deleteConfirmationLayout } from './delete-confirmation-layout.js';
+import { showInviteRoleDialog } from './invite-role-dialog.js';
+import type { AdminInviteRoleOption, AdminInviteRoleSource } from './invite-role-dialog.js';
+import {
+  actionRow,
+  dialogSize,
+  inputRow,
+  runDialog,
+  validMultilineText,
+} from './user-dialog-support.js';
+import type { AdminUserDialogHost } from './user-dialog-support.js';
 import {
   addCreateProfile,
   profileInput,
@@ -70,44 +79,7 @@ export type UserConfirmationDialogResult =
 /** Result of the irreversible user-deletion dialog. */
 export type DeleteUserDialogResult = { readonly kind: 'delete' } | { readonly kind: 'cancel' };
 
-/** Modal host used by user dialogs, including synchronous abort-driven closure. */
-export interface AdminUserDialogHost extends ModalDialogHost {
-  /** Event loop that can close the currently owned modal when its operation is aborted. */
-  readonly loop: ModalDialogHost['loop'] & Pick<EventLoop, 'endModal' | 'focusView'>;
-}
-
-/** Returns a dialog size capped to the current terminal surface. */
-function dialogSize(
-  host: AdminUserDialogHost,
-  preferredWidth: number,
-  preferredHeight: number,
-): { readonly width: number; readonly height: number } {
-  return {
-    width: Math.max(1, Math.min(preferredWidth, host.desktop.bounds.width)),
-    height: Math.max(1, Math.min(preferredHeight, host.desktop.bounds.height)),
-  };
-}
-
-/** Validates bounded multiline text while rejecting terminal control sequences. */
-function validMultilineText(value: string, maximum: number): boolean {
-  if (value.length > maximum) return false;
-  for (const character of value) {
-    const codePoint = character.codePointAt(0) ?? 0;
-    if (codePoint === 0x0a || codePoint === 0x0d) continue;
-    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) return false;
-  }
-  return true;
-}
-
-/** Creates one naturally sized trailing action row. */
-function actionRow(...buttons: Button[]): ReturnType<typeof fixed> {
-  return fixed(row({ gap: 1, justify: 'end' }, ...buttons), 2);
-}
-
-/** Creates one padded form row with a stable label column. */
-function inputRow(label: string, input: Input): ReturnType<typeof fixed> {
-  return fixed(row({ gap: 1 }, fixed(new Label(label, input), 18), grow(input)), 1);
-}
+export type { AdminUserDialogHost } from './user-dialog-support.js';
 
 /** Collects nested inputs from Layout DSL groups for form-wide validation. */
 function descendantInputs(root: View): Input[] {
@@ -118,27 +90,6 @@ function descendantInputs(root: View): Input[] {
   };
   visit(root);
   return result;
-}
-
-/** Converts an abort into the ordinary dialog cancellation command. */
-async function runDialog(
-  host: AdminUserDialogHost,
-  dialog: Dialog,
-  operationSignal: AbortSignal,
-): Promise<string> {
-  host.desktop.addWindow(dialog);
-  try {
-    return await runAbortableAdminDialog(
-      host.loop,
-      operationSignal,
-      async () => (await host.loop.execView<string>(dialog)) ?? Commands.cancel,
-    );
-  } catch (error) {
-    if (error instanceof DOMException && error.name === 'AbortError') return Commands.cancel;
-    throw error;
-  } finally {
-    host.desktop.removeWindow(dialog);
-  }
 }
 
 /** Shows the complete create-user form and clears password signals on every exit. */
@@ -270,14 +221,17 @@ export async function showInviteUserDialog(
   loadPreview: (
     input: AdminInviteUserInput,
   ) => Promise<AdminUserReadResult<AdminInvitationPreview>>,
+  roleSource?: AdminInviteRoleSource,
 ): Promise<InviteUserDialogResult> {
-  const { width, height } = dialogSize(host, 68, 21);
+  const { width, height } = dialogSize(host, 68, roleSource ? 22 : 21);
   const email = signal('');
   const givenName = signal('');
   const familyName = signal('');
   const locale = signal('');
   const personalMessage = signal('');
   const message = signal('');
+  const rolesSummary = signal('None');
+  let selectedRoles: readonly AdminInviteRoleOption[] = [];
   const inputs = [
     new Input({ value: email, maxLength: 255, validator: textValidator(3, 255, false) }),
     new Input({ value: givenName, maxLength: 255, validator: textValidator(1, 255) }),
@@ -286,7 +240,7 @@ export async function showInviteUserDialog(
   ];
   const personalMessageMemo = new Memo({ value: personalMessage });
   const dialog = new Dialog({ title: 'Invite user', width, height, centered: true });
-  let previewBusy = false;
+  const previewBusy = signal(false);
   let parentOpen = true;
   let previewGeneration = 0;
   const collect = (): AdminInviteUserInput | undefined => {
@@ -302,17 +256,40 @@ export async function showInviteUserDialog(
       ...(familyName.peek() ? { familyName: familyName.peek() } : {}),
       ...(locale.peek() ? { locale: locale.peek() } : {}),
       ...(personalMessage.peek() ? { personalMessage: personalMessage.peek() } : {}),
+      ...(selectedRoles.length > 0
+        ? {
+            roles: selectedRoles.map((role) => ({
+              applicationId: role.applicationId,
+              roleId: role.roleId,
+            })),
+          }
+        : {}),
     };
   };
+  /** Builds the email-preview projection; role validation belongs to the invitation mutation. */
+  const previewInput = (): AdminInviteUserInput | undefined => {
+    const input = collect();
+    if (!input) return undefined;
+    const preview = { ...input };
+    delete preview.roles;
+    return preview;
+  };
+  const openRoles = async (): Promise<void> => {
+    if (!roleSource || previewBusy()) return;
+    const result = await showInviteRoleDialog(host, operationSignal, roleSource, selectedRoles);
+    if (!parentOpen || operationSignal.aborted || result.kind !== 'done') return;
+    selectedRoles = result.roles;
+    rolesSummary.set(selectedRoles.length === 0 ? 'None' : `${selectedRoles.length} selected`);
+  };
   const previewButton = new Button('~P~review', {
-    disabled: () => previewBusy,
+    disabled: () => previewBusy(),
     onClick: () => {
-      const input = collect();
-      if (!input || previewBusy) {
+      const input = previewInput();
+      if (!input || previewBusy()) {
         message.set('Validation failed');
         return;
       }
-      previewBusy = true;
+      previewBusy.set(true);
       const generation = ++previewGeneration;
       void loadPreview(input)
         .then(async (result) => {
@@ -329,16 +306,22 @@ export async function showInviteUserDialog(
             );
         })
         .finally(() => {
-      if (parentOpen && generation === previewGeneration) previewBusy = false;
+        if (parentOpen && generation === previewGeneration) previewBusy.set(false);
         });
     },
   });
   const inviteButton = new Button('~I~nvite', {
     command: Commands.ok,
     default: true,
-    disabled: () => previewBusy,
+    disabled: () => previewBusy(),
   });
   const cancelButton = new Button('Cancel', { command: Commands.cancel });
+  const selectRolesButton = roleSource
+    ? new Button('~S~elect…', {
+        disabled: () => previewBusy(),
+        onClick: () => void openRoles(),
+      })
+    : undefined;
   dialog.add(
     cover(
       col(
@@ -353,6 +336,19 @@ export async function showInviteUserDialog(
           ),
           7,
         ),
+        ...(selectRolesButton
+          ? [
+              fixed(
+                row(
+                  { gap: 1 },
+                  fixed(new Text('Roles'), 18),
+                  grow(new Text(rolesSummary)),
+                  selectRolesButton,
+                ),
+                1,
+              ),
+            ]
+          : []),
         spacer({ fixed: 1 }),
         fixed(
           row(
@@ -373,7 +369,7 @@ export async function showInviteUserDialog(
     while (true) {
       const command = await runDialog(host, dialog, operationSignal);
       if (command !== Commands.ok) return { kind: 'cancel' };
-      if (previewBusy) continue;
+      if (previewBusy()) continue;
       const input = collect();
       if (input) return { kind: 'invite', input };
       message.set('Validation failed');

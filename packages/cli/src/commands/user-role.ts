@@ -79,6 +79,7 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
               info(`Total: ${roles.length} roles`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -111,6 +112,7 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.userRoles.assign(argv.org, argv['user-id'], [argv.role]);
               success(`Role ${argv.role} assigned to user ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -152,6 +154,7 @@ export const userRolesCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 }
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

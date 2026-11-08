@@ -12,6 +12,9 @@ import type { PoolClient } from 'pg';
 import { getPool } from './database.js';
 import { logger } from './logger.js';
 import { writeAuditLogInTransaction } from './audit-log.js';
+import { invalidateOrganizationCache } from '../organizations/cache.js';
+import { invalidateUserCache } from '../users/cache.js';
+import { SUPER_ADMIN_USER_ID_KEY } from './super-admin-protection.js';
 
 /** Supported entity types for bulk operations. */
 export type BulkEntityType = 'organization' | 'user';
@@ -106,27 +109,49 @@ async function rollback(client: PoolClient): Promise<void> {
   await client.query('ROLLBACK');
 }
 
-/** Build the tenant-qualified row lock for the closed entity catalog. */
+/** One locked target; protected identities are indistinguishable from missing ones in the result. */
+interface LockedTarget {
+  readonly status: string;
+  readonly protected: boolean;
+  readonly slug?: string;
+}
+
+/**
+ * Build tenant-qualified locks.
+ *
+ * The protected flag is read under the same row lock as the status. A protected target is rejected
+ * before any write, using the existing concealed result code so bulk callers cannot learn that a
+ * bootstrap identity exists. Permanent service users remain excluded before any row lock.
+ */
 async function lockCurrentStatus(
   client: PoolClient,
   input: BulkStatusChangeInput,
   id: string,
-): Promise<string | undefined> {
+): Promise<LockedTarget | undefined> {
   if (input.entityType === 'user') {
-    const result = await client.query<{ status: string }>(
-      `SELECT status FROM users
-       WHERE id = $1 AND organization_id = $2
+    const result = await client.query<LockedTarget>(
+      `SELECT users.status,
+              (users.id::text = (
+                SELECT (config.value #>> '{}')
+                FROM system_config AS config
+                WHERE config.key = $3
+              )) AS protected
+       FROM users
+       WHERE users.id = $1 AND users.organization_id = $2 AND NOT users.is_service_account
        FOR UPDATE`,
-      [id, input.organizationId],
+      [id, input.organizationId, SUPER_ADMIN_USER_ID_KEY],
     );
-    return result.rows[0]?.status;
+    return result.rows[0];
   }
 
-  const result = await client.query<{ status: string }>(
-    'SELECT status FROM organizations WHERE id = $1 FOR UPDATE',
+  const result = await client.query<LockedTarget>(
+    `SELECT status, is_super_admin AS protected, slug
+     FROM organizations
+     WHERE id = $1
+     FOR UPDATE`,
     [id],
   );
-  return result.rows[0]?.status;
+  return result.rows[0];
 }
 
 /** Persist the status transition using only closed table and field choices. */
@@ -139,7 +164,7 @@ async function updateStatus(
   if (input.entityType === 'user') {
     await client.query(
       `UPDATE users SET status = $1, updated_at = NOW()
-       WHERE id = $2 AND organization_id = $3`,
+        WHERE id = $2 AND organization_id = $3 AND NOT is_service_account`,
       [nextStatus, id, input.organizationId],
     );
     return;
@@ -227,27 +252,38 @@ export async function bulkStatusChange(input: BulkStatusChangeInput): Promise<Bu
     try {
       client = await pool.connect();
       await client.query('BEGIN');
-      const previousStatus = await lockCurrentStatus(client, input, id);
-      if (previousStatus === undefined) {
+      const target = await lockCurrentStatus(client, input, id);
+      if (target === undefined || target.protected) {
         await rollback(client);
         results.push(concealedResult(id));
         continue;
       }
-      if (!transition.from.includes(previousStatus)) {
+      if (!transition.from.includes(target.status)) {
         await rollback(client);
-        results.push(invalidTransitionResult(id, previousStatus));
+        results.push(invalidTransitionResult(id, target.status));
         continue;
       }
 
       await updateStatus(client, input, id, transition.to);
-      await insertAudit(client, input, id, previousStatus, transition.to);
+      await insertAudit(client, input, id, target.status, transition.to);
       await client.query('COMMIT');
+      // Cache invalidation is intentionally post-commit and non-fatal. A stale entry is preferable
+      // to reporting a committed status change as failed because Redis or its callback is absent.
+      try {
+        if (input.entityType === 'user') await invalidateUserCache(id);
+        else if (target.slug) await invalidateOrganizationCache(target.slug, id);
+      } catch {
+        logger.warn(
+          { entityType: input.entityType, action: input.action },
+          'Bulk status cache invalidation failed after commit',
+        );
+      }
       results.push({
         id,
         success: true,
         outcome: 'succeeded',
         code: null,
-        previousStatus,
+        previousStatus: target.status,
         newStatus: transition.to,
       });
     } catch {

@@ -98,6 +98,7 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 info(`Total: ${claims.length} claims`);
               }
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -145,6 +146,7 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
               success(`Claim ${argv.claim} set for user ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },
@@ -182,6 +184,7 @@ export const userClaimsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               await sdkClient.customClaims.deleteValue(argv.app, argv.claim, argv['user-id']);
               success(`Claim ${argv.claim} removed from user ${argv['user-id']}`);
             } catch (err) {
+              if (argv.json) handleError(err, argv.verbose, true);
               handleError(err, argv.verbose);
             }
           },

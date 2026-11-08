@@ -124,7 +124,7 @@ services:
     image: blendsdk/porta:latest
     restart: unless-stopped
     ports:
-      - '3000:3000'
+      - '127.0.0.1:3000:3000'
     environment:
       NODE_ENV: production
       PORT: '3000'
@@ -218,6 +218,12 @@ external secrets of exactly 64 hexadecimal characters, and they must contain dif
 | `TRUST_PROXY_HOPS`   | `1`          | Number of trusted proxies that append to `X-Forwarded-For`  |
 | `PORTA_AUTO_MIGRATE` | `false`      | Initial-setup migration switch; keep disabled in production |
 | `PORTA_WAIT_TIMEOUT` | `60`         | Seconds to wait for DB/Redis at startup                     |
+
+When a reverse proxy runs on the same host, publish the container port on loopback
+(`127.0.0.1:3000:3000`). Publishing a public interface directly while `TRUST_PROXY=true` lets a
+direct caller forge forwarding headers and affect IP-based request budgets. If Porta is exposed
+directly, set `TRUST_PROXY=false`; an external proxy topology must restrict the backend port to the
+trusted proxy network.
 
 ### Generating Secrets
 

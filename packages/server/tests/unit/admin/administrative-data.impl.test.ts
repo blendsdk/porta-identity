@@ -53,7 +53,11 @@ describe('administrative data implementation', () => {
       client.query.mock.calls.map(([sql]) => String(sql).trim().split(/\s+/)[0]),
     ).toStrictEqual(['BEGIN', 'SELECT', 'UPDATE', 'INSERT', 'COMMIT']);
     expect(String(client.query.mock.calls[1][0])).toContain('FOR UPDATE');
-    expect(client.query.mock.calls[1][1]).toStrictEqual(['user-1', 'organization-1']);
+    expect(client.query.mock.calls[1][1]).toStrictEqual([
+      'user-1',
+      'organization-1',
+      'super_admin_user_id',
+    ]);
     expect(client.release).toHaveBeenCalledOnce();
   });
 

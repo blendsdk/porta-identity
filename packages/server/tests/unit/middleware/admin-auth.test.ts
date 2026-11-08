@@ -48,6 +48,10 @@ vi.mock('../../../src/applications/service.js', () => ({
   getApplicationBySlug: vi.fn(),
 }));
 
+vi.mock('../../../src/clients/service.js', () => ({
+  getClientByClientId: vi.fn(),
+}));
+
 vi.mock('../../../src/lib/logger.js', () => ({
   logger: {
     error: vi.fn(),
@@ -62,6 +66,7 @@ import { findUserForOidc } from '../../../src/users/service.js';
 import { findSuperAdminOrganization } from '../../../src/organizations/repository.js';
 import { getUserRolesForAuthority } from '../../../src/rbac/user-role-service.js';
 import { getApplicationBySlug } from '../../../src/applications/service.js';
+import { getClientByClientId } from '../../../src/clients/service.js';
 
 // ---------------------------------------------------------------------------
 // Test fixtures
@@ -99,6 +104,16 @@ const ADMIN_APPLICATION = {
   status: 'active' as const,
   createdAt: new Date(),
   updatedAt: new Date(),
+};
+
+/** Canonical administrative OIDC client used by the bootstrap CLI. */
+const ADMIN_CLIENT = {
+  id: 'client-db-uuid',
+  organizationId: SUPER_ADMIN_ORG.id,
+  applicationId: ADMIN_APPLICATION.id,
+  clientId: 'cli-client-id',
+  clientName: 'Porta Admin CLI',
+  status: 'active' as const,
 };
 
 const ADMIN_ROLES = [
@@ -156,6 +171,7 @@ function setupHappyPath(): void {
   vi.mocked(findSuperAdminOrganization).mockResolvedValue(SUPER_ADMIN_ORG);
   vi.mocked(findUserForOidc).mockResolvedValue(ADMIN_USER as never);
   vi.mocked(getApplicationBySlug).mockResolvedValue(ADMIN_APPLICATION);
+  vi.mocked(getClientByClientId).mockResolvedValue(ADMIN_CLIENT as never);
   vi.mocked(getUserRolesForAuthority).mockResolvedValue(ADMIN_ROLES as never);
 }
 
@@ -230,6 +246,58 @@ describe('admin auth middleware', () => {
 
       expect(ctx.status).toBe(401);
       expect((ctx.body as { error: string }).error).toBe('Invalid token');
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('when a genuine token was issued to an ordinary application client', async () => {
+      setupHappyPath();
+      vi.mocked(getClientByClientId).mockResolvedValue({
+        ...ADMIN_CLIENT,
+        applicationId: 'ordinary-application',
+      } as never);
+
+      const middleware = requireAdminAuth();
+      const ctx = createMockCtx('Bearer ordinary-application-token');
+      const next = vi.fn();
+
+      await middleware(ctx as never, next);
+
+      expect(ctx.status).toBe(401);
+      expect((ctx.body as { error: string }).error).toBe('Invalid token');
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('when the administrative client belongs to another organization', async () => {
+      setupHappyPath();
+      vi.mocked(getClientByClientId).mockResolvedValue({
+        ...ADMIN_CLIENT,
+        organizationId: 'another-tenant',
+      } as never);
+
+      const middleware = requireAdminAuth();
+      const ctx = createMockCtx('Bearer foreign-client-token');
+      const next = vi.fn();
+
+      await middleware(ctx as never, next);
+
+      expect(ctx.status).toBe(401);
+      expect(next).not.toHaveBeenCalled();
+    });
+
+    it('when the administrative client is inactive', async () => {
+      setupHappyPath();
+      vi.mocked(getClientByClientId).mockResolvedValue({
+        ...ADMIN_CLIENT,
+        status: 'inactive',
+      } as never);
+
+      const middleware = requireAdminAuth();
+      const ctx = createMockCtx('Bearer inactive-client-token');
+      const next = vi.fn();
+
+      await middleware(ctx as never, next);
+
+      expect(ctx.status).toBe(401);
       expect(next).not.toHaveBeenCalled();
     });
 

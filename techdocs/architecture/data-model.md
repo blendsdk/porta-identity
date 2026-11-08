@@ -1,6 +1,6 @@
 # Data Model
 
-> **Last Updated**: 2026-10-30
+> **Last Updated**: 2026-11-05
 
 ## Overview
 
@@ -34,6 +34,8 @@ erDiagram
     custom_claim_definitions ||--o{ custom_claim_values : "defined by"
 
     clients ||--o{ client_secrets : "has"
+    clients ||--o| client_service_accounts : "owns binding"
+    users |o--o| client_service_accounts : "optional owner"
 
     admin_sessions }o--o| users : "tracked"
 ```
@@ -117,24 +119,102 @@ Confidential clients can keep overlapping active secrets during rotation, with a
 is still confidential and non-revoked, then counts and inserts within the same short transaction.
 Secret list and mutation queries always qualify both the client and secret identifiers.
 
+### Resource Servers
+
+Migration038 adds application-owned resource servers and their explicit custom-scope registry.
+A client may request only a resource server owned by the same application. Standard OIDC protocol
+scopes remain available without being repeated in every registry.
+
+| Table | Key columns | Boundary |
+| --- | --- | --- |
+| `resource_servers` | `application_id`, `slug`, `identifier`, `audience` | Absolute-URI identifier is globally unique; audience defaults to the identifier and is the access-token `aud` |
+| `resource_server_scopes` | `resource_server_id`, `scope` | One explicit custom scope per row; cascade-deleted with its resource server |
+| `resource_server_namespace` | `value`, `resource_server_id` | One primary-key namespace for every identifier and audience; prevents cross-column collisions |
+
+A trigger supplies the identifier when `audience` is omitted. A `resource_server_namespace` primary
+key registers every identifier and audience, so concurrent writers cannot create a cross-application
+audience collision; the namespace is deleted with its resource server.
+
+### OIDC Grants and Connected Apps
+
+Connected applications reuse the provider's `oidc_payloads` Grant rows. A Grant payload carries the
+account, client, OIDC scope and resource scopes; access and refresh tokens reference it through the
+indexed `grant_id` column. The admin list joins the payload to `clients` for tenant and display
+data; revoke deletes the Grant row and all artifacts sharing its `grant_id` in one transaction.
+
+### Invitation Service-Account Storage
+
+Migration037 adds one `client_service_accounts` row per explicitly owned client and a permanent
+internal `users.is_service_account` flag. This is distinct from tenant M2M actors, which do not
+need a control-plane user. See [ADR-018](../decisions/index.md#adr-018-permanent-service-identity-and-binding-storage).
+
+| Column                      | Type                   | Boundary                                                                     |
+| --------------------------- | ---------------------- | ---------------------------------------------------------------------------- |
+| `id`                        | UUID                   | Durable binding identity                                                     |
+| `client_id`                 | UUID, unique           | Owning client; deletion cascades its binding                                 |
+| `account_id`                | UUID, nullable, unique | Owned real account; null identifies a lost-owner marker                      |
+| `authorization_version`     | UUID                   | Internal authority generation, excluded from management projections          |
+| `status`                    | VARCHAR(20)            | `active` or `revoked`                                                        |
+| `targets`                   | JSONB array            | Explicit organizations and application-qualified role/claim-definition pairs |
+| `created_at` / `updated_at` | TIMESTAMPTZ            | Native binding timestamps                                                    |
+
+The strict policy parser admits1–100 distinct organizations, at most100 role occurrences and100
+claim-definition occurrences across the complete policy. It rejects unknown fields, wildcards
+and duplicates and normalizes UUID spelling. The same pair may occur under different organizations,
+but each occurrence consumes the total bound. These are identity allowlists, not permission
+snapshots. Live reference/eligibility checks are required at the lifecycle and invitation boundary;
+parsing alone does not establish them.
+
+Deleting an owned account requires revoking its row and clearing its policy first. A null owner
+is valid only with revoked status and an empty policy. The surviving row prevents the same client
+from adopting another account; it retains no deleted account email or account reference. Validated
+internal reads distinguish this state from an absent binding and never replace corrupt JSON with
+defaults. Mutations use client→binding→account lock order through durable commit, not external mail.
+
+Native machine tokens use the provider's existing Redis `ClientCredentials` model. This feature adds
+no token table, secret-lineage store, refresh artifact or per-token policy copy. Each issuance
+revalidates the exact presented credential row, and a binding replacement or revocation changes the
+authorization version that later admission requires.
+
+Lifecycle provisioning inserts a new passwordless classified user and its reserved membership;
+it never adopts an existing address or shares an owner. The initial normalized email is immutable.
+Restoration keeps the same user and binding, reinstates only the reserved membership and retires
+all credentials. Active replacement validates every live target/reference before changing policy.
+Account, binding, credential retirement and the durable mutation audit share one transaction.
+
+Physical owner deletion uses nonlocking discovery, then client→binding→organization→owned-user
+locks to fit the existing user deletion boundary. It clears the owner and policy on the same row
+with a fresh authorization version before deleting the user. Client deletion instead cascades the
+binding but leaves the surviving user inactive and permanently classified. Neither path permits
+human reclassification or automatic account replacement.
+
+**Upgrade and rollback boundary:** Do not provision flagged identities until every HTTP and
+recovery worker runs code that enforces their noninteractive classification. Adding the schema or
+reserved role alone does not enable a machine Admin API lane. An older account-unaware binary is
+not a safe rollback while any flagged user or ownership row survives. DOWN requires READ COMMITTED,
+locks binding then users exclusively before its existence check, and refuses any surviving flag
+or binding, including inactive accounts and ownerless markers. The fence observes writers that
+commit during its lock wait; it can block reads and does not promise deadlock-free maintenance.
+
 ### Users
 
 User accounts, scoped to an organization.
 
-| Column                       | Type         | Description                                         |
-| ---------------------------- | ------------ | --------------------------------------------------- |
-| `id`                         | UUID         | Primary key                                         |
-| `organization_id`            | UUID         | FK → organizations                                  |
-| `email`                      | CITEXT       | Unique within organization (composite unique index) |
-| `email_verified`             | BOOLEAN      | Email verification status                           |
-| `password_hash`              | TEXT         | Argon2id hash (nullable for passwordless users)     |
-| `name`                       | VARCHAR(255) | Display name                                        |
-| `given_name` / `family_name` | VARCHAR(255) | Name components                                     |
-| `status`                     | VARCHAR(20)  | `active`, `inactive`, `locked`                      |
-| `failed_login_count`         | INTEGER      | Brute-force tracking                                |
-| `last_login_at`              | TIMESTAMPTZ  | Login tracking                                      |
-| `locale`                     | VARCHAR(10)  | User's preferred locale                             |
-| `metadata`                   | JSONB        | Extensible metadata                                 |
+| Column                       | Type         | Description                                                       |
+| ---------------------------- | ------------ | ----------------------------------------------------------------- |
+| `id`                         | UUID         | Primary key                                                       |
+| `organization_id`            | UUID         | FK → organizations                                                |
+| `email`                      | CITEXT       | Unique within organization (composite unique index)               |
+| `email_verified`             | BOOLEAN      | Email verification status                                         |
+| `password_hash`              | TEXT         | Argon2id hash (nullable for passwordless users)                   |
+| `is_service_account`         | BOOLEAN      | Permanent internal machine classification; human default is false |
+| `name`                       | VARCHAR(255) | Display name                                                      |
+| `given_name` / `family_name` | VARCHAR(255) | Name components                                                   |
+| `status`                     | VARCHAR(20)  | `active`, `inactive`, `locked`                                    |
+| `failed_login_count`         | INTEGER      | Brute-force tracking                                              |
+| `last_login_at`              | TIMESTAMPTZ  | Login tracking                                                    |
+| `locale`                     | VARCHAR(10)  | User's preferred locale                                           |
+| `metadata`                   | JSONB        | Extensible metadata                                               |
 
 **Key constraint**: Composite unique index on `(organization_id, email)` — ensures email uniqueness per tenant.
 
@@ -417,22 +497,22 @@ An invitation is an offer, not an account: the token can exist without a `users`
 account is created only when the recipient accepts. Migration 019 added the invitation metadata,
 and migration 033 made the token email/organization-keyed with a nullable account link.
 
-| Column            | Type                   | Description                                                                   |
-| ----------------- | ---------------------- | ----------------------------------------------------------------------------- |
-| `id`              | UUID                   | Primary key                                                                   |
-| `user_id`         | UUID, nullable         | FK → users; null until the recipient accepts and the account is created       |
-| `organization_id` | UUID                   | Tenant authority for acceptance; owns the invited address                     |
+| Column            | Type                   | Description                                                                                |
+| ----------------- | ---------------------- | ------------------------------------------------------------------------------------------ |
+| `id`              | UUID                   | Primary key                                                                                |
+| `user_id`         | UUID, nullable         | FK → users; null until the recipient accepts and the account is created                    |
+| `organization_id` | UUID                   | Tenant authority for acceptance; owns the invited address                                  |
 | `application_id`  | UUID, nullable         | Authenticated tenant application allowed to revoke; null grants no tenant revoke authority |
-| `email`           | CITEXT                 | Invited address; the account is created for this email at acceptance          |
-| `given_name`      | VARCHAR(255), nullable | Profile snapshot applied to the created account                               |
-| `family_name`     | VARCHAR(255), nullable | Profile snapshot applied to the created account                               |
-| `locale`          | VARCHAR(10), nullable  | Preferred locale for the invitation email                                     |
-| `token_hash`      | TEXT                   | Unique SHA-256 digest; plaintext exists only during delivery and presentation |
-| `expires_at`      | TIMESTAMPTZ            | Token expiry (invitation lifetime, default 7 days)                            |
-| `used_at`         | TIMESTAMPTZ, nullable  | Single-use marker; set by acceptance, replacement or explicit revocation      |
-| `details`         | JSONB, nullable        | Pre-assignment metadata: roles, claims, personalMessage, inviterName          |
-| `invited_by`      | UUID, nullable         | FK → users — the admin who created the invitation                             |
-| `created_at`      | TIMESTAMPTZ            | Creation time                                                                 |
+| `email`           | CITEXT                 | Invited address; the account is created for this email at acceptance                       |
+| `given_name`      | VARCHAR(255), nullable | Profile snapshot applied to the created account                                            |
+| `family_name`     | VARCHAR(255), nullable | Profile snapshot applied to the created account                                            |
+| `locale`          | VARCHAR(10), nullable  | Preferred locale for the invitation email                                                  |
+| `token_hash`      | TEXT                   | Unique SHA-256 digest; plaintext exists only during delivery and presentation              |
+| `expires_at`      | TIMESTAMPTZ            | Token expiry (invitation lifetime, default 7 days)                                         |
+| `used_at`         | TIMESTAMPTZ, nullable  | Single-use marker; set by acceptance, replacement or explicit revocation                   |
+| `details`         | JSONB, nullable        | Pre-assignment metadata: roles, claims, personalMessage, inviterName                       |
+| `invited_by`      | UUID, nullable         | FK → users — the admin who created the invitation                                          |
+| `created_at`      | TIMESTAMPTZ            | Creation time                                                                              |
 
 A partial unique index on `(organization_id, email)` where `used_at IS NULL` allows at most one
 live invitation per address while preserving replaced and accepted history. These columns live on
@@ -455,7 +535,7 @@ Migrations are managed programmatically via `packages/server/src/lib/migrator.ts
 
 - **Forward-only in production** — Migrations run automatically on startup
 - **CLI management** — `porta migrate up/down/status` for manual control
-- **Numbered sequencing** — `001_` through `025_` prefix ensures deterministic order
+- **Numbered sequencing** — ordered numeric prefixes; migration037 adds invitation service-account storage
 - **Idempotent patterns** — `IF NOT EXISTS` used where possible
 
 Migration 025 is deliberately forward-only. It narrows organization status to `active` or

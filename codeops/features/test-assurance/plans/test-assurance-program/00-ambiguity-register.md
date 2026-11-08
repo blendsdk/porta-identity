@@ -2376,3 +2376,31 @@ boundaries. **Policy version**: 1. **Root Invocation ID**:
 `574f39b7-f979-469b-91ad-a33859d1efb7`. **Reopen trigger**: the signal campaign gains real
 stage-specific adapters, the aggregate registry changes, or governed coverage obtains a different
 reviewed-baseline policy.
+
+### AR-116 — Statistical enumeration timing campaign retired, not planned
+
+**Authority**: User — explicitly approved retirement of the statistical timing campaign on
+2026-11-07 after reviewing the wall-clock assertions against the product contract. **Eligibility**:
+security-acceptance authority; the user owns the residual timing risk. **Objective**: close DEF-23
+without inventing a threshold or claiming timing resistance that was never measured. **Decision**:
+retire DEF-23 as not planned. No timing samples are collected, no statistical contract is approved,
+and response timing receives no security credit. The explicit limitation "statistical timing
+indistinguishability has not been established" remains recorded. Functional status, body, header,
+cookie, error, recipient, and rate-limit equivalence plus design-level fixed-work equivalence remain
+mandatory under RD-05 R5.6. Latency sampling stays forbidden in the human-auth slice policy. The
+aggregate gap registry retains the limitation as
+`enumeration-timing-evidence-not-planned` with `stale-or-no-go-evidence`/`unqualified` authority.
+**Evidence**: the five wall-clock comparisons in the removed `timing-attacks.test.ts` used 3–5
+samples per side and an unsupported 50% tolerance, and the login, magic-link, and reset requests
+omitted the CSRF cookie and form token so they could measure rejection paths. The tenant comparison
+used `abs(a-b)/max(a,b)`, which cannot exceed 1 for non-negative durations, against a 1.5 threshold.
+The SQL stopwatch could not prove parameterization because a malformed address fails validation
+before durable work. **Rejected alternatives**: approving a statistical contract without independent
+pre-measurement authority would derive the oracle from the implementation under test; deleting the
+tests without functional replacement would lose live public-boundary coverage. **Strongest
+counterargument**: response timing can still reveal identity existence, so retirement does not prove
+safety and the limitation remains material. **Confidence**: High. **Hardening**: the replacement
+tests assert exact public equivalence through real CSRF-authenticated requests, and the requirement
+already forbids timing pass/fail credit. **Policy version**: 1. **Root Invocation ID**:
+`AD-TA-RETIRE-20261107`. **Reopen trigger**: an independently approved pre-measurement timing
+contract, or a discovered account-dependent work asymmetry.

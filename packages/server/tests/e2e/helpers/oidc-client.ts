@@ -296,13 +296,16 @@ export class OidcTestClient {
    * @param scope - Requested scopes (optional)
    * @returns Token set with access_token (no id_token or refresh_token)
    */
-  async clientCredentials(scope?: string): Promise<TokenSet> {
+  async clientCredentials(scope?: string, resource?: string): Promise<TokenSet> {
     const body = new URLSearchParams({
       grant_type: 'client_credentials',
     });
 
     if (scope) {
       body.set('scope', scope);
+    }
+    if (resource) {
+      body.set('resource', resource);
     }
 
     const url = `${this.baseUrl}/${this.orgSlug}/token`;

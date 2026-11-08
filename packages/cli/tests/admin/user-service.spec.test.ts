@@ -566,8 +566,8 @@ describe('user administration input', () => {
     expect(create.mock.calls[0]?.[0]).not.toHaveProperty('claims');
   });
 
-  it('should forward only approved invitation fields without role or claim assignment', async () => {
-    // Invitations and previews share a narrow input that cannot pre-assign authorization data.
+  it('should forward only approved invitation fields and omit absent assignments', async () => {
+    // Invitations support role pre-assignment; claims and unknown fields stay outside this surface.
     const { createAdminUserOperations } = await import('../../src/admin/user-service.js');
     const invite = vi.fn().mockResolvedValue({
       invitationId: userId,

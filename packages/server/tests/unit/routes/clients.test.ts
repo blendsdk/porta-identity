@@ -171,7 +171,7 @@ function createMockCtx(
     set body(v: unknown) {
       responseBody = v;
     },
-    state: { organization: { isSuperAdmin: true } },
+    state: { organization: { isSuperAdmin: true }, adminUser: { id: 'admin-id' } },
     throw: vi.fn((status: number, message: string) => {
       const err = new Error(message) as Error & { status: number };
       err.status = status;
@@ -318,6 +318,7 @@ describe('client routes', () => {
         expect(ctx.status).toBe(201);
         expect(clientService.createClient).toHaveBeenCalledWith(
           expect.objectContaining({ loginMethods: null }),
+          'admin-id',
         );
       });
 
@@ -337,6 +338,7 @@ describe('client routes', () => {
         expect(ctx.status).toBe(201);
         expect(clientService.createClient).toHaveBeenCalledWith(
           expect.objectContaining({ loginMethods: ['password'] }),
+          'admin-id',
         );
         const body = ctx.body as {
           data: { client: Client & { effectiveLoginMethods: readonly string[] } };
@@ -571,6 +573,7 @@ describe('client routes', () => {
       expect(clientService.updateClient).toHaveBeenCalledWith(
         'client-db-uuid-1',
         expect.objectContaining({ loginMethods: null }),
+        'admin-id',
       );
       const body = ctx.body as { data: Client & { effectiveLoginMethods: readonly string[] } };
       expect(body.data.effectiveLoginMethods).toEqual(['password', 'magic_link']);
@@ -665,7 +668,7 @@ describe('client routes', () => {
       expect(body.warning).toBe('Store the secret securely. It will not be shown again.');
       expect(secretService.generateAndStore).toHaveBeenCalledWith('client-db-uuid-1', {
         label: 'production',
-      });
+      }, 'admin-id');
     });
 
     it('should accept empty body for secret generation', async () => {
@@ -728,7 +731,7 @@ describe('client routes', () => {
       await handler(ctx as never, vi.fn());
 
       expect(ctx.status).toBe(204);
-      expect(secretService.revoke).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1');
+      expect(secretService.revoke).toHaveBeenCalledWith('client-db-uuid-1', 'secret-uuid-1', 'admin-id');
     });
 
     it('should throw 404 when the secret no longer exists', async () => {

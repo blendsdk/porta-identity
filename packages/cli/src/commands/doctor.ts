@@ -27,6 +27,8 @@ import {
 } from '../credential-store.js';
 import { fetchHealthStatus, fetchAdminMetadata, type HealthResponse } from '../auth/metadata.js';
 import { printJson, success, warn, error as printError } from '../output.js';
+import { writeJsonError } from '../error-handler.js';
+import { CliErrorCode, formatKnownCliError } from '../error-format.js';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -270,6 +272,7 @@ export const doctorCommand: CommandModule<GlobalOptions, GlobalOptions> = {
 
     // Exit with failure if any check failed
     const hasFailure = results.some((r) => r.status === 'fail');
+    if (argv.json && hasFailure) writeJsonError(formatKnownCliError(CliErrorCode.Diagnostic));
     process.exit(hasFailure ? 1 : 0);
   },
 };

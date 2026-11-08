@@ -8,6 +8,7 @@ import type {
   LiveTokenSet,
 } from './protocol-live-http.js';
 import type { ProtocolCaseRequirement, ProtocolFactValue } from './oidc-token-cases-contract.js';
+import type { ProtocolRecovery } from './protocol-live-recovery.js';
 
 /** Sanitized observations retained for one immutable protocol step. */
 export interface StepEvidence {
@@ -17,6 +18,24 @@ export interface StepEvidence {
   readonly response?: LiveProtocolResponse;
   /** Ephemeral values that must be absent from all retained logs. */
   readonly forbiddenValues?: readonly string[];
+  /** Independently verified recovery label; required for every adversarial probe. */
+  readonly recoveryObserved?: string;
+}
+
+/** Returns a copy of one probe observation with its verified recovery label. */
+export function withRecovery(
+  evidence: StepEvidence,
+  recoveryObserved: ProtocolRecovery,
+): StepEvidence {
+  return Object.freeze({ ...evidence, recoveryObserved });
+}
+
+/** Returns a probe's verified recovery label, or fails closed when it is absent. */
+export function requireRecovery(evidence: StepEvidence): string {
+  if (evidence.recoveryObserved === undefined) {
+    throw new Error('live protocol recovery observation is absent');
+  }
+  return evidence.recoveryObserved;
 }
 
 /** Independently verifies an issued ID token against public discovery and JWKS. */

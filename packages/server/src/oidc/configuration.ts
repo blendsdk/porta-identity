@@ -16,6 +16,8 @@
  * - Cookie signing with rotation support
  */
 
+import { errors } from 'oidc-provider';
+
 import type { OidcTtlConfig } from '../lib/system-config.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
 import { config } from '../config/index.js';
@@ -33,11 +35,16 @@ import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
 import { clearSessionCookies } from '../middleware/prompt-login-reset.js';
 import {
+  SERVICE_ACCOUNT_INVITE_SCOPE, serviceAccountClientCredentialsTtl, serviceAccountExtraTokenClaims,
+} from '../service-accounts/index.js';
+import {
   TENANT_INVITE_SCOPE,
   TENANT_USER_DELETE_SCOPE,
   TENANT_USER_READ_SCOPE,
   TENANT_USER_WRITE_SCOPE,
 } from './scopes.js';
+import { resolveResourceServerInfo } from './resource-servers.js';
+import type { ResourceServerResolver } from './resource-servers.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -64,6 +71,29 @@ export interface BuildProviderConfigParams {
   interactionUrl: (ctx: unknown, interaction: { uid: string }) => string;
   /** CORS handler — determines if an origin is allowed for a client */
   clientBasedCORS?: (ctx: unknown, origin: string, client: unknown) => boolean;
+  /** Optional resource-server resolver used by focused configuration tests. */
+  resolveResourceServer?: ResourceServerResolver;
+}
+
+/** UUID shape required for the internal application identity. */
+const INTERNAL_APPLICATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** Reads the internal application UUID retained in OIDC client metadata. */
+function internalApplicationId(client: unknown): string | undefined {
+  if (typeof client !== 'object' || client === null) return undefined;
+  const value = Reflect.get(client, 'urn:porta:internal_application_id');
+  return typeof value === 'string' && INTERNAL_APPLICATION_ID.test(value) ? value : undefined;
+}
+
+/** Reads the current request's space-delimited scope, when the provider context exposes it. */
+function requestScope(ctx: unknown): string | undefined {
+  if (typeof ctx !== 'object' || ctx === null) return undefined;
+  const oidc = Reflect.get(ctx, 'oidc');
+  if (typeof oidc !== 'object' || oidc === null) return undefined;
+  const params = Reflect.get(oidc, 'params');
+  if (typeof params !== 'object' || params === null) return undefined;
+  const scope = Reflect.get(params, 'scope');
+  return typeof scope === 'string' ? scope : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -453,8 +483,11 @@ export async function loadExistingGrant(
 export function buildProviderConfiguration(
   params: BuildProviderConfigParams,
 ): Record<string, unknown> {
-  const { ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS } =
-    params;
+  const {
+    ttl, jwks, cookieKeys, findAccount, adapterFactory, interactionUrl, clientBasedCORS,
+    resolveResourceServer,
+  } = params;
+  const resourceResolver = resolveResourceServer ?? resolveResourceServerInfo;
 
   return {
     // Adapter — hybrid Postgres/Redis via factory
@@ -485,12 +518,16 @@ export function buildProviderConfiguration(
         // restricted EVERY token and caused the userinfo endpoint to reject them all.
         defaultResource: async (_ctx: unknown, _client: unknown, oneOf?: string) =>
           oneOf ?? undefined,
-        getResourceServerInfo: () => ({
-          scope: 'openid profile email',
-          audience: 'urn:porta:default',
-          accessTokenFormat: 'opaque',
-          accessTokenTTL: ttl.accessToken,
-        }),
+        getResourceServerInfo: async (ctx: unknown, resource: string, client: unknown) => {
+          const applicationId = internalApplicationId(client);
+          if (!applicationId) throw new errors.InvalidTarget('resource server is not available');
+          return resourceResolver({
+            applicationId,
+            identifier: resource,
+            requestedScope: requestScope(ctx),
+            accessTokenTTL: ttl.accessToken,
+          });
+        },
         useGrantedResource: () => true,
       },
       // Enable client credentials grant (RFC 6749 §4.4)
@@ -520,6 +557,7 @@ export function buildProviderConfiguration(
     // Token TTLs from system_config table
     ttl: {
       AccessToken: ttl.accessToken,
+      ClientCredentials: serviceAccountClientCredentialsTtl,
       AuthorizationCode: ttl.authorizationCode,
       IdToken: ttl.idToken,
       RefreshToken: ttl.refreshToken,
@@ -561,6 +599,7 @@ export function buildProviderConfiguration(
       'phone',
       'offline_access',
       TENANT_INVITE_SCOPE,
+      SERVICE_ACCOUNT_INVITE_SCOPE,
       TENANT_USER_READ_SCOPE,
       TENANT_USER_WRITE_SCOPE,
       TENANT_USER_DELETE_SCOPE,
@@ -648,6 +687,7 @@ export function buildProviderConfiguration(
     // Extra client metadata properties — tell the provider to preserve
     // these custom fields from the adapter's findClient response.
     // Without this, node-oidc-provider strips all unknown properties.
+    extraTokenClaims: serviceAccountExtraTokenClaims,
     extraClientMetadata: {
       properties: [
         'organizationId',

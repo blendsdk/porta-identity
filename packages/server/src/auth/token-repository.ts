@@ -325,11 +325,17 @@ export async function ensureRecoveryJobToken(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const lockedUser = await client.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [
+    const lockedUser = await client.query<{ id: string; classified: boolean }>(
+      'SELECT id, is_service_account AS classified FROM users WHERE id = $1 FOR UPDATE', [
       input.userId,
     ]);
     if (lockedUser.rowCount !== 1) {
       throw new Error('Recovery artifact user disappeared before issuance');
+    }
+    if (lockedUser.rows[0]?.classified) {
+      // Recheck under the artifact writer's own user lock, even after a worker cache hit.
+      await client.query('COMMIT');
+      return 'superseded';
     }
 
     const jobOrder = await client.query<RecoveryJobOrderRow>(
@@ -468,13 +474,17 @@ export async function findValidToken(
 ): Promise<TokenRecord | null> {
   assertValidTable(table);
   const pool = getPool();
+  // Deferred invitations have their own acceptance authority. Recovery requires a surviving human.
+  const humanAccount = table === 'invitation_tokens' ? '' : `AND EXISTS (
+    SELECT 1 FROM users account WHERE account.id = token.user_id AND NOT account.is_service_account
+  )`;
 
   const result = await pool.query<TokenRow>(
     `SELECT id, user_id, token_hash, expires_at, used_at, created_at
-     FROM ${table}
+     FROM ${table} AS token
      WHERE token_hash = $1
-       AND used_at IS NULL
-       AND expires_at > NOW()`,
+        AND used_at IS NULL
+        AND expires_at > NOW() ${humanAccount}`,
     [tokenHash],
   );
 
@@ -509,7 +519,8 @@ export async function findValidTokenForOrganization(
      FROM ${table} AS token
      JOIN users AS account ON account.id = token.user_id
      WHERE token.token_hash = $1
-       AND account.organization_id = $2
+        AND account.organization_id = $2
+        AND NOT account.is_service_account
        AND token.used_at IS NULL
        AND token.expires_at > NOW()`,
     [tokenHash, organizationId],
@@ -545,7 +556,8 @@ export async function findAndLockMagicLinkToken(
       AND account.organization_id = token.organization_id
      WHERE token.token_hash = $1
        AND token.organization_id = $2
-       AND token.authority_bound = TRUE
+        AND token.authority_bound = TRUE
+        AND NOT account.is_service_account
        AND token.used_at IS NULL
        AND token.expires_at > NOW()
      FOR UPDATE OF token, account`,
@@ -577,11 +589,15 @@ export async function consumeLockedMagicLinkToken(
 ): Promise<boolean> {
   const result = await client.query(
     `UPDATE magic_link_tokens
-     SET used_at = NOW()
-     WHERE id = $1
-       AND used_at IS NULL
-       AND expires_at > NOW()
-     RETURNING id`,
+      SET used_at = NOW()
+      WHERE id = $1
+        AND used_at IS NULL
+        AND expires_at > NOW()
+        AND EXISTS (
+          SELECT 1 FROM users account
+          WHERE account.id = magic_link_tokens.user_id AND NOT account.is_service_account
+        )
+      RETURNING id`,
     [tokenId],
   );
   return result.rowCount === 1;
@@ -637,9 +653,10 @@ export async function consumeAuthorizedMagicLink(
            login_count = login_count + 1,
            failed_login_count = 0,
            last_failed_login_at = NULL
-       WHERE id = $1
-         AND organization_id = $2
-         AND status = 'active'
+        WHERE id = $1
+          AND organization_id = $2
+          AND status = 'active'
+          AND NOT is_service_account
        RETURNING id`,
       [token.userId, input.organizationId],
     );
@@ -690,6 +707,46 @@ export async function markTokenUsed(table: TokenTable, tokenId: string): Promise
   await pool.query(`UPDATE ${table} SET used_at = NOW() WHERE id = $1`, [tokenId]);
 
   logger.debug({ table, tokenId }, 'Token marked as used');
+}
+
+/**
+ * Consume one password-reset token exactly once inside the caller's transaction.
+ *
+ * The conditional update makes concurrent submissions race on the same row: only the first
+ * transaction sees `used_at IS NULL` and returns a row. The password write and authority
+ * revocation run in that same transaction, so a failed consumption rolls everything back.
+ *
+ * @param tokenId - Reset token row selected during pre-validation.
+ * @returns True when this transaction consumed the token.
+ */
+export async function consumePasswordResetToken(tokenId: string): Promise<boolean> {
+  const result = await getPool().query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE id = $1 AND used_at IS NULL
+     RETURNING id`,
+    [tokenId],
+  );
+  return result.rowCount === 1;
+}
+
+/**
+ * Invalidate every other outstanding reset link for a user.
+ *
+ * A password change invalidates recovery material that could otherwise replace the new password.
+ * The consumed token is already marked, so it can be included without changing the result.
+ *
+ * @param userId - User whose other active reset tokens should be retired.
+ * @returns Number of additional token rows retired.
+ */
+export async function invalidateOtherPasswordResetTokens(userId: string): Promise<number> {
+  const result = await getPool().query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE user_id = $1 AND used_at IS NULL`,
+    [userId],
+  );
+  return result.rowCount ?? 0;
 }
 
 /**

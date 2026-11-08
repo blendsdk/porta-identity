@@ -87,8 +87,8 @@ export const statsCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               ],
             );
             success('Dashboard statistics');
-
           } catch (err) {
+            if (argv.json) handleError(err, argv.verbose, true);
             handleError(err, argv.verbose);
           }
         },

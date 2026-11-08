@@ -64,6 +64,20 @@ function collectAuthorityReferences(payload: AdapterPayload): AuthorityReference
   addStringReference(references.userIds, payload.accountId);
   addStringReference(references.grantIds, payload.grantId);
 
+  // Interaction payloads carry the authenticated account under `session.accountId` and the
+  // pending second-factor account under `result.twoFactor.pendingAccountId`.
+  if (isRecord(payload.session)) {
+    addStringReference(references.userIds, payload.session.accountId);
+  }
+  if (isRecord(payload.result)) {
+    if (isRecord(payload.result.login)) {
+      addStringReference(references.userIds, payload.result.login.accountId);
+    }
+    if (isRecord(payload.result.twoFactor)) {
+      addStringReference(references.userIds, payload.result.twoFactor.pendingAccountId);
+    }
+  }
+
   if (isRecord(payload.authorizations)) {
     for (const [clientId, authorization] of Object.entries(payload.authorizations)) {
       addStringReference(references.clientIds, clientId);
@@ -264,7 +278,7 @@ export function createAdapterFactory() {
               await cleanupRedisGrants(grantIds);
 
               logger.info(
-                { sessionId: id, grantIds },
+                { grantCount: grantIds.length },
                 'Session destroy: cascade-deleted grants and tokens',
               );
             }
@@ -274,7 +288,7 @@ export function createAdapterFactory() {
           // The user must always be able to log out; orphaned tokens will
           // expire naturally via their TTLs.
           logger.error(
-            { err, sessionId: id },
+            { errorName: err instanceof Error ? err.name : 'unknown' },
             'Session destroy: cascade cleanup failed (proceeding with session deletion)',
           );
         }
