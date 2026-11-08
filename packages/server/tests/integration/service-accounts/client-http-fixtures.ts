@@ -19,7 +19,7 @@ import {
   setServiceAccount,
 } from '../../../src/service-accounts/index.js';
 import { truncateAllTables } from '../helpers/database.js';
-import { createTestClient } from '../helpers/factories.js';
+import { createTestApplication, createTestClient } from '../helpers/factories.js';
 import {
   createLifecycleActor,
   createLifecycleFixture,
@@ -122,6 +122,13 @@ export function useClientHttpFixture(): () => ClientHttpFixture {
     clearAdminAuthProvider();
     await getRedis().flushdb();
     const fixture = await createLifecycleFixture();
+    // Token issuance must not share the lifecycle target client: several scenarios deactivate
+    // or delete that client and still expect the route's own response.
+    const humanClient = await createTestClient(
+      fixture.adminOrganization.id,
+      fixture.adminApplication.id,
+      { grantTypes: ['authorization_code', 'refresh_token'], scope: 'openid' },
+    );
     const appAdmin = await createLifecycleActor(fixture.adminOrganization.id, fixture.appAdminRole);
     const userAdmin = await createLifecycleActor(fixture.adminOrganization.id, fixture.userAdminRole);
     const jwks = await ensureSigningKeys();
@@ -141,7 +148,7 @@ export function useClientHttpFixture(): () => ClientHttpFixture {
       AccessToken: {
         find: async (token: string) => {
           const accountId = tokenAccounts.get(token);
-          return accountId ? { accountId } : undefined;
+          return accountId ? { accountId, clientId: humanClient.clientId } : undefined;
         },
       },
     });
@@ -217,9 +224,12 @@ export async function bindClientHttpFixture(
   return binding;
 }
 
-/** Create an ordinary unbound client in the same organization and application as the bound one. */
+/** Create an ordinary unbound client in the control-plane organization but not the Admin app. */
 export async function createOrdinaryClientHttpFixture(fixture: ClientHttpFixture) {
-  return createTestClient(fixture.adminOrganization.id, fixture.adminApplication.id, {
+  // The canonical Admin application is reserved: any client there can receive Admin tokens and
+  // must be managed only by a full Super Admin. This fixture models a genuinely ordinary client.
+  const application = await createTestApplication();
+  return createTestClient(fixture.adminOrganization.id, application.id, {
     clientType: 'confidential',
     grantTypes: ['authorization_code', 'refresh_token', 'client_credentials'],
     tokenEndpointAuthMethod: 'client_secret_basic',

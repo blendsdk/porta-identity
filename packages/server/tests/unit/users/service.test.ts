@@ -42,6 +42,10 @@ vi.mock('../../../src/lib/database.js', () => ({
   afterDatabaseCommit: async (effect: () => Promise<void>) => effect(),
 }));
 
+vi.mock('../../../src/rbac/admin-authority-ceiling.js', () => ({
+  requireActorMayManageUser: vi.fn().mockResolvedValue(undefined),
+}));
+
 import * as repo from '../../../src/users/repository.js';
 import * as cache from '../../../src/users/cache.js';
 import * as pw from '../../../src/users/password.js';

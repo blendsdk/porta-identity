@@ -60,6 +60,7 @@ import {
   findActiveOtpCodes,
   markOtpCodeUsed,
   deleteExpiredOtpCodes,
+  deleteAllOtpCodes,
   countActiveOtpCodes,
   findUnusedRecoveryCodes,
   markRecoveryCodeUsed,
@@ -136,28 +137,38 @@ async function generateAndHashRecoveryCodes(): Promise<{
  * @returns Setup result with recovery codes
  * @throws TwoFactorAlreadyEnabledError if 2FA is already enabled
  */
-export async function setupEmailOtp(userId: string, orgId: string): Promise<TwoFactorSetupResult> {
-  // Check preconditions — user must not already have 2FA enabled
+export async function setupEmailOtp(
+  userId: string,
+  orgId: string,
+  options: {
+    readonly allowReplaceExisting?: boolean;
+    readonly preserveExistingTotp?: boolean;
+  } = {},
+): Promise<TwoFactorSetupResult> {
+  // Check preconditions — the caller must prove it may replace an existing factor.
   const user = await findUserById(userId);
   if (!user) {
     throw new TwoFactorNotEnabledError(userId);
   }
 
-  // Check if 2FA is already enabled by reading the DB columns directly
-  if (user.twoFactorEnabled) {
+  if (user.twoFactorEnabled && options.allowReplaceExisting !== true) {
     throw new TwoFactorAlreadyEnabledError(userId);
   }
 
-  // Generate recovery codes
+  // Generate recovery codes before opening the transaction; hashing is intentionally expensive.
   const { plaintextCodes, codeHashes } = await generateAndHashRecoveryCodes();
 
-  // Store recovery codes in the database
-  await insertRecoveryCodes(userId, codeHashes);
-
-  // Enable 2FA on the user record
-  await repoUpdateUser(userId, {
-    twoFactorEnabled: true,
-    twoFactorMethod: 'email',
+  await runDatabaseTransaction(async () => {
+    // An abandoned TOTP enrollment must never survive a completed email enrollment. During a
+    // verified migration the existing TOTP is retained until the mailbox is proven, then removed
+    // by completeEmailFactorMigration.
+    if (options.preserveExistingTotp !== true) await deleteTotp(userId);
+    await deleteAllRecoveryCodes(userId);
+    await insertRecoveryCodes(userId, codeHashes);
+    await repoUpdateUser(userId, {
+      twoFactorEnabled: true,
+      twoFactorMethod: 'email',
+    });
   });
 
   // Invalidate cache since 2FA state changed
@@ -181,6 +192,19 @@ export async function setupEmailOtp(userId: string, orgId: string): Promise<TwoF
 }
 
 /**
+ * Remove the retained TOTP row after a verified migration to email OTP.
+ *
+ * Cleanup is deferred until the mailbox code succeeds, so a failed delivery cannot remove the
+ * user's existing factor. The email method is already authoritative when this runs.
+ *
+ * @param userId - User whose migration completed.
+ */
+export async function completeEmailFactorMigration(userId: string): Promise<void> {
+  await deleteTotp(userId);
+  await invalidateTwoFactorCache(userId);
+}
+
+/**
  * Start TOTP setup for a user.
  *
  * Generates a TOTP secret, encrypts it, stores it as unverified,
@@ -198,14 +222,15 @@ export async function setupTotp(
   userId: string,
   email: string,
   orgSlug: string,
+  options: { readonly allowReplaceExisting?: boolean } = {},
 ): Promise<TwoFactorSetupResult> {
-  // Check preconditions — user must not already have 2FA enabled
+  // Check preconditions — an existing factor may only be replaced after it was proven.
   const user = await findUserById(userId);
   if (!user) {
     throw new TwoFactorNotEnabledError(userId);
   }
 
-  if (user.twoFactorEnabled) {
+  if (user.twoFactorEnabled && options.allowReplaceExisting !== true) {
     throw new TwoFactorAlreadyEnabledError(userId);
   }
 
@@ -262,11 +287,17 @@ export async function setupTotp(
  * @param orgSlug - Organization slug (used as TOTP issuer)
  * @returns Setup info with QR code and secret, or null if no pending setup
  */
-export async function getPendingTotpSetupInfo(
-  userId: string,
+export async function getPendingTotpSetupInfo(  userId: string,
   email: string,
   orgSlug: string,
+  options: { readonly allowReplaceExisting?: boolean } = {},
 ): Promise<{ totpUri: string; qrCodeDataUri: string; totpSecret: string } | null> {
+  const user = await findUserById(userId);
+  if (!user) return null;
+  // Never reveal a pending secret to an already enrolled user unless a trusted migration flow
+  // proved the existing factor. This blocks password-only reuse of an abandoned enrollment row.
+  if (user.twoFactorEnabled && options.allowReplaceExisting !== true) return null;
+
   const totp = await findTotpByUserId(userId);
   if (!totp || totp.verified) {
     return null;
@@ -301,7 +332,17 @@ export async function getPendingTotpSetupInfo(
  * @returns true if the code is valid and setup is confirmed
  * @throws TotpNotConfiguredError if no pending TOTP setup exists
  */
-export async function confirmTotpSetup(userId: string, code: string): Promise<boolean> {
+export async function confirmTotpSetup(
+  userId: string,
+  code: string,
+  options: { readonly allowReplaceExisting?: boolean } = {},
+): Promise<boolean> {
+  const enrolledUser = await findUserById(userId);
+  if (!enrolledUser) return false;
+  if (enrolledUser.twoFactorEnabled && options.allowReplaceExisting !== true) {
+    throw new TwoFactorAlreadyEnabledError(userId);
+  }
+
   // Find the unverified TOTP config
   const totp = await findTotpByUserId(userId);
   if (!totp || totp.verified) {
@@ -345,9 +386,9 @@ export async function confirmTotpSetup(userId: string, code: string): Promise<bo
   await invalidateTwoFactorCache(userId);
 
   // Audit log (fire-and-forget)
-  const user = await findUserById(userId);
+  const auditUser = await findUserById(userId);
   await writeAuditLog({
-    organizationId: user?.organizationId,
+    organizationId: auditUser?.organizationId,
     userId,
     eventType: '2fa.setup.totp',
     eventCategory: 'auth',
@@ -617,7 +658,7 @@ export async function disableTwoFactor(userId: string): Promise<void> {
   // Delete all 2FA data
   await deleteTotp(userId);
   await deleteAllRecoveryCodes(userId);
-  await deleteExpiredOtpCodes(userId);
+  await deleteAllOtpCodes(userId);
 
   // Reset 2FA flags on the user record
   await repoUpdateUser(userId, {
@@ -698,6 +739,59 @@ interface OrgForPolicy {
 interface UserForPolicy {
   twoFactorEnabled: boolean;
   twoFactorMethod: TwoFactorMethod | null;
+}
+
+/**
+ * One trusted plan for an authentication attempt.
+ *
+ * `challengeMethod` is the factor the user must prove now. `requiredMethod` names a different
+ * factor the organization requires; when set, the user must prove `challengeMethod` first and then
+ * enroll `requiredMethod` before login may complete.
+ */
+export interface TwoFactorPlan {
+  /** Whether login needs no factor, first enrollment, or an existing-factor challenge. */
+  readonly action: 'none' | 'enroll' | 'challenge';
+  /** Factor to present for enrollment selection or challenge. */
+  readonly challengeMethod: TwoFactorMethod | null;
+  /** Required target factor when the existing enrollment is incompatible with policy. */
+  readonly requiredMethod: TwoFactorMethod | null;
+}
+
+/** Map a policy to its single required method, or null when the user may choose. */
+function policyMethod(policy: TwoFactorPolicy): TwoFactorMethod | null {
+  if (policy === 'required_email') return 'email';
+  if (policy === 'required_totp') return 'totp';
+  return null;
+}
+
+/**
+ * Resolve the current organization policy against persisted enrollment state.
+ *
+ * An enrolled method that no longer satisfies a changed policy is challenged first, then migrated.
+ * Policy is authoritative for unenrolled users; an existing enrollment never silently overrides it.
+ *
+ * @param org - Organization carrying the current two-factor policy.
+ * @param user - User with persisted enrollment state.
+ * @returns Trusted plan for the login interaction.
+ */
+export function resolveTwoFactorPlan(org: OrgForPolicy, user: UserForPolicy): TwoFactorPlan {
+  const required = policyMethod(org.twoFactorPolicy);
+  if (!user.twoFactorEnabled) {
+    if (org.twoFactorPolicy === 'optional') {
+      return { action: 'none', challengeMethod: null, requiredMethod: null };
+    }
+    return { action: 'enroll', challengeMethod: required, requiredMethod: required };
+  }
+
+  const enrolled = user.twoFactorMethod;
+  if (enrolled === null) {
+    // A persisted enabled flag without a method cannot satisfy a required policy.
+    return { action: 'enroll', challengeMethod: required, requiredMethod: required };
+  }
+  if (required !== null && enrolled !== required) {
+    return { action: 'challenge', challengeMethod: enrolled, requiredMethod: required };
+  }
+  return { action: 'challenge', challengeMethod: enrolled, requiredMethod: null };
 }
 
 /**

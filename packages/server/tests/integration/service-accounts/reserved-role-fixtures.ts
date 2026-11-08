@@ -8,6 +8,7 @@ import {
   setEmailTransport,
 } from '../../../src/auth/index.js';
 import { getRedis } from '../../../src/lib/redis.js';
+import { getPool } from '../../../src/lib/database.js';
 import { ensureSigningKeys } from '../../../src/lib/signing-keys.js';
 import { loadOidcTtlConfig } from '../../../src/lib/system-config.js';
 import {
@@ -104,10 +105,21 @@ export async function startReservedRoleApp(actorId: string): Promise<ReservedRol
   const provider = await createOidcProvider({ jwks, ttl });
   const app = createApp(provider);
   const adminToken = randomBytes(32).toString('hex');
+  const canonicalClient = await getPool().query<{ client_id: string }>(
+    `SELECT client.client_id
+     FROM clients AS client
+     JOIN applications AS application ON application.id = client.application_id
+     JOIN organizations AS organization ON organization.id = client.organization_id
+     WHERE application.slug = 'porta-admin' AND organization.is_super_admin = TRUE
+     ORDER BY client.id
+     LIMIT 1`,
+  );
+  const adminClientId = canonicalClient.rows[0]?.client_id;
+  if (!adminClientId) throw new Error('Reserved-role fixture requires a canonical Admin client');
   setAdminAuthProvider({
     AccessToken: {
       async find(token) {
-        return token === adminToken ? { accountId: actorId } : undefined;
+        return token === adminToken ? { accountId: actorId, clientId: adminClientId } : undefined;
       },
     },
   });

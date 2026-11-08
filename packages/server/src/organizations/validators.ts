@@ -53,5 +53,23 @@ export const brandingPrimaryColorSchema = z.string().regex(/^#[0-9A-Fa-f]{6}$/);
 /** Branding company names fit the existing organization field limit. */
 export const brandingCompanyNameSchema = z.string().max(255);
 
-/** Custom branding CSS retains the existing bounded text contract. */
-export const brandingCustomCssSchema = z.string().max(10_000);
+/**
+ * Return whether custom CSS cannot open an HTML element.
+ *
+ * A `<` is the only character that can begin an HTML tag. Rejecting it prevents a style terminator
+ * from ending the raw-text `<style>` element and introducing markup, while leaving ordinary CSS
+ * untouched. This is deliberately narrower than parsing CSS; it closes HTML escape, not every
+ * visually disruptive CSS rule.
+ *
+ * @param value - Stored or submitted custom CSS.
+ * @returns True when the value cannot introduce HTML markup.
+ */
+export function isSafeBrandingCustomCss(value: string): boolean {
+  return !value.includes('<');
+}
+
+/** Custom branding CSS retains the bounded text contract and cannot introduce HTML elements. */
+export const brandingCustomCssSchema = z
+  .string()
+  .max(10_000)
+  .refine(isSafeBrandingCustomCss, 'Custom CSS must not contain HTML markup');

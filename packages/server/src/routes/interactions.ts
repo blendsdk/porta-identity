@@ -49,9 +49,10 @@ import {
   recordLogin,
   recordPasswordFailure,
 } from '../users/service.js';
-import { requiresTwoFactor, determineTwoFactorMethod, sendOtpCode } from '../two-factor/service.js';
+import { resolveTwoFactorPlan, sendOtpCode } from '../two-factor/service.js';
 import { writeAuditLog } from '../lib/audit-log.js';
 import { logger } from '../lib/logger.js';
+import { findUserById } from '../users/repository.js';
 import { getClientByClientId } from '../clients/service.js';
 import { getOrganizationById } from '../organizations/service.js';
 import { getRedis } from '../lib/redis.js';
@@ -803,12 +804,15 @@ async function processLogin(
     // Step 6: Password valid — check if 2FA is required
     await dependencies.resetRateLimit(rateLimitKey);
 
-    // Determine 2FA requirements based on org policy and user state
-    const twoFactorRequired = user.twoFactorEnabled || requiresTwoFactor(org, user);
-    const twoFactorMethod = determineTwoFactorMethod(org, user);
+    // Determine 2FA requirements based on current policy and persisted enrollment.
+    const twoFactorPlan = resolveTwoFactorPlan(org, user);
+    const twoFactorMethod = twoFactorPlan.challengeMethod;
 
-    if (twoFactorRequired) {
-      // Store pending login in the interaction session — user must complete 2FA
+    if (twoFactorPlan.action !== 'none') {
+      // Store trusted pending state. `purpose` distinguishes first enrollment from an
+      // existing-factor challenge; `requiredMethod` names a migration target that must be
+      // enrolled before login completes. Legacy in-flight interactions have no purpose and are
+      // deliberately rejected by the 2FA routes rather than inferring enrollment authority.
       await provider.interactionResult(
         ctx.req,
         ctx.res,
@@ -817,6 +821,10 @@ async function processLogin(
             pendingAccountId: user.id,
             method: twoFactorMethod ?? 'email',
             email: user.email,
+            purpose: twoFactorPlan.action === 'enroll' ? 'enrollment' : 'challenge',
+            ...(twoFactorPlan.requiredMethod === null
+              ? {}
+              : { requiredMethod: twoFactorPlan.requiredMethod }),
           },
         },
         { mergeWithLastSubmission: true },
@@ -824,7 +832,11 @@ async function processLogin(
 
       // Enrolled email users can receive their challenge immediately. Unenrolled users receive
       // one only after choosing email during setup, so they are not sent duplicate or unwanted codes.
-      if (user.twoFactorEnabled && twoFactorMethod === 'email') {
+      if (
+        twoFactorPlan.action === 'challenge' &&
+        user.twoFactorEnabled &&
+        twoFactorMethod === 'email'
+      ) {
         try {
           const otpCode = await sendOtpCode(user.id, user.email, org.id);
           // Send the OTP code via email (fire-and-forget)
@@ -850,15 +862,15 @@ async function processLogin(
         userId: user.id,
         eventType: '2fa.challenge.started',
         eventCategory: 'authentication',
-        description: `Two-factor challenge initiated (${twoFactorMethod ?? 'setup_required'})`,
+        description: `Two-factor step initiated (${twoFactorPlan.action}; ${twoFactorMethod ?? 'method_choice'})`,
         ipAddress: ctx.ip,
       });
 
-      // Redirect to the 2FA verification page (or setup page if not enrolled)
-      if (user.twoFactorEnabled) {
+      // Enrollment starts at setup; an enrolled factor starts at verification even when policy
+      // requires a later migration, because the existing factor must be proven first.
+      if (twoFactorPlan.action === 'challenge') {
         ctx.redirect(`/interaction/${interaction.uid}/two-factor`);
       } else {
-        // User needs to set up 2FA first (org requires it but user hasn't enrolled)
         ctx.redirect(`/interaction/${interaction.uid}/two-factor/setup`);
       }
       return;
@@ -1123,6 +1135,35 @@ function nothingMissing(details: Record<string, unknown>): boolean {
 }
 
 /**
+ * Require the interaction session account to belong to the client organization.
+ *
+ * @param ctx - Koa context carrying the resolved client organization.
+ * @param interaction - Current consent interaction.
+ * @returns The authenticated account ID.
+ * @throws When the session account is missing or belongs to another tenant.
+ */
+async function requireConsentAccount(
+  ctx: InteractionContext,
+  interaction: ConsentInteraction,
+): Promise<string> {
+  const accountId = interaction.session?.accountId;
+  if (!accountId) {
+    logger.warn({ event: 'consent-account-tenant-mismatch' }, 'Consent account tenant mismatch');
+    throw new Error('Account does not belong to the client organization');
+  }
+  const account = await findUserById(accountId);
+  if (
+    !account ||
+    account.status !== 'active' ||
+    account.organizationId !== ctx.state.organization.id
+  ) {
+    logger.warn({ event: 'consent-account-tenant-mismatch' }, 'Consent account tenant mismatch');
+    throw new Error('Account does not belong to the client organization');
+  }
+  return accountId;
+}
+
+/**
  * Persist a consent grant covering the interaction's missing scopes and finish.
  *
  * Grants exactly what the provider listed as missing plus `offline_access` when
@@ -1143,7 +1184,8 @@ async function grantConsentAndFinish(
   const params = interaction.params as Record<string, unknown>;
   const details = interaction.prompt.details as Record<string, unknown>;
   const clientId = params.client_id as string;
-  const grant = new provider.Grant({ accountId: interaction.session?.accountId, clientId });
+  const accountId = await requireConsentAccount(ctx, interaction);
+  const grant = new provider.Grant({ accountId, clientId });
 
   if (details.missingOIDCScope) {
     grant.addOIDCScope([...(details.missingOIDCScope as Iterable<string>)].join(' '));
@@ -1212,6 +1254,7 @@ async function showConsent(ctx: InteractionContext, provider: Provider): Promise
     // replace it with an empty one and drop the scopes the user already
     // approved, which would make the provider prompt again.
     if (nothingMissing(details)) {
+      await requireConsentAccount(ctx, interaction);
       const existingGrantId = (interaction as unknown as { grantId?: string }).grantId;
       if (existingGrantId !== undefined) {
         await provider.interactionFinished(
@@ -1320,10 +1363,8 @@ async function processConsent(ctx: InteractionContext, provider: Provider): Prom
     if (decision === 'approve') {
       // Create a grant for the approved scopes and claims
       const clientId = interaction.params.client_id as string;
-      const grant = new provider.Grant({
-        accountId: interaction.session?.accountId,
-        clientId,
-      });
+      const accountId = await requireConsentAccount(ctx, interaction);
+      const grant = new provider.Grant({ accountId, clientId });
 
       // Use prompt.details to grant exactly what the provider requires
       const details = interaction.prompt.details as Record<string, unknown>;

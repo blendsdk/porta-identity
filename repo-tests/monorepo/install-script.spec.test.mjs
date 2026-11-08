@@ -1,6 +1,17 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import test from 'node:test';
@@ -47,9 +58,18 @@ function runInstaller(arguments_, stdin) {
 /**
  * Creates an isolated target directory for one installer run.
  *
+ * When `PORTA_INSTALL_TEST_ROOT` is set, the fixture stays inside that approved private root.
+ * This lets an operator confine synthetic `.env` files without changing the global temporary
+ * directory used by unrelated tests.
+ *
  * @returns {string} Absolute temporary directory path.
  */
 function makeTargetDirectory() {
+  const confinedRoot = process.env.PORTA_INSTALL_TEST_ROOT;
+  if (confinedRoot) {
+    mkdirSync(confinedRoot, { recursive: true, mode: 0o700 });
+    return mkdtempSync(join(confinedRoot, 'porta-install-'));
+  }
   return mkdtempSync(join(tmpdir(), 'porta-install-'));
 }
 
@@ -171,13 +191,13 @@ test('should generate a valid standalone compose stack and hardened .env without
     assert.equal(compose.services.porta.image, '${PORTA_IMAGE:-blendsdk/porta:latest}');
     assert.match(
       compose.services.porta.ports[0],
-      /\$\{BIND_ADDR:-0\.0\.0\.0\}:\$\{HOST_PORT:-3000\}:3000/,
+      /\$\{BIND_ADDR:-127\.0\.0\.1\}:\$\{HOST_PORT:-3000\}:3000/,
     );
     assert.deepEqual(compose.services.mailhog.profiles, ['dev']);
 
     const env = readGeneratedEnv(targetDirectory);
     assert.equal(env.get('HOST_PORT'), '3457');
-    assert.equal(env.get('BIND_ADDR'), '0.0.0.0');
+    assert.equal(env.get('BIND_ADDR'), '127.0.0.1');
     assert.equal(env.get('TRUST_PROXY'), 'true');
     assert.equal(env.get('TRUST_PROXY_HOPS'), '1');
     assert.equal(env.get('PORTA_AUTO_MIGRATE'), 'false');
@@ -239,6 +259,64 @@ test('should skip SMTP with MailHog and honour a custom bind address', () => {
     assert.equal(env.get('SMTP_PORT'), '1025');
     assert.equal(env.get('BIND_ADDR'), '127.0.0.1');
     assert.equal(env.get('SMTP_FROM'), 'noreply@auth.example.com');
+  } finally {
+    rmSync(targetDirectory, { recursive: true, force: true });
+  }
+});
+
+test('should write the private configuration atomically without leftover temporary files', () => {
+  const targetDirectory = makeTargetDirectory();
+
+  try {
+    const result = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--dir',
+      targetDirectory,
+      '--port',
+      '3460',
+      '--issuer-url',
+      'https://auth.example.com',
+      '--skip-smtp',
+    ]);
+
+    assert.equal(result.status, 0, `installer failed: ${result.stderr}`);
+    assert.equal(statSync(join(targetDirectory, '.env')).mode & 0o777, 0o600);
+    assert.deepEqual(
+      readdirSync(targetDirectory).filter((name) => name.startsWith('.env.tmp.')),
+      [],
+      'atomic replacement must not leave secret-bearing temporary files',
+    );
+  } finally {
+    rmSync(targetDirectory, { recursive: true, force: true });
+  }
+});
+
+test('should refuse a linked .env target without modifying the link target', () => {
+  const targetDirectory = makeTargetDirectory();
+  const outside = join(targetDirectory, 'operator-owned.env');
+  writeFileSync(outside, 'operator-owned\n');
+
+  try {
+    symlinkSync(outside, join(targetDirectory, '.env'));
+
+    const result = runInstaller([
+      '--non-interactive',
+      '--no-start',
+      '--force',
+      '--dir',
+      targetDirectory,
+      '--port',
+      '3461',
+      '--issuer-url',
+      'https://auth.example.com',
+      '--skip-smtp',
+    ]);
+
+    assert.notEqual(result.status, 0, 'a linked destination must be rejected');
+    assert.match(result.stderr, /symbolic link|regular file/i);
+    assert.equal(readText(outside), 'operator-owned\n');
+    assert.equal(lstatSync(join(targetDirectory, '.env')).isSymbolicLink(), true);
   } finally {
     rmSync(targetDirectory, { recursive: true, force: true });
   }

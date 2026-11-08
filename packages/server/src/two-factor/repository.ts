@@ -245,6 +245,23 @@ export async function deleteExpiredOtpCodes(userId: string): Promise<number> {
 }
 
 /**
+ * Delete every outstanding email OTP code for a user.
+ *
+ * Administrative disable/reset must revoke codes that were already delivered; deleting only
+ * expired rows leaves a live challenge usable after the factor was removed.
+ *
+ * @param userId - User UUID.
+ * @returns Number of deleted rows.
+ */
+export async function deleteAllOtpCodes(userId: string): Promise<number> {
+  const result = await getPool().query(
+    'DELETE FROM two_factor_otp_codes WHERE user_id = $1',
+    [userId],
+  );
+  return result.rowCount ?? 0;
+}
+
+/**
  * Count active (unused, not expired) OTP codes for a user.
  *
  * Used for rate limiting — prevents generating too many codes

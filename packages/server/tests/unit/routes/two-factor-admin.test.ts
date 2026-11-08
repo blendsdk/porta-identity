@@ -29,6 +29,10 @@ vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
 }));
 
+vi.mock('../../../src/rbac/admin-authority-ceiling.js', () => ({
+  requireActorMayManageUser: vi.fn().mockResolvedValue(undefined),
+}));
+
 // Mock admin auth middleware to always pass through
 vi.mock('../../../src/middleware/admin-auth.js', () => ({
   requireAdminAuth: () => async (_ctx: unknown, next: () => Promise<void>) => next(),

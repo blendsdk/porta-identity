@@ -17,8 +17,9 @@
  *   3. Resolve super-admin organization
  *   4. Look up user — must be active
  *   5. Verify user belongs to the super-admin organization
- *   6. Verify the user has a recognized role from the canonical Admin application
- *   7. Set ctx.state.adminUser and proceed
+ *   6. Verify the token's issuing client is an active canonical Admin client
+ *   7. Verify the user has a recognized role from the canonical Admin application
+ *   8. Set ctx.state.adminUser and proceed
  *
  * Response codes:
  *   401 — Missing/invalid Bearer token, expired, revoked, unknown user
@@ -32,6 +33,7 @@ import { findUserForOidc } from '../users/service.js';
 import { findSuperAdminOrganization } from '../organizations/repository.js';
 import { getUserRolesForAuthority } from '../rbac/user-role-service.js';
 import { getApplicationBySlug } from '../applications/service.js';
+import { getClientByClientId } from '../clients/service.js';
 import { logger } from '../lib/logger.js';
 import {
   getPermissionsForAdminRole,
@@ -211,6 +213,7 @@ export function requireAdminAuth(options: { allowServiceAccountInvitation?: bool
     }
 
     let userId: string | undefined;
+    let tokenClientId: string | undefined;
     try {
       const accessToken = await _provider.AccessToken.find(token);
       // Existing Admin CORS and rate protection recognize this case-sensitive prefix. Keep
@@ -244,6 +247,8 @@ export function requireAdminAuth(options: { allowServiceAccountInvitation?: bool
           return;
         }
         userId = accessToken.accountId;
+        const issuingClientId = Reflect.get(accessToken, 'clientId');
+        tokenClientId = typeof issuingClientId === 'string' ? issuingClientId : undefined;
       }
     } catch {
       // Intentionally vague error message — don't reveal internal details.
@@ -319,6 +324,30 @@ export function requireAdminAuth(options: { allowServiceAccountInvitation?: bool
       });
       ctx.status = 500;
       ctx.body = { error: 'Server configuration error' };
+      return;
+    }
+
+    // -----------------------------------------------------------------
+    // Step 6: Verify the token's issuing client is reserved administrative authority.
+    // -----------------------------------------------------------------
+    // A genuine token from an ordinary application proves only the subject's consent to that
+    // application. Administrative authority requires a live client registered to the canonical
+    // Admin application in the control-plane organization.
+    const client =
+      tokenClientId === undefined ? null : await getClientByClientId(tokenClientId);
+    if (
+      !client ||
+      client.status !== 'active' ||
+      client.applicationId !== adminApplication.id ||
+      client.organizationId !== superAdminOrg.id
+    ) {
+      recordSecurityDecision(ctx, {
+        decisionPoint: 'authentication',
+        reasonCode: 'authentication-required',
+        outcome: 'deny',
+      });
+      ctx.status = 401;
+      ctx.body = { error: 'Invalid token', message: 'Token validation failed' };
       return;
     }
 

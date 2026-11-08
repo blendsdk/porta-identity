@@ -68,6 +68,14 @@ export async function findAccount(ctx: unknown, sub: string): Promise<OidcAccoun
     const user = await findUserForOidc(sub);
     if (!user) return undefined;
 
+    // A shared provider serves every organization. The authenticated client must belong to the
+    // same organization as the account before any identity claim or user-bound token is issued.
+    // Missing client context fails closed; same-organization SSO keeps working.
+    const clientOrganizationId = resolveClientOrganizationId(ctx);
+    if (clientOrganizationId === null || clientOrganizationId !== user.organizationId) {
+      return undefined;
+    }
+
     return {
       accountId: user.id,
       /**
@@ -138,6 +146,26 @@ function resolveApplicationId(ctx: unknown): string | null {
 
   const parsed = applicationIdSchema.safeParse(Reflect.get(client, INTERNAL_APPLICATION_ID));
   return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Resolve the requesting client's owning organization.
+ *
+ * The provider metadata carries the organization ID set by client registration. A missing value
+ * is treated as unresolved so claims fail closed rather than crossing a tenant boundary.
+ *
+ * @param ctx - Koa context with OIDC extensions
+ * @returns Organization UUID, or null when the context cannot establish it.
+ */
+function resolveClientOrganizationId(ctx: unknown): string | null {
+  if (typeof ctx !== 'object' || ctx === null) return null;
+  const oidc = Reflect.get(ctx, 'oidc');
+  if (typeof oidc !== 'object' || oidc === null) return null;
+  const client = Reflect.get(oidc, 'client');
+  if (typeof client !== 'object' || client === null) return null;
+
+  const organizationId = Reflect.get(client, 'organizationId');
+  return typeof organizationId === 'string' && organizationId.length > 0 ? organizationId : null;
 }
 
 /**

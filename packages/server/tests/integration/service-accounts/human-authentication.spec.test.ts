@@ -53,7 +53,10 @@ describe('Human authentication excludes permanently classified accounts', () => 
     expect(await verifyUserPassword(user.id, password)).toBe(true);
     expect(await verifyLoginPassword(user.id, password)).toBe(true);
     expect((await findUserForOidc(user.id))?.id).toBe(user.id);
-    expect(await findAccount({}, user.id)).toBeDefined();
+    expect(await findAccount({ oidc: { client: { organizationId: organization.id } } }, user.id)).toBeDefined();
+    expect(
+      await findAccount({ oidc: { client: { organizationId: randomUUID() } } }, user.id),
+    ).toBeUndefined();
     for (const projection of [
       await getUserById(user.id),
       await getUserByEmail(organization.id, user.email),

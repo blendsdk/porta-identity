@@ -139,7 +139,7 @@ describe('client secret expiry route implementation', () => {
 
     await Reflect.apply(routeHandler('POST', '/api/admin/clients'), undefined, [ctx, vi.fn()]);
 
-    expect(clientService.createClient).toHaveBeenCalledWith(createBody);
+    expect(clientService.createClient).toHaveBeenCalledWith(createBody, 'admin-id');
     expect(secretService.generateAndStore).toHaveBeenCalledWith(CLIENT_ID, {
       label: '',
       expiresAt: new Date('2027-03-31T00:00:00.000Z'),

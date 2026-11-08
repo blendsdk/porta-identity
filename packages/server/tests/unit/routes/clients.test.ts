@@ -318,6 +318,7 @@ describe('client routes', () => {
         expect(ctx.status).toBe(201);
         expect(clientService.createClient).toHaveBeenCalledWith(
           expect.objectContaining({ loginMethods: null }),
+          'admin-id',
         );
       });
 
@@ -337,6 +338,7 @@ describe('client routes', () => {
         expect(ctx.status).toBe(201);
         expect(clientService.createClient).toHaveBeenCalledWith(
           expect.objectContaining({ loginMethods: ['password'] }),
+          'admin-id',
         );
         const body = ctx.body as {
           data: { client: Client & { effectiveLoginMethods: readonly string[] } };

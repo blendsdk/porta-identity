@@ -294,7 +294,10 @@ describe('application-scoped RBAC claims', () => {
 
   // Missing application context must fail closed without removing ordinary identity claims.
   it('keeps standard claims but emits empty RBAC arrays without application context', async () => {
-    const account = await findAccount({ oidc: { client: {} } }, USER_ID);
+    const account = await findAccount(
+      { oidc: { client: { organizationId: user.organizationId } } },
+      USER_ID,
+    );
     const claims = await account?.claims('id_token', 'openid email');
 
     expect(claims).toMatchObject({
@@ -315,7 +318,11 @@ describe('application-scoped RBAC claims', () => {
     const account = await findAccount(
       {
         oidc: {
-          client: { ...metadata, [applicationEntry?.[0] ?? 'missing-property']: 'not-a-uuid' },
+          client: {
+            ...metadata,
+            organizationId: user.organizationId,
+            [applicationEntry?.[0] ?? 'missing-property']: 'not-a-uuid',
+          },
         },
       },
       USER_ID,

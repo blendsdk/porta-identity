@@ -36,7 +36,7 @@ import {
 } from '../lib/admin-permissions.js';
 import { RoleApplicationBoundaryError, RoleDelegationError, RoleNotFoundError } from './errors.js';
 import { UserNotFoundError } from '../users/errors.js';
-import { isServiceAccount } from '../users/index.js';
+import { isServiceAccount } from '../users/service-account-guard.js';
 import {
   lockControlPlaneOrganization,
   requireActiveSuperAdminSurvivor,

@@ -314,6 +314,10 @@ describe('two-factor login boundary', () => {
               pendingAccountId: user.id,
               method: challengeMethod ?? 'email',
               email: user.email,
+              purpose: destination === 'verify' ? 'challenge' : 'enrollment',
+              ...(destination === 'setup' && challengeMethod
+                ? { requiredMethod: challengeMethod }
+                : {}),
             },
           },
           { mergeWithLastSubmission: true },
