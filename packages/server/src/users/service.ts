@@ -20,6 +20,7 @@
 
 import { auditFields, writeAuditLog } from '../lib/audit-log.js';
 import type { AuditActor, AuditRequestContext } from '../lib/audit-log.js';
+import { requireActorMayManageUser } from '../rbac/admin-authority-ceiling.js';
 import type { CursorPaginatedResult } from '../lib/cursor.js';
 import { getSystemConfigNumber } from '../lib/system-config.js';
 import { cacheUser, getCachedUserById, invalidateUserCache } from './cache.js';
@@ -251,6 +252,11 @@ export async function updateUser(
   auditContext?: AuditRequestContext,
 ): Promise<User> {
   await requireInteractiveUser(id);
+  // An email identity change is a recovery-path change. Apply the same ceiling as credential
+  // recovery before a lower-authority administrator can alter a stronger administrator's address.
+  if (actor?.kind === 'user' && (input.email !== undefined || input.emailVerified === true)) {
+    await requireActorMayManageUser(actor.userId, id);
+  }
   const updateData: UpdateUserData = {};
   if (input.email !== undefined) updateData.email = input.email;
   if (input.emailVerified !== undefined) updateData.emailVerified = input.emailVerified;
@@ -466,6 +472,7 @@ export async function setUserPassword(
   actorId?: string,
 ): Promise<void> {
   await requireInteractiveUser(id);
+  if (actorId) await requireActorMayManageUser(actorId, id);
   const validation = validatePassword(password);
   if (!validation.isValid) {
     throw new UserValidationError(validation.error!);
@@ -575,9 +582,11 @@ export async function prepareUserForPasswordLogin(
  *
  * @param id - User UUID
  * @param actorId - UUID of the user performing the action
+ * @throws AdminAuthorityCeilingError when an administrator targets a stronger administrator
  */
 export async function clearUserPassword(id: string, actorId?: string): Promise<void> {
   await requireInteractiveUser(id);
+  if (actorId) await requireActorMayManageUser(actorId, id);
   await repoUpdate(id, {
     passwordHash: null,
     passwordChangedAt: null,
@@ -604,6 +613,7 @@ export async function clearUserPassword(id: string, actorId?: string): Promise<v
  */
 export async function markEmailVerified(id: string, actorId?: string): Promise<void> {
   await requireInteractiveUser(id);
+  if (actorId) await requireActorMayManageUser(actorId, id);
   await repoUpdate(id, { emailVerified: true });
   await invalidateUserCache(id);
 

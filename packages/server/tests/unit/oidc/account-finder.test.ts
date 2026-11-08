@@ -71,7 +71,19 @@ const APPLICATION_ID = '11111111-1111-4111-8111-111111111111';
 
 /** Create an OIDC context carrying Porta's private application identifier. */
 function createCtxWithApp(applicationId: string) {
-  return { oidc: { client: { 'urn:porta:internal_application_id': applicationId } } };
+  return {
+    oidc: {
+      client: {
+        'urn:porta:internal_application_id': applicationId,
+        organizationId: sampleUser.organizationId,
+      },
+    },
+  };
+}
+
+/** Create the minimum client context required by the tenant-binding check. */
+function createTenantCtx() {
+  return { oidc: { client: { organizationId: sampleUser.organizationId } } };
 }
 
 // ---------------------------------------------------------------------------
@@ -96,10 +108,29 @@ describe('findAccount', () => {
   it('should return account for active user', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const result = await findAccount(null, 'user-uuid-123');
+    const result = await findAccount(createTenantCtx(), 'user-uuid-123');
 
     expect(result).toBeDefined();
     expect(result!.accountId).toBe('user-uuid-123');
+  });
+
+  it('should return undefined when the client belongs to another organization', async () => {
+    vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
+
+    const result = await findAccount(
+      { oidc: { client: { organizationId: 'another-tenant-org' } } },
+      'user-uuid-123',
+    );
+
+    expect(result).toBeUndefined();
+  });
+
+  it('should return undefined when client organization context is missing', async () => {
+    vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
+
+    const result = await findAccount({ oidc: { client: {} } }, 'user-uuid-123');
+
+    expect(result).toBeUndefined();
   });
 
   it('should return undefined for missing user', async () => {
@@ -112,7 +143,7 @@ describe('findAccount', () => {
   it('should return undefined on service error', async () => {
     vi.mocked(findUserForOidc).mockRejectedValue(new Error('service error'));
 
-    const result = await findAccount(null, 'user-uuid-123');
+    const result = await findAccount(createTenantCtx(), 'user-uuid-123');
     expect(result).toBeUndefined();
   });
 });
@@ -226,7 +257,7 @@ describe('claims() — custom claims', () => {
   it('should skip custom claims when no applicationId in context', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const account = await findAccount(null, 'user-uuid-123');
+    const account = await findAccount(createTenantCtx(), 'user-uuid-123');
     const claims = await account!.claims('id_token', 'openid');
 
     expect(buildCustomClaims).not.toHaveBeenCalled();
@@ -239,7 +270,7 @@ describe('claims() — custom claims', () => {
   it('should skip custom claims when ctx has no oidc property', async () => {
     vi.mocked(findUserForOidc).mockResolvedValue(sampleUser);
 
-    const account = await findAccount({}, 'user-uuid-123');
+    const account = await findAccount(createTenantCtx(), 'user-uuid-123');
     await account!.claims('id_token', 'openid');
 
     expect(buildCustomClaims).not.toHaveBeenCalled();

@@ -78,6 +78,7 @@ vi.mock('../../../src/auth/template-engine.js', () => ({
 }));
 
 vi.mock('../../../src/users/service.js', () => ({
+  findUserForOidc: vi.fn(),
   getUserByEmail: vi.fn(),
   prepareUserForPasswordLogin: vi.fn(),
   verifyUserPassword: vi.fn(),
@@ -86,6 +87,14 @@ vi.mock('../../../src/users/service.js', () => ({
   recordFailedLogin: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
   recordPasswordFailure: vi.fn().mockResolvedValue({ locked: false, failedCount: 1 }),
   checkAutoUnlock: vi.fn().mockResolvedValue(false),
+}));
+
+vi.mock('../../../src/users/repository.js', () => ({
+  findUserById: vi.fn().mockResolvedValue({
+    id: 'user-uuid-1',
+    organizationId: 'org-uuid-1',
+    status: 'active',
+  }),
 }));
 
 vi.mock('../../../src/lib/system-config.js', () => ({
@@ -108,6 +117,11 @@ vi.mock('../../../src/lib/logger.js', () => ({
 vi.mock('../../../src/two-factor/service.js', () => ({
   requiresTwoFactor: vi.fn().mockReturnValue(false),
   determineTwoFactorMethod: vi.fn().mockReturnValue(null),
+  resolveTwoFactorPlan: vi.fn().mockReturnValue({
+    action: 'none',
+    challengeMethod: null,
+    requiredMethod: null,
+  }),
   sendOtpCode: vi.fn().mockResolvedValue('123456'),
 }));
 
@@ -140,6 +154,7 @@ import { getRedis } from '../../../src/lib/redis.js';
 import * as magicLinkSession from '../../../src/auth/magic-link-session.js';
 import * as tokenRepo from '../../../src/auth/token-repository.js';
 import * as userService from '../../../src/users/service.js';
+import { findUserById } from '../../../src/users/repository.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
 import * as templateEngine from '../../../src/auth/template-engine.js';
 import type { Organization } from '../../../src/organizations/types.js';
@@ -1295,6 +1310,33 @@ describe('interaction routes', () => {
       );
     });
 
+    it('should refuse a consent grant when the session account belongs to another tenant', async () => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: 'user-uuid-1',
+        organizationId: 'org-uuid-foreign',
+      } as never);
+      const provider = createMockProvider();
+      provider.Client.find.mockResolvedValue({
+        metadata: () => ({
+          client_name: 'First-Party App',
+          organizationId: 'org-uuid-1',
+        }),
+      });
+
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'GET', '/:uid/consent');
+      const ctx = createMockCtx();
+
+      await exec(layer!, ctx);
+
+      expect(provider.Grant).not.toHaveBeenCalled();
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.any(String) }),
+      );
+    });
+
     it('should render consent page for third-party client', async () => {
       const provider = createMockProvider();
       // The client requires consent, so the page renders instead of auto-consent.
@@ -1413,6 +1455,28 @@ describe('interaction routes', () => {
       // Should audit log consent granted
       expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: 'user.consent.granted' }),
+      );
+    });
+
+    it('should refuse explicit consent approval from a foreign tenant session', async () => {
+      vi.mocked(findUserById).mockResolvedValueOnce({
+        id: 'user-uuid-1',
+        organizationId: 'org-uuid-foreign',
+      } as never);
+      const provider = createMockProvider();
+      const router = createInteractionRouter(provider as never);
+      const layer = findLayer(router, 'POST', '/:uid/confirm');
+      const ctx = createMockCtx({
+        body: { decision: 'approve', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(provider.Grant).not.toHaveBeenCalled();
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.any(String) }),
       );
     });
 

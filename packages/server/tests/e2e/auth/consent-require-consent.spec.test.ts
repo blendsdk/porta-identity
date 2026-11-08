@@ -30,6 +30,7 @@ import { truncateAllTables, seedBaseData } from '../../integration/helpers/datab
 import { flushTestRedis } from '../../integration/helpers/redis.js';
 import {
   createTestApplication,
+  createTestClient,
   createTestClientWithSecret,
   createTestOrganization,
   createTestRole,
@@ -99,11 +100,15 @@ describe('Trust-driven consent gate (E2E)', () => {
       email: `consent-${crypto.randomUUID()}@pentest.example`,
     });
     await assignRolesToUser(organization.id, user.id, [role.id]);
+    const client = await createTestClient(organization.id, application.id, {
+      grantTypes: ['authorization_code'],
+      scope: 'openid',
+    });
     const token = `consent-pentest-${crypto.randomUUID()}`;
     const now = Math.floor(Date.now() / 1000);
     await new PostgresAdapter('AccessToken').upsert(
       token,
-      { accountId: user.id, iat: now, exp: now + 3600 },
+      { accountId: user.id, clientId: client.clientId, iat: now, exp: now + 3600 },
       3600,
     );
     return token;

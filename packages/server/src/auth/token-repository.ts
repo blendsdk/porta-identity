@@ -710,6 +710,46 @@ export async function markTokenUsed(table: TokenTable, tokenId: string): Promise
 }
 
 /**
+ * Consume one password-reset token exactly once inside the caller's transaction.
+ *
+ * The conditional update makes concurrent submissions race on the same row: only the first
+ * transaction sees `used_at IS NULL` and returns a row. The password write and authority
+ * revocation run in that same transaction, so a failed consumption rolls everything back.
+ *
+ * @param tokenId - Reset token row selected during pre-validation.
+ * @returns True when this transaction consumed the token.
+ */
+export async function consumePasswordResetToken(tokenId: string): Promise<boolean> {
+  const result = await getPool().query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE id = $1 AND used_at IS NULL
+     RETURNING id`,
+    [tokenId],
+  );
+  return result.rowCount === 1;
+}
+
+/**
+ * Invalidate every other outstanding reset link for a user.
+ *
+ * A password change invalidates recovery material that could otherwise replace the new password.
+ * The consumed token is already marked, so it can be included without changing the result.
+ *
+ * @param userId - User whose other active reset tokens should be retired.
+ * @returns Number of additional token rows retired.
+ */
+export async function invalidateOtherPasswordResetTokens(userId: string): Promise<number> {
+  const result = await getPool().query(
+    `UPDATE password_reset_tokens
+     SET used_at = NOW()
+     WHERE user_id = $1 AND used_at IS NULL`,
+    [userId],
+  );
+  return result.rowCount ?? 0;
+}
+
+/**
  * Delete expired or used tokens older than a given cutoff date.
  *
  * Housekeeping function to prevent token tables from growing indefinitely.

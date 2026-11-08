@@ -37,7 +37,11 @@ import { requirePermission } from '../middleware/require-permission.js';
 import { ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
 import * as clientService from '../clients/service.js';
 import * as secretService from '../clients/secret-service.js';
-import { ClientNotFoundError, ClientValidationError } from '../clients/errors.js';
+import {
+  ClientNotFoundError,
+  ClientValidationError,
+  ControlPlaneClientAuthorityError,
+} from '../clients/errors.js';
 import { ServiceAccountManagementError } from '../service-accounts/index.js';
 import * as organizationService from '../organizations/service.js';
 import type { Client } from '../clients/types.js';
@@ -232,6 +236,11 @@ function handleError(
     ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
     return undefined as never;
   }
+  if (err instanceof ControlPlaneClientAuthorityError) {
+    ctx.status = 403;
+    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
+    return undefined as never;
+  }
   if (err instanceof ClientNotFoundError) {
     ctx.throw(404, 'Client not found');
   }
@@ -283,7 +292,7 @@ export function createClientRouter(): Router {
         const { secretLabel, secretExpiresAt, ...clientInput } = body;
 
         // Create client (returns ClientWithSecret — secret is null here)
-        const result = await clientService.createClient(clientInput);
+        const result = await clientService.createClient(clientInput, ctx.state.adminUser?.id);
 
         // For confidential clients, generate the initial secret automatically
         let secret = result.secret;

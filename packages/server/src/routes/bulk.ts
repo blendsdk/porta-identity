@@ -69,7 +69,7 @@ export function createBulkRouter(): Router {
   // -------------------------------------------------------------------------
   router.post(
     '/organizations/status',
-    requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE),
+    requirePermission(ADMIN_PERMISSIONS.ORG_UPDATE, ADMIN_PERMISSIONS.ORG_SUSPEND),
     async (ctx) => {
       const parsed = bulkOrgStatusSchema.safeParse(ctx.request.body);
       if (!parsed.success) {

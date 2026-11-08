@@ -53,6 +53,22 @@ export class RoleDelegationError extends Error {
 }
 
 /**
+ * Thrown when an administrator attempts credential or factor management of a stronger identity.
+ *
+ * Carries 403 so both the user-route mapper and the global error boundary reject the operation
+ * without disclosing the target's role composition.
+ */
+export class AdminAuthorityCeilingError extends Error {
+  /** HTTP status for the sanitized rejection. */
+  readonly status = 403;
+
+  constructor() {
+    super('Credential management exceeds the actor capability boundary');
+    this.name = 'AdminAuthorityCeilingError';
+  }
+}
+
+/**
  * Thrown when a role mutation crosses the client application boundary.
  *
  * The caller may mutate roles, but one requested role belongs to another

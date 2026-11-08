@@ -39,7 +39,22 @@ vi.mock('../../../src/auth/token-repository.js', () => ({
   insertToken: vi.fn().mockResolvedValue(undefined),
   findValidTokenForOrganization: vi.fn(),
   markTokenUsed: vi.fn().mockResolvedValue(undefined),
+  consumePasswordResetToken: vi.fn().mockResolvedValue(true),
+  invalidateOtherPasswordResetTokens: vi.fn().mockResolvedValue(0),
   invalidateUserTokens: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../src/lib/database.js', () => ({
+  runDatabaseTransaction: async (work: () => Promise<unknown>) => work(),
+  getDatabaseTransactionClient: () => ({ query: vi.fn() }),
+}));
+
+vi.mock('../../../src/lib/authority-revocation.js', () => ({
+  revokeAffectedAuthorityInTransaction: vi.fn().mockResolvedValue({ grantIds: [] }),
+}));
+
+vi.mock('../../../src/lib/deletion-cleanup.js', () => ({
+  registerAuthorityCleanup: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('../../../src/auth/email-service.js', () => ({
@@ -76,6 +91,7 @@ vi.mock('../../../src/lib/system-config.js', () => ({
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
   writeAuditLog: vi.fn(),
+  writeAuditLogInTransaction: vi.fn(),
 }));
 
 vi.mock('../../../src/lib/logger.js', () => ({
@@ -99,6 +115,8 @@ import * as recoveryService from '../../../src/auth/recovery-service.js';
 import * as userService from '../../../src/users/service.js';
 import * as passwordUtils from '../../../src/users/password.js';
 import * as auditLog from '../../../src/lib/audit-log.js';
+import * as authorityRevocation from '../../../src/lib/authority-revocation.js';
+import * as deletionCleanup from '../../../src/lib/deletion-cleanup.js';
 import * as templateEngine from '../../../src/auth/template-engine.js';
 import type { Organization } from '../../../src/organizations/types.js';
 
@@ -421,8 +439,19 @@ describe('password reset routes', () => {
 
       // Should set new password
       expect(userService.setUserPassword).toHaveBeenCalledWith('user-uuid-1', 'NewSecurePass123!');
-      // Should mark token used
-      expect(tokenRepo.markTokenUsed).toHaveBeenCalledWith('password_reset_tokens', 'tok-1');
+      // Should consume the token conditionally and retire other recovery links
+      expect(tokenRepo.consumePasswordResetToken).toHaveBeenCalledWith('tok-1');
+      expect(tokenRepo.invalidateOtherPasswordResetTokens).toHaveBeenCalledWith('user-uuid-1');
+      // Should revoke previously issued authority in the same transaction
+      expect(authorityRevocation.revokeAffectedAuthorityInTransaction).toHaveBeenCalledWith([
+        'user-uuid-1',
+      ]);
+      expect(deletionCleanup.registerAuthorityCleanup).toHaveBeenCalledWith({
+        userIds: ['user-uuid-1'],
+        grantIds: [],
+        roleIds: [],
+        revokeOidcState: true,
+      });
       // Should send confirmation email
       expect(emailService.sendPasswordChangedEmail).toHaveBeenCalled();
       // Should render success page
@@ -431,8 +460,32 @@ describe('password reset routes', () => {
         expect.objectContaining({ flash: { success: expect.any(String) } }),
       );
       // Should audit log
-      expect(auditLog.writeAuditLog).toHaveBeenCalledWith(
+      expect(auditLog.writeAuditLogInTransaction).toHaveBeenCalledWith(
+        expect.anything(),
         expect.objectContaining({ eventType: 'user.password_reset.completed' }),
+      );
+    });
+
+    it('should reject when another submission consumed the token first', async () => {
+      const tokenRecord = { id: 'tok-race', userId: 'user-uuid-1' };
+      vi.mocked(tokenRepo.findValidTokenForOrganization).mockResolvedValue(tokenRecord as never);
+      vi.mocked(tokenRepo.consumePasswordResetToken).mockResolvedValue(false);
+
+      const router = createPasswordResetRouter();
+      const layer = findLayer(router, 'POST', 'reset-password');
+      const ctx = createMockCtx({
+        params: { token: 'valid-token' },
+        body: { password: 'NewSecurePass123!', confirmPassword: 'NewSecurePass123!', _csrf: 'tok' },
+      });
+
+      await exec(layer!, ctx);
+
+      expect(userService.setUserPassword).not.toHaveBeenCalled();
+      expect(authorityRevocation.revokeAffectedAuthorityInTransaction).not.toHaveBeenCalled();
+      expect(emailService.sendPasswordChangedEmail).not.toHaveBeenCalled();
+      expect(templateEngine.renderPage).toHaveBeenCalledWith(
+        'error',
+        expect.objectContaining({ errorMessage: expect.stringContaining('reset_link_expired') }),
       );
     });
 

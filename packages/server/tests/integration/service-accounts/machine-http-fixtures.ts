@@ -11,6 +11,7 @@ import type Provider from 'oidc-provider';
 import { initI18n, initTemplateEngine, setEmailTransport } from '../../../src/auth/index.js';
 import { updateClient } from '../../../src/clients/index.js';
 import { generateAndStore } from '../../../src/clients/secret-service.js';
+import { createTestClient } from '../helpers/factories.js';
 import { getPool } from '../../../src/lib/database.js';
 import { getRedis } from '../../../src/lib/redis.js';
 import { ensureSigningKeys } from '../../../src/lib/signing-keys.js';
@@ -249,13 +250,22 @@ export async function createMachineHttpFixture(
     const ttl = await loadOidcTtlConfig();
     const provider = await createOidcProvider({ jwks: { keys }, ttl });
     const app = createApp(provider);
+    // Human admin requests must not depend on the lifecycle target client: several scenarios
+    // deactivate or delete that client and still expect the route's own eligibility response.
+    const humanClient = await createTestClient(
+      lifecycle.adminOrganization.id,
+      lifecycle.adminApplication.id,
+      { grantTypes: ['authorization_code', 'refresh_token'], scope: 'openid' },
+    );
     // Only the external human-token lookup is substituted. The application still
     // checks the stored account and memberships; machine lookup never uses this map.
     const authProvider = {
       AccessToken: {
         async find(token: string) {
           const accountId = humanTokens.get(token);
-          return accountId ? { accountId } : provider.AccessToken.find(token);
+          return accountId
+            ? { accountId, clientId: humanClient.clientId }
+            : provider.AccessToken.find(token);
         },
       },
       ClientCredentials: {

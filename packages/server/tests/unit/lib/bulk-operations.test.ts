@@ -126,7 +126,11 @@ describe('bulk-operations', () => {
       code: 'not_found_or_not_authorized',
     });
     expect(mockClient.query.mock.calls[1][0]).toContain('organization_id = $2');
-    expect(mockClient.query.mock.calls[1][1]).toEqual(['user-missing', ORGANIZATION_ID]);
+    expect(mockClient.query.mock.calls[1][1]).toEqual([
+      'user-missing',
+      ORGANIZATION_ID,
+      'super_admin_user_id',
+    ]);
   });
 
   it('should return a closed invalid-transition result', async () => {
@@ -198,8 +202,12 @@ describe('bulk-operations', () => {
       organizationId: ORGANIZATION_ID,
     });
 
-    expect(mockClient.query.mock.calls[1][0]).toContain('id = $1 AND organization_id = $2');
-    expect(mockClient.query.mock.calls[1][1]).toEqual(['user-1', ORGANIZATION_ID]);
+    expect(mockClient.query.mock.calls[1][0]).toContain('id = $1 AND users.organization_id = $2');
+    expect(mockClient.query.mock.calls[1][1]).toEqual([
+      'user-1',
+      ORGANIZATION_ID,
+      'super_admin_user_id',
+    ]);
   });
 
   it('should stop after a dependency error without returning the raw error', async () => {

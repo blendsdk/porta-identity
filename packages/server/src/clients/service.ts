@@ -28,8 +28,7 @@ import type {
   ListClientsOptions,
   PaginatedResult,
 } from './types.js';
-import { LOGIN_METHODS } from './types.js';
-import {
+import { LOGIN_METHODS } from './types.js';import {
   insertClient,
   findClientById,
   findClientByClientId,
@@ -60,13 +59,19 @@ import {
 import { normalizeLoginMethods } from './resolve-login-methods.js';
 
 import { verify } from './secret-service.js';
-import { writeAuditLog } from '../lib/audit-log.js';
+import { writeAuditLog, writeAuditLogInTransaction } from '../lib/audit-log.js';
 import type { AuditLogEntry } from '../lib/audit-log.js';
-import { ClientNotFoundError, ClientValidationError } from './errors.js';
+import {
+  ClientNotFoundError,
+  ClientValidationError,
+  ControlPlaneClientAuthorityError,
+} from './errors.js';
 import { getApplicationById } from '../applications/service.js';
 import { getOrganizationById } from '../organizations/service.js';
+import type { Application } from '../applications/types.js';
+import { ALL_ADMIN_PERMISSIONS } from '../lib/admin-permissions.js';
+import { getCanonicalAdminPermissions } from '../rbac/admin-authority-ceiling.js';
 import { afterDatabaseCommit, getDatabaseTransactionClient, getPool, runDatabaseTransaction } from '../lib/database.js';
-import { writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { registerDeletionCleanup } from '../lib/deletion-cleanup.js';
 import {
   lockClientServiceAccountMutation,
@@ -161,6 +166,39 @@ function requireCompatibleProtocol(configuration: {
 // Client CRUD
 // ===========================================================================
 
+/** Canonical control-plane application slug. */
+const ADMIN_APPLICATION_SLUG = 'porta-admin';
+
+/**
+ * Reserve control-plane client management for full Super Admin authority.
+ *
+ * A token can only authenticate to the Admin API when it was issued to an active client owned by
+ * the canonical Admin application in the super-admin organization. Allowing an Application Admin
+ * to create or retarget such a client would recreate the same authority by registration. System
+ * bootstrap calls pass no actor and remain allowed; interactive callers must hold every admin
+ * permission.
+ *
+ * @param actorId - Authenticated administrator, or undefined for a system bootstrap call.
+ * @param organization - Parent organization of the client being created or changed.
+ * @param application - Parent application of the client being created or changed.
+ * @throws ControlPlaneClientAuthorityError when a delegated administrator targets this boundary.
+ */
+async function requireControlPlaneClientAuthority(
+  actorId: string | undefined,
+  application: Application,
+): Promise<void> {
+  if (!actorId) return;
+  // Only the canonical Admin application owns tokens that authenticate to the Admin API. Other
+  // clients, including ordinary unbound clients in the control-plane organization, keep their
+  // existing delegated management rules.
+  const reserved = application.slug === ADMIN_APPLICATION_SLUG;
+  if (!reserved) return;
+  const permissions = await getCanonicalAdminPermissions(actorId);
+  if (!ALL_ADMIN_PERMISSIONS.every((permission) => permissions.has(permission))) {
+    throw new ControlPlaneClientAuthorityError();
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Create
 // ---------------------------------------------------------------------------
@@ -207,6 +245,7 @@ export async function createClient(
   if (app.status !== 'active') {
     throw new ClientValidationError('Application is not active');
   }
+  await requireControlPlaneClientAuthority(actorId, app);
 
   // Validate redirect URIs
   // Use non-production mode for validation (production mode enforcement
@@ -361,6 +400,13 @@ export async function updateClient(
   actorId?: string,
 ): Promise<Client> {
   return runDatabaseTransaction(async () => {
+    if (actorId) {
+      const existing = await findClientById(id);
+      if (!existing) throw new ClientNotFoundError(id);
+      const application = await getApplicationById(existing.applicationId);
+      if (!application) throw new ClientNotFoundError(id);
+      await requireControlPlaneClientAuthority(actorId, application);
+    }
     const binding = await lockClientServiceAccountMutation(id, actorId);
     const { client, metadata } = await applyClientUpdate(id, input);
     if (binding) await reconcileClientServiceAccount(binding);
@@ -530,6 +576,17 @@ async function loadClientForStatusChange(id: string): Promise<Client> {
   return client;
 }
 
+/** Load a client's application and enforce the reserved control-plane boundary. */
+async function requireControlPlaneClientMutation(
+  client: Client,
+  actorId?: string,
+): Promise<void> {
+  if (!actorId) return;
+  const application = await getApplicationById(client.applicationId);
+  if (!application) throw new ClientNotFoundError(client.id);
+  await requireControlPlaneClientAuthority(actorId, application);
+}
+
 /**
  * Deactivate a client (active → inactive).
  *
@@ -542,6 +599,7 @@ export async function deactivateClient(id: string, actorId?: string): Promise<vo
   await runDatabaseTransaction(async () => {
     const binding = await lockClientServiceAccountMutation(id, actorId);
     const client = await loadClientForStatusChange(id);
+    await requireControlPlaneClientMutation(client, actorId);
     if (client.status !== 'active') {
       throw new ClientValidationError(`Cannot deactivate client from status: ${client.status}`);
     }
@@ -568,6 +626,7 @@ export async function activateClient(id: string, actorId?: string): Promise<void
   await runDatabaseTransaction(async () => {
     const binding = await lockClientServiceAccountMutation(id, actorId);
     const client = await loadClientForStatusChange(id);
+    await requireControlPlaneClientMutation(client, actorId);
     if (client.status !== 'inactive') {
       throw new ClientValidationError(`Cannot activate client from status: ${client.status}`);
     }
@@ -704,6 +763,7 @@ export async function deleteClient(id: string, actorId?: string): Promise<Client
   if (binding) await revokeServiceAccountForClientMutation(binding);
   const capture = await captureClientForDeletion(id);
   if (!capture) throw new ClientNotFoundError(id);
+  await requireControlPlaneClientMutation(capture.client, actorId);
   await transaction.query(
     `DELETE FROM oidc_payloads
      WHERE id = ANY($1::varchar[]) OR grant_id = ANY($1::varchar[])

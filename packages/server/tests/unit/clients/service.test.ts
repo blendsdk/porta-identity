@@ -61,6 +61,10 @@ vi.mock('../../../src/clients/secret-service.js', () => ({
   verify: vi.fn(),
 }));
 
+vi.mock('../../../src/rbac/admin-authority-ceiling.js', () => ({
+  getCanonicalAdminPermissions: vi.fn(),
+}));
+
 vi.mock('../../../src/clients/secret-repository.js', () => ({
   getLatestActiveSha256: vi.fn().mockResolvedValue(null),
 }));
@@ -84,6 +88,8 @@ import { writeAuditLog } from '../../../src/lib/audit-log.js';
 import { getApplicationById } from '../../../src/applications/service.js';
 import { getOrganizationById } from '../../../src/organizations/service.js';
 import { verify } from '../../../src/clients/secret-service.js';
+import { getCanonicalAdminPermissions } from '../../../src/rbac/admin-authority-ceiling.js';
+import { ALL_ADMIN_PERMISSIONS } from '../../../src/lib/admin-permissions.js';
 import {
   createClient,
   getClientById,
@@ -215,6 +221,48 @@ describe('client service', () => {
       await expect(createClient(createTestInput())).rejects.toThrow('Application is not active');
     });
 
+    it('should reject a delegated administrator creating a canonical Admin client', async () => {
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeOrg,
+        isSuperAdmin: true,
+      });
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeApp,
+        slug: 'porta-admin',
+      });
+      (getCanonicalAdminPermissions as ReturnType<typeof vi.fn>).mockResolvedValue(
+        new Set(['admin:client:create', 'admin:app:read']),
+      );
+
+      await expect(createClient(createTestInput(), 'app-admin')).rejects.toMatchObject({
+        name: 'ControlPlaneClientAuthorityError',
+        status: 403,
+      });
+      expect(insertClient).not.toHaveBeenCalled();
+    });
+
+    it('should allow a full Super Admin to create a canonical Admin client', async () => {
+      const client = createTestClient({ organizationId: 'org-admin', applicationId: 'app-admin' });
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeOrg,
+        id: 'org-admin',
+        isSuperAdmin: true,
+      });
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue({
+        ...activeApp,
+        id: 'app-admin',
+        slug: 'porta-admin',
+      });
+      (getCanonicalAdminPermissions as ReturnType<typeof vi.fn>).mockResolvedValue(
+        new Set(ALL_ADMIN_PERMISSIONS),
+      );
+      (insertClient as ReturnType<typeof vi.fn>).mockResolvedValue(client);
+
+      await expect(createClient(createTestInput(), 'super-admin')).resolves.toMatchObject({
+        client,
+      });
+    });
+
     it('should throw when redirect URIs are invalid', async () => {
       (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeOrg);
       (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeApp);
@@ -340,6 +388,9 @@ describe('client service', () => {
   describe('updateClient', () => {
     it('should update and invalidate+re-cache', async () => {
       const updated = createTestClient({ clientName: 'Renamed App' });
+      (findClientById as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
+      (getOrganizationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeOrg);
+      (getApplicationById as ReturnType<typeof vi.fn>).mockResolvedValue(activeApp);
       (repoUpdateClient as ReturnType<typeof vi.fn>).mockResolvedValue(updated);
 
       const result = await updateClient(

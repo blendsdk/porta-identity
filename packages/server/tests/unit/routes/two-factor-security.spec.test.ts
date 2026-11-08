@@ -41,7 +41,14 @@ vi.mock('../../../src/auth/email-service.js', () => ({ sendOtpCodeEmail: vi.fn()
 vi.mock('../../../src/users/service.js', () => ({ recordLogin: vi.fn() }));
 
 vi.mock('../../../src/users/repository.js', () => ({
-  findUserById: vi.fn().mockResolvedValue({ id: 'user-1', givenName: 'Test', familyName: 'User' }),
+  findUserById: vi.fn().mockResolvedValue({
+    id: 'user-1',
+    givenName: 'Test',
+    familyName: 'User',
+    status: 'active',
+    twoFactorEnabled: true,
+    twoFactorMethod: 'totp',
+  }),
 }));
 
 vi.mock('../../../src/two-factor/service.js', () => ({
@@ -61,6 +68,11 @@ vi.mock('../../../src/two-factor/service.js', () => ({
     recoveryCodes: ['EMAIL-RECOVERY-CODE'],
   }),
   confirmTotpSetup: vi.fn().mockResolvedValue(true),
+  resolveTwoFactorPlan: vi.fn().mockReturnValue({
+    action: 'challenge',
+    challengeMethod: 'totp',
+    requiredMethod: null,
+  }),
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
@@ -84,6 +96,7 @@ import { createTwoFactorRouter } from '../../../src/routes/two-factor.js';
 import {
   confirmTotpSetup,
   getPendingTotpSetupInfo,
+  resolveTwoFactorPlan,
   setupEmailOtp,
   setupTotp,
   verifyTotp,
@@ -94,6 +107,14 @@ const PENDING_TOTP = {
   pendingAccountId: 'user-1',
   method: 'totp' as const,
   email: 'user@example.com',
+  purpose: 'challenge' as const,
+};
+
+const PENDING_ENROLLMENT = {
+  pendingAccountId: 'user-1',
+  method: 'totp' as const,
+  email: 'user@example.com',
+  purpose: 'enrollment' as const,
 };
 
 const PENDING_SETUP = {
@@ -168,7 +189,12 @@ function findRoute(provider: Provider, path: string) {
 
 /** Submit a TOTP login verification and return the observable route state. */
 async function submitVerification(code: string) {
-  const provider = createMockProvider();
+  vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+    action: 'challenge',
+    challengeMethod: 'totp',
+    requiredMethod: null,
+  });
+  const provider = createMockProvider(PENDING_TOTP);
   const route = findRoute(provider, '/interaction/:uid/two-factor');
   const ctx = createMockCtx({ code, codeType: 'totp' });
   await route.stack[0](ctx as never, vi.fn());
@@ -177,7 +203,12 @@ async function submitVerification(code: string) {
 
 /** Submit a TOTP enrollment confirmation and return the observable route state. */
 async function submitEnrollment(bodyOverrides: Record<string, string> = {}) {
-  const provider = createMockProvider();
+  vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+    action: 'enroll',
+    challengeMethod: null,
+    requiredMethod: null,
+  });
+  const provider = createMockProvider(PENDING_ENROLLMENT);
   const route = findRoute(provider, '/interaction/:uid/two-factor/setup');
   const ctx = createMockCtx(bodyOverrides);
   await route.stack[0](ctx as never, vi.fn());
@@ -244,7 +275,9 @@ describe('TOTP route security specifications', () => {
     const { ctx, provider } = await submitEnrollment({ code: '123456' });
 
     expect(confirmTotpSetup).toHaveBeenCalledTimes(1);
-    expect(confirmTotpSetup).toHaveBeenCalledWith('user-1', '123456');
+    expect(confirmTotpSetup).toHaveBeenCalledWith('user-1', '123456', {
+      allowReplaceExisting: false,
+    });
     expect(ctx.redirect).toHaveBeenCalledWith(expect.stringContaining('error=invalid_code'));
     expect(provider.interactionFinished).not.toHaveBeenCalled();
   });
@@ -261,7 +294,10 @@ describe('TOTP route security specifications', () => {
   it('returns from email enrollment before consuming the TOTP verification budget', async () => {
     await submitEnrollment({ setupMethod: 'email', code: '' });
 
-    expect(setupEmailOtp).toHaveBeenCalledWith('user-1', 'org-1');
+    expect(setupEmailOtp).toHaveBeenCalledWith('user-1', 'org-1', {
+      allowReplaceExisting: false,
+      preserveExistingTotp: false,
+    });
     expect(buildRateLimitKey).not.toHaveBeenCalled();
     expect(checkRateLimit).not.toHaveBeenCalled();
     expect(confirmTotpSetup).not.toHaveBeenCalled();
@@ -278,7 +314,12 @@ describe('TOTP route security specifications', () => {
     expect(renderPage).toHaveBeenCalledWith('two-factor-setup', expect.any(Object));
     expect(JSON.stringify(lastRenderedData())).toContain(PENDING_SETUP.qrCodeDataUri);
     expect(JSON.stringify(lastRenderedData())).toContain(PENDING_SETUP.totpSecret);
-    expect(getPendingTotpSetupInfo).toHaveBeenCalledWith('user-1', 'user@example.com', 'acme');
+    expect(getPendingTotpSetupInfo).toHaveBeenCalledWith(
+      'user-1',
+      'user@example.com',
+      'acme',
+      { allowReplaceExisting: false },
+    );
     expect(setupTotp).not.toHaveBeenCalled();
     expect(setupEmailOtp).not.toHaveBeenCalled();
     expect(confirmTotpSetup).not.toHaveBeenCalled();
@@ -329,7 +370,12 @@ describe('TOTP route security specifications', () => {
     expect(rendered.toLowerCase()).toEqual(expect.stringContaining('administrator'));
     expect(rendered).toContain(PENDING_SETUP.qrCodeDataUri);
     expect(rendered).toContain(PENDING_SETUP.totpSecret);
-    expect(getPendingTotpSetupInfo).toHaveBeenCalledWith('user-1', 'user@example.com', 'acme');
+    expect(getPendingTotpSetupInfo).toHaveBeenCalledWith(
+      'user-1',
+      'user@example.com',
+      'acme',
+      { allowReplaceExisting: false },
+    );
     expect(setupTotp).not.toHaveBeenCalled();
     expect(setupEmailOtp).not.toHaveBeenCalled();
     expect(provider.interactionFinished).not.toHaveBeenCalled();

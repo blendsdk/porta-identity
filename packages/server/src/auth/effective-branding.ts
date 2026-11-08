@@ -9,6 +9,7 @@ import { config } from '../config/index.js';
 import { listAssets, type AssetType, type BrandingAsset } from '../lib/branding-assets.js';
 import { logger } from '../lib/logger.js';
 import { validateBrandingImageUrl } from '../organizations/branding-url.js';
+import { isSafeBrandingCustomCss } from '../organizations/validators.js';
 import type { Organization } from '../organizations/types.js';
 
 /** Default accent color used when an organization has not configured one. */
@@ -62,6 +63,12 @@ function imageSource(url: string | null, uploaded: boolean): string | null {
   }
 }
 
+/** Return custom CSS only when it cannot introduce HTML markup, including legacy stored values. */
+function safeCustomCss(value: string | null): string | null {
+  if (value === null || !isSafeBrandingCustomCss(value)) return null;
+  return value;
+}
+
 /**
  * Resolve uploaded, configured, and default organization branding in precedence order.
  *
@@ -101,7 +108,7 @@ export async function resolveEffectiveBranding(
     primaryColor: organization.brandingPrimaryColor?.trim() || DEFAULT_BRANDING_PRIMARY_COLOR,
     logoUrl,
     faviconUrl,
-    customCss: organization.brandingCustomCss,
+    customCss: safeCustomCss(organization.brandingCustomCss),
     imageSources: [...new Set(sources)],
   };
 }

@@ -276,7 +276,11 @@ export function createUserRouter(): Router {
     async (ctx) => {
       try {
         const body = setPasswordSchema.parse(ctx.request.body);
-        await userService.setUserPassword(ctx.params.userId, body.password);
+        await userService.setUserPassword(
+          ctx.params.userId,
+          body.password,
+          ctx.state.adminUser?.id,
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -293,7 +297,7 @@ export function createUserRouter(): Router {
     requireUserOrganization(),
     async (ctx) => {
       try {
-        await userService.clearUserPassword(ctx.params.userId);
+        await userService.clearUserPassword(ctx.params.userId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -310,7 +314,7 @@ export function createUserRouter(): Router {
     requireUserOrganization(),
     async (ctx) => {
       try {
-        await userService.markEmailVerified(ctx.params.userId);
+        await userService.markEmailVerified(ctx.params.userId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -561,7 +565,11 @@ export function createStandaloneUserRouter(): Router {
     async (ctx) => {
       try {
         const body = setPasswordSchema.parse(ctx.request.body);
-        await userService.setUserPassword(ctx.params.userId, body.password);
+        await userService.setUserPassword(
+          ctx.params.userId,
+          body.password,
+          ctx.state.adminUser?.id,
+        );
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -575,7 +583,7 @@ export function createStandaloneUserRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.USER_UPDATE),
     async (ctx) => {
       try {
-        await userService.clearUserPassword(ctx.params.userId);
+        await userService.clearUserPassword(ctx.params.userId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);
@@ -589,7 +597,7 @@ export function createStandaloneUserRouter(): Router {
     requirePermission(ADMIN_PERMISSIONS.USER_UPDATE),
     async (ctx) => {
       try {
-        await userService.markEmailVerified(ctx.params.userId);
+        await userService.markEmailVerified(ctx.params.userId, ctx.state.adminUser?.id);
         ctx.status = 204;
       } catch (err) {
         handleError(ctx, err);

@@ -41,7 +41,14 @@ vi.mock('../../../src/users/service.js', () => ({
 }));
 
 vi.mock('../../../src/users/repository.js', () => ({
-  findUserById: vi.fn().mockResolvedValue({ id: 'user-1', givenName: 'Test', familyName: 'User' }),
+  findUserById: vi.fn().mockResolvedValue({
+    id: 'user-1',
+    givenName: 'Test',
+    familyName: 'User',
+    status: 'active',
+    twoFactorEnabled: true,
+    twoFactorMethod: 'totp',
+  }),
 }));
 
 vi.mock('../../../src/two-factor/service.js', () => ({
@@ -58,6 +65,11 @@ vi.mock('../../../src/two-factor/service.js', () => ({
   getPendingTotpSetupInfo: vi.fn().mockResolvedValue(null),
   setupEmailOtp: vi.fn().mockResolvedValue({ method: 'email', recoveryCodes: ['CODE-0001'] }),
   confirmTotpSetup: vi.fn().mockResolvedValue(true),
+  resolveTwoFactorPlan: vi.fn().mockReturnValue({
+    action: 'challenge',
+    challengeMethod: 'totp',
+    requiredMethod: null,
+  }),
 }));
 
 vi.mock('../../../src/lib/audit-log.js', () => ({
@@ -90,6 +102,7 @@ import {
   verifyTotp,
   confirmTotpSetup,
   getPendingTotpSetupInfo,
+  resolveTwoFactorPlan,
 } from '../../../src/two-factor/service.js';
 import { UnsupportedTotpConfigurationError } from '../../../src/two-factor/errors.js';
 import { recordLogin } from '../../../src/users/service.js';
@@ -117,12 +130,21 @@ const PENDING_EMAIL = {
   pendingAccountId: 'user-1',
   method: 'email' as const,
   email: 'user@example.com',
+  purpose: 'challenge' as const,
 };
 
 const PENDING_TOTP = {
   pendingAccountId: 'user-1',
   method: 'totp' as const,
   email: 'user@example.com',
+  purpose: 'challenge' as const,
+};
+
+const PENDING_ENROLLMENT = {
+  pendingAccountId: 'user-1',
+  method: 'totp' as const,
+  email: 'user@example.com',
+  purpose: 'enrollment' as const,
 };
 
 /** Create a minimal mock Koa context */
@@ -216,6 +238,11 @@ describe('two-factor routes', () => {
 
   describe('verifyTwoFactor (POST)', () => {
     it('should verify code and finish interaction on success', async () => {
+      vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+        action: 'challenge',
+        challengeMethod: 'email',
+        requiredMethod: null,
+      });
       const provider = createMockProvider(PENDING_EMAIL);
       const router = createTwoFactorRouter(provider);
 
@@ -232,6 +259,26 @@ describe('two-factor routes', () => {
         (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
           .interactionFinished,
       ).toHaveBeenCalled();
+    });
+
+    it('should reject a challenge that no longer matches persisted enrollment', async () => {
+      vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+        action: 'none',
+        challengeMethod: null,
+        requiredMethod: null,
+      });
+      const provider = createMockProvider(PENDING_EMAIL);
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor',
+      );
+      const ctx = createMockCtx({ code: '123456', codeType: 'otp' });
+
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(400);
+      expect(recordLogin).not.toHaveBeenCalled();
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
     });
 
     it('should render error when CSRF token is invalid', async () => {
@@ -352,6 +399,108 @@ describe('two-factor routes', () => {
     });
   });
 
+  describe('enrollment policy enforcement', () => {
+    it('should reject a legacy pending state without a trusted purpose', async () => {
+      const provider = createMockProvider({
+        pendingAccountId: 'user-1',
+        method: 'totp',
+        email: 'user@example.com',
+      });
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('GET') && r.path === '/interaction/:uid/two-factor',
+      );
+      const ctx = createMockCtx();
+
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(renderPage).not.toHaveBeenCalled();
+      expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-1');
+    });
+
+    it('should reject an email setup when policy requires TOTP', async () => {
+      vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+        action: 'enroll',
+        challengeMethod: 'totp',
+        requiredMethod: 'totp',
+      });
+      const provider = createMockProvider(PENDING_ENROLLMENT);
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor/setup',
+      );
+      const ctx = createMockCtx({ setupMethod: 'email', code: '' });
+
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(ctx.status).toBe(400);
+      expect(confirmTotpSetup).not.toHaveBeenCalled();
+    });
+
+    it('should not enter setup until an incompatible existing factor was proven', async () => {
+      vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+        action: 'challenge',
+        challengeMethod: 'email',
+        requiredMethod: 'totp',
+      });
+      const provider = createMockProvider({
+        pendingAccountId: 'user-1',
+        method: 'totp',
+        email: 'user@example.com',
+        purpose: 'migration',
+        requiredMethod: 'totp',
+        challengeVerified: false,
+      });
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('GET') && r.path === '/interaction/:uid/two-factor/setup',
+      );
+      const ctx = createMockCtx();
+
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(renderPage).not.toHaveBeenCalled();
+      expect(ctx.redirect).toHaveBeenCalledWith('/interaction/interaction-uid-1/two-factor');
+    });
+
+    it('should require the policy method after proving an incompatible factor', async () => {
+      vi.mocked(verifyOtp).mockResolvedValueOnce(true);
+      const provider = createMockProvider({
+        pendingAccountId: 'user-1',
+        method: 'email',
+        email: 'user@example.com',
+        purpose: 'challenge',
+        requiredMethod: 'totp',
+      });
+      const router = createTwoFactorRouter(provider);
+      const route = router.stack.find(
+        (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor',
+      );
+      const ctx = createMockCtx({ code: '123456', codeType: 'otp' });
+
+      await route!.stack[0](ctx as never, vi.fn());
+
+      expect(
+        (provider as unknown as { interactionResult: ReturnType<typeof vi.fn> }).interactionResult,
+      ).toHaveBeenCalledWith(
+        ctx.req,
+        ctx.res,
+        expect.objectContaining({
+          twoFactor: expect.objectContaining({
+            purpose: 'migration',
+            method: 'totp',
+            challengeVerified: true,
+          }),
+        }),
+        { mergeWithLastSubmission: true },
+      );
+      expect(provider.interactionFinished).not.toHaveBeenCalled();
+      expect(ctx.redirect).toHaveBeenCalledWith(
+        '/interaction/interaction-uid-1/two-factor/setup',
+      );
+    });
+  });
+
   describe('resendOtpCode (POST)', () => {
     it('should redirect back to two-factor page after resend', async () => {
       const provider = createMockProvider(PENDING_EMAIL);
@@ -370,8 +519,15 @@ describe('two-factor routes', () => {
   });
 
   describe('showTwoFactorSetup (GET)', () => {
+    beforeEach(() => {
+      vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+        action: 'enroll',
+        challengeMethod: null,
+        requiredMethod: null,
+      });
+    });
     it('should render two-factor-setup page', async () => {
-      const provider = createMockProvider(PENDING_TOTP);
+      const provider = createMockProvider(PENDING_ENROLLMENT);
       const router = createTwoFactorRouter(provider);
 
       const route = router.stack.find(
@@ -387,8 +543,26 @@ describe('two-factor routes', () => {
   });
 
   describe('processTwoFactorSetup (POST)', () => {
+    beforeEach(() => {
+      vi.mocked(resolveTwoFactorPlan).mockReturnValue({
+        action: 'enroll',
+        challengeMethod: null,
+        requiredMethod: null,
+      });
+    });
     it('should confirm TOTP and finish interaction on success', async () => {
-      const provider = createMockProvider(PENDING_TOTP);
+      vi.mocked(resolveTwoFactorPlan)
+        .mockReturnValueOnce({
+          action: 'enroll',
+          challengeMethod: null,
+          requiredMethod: null,
+        })
+        .mockReturnValueOnce({
+          action: 'challenge',
+          challengeMethod: 'totp',
+          requiredMethod: null,
+        });
+      const provider = createMockProvider(PENDING_ENROLLMENT);
       const router = createTwoFactorRouter(provider);
 
       const route = router.stack.find(
@@ -398,7 +572,9 @@ describe('two-factor routes', () => {
       const ctx = createMockCtx({ setupMethod: 'totp', code: '123456' });
       await route!.stack[0](ctx as never, vi.fn());
 
-      expect(confirmTotpSetup).toHaveBeenCalledWith('user-1', '123456');
+      expect(confirmTotpSetup).toHaveBeenCalledWith('user-1', '123456', {
+        allowReplaceExisting: false,
+      });
       expect(
         (provider as unknown as { interactionFinished: ReturnType<typeof vi.fn> })
           .interactionFinished,
@@ -407,7 +583,7 @@ describe('two-factor routes', () => {
 
     it('should redirect with error when TOTP code is invalid', async () => {
       (confirmTotpSetup as ReturnType<typeof vi.fn>).mockResolvedValueOnce(false);
-      const provider = createMockProvider(PENDING_TOTP);
+      const provider = createMockProvider(PENDING_ENROLLMENT);
       const router = createTwoFactorRouter(provider);
 
       const route = router.stack.find(
@@ -430,7 +606,7 @@ describe('two-factor routes', () => {
         qrCodeDataUri: 'data:image/png;base64,abc',
         totpSecret: 'ABC',
       });
-      const provider = createMockProvider(PENDING_TOTP);
+      const provider = createMockProvider(PENDING_ENROLLMENT);
       const router = createTwoFactorRouter(provider);
       const route = router.stack.find(
         (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor/setup',
@@ -454,7 +630,7 @@ describe('two-factor routes', () => {
       (confirmTotpSetup as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
         new UnsupportedTotpConfigurationError(),
       );
-      const provider = createMockProvider(PENDING_TOTP);
+      const provider = createMockProvider(PENDING_ENROLLMENT);
       const router = createTwoFactorRouter(provider);
       const route = router.stack.find(
         (r) => r.methods.includes('POST') && r.path === '/interaction/:uid/two-factor/setup',

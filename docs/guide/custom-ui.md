@@ -7,7 +7,7 @@ Porta gives you full control over every user-facing page — login, consent, pas
 | Layer                    | What It Covers                                                              | Effort                   |
 | ------------------------ | --------------------------------------------------------------------------- | ------------------------ |
 | **API-driven branding**  | Uploaded or external logo/favicon, colors, company name, custom CSS per org | Zero code — API/CLI only |
-| **Custom CSS injection** | Full style override via `customCss` field (up to 10KB)                      | CSS only                 |
+| **Custom CSS injection** | Style override via `customCss` field (up to 10KB; CSS only, no HTML)        | CSS only                 |
 | **Template override**    | Replace any or all Handlebars templates via Docker volume mount             | HTML/Handlebars          |
 | **Email templates**      | Customize HTML and plain-text transactional emails                          | HTML/Handlebars          |
 
@@ -27,7 +27,7 @@ The fastest way to customize Porta's UI is through per-organization branding. No
 | Favicon URL      | `faviconUrl`             | _(none)_          | External fallback when no favicon asset is stored       |
 | Primary Color    | `primaryColor`           | `#3B82F6`         | Buttons, links, accents (sets CSS `--primary` variable) |
 | Company Name     | `companyName`            | Organization name | Page titles, headers, footers, email signatures         |
-| Custom CSS       | `customCss`              | _(none)_          | Raw CSS injected into `<head>` (max 10KB)               |
+| Custom CSS       | `customCss`              | _(none)_          | CSS injected into `<head>` (max 10KB; `<` is rejected)  |
 
 ### Setting Branding via CLI
 
@@ -78,6 +78,10 @@ SVG validation path. See the [Branding Assets API](../api/branding.md) for the c
 An uploaded asset has priority over its corresponding external URL. Removing the asset restores
 the configured URL fallback. If neither exists, templates receive `null`. Company name falls back
 to the organization name, and primary color falls back to `#3B82F6`.
+
+Custom CSS is presentation data, not a template. A `<` character is rejected because it can end
+the style element and introduce markup on an authentication page. Previously stored values that
+contain `<` are suppressed until an administrator replaces them with CSS-only content.
 
 External image fallbacks must use HTTPS. Non-production deployments may also use HTTP on exact
 loopback hosts. Authentication-page Content Security Policy (CSP) permits only same-origin uploads,

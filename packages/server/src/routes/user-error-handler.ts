@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { SuperAdminProtectionError } from '../lib/super-admin-protection.js';
 import {
+  AdminAuthorityCeilingError,
   RoleApplicationBoundaryError,
   RoleDelegationError,
   RoleNotFoundError,
@@ -54,6 +55,11 @@ export function handleUserRouteError(
   options: UserRouteErrorOptions = {},
 ): never {
   if (error instanceof SuperAdminProtectionError || error instanceof ServiceAccountManagementError) {
+    ctx.status = 403;
+    ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
+    return undefined as never;
+  }
+  if (error instanceof AdminAuthorityCeilingError) {
     ctx.status = 403;
     ctx.body = { error: 'Forbidden', message: 'The requested operation is not permitted' };
     return undefined as never;

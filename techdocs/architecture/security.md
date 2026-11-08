@@ -165,8 +165,14 @@ The admin API authenticates against Porta's own OIDC tokens:
    `AccessToken` model
 3. Middleware loads the active user and verifies membership in the super-admin organization
 4. Middleware resolves the canonical `porta-admin` application
-5. Only recognized built-in roles assigned from that application contribute code-defined Admin
+5. The token's issuing client must be active, owned by that canonical application, and belong to
+   the super-admin organization; ordinary application tokens grant no Admin authority
+6. Only recognized built-in roles assigned from that application contribute code-defined Admin
    capabilities; a matching role slug from another application grants nothing
+
+Creating or changing a canonical control-plane client requires the complete Super Admin permission
+set. This prevents a delegated App Admin from registering a client that would inherit the token
+boundary.
 
 This self-authentication pattern means Porta has **no external auth dependency** for its admin API.
 Missing, expired, revoked, or rejected tokens receive a fixed authentication failure without
@@ -293,6 +299,10 @@ precedence over validated configured URLs, followed by the existing text and col
 HTML routes copy the resolver's unique image origins into request state, and the security-header
 middleware adds only those validated origins to `img-src`. The base policy continues to allow
 same-origin and `data:` images for uploaded assets and TOTP QR codes.
+
+Custom branding CSS is presentation data only. A value containing `<` is rejected because it can
+end the raw-text style element and introduce markup; previously stored unsafe values are omitted
+by the resolver until replaced.
 
 ### Magic Link Authentication
 

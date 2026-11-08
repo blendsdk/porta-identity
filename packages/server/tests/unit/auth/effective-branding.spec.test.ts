@@ -177,6 +177,31 @@ describe('effective organization branding', () => {
     });
   });
 
+  // Stored presentation data must never be able to leave the style element and become HTML.
+  it('should suppress stored custom CSS that could terminate the style element', async () => {
+    const resolveEffectiveBranding = await loadResolver();
+
+    const result = await resolveEffectiveBranding(
+      organization({
+        brandingCustomCss: '</style><script>alert(document.cookie)</script>',
+      }),
+    );
+
+    expect(result.customCss).toBeNull();
+  });
+
+  // Suppression is limited to unsafe legacy values; ordinary CSS keeps working unchanged.
+  it('should preserve stored custom CSS without an HTML tag opener', async () => {
+    const resolveEffectiveBranding = await loadResolver();
+    const compatibleCss = '.login-card > button { color: #123456; }';
+
+    const result = await resolveEffectiveBranding(
+      organization({ brandingCustomCss: compatibleCss }),
+    );
+
+    expect(result.customCss).toBe(compatibleCss);
+  });
+
   // Metadata lookup failures degrade once to configured branding and never disclose diagnostic inputs.
   it('should return configured branding and one sanitized diagnostic when metadata lookup fails', async () => {
     const rawFailure =

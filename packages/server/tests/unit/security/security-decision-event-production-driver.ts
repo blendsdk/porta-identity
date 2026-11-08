@@ -21,6 +21,7 @@ import { getPool } from '../../../src/lib/database.js';
 import { logger, observeOperationalLogOutput } from '../../../src/lib/logger.js';
 import { createApplicationRouter } from '../../../src/routes/applications.js';
 import { invalidateApplicationCache } from '../../../src/applications/cache.js';
+import { invalidateClientCache } from '../../../src/clients/cache.js';
 import { invalidateUserRbacCache } from '../../../src/rbac/cache.js';
 import { invalidateUserCache } from '../../../src/users/cache.js';
 import {
@@ -227,10 +228,24 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
     ]);
     await pool.query('INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)', [userId, roleId]);
 
+    // Admin tokens are accepted only from an active client owned by the canonical Admin
+    // application in the control-plane organization. Seed that real registration instead of
+    // weakening the production boundary for this integration-only driver.
+    const clientRowId = randomUUID();
+    const clientPublicId = `decision-admin-client-${runId}`;
+    await pool.query(
+      `INSERT INTO clients
+         (id, organization_id, application_id, client_id, client_name, client_type,
+          token_endpoint_auth_method)
+       VALUES ($1, $2, $3, $4, $5, 'public', 'none')`,
+      [clientRowId, organizationId, applicationId, clientPublicId, 'Decision admin client'],
+    );
+
     const token = 'protected-access-token';
     const provider: AdminAccessTokenProvider = {
       AccessToken: {
-        find: async (candidate) => (candidate === token ? { accountId: userId } : undefined),
+        find: async (candidate) =>
+          candidate === token ? { accountId: userId, clientId: clientPublicId } : undefined,
       },
     };
     setAdminAuthProvider(provider);
@@ -240,11 +255,13 @@ export class ProductionSecurityDecisionEventDriver implements SecurityDecisionEv
       cleanup: async () => {
         clearAdminAuthProvider();
         await pool.query('DELETE FROM roles WHERE id = $1', [roleId]);
+        await pool.query('DELETE FROM clients WHERE id = $1', [clientRowId]);
         await pool.query('DELETE FROM users WHERE id = $1', [userId]);
         if (createdApplication) {
           await pool.query('DELETE FROM applications WHERE id = $1', [applicationId]);
         }
         await invalidateApplicationCache('porta-admin', applicationId);
+        await invalidateClientCache(clientPublicId, clientRowId);
         if (createdOrganization) {
           await pool.query('DELETE FROM organizations WHERE id = $1', [organizationId]);
         }

@@ -64,6 +64,20 @@ function collectAuthorityReferences(payload: AdapterPayload): AuthorityReference
   addStringReference(references.userIds, payload.accountId);
   addStringReference(references.grantIds, payload.grantId);
 
+  // Interaction payloads carry the authenticated account under `session.accountId` and the
+  // pending second-factor account under `result.twoFactor.pendingAccountId`.
+  if (isRecord(payload.session)) {
+    addStringReference(references.userIds, payload.session.accountId);
+  }
+  if (isRecord(payload.result)) {
+    if (isRecord(payload.result.login)) {
+      addStringReference(references.userIds, payload.result.login.accountId);
+    }
+    if (isRecord(payload.result.twoFactor)) {
+      addStringReference(references.userIds, payload.result.twoFactor.pendingAccountId);
+    }
+  }
+
   if (isRecord(payload.authorizations)) {
     for (const [clientId, authorization] of Object.entries(payload.authorizations)) {
       addStringReference(references.clientIds, clientId);

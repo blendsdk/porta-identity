@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   permissionFindById: vi.fn(),
   permissionUpdate: vi.fn(),
   permissionDelete: vi.fn(),
+  getClientByClientId: vi.fn(),
 }));
 
 vi.mock('../../../src/users/service.js', () => ({
@@ -35,6 +36,10 @@ vi.mock('../../../src/applications/repository.js', () => ({
 
 vi.mock('../../../src/applications/service.js', () => ({
   getApplicationBySlug: mocks.getApplicationBySlug,
+}));
+
+vi.mock('../../../src/clients/service.js', () => ({
+  getClientByClientId: mocks.getClientByClientId,
 }));
 
 vi.mock('../../../src/rbac/user-role-service.js', () => ({
@@ -198,7 +203,9 @@ describe('canonical Porta Admin authority boundary', () => {
     vi.clearAllMocks();
     clearAdminAuthProvider();
     setAdminAuthProvider({
-      AccessToken: { find: vi.fn().mockResolvedValue({ accountId: ACTOR_ID }) },
+      AccessToken: {
+        find: vi.fn().mockResolvedValue({ accountId: ACTOR_ID, clientId: 'admin-client' }),
+      },
     });
     mocks.findSuperAdminOrganization.mockResolvedValue({ id: ADMIN_ORG_ID });
     mocks.findUserForOidc.mockResolvedValue({
@@ -209,6 +216,11 @@ describe('canonical Porta Admin authority boundary', () => {
     const adminApplication = { id: ADMIN_APP_ID, slug: 'porta-admin' };
     mocks.findApplicationBySlug.mockResolvedValue(adminApplication);
     mocks.getApplicationBySlug.mockResolvedValue(adminApplication);
+    mocks.getClientByClientId.mockResolvedValue({
+      status: 'active',
+      applicationId: ADMIN_APP_ID,
+      organizationId: ADMIN_ORG_ID,
+    });
   });
 
   // A role that merely copies a built-in slug outside porta-admin grants no Admin API access.
