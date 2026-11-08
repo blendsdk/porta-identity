@@ -1,19 +1,19 @@
-# Release Notes — v1.16.0
+# Release Notes — v1.17.0
 
-**Released**: 2026-11-01
+**Released**: 2026-11-08
 
-We are excited to announce version 1.16.0 of our software, which brings important updates and enhancements aimed at improving your experience. This release focuses on refining certain functionalities, enhancing our system's security, and streamlining user management features.
+We are excited to announce the release of version 1.17.0, bringing significant enhancements to our platform that improve user experience, security, and functionality. This update focuses on making the process of inviting new admin users simpler and more secure, while also ensuring better monitoring and management of connected applications.
 
-Key Highlights:
+Highlights of version 1.17.0 include:
 
-- **Improved Configuration Choices**: Users can now better tailor their experience with the addition of server-owned configuration locale choices, making it easier to set up the system in their preferred language and formats.
+- **Invitation Management Improvements:** Administrators can now send invitations exclusively to designated service accounts. This feature makes it easier to manage who has access to admin privileges, enhancing security by ensuring only authorized users can be invited.
+  
+- **Streamlined Role Assignment:** When inviting new admin users, roles can now be pre-assigned directly through the admin terminal. This change simplifies the onboarding process for administrators and helps ensure that new users have the appropriate permissions right from the start.
 
-- **Enhanced Tenant Management**: We've introduced the ability to cancel pending tenant invitations. This improvement gives administrators more control over their user invitations and helps streamline management tasks.
+- **Security Enhancements:** We have addressed security concerns highlighted by Codex scans, which helps protect user data and strengthens overall system integrity. These updates further ensure that our platform remains a safe environment for all users.
 
-- **Security Updates**: This release addresses some security vulnerabilities by patching known issues. We prioritize the safety of our users, and these updates are a part of our ongoing commitment to provide a secure environment.
+- **Enhanced Application Management:** Administrators now have improved capabilities to monitor and revoke access to connected applications. This will give greater control over application permissions and help maintain security standards.
 
-- **Streamlined Invitations Process**: The server now automatically revokes pending tenant application invitations, reducing the clutter and confusion that can arise from unaddressed invitations. 
+- **Improved Handling of Errors:** Our system now emits safe error messages in a structured format, making it easier to troubleshoot issues without compromising sensitive information. This enhancement increases usability and supports smoother operations for administrators.
 
-- **Compliance Adjustments**: We've made adjustments based on ongoing reviews to ensure that our platform continues to meet necessary standards and best practices. This includes refining specific functionalities to enhance the overall user experience.
-
-We're committed to continuous improvement and appreciate your feedback as we strive to make our platform even better. Thank you for your support and happy exploring in version 1.16.0!
+Overall, version 1.17.0 marks a significant step forward in making our platform more intuitive, secure, and user-friendly, paving the way for more efficient admin management and governance.

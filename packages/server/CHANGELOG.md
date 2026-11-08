@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-11-08
+
+Added:
+- Seed canonical Admin client in security-decision driver for production cases.
+- Complete live protocol observations through Admin APIs.
+- List and revoke admin connected apps with live OIDC Grant integration.
+- Model per-application resource servers with migration for application-owned resource servers.
+- Pre-assign invitation roles in admin terminal with optional role checklist.
+- Add invitation-only admin service-account invitations specifications.
+
+Changed:
+- Various enhancements in server migrations and authentication services to improve security and handling of Admin APIs.
+
+Fixed:
+- Remediate Codex security scan findings by rejecting unsafe HTML in branding CSS.
+- Retry truncate after PostgreSQL deadlock to handle test lifecycle lock-order issues.
+
+Deprecated:
+- Retire statistical timing campaign and record DEF-23 as closed.
+
 ## [1.16.0] - 2026-11-01
 
 Added:

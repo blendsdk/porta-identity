@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.17.0] - 2026-11-08
+
+Added:
+- Pre-assign invitation roles in the admin terminal.
+- Invitation-only admin service account invitations for better security.
+- Integration of invitation automation Bundle A.
+
+Changed:
+- Updated handling of admin API tokens to bind them to active canonical admin clients.
+- Enhanced the terminal invite dialog with an optional role checklist.
+- Improved JSON validation for invitation claims and emission of classified JSON errors.
+
+Fixed:
+- Remediation of security scan findings, rejecting unsafe stored values in branding CSS.
+- Addressed deep nesting comparison issues in claims processing to prevent stack overflow.
+
+Security:
+- Remediated vulnerabilities identified in Codex security scans, ensuring safer handling of user data and tokens.
+
 ## [1.16.0] - 2026-11-01
 
 ### Fixed
