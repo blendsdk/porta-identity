@@ -1,8 +1,8 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-11-07
-> **Features**: 12 / 12 done
+> **Last Updated**: 2026-11-08 10:59
+> **Features**: 12 / 12 complete (hand-maintained feature rows)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -13,7 +13,7 @@
 
 | Feature                   | Roadmap                                               | Stage Summary                                                                                  | Progress                           | Status | Last Updated     |
 | ------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- | ---------------------------------- | ------ | ---------------- |
-| _maintenance         | [→](features/_maintenance/00-roadmap.md)         | All T-01–T-07 complete; residual assurance work user-owned | n/a            | ✅     | 2026-11-01 17:26 |
+| _maintenance         | [→](features/_maintenance/00-roadmap.md)         | All T-01–T-08 complete; residual assurance work user-owned | n/a            | ✅     | 2026-11-08 10:59 |
 | connected-apps | [→](features/connected-apps/00-roadmap.md) | Admin connected-apps list/revoke (#155) complete | 6 / 6 tasks (100%) | ✅ | 2026-11-07 |
 | admin-service-accounts | [→](features/admin-service-accounts/00-roadmap.md) | Invitation-only Admin service accounts complete; merged via PR #219 with green CI | 65 / 65 tasks (100%) | ✅ | 2026-11-06 |
 | admin-terminal | [→](features/admin-terminal/00-roadmap.md) | Invite role pre-assignment (#182) complete; PR #221 gates green | 10 / 10 tasks (100%) | ✅ | 2026-11-06 |

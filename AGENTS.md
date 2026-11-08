@@ -43,42 +43,43 @@ A local run is a selection, not a waiver: a change is mergeable only after CI's 
 
 ## Project profile
 
-- Porta is a TypeScript ESM identity platform requiring Node.js 22.22.2+; active feature verification uses Node.js 24. The server is built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
+- Porta is a TypeScript ESM identity platform requiring Node.js 22.22.2+. CI runs Node 22 and the release workflow pins 22.22.2; local verification currently uses Node 22.23.1. The server is built around Koa, `oidc-provider`, PostgreSQL, and Redis. Builds and typechecks use TypeScript 7; ESLint uses the official side-by-side TypeScript 6 API compatibility package.
 - pnpm 12.15 and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
-- `main` is the production branch and remains strictly off limits. Integrate feature work through `develop`; preserve the verified migration and assurance histories. Do not assume historical integration branches or worktrees are still active.
+- `main` is the production branch: never develop features on it or push directly. Feature work integrates through `develop`; `main` advances only through the manual release promotion and `Release` workflow. Preserve the verified migration and assurance histories. Do not assume historical integration branches or worktrees are still active.
 - Commits use Conventional Commit prefixes such as `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
+- Specialist coverage: up to date (2026-11-08).
 
 ## Authoritative commands
 
 Run commands from the repository root.
 
-| Purpose              | Command                                                                  | Scope          | Validation                                                                    |
-| -------------------- | ------------------------------------------------------------------------ | -------------- | ----------------------------------------------------------------------------- |
-| Install              | `pnpm install --frozen-lockfile`                                         | Local / CI     | Passed on 2026-08-08 in the migration worktree                                |
-| Full product tests   | `pnpm test`                                                              | CI only        | Server unit, integration, E2E, and pentest; SDK; CLI                          |
-| Full verification    | `pnpm verify`                                                            | CI only        | Structure contracts, lint, typecheck, all product tests, and builds           |
-| Affected tests       | `pnpm test:changed`                                                      | Local default  | Structure contracts plus unit tests affected since `origin/develop`           |
-| Unit tests           | `pnpm test:unit`                                                         | Local          | Server unit, SDK, and CLI; no services required                               |
-| Watch unit tests     | `pnpm test:watch`                                                        | Local          | Server unit project only                                                      |
-| Integration tests    | `pnpm test:integration`                                                  | Local services | Requires PostgreSQL, Redis, and MailHog                                       |
-| Affected integration | `pnpm test:changed:integration`                                          | Local services | Integration tests affected since `origin/develop`                             |
-| Watch integration    | `pnpm test:watch:integration`                                            | Local services | Server integration project only                                               |
-| End-to-end tests     | `pnpm test:e2e`                                                          | Local services | Requires PostgreSQL, Redis, and MailHog                                       |
-| Penetration tests    | `pnpm test:pentest`                                                      | Security gate  | Requires PostgreSQL, Redis, and MailHog                                       |
-| Browser tests        | `pnpm test:ui`                                                           | Browser gate   | Requires Playwright Chromium and test infrastructure                          |
-| Structure tests      | `pnpm test:structure`                                                    | Local / CI     | 142 contracts; some spawn builds/CLI commands; no services required           |
-| OIDC harness         | `pnpm harness:test`                                                      | On demand      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services      |
-| Documentation build  | `pnpm docs:build`                                                        | Docs changes   | Passed on 2026-09-17                                                          |
-| Dependency check     | `pnpm deps:check`                                                        | On demand      | Checks root and active workspaces while excluding internal workspace packages |
-| Release tooling      | `pnpm release:prepare`, `pnpm release:preflight`, `pnpm release:publish` | Manual release | Declared by root scripts; not executed during ordinary feature work           |
+| Purpose              | Command                                                                  | Scope          | Validation                                                                      |
+| -------------------- | ------------------------------------------------------------------------ | -------------- | ------------------------------------------------------------------------------- |
+| Install              | `pnpm install --frozen-lockfile`                                         | Local / CI     | CI passed on 2026-11-08 (run 42466713182)                                       |
+| Full product tests   | `pnpm test`                                                              | CI only        | Server unit, integration, E2E, and pentest; SDK; CLI                            |
+| Full verification    | `pnpm verify`                                                            | CI only        | Structure contracts, lint, typecheck, all product tests, and builds             |
+| Affected tests       | `pnpm test:changed`                                                      | Local default  | Structure contracts plus unit tests affected since `origin/develop`             |
+| Unit tests           | `pnpm test:unit`                                                         | Local          | Server unit, SDK, and CLI; no services required                                 |
+| Watch unit tests     | `pnpm test:watch`                                                        | Local          | Server unit project only                                                        |
+| Integration tests    | `pnpm test:integration`                                                  | Local services | Requires PostgreSQL, Redis, and MailHog                                         |
+| Affected integration | `pnpm test:changed:integration`                                          | Local services | Integration tests affected since `origin/develop`                               |
+| Watch integration    | `pnpm test:watch:integration`                                            | Local services | Server integration project only                                                 |
+| End-to-end tests     | `pnpm test:e2e`                                                          | Local services | Requires PostgreSQL, Redis, and MailHog                                         |
+| Penetration tests    | `pnpm test:pentest`                                                      | Security gate  | Requires PostgreSQL, Redis, and MailHog                                         |
+| Browser tests        | `pnpm test:ui`                                                           | Browser gate   | Requires Playwright Chromium and test infrastructure                            |
+| Structure tests      | `pnpm test:structure`                                                    | Local / CI     | 179 contracts passed on 2026-11-08; some spawn builds/CLI commands; no services |
+| OIDC harness         | `pnpm harness:test`                                                      | On demand      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services        |
+| Documentation build  | `pnpm docs:build`                                                        | Docs changes   | CI passed on 2026-11-08 (run 42466713182)                                       |
+| Dependency check     | `pnpm deps:check`                                                        | On demand      | Checks root and active workspaces while excluding internal workspace packages   |
+| Release tooling      | `pnpm release:prepare`, `pnpm release:preflight`, `pnpm release:publish` | Manual release | Declared by root scripts; not executed during ordinary feature work             |
 
 `pnpm test` runs every product test project. `pnpm verify` adds structure contracts, lint, typecheck,
 and builds, and is the CI gate. Browser tests and the retained OIDC harness remain separate CI jobs.
 Use the narrow category scripts locally; CI covers the full surface on every push and pull request.
 
-Latest CI full verification (2026-09-17): structure 122; server unit 3,635, integration 476, E2E 127,
-pentest 260; SDK 558; CLI 1,419. Lint, typechecks and builds pass. These are dated CI evidence,
-not fixed test-count requirements and not a local default.
+Latest CI full verification (2026-11-08): run `42466713182` passed all six jobs — Verify Monorepo,
+UI Tests, OIDC Harness, Public Documentation, Production Docker Build, and Production Dependency
+Audit. Test counts vary by revision; CI is the authoritative gate, not a local default.
 
 The registered `pnpm assurance:harness --project security --profile production-security` run on
 2026-09-17 passed its 7 human-authentication, 4 second-factor and 17 tenant/admin tests; exposure
@@ -210,8 +211,9 @@ explain the concrete risk and propose a secure alternative.
 
 The monorepo migration and assurance remediation are complete checkpoints. Start new Porta product
 features on separate feature branches and sessions; do not add unrelated feature work to migration
-or assurance-remediation branches. Keep `main` off limits and preserve the verified migration and
-assurance histories when integrating through the repository's designated integration flow.
+or assurance-remediation branches. Keep feature development off `main`; advance it only through the
+manual release promotion flow, and preserve the verified migration and assurance histories when
+integrating through the repository's designated integration flow.
 
 <!-- CODEOPS-PROJECT:END -->
 

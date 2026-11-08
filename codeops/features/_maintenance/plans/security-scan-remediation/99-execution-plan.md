@@ -3,7 +3,7 @@
 > **Type**: Task (security remediation) · **Feature**: _maintenance
 > **Implements**: _maintenance/T-08
 > **CodeOps Artifact Schema**: 1
-> **Status**: Done — all 11 issues closed; changes remain uncommitted
+> **Status**: Done — all 11 issues closed; PR #238 merged; post-merge CI green
 > **Last Updated**: 2026-11-08
 
 ## Objective
@@ -66,8 +66,8 @@ administration working. The detailed decisions and bounded recommendations live 
       tests passed. Full structure suite: 179/179 passed.
 - [x] **T-08.13** Independent final review completed; first pass blocked and B1–B4 were fixed;
       re-review returned PASS WITH NOTES with no blocking findings.
-- [x] **T-08.14** All 11 issues closed. Changes remain uncommitted because no commit, push, merge,
-      release or deployment was requested.
+- [x] **T-08.14** All 11 issues closed and merged via PR #238; post-merge CI green. No release or
+      deployment was requested.
 
 ## Verification
 
