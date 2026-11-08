@@ -1,10 +1,10 @@
 # Roadmap: Resource Servers
 
 > **Feature-Set**: Resource Servers
-> **Status**: Complete
+> **Status**: In Progress
 > **Created**: 2026-11-07
-> **Last Updated**: 2026-11-07
-> **Progress**: 7 / 7 tasks (100%)
+> **Last Updated**: 2026-11-09 00:14
+> **Progress**: 0 / 1 (0%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -16,6 +16,7 @@
 | ID   | Title                                      | RD  | Plan                                                    | Stage     | Status | Last Updated | Depends-on / Blocker |
 | ---- | ------------------------------------------ | --- | ------------------------------------------------------- | --------- | ------ | ------------ | -------------------- |
 | T-01 | Per-application resource-server scopes and audience (#156) | —   | [Standalone task plan](plans/resource-server-scopes/99-execution-plan.md) | Done      | ✅     | 2026-11-07   | 7/7; reviews, full gates, PR CI and production-security assurance green |
+| RD-01 | Resource-server admin management (API, SDK, CLI, docs) | [RD-01](requirements/RD-01-resource-server-admin.md) | — | RD Drafted | ✏️ | 2026-11-09 00:14 | AR-1–AR-10 resolved |
 
 ## Notes
 
@@ -29,4 +30,4 @@
   resource-bound OIDC flow can still issue an ID token. Userinfo needs a separate no-resource
   authorization because audience-bearing tokens are for their resource server.
 - The admin management surface is not part of #156; this task owns the server model, resolution and
-  verification. A later surface can reuse the repository/service.
+  verification. RD-01 owns the later admin surface and reuses the repository/service.
