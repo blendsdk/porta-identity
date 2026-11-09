@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-09 00:50
-> **Progress**: 13/33 tasks (39%)
+> **Last Updated**: 2026-11-09 01:11
+> **Progress**: 20/33 tasks (61%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -105,25 +105,25 @@ specification-first ordering is mandatory in every behavioral phase.
 **Reference**: [03-02](03-02-sdk.md) · ST-20–ST-22
 **Objective**: Define the SDK method and validation expectations before implementation.
 
-- [ ] 2.1.1 [spec-author] Write SDK spec tests for paths, methods, bodies, parsed results, and malformed responses — `packages/sdk/tests/resource-servers.spec.test.ts`
-- [ ] 2.1.2 Run the SDK spec tests and record the red phase
+- [x] 2.1.1 [spec-author] Write SDK spec tests for paths, methods, bodies, parsed results, and malformed responses — `packages/sdk/tests/resource-servers.spec.test.ts` ✅ (completed: 2026-11-09 01:11)
+- [x] 2.1.2 Run the SDK spec tests and record the red phase ✅ (completed: 2026-11-09 01:11)
 
 ### Step 2.2: Implementation
 
 **Reference**: [03-02](03-02-sdk.md)
 **Objective**: Add types and domain methods.
 
-- [ ] 2.2.1 Add resource-server entity/input types and export them — `packages/sdk/src/types/resource-servers.ts`, `packages/sdk/src/types/index.ts`
-- [ ] 2.2.2 Add the response guard and five methods to the applications domain — `packages/sdk/src/domains/applications.ts`
-- [ ] 2.2.3 Run the SDK spec tests and record the green phase
+- [x] 2.2.1 Add resource-server entity/input types and export them — `packages/sdk/src/types/resource-servers.ts`, `packages/sdk/src/types/index.ts` ✅ (completed: 2026-11-09 01:11)
+- [x] 2.2.2 Add the response guard and five methods to the applications domain — `packages/sdk/src/domains/applications.ts` ✅ (completed: 2026-11-09 01:11)
+- [x] 2.2.3 Run the SDK spec tests and record the green phase ✅ (completed: 2026-11-09 01:11)
 
 ### Step 2.3: Implementation Tests and Hardening
 
 **Reference**: [03-02](03-02-sdk.md)
 **Objective**: Cover malformed responses and transport failures.
 
-- [ ] 2.3.1 Write impl tests for malformed success bodies and non-2xx errors — `packages/sdk/tests/resource-servers.impl.test.ts`
-- [ ] 2.3.2 Run SDK lint, typecheck, tests, and build
+- [x] 2.3.1 Write impl tests for malformed success bodies and non-2xx errors — `packages/sdk/tests/resource-servers.impl.test.ts` ✅ (completed: 2026-11-09 01:11)
+- [x] 2.3.2 Run SDK lint, typecheck, tests, and build ✅ (completed: 2026-11-09 01:11)
 
 **Deliverables**:
 - [ ] SDK types and methods exported

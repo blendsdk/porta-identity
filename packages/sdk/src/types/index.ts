@@ -36,6 +36,13 @@ export type {
   UpdateModuleInput,
 } from './applications.js';
 
+// Resource servers
+export type {
+  ResourceServer,
+  CreateResourceServerInput,
+  UpdateResourceServerInput,
+} from './resource-servers.js';
+
 // Clients
 export type {
   Client,
