@@ -114,11 +114,14 @@ export async function finalizeSecurityDecision(
   const state = ctx.state?.securityDecision;
   if (!state || state.emitted) return null;
   state.emitted = true;
-  const surface: SecurityDecisionEvent['surface'] | null = ctx.path.startsWith('/api/admin')
+  // @koa/router matches case-insensitively; classify the normalized path so a mixed-case Admin
+  // request still emits the security-decision event.
+  const path = ctx.path.toLowerCase();
+  const surface: SecurityDecisionEvent['surface'] | null = path.startsWith('/api/admin')
     ? 'admin-api'
-    : ctx.path.startsWith('/api/organizations')
+    : path.startsWith('/api/organizations')
       ? 'tenant-api'
-      : ctx.path.includes('/auth/')
+      : path.includes('/auth/')
         ? 'public-auth'
         : null;
   if (surface === null) return null;

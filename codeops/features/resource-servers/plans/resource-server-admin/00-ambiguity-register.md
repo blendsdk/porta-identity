@@ -1,7 +1,7 @@
 # Ambiguity Register: Resource-Server Admin Implementation Plan
 
-> **Status**: ✅ GATE PASSED — all 5 items resolved
-> **Last Updated**: 2026-11-09 00:22
+> **Status**: ✅ GATE PASSED — all 10 items resolved
+> **Last Updated**: 2026-11-09 00:47
 
 | # | Category | Ambiguity / Gap | Options Presented | User Decision | Status |
 |---|----------|-----------------|-------------------|---------------|--------|
@@ -10,6 +10,11 @@
 | AR-3 | UX & presentation | Where should the public docs live? | Dedicated API/CLI pages / sections in the application pages | Dedicated `docs/api/resource-servers.md` and `docs/cli/resource-servers.md`, cross-linked from the application pages | ✅ Resolved |
 | AR-4 | Technical | What verification command closes the plan? | `pnpm verify` at the final phase / narrow selectors only | Targeted checks during tasks; full `pnpm verify` at the final phase | ✅ Resolved |
 | AR-5 | Integration points | Which specialist reviews the provider-boundary phase? | Existing `oidc-provider-reviewer` / none | Existing `oidc-provider-reviewer`, already user-approved for provider-shape review | ✅ Resolved |
+| AR-6 | Technical (runtime) | How should the case-variant admin path bypass be fixed? | Shared middleware normalization / local router only | Shared normalization in audit, rate limiter, CORS, selective body parser, and security-decision context | ✅ Resolved |
+| AR-7 | Data & state (runtime) | Which slug rules should resource servers use? | Reuse application rules including reserved words / resource-server-specific rules | Reuse application slug rules, including reserved words | ✅ Resolved |
+| AR-8 | Data & state (runtime) | How should a UUID-shaped resource-server slug be handled? | Reject with 400 / id-then-slug fallback | Reject with 400; the id-or-slug lookup remains unambiguous | ✅ Resolved |
+| AR-9 | Security & compliance (runtime) | May provider-registered tenant scopes be custom resource scopes? | Allow as custom / reject all provider scopes | Allow as custom; only the six standard OIDC scopes are protocol-owned | ✅ Resolved |
+| AR-10 | Scope (runtime) | How should the Phase 1 review findings be resolved? | Fix Major + Minor now / Major only / discuss | Fix all Major and Minor findings now | ✅ Resolved |
 
 ## Resolution Notes
 
@@ -31,8 +36,24 @@ the authoritative full gate.
 Phase 1 diff for provider-model shapes, application ownership, and audience/identifier boundaries.
 It is additional to the mandatory correctness and security reviews; it never replaces them.
 
+**AR-6:** `@koa/router` matches case-insensitively, so normalizing only the new router would leave
+the shared audit, rate-limit, CORS, and body-parser gates inconsistent. All shared gates now
+normalize the path before their prefix checks; a real-mount pentest covers the mixed-case mutation.
+
+**AR-7:** `applicationSlugSchema` is reused so resource-server slugs cannot collide with reserved
+application words. This is slightly stricter than RD-01's original wording; RD-01 now states it.
+
+**AR-8:** The repository distinguishes id from slug by UUID shape. Rejecting UUID-shaped slugs at
+create/update removes the ambiguity without adding a fallback query.
+
+**AR-9:** The custom registry is per resource server; provider-registered tenant scopes may be
+legitimately exposed by a resource. The six standard OIDC scopes remain the only protocol-owned
+rejections.
+
+**AR-10:** The user ruled to fix all Phase 1 Major and Minor findings now. The fixes are recorded in
+`05-findings.md`; the scoped re-review found one remaining Major test-inventory issue, now fixed.
+
 ## Final Confirmation
 
-The user selected AR-1 through AR-4 in the plan interview. AR-5 imports the earlier user-approved
-specialist creation. The complete register is presented for final confirmation before the plan is
-marked executable.
+The user selected AR-1 through AR-4 in the plan interview, AR-5 from the earlier specialist
+approval, and AR-6 through AR-10 in the Phase 1 review rulings. The complete register is confirmed.

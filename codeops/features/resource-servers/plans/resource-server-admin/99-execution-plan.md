@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-09 00:22
-> **Progress**: 0/33 tasks (0%)
+> **Last Updated**: 2026-11-09 00:50
+> **Progress**: 13/33 tasks (39%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -59,31 +59,31 @@ specification-first ordering is mandatory in every behavioral phase.
 **Reference**: [03-01](03-01-server-api.md) · [07](07-testing-strategy.md) · AR-1, AR-2
 **Objective**: Write the API and validation expectations before implementation.
 
-- [ ] 1.1.1 [spec-author] Write integration spec tests for ST-1–ST-19 — `packages/server/tests/integration/resource-servers/resource-server-admin.spec.test.ts`
-- [ ] 1.1.2 [spec-author] Write unit spec tests for ST-6, ST-7, ST-16, ST-17 — `packages/server/tests/unit/resource-servers/resource-server-admin.spec.test.ts`
-- [ ] 1.1.3 Run the new spec tests and record the red phase; do not read implementation logic while writing them
+- [x] 1.1.1 [spec-author] Write integration spec tests for ST-1–ST-19 — `packages/server/tests/integration/resource-servers/resource-server-admin.spec.test.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.1.2 [spec-author] Write unit spec tests for ST-6, ST-7, ST-16, ST-17 — `packages/server/tests/unit/resource-servers/resource-server-admin.spec.test.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.1.3 Run the new spec tests and record the red phase; do not read implementation logic while writing them ✅ (completed: 2026-11-09 00:23)
 
 ### Step 1.2: Implementation
 
 **Reference**: [03-01](03-01-server-api.md) · [RD-01](../../requirements/RD-01-resource-server-admin.md)
 **Objective**: Add the module, routes, and mount.
 
-- [ ] 1.2.1 Add `ResourceServer` types, inputs, row types, and domain errors — `packages/server/src/resource-servers/types.ts`, `errors.ts`
-- [ ] 1.2.2 Add Zod schemas, scope normalization, standard-scope rejection, and audience normalization — `packages/server/src/resource-servers/validators.ts`
-- [ ] 1.2.3 Add parameterized list/find/lock/insert/update/delete/scope-replacement queries and row mapping — `packages/server/src/resource-servers/repository.ts`
-- [ ] 1.2.4 Add application lookup, slug generation, unique-violation mapping, and transactional service methods — `packages/server/src/resource-servers/service.ts`
-- [ ] 1.2.5 Add the nested router and fixed error mapping — `packages/server/src/routes/resource-servers.ts`
-- [ ] 1.2.6 Mount the router after the application router — `packages/server/src/server.ts`
-- [ ] 1.2.7 Run the new spec tests and record the green phase
+- [x] 1.2.1 Add `ResourceServer` types, inputs, row types, and domain errors — `packages/server/src/resource-servers/types.ts`, `errors.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.2.2 Add Zod schemas, scope normalization, standard-scope rejection, and audience normalization — `packages/server/src/resource-servers/validators.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.2.3 Add parameterized list/find/lock/insert/update/delete/scope-replacement queries and row mapping — `packages/server/src/resource-servers/repository.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.2.4 Add application lookup, slug generation, unique-violation mapping, and transactional service methods — `packages/server/src/resource-servers/service.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.2.5 Add the nested router and fixed error mapping — `packages/server/src/routes/resource-servers.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.2.6 Mount the router after the application router — `packages/server/src/server.ts` ✅ (completed: 2026-11-09 00:23)
+- [x] 1.2.7 Run the new spec tests and record the green phase ✅ (completed: 2026-11-09 00:23)
 
 ### Step 1.3: Implementation Tests and Hardening
 
 **Reference**: [03-01](03-01-server-api.md) · [07](07-testing-strategy.md) · AR-5
 **Objective**: Cover concurrency, cascade, and provider-boundary effects.
 
-- [ ] 1.3.1 Write impl tests for concurrent writers, unique mapping, scope replacement, and delete cascade — `packages/server/tests/integration/resource-servers/resource-server-admin.impl.test.ts`
-- [ ] 1.3.2 Run targeted server tests plus server lint, typecheck, and build
-- [ ] 1.3.3 Dispatch the `oidc-provider-reviewer` on the Phase 1 diff; resolve every Critical/Major finding before proceeding
+- [x] 1.3.1 Write impl tests for concurrent writers, unique mapping, scope replacement, and delete cascade — `packages/server/tests/integration/resource-servers/resource-server-admin.impl.test.ts` ✅ (completed: 2026-11-09 00:24)
+- [x] 1.3.2 Run targeted server tests plus server lint, typecheck, and build ✅ (completed: 2026-11-09 00:24)
+- [x] 1.3.3 Dispatch the `oidc-provider-reviewer` on the Phase 1 diff; resolve every Critical/Major finding before proceeding ✅ (completed: 2026-11-09 00:50)
 
 **Deliverables**:
 - [ ] Admin API and service implemented

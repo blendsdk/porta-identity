@@ -89,6 +89,7 @@ SDK and without a mutation.
 - request fields and exact fixed error bodies;
 - audience default and standard-scope rejection;
 - hard-delete cascade and already-issued-token impact;
+- exact-string identifier matching and the canonical-URI registration requirement;
 - curl examples for list, create, update, and delete.
 
 `docs/cli/resource-servers.md` must include the command tree, flags, human/JSON examples, delete

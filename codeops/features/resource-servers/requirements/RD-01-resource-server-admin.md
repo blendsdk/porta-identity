@@ -119,14 +119,15 @@ scoped to the resolved application.
 | Field | Create | Update | Rules |
 | --- | --- | --- | --- |
 | `name` | required | required | 1–255 characters; trimmed; no control characters |
-| `slug` | optional | required | 3–100 characters; lowercase `[a-z0-9-]`; starts/ends alphanumeric; unique per application; auto-generated from `name` on create when omitted |
-| `identifier` | required | required | Absolute URI; 1–2048 characters; no fragment; globally unique |
+| `slug` | optional | required | 3–100 characters; lowercase `[a-z0-9-]`; starts/ends alphanumeric; reuses application slug rules including reserved words; UUID-shaped values rejected; unique per application; auto-generated from `name` on create when omitted |
+| `identifier` | required | required | Absolute URI with a lowercase scheme; 1–2048 characters; no fragment; no raw whitespace or control characters; globally unique; matched exactly by the provider |
 | `audience` | optional | optional | Absolute URI; 1–2048 characters; no fragment; globally unique; omitted/`null` defaults to `identifier` |
 | `scopes` | optional | optional | Array of strings; each 1–255 characters matching `^[A-Za-z0-9_.:-]+$`; no duplicates; no standard OIDC scope; omitted/empty means no custom scopes |
 
 Standard OIDC scopes rejected from the custom registry are exactly `openid`, `profile`, `email`,
 `address`, `phone`, and `offline_access` (AR-8). They remain available through the existing resolver
-and must not be stored as custom rows.
+and must not be stored as custom rows. Provider-registered tenant scopes may be stored as custom
+resource scopes; the client metadata still gates whether they can be granted.
 
 ### Validation and Error Mapping
 
@@ -194,8 +195,8 @@ the global `--json`, `--verbose`, and server-selection options.
   remove the "no Admin API" statement; update `techdocs/architecture/data-model.md` only if the
   management surface adds a material data-lifecycle detail.
 - Documentation must state the fixed error bodies, audience default, custom-only scope rule,
-  permissions, hard-delete cascade, and the fact that already-issued tokens remain valid until
-  expiry.
+  permissions, hard-delete cascade, the fact that already-issued tokens remain valid until expiry,
+  and that identifiers are matched exactly so operators must register the canonical URI form.
 
 ### Non-Functional Requirements
 

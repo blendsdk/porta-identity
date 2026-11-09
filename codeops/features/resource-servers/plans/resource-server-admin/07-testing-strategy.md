@@ -76,6 +76,14 @@ component specifications, and the registers. They are the immutable oracle.
 | # | Input / Scenario | Expected Output / Behavior | Source |
 | --- | --- | --- | --- |
 | ST-29 | Pentest-style request using a foreign application/resource pair or missing write permission | `404`/`403` fixed response; no row values, SQL, stack trace, or cross-application data | RD-01 AC10, AC13, AC20 |
+| ST-30 | `POST` name containing newline, ESC, or NUL | `400` fixed validation body; no row inserted | RD-01 Request Fields |
+| ST-31 | `POST` identifier with uppercase scheme, leading/trailing whitespace, newline, or NUL | `400` fixed validation body; no row inserted | RD-01 Request Fields |
+| ST-32 | `POST` UUID-shaped slug | `400` fixed validation body | AR-8 |
+| ST-33 | `GET`/`PUT`/`DELETE` with malformed `appId` or `resourceServerId` | `400` fixed validation body | RD-01 API Contract |
+| ST-34 | `PUT` identifier conflicts with another row | `409`; original row and scopes unchanged | RD-01 Persistence |
+| ST-35 | `POST` through mixed-case `/Api/Admin/...` | `201`; exactly one audit row; rate limiter, CORS, body parser, and security-decision context recognize the path | AR-6 |
+| ST-36 | Real mount without a token; real admin with no application permission | `401` / `403`; no audit row | RD-01 AC13 |
+| ST-37 | Distinct identifier/audience row deleted; resolver called; token row inspected | Deleted identifier yields `invalid_target`; token row survives; namespace values are freed | RD-01 AC12, AR-9 |
 
 ## Test Categories
 
@@ -83,11 +91,12 @@ component specifications, and the registers. They are the immutable oracle.
 
 | Test File | ST Cases Covered | Component |
 | --- | --- | --- |
-| `packages/server/tests/integration/resource-servers/resource-server-admin.spec.test.ts` | ST-1–ST-19 | Admin API |
-| `packages/server/tests/unit/resource-servers/resource-server-admin.spec.test.ts` | ST-6, ST-7, ST-16, ST-17 | Validation |
+| `packages/server/tests/integration/resource-servers/resource-server-admin.spec.test.ts` | ST-1–ST-19, ST-30–ST-37 | Admin API |
+| `packages/server/tests/unit/resource-servers/resource-server-admin.spec.test.ts` | ST-6, ST-7, ST-16, ST-17, ST-30–ST-32 | Validation |
+| `packages/server/tests/unit/middleware/admin-path-normalization.spec.test.ts` | ST-35 | Shared path gates |
 | `packages/sdk/tests/resource-servers.spec.test.ts` | ST-20–ST-22 | SDK |
 | `packages/cli/tests/commands/app-resource-server.spec.test.ts` | ST-23–ST-27 | CLI |
-| `packages/server/tests/pentest/resource-server-admin.spec.test.ts` | ST-29 | Security boundary |
+| `packages/server/tests/pentest/resource-server-admin.spec.test.ts` | ST-29, ST-36 | Security boundary |
 | `pnpm docs:build` + structure | ST-28 | Documentation |
 
 ### Implementation Tests (edge cases, internals)

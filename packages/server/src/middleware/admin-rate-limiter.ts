@@ -73,7 +73,9 @@ export function adminRateLimiter(): Middleware {
   return async function adminRateLimiterMiddleware(ctx, next) {
     // Only rate-limit write methods on admin API paths — GETs and
     // non-admin paths pass through immediately without touching Redis.
-    if (!ctx.path.startsWith(ADMIN_PATH_PREFIX) || !ADMIN_WRITE_METHODS.has(ctx.method)) {
+    // @koa/router matches case-insensitively; normalize before the prefix gate so a mixed-case
+    // admin path cannot bypass the pre-auth flood control.
+    if (!ctx.path.toLowerCase().startsWith(ADMIN_PATH_PREFIX) || !ADMIN_WRITE_METHODS.has(ctx.method)) {
       return next();
     }
 
