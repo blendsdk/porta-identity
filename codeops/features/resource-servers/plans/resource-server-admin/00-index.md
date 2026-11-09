@@ -1,7 +1,7 @@
 # Resource-Server Admin Management Implementation Plan
 
 > **Feature**: Admin API, SDK, CLI, and docs for application-owned resource servers
-> **Status**: Planning Complete
+> **Status**: Complete
 > **Created**: 2026-11-09 00:22
 > **Implements**: resource-servers/RD-01
 > **CodeOps Artifact Schema**: 1

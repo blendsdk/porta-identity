@@ -1,10 +1,10 @@
 # Roadmap: Resource Servers
 
 > **Feature-Set**: Resource Servers
-> **Status**: In Progress
+> **Status**: Complete
 > **Created**: 2026-11-07
-> **Last Updated**: 2026-11-09 01:17
-> **Progress**: 0 / 1 (0%)
+> **Last Updated**: 2026-11-09 01:53
+> **Progress**: 1 / 1 (100%)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -16,7 +16,7 @@
 | ID   | Title                                      | RD  | Plan                                                    | Stage     | Status | Last Updated | Depends-on / Blocker |
 | ---- | ------------------------------------------ | --- | ------------------------------------------------------- | --------- | ------ | ------------ | -------------------- |
 | T-01 | Per-application resource-server scopes and audience (#156) | —   | [Standalone task plan](plans/resource-server-scopes/99-execution-plan.md) | Done      | ✅     | 2026-11-07   | 7/7; reviews, full gates, PR CI and production-security assurance green |
-| RD-01 | Resource-server admin management (API, SDK, CLI, docs) | [RD-01](requirements/RD-01-resource-server-admin.md) | [plan](plans/resource-server-admin/00-index.md) | Executing | 🔄 | 2026-11-09 01:11 | AR-1–AR-10 resolved; plan AR-1–AR-10 resolved; Phases 1–4 complete |
+| RD-01 | Resource-server admin management (API, SDK, CLI, docs) | [RD-01](requirements/RD-01-resource-server-admin.md) | [plan](plans/resource-server-admin/00-index.md) | Done | ✅ | 2026-11-09 01:53 | AR-1–AR-10 resolved; plan AR-1–AR-10 resolved; 33/33 tasks; full verify green |
 
 ## Notes
 
