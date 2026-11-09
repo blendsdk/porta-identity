@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-11-08T10:07:51Z",
+  "checkedAt": "2026-11-09T15:02:32.096Z",
   "plans": [
     "codeops/features/_maintenance/plans/admin-mutation-schema-guard",
     "codeops/features/_maintenance/plans/console-callback-version-cleanup",
@@ -32,6 +32,7 @@
     "codeops/features/production-readiness/plans/postgresql-backed-global-configuration",
     "codeops/features/production-readiness/plans/production-security-corrections",
     "codeops/features/production-readiness/plans/selective-environment-portability",
+    "codeops/features/resource-servers/plans/resource-server-admin",
     "codeops/features/resource-servers/plans/resource-server-scopes",
     "codeops/features/sdk-server-contract-drift/plans/sdk-contract-truth",
     "codeops/features/tenant-user-management/plans/tenant-m2m-user-management",
