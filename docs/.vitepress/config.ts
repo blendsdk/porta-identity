@@ -111,6 +111,7 @@ export default withMermaid(
             items: [
               { text: 'Organizations', link: '/api/organizations' },
               { text: 'Applications', link: '/api/applications' },
+              { text: 'Resource Servers', link: '/api/resource-servers' },
               { text: 'Clients', link: '/api/clients' },
               { text: 'Users', link: '/api/users' },
               { text: 'Roles & Permissions', link: '/api/rbac' },
@@ -132,6 +133,7 @@ export default withMermaid(
               { text: 'Bootstrap & Auth', link: '/cli/bootstrap' },
               { text: 'Organizations', link: '/cli/organizations' },
               { text: 'Applications', link: '/cli/applications' },
+              { text: 'Resource Servers', link: '/cli/resource-servers' },
               { text: 'Clients', link: '/cli/clients' },
               { text: 'Users', link: '/cli/users' },
               { text: 'Infrastructure', link: '/cli/infrastructure' },

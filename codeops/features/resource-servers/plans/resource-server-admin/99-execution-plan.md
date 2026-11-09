@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-09 01:14
-> **Progress**: 27/33 tasks (82%)
+> **Last Updated**: 2026-11-09 01:17
+> **Progress**: 31/33 tasks (94%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -185,10 +185,10 @@ specification-first ordering is mandatory in every behavioral phase.
 **Reference**: [03-03](03-03-cli-docs.md) · AR-3
 **Objective**: Make the surface discoverable and remove the "no Admin API" claim.
 
-- [ ] 4.1.1 Add the public API page and cross-link it from the applications page — `docs/api/resource-servers.md`, `docs/api/applications.md`
-- [ ] 4.1.2 Add the public CLI page and cross-link it from the applications page — `docs/cli/resource-servers.md`, `docs/cli/applications.md`
-- [ ] 4.1.3 Update the technical API and data-model docs — `techdocs/architecture/api-design.md`, `techdocs/architecture/data-model.md`
-- [ ] 4.1.4 Run the docs build and structure link checks (ST-28)
+- [x] 4.1.1 Add the public API page and cross-link it from the applications page — `docs/api/resource-servers.md`, `docs/api/applications.md` ✅ (completed: 2026-11-09 01:17)
+- [x] 4.1.2 Add the public CLI page and cross-link it from the applications page — `docs/cli/resource-servers.md`, `docs/cli/applications.md` ✅ (completed: 2026-11-09 01:17)
+- [x] 4.1.3 Update the technical API and data-model docs — `techdocs/architecture/api-design.md`, `techdocs/architecture/data-model.md` ✅ (completed: 2026-11-09 01:17)
+- [x] 4.1.4 Run the docs build and structure link checks (ST-28) ✅ (completed: 2026-11-09 01:17)
 
 **Deliverables**:
 - [ ] Public API and CLI pages exist and are linked

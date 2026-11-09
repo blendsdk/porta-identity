@@ -186,8 +186,20 @@ tokens without an audience, so a `/me` flow needs a separate no-resource authori
 without a `resource` parameter keep the existing unrestricted token behavior, and the email preview
 and other unrelated flows are unchanged.
 
-There is no Admin API for resource-server management in this release; configuration rows are
-deployment data consumed by the existing OIDC provider callback.
+Resource servers are managed through the application-scoped Admin API:
+
+| Method | Route | Permission | Result |
+| --- | --- | --- | --- |
+| `GET` | `/api/admin/applications/:appId/resource-servers` | `admin:app:read` | `{data: resourceServers}` ordered by name and identifier |
+| `POST` | `/api/admin/applications/:appId/resource-servers` | `admin:app:update` | `201`; create with optional audience and custom scopes |
+| `GET` | `/api/admin/applications/:appId/resource-servers/:resourceServerId` | `admin:app:read` | `{data: resourceServer}` |
+| `PUT` | `/api/admin/applications/:appId/resource-servers/:resourceServerId` | `admin:app:update` | `200`; full replacement, omitted audience resets to identifier, omitted scopes clears |
+| `DELETE` | `/api/admin/applications/:appId/resource-servers/:resourceServerId` | `admin:app:update` | `204`; hard delete with scope/namespace cascade |
+
+The `:appId` and `:resourceServerId` parameters accept UUIDs or slugs. Identifiers and audiences
+remain exact-match configuration: operators must register the canonical URI form a client sends.
+The custom registry rejects the six standard OIDC scopes and duplicates. Deletion does not revoke
+already-issued tokens; new requests for a deleted identifier fail with `invalid_target`.
 
 ### Connected applications
 

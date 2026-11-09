@@ -133,7 +133,10 @@ scopes remain available without being repeated in every registry.
 
 A trigger supplies the identifier when `audience` is omitted. A `resource_server_namespace` primary
 key registers every identifier and audience, so concurrent writers cannot create a cross-application
-audience collision; the namespace is deleted with its resource server.
+audience collision; the namespace is deleted with its resource server. Administrators manage these
+rows through the application-scoped Admin API; updates replace the custom-scope registry in one
+transaction, and hard deletion cascades the registry and namespace entries without touching issued
+tokens or the owning application.
 
 ### OIDC Grants and Connected Apps
 
