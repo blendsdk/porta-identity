@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-09 01:11
-> **Progress**: 20/33 tasks (61%)
+> **Last Updated**: 2026-11-09 01:14
+> **Progress**: 27/33 tasks (82%)
 > **CodeOps Artifact Schema**: 1
 
 ## Overview
@@ -145,25 +145,25 @@ specification-first ordering is mandatory in every behavioral phase.
 **Reference**: [03-03](03-03-cli-docs.md) · ST-23–ST-27
 **Objective**: Define the command behavior before implementation.
 
-- [ ] 3.1.1 [spec-author] Write CLI spec tests for command paths, flags, human/JSON output, empty list, and confirmation — `packages/cli/tests/commands/app-resource-server.spec.test.ts`
-- [ ] 3.1.2 Run the CLI spec tests and record the red phase
+- [x] 3.1.1 [spec-author] Write CLI spec tests for command paths, flags, human/JSON output, empty list, and confirmation — `packages/cli/tests/commands/app-resource-server.spec.test.ts` ✅ (completed: 2026-11-09 01:13)
+- [x] 3.1.2 Run the CLI spec tests and record the red phase ✅ (completed: 2026-11-09 01:13)
 
 ### Step 3.2: Implementation
 
 **Reference**: [03-03](03-03-cli-docs.md)
 **Objective**: Add and register the command family.
 
-- [ ] 3.2.1 Add the `resource-server` command module with list/get/create/update/delete — `packages/cli/src/commands/app-resource-server.ts`
-- [ ] 3.2.2 Register the command under `app` — `packages/cli/src/commands/app.ts`
-- [ ] 3.2.3 Run the CLI spec tests and record the green phase
+- [x] 3.2.1 Add the `resource-server` command module with list/get/create/update/delete — `packages/cli/src/commands/app-resource-server.ts` ✅ (completed: 2026-11-09 01:13)
+- [x] 3.2.2 Register the command under `app` — `packages/cli/src/commands/app.ts` ✅ (completed: 2026-11-09 01:13)
+- [x] 3.2.3 Run the CLI spec tests and record the green phase ✅ (completed: 2026-11-09 01:13)
 
 ### Step 3.3: Implementation Tests and Hardening
 
 **Reference**: [03-03](03-03-cli-docs.md)
 **Objective**: Cover flag edges, empty states, and confirmation bypass.
 
-- [ ] 3.3.1 Write impl tests for flag edge cases, empty lists, and `--yes` behavior — `packages/cli/tests/commands/app-resource-server.impl.test.ts`
-- [ ] 3.3.2 Run CLI lint, typecheck, tests, and build
+- [x] 3.3.1 Write impl tests for flag edge cases, empty lists, and `--yes` behavior — `packages/cli/tests/commands/app-resource-server.impl.test.ts` ✅ (completed: 2026-11-09 01:14)
+- [x] 3.3.2 Run CLI lint, typecheck, tests, and build ✅ (completed: 2026-11-09 01:14)
 
 **Deliverables**:
 - [ ] CLI command family registered
