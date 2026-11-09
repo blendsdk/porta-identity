@@ -216,8 +216,9 @@ export function requireAdminAuth(options: { allowServiceAccountInvitation?: bool
     let tokenClientId: string | undefined;
     try {
       const accessToken = await _provider.AccessToken.find(token);
-      // Existing Admin CORS and rate protection recognize this case-sensitive prefix. Keep
-      // machine opt-in inside their coverage; legacy human router aliases are not broadened.
+      // Admin audit, rate, CORS, body-parser and security-decision gates normalize the path
+      // case-insensitively. Keep the machine opt-in fail-closed on this explicit prefix; legacy
+      // human router aliases are not broadened.
       if (!accessToken && options.allowServiceAccountInvitation && ctx.path.startsWith('/api/admin/') &&
           isAdminInvitationRequest(ctx.method, ctx.path)) {
         try {

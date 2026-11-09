@@ -16,6 +16,10 @@ activation, deactivation, and deletion return `400 Application request is invali
 module reads remain available.
 :::
 
+::: tip Resource servers
+Application-owned resource servers are managed through the [Resource Servers API](resource-servers.md).
+:::
+
 ## Create Application
 
 ```http

@@ -12,6 +12,9 @@ import type {
   ApplicationModule,
   CreateModuleInput,
   UpdateModuleInput,
+  ResourceServer,
+  CreateResourceServerInput,
+  UpdateResourceServerInput,
   ListParams,
   PaginatedResponse,
   ETagResponse,
@@ -58,6 +61,28 @@ function isApplicationModule(value: unknown): value is ApplicationModule {
   );
 }
 
+/** Validate one resource server returned by the Admin API. */
+function isResourceServer(value: unknown): value is ResourceServer {
+  return (
+    isRecord(value) &&
+    typeof value.id === 'string' &&
+    typeof value.applicationId === 'string' &&
+    typeof value.slug === 'string' &&
+    typeof value.name === 'string' &&
+    typeof value.identifier === 'string' &&
+    typeof value.audience === 'string' &&
+    Array.isArray(value.scopes) &&
+    value.scopes.every((scope) => typeof scope === 'string') &&
+    typeof value.createdAt === 'string' &&
+    typeof value.updatedAt === 'string'
+  );
+}
+
+/** Validate one resource-server collection returned by the Admin API. */
+function isResourceServerList(value: unknown): value is ResourceServer[] {
+  return Array.isArray(value) && value.every(isResourceServer);
+}
+
 export interface ApplicationsDomain {
   /** List one page of global applications. */
   list(params?: ListParams): Promise<PaginatedResponse<Application>>;
@@ -93,6 +118,23 @@ export interface ApplicationsDomain {
   deactivateModule(appId: string, moduleId: string): Promise<void>;
   /** Permanently delete a module through its parent-qualified route. */
   deleteModule(appId: string, moduleId: string): Promise<void>;
+  /** List resource servers owned by an application. */
+  listResourceServers(appId: string): Promise<ResourceServer[]>;
+  /** Get one resource server by UUID or slug. */
+  getResourceServer(appId: string, resourceServerId: string): Promise<ResourceServer>;
+  /** Create a resource server under an application. */
+  createResourceServer(
+    appId: string,
+    input: CreateResourceServerInput,
+  ): Promise<ResourceServer>;
+  /** Replace a resource server definition and its complete scope registry. */
+  updateResourceServer(
+    appId: string,
+    resourceServerId: string,
+    input: UpdateResourceServerInput,
+  ): Promise<ResourceServer>;
+  /** Hard-delete a resource server. */
+  deleteResourceServer(appId: string, resourceServerId: string): Promise<void>;
 }
 
 /** Create the application operations backed by one HTTP transport. */
@@ -203,6 +245,47 @@ export function createApplicationsDomain(transport: HttpTransport): Applications
       await transport.request({
         method: 'DELETE',
         path: `${base}/${appId}/modules/${moduleId}`,
+      });
+    },
+
+    async listResourceServers(appId) {
+      const res = await transport.request({
+        method: 'GET',
+        path: `${base}/${appId}/resource-servers`,
+      });
+      return requireData(res.body, isResourceServerList);
+    },
+
+    async getResourceServer(appId, resourceServerId) {
+      const res = await transport.request({
+        method: 'GET',
+        path: `${base}/${appId}/resource-servers/${resourceServerId}`,
+      });
+      return requireData(res.body, isResourceServer);
+    },
+
+    async createResourceServer(appId, input) {
+      const res = await transport.request({
+        method: 'POST',
+        path: `${base}/${appId}/resource-servers`,
+        body: input,
+      });
+      return requireData(res.body, isResourceServer);
+    },
+
+    async updateResourceServer(appId, resourceServerId, input) {
+      const res = await transport.request({
+        method: 'PUT',
+        path: `${base}/${appId}/resource-servers/${resourceServerId}`,
+        body: input,
+      });
+      return requireData(res.body, isResourceServer);
+    },
+
+    async deleteResourceServer(appId, resourceServerId) {
+      await transport.request({
+        method: 'DELETE',
+        path: `${base}/${appId}/resource-servers/${resourceServerId}`,
       });
     },
   };

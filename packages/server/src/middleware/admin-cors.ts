@@ -58,7 +58,8 @@ export function adminCors(config: AppConfig): Middleware {
   return async function adminCorsMiddleware(ctx, next) {
     // Only process requests to admin API paths.
     // Non-admin paths (health, OIDC, interactions, etc.) are unaffected.
-    if (!ctx.path.startsWith('/api/admin')) {
+    // @koa/router matches case-insensitively; normalize before the admin prefix gate.
+    if (!ctx.path.toLowerCase().startsWith('/api/admin')) {
       return next();
     }
 
