@@ -23,6 +23,6 @@ skills:
   dirs: []
 
 overrides:
-  co-body>qs: 6.16.0
+  co-body>qs: 6.16.1
   minimatch>brace-expansion: 5.0.12
   fast-copy: 4.2.0
