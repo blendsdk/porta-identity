@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.18.0] - 2026-11-10
+
+### Added
+- Add a transactional resource-server admin API with validation and nested routes.
+
+### Changed
+- Increase the internal authentication-commit deadline from 30s to 90s.
+- Set a 120s outer timeout for tests to better report stuck waits.
+- Refresh workspace dependencies to current patch/minor releases.
+
+### Deprecated
+- None.
+
+### Removed
+- None.
+
+### Fixed
+- None.
+
+### Security
+- None.
+
 ## [1.17.0] - 2026-11-08
 
 Added:

@@ -1,19 +1,15 @@
-# Release Notes — v1.17.0
+# Release Notes — v1.18.0
 
-**Released**: 2026-11-08
+**Released**: 2026-11-10
 
-We are excited to announce the release of version 1.17.0, bringing significant enhancements to our platform that improve user experience, security, and functionality. This update focuses on making the process of inviting new admin users simpler and more secure, while also ensuring better monitoring and management of connected applications.
+We are excited to announce the release of version 1.18.0, which brings significant enhancements to our platform. This update focuses on improving the management of resource-server administration, ensuring more efficient operations and a smoother user experience. 
 
-Highlights of version 1.17.0 include:
+Highlights of this release include:
 
-- **Invitation Management Improvements:** Administrators can now send invitations exclusively to designated service accounts. This feature makes it easier to manage who has access to admin privileges, enhancing security by ensuring only authorized users can be invited.
-  
-- **Streamlined Role Assignment:** When inviting new admin users, roles can now be pre-assigned directly through the admin terminal. This change simplifies the onboarding process for administrators and helps ensure that new users have the appropriate permissions right from the start.
+1. **Admin Commands and Methods**: We’ve added new administrative commands and methods specifically for resource-server management. This makes it easier for users to perform critical tasks related to resource handling, thereby increasing productivity and simplifying workflows.
 
-- **Security Enhancements:** We have addressed security concerns highlighted by Codex scans, which helps protect user data and strengthens overall system integrity. These updates further ensure that our platform remains a safe environment for all users.
+2. **Enhanced Lock Management**: We have strengthened the system's mechanisms that manage how long the software waits for certain operations to complete. This means that issues related to uploading machines will be resolved more quickly, minimizing delays and improving overall system reliability.
 
-- **Enhanced Application Management:** Administrators now have improved capabilities to monitor and revoke access to connected applications. This will give greater control over application permissions and help maintain security standards.
+3. **Updated Dependencies**: In this version, we have refreshed our internal workspace dependencies. This process ensures that our platform remains robust, secure, and up-to-date with the latest improvements from our development tools. It ultimately leads to a smoother experience for users.
 
-- **Improved Handling of Errors:** Our system now emits safe error messages in a structured format, making it easier to troubleshoot issues without compromising sensitive information. This enhancement increases usability and supports smoother operations for administrators.
-
-Overall, version 1.17.0 marks a significant step forward in making our platform more intuitive, secure, and user-friendly, paving the way for more efficient admin management and governance.
+These updates are designed to enhance your experience with our platform, allowing for improved management capabilities and a more reliable system. We are committed to continuously refining our services, and we appreciate your feedback as we strive to meet your needs. Thank you for being a valued part of our community!
