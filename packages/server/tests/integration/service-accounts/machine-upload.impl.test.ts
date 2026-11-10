@@ -61,10 +61,12 @@ async function blockedBackend(blockerPid: number): Promise<number> {
  * The connection pool may reuse the backend as soon as it becomes idle, so the last command is not
  * required to remain `COMMIT`. A previously blocked authentication backend that is now idle with no
  * open transaction has already finished its authentication work. The bound is generous because the
- * full repository gate runs this file under heavy shared load; it only limits failure waiting.
+ * full repository gate runs this file under heavy shared load; it only limits failure waiting. The
+ * outer Vitest timeout below is larger so a stuck wait reports this specific error instead of a
+ * generic test timeout.
  */
 async function waitForAuthenticationCommit(pid: number): Promise<void> {
-  const deadline = performance.now() + 30000;
+  const deadline = performance.now() + 90000;
   while (performance.now() < deadline) {
     const found = await getPool().query<{ finished: boolean }>(
       `SELECT (state = 'idle' AND (query = 'COMMIT' OR xact_start IS NULL)) AS finished
@@ -78,7 +80,8 @@ async function waitForAuthenticationCommit(pid: number): Promise<void> {
 
 describe.sequential('machine invitation incomplete upload authority', () => {
   it.each(['binding revocation', 'strict expiry'] as const)(
-    'rechecks native authority after %s while a real body upload is incomplete', async (change) => {
+    'rechecks native authority after %s while a real body upload is incomplete',
+    async (change) => {
       const fixture = await createMachineHttpFixture();
       let upload: PartialUpload | undefined;
       let release = () => {};
@@ -119,5 +122,6 @@ describe.sequential('machine invitation incomplete upload authority', () => {
         await fixture.close();
       }
     },
+    120_000,
   );
 });
