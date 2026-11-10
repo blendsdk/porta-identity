@@ -40,6 +40,7 @@ import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { promptLoginReset } from './middleware/prompt-login-reset.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
+import { createResourceServerRouter } from './routes/resource-servers.js';
 import { createClientRouter } from './routes/clients.js';
 import { createUserRouter, createStandaloneUserRouter } from './routes/users.js';
 import { createAdminInvitationRouter } from './routes/admin-invitations.js';
@@ -167,20 +168,23 @@ export function createApp(oidcProvider?: Provider): Koa {
     textLimit: '100kb',
   });
   app.use(async (ctx, next) => {
+    // @koa/router matches case-insensitively; normalize the parser gate too so a mixed-case
+    // Admin path cannot reach a handler without a parsed JSON body.
+    const normalizedPath = ctx.path.toLowerCase();
     // The dedicated invitation router selects the unchanged human parser or the validated
     // machine data parser. It preserves parser-error precedence before its durable transaction.
-    if (isAdminInvitationRequest(ctx.method, ctx.path)) return next();
-    const isManifestImport = ctx.method === 'POST' && /^\/api\/admin\/import\/?$/i.test(ctx.path);
+    if (isAdminInvitationRequest(ctx.method, normalizedPath)) return next();
+    const isManifestImport = ctx.method === 'POST' && /^\/api\/admin\/import\/?$/.test(normalizedPath);
     if (
       !isManifestImport &&
-      (ctx.path.startsWith('/api/') ||
-        ctx.path.startsWith('/interaction/') ||
-        ctx.path.startsWith('/health') ||
-        ctx.path.includes('/auth/'))
+      (normalizedPath.startsWith('/api/') ||
+        normalizedPath.startsWith('/interaction/') ||
+        normalizedPath.startsWith('/health') ||
+        normalizedPath.includes('/auth/'))
     ) {
       const isBrandingUpload =
         ctx.method === 'PUT' &&
-        /^\/api\/admin\/organizations\/[^/]+\/branding\/(?:logo|favicon)$/.test(ctx.path);
+        /^\/api\/admin\/organizations\/[^/]+\/branding\/(?:logo|favicon)$/.test(normalizedPath);
       return isBrandingUpload ? brandingUploadBodyParser(ctx, next) : standardBodyParser(ctx, next);
     }
     return next();
@@ -285,6 +289,11 @@ export function createApp(oidcProvider?: Provider): Koa {
   const appRouter = createApplicationRouter();
   app.use(appRouter.routes());
   app.use(appRouter.allowedMethods());
+
+  // Resource-server management at /api/admin/applications/:appId/resource-servers
+  const resourceServerRouter = createResourceServerRouter();
+  app.use(resourceServerRouter.routes());
+  app.use(resourceServerRouter.allowedMethods());
 
   // Client & secret management API — requires admin authentication
   // Mounted at /api/admin/clients (see routes/clients.ts)

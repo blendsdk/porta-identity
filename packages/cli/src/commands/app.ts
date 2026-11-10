@@ -18,6 +18,7 @@ import { appModuleCommand } from './app-module.js';
 import { appRoleCommand } from './app-role.js';
 import { appPermissionCommand } from './app-permission.js';
 import { appClaimCommand } from './app-claim.js';
+import { appResourceServerCommand } from './app-resource-server.js';
 
 // ---------------------------------------------------------------------------
 // Argument types
@@ -367,6 +368,7 @@ export const appCommand: CommandModule<GlobalOptions, GlobalOptions> = {
         .command(appRoleCommand)
         .command(appPermissionCommand)
         .command(appClaimCommand)
+        .command(appResourceServerCommand)
         .demandCommand(1, 'Specify an app subcommand')
     );
   },

@@ -54,6 +54,13 @@ or delete the named application.
 
 ---
 
+## Resource Servers
+
+Application-owned resource servers use the dedicated `porta app resource-server` family. See
+[CLI: Resource Servers](resource-servers.md) for list, get, create, update, and delete commands.
+
+---
+
 ## Application Modules
 
 Logical groupings within an application (e.g., CRM, Invoicing, HR).

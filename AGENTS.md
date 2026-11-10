@@ -47,7 +47,7 @@ A local run is a selection, not a waiver: a change is mergeable only after CI's 
 - pnpm 12.15 and Turbo own the root workspace. The active packages are `@portaidentity/server`, `@portaidentity/sdk`, and `@portaidentity/cli`.
 - `main` is the production branch: never develop features on it or push directly. Feature work integrates through `develop`; `main` advances only through the manual release promotion and `Release` workflow. Preserve the verified migration and assurance histories. Do not assume historical integration branches or worktrees are still active.
 - Commits use Conventional Commit prefixes such as `feat`, `fix`, `refactor`, `docs`, `test`, `build`, and `chore`.
-- Specialist coverage: up to date (2026-11-08).
+- Specialist coverage: up to date (2026-11-09).
 
 ## Authoritative commands
 
@@ -55,7 +55,7 @@ Run commands from the repository root.
 
 | Purpose              | Command                                                                  | Scope          | Validation                                                                      |
 | -------------------- | ------------------------------------------------------------------------ | -------------- | ------------------------------------------------------------------------------- |
-| Install              | `pnpm install --frozen-lockfile`                                         | Local / CI     | CI passed on 2026-11-08 (run 42466713182)                                       |
+| Install              | `pnpm install --frozen-lockfile`                                         | Local / CI     | CI passed on 2026-11-09 (run 42542694813)                                       |
 | Full product tests   | `pnpm test`                                                              | CI only        | Server unit, integration, E2E, and pentest; SDK; CLI                            |
 | Full verification    | `pnpm verify`                                                            | CI only        | Structure contracts, lint, typecheck, all product tests, and builds             |
 | Affected tests       | `pnpm test:changed`                                                      | Local default  | Structure contracts plus unit tests affected since `origin/develop`             |
@@ -67,9 +67,9 @@ Run commands from the repository root.
 | End-to-end tests     | `pnpm test:e2e`                                                          | Local services | Requires PostgreSQL, Redis, and MailHog                                         |
 | Penetration tests    | `pnpm test:pentest`                                                      | Security gate  | Requires PostgreSQL, Redis, and MailHog                                         |
 | Browser tests        | `pnpm test:ui`                                                           | Browser gate   | Requires Playwright Chromium and test infrastructure                            |
-| Structure tests      | `pnpm test:structure`                                                    | Local / CI     | 179 contracts passed on 2026-11-08; some spawn builds/CLI commands; no services |
+| Structure tests      | `pnpm test:structure`                                                    | Local / CI     | 179 contracts passed on 2026-11-09; some spawn builds/CLI commands; no services |
 | OIDC harness         | `pnpm harness:test`                                                      | On demand      | Retained SPA/BFF black-box suite; owns and cleans up its Docker services        |
-| Documentation build  | `pnpm docs:build`                                                        | Docs changes   | CI passed on 2026-11-08 (run 42466713182)                                       |
+| Documentation build  | `pnpm docs:build`                                                        | Docs changes   | CI passed on 2026-11-09 (run 42542694813)                                       |
 | Dependency check     | `pnpm deps:check`                                                        | On demand      | Checks root and active workspaces while excluding internal workspace packages   |
 | Release tooling      | `pnpm release:prepare`, `pnpm release:preflight`, `pnpm release:publish` | Manual release | Declared by root scripts; not executed during ordinary feature work             |
 
@@ -77,7 +77,7 @@ Run commands from the repository root.
 and builds, and is the CI gate. Browser tests and the retained OIDC harness remain separate CI jobs.
 Use the narrow category scripts locally; CI covers the full surface on every push and pull request.
 
-Latest CI full verification (2026-11-08): run `42466713182` passed all six jobs — Verify Monorepo,
+Latest CI full verification (2026-11-09): run `42542694813` passed all six jobs — Verify Monorepo,
 UI Tests, OIDC Harness, Public Documentation, Production Docker Build, and Production Dependency
 Audit. Test counts vary by revision; CI is the authoritative gate, not a local default.
 
@@ -191,7 +191,9 @@ explain the concrete risk and propose a secure alternative.
 - Scope database access and cache keys to the resolved organization. Never permit cross-tenant data
   access through APIs, CLI operations, OIDC endpoints, sessions, or caches.
 - Preserve authentication rate limits, failed-login tracking, account lockout, and throttling. Do not
-  introduce bypasses based on headers, paths, or parameter variation.
+  introduce bypasses based on headers, paths, or parameter variation. `@koa/router` matches paths
+  case-insensitively, so every admin-path gate (audit, rate limit, CORS, body parsing, and security
+  classification) must normalize the path consistently.
 - Keep admin authentication and RBAC middleware on protected routes. Authorization must verify both
   role assignment and organization membership.
 - Preserve `Secure`, `HttpOnly`, and `SameSite` production cookies, session renewal at authentication,
@@ -224,3 +226,8 @@ integrating through the repository's designated integration flow.
   plans.
 - Keep maintainer architecture documentation under `techdocs/`. Do not add the marker to the public
   `docs/index.md` or mix maintainer architecture content into the published documentation tree.
+
+<!-- CODEOPS-SPECIALISTS:START -->
+Specialist agents (routing: `codeops/codeops.json`; briefs: `codeops/specialists/`):
+- `oidc-provider-reviewer` — "Reviews node-oidc-provider model and interaction contracts that generic reviewers miss." (Required for: OIDC provider model, interaction/consent, grant lifecycle, and token/JWKS boundary changes.)
+<!-- CODEOPS-SPECIALISTS:END -->

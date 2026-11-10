@@ -119,7 +119,7 @@ test('should configure the pnpm workspace for the hoisted migration', () => {
     assert.equal(workspace.allowBuilds?.[packageName], true, `${packageName} must be approved`);
   }
 
-  assert.equal(workspace.overrides?.['co-body>qs'], '6.16.0');
+  assert.equal(workspace.overrides?.['co-body>qs'], '6.16.1');
   assert.equal(workspace.overrides?.['minimatch>brace-expansion'], '5.0.12');
   assert.equal(workspace.overrides?.['fast-copy'], '4.2.0');
 });

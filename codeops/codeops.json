@@ -7,5 +7,14 @@
     "minimumReviewers": 1,
     "stopOnMajorFinding": true
   },
+  "routing": {
+    "roles": {
+      "oidc-provider-reviewer": {
+        "effort": "high",
+        "reasoning": "max",
+        "sandbox": "read-only"
+      }
+    }
+  },
   "metrics": {"enabled": false}
 }

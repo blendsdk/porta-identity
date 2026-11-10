@@ -25,10 +25,13 @@ function isPublicHttpError(error: unknown): error is Error & { status: number } 
 
 /** Return whether a request belongs to the generic administrative mutation transaction. */
 function ownsAdministrativeMutation(method: string, path: string): boolean {
+  // @koa/router matches routes case-insensitively by default. Normalize the path before the
+  // prefix gate so a mixed-case request cannot reach a handler without this audit transaction.
+  const normalizedPath = path.toLowerCase();
   return (
     MUTATION_METHODS.has(method) &&
-    path.startsWith('/api/admin/') &&
-    !SELF_MANAGED_MUTATION_PREFIXES.some((prefix) => path.startsWith(prefix))
+    normalizedPath.startsWith('/api/admin/') &&
+    !SELF_MANAGED_MUTATION_PREFIXES.some((prefix) => normalizedPath.startsWith(prefix.toLowerCase()))
   );
 }
 
@@ -44,14 +47,15 @@ export function adminMutationAudit(options: {
   deferInvitationToRouter?: boolean;
 } = {}): Middleware {
   return async (ctx, next) => {
-    if (options.deferInvitationToRouter && isAdminInvitationRequest(ctx.method, ctx.path)) {
+    if (options.deferInvitationToRouter && isAdminInvitationRequest(ctx.method, ctx.path.toLowerCase())) {
       await next();
       return;
     }
     // Keep existing human prefix behavior. A validated machine alias must nevertheless use the
     // same durable owner; otherwise a case variant could bypass the final generic audit.
-    const machineInvitation = ctx.state.serviceAccount && isAdminInvitationRequest(ctx.method, ctx.path);
-    if (!ownsAdministrativeMutation(ctx.method, ctx.path) && !machineInvitation) {
+    const normalizedPath = ctx.path.toLowerCase();
+    const machineInvitation = ctx.state.serviceAccount && isAdminInvitationRequest(ctx.method, normalizedPath);
+    if (!ownsAdministrativeMutation(ctx.method, normalizedPath) && !machineInvitation) {
       await next();
       return;
     }
@@ -65,7 +69,7 @@ export function adminMutationAudit(options: {
         if (!client) throw new Error('Administrative mutation transaction is unavailable');
         const machine = ctx.state.serviceAccount;
         if (machine) {
-          if (!isAdminInvitationRequest(ctx.method, ctx.path)) {
+          if (!isAdminInvitationRequest(ctx.method, normalizedPath)) {
             throw new Error('Machine mutation is not permitted');
           }
           await writeAuditLogInTransaction(client, {
