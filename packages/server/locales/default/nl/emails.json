@@ -11,7 +11,7 @@
     "heading": "U bent uitgenodigd!",
     "greeting": "Beste {{userName}},",
     "description": "U bent uitgenodigd om lid te worden van {{orgName}}.",
-    "description_inviter": "{{inviterName}} heeft u uitgenodigd om lid te worden van {{orgName}}.",
+    "description_inviter": "U bent uitgenodigd om lid te worden van {{orgName}}.",
     "html_instructions": "Klik op de onderstaande knop om uw account in te stellen.",
     "text_instructions": "Klik op de onderstaande link om uw account in te stellen.",
     "expiry": "Deze uitnodiging verloopt over {{expiresIn}}.",

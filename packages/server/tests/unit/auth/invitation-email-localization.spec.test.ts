@@ -325,6 +325,40 @@ describe('actual send/preview awaiting selection and custom context', () => {
       expect(message.subject).toBe(subject);
     });
 
+    describe.each([
+      {
+        locale: 'en',
+        description: "You've been invited to join Acme.",
+        htmlDescription: 'You&#x27;ve been invited to join Acme.',
+      },
+      {
+        locale: 'nl',
+        description: 'U bent uitgenodigd om lid te worden van Acme.',
+        htmlDescription: 'U bent uitgenodigd om lid te worden van Acme.',
+      },
+    ])('$locale neutral invitation body', ({ locale, description, htmlDescription }) => {
+      it.each(['admin@example.test', 'Administrator', undefined])(
+        'should keep the shipped description neutral when the inviter is %s', async (inviterName) => {
+          const org = organization();
+          const options = { ...OPTIONS, inviterName };
+          const originalOrg = structuredClone(org);
+          const originalOptions = structuredClone(options);
+          const message = await email(mode, locale, org, options);
+
+          expect(message.html).toContain(`<p>${htmlDescription} `);
+          expect(message.text).toContain(`${description} `);
+          if (inviterName) {
+            expect(message.html).not.toContain(inviterName);
+            expect(message.text).not.toContain(inviterName);
+          }
+          expect(message.html).toContain(`href="${INVITE_URL}"`);
+          expect(message.text).toContain(INVITE_URL);
+          expect(org).toEqual(originalOrg);
+          expect(options).toEqual(originalOptions);
+        },
+      );
+    });
+
     it('should provide complete Dutch sentences as ordinary context strings', async () => {
       templates([
         '{{invitationCopy.heading}}', '{{invitationCopy.greeting}}',
@@ -457,7 +491,7 @@ describe('shipped HTML/text escaping and custom fallback', () => {
       { ...USER, givenName: `Name ${raw}`, familyName: null },
     );
     expect(message.subject).toBe(`Inviter ${raw} heeft u uitgenodigd voor ${raw}`);
-    for (const prefix of ['Name ', 'Message ', 'Inviter ', '']) {
+    for (const prefix of ['Name ', 'Message ', '']) {
       expect(message.html).toContain(`${prefix}${escaped}`);
       expect(message.text).toContain(`${prefix}${raw}`);
     }
@@ -467,6 +501,21 @@ describe('shipped HTML/text escaping and custom fallback', () => {
     expect(message.text).not.toContain('&lt;script&gt;');
     expect(message.html).toContain(`href="${INVITE_URL}"`);
     expect(message.text).toContain(INVITE_URL);
+  });
+
+  it('should retain escaped inviter context when a custom template displays it', async () => {
+    const inviterName = 'Inviter & "<script>alert(1)</script> {{locale}}';
+    templates('{{inviterName}}');
+    fixtures.files.set(
+      '/templates/localization-acme/emails/invitation.txt.hbs',
+      '{{{inviterName}}}',
+    );
+    const message = await email('preview', 'nl', organization(), { ...OPTIONS, inviterName });
+
+    expect(message.html).toBe(
+      'Inviter &amp; &quot;&lt;script&gt;alert(1)&lt;/script&gt; {{locale}}',
+    );
+    expect(message.text).toBe(inviterName);
   });
 
   it.each(['html', 'text'] as const)('should independently override %s while retaining every legacy context value', async (format) => {
