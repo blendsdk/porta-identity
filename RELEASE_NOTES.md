@@ -1,15 +1,15 @@
-# Release Notes — v1.18.0
+# Release Notes — v1.18.1
 
-**Released**: 2026-11-10
+**Released**: 2026-11-18
 
-We are excited to announce the release of version 1.18.0, which brings significant enhancements to our platform. This update focuses on improving the management of resource-server administration, ensuring more efficient operations and a smoother user experience. 
+Release Notes for Version 1.18.1
 
-Highlights of this release include:
+In this latest update, version 1.18.1 of our software brings important enhancements focused on improving user experience and clarity. Our goal with this release is to empower users with a smoother and more inclusive interaction with our platform.
 
-1. **Admin Commands and Methods**: We’ve added new administrative commands and methods specifically for resource-server management. This makes it easier for users to perform critical tasks related to resource handling, thereby increasing productivity and simplifying workflows.
+Highlights:
 
-2. **Enhanced Lock Management**: We have strengthened the system's mechanisms that manage how long the software waits for certain operations to complete. This means that issues related to uploading machines will be resolved more quickly, minimizing delays and improving overall system reliability.
+1. **Streamlined Authentication Process**: We have refined the machine-upload authentication observer. This change ensures that users who upload files using our system can do so with enhanced security and efficiency. The update aims to create a more reliable experience during the upload process, reducing potential issues for users.
 
-3. **Updated Dependencies**: In this version, we have refreshed our internal workspace dependencies. This process ensures that our platform remains robust, secure, and up-to-date with the latest improvements from our development tools. It ultimately leads to a smoother experience for users.
+2. **Neutral Invitation Wording**: We have updated the language used in our invitation notifications to be more inclusive. By making the wording neutral, we are taking steps to ensure that our platform is welcoming for everyone. This minor change in communication reflects our commitment to inclusivity and user friendliness.
 
-These updates are designed to enhance your experience with our platform, allowing for improved management capabilities and a more reliable system. We are committed to continuously refining our services, and we appreciate your feedback as we strive to meet your needs. Thank you for being a valued part of our community!
+These updates are part of our ongoing efforts to improve the platform and respond to user feedback. We are dedicated to refining our services to meet your needs and create a better experience for all users. Thank you for your continued support and engagement!
