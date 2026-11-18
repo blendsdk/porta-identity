@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { request } from 'node:http';
 import type { ClientRequest } from 'node:http';
 import { performance } from 'node:perf_hooks';
+import type { PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
 import { getPool } from '../../../src/lib/database.js';
 import { getServiceAccount, revokeServiceAccount } from '../../../src/service-accounts/index.js';
@@ -58,17 +59,24 @@ async function blockedBackend(blockerPid: number): Promise<number> {
 /**
  * Observe the end of the initial authentication transaction before completing the body.
  *
+ * The observer is checked out before authentication starts and held until observation ends.
+ * Borrowing from the pool here could reuse the watched backend, whose own observation query would
+ * always report it as active even after authentication committed.
+ *
  * The connection pool may reuse the backend as soon as it becomes idle, so the last command is not
  * required to remain `COMMIT`. A previously blocked authentication backend that is now idle with no
  * open transaction has already finished its authentication work. The bound is generous because the
  * full repository gate runs this file under heavy shared load; it only limits failure waiting. The
  * outer Vitest timeout below is larger so a stuck wait reports this specific error instead of a
  * generic test timeout.
+ *
+ * @param pid - Backend previously blocked in initial authentication.
+ * @param observer - Separate checked-out connection which cannot be the watched backend.
  */
-async function waitForAuthenticationCommit(pid: number): Promise<void> {
+async function waitForAuthenticationCommit(pid: number, observer: PoolClient): Promise<void> {
   const deadline = performance.now() + 90000;
   while (performance.now() < deadline) {
-    const found = await getPool().query<{ finished: boolean }>(
+    const found = await observer.query<{ finished: boolean }>(
       `SELECT (state = 'idle' AND (query = 'COMMIT' OR xact_start IS NULL)) AS finished
          FROM pg_stat_activity WHERE pid = $1`, [pid],
     );
@@ -79,14 +87,36 @@ async function waitForAuthenticationCommit(pid: number): Promise<void> {
 }
 
 describe.sequential('machine invitation incomplete upload authority', () => {
+  it('observes a committed backend without borrowing it for the observation query', async () => {
+    const observer = await getPool().connect();
+    let backend: PoolClient | undefined;
+    try {
+      backend = await getPool().connect();
+      const identity = await backend.query<{ pid: number }>('SELECT pg_backend_pid() AS pid');
+      await backend.query('BEGIN');
+      await backend.query('COMMIT');
+      backend.release();
+      backend = undefined;
+
+      // Only the committed backend is idle. A pool query would borrow it and see itself active.
+      expect(getPool().idleCount).toBe(1);
+      await waitForAuthenticationCommit(identity.rows[0].pid, observer);
+    } finally {
+      backend?.release(true);
+      observer.release();
+    }
+  }, 120_000);
+
   it.each(['binding revocation', 'strict expiry'] as const)(
     'rechecks native authority after %s while a real body upload is incomplete',
     async (change) => {
       const fixture = await createMachineHttpFixture();
+      let observer: PoolClient | undefined;
       let upload: PartialUpload | undefined;
       let release = () => {};
       let heldResult: Promise<unknown> = Promise.resolve();
       try {
+        observer = await getPool().connect();
         const issued = await issueMachineToken(fixture);
         expect(issued.status).toBe(200);
         const token = machineTokenValue(issued);
@@ -101,7 +131,7 @@ describe.sequential('machine invitation incomplete upload authority', () => {
         const authPid = await blockedBackend(pid);
         held.release();
         await held.result;
-        await waitForAuthenticationCommit(authPid);
+        await waitForAuthenticationCommit(authPid, observer);
         if (change === 'binding revocation') {
           await revokeServiceAccount(fixture.lifecycle.client.id, fixture.lifecycle.actor);
         } else {
@@ -119,6 +149,7 @@ describe.sequential('machine invitation incomplete upload authority', () => {
         await heldResult.catch(() => {});
         upload?.request.destroy();
         await upload?.result.catch(() => {});
+        observer?.release();
         await fixture.close();
       }
     },
