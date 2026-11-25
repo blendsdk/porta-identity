@@ -1,8 +1,8 @@
 # Portfolio Roadmap: Porta
 
 > **Status**: Active
-> **Last Updated**: 2026-11-25 12:55
-> **Features**: 12 / 13 complete (hand-maintained feature rows)
+> **Last Updated**: 2026-11-25
+> **Features**: 13 / 13 complete (hand-maintained feature rows)
 > **CodeOps Artifact Schema**: 1
 
 ## Legend
@@ -25,7 +25,7 @@
 | tenant-user-management | [→](features/tenant-user-management/00-roadmap.md) | Tenant-scoped M2M user management complete; production-security gate green; deployment pending | n/a | ✅     | 2026-11-01 11:06 |
 | test-assurance       | [→](features/test-assurance/00-roadmap.md)       | DEF-23 retired not planned under AR-116; all named campaigns closed; M2 and timing remain explicit limitations | 123 / 123 tasks (100%) | ✅     | 2026-11-07 |
 | user-invitations     | [→](features/user-invitations/00-roadmap.md)     | Deferred creation and localization released; revocation merged via PR #212 | 3 / 3 tasks (100%) | ✅     | 2026-11-01 09:27 |
-| device-authorization | [→](features/device-authorization/00-roadmap.md) | 5 RDs · 1 plan preflighted | 0/5 RDs | ⬜ | 2026-11-25 12:55 |
+| device-authorization | [→](features/device-authorization/00-roadmap.md) | Device grant, tenant-safe pages, client contracts, CLI login and assurance complete; CI green at afd42b75 | 5/5 RDs | ✅ | 2026-11-25 |
 
 ## Archived
 
