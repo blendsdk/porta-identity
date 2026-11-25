@@ -1,6 +1,6 @@
 # Security Architecture
 
-> **Last Updated**: 2026-11-05
+> **Last Updated**: 2026-11-24
 
 ## Overview
 
@@ -155,6 +155,36 @@ sequenceDiagram
 ```
 
 **PKCE is mandatory** for public clients (`token_endpoint_auth_method: 'none'`).
+
+### Device Authorization Grant
+
+The RFC 8628 flow is enabled server-side and authorized per client with
+`urn:ietf:params:oauth:grant-type:device_code`. It is never a default grant. The protocol endpoints
+are `/:orgSlug/device/auth`, `/:orgSlug/device`, `/:orgSlug/device/:uid` and the existing
+`/:orgSlug/token` endpoint.
+
+Security properties:
+
+- **Tenant binding** — The provider can resolve a DeviceCode and its client globally. Before any
+  code entry, confirmation or resume is handled, Porta proves that the DeviceCode client belongs to
+  the URL organization. A mismatch returns a generic `404`, creates no interaction and reveals no
+  client data.
+- **Code lifecycle** — DeviceCode rows have a 600-second lifetime and 900 seconds of expired
+  retention. A partial unique index prevents two live requests from sharing a user code. The
+  device code is consumed atomically and exactly once.
+- **User flow** — The browser pages are Porta-branded and localized. They reuse the existing SSO,
+  login-method, 2FA and `requireConsent` policy. The user code is the only code shown; the device
+  code never appears in the page.
+- **Limits** — Device authorization, user-code entry and token polling use fixed Redis-backed
+  budgets. User-code and device-authorization keys are paired with per-IP aggregates so identifier
+  or session rotation cannot reset the budget. Faster-than-interval polling receives `slow_down`;
+  egregious abuse receives `429`.
+- **Audit and logs** — Approval and denial write dedicated authentication events. Rate-limit
+  denials write security events. Neither the device code nor the user code appears in audit or log
+  output, and the DeviceCode payload stores no IP address or user agent.
+- **CLI verification** — A device-flow ID token has no OIDC nonce because the device authorization
+  request is non-frontchannel. The CLI validates ES256 signature, issuer, audience, time and subject
+  without weakening the authorization-code verifier's mandatory nonce check.
 
 ### Admin API Self-Authentication
 

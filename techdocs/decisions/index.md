@@ -1,6 +1,6 @@
 # Architecture Decision Log
 
-> **Last Updated**: 2026-11-05
+> **Last Updated**: 2026-11-24
 
 ## Overview
 
@@ -28,6 +28,7 @@ This page tracks all significant architecture decisions made during Porta's deve
 | ADR-018 | [Permanent Service Identity and Binding Storage](#adr-018-permanent-service-identity-and-binding-storage) | Accepted              | 2026-11-05 | Permanent classification, bounded JSONB and retained ownership  |
 | ADR-019 | [Live Service Lifecycle Authority](#adr-019-live-service-lifecycle-authority) | Accepted | 2026-11-05 | Post-lock live human authority and permanent human-flow exclusion |
 | ADR-020 | [Native Machine Invitation Authority](#adr-020-native-machine-invitation-authority) | Accepted | 2026-11-06 | One operation, native opaque client credentials and locked admission |
+| ADR-021 | [Native Device Authorization Grant](#adr-021-native-device-authorization-grant) | Accepted | 2026-11-24 | Native RFC 8628 flow, per-client grant and tenant-bound verification |
 
 ---
 
@@ -574,6 +575,60 @@ alone from authorizing a different client or operation.
   invalidation, retry workflow or new dependency.
 - Operators still need the existing host-level controls for SMTP availability; `unknown` delivery
   reporting is internal and does not retry or hide a committed invitation.
+
+---
+
+## ADR-021: Native Device Authorization Grant
+
+**Context**: Input-constrained clients and the Porta CLI need a headless login flow. Porta's
+node-oidc-provider version already implements RFC 8628 when `features.deviceFlow` is enabled, and
+the `oidc_payloads` schema already has a `user_code` column, but the feature is off and no client
+can register the grant.
+
+Porta's path-based tenancy creates a specific risk. The provider resolves a DeviceCode and its
+client globally, while Porta stores the interaction organization from the request URL. A code for
+a client in organization A could therefore be approved under organization B unless the browser
+verification path proves that the client belongs to the URL organization.
+
+**Options considered**:
+
+| Option | Assessment |
+| --- | --- |
+| Native provider feature with Porta hooks | Chosen: reuses RFC 8628, adapter storage, interactions, login, 2FA and consent |
+| Custom device flow | Rejected: duplicates protocol and security behavior for no product gain |
+| Organization or global feature flag | Rejected: the per-client grant is already the authorization boundary |
+| Automatic CLI device login | Rejected: silently changes the login mechanism; an explicit flag is predictable |
+| Provider default pages | Rejected: unbranded, English-only and dependent on external font imports |
+
+**Decision**: Enable `features.deviceFlow` server-wide and authorize it per client with the full
+URN `urn:ietf:params:oauth:grant-type:device_code`. Keep DeviceCode in PostgreSQL with a 600-second
+provider lifetime, 900 seconds of expired retention and a partial unique index on the user code.
+Render branded, localized Porta pages for code entry, confirmation and success. Reuse the existing
+SSO, login-method, 2FA and `requireConsent` policy. Add a mandatory organization check before the
+provider handles any verification or resume request. Add `porta login --device-code` as the first
+consumer. Use fixed rate limits, dedicated audit events and code redaction. Add no global setting,
+new service, queue, worker or dependency.
+
+**Rationale**: RFC 8628 is the standard solution for a device that cannot show a browser. The
+native feature plus the existing adapter and interaction routes is smaller than a custom flow.
+Per-client authorization matches the existing grant model. The tenant check is mandatory because
+Porta's provider instance is shared across organization issuers.
+
+**Consequences**:
+
+- Discovery advertises `device_authorization_endpoint` and the device grant.
+- The client contract, SDK, CLI, Admin terminal and portability schema gain the full URN; server,
+  SDK and CLI must be upgraded in lockstep because older readers reject the closed value.
+- Device-only clients may have zero redirect URIs; public clients keep the PKCE invariant.
+- DeviceCode rows use extended retention so `expired_token` remains observable, and a partial unique
+  index fails a rare collision closed.
+- The browser verification path has its own tenant binding; a code entered under the wrong
+  organization returns a generic 404.
+- Device approval and denial add authentication audit events; rate limits add security events; the
+  device and user codes are redacted from logs.
+- Custom hosted-UI deployments still use Porta's device pages; login and consent remain host-UI
+  interactions.
+- No device IP, user agent, device management, QR dependency or configurable limit is added.
 
 ---
 

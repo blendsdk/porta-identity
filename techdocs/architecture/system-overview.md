@@ -1,6 +1,6 @@
 # System Overview
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-11-24
 
 ## High-Level Architecture
 
@@ -11,6 +11,7 @@ graph TB
     subgraph Clients
         SPA[SPA / Browser]
         CLI[Porta CLI]
+        DEVICE[TV / IoT Device]
         M2M[Machine-to-Machine]
     end
 
@@ -33,6 +34,7 @@ graph TB
 
     SPA --> MW
     CLI --> MW
+    DEVICE --> MW
     M2M --> MW
     MW --> ADMIN
     MW --> OIDC
@@ -46,6 +48,17 @@ graph TB
     INT --> RD
     INT --> SMTP
 ```
+
+## Device Authorization
+
+Input-constrained clients can use the RFC 8628 device authorization grant. The device requests a
+device code and a short user code, the user approves the request in a browser on another device,
+and the device polls the token endpoint for tokens. The flow reuses the existing provider,
+PostgreSQL DeviceCode storage, interaction login/consent pages and the CLI credential store.
+
+Porta renders the code-entry, confirmation and success pages itself. Those pages must prove that
+the DeviceCode client belongs to the organization in the URL before the provider handles the
+request; otherwise a code from one tenant could be approved under another tenant's issuer.
 
 ## Component Overview
 

@@ -1,6 +1,6 @@
 # Data Model
 
-> **Last Updated**: 2026-11-05
+> **Last Updated**: 2026-11-24
 
 ## Overview
 
@@ -362,20 +362,30 @@ generic discriminator column with magic links.
 
 ## OIDC Adapter Tables
 
-### `oidc_payloads` (PostgreSQL — long-lived)
+### `oidc_payloads` (PostgreSQL — durable)
 
-Stores AccessToken, RefreshToken, and Grant data in PostgreSQL for durability.
+Stores AccessToken, RefreshToken, Grant and DeviceCode data in PostgreSQL for durability.
 
-| Column        | Type         | Description                                     |
-| ------------- | ------------ | ----------------------------------------------- |
-| `id`          | VARCHAR(255) | Composite: `model_name:uid`                     |
-| `model_name`  | VARCHAR(50)  | `AccessToken`, `RefreshToken`, `Grant`          |
-| `payload`     | JSONB        | Full OIDC artifact data                         |
-| `uid`         | VARCHAR(255) | Unique identifier                               |
-| `grant_id`    | VARCHAR(255) | Associated grant (indexed for cascade deletion) |
-| `user_code`   | VARCHAR(255) | Device flow user code                           |
-| `expires_at`  | TIMESTAMPTZ  | Artifact expiry                                 |
-| `consumed_at` | TIMESTAMPTZ  | Rotation tracking                               |
+| Column        | Type         | Description                                                       |
+| ------------- | ------------ | ----------------------------------------------------------------- |
+| `id`          | VARCHAR(255) | Provider artifact identifier; part of the composite primary key    |
+| `type`        | VARCHAR(50)  | Model name (`AccessToken`, `RefreshToken`, `Grant`, `DeviceCode`) |
+| `payload`     | JSONB        | Full provider artifact payload                                    |
+| `grant_id`    | VARCHAR(255) | Associated grant; indexed for cascade deletion                    |
+| `user_code`   | VARCHAR(255) | Normalized device-flow user code; unique for DeviceCode           |
+| `uid`         | VARCHAR(255) | Session lookup identifier                                         |
+| `expires_at`  | TIMESTAMPTZ  | Absolute adapter expiry                                           |
+| `consumed_at` | TIMESTAMPTZ  | Single-use or rotation marker                                     |
+| `created_at`  | TIMESTAMPTZ  | Row creation time                                                 |
+
+The primary key is `(id, type)`. Partial indexes cover `grant_id`, `user_code`, `uid` and
+`expires_at`. A separate partial unique index on `user_code` where `type = 'DeviceCode'` prevents
+two live device requests from sharing a user code.
+
+DeviceCode uses a 600-second provider lifetime and a 900-second post-expiry retention. The
+provider payload keeps its own `exp` at 600 seconds; the extended row expiry lets the token
+endpoint return `expired_token` before the opportunistic purge removes the row. DeviceCode payloads
+do not store an IP address or user agent.
 
 **Short-lived artifacts** (Session, Interaction, AuthorizationCode, ReplayDetection, ClientCredentials, PushedAuthorizationRequest) are stored in **Redis** for performance.
 
