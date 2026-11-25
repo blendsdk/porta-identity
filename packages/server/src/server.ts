@@ -36,8 +36,10 @@ import { readyHandler } from './middleware/ready.js';
 import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
 import { oidcClientTenantBinding } from './middleware/oidc-client-tenant.js';
+import { deviceTenantBinding } from './middleware/device-tenant.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { promptLoginReset } from './middleware/prompt-login-reset.js';
+import { rejectHeadProbe } from './middleware/reject-head-probe.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createResourceServerRouter } from './routes/resource-servers.js';
@@ -107,6 +109,11 @@ export const issuerStore = new AsyncLocalStorage<string>();
  */
 export function createApp(oidcProvider?: Provider): Koa {
   const app = new Koa();
+
+  // Signed-cookie verification uses these keys. The provider signs its session, interaction and
+  // resume cookies with the same rotation set; exposing the set on the outer app lets middleware
+  // verify a resume cookie without duplicating keygrip logic. Unsigned cookies are unaffected.
+  app.keys = config.cookieKeys;
 
   // Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For, etc.) when
   // running behind a TLS-terminating reverse proxy. This makes ctx.secure,
@@ -545,6 +552,15 @@ export function createApp(oidcProvider?: Provider): Koa {
     // Provider parsing and authentication-method checks remain authoritative. The body parser above
     // makes client_secret_post available to this bounded bridge.
     oidcRouter.use(clientSecretHash());
+
+    // Device verification pages are state-changing or resolve tenant-owned codes. Reject HEAD
+    // probes explicitly because the router would otherwise run the GET handler for them.
+    oidcRouter.head('/device', rejectHeadProbe);
+    oidcRouter.head('/device/:uid', rejectHeadProbe);
+
+    // A user code is resolved globally by the provider, so the request organization must match the
+    // code's client organization before any verification page or interaction is shown.
+    oidcRouter.use(deviceTenantBinding(oidcProvider));
 
     // Delegate all OIDC requests to node-oidc-provider's callback handler.
     // URL rewriting strips the /:orgSlug prefix so the provider sees

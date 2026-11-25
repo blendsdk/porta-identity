@@ -78,6 +78,22 @@ export interface BuildProviderConfigParams {
 /** UUID shape required for the internal application identity. */
 const INTERNAL_APPLICATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/**
+ * Fixed lifetime of a device authorization code, in seconds.
+ *
+ * Device codes are intentionally short-lived and are not an operator setting. The PostgreSQL
+ * adapter retains the row beyond this value so the token endpoint can report `expired_token`.
+ */
+export const DEVICE_CODE_TTL_SECONDS = 600;
+
+/**
+ * Fixed polling interval advertised to device clients, in seconds.
+ *
+ * Keeping the value server-owned prevents a client from choosing a faster interval and makes the
+ * device token limiter's soft interval check deterministic.
+ */
+export const DEVICE_AUTHORIZATION_INTERVAL_SECONDS = 5;
+
 /** Reads the internal application UUID retained in OIDC client metadata. */
 function internalApplicationId(client: unknown): string | undefined {
   if (typeof client !== 'object' || client === null) return undefined;
@@ -530,6 +546,14 @@ export function buildProviderConfiguration(
         },
         useGrantedResource: () => true,
       },
+      // Enable the native device authorization grant (RFC 8628). Device metadata is deliberately
+      // empty: the default provider value records the request IP and user agent, which this
+      // product does not store. The tenant binding middleware is mounted before this feature can
+      // process a verification request.
+      deviceFlow: {
+        enabled: true,
+        deviceInfo: () => ({}),
+      },
       // Enable client credentials grant (RFC 6749 §4.4)
       clientCredentials: { enabled: true },
       // Enable RP-initiated logout (OpenID Connect RP-Initiated Logout 1.0)
@@ -564,6 +588,8 @@ export function buildProviderConfiguration(
       Interaction: ttl.interaction,
       Session: ttl.session,
       Grant: ttl.grant,
+      // Fixed device-code lifetime: not part of the editable system configuration catalog.
+      DeviceCode: DEVICE_CODE_TTL_SECONDS,
     },
 
     // Issue refresh tokens for clients that support them.

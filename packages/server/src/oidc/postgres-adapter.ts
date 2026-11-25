@@ -21,6 +21,51 @@ import { errors } from 'oidc-provider';
 import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 
+/**
+ * Extra retention applied to a DeviceCode row beyond the provider payload lifetime.
+ *
+ * The provider expires the device code after 600 seconds, but the token endpoint must still be able
+ * to distinguish `expired_token` from a code that never existed. Keeping the row for 900 additional
+ * seconds provides that answer while still removing it through {@link purgeExpired}.
+ */
+export const DEVICE_CODE_RETENTION_SECONDS = 900;
+
+/** PostgreSQL unique-violation SQLSTATE. */
+const POSTGRES_UNIQUE_VIOLATION = '23505';
+
+/** Index that enforces one DeviceCode row per normalized user code. */
+const DEVICE_CODE_USER_CODE_INDEX = 'idx_oidc_payloads_device_user_code';
+
+/**
+ * Public error raised when a generated user code collides with a retained code.
+ *
+ * Collisions are rare, but returning a generic 500 would tell the caller that something internal
+ * failed and would not invite a safe retry. The provider renders an exposed error with this status
+ * and OAuth error name, and never includes code material.
+ */
+export class DeviceCodeCollisionError extends errors.OIDCProviderError {
+  constructor() {
+    super(503, 'temporarily_unavailable');
+    // Base errors expose only 4xx responses. This condition is safe to retry and carries no data,
+    // so the generic name is intentionally visible to the client.
+    this.expose = true;
+  }
+}
+
+/** Return true only for a non-array object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Identify the DeviceCode user-code uniqueness violation without matching unrelated errors. */
+function isDeviceCodeUserCodeCollision(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  return (
+    error['code'] === POSTGRES_UNIQUE_VIOLATION &&
+    error['constraint'] === DEVICE_CODE_USER_CODE_INDEX
+  );
+}
+
 /** OIDC adapter payload — the data node-oidc-provider stores and retrieves */
 export interface AdapterPayload {
   [key: string]: unknown;
@@ -71,18 +116,36 @@ export class PostgresAdapter {
     const userCode = payload.userCode ?? null;
     const uid = payload.uid ?? null;
 
-    // Calculate absolute expiration time using PostgreSQL interval arithmetic
-    const expiresAt = expiresIn
-      ? new Date(Date.now() + expiresIn * 1000)
-      : null;
+    // A DeviceCode row outlives the provider payload so the token endpoint can report
+    // `expired_token` during the retention window. Every re-save (confirmation/abort) refreshes the
+    // retention from that save, keeping the row available for the same grace period.
+    //
+    // A non-finite or non-positive TTL would otherwise create a never-expiring row. Device codes
+    // are short-lived credentials, so the safe fallback is the retention window itself.
+    let expiresAt: Date | null;
+    if (this.name === 'DeviceCode') {
+      const retentionSeconds =
+        Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn + DEVICE_CODE_RETENTION_SECONDS : DEVICE_CODE_RETENTION_SECONDS;
+      expiresAt = new Date(Date.now() + retentionSeconds * 1000);
+    } else {
+      // Calculate absolute expiration time using PostgreSQL interval arithmetic
+      expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : null;
+    }
 
-    await pool.query(
-      `INSERT INTO oidc_payloads (id, type, payload, grant_id, user_code, uid, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (id, type)
-       DO UPDATE SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7`,
-      [id, this.name, JSON.stringify(payload), grantId, userCode, uid, expiresAt],
-    );
+    try {
+      await pool.query(
+        `INSERT INTO oidc_payloads (id, type, payload, grant_id, user_code, uid, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (id, type)
+         DO UPDATE SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7`,
+        [id, this.name, JSON.stringify(payload), grantId, userCode, uid, expiresAt],
+      );
+    } catch (error) {
+      if (this.name === 'DeviceCode' && isDeviceCodeUserCodeCollision(error)) {
+        throw new DeviceCodeCollisionError();
+      }
+      throw error;
+    }
   }
 
   /**

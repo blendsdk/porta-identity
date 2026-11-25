@@ -62,8 +62,9 @@ UID case.
 
 1. Read `ctx.state.organization.id` (the tenant resolver already validated the slug).
 2. Extract one bounded string `user_code`: reject arrays, objects, duplicate values and strings whose
-   normalized form exceeds 64 characters with the same generic invalid-or-expired response. Do not
-   query the database for overlong input.
+   normalized form exceeds 64 characters with the same generic `404` body used for a tenant
+   mismatch. Do not query the database for overlong input. Empty values are left to the provider's
+   generic no-code page; malformed input is not a tenant decision and reveals nothing about a code.
 3. Normalize with a local `normalizeUserCode` that copies the provider’s exact rule: uppercase ASCII
    `[a-z]`, then remove `\W` (which removes non-ASCII and keeps underscore). Do not use a naive
    `.toUpperCase()`; `ß` and fullwidth characters must behave exactly as the provider behaves. Add a
