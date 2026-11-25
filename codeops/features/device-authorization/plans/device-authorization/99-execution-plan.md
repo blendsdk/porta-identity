@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-25 16:10
-> **Progress**: 80/87 tasks (92%)
+> **Last Updated**: 2026-11-25 17:30
+> **Progress**: 85/87 tasks (98%)
 > **Execution Mode**: `--auto-commit` (exec-plan commits via the git-commit skill; this plan contains no git commands)
 > **CodeOps Artifact Schema**: 1
 
@@ -155,7 +155,7 @@ concurrent-approval controls before client enablement.
 - [x] 2.3.2 Write limiter/audit/concurrency implementation tests — `packages/server/tests/unit/middleware/device-rate-limiter.impl.test.ts`, `packages/server/tests/unit/lib/device-audit.impl.test.ts` ✅ (completed: 2026-11-25 14:28)
 - [x] 2.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 14:28)
 - [x] 2.3.4 Run `pnpm test:ui` and the retained `pnpm harness:test`; record the run ids ✅ (completed: 2026-11-25 14:28)
-- [ ] 2.3.5 Run the `oidc-provider-reviewer` review and resolve findings
+- [x] 2.3.5 Run the `oidc-provider-reviewer` review and resolve findings ✅ (completed: 2026-11-25 17:30)
 - [ ] 2.3.6 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI)
 
 **Deliverables**: branded pages and generic abort state; fixed limits with session UID and
@@ -272,7 +272,7 @@ final review evidence.
 
 - [x] 5.2.1 Finalize purge/deletion/logout/connected-app cleanup and the `device` slug guard — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/server.ts`, `packages/server/src/organizations/slugs.ts` ✅ (completed: 2026-11-25 16:10)
 - [x] 5.2.2 Finalize audit amplification/idempotency-failure handling and the fail-open residual note — `packages/server/src/oidc/device-pages.ts` ✅ (completed: 2026-11-25 16:10)
-- [ ] 5.2.3 Finalize the production-security definition and evidence runner (no new findings; three accepted gaps; exit 40) — `techdocs/` and the assurance record
+- [x] 5.2.3 Finalize the production-security definition and evidence runner (no new findings; three accepted gaps; exit 40) — `techdocs/` and the assurance record ✅ (completed: 2026-11-25 17:30)
 - [x] 5.2.4 Finalize the truthful compatibility-selector description and evidence — `techdocs/` and the assurance record ✅ (completed: 2026-11-25 16:10)
 - [x] 5.2.5 Finalize operational documentation and the release/fleet note — `docs/` ✅ (completed: 2026-11-25 16:10)
 
@@ -280,9 +280,9 @@ final review evidence.
 
 - [x] 5.3.1 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 16:10)
 - [x] 5.3.2 Run the pentest suite and resolve findings ✅ (completed: 2026-11-25 16:10)
-- [ ] 5.3.3 Run `pnpm assurance:harness --project security --profile production-security` and record the accepted gaps/exit 40
-- [ ] 5.3.4 Run `pnpm test:ui` and `pnpm harness:test`; record the run ids
-- [ ] 5.3.5 Run the final `oidc-provider-reviewer` review and resolve findings
+- [x] 5.3.3 Run `pnpm assurance:harness --project security --profile production-security` and record the accepted gaps/exit 40 ✅ (completed: 2026-11-25 17:30)
+- [x] 5.3.4 Run `pnpm test:ui` and `pnpm harness:test`; record the run ids ✅ (completed: 2026-11-25 17:30)
+- [x] 5.3.5 Run the final `oidc-provider-reviewer` review and resolve findings ✅ (completed: 2026-11-25 17:30)
 - [ ] 5.3.6 Run `pnpm docs:build`, `pnpm test:structure` and the full `pnpm verify` CI gate; close the plan
 
 **Deliverables**: cleanup and stale authority verified; pentest matrix; production-security and
