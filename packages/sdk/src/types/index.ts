@@ -44,6 +44,7 @@ export type {
 } from './resource-servers.js';
 
 // Clients
+export { DEVICE_CODE_GRANT } from './clients.js';
 export type {
   Client,
   ClientStatus,

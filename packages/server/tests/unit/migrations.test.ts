@@ -67,6 +67,20 @@ describe('Migration File Validation', () => {
     });
   });
 
+  describe('Non-transactional migration', () => {
+    const migration = '039_device_authorization_user_code.cjs';
+
+    it('uses the numbered .cjs convention for a concurrent index build', () => {
+      expect(migration).toMatch(/^\d{3}_[a-z][a-z0-9_]*\.cjs$/);
+      const content = readFileSync(join(MIGRATIONS_DIR, migration), 'utf-8');
+      expect(content).toContain('pgm.noTransaction()');
+      expect(content).toContain('concurrently: true');
+      expect(content).toContain('unique: true');
+      expect(content).toContain('exports.up');
+      expect(content).toContain('exports.down');
+    });
+  });
+
   describe('SQL Content', () => {
     it('001_extensions.sql creates pgcrypto and citext extensions', () => {
       const content = readFileSync(join(MIGRATIONS_DIR, '001_extensions.sql'), 'utf-8');

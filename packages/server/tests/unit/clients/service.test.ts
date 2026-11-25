@@ -22,6 +22,7 @@ vi.mock('../../../src/clients/crypto.js', () => ({
 }));
 
 vi.mock('../../../src/clients/validators.js', () => ({
+  DEVICE_CODE_GRANT: 'urn:ietf:params:oauth:grant-type:device_code',
   validateRedirectUris: vi.fn().mockReturnValue({ isValid: true }),
   validateClientProtocolCompatibility: vi.fn().mockReturnValue({ isValid: true, errors: [] }),
   getDefaultGrantTypes: vi.fn().mockReturnValue(['authorization_code', 'refresh_token']),

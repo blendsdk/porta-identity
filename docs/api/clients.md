@@ -14,37 +14,65 @@ application; the application itself is not tenant-owned. See the
 POST /api/admin/clients
 ```
 
-| Field                        | Type     | Required | Description                                                   |
-| ---------------------------- | -------- | -------- | ------------------------------------------------------------- |
-| `client_name`                | string   | ✅       | Human-readable client name                                    |
-| `organization_id`            | uuid     | ✅       | Owning organization                                           |
-| `application_id`             | uuid     | ✅       | Associated application                                        |
-| `client_type`                | string   | ✅       | `confidential` or `public`                                    |
-| `application_type`           | string   |          | `web`, `native`, or `spa` (default: `web`)                    |
-| `redirect_uris`              | string[] | ✅       | Allowed redirect URIs                                         |
-| `grant_types`                | string[] |          | Grant types (defaults based on client type)                   |
-| `response_types`             | string[] |          | Response types                                                |
-| `scope`                      | string   |          | Space-separated scopes                                        |
-| `token_endpoint_auth_method` | string   |          | `client_secret_post` or `none`                                |
-| `cors_origins`               | string[] |          | Allowed CORS origins (for SPAs)                               |
-| `require_pkce`               | boolean  |          | Require PKCE (default: `true` for public clients)             |
-| `require_consent`            | boolean  |          | Show the OIDC consent page for this client (default: `false`) |
-| `login_methods`              | string[] |          | Override org default login methods                            |
+| Field                       | Type     | Required | Description                                                   |
+| --------------------------- | -------- | -------- | ------------------------------------------------------------- |
+| `clientName`                | string   | ✅       | Human-readable client name                                    |
+| `organizationId`            | uuid     | ✅       | Owning organization                                           |
+| `applicationId`             | uuid     | ✅       | Associated application                                        |
+| `clientType`                | string   | ✅       | `confidential` or `public`                                    |
+| `applicationType`           | string   |          | `web`, `native`, or `spa` (default: `web`)                    |
+| `redirectUris`              | string[] | ✅       | Allowed redirect URIs; may be empty only for a device-only client |
+| `grantTypes`                | string[] |          | Grant types (defaults based on client type; device is opt-in) |
+| `responseTypes`             | string[] |          | `["code"]`, or `[]` only for a device-only client             |
+| `scope`                     | string   |          | Space-separated scopes                                        |
+| `tokenEndpointAuthMethod`   | string   |          | `client_secret_post`, `client_secret_basic`, or `none`        |
+| `allowedOrigins`            | string[] |          | Allowed CORS origins (for SPAs)                               |
+| `requirePkce`               | boolean  |          | Require PKCE (default: `true` for public clients)             |
+| `requireConsent`            | boolean  |          | Show the OIDC consent page for this client (default: `false`) |
+| `loginMethods`              | string[] |          | Override org default login methods                            |
 
 ```json
 {
-  "client_name": "ERP Web App",
-  "organization_id": "org-uuid",
-  "application_id": "app-uuid",
-  "client_type": "public",
-  "application_type": "spa",
-  "redirect_uris": ["https://erp.example.com/callback"],
+  "clientName": "ERP Web App",
+  "organizationId": "org-uuid",
+  "applicationId": "app-uuid",
+  "clientType": "public",
+  "applicationType": "spa",
+  "redirectUris": ["https://erp.example.com/callback"],
   "scope": "openid profile email roles custom_claims",
-  "cors_origins": ["https://erp.example.com"]
+  "allowedOrigins": ["https://erp.example.com"]
 }
 ```
 
-**Response:** `201 Created` — Returns the client object with the generated `client_id`. For confidential clients, the initial secret is included in the response (shown only once).
+**Response:** `201 Created` — Returns the client object with the generated `clientId`. For confidential clients, the initial secret is included in the response (shown only once).
+
+### Device-only client
+
+A client that uses only the RFC 8628 device authorization grant has no browser redirect URI. It must
+use an empty `responseTypes` collection: a non-empty collection implies authorization code and the
+provider rejects a client with response types but no redirect URI. The grant value is the full URN
+`urn:ietf:params:oauth:grant-type:device_code`.
+
+```json
+{
+  "clientName": "Factory tablet",
+  "organizationId": "org-uuid",
+  "applicationId": "app-uuid",
+  "clientType": "public",
+  "applicationType": "native",
+  "redirectUris": [],
+  "grantTypes": ["urn:ietf:params:oauth:grant-type:device_code"],
+  "responseTypes": [],
+  "scope": "openid profile offline_access",
+  "requirePkce": true
+}
+```
+
+A device-only client may be public or confidential. Public clients still require PKCE. Adding
+`authorization_code` later requires at least one redirect URI and `responseTypes: ["code"]`; adding
+the device grant to a client that already has authorization code keeps its redirects and response
+type. The response type defaults to `[]` on create only when the resulting grants are device-only;
+it is never a default for another client.
 
 ## List Clients
 
@@ -72,9 +100,11 @@ GET /api/admin/clients/:id
 PUT /api/admin/clients/:id
 ```
 
-Updatable fields: `client_name`, `redirect_uris`, `grant_types`, `response_types`, `scope`, `cors_origins`, `require_pkce`, `require_consent`, `login_methods`.
+Updatable fields: `clientName`, `redirectUris`, `grantTypes`, `responseTypes`, `scope`,
+`allowedOrigins`, `requirePkce`, `requireConsent`, `loginMethods`. The complete resulting
+configuration is validated. A stale `If-Match` value returns the existing `409 Conflict` response.
 
-**Response:** `204 No Content`
+**Response:** `200 OK` — Returns the updated client object.
 
 ## Status Management
 

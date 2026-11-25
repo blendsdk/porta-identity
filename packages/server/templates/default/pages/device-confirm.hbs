@@ -1,0 +1,31 @@
+{{!--
+  Device authorization confirmation page.
+
+  Context contract (set in src/oidc/device-pages.ts):
+    device.action     : string   — trusted provider code-verification action
+    device.xsrf       : string   — provider-generated XSRF value
+    device.userCode   : string   — denormalized code shown on the device
+    device.clientName : string   — requesting client display name
+    device.scopes     : string[] — scopes requested by the device authorization
+--}}
+<h1>{{t "device.confirm_title"}}</h1>
+
+<p class="text-muted mb-4">{{t "device.confirm_client" clientName=device.clientName}}</p>
+
+<p>{{t "device.confirm_code"}}</p>
+<p><code id="device-confirm-code">{{device.userCode}}</code></p>
+
+<p>{{t "device.confirm_scopes"}}</p>
+<ul id="device-scopes">
+  {{#each device.scopes}}
+    <li>{{this}}</li>
+  {{/each}}
+</ul>
+
+<form method="POST" action="{{device.action}}">
+  <input type="hidden" name="xsrf" value="{{device.xsrf}}">
+  <input type="hidden" name="user_code" value="{{device.userCode}}">
+
+  <button type="submit" name="confirm" value="yes" class="btn-primary">{{t "device.approve"}}</button>
+  <button type="submit" name="abort" value="yes" class="btn-secondary">{{t "device.abort"}}</button>
+</form>

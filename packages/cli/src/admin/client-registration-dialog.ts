@@ -3,6 +3,7 @@
 import type { EventLoop, ModalDialogHost, Signal } from '@jsvision/ui';
 import {
   Button,
+  CheckGroup,
   col,
   ComboBox,
   Commands,
@@ -22,11 +23,31 @@ import type { CreateClientInput } from '@portaidentity/sdk';
 
 import { runAbortableAdminDialog } from './application-runtime.js';
 import type { AdminApplication } from './application-state.js';
+import { DEVICE_CODE_GRANT, type AdminClientGrantType } from './client-state.js';
 import type { AdminOrganizationContext } from './state.js';
 import { textValidator } from './user-dialog-fields.js';
 
 /** One empty row separates each adjacent form component and the dialog action area. */
 const REGISTRATION_FORM_GAP = 1;
+
+/** Grant labels in the same order as {@link REGISTRATION_GRANT_TYPES}. */
+const REGISTRATION_GRANT_LABELS = [
+  '~A~uthorization code',
+  '~R~efresh token',
+  'Client ~c~redentials',
+  '~D~evice authorization',
+] as const;
+
+/** Grant values in the same order as {@link REGISTRATION_GRANT_LABELS}. */
+const REGISTRATION_GRANT_TYPES = [
+  'authorization_code',
+  'refresh_token',
+  'client_credentials',
+  DEVICE_CODE_GRANT,
+] as const satisfies readonly AdminClientGrantType[];
+
+/** Rows occupied by the grant checkbox group. */
+const REGISTRATION_GRANTS_HEIGHT = REGISTRATION_GRANT_LABELS.length;
 
 /** Create and Cancel use their natural two-row button height, including the button shadow. */
 const REGISTRATION_ACTIONS_HEIGHT = 2;
@@ -35,7 +56,7 @@ const REGISTRATION_ACTIONS_HEIGHT = 2;
  * Calculates the client-details form height from its visible component heights and spacing.
  */
 function clientDetailsHeight(): number {
-  const componentHeights = [1, 1, 1, 2, 3, 1];
+  const componentHeights = [1, 1, 1, 2, 3, REGISTRATION_GRANTS_HEIGHT, 1];
   const componentGaps = (componentHeights.length - 1) * REGISTRATION_FORM_GAP;
   return componentHeights.reduce((total, height) => total + height, 0) + componentGaps;
 }
@@ -85,6 +106,8 @@ interface RegistrationForm {
   readonly applicationType: Signal<number>;
   /** Initial exact redirect URI. */
   readonly redirectUri: Signal<string>;
+  /** Selected grant checkboxes in label order. */
+  readonly grants: Signal<boolean[]>;
   /** Client-name control used when validation rejects submission. */
   readonly nameInput: Input;
   /** Redirect control used when validation rejects submission. */
@@ -139,8 +162,21 @@ function validRedirectUri(value: string): boolean {
   }
 }
 
+/** Read the selected grants in label order. */
+function selectedGrants(form: RegistrationForm): AdminClientGrantType[] {
+  const selected = form.grants();
+  return REGISTRATION_GRANT_TYPES.filter((_grant, index) => selected[index] === true);
+}
+
+/** Return true when the selected grant set is device-only. */
+function isDeviceOnlySelection(grants: readonly string[]): boolean {
+  return grants.includes(DEVICE_CODE_GRANT) && !grants.includes('authorization_code');
+}
+
 /** Reads current form values and applies the complete visible-field validity rule. */
 function registrationIsValid(form: RegistrationForm): boolean {
+  const grants = selectedGrants(form);
+  const redirectRequired = !isDeviceOnlySelection(grants);
   return (
     validText(form.clientName(), 1, 255) &&
     form.application() !== null &&
@@ -148,7 +184,8 @@ function registrationIsValid(form: RegistrationForm): boolean {
     form.clientType() <= 1 &&
     form.applicationType() >= 0 &&
     form.applicationType() <= 2 &&
-    validRedirectUri(form.redirectUri())
+    grants.length > 0 &&
+    (!redirectRequired || validRedirectUri(form.redirectUri()))
   );
 }
 
@@ -232,6 +269,14 @@ function clientDetailsLayout(
       ),
       3,
     ),
+    fixed(
+      row(
+        { gap: 1 },
+        fixed(new Text('Grants'), 18),
+        grow(new CheckGroup({ labels: [...REGISTRATION_GRANT_LABELS], value: form.grants })),
+      ),
+      REGISTRATION_GRANTS_HEIGHT,
+    ),
     registrationInputRow('Redirect URI', form.redirectInput),
   );
 }
@@ -271,12 +316,14 @@ function createRegistrationForm(applications: readonly AdminApplication[]): Regi
   const clientType = signal(1);
   const applicationType = signal(0);
   const redirectUri = signal('');
+  const grants = signal([true, true, false, false]);
   return {
     clientName,
     application,
     clientType,
     applicationType,
     redirectUri,
+    grants,
     nameInput: new Input({
       value: clientName,
       maxLength: 255,
@@ -300,12 +347,18 @@ function registrationPayload(form: RegistrationForm): Omit<CreateClientInput, 'o
   const applicationType = applicationTypes[form.applicationType.peek()];
   if (!applicationType) throw new Error('A validated application type is required.');
   const clientType = form.clientType.peek() === 0 ? 'public' : 'confidential';
+  const grantTypes = selectedGrants(form);
+  if (grantTypes.length === 0) throw new Error('At least one grant is required.');
+  const deviceOnly = isDeviceOnlySelection(grantTypes);
+  const redirect = form.redirectUri.peek();
   const input: Omit<CreateClientInput, 'organizationId'> = {
     applicationId: application.id,
     clientName: form.clientName.peek(),
     clientType,
     applicationType,
-    redirectUris: [form.redirectUri.peek()],
+    redirectUris: redirect.length > 0 ? [redirect] : [],
+    grantTypes,
+    responseTypes: deviceOnly ? [] : ['code'],
   };
   return input;
 }

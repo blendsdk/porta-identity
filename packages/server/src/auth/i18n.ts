@@ -56,6 +56,7 @@ export const NAMESPACES = Object.freeze([
   'errors',
   'emails',
   'two-factor',
+  'device',
 ] as const);
 
 /** Hardcoded fallback locale when all resolution steps fail */

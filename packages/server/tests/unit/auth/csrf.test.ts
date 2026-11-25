@@ -107,6 +107,7 @@ describe('setCsrfCookie', () => {
       path: '/',
       secure: false,
       overwrite: true,
+      signed: false,
     });
   });
 
@@ -120,6 +121,7 @@ describe('setCsrfCookie', () => {
       path: '/',
       secure: true,
       overwrite: true,
+      signed: false,
     });
   });
 
@@ -146,7 +148,7 @@ describe('getCsrfFromCookie', () => {
     } as unknown as Context;
 
     expect(getCsrfFromCookie(ctx)).toBe('my-csrf-token');
-    expect(ctx.cookies.get).toHaveBeenCalledWith('_csrf');
+    expect(ctx.cookies.get).toHaveBeenCalledWith('_csrf', { signed: false });
   });
 
   it('should return undefined when _csrf cookie is not set', () => {

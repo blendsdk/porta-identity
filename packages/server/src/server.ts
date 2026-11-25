@@ -36,8 +36,10 @@ import { readyHandler } from './middleware/ready.js';
 import { createRootPageRouter } from './middleware/root-page.js';
 import { tenantResolver } from './middleware/tenant-resolver.js';
 import { oidcClientTenantBinding } from './middleware/oidc-client-tenant.js';
+import { deviceTenantBinding } from './middleware/device-tenant.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { promptLoginReset } from './middleware/prompt-login-reset.js';
+import { rejectHeadPostProbe, rejectHeadProbe } from './middleware/reject-head-probe.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createResourceServerRouter } from './routes/resource-servers.js';
@@ -75,6 +77,12 @@ import { adminCors } from './middleware/admin-cors.js';
 import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
+import {
+  countMalformedDeviceBody,
+  deviceAuthorizationRateLimiter,
+  deviceTokenRateLimiter,
+  deviceUserCodeRateLimiter,
+} from './middleware/device-rate-limiter.js';
 import { adminRateLimiter } from './middleware/admin-rate-limiter.js';
 import { adminMutationAudit } from './middleware/admin-mutation-audit.js';
 import { setAdminAuthProvider } from './middleware/admin-auth.js';
@@ -107,6 +115,11 @@ export const issuerStore = new AsyncLocalStorage<string>();
  */
 export function createApp(oidcProvider?: Provider): Koa {
   const app = new Koa();
+
+  // Signed-cookie verification uses these keys. The provider signs its session, interaction and
+  // resume cookies with the same rotation set; exposing the set on the outer app lets middleware
+  // verify a resume cookie without duplicating keygrip logic. Unsigned cookies are unaffected.
+  app.keys = config.cookieKeys;
 
   // Trust proxy headers (X-Forwarded-Proto, X-Forwarded-For, etc.) when
   // running behind a TLS-terminating reverse proxy. This makes ctx.secure,
@@ -501,7 +514,20 @@ export function createApp(oidcProvider?: Provider): Koa {
       textLimit: '100kb',
     });
     oidcRouter.use(async (ctx, next) => {
-      await oidcBodyParser(ctx, next);
+      // Run only the parser here. Its own `next` is a sentinel, so a downstream tenant or provider
+      // error is not mistaken for a malformed body and counted a second time.
+      let parsed = false;
+      try {
+        await oidcBodyParser(ctx, async () => {
+          parsed = true;
+        });
+      } catch (error) {
+        // A malformed device submission cannot resolve a session or a code, but it must still
+        // consume the address budget before the parser error is returned to the caller.
+        if (!parsed) await countMalformedDeviceBody(ctx);
+        throw error;
+      }
+      await next();
     });
     oidcRouter.use(async (ctx, next) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -518,6 +544,9 @@ export function createApp(oidcProvider?: Provider): Koa {
     // the client-tenant binding, and the provider callback so flooding is
     // rejected before that work. They match the real provider endpoints
     // (/:orgSlug/token and /:orgSlug/token/introspection).
+    oidcRouter.use(deviceAuthorizationRateLimiter());
+    oidcRouter.use(deviceTokenRateLimiter());
+    oidcRouter.use(deviceUserCodeRateLimiter(oidcProvider));
     oidcRouter.use(tokenRateLimiter());
     oidcRouter.use(introspectionRateLimiter());
 
@@ -546,6 +575,16 @@ export function createApp(oidcProvider?: Provider): Koa {
     // makes client_secret_post available to this bounded bridge.
     oidcRouter.use(clientSecretHash());
 
+    // Device verification pages are state-changing or resolve tenant-owned codes. Reject HEAD
+    // probes explicitly because the router would otherwise run the GET handler for them.
+    oidcRouter.head('/device', rejectHeadProbe);
+    oidcRouter.head('/device/auth', rejectHeadPostProbe);
+    oidcRouter.head('/device/:uid', rejectHeadProbe);
+
+    // A user code is resolved globally by the provider, so the request organization must match the
+    // code's client organization before any verification page or interaction is shown.
+    oidcRouter.use(deviceTenantBinding(oidcProvider));
+
     // Delegate all OIDC requests to node-oidc-provider's callback handler.
     // URL rewriting strips the /:orgSlug prefix so the provider sees
     // standard OIDC paths (/auth, /token, /jwks, etc.).
@@ -566,6 +605,10 @@ export function createApp(oidcProvider?: Provider): Koa {
       // handlers can recover the issuer organization after the slug is stripped.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (ctx.req as any)._portaOrganization = ctx.state.organization;
+      // Provider hooks use the same address the outer limiters used. The provider always trusts
+      // proxy headers, while the outer app only does so when configured, so reading `ctx.ip` again
+      // inside the hook could derive a different key and skip the approval reset.
+      Reflect.set(ctx.req, '_portaRequestIp', ctx.ip);
 
       // Override CSP for OIDC provider responses.
       //

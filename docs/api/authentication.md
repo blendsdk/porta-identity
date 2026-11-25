@@ -98,6 +98,17 @@ porta logout
 
 The CLI stores credentials at `~/.porta/credentials.json` with `0600` file permissions. It automatically refreshes expired access tokens using the stored refresh token. In headless environments, manual mode prints the auth URL so you can open it elsewhere and paste the callback URL back — see [porta login](/cli/bootstrap#porta-login) for details.
 
+When the browser cannot reach the same machine at all, use the device flow:
+
+```bash
+porta login --device-code --server https://porta.example.com
+```
+
+The CLI prints a verification URL and user code. Open the URL on any browser, approve the code,
+and the CLI polls the token endpoint and stores the normal credential shape. The server must expose
+the device grant on the admin CLI client. See [the device authorization grant](/concepts/oidc#device-authorization-grant)
+for the protocol, fixed limits and audit behavior.
+
 ### Via OIDC Flow (Programmatic)
 
 For programmatic access, perform the standard OIDC Authorization Code + PKCE flow against the super-admin organization:
@@ -113,7 +124,7 @@ For programmatic access, perform the standard OIDC Authorization Code + PKCE flo
 3. Redirect to authorization:
 
    ```
-   GET /{super-admin-slug}/auth/authorize?
+   GET /{super-admin-slug}/auth?
      response_type=code&
      client_id={admin-client-id}&
      redirect_uri={your-callback}&
@@ -124,7 +135,7 @@ For programmatic access, perform the standard OIDC Authorization Code + PKCE flo
 
 4. Exchange code for tokens:
    ```
-   POST /{super-admin-slug}/auth/token
+   POST /{super-admin-slug}/token
    Content-Type: application/x-www-form-urlencoded
 
    grant_type=authorization_code&
@@ -143,7 +154,7 @@ for the client-credentials grant.
 Access tokens are short-lived. Use the refresh token to obtain new access tokens:
 
 ```
-POST /{super-admin-slug}/auth/token
+POST /{super-admin-slug}/token
 Content-Type: application/x-www-form-urlencoded
 
 grant_type=refresh_token&

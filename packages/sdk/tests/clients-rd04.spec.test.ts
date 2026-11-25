@@ -2,6 +2,7 @@ import { describe, expect, expectTypeOf, it, vi } from 'vitest';
 
 import { createClientsDomain, type ClientsDomain } from '../src/domains/clients.js';
 import type { HttpTransport, TransportResponse } from '../src/transport/types.js';
+import { DEVICE_CODE_GRANT } from '../src/types/index.js';
 import type {
   Client,
   ClientSecret,
@@ -48,6 +49,12 @@ const client = {
   updatedAt: '2026-08-30T11:00:00.000Z',
 };
 
+type ExpectedGrant =
+  | 'authorization_code'
+  | 'client_credentials'
+  | 'refresh_token'
+  | typeof DEVICE_CODE_GRANT;
+
 type ExpectedClient = {
   id: string;
   organizationId: string;
@@ -58,7 +65,7 @@ type ExpectedClient = {
   applicationType: 'web' | 'native' | 'spa';
   redirectUris: string[];
   postLogoutRedirectUris: string[];
-  grantTypes: Array<'authorization_code' | 'client_credentials' | 'refresh_token'>;
+  grantTypes: ExpectedGrant[];
   responseTypes: Array<'code'>;
   scope: string;
   tokenEndpointAuthMethod: 'client_secret_basic' | 'client_secret_post' | 'none';
@@ -309,7 +316,7 @@ describe('RD-04 OIDC client SDK contract', () => {
       applicationType: 'web' | 'native' | 'spa';
       redirectUris: string[];
       postLogoutRedirectUris?: string[];
-      grantTypes?: Array<'authorization_code' | 'client_credentials' | 'refresh_token'>;
+      grantTypes?: ExpectedGrant[];
       responseTypes?: Array<'code'>;
       scope?: string;
       tokenEndpointAuthMethod?: 'client_secret_basic' | 'client_secret_post' | 'none';
@@ -324,7 +331,7 @@ describe('RD-04 OIDC client SDK contract', () => {
       clientName?: string;
       redirectUris?: string[];
       postLogoutRedirectUris?: string[];
-      grantTypes?: Array<'authorization_code' | 'client_credentials' | 'refresh_token'>;
+      grantTypes?: ExpectedGrant[];
       responseTypes?: Array<'code'>;
       scope?: string;
       tokenEndpointAuthMethod?: 'client_secret_basic' | 'client_secret_post' | 'none';

@@ -261,7 +261,7 @@ describe('compact OIDC client registration', () => {
 
     expect(dialog.title()).toBe('Register OIDC client');
     expect(dialog.isZoomed()).toBe(false);
-    expect(dialog.bounds.height).toBe(20);
+    expect(dialog.bounds.height).toBe(25);
     expect(dialog.bounds.width).toBeLessThan(host.desktop.bounds.width);
     expect(dialog.bounds.height).toBeLessThan(host.desktop.bounds.height);
     expect(dialog.closable).toBe(false);
@@ -276,6 +276,7 @@ describe('compact OIDC client registration', () => {
       'Application',
       'Client type',
       'Application type',
+      'Grants',
       'Redirect URI',
       'Create',
       'Cancel',
@@ -346,6 +347,8 @@ describe('compact OIDC client registration', () => {
         clientType: 'confidential',
         applicationType: 'web',
         redirectUris: ['https://portal.example.test/callback'],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        responseTypes: ['code'],
       },
     });
   });
@@ -377,6 +380,8 @@ describe('compact OIDC client registration', () => {
         clientType: 'public',
         applicationType: 'web',
         redirectUris: ['https://public.example.test/callback'],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        responseTypes: ['code'],
       },
     });
     if (result.kind === 'create') {

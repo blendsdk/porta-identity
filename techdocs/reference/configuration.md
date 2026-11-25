@@ -1,6 +1,6 @@
 # Configuration Reference
 
-> **Last Updated**: 2026-11-01
+> **Last Updated**: 2026-11-24
 
 ## Overview
 
@@ -207,6 +207,19 @@ token lifetime. Runtime policy is read at its existing decision point. Absolute 
 and existing Redis counter expiries are not rewritten. Queued recovery work reads its current
 lifetime when creating the artifact; lockout eligibility uses the current duration with the
 existing lock timestamp.
+
+#### Fixed Device Authorization Limits
+
+Device authorization limits are code constants, not catalog keys. Operators cannot change them
+through the configuration API.
+
+| Surface | Fixed limit |
+| --- | --- |
+| Device authorization request | 10 per 5 minutes per IP+client; 30 per 5 minutes per IP |
+| User-code submission | 10 per 10 minutes per IP+session; 30 per 10 minutes per IP |
+| Device token polling | 180 per 15 minutes per client+IP; 600 per 5 minutes per IP |
+| DeviceCode lifetime | 600 seconds, with 900 seconds of expired retention |
+| Polling interval | 5 seconds advertised; faster polls receive `slow_down` |
 
 Migration `030_global_configuration_catalog.sql` overwrites the 18 canonical rows with native
 defaults, deletes seven obsolete public keys and preserves internal rows. Down is intentionally a

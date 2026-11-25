@@ -16,11 +16,70 @@ import type { OidcTtlConfig } from '../lib/system-config.js';
 import { getRedis } from '../lib/redis.js';
 import { logger } from '../lib/logger.js';
 import type { JwkKeyPair } from '../lib/signing-keys.js';
-import { buildProviderConfiguration } from './configuration.js';
+import {
+  buildProviderConfiguration,
+  DEVICE_AUTHORIZATION_INTERVAL_SECONDS,
+} from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
 import { findAccount } from './account-finder.js';
+import { resolveRequestOrganization } from './org-resolution.js';
 import { oidcCors } from '../middleware/oidc-cors.js';
 import { registerProtocolSecurityObservers } from './protocol-security-observer.js';
+
+/** Return true only for a non-array object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Add the fixed polling interval to a device authorization response.
+ *
+ * The provider owns every other response field; this listener mutates only `interval`, matching the
+ * RFC 8628 response. It is exported so the behavior can be tested without constructing a provider.
+ *
+ * @param _ctx - Provider request context (unused; kept for the event signature)
+ * @param body - Response body produced by the provider
+ */
+export function applyDeviceAuthorizationInterval(_ctx: unknown, body: unknown): void {
+  if (!isRecord(body)) return;
+  body['interval'] = DEVICE_AUTHORIZATION_INTERVAL_SECONDS;
+}
+
+/** Read the organization assigned to the client already loaded by the provider. */
+function clientOrganizationId(ctx: unknown): string | undefined {
+  if (!isRecord(ctx)) return undefined;
+  const oidc = ctx['oidc'];
+  if (!isRecord(oidc)) return undefined;
+  const client = oidc['client'];
+  if (!isRecord(client)) return undefined;
+  const organizationId = client['organizationId'];
+  return typeof organizationId === 'string' && organizationId.length > 0
+    ? organizationId
+    : undefined;
+}
+
+/** Read the raw Node request carried by the provider's internal Koa context. */
+function providerRequest(ctx: unknown): unknown {
+  if (!isRecord(ctx)) return undefined;
+  const direct = ctx['req'];
+  if (direct !== undefined) return direct;
+  const request = ctx['request'];
+  if (isRecord(request)) return request['req'];
+  return undefined;
+}
+
+/**
+ * Resolve the organization that owns a provider interaction.
+ *
+ * The loaded client is the primary authority; the request organization is the fallback for routes
+ * with no loaded client. The client metadata carries `organizationId` as a plain UUID string.
+ *
+ * @param ctx - Provider internal Koa context
+ * @returns The organization identifier, or undefined when neither source is valid
+ */
+export function resolveInteractionOrganization(ctx: unknown): string | undefined {
+  return clientOrganizationId(ctx) ?? resolveRequestOrganization(providerRequest(ctx))?.id;
+}
 
 /**
  * Create and configure the node-oidc-provider instance.
@@ -56,16 +115,14 @@ export async function createOidcProvider(params: {
     // Also stores the auth-flow org ID in Redis so interaction handlers
     // can recover the validated client tenant after the URL slug is stripped.
     interactionUrl: (ctx, interaction) => {
-      // ctx here is the provider's internal Koa context, NOT the outer app's.
-      // The org is passed via req._portaOrganization (set in server.ts).
-      type PortaReq = { _portaOrganization?: { id: string } };
-      type InternalCtx = { req?: PortaReq; request?: { req?: PortaReq } };
-      const req =
-        (ctx as unknown as InternalCtx).req ?? (ctx as unknown as InternalCtx).request?.req;
-      const org = req?._portaOrganization;
-      if (org?.id && interaction?.uid) {
+      // The loaded client is the strongest organization signal: a client is valid only under its
+      // own organization's issuer. The request organization remains the fallback for routes with no
+      // loaded client.
+      const orgId = resolveInteractionOrganization(ctx);
+
+      if (orgId !== undefined && interaction?.uid) {
         getRedis()
-          .set(`interaction:org:${interaction.uid}`, org.id, 'EX', 3600)
+          .set(`interaction:org:${interaction.uid}`, orgId, 'EX', 3600)
           .catch((err: unknown) => logger.warn({ err }, 'Failed to store interaction org'));
       }
       return `/interaction/${interaction.uid}`;
@@ -76,6 +133,7 @@ export async function createOidcProvider(params: {
   // The actual per-org issuer is resolved dynamically via URL rewriting
   // in the Koa router (server.ts strips the /:orgSlug prefix).
   const provider = new Provider(config.issuerBaseUrl, configuration);
+  provider.on('device_authorization.success', applyDeviceAuthorizationInterval);
   registerProtocolSecurityObservers(provider);
   provider.on('server_error', (context) => {
     // oidc-provider owns its internal error response. When a Redis command fails during that

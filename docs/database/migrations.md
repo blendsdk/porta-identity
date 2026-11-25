@@ -1,6 +1,6 @@
 # Migrations
 
-Porta uses [node-pg-migrate](https://github.com/salsita/node-pg-migrate) for database schema management. All migrations are SQL files located in the `migrations/` directory.
+Porta uses [node-pg-migrate](https://github.com/salsita/node-pg-migrate) for database schema management. Migrations live in the `migrations/` directory. Most are SQL files; an operation that cannot run inside a transaction, such as `CREATE INDEX CONCURRENTLY`, uses a small `.cjs` migration instead.
 
 ## Running Migrations
 
@@ -76,8 +76,8 @@ remains external to the database. Migration 028 adds persisted TOTP replay prote
 
 ### Conventions
 
-- **File format:** `NNN_description.sql` (3-digit zero-padded number)
-- **Language:** Pure SQL (no JavaScript migrations)
+- **File format:** `NNN_description.sql` (3-digit zero-padded number), or `NNN_description.cjs` for a non-transactional operation
+- **Language:** SQL by default; JavaScript only for operations the SQL runner cannot execute in its transaction
 - **Idempotent:** Use `IF NOT EXISTS` where possible
 - **Reversible:** Include both `UP` and `DOWN` sections
 

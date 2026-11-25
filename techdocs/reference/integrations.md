@@ -1,6 +1,6 @@
 # Integrations Reference
 
-> **Last Updated**: 2026-09-17
+> **Last Updated**: 2026-11-24
 
 ## Overview
 
@@ -22,7 +22,7 @@ Primary persistent data store for all Porta data:
 - Audit log entries
 - System configuration
 - Signing keys (encrypted at rest)
-- Long-lived OIDC artifacts (AccessToken, RefreshToken, Grant)
+- Long-lived OIDC artifacts (AccessToken, RefreshToken, Grant, DeviceCode)
 
 ### Connection
 
@@ -124,13 +124,13 @@ const value = await redis.get('key');
 #### OIDC Adapter (Short-Lived Artifacts)
 
 ```
-oidc:{model}:{uid}           → JSON payload with TTL
-oidc:{model}:{uid}:grant     → Grant ID lookup
-oidc:grant:{grantId}         → Set of artifact UIDs (for cascade deletion)
-oidc:user_code:{userCode}    → UID lookup (device flow)
+oidc:{model}:{uid}                  → JSON payload with TTL
+oidc:{model}:{uid}:grant            → Grant ID lookup
+oidc:grant:{grantId}                → Set of artifact UIDs (for cascade deletion)
+oidc:{model}:user_code:{userCode}   → Primary artifact ID (device flow)
 ```
 
-Models stored in Redis: `Session`, `Interaction`, `AuthorizationCode`, `ReplayDetection`, `ClientCredentials`, `PushedAuthorizationRequest`.
+Models stored in Redis: `Session`, `Interaction`, `AuthorizationCode`, `ReplayDetection`, `ClientCredentials`, `PushedAuthorizationRequest`. DeviceCode is routed to PostgreSQL, so its user-code index is not used in the default routing; the Redis adapter supports the method for completeness.
 
 Redis storage is not sufficient authority by itself. Session publication first persists its
 PostgreSQL tracking row. Cached adapter reads validate every referenced active client, active user,
@@ -242,6 +242,7 @@ In development, MailHog captures all emails:
 OpenID Connect protocol engine — handles all OIDC-compliant authentication flows:
 
 - Authorization Code (with PKCE)
+- Device Authorization Grant (RFC 8628)
 - Client Credentials
 - Refresh Token
 - Discovery (`/.well-known/openid-configuration`)
@@ -281,10 +282,11 @@ The OIDC provider is configured in `packages/server/src/oidc/configuration.ts`:
 | **PKCE**              | Enforced for public clients (S256 method)                                                                                           |
 | **Scopes**            | `openid`, `profile`, `email`, `offline_access` + custom                                                                             |
 | **Claims**            | Standard claims + application-scoped RBAC and custom claims                                                                         |
-| **Grant types**       | `authorization_code`, `refresh_token`, `client_credentials`                                                                         |
+| **Grant types**       | `authorization_code`, `refresh_token`, `client_credentials`, `urn:ietf:params:oauth:grant-type:device_code`                          |
 | **Token format**      | ES256 JWT ID tokens; opaque access/client-credential tokens                                                                         |
-| **Interactions**      | Custom login/consent pages                                                                                                          |
+| **Interactions**      | Custom login/consent pages; branded device code and confirmation pages                                                              |
 | **TTLs**              | Five provider TTLs loaded from `system_config` at startup; grant TTL follows refresh TTL, interaction TTL is fixed at 3,600 seconds |
+| **DeviceCode TTL**    | Fixed at 600 seconds with 900 seconds of expired retention                                                                          |
 
 ### Adapter Strategy
 
@@ -301,6 +303,7 @@ The adapter factory (`packages/server/src/oidc/adapter-factory.ts`) routes OIDC 
 | AccessToken                | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
 | RefreshToken               | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
 | Grant                      | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
+| DeviceCode                 | PostgreSQL | `packages/server/src/oidc/postgres-adapter.ts` |
 
 ### Client Discovery
 

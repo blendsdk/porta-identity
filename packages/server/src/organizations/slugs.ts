@@ -40,6 +40,8 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'oidc',
   'token',
   'jwks',
+  // Reserved for the provider's device verification routes under the organization issuer.
+  'device',
 
   // Application paths
   'portal',

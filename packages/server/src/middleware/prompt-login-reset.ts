@@ -23,8 +23,8 @@
  *   use GET authorize with `prompt` in the query, so this covers the real flow
  *   without consuming the POST body stream the provider needs (PF-005).
  * - Cookie clearing is signing-free: we expire both `_session` and
- *   `_session.sig` explicitly. The outer Koa app does not set `app.keys`, so we
- *   must NOT rely on Koa's signed-cookie API here (PF-001/PF-002).
+ *   `_session.sig` explicitly, so the helper does not depend on the outer app's
+ *   signing-key configuration.
  *
  * @module middleware/prompt-login-reset
  */
@@ -84,8 +84,7 @@ export function isInitialAuthorize(method: string, path: string): boolean {
  * Expires BOTH cookie names at path `/` with attributes matching how the
  * provider wrote them (httpOnly, sameSite=lax, secure per issuer scheme). This
  * is intentionally signing-free: it sets each cookie to an expired value
- * directly, so it works regardless of whether `app.keys` is configured on the
- * Koa app (the outer Porta app does not set it). (PF-001/PF-002, AR-2)
+ * directly, so it does not depend on the outer app's signing-key configuration.
  *
  * @param ctx - Koa context (outer app context or provider ctx — both work)
  * @param sessionCookieName - The provider's session cookie name (e.g. `_session`)
@@ -101,7 +100,7 @@ export function clearSessionCookies(
     httpOnly: true,
     sameSite: 'lax' as const,
     secure,
-    // Do NOT use signed: true — the outer app has no app.keys.
+    // Deliberately signing-free; this helper never depends on app.keys.
     signed: false,
     // Expire immediately.
     expires: new Date(0),
