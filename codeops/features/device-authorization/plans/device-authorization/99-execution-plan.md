@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-25 15:34
-> **Progress**: 70/87 tasks (80%)
+> **Last Updated**: 2026-11-25 16:10
+> **Progress**: 80/87 tasks (92%)
 > **Execution Mode**: `--auto-commit` (exec-plan commits via the git-commit skill; this plan contains no git commands)
 > **CodeOps Artifact Schema**: 1
 
@@ -202,7 +202,7 @@ everywhere, and gate the fleet upgrade.
 
 - [x] 3.3.1 Write conditional-redirect/response-type/terminal-parser/CLI-flag implementation tests — `packages/server/tests/unit/clients/device-grant.impl.test.ts`, `packages/cli/tests/admin/oidc-client-device-grant.impl.test.ts` ✅ (completed: 2026-11-25 15:34)
 - [x] 3.3.2 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 15:34)
-- [ ] 3.3.3 Run `pnpm docs:build` and `pnpm assurance:compat --select compatibility`; describe it truthfully
+- [x] 3.3.3 Run `pnpm docs:build` and `pnpm assurance:compat --select compatibility`; describe it truthfully ✅ (completed: 2026-11-25 16:10)
 - [x] 3.3.4 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI) ✅ (completed: 2026-11-25 15:34)
 
 **Deliverables**: one consistent client contract; device-only creation with zero redirects and empty
@@ -264,22 +264,22 @@ final review evidence.
 
 ### Step 5.1: Specification Tests and Cleanup Coverage
 
-- [ ] 5.1.1 [spec-author] Write cleanup/stale-authority spec tests ST-29 — `packages/server/tests/integration/oidc/device-authorization.spec.test.ts`
-- [ ] 5.1.2 [spec-author] Write the pentest matrix ST-30 — `packages/server/tests/pentest/auth-bypass/device-authorization.spec.test.ts`
-- [ ] 5.1.3 Run the spec files and record the red phase
+- [x] 5.1.1 [spec-author] Write cleanup/stale-authority spec tests ST-29 — `packages/server/tests/integration/oidc/device-authorization.spec.test.ts` ✅ (completed: 2026-11-25 16:10)
+- [x] 5.1.2 [spec-author] Write the pentest matrix ST-30 — `packages/server/tests/pentest/auth-bypass/device-authorization.spec.test.ts` ✅ (completed: 2026-11-25 16:10)
+- [x] 5.1.3 Run the spec files and record the red phase ✅ (completed: 2026-11-25 16:10)
 
 ### Step 5.2: Implementation and Hardening
 
-- [ ] 5.2.1 Finalize purge/deletion/logout/connected-app cleanup and the `device` slug guard — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/server.ts`, `packages/server/src/organizations/slugs.ts`
-- [ ] 5.2.2 Finalize audit amplification/idempotency-failure handling and the fail-open residual note — `packages/server/src/oidc/device-pages.ts`
+- [x] 5.2.1 Finalize purge/deletion/logout/connected-app cleanup and the `device` slug guard — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/server.ts`, `packages/server/src/organizations/slugs.ts` ✅ (completed: 2026-11-25 16:10)
+- [x] 5.2.2 Finalize audit amplification/idempotency-failure handling and the fail-open residual note — `packages/server/src/oidc/device-pages.ts` ✅ (completed: 2026-11-25 16:10)
 - [ ] 5.2.3 Finalize the production-security definition and evidence runner (no new findings; three accepted gaps; exit 40) — `techdocs/` and the assurance record
-- [ ] 5.2.4 Finalize the truthful compatibility-selector description and evidence — `techdocs/` and the assurance record
-- [ ] 5.2.5 Finalize operational documentation and the release/fleet note — `docs/`
+- [x] 5.2.4 Finalize the truthful compatibility-selector description and evidence — `techdocs/` and the assurance record ✅ (completed: 2026-11-25 16:10)
+- [x] 5.2.5 Finalize operational documentation and the release/fleet note — `docs/` ✅ (completed: 2026-11-25 16:10)
 
 ### Step 5.3: Implementation Tests and Assurance
 
-- [ ] 5.3.1 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs`
-- [ ] 5.3.2 Run the pentest suite and resolve findings
+- [x] 5.3.1 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 16:10)
+- [x] 5.3.2 Run the pentest suite and resolve findings ✅ (completed: 2026-11-25 16:10)
 - [ ] 5.3.3 Run `pnpm assurance:harness --project security --profile production-security` and record the accepted gaps/exit 40
 - [ ] 5.3.4 Run `pnpm test:ui` and `pnpm harness:test`; record the run ids
 - [ ] 5.3.5 Run the final `oidc-provider-reviewer` review and resolve findings

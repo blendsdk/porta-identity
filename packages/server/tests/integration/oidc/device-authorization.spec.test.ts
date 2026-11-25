@@ -18,7 +18,9 @@ import {
   buildPollIntervalKey,
   buildUserCodeIpKey,
 } from '../../../src/middleware/device-rate-limiter.js';
-import { purgeExpired } from '../../../src/oidc/postgres-adapter.js';
+import { createAdapterFactory } from '../../../src/oidc/adapter-factory.js';
+import { purgeExpired, revokeGrantsByIds } from '../../../src/oidc/postgres-adapter.js';
+import { upsertSession } from '../../../src/lib/session-tracking.js';
 import {
   createTestClient,
   createTestOrganization,
@@ -123,8 +125,9 @@ async function approveStoredDeviceCode(
     amr: ['pwd'],
   };
   await getPool().query(
-    `UPDATE oidc_payloads SET payload = $2::jsonb WHERE type = 'DeviceCode' AND id = $1`,
-    [deviceCode, JSON.stringify(payload)],
+    `UPDATE oidc_payloads SET payload = $2::jsonb, grant_id = $3
+      WHERE type = 'DeviceCode' AND id = $1`,
+    [deviceCode, JSON.stringify(payload), grantId],
   );
   await getPool().query(
     `INSERT INTO oidc_payloads (id, type, payload, grant_id, expires_at)
@@ -952,6 +955,129 @@ describe('Device authorization audit and concurrency', () => {
     const audits = await waitForDeviceAudit('rate_limit.device_user_code');
     expect(audits).toHaveLength(1);
     expect(audits[0]?.ip_address).toBe(LOOPBACK_IP);
+  });
+});
+
+describe('Device authorization refresh tokens', () => {
+  const fixture = useDeviceFixture({ grantTypes: [DEVICE_CODE_GRANT, 'refresh_token'] });
+
+  it('issues a refresh token when offline_access is granted', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    await approveStoredDeviceCode(current, deviceCode);
+
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBe(200);
+    const tokens = await readJson(poll);
+    expect(readString(tokens, 'refresh_token').length).toBeGreaterThan(0);
+  });
+});
+
+describe('Device stale authority and cleanup', () => {
+  const fixture = useDeviceFixture();
+
+  it('removes a retained DeviceCode when its grant is revoked', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    const grantId = await approveStoredDeviceCode(current, deviceCode);
+
+    await revokeGrantsByIds([grantId]);
+    expect(await readDeviceCodeRow(deviceCode)).toBeUndefined();
+
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBe(400);
+    expect((await readJson(poll)).error).toBe('invalid_grant');
+  });
+
+  it('rejects a token when the client was deleted after approval', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    await approveStoredDeviceCode(current, deviceCode);
+    await getPool().query('DELETE FROM clients WHERE id = $1', [current.client.id]);
+
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBeGreaterThanOrEqual(400);
+    expect((await readJson(poll)).access_token).toBeUndefined();
+  });
+
+  it('rejects a token when the user was deleted after approval', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    await approveStoredDeviceCode(current, deviceCode);
+    await getPool().query('DELETE FROM users WHERE id = $1', [current.user.id]);
+
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBe(400);
+    expect((await readJson(poll)).error).toBe('invalid_grant');
+  });
+
+  it('rejects a token when the organization is deleted after approval', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    await approveStoredDeviceCode(current, deviceCode);
+    await getPool().query('DELETE FROM organizations WHERE id = $1', [current.organization.id]);
+
+    // Deleting the organization cascades the client, so the provider rejects the
+    // unauthenticated public client before it reaches the grant.
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBeGreaterThanOrEqual(400);
+    const body = await readJson(poll);
+    expect(body.access_token).toBeUndefined();
+    expect(['invalid_client', 'invalid_grant']).toContain(body.error);
+  });
+
+  it.each([
+    ['client', "UPDATE clients SET status = 'inactive' WHERE id = $1", (current: DeviceFixture) => current.client.id],
+    ['user', "UPDATE users SET status = 'inactive' WHERE id = $1", (current: DeviceFixture) => current.user.id],
+  ])('rejects a token when the %s is deactivated after approval', async (_name, sql, id) => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    await approveStoredDeviceCode(current, deviceCode);
+    await getPool().query(sql, [id(current)]);
+
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBeGreaterThanOrEqual(400);
+    const body = await readJson(poll);
+    expect(body.access_token).toBeUndefined();
+    expect(['invalid_client', 'invalid_grant']).toContain(body.error);
+  });
+
+  it('removes the DeviceCode when a logout cascade destroys its grant', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const deviceCode = readString(await readJson(authorization), 'device_code');
+    const grantId = await approveStoredDeviceCode(current, deviceCode);
+    const sessionId = randomBytes(32).toString('base64url').slice(0, 43);
+    const Adapter = createAdapterFactory();
+    const sessionAdapter = new Adapter('Session');
+    await sessionAdapter.upsert(
+      sessionId,
+      {
+        accountId: current.user.id,
+        authorizations: { [current.client.clientId]: { grantId } },
+        kind: 'Session',
+      },
+      3600,
+    );
+    await upsertSession({
+      sessionId,
+      userId: current.user.id,
+      organizationId: current.organization.id,
+      expiresAt: new Date(Date.now() + 3_600_000),
+    });
+
+    await sessionAdapter.destroy(sessionId);
+    expect(await readDeviceCodeRow(deviceCode)).toBeUndefined();
+
+    const poll = await pollToken(current, deviceCode);
+    expect(poll.status).toBe(400);
+    expect((await readJson(poll)).error).toBe('invalid_grant');
   });
 });
 

@@ -33,3 +33,5 @@
 | SA-007 | 2 | MINOR | poll key collision | fixed — client namespace |
 | SA-008 | 2 | MINOR | malformed `/device/auth` and `/token` | fixed — address aggregates charged |
 | SA-009 | 2 | MINOR | GET `/device/auth` resume | fixed — pass-through removed, integration regression |
+| PF5-001 | 5 | MINOR | harness migration oracle | fixed — the reset oracle now accepts `.sql`, `.cjs` and `.js` migrations, matching node-pg-migrate and migration 039 |
+| PF5-002 | 5 | NOTE | stale-authority status codes | verified — client/organization removal returns `invalid_client` 401, user removal or deactivation returns `invalid_grant` 400, and no token set is issued |
