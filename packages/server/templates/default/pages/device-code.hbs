@@ -1,0 +1,34 @@
+{{!--
+  Device authorization code entry and generic invalid state.
+
+  Context contract (set in src/oidc/device-pages.ts):
+    device.action      : string  — trusted provider code-verification action
+    device.xsrf        : string  — provider-generated XSRF value
+    device.invalid     : boolean — render the generic invalid-or-expired message
+    device.rateLimited : boolean — render the rate-limit state instead of a form
+    device.retryAfter  : number? — seconds until another attempt is allowed
+--}}
+<h1>{{t "device.title"}}</h1>
+
+{{#if device.rateLimited}}
+  <p class="text-muted mb-4" role="alert">{{t "device.rate_limited"}}</p>
+{{else}}
+  <p class="text-muted mb-4">{{t "device.instructions"}}</p>
+
+  {{#if device.invalid}}
+    <p class="text-muted mb-4" role="alert">{{t "device.invalid"}}</p>
+  {{/if}}
+
+  <form method="POST" action="{{device.action}}">
+    <input type="hidden" name="xsrf" value="{{device.xsrf}}">
+
+    <div class="form-group">
+      <label for="device-user-code">{{t "device.code_label"}}</label>
+      <input type="text" id="device-user-code" name="user_code" required autofocus
+             autocomplete="off" autocapitalize="characters" spellcheck="false"
+             maxlength="64" placeholder="{{t "device.code_placeholder"}}">
+    </div>
+
+    <button type="submit" class="btn-primary">{{t "device.continue"}}</button>
+  </form>
+{{/if}}

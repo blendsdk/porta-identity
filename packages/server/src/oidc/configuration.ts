@@ -45,6 +45,11 @@ import {
 } from './scopes.js';
 import { resolveResourceServerInfo } from './resource-servers.js';
 import type { ResourceServerResolver } from './resource-servers.js';
+import {
+  deviceSuccessSourceHook,
+  userCodeConfirmSourceHook,
+  userCodeInputSourceHook,
+} from './device-pages.js';
 
 /** Parameters required to build the provider configuration */
 export interface BuildProviderConfigParams {
@@ -553,6 +558,9 @@ export function buildProviderConfiguration(
       deviceFlow: {
         enabled: true,
         deviceInfo: () => ({}),
+        userCodeInputSource: userCodeInputSourceHook,
+        userCodeConfirmSource: userCodeConfirmSourceHook,
+        successSource: deviceSuccessSourceHook,
       },
       // Enable client credentials grant (RFC 6749 §4.4)
       clientCredentials: { enabled: true },

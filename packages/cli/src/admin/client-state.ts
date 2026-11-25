@@ -1,5 +1,15 @@
 /** Immutable selected-organization OIDC client values retained by the terminal application. */
 
+/** Full RFC 8628 device authorization grant value. */
+export const DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code' as const;
+
+/** OAuth grants shown by the terminal client editor. */
+export type AdminClientGrantType =
+  | 'authorization_code'
+  | 'client_credentials'
+  | 'refresh_token'
+  | typeof DEVICE_CODE_GRANT;
+
 /** Supported OIDC client lifecycle values. */
 export type AdminClientStatus = 'active' | 'inactive';
 
@@ -24,7 +34,7 @@ export interface AdminClient {
   /** Registered post-logout redirect URIs. */
   readonly postLogoutRedirectUris: readonly string[];
   /** Enabled OAuth grant types. */
-  readonly grantTypes: readonly ('authorization_code' | 'client_credentials' | 'refresh_token')[];
+  readonly grantTypes: readonly AdminClientGrantType[];
   /** Enabled OIDC response types. */
   readonly responseTypes: readonly 'code'[];
   /** Space-delimited scope allowlist. */

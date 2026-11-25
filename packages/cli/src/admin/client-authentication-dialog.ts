@@ -146,10 +146,13 @@ function rowIndex(client: AdminClient, target: AdminAuthenticationUrlRow): numbe
 }
 
 /** Validates complete server collections after a local mutation. */
-function collectionsAreValid(collections: Record<AuthenticationUrlKind, string[]>): boolean {
+function collectionsAreValid(
+  collections: Record<AuthenticationUrlKind, string[]>,
+  redirectRequired: boolean,
+): boolean {
   return AUTHENTICATION_URL_CHOICES.every(({ kind }) => {
     const values = collections[kind];
-    return values.length <= 10 && (kind !== 'redirect' || values.length >= 1) &&
+    return values.length <= 10 && (kind !== 'redirect' || !redirectRequired || values.length >= 1) &&
       new Set(values).size === values.length && values.every((value) => valueIsValid(kind, value));
   });
 }
@@ -177,7 +180,7 @@ export function buildAuthenticationUrlUpdate(
     (mutation.kind === 'edit' && mutation.previous.kind !== mutation.next.kind)
   )
     collections[mutation.next.kind].push(mutation.next.value);
-  if (!collectionsAreValid(collections)) return undefined;
+  if (!collectionsAreValid(collections, client.grantTypes.includes('authorization_code'))) return undefined;
   return {
     redirectUris: collections.redirect,
     postLogoutRedirectUris: collections['post-logout'],
@@ -200,7 +203,12 @@ function valueGuidance(
     ? { kind: 'edit', previous: existing, next }
     : { kind: 'add', next };
   if (buildAuthenticationUrlUpdate(client, mutation)) return '';
-  if (existing?.kind === 'redirect' && client.redirectUris.length === 1 && next.kind !== 'redirect')
+  if (
+    existing?.kind === 'redirect' &&
+    client.redirectUris.length === 1 &&
+    next.kind !== 'redirect' &&
+    client.grantTypes.includes('authorization_code')
+  )
     return 'At least one Redirect URI is required.';
   const values = clientCollections(client)[next.kind];
   const existingIndex = existing?.kind === next.kind ? rowIndex(client, existing) : -1;

@@ -49,6 +49,7 @@ import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 import { setETagHeader, checkIfMatch } from '../lib/etag.js';
 import { getEntityHistory } from '../lib/entity-history.js';
 import {
+  DEVICE_CODE_GRANT,
   getDefaultGrantTypes,
   clientApplicationTypeSchema,
   clientGrantTypesSchema,
@@ -124,12 +125,17 @@ const createClientSchema = z
     secretExpiresAt: futureSecretExpirySchema.optional(),
   })
   .superRefine((value, context) => {
+    const effectiveGrantTypes =
+      value.grantTypes ?? getDefaultGrantTypes(value.clientType, value.applicationType);
+    const deviceOnly =
+      effectiveGrantTypes.includes(DEVICE_CODE_GRANT) &&
+      !effectiveGrantTypes.includes('authorization_code');
     const result = validateClientProtocolCompatibility({
       clientType: value.clientType,
       redirectUris: value.redirectUris,
       postLogoutRedirectUris: value.postLogoutRedirectUris,
-      grantTypes: value.grantTypes ?? getDefaultGrantTypes(value.clientType, value.applicationType),
-      responseTypes: value.responseTypes ?? ['code'],
+      grantTypes: effectiveGrantTypes,
+      responseTypes: value.responseTypes ?? (deviceOnly ? [] : ['code']),
       tokenEndpointAuthMethod:
         value.tokenEndpointAuthMethod ??
         (value.clientType === 'public' ? 'none' : 'client_secret_basic'),

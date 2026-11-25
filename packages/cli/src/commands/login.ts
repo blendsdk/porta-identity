@@ -21,6 +21,7 @@
 import type { CommandModule } from 'yargs';
 import type { GlobalOptions } from '../global-options.js';
 import { authenticateCliSession } from '../auth/login-coordinator.js';
+import { authenticateDeviceCodeSession } from '../auth/device-flow.js';
 import { isContainerized } from '../auth/callback-server.js';
 import { loadCredentials, saveCredentialsDurably } from '../credential-store.js';
 import { success } from '../output.js';
@@ -44,6 +45,7 @@ interface LoginOptions extends GlobalOptions {
   server: string;
   'client-id'?: string;
   'no-browser': boolean;
+  'device-code': boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,6 +77,11 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
         type: 'boolean',
         describe: 'Print login URL instead of opening browser',
         default: false,
+      })
+      .option('device-code', {
+        type: 'boolean',
+        describe: 'Use device authorization instead of opening a browser',
+        default: false,
       }),
 
   handler: async (argv) => {
@@ -87,29 +94,61 @@ export const loginCommand: CommandModule<GlobalOptions, LoginOptions> = {
       const server = normalizeServerOrigin(argv.server);
       const current = loadCredentials();
       const controller = new AbortController();
-      const result = await authenticateCliSession(
-        {
-          server,
-          clientId: argv['client-id'],
-          noBrowser: argv['no-browser'] || isContainerized(),
-          currentServer: current ? normalizeServerOrigin(current.server) : undefined,
-          persistCredentials: async (credentials) =>
-            saveCredentialsDurably(credentials, controller.signal),
-        },
-        {
-          presentAuthorizationUrl: async (url) => {
-            console.log('Open this URL in your browser to log in:\n');
-            console.log(`  ${url.toString()}\n`);
-          },
-          requestManualCallback: async (signal) => question('Paste the callback URL: ', signal),
-          confirmCredentialReplacement: async (currentServer, nextServer, signal) =>
-            confirm(
-              `Replace credentials for ${currentServer.origin} with ${nextServer.origin}?`,
-              signal,
-            ),
-        },
-        { signal: controller.signal },
-      );
+      const currentServer = current ? normalizeServerOrigin(current.server) : undefined;
+      const persistCredentials = async (credentials: Parameters<typeof saveCredentialsDurably>[0]) =>
+        saveCredentialsDurably(credentials, controller.signal);
+      const confirmCredentialReplacement = async (
+        currentServerUrl: URL,
+        nextServer: URL,
+        signal: AbortSignal,
+      ) =>
+        confirm(
+          `Replace credentials for ${currentServerUrl.origin} with ${nextServer.origin}?`,
+          signal,
+        );
+
+      const result = argv['device-code']
+        ? await authenticateDeviceCodeSession(
+            {
+              server,
+              clientId: argv['client-id'],
+              currentServer,
+              persistCredentials,
+            },
+            {
+              presentDeviceCode: async (verificationUri, userCode, expiresAt) => {
+                const minutes = Math.max(
+                  1,
+                  Math.round((expiresAt.getTime() - Date.now()) / 60_000),
+                );
+                console.log('To sign in, open:\n');
+                console.log(`  ${verificationUri.toString()}\n`);
+                console.log('Enter code:\n');
+                console.log(`  ${userCode}\n`);
+                console.log(`This code expires in ${minutes} minute${minutes === 1 ? '' : 's'}.\n`);
+              },
+              confirmCredentialReplacement,
+            },
+            { signal: controller.signal },
+          )
+        : await authenticateCliSession(
+            {
+              server,
+              clientId: argv['client-id'],
+              noBrowser: argv['no-browser'] || isContainerized(),
+              currentServer,
+              persistCredentials,
+            },
+            {
+              presentAuthorizationUrl: async (url) => {
+                console.log('Open this URL in your browser to log in:\n');
+                console.log(`  ${url.toString()}\n`);
+              },
+              requestManualCallback: async (signal) => question('Paste the callback URL: ', signal),
+              confirmCredentialReplacement,
+            },
+            { signal: controller.signal },
+          );
       if (result.status === 'cancelled') return;
       success(`Logged in as ${result.identity.email || result.identity.sub}`);
       process.exit(0);

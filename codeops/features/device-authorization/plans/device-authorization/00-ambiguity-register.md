@@ -73,7 +73,7 @@ device route, or a rate-limit policy change.
 
 **P-8:** Authority: AI — delegated by `--auto-design`. Eligibility: persistence mechanism within
 RD-01/RD-05. Objective: correct expiry semantics and no user-code misrouting. Decision: add
-migration `039_device_authorization_user_code.sql` with a partial unique index; extend the
+migration `039_device_authorization_user_code.cjs` with a partial unique index; extend the
 PostgreSQL adapter's DeviceCode `expires_at` by 900 seconds while leaving the provider payload `exp`
 at 600; map a unique violation to HTTP 503 `temporarily_unavailable`. Evidence:
 `packages/server/migrations/010_oidc_adapter.sql:8-26`,

@@ -144,7 +144,7 @@ describe('Init Flow (Integration)', () => {
           'http://localhost/api/oidc/callback',
         ],
         postLogoutRedirectUris: [],
-        grantTypes: ['authorization_code', 'refresh_token'],
+        grantTypes: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:device_code'],
         scope: 'openid profile email offline_access',
         requirePkce: true,
       });

@@ -9,17 +9,19 @@ OIDC clients belong to one organization and reference one deployment-global appl
 closes the prior client workspace so client data is never carried into the new context.
 
 The interactive workspace always uses a DataGrid for the selected organization's clients, including
-when the list is empty. Registration asks only for client identity, application/type, one redirect
-URI, and optional initial-secret settings. After creation, Porta opens the authoritative client
-Overview instead of retaining a local placeholder.
+when the list is empty. Registration asks for client identity, application/type, the grant
+selection, one optional redirect URI, and optional initial-secret settings. The default grants are
+authorization code plus refresh token. A device-only selection may leave the redirect empty. After
+creation, Porta opens the authoritative client Overview instead of retaining a local placeholder.
 
 Client details use separate Overview, Authentication, Protocol, Login experience, Credentials, and
 Lifecycle sections. Each section opens one focused editor instead of a shared tabbed form:
 
 - **Authentication** stages redirect URIs, post-logout redirect URIs, and allowed origins in one
   reusable grid. Add, Edit, and Remove remain local until Save submits all three ordered arrays.
-- **Protocol** configures grant types, the fixed `code` response type, scope, token authentication,
-  and PKCE while preserving public/confidential compatibility rules.
+- **Protocol** configures grant types, the response type (`code`, or empty for a device-only
+  client), scope, token authentication, and PKCE while preserving public/confidential compatibility
+  rules. The device grant is shown as **Device authorization** with the full stored URN.
 - **Login experience** either inherits the selected organization's effective methods or enables
   Password, Magic link, or both explicitly.
 - **Credentials** lists secret metadata and enables Revoke only for the selected active secret.
@@ -38,6 +40,7 @@ porta client create \
   --name "ERP Web App" \
   --type public \
   --redirect-uris "https://erp.example.com/callback" \
+  [--grant-types "authorization_code,refresh_token"] \
   [--application-type web] \
   [--login-methods "password,magic_link"] \
   [--require-consent]
@@ -49,7 +52,8 @@ porta client create \
 | `--app`              | ✅       | Application UUID or slug                   |
 | `--name`             |          | Client display name                        |
 | `--type`             | ✅       | `confidential` or `public`                 |
-| `--redirect-uris`    | ✅       | Comma-separated redirect URIs              |
+| `--redirect-uris`    |          | Comma-separated redirect URIs; required unless the grants are device-only |
+| `--grant-types`      |          | Comma-separated grants, including `urn:ietf:params:oauth:grant-type:device_code` |
 | `--application-type` |          | `web`, `native`, or `spa` (default: `web`) |
 | `--login-methods`    |          | Override org default login methods         |
 | `--require-consent`  |          | Show the OIDC consent page for this client |
@@ -73,12 +77,38 @@ Shows full client details including `effectiveLoginMethods` and `requireConsent`
 ```bash
 porta client update <client-id> \
   [--name "New Name"] \
+  [--grant-types "authorization_code,refresh_token"] \
   [--redirect-uris "https://new.example.com/callback"] \
   [--login-methods "password,magic_link"] \
   [--require-consent | --no-require-consent]
 ```
 
-Omit `--require-consent`/`--no-require-consent` to leave the stored value unchanged.
+Omit `--require-consent`/`--no-require-consent` to leave the stored value unchanged. Pass
+`--redirect-uris ""` to clear redirects when the resulting grants are device-only. A device-only
+result sends `responseTypes: []`; a client that regains authorization code requires at least one
+redirect and uses `["code"]`.
+
+### Device-only client example
+
+```bash
+porta client create \
+  --org <org-id> \
+  --app <app-id> \
+  --name "Factory tablet" \
+  --type public \
+  --application-type native \
+  --grant-types "urn:ietf:params:oauth:grant-type:device_code"
+```
+
+No redirect URI is sent. The stored response types are empty. To enable the grant on the built-in
+admin CLI client of an existing installation, run:
+
+```bash
+porta client update <admin-client-id> \
+  --grant-types "authorization_code,refresh_token,urn:ietf:params:oauth:grant-type:device_code"
+```
+
+New installations created by `porta init` already include the device grant on the admin CLI client.
 
 ### `porta client delete`
 

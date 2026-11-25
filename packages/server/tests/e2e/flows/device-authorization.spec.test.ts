@@ -8,6 +8,8 @@
 
 import { describe, expect, it, beforeAll, beforeEach } from 'vitest';
 import { getPool } from '../../../src/lib/database.js';
+import { getRedis } from '../../../src/lib/redis.js';
+import { buildPollIntervalKey } from '../../../src/middleware/device-rate-limiter.js';
 import { purgeExpired } from '../../../src/oidc/postgres-adapter.js';
 import { TestHttpClient } from '../helpers/http-client.js';
 import { truncateAllTables, seedBaseData } from '../../integration/helpers/database.js';
@@ -208,6 +210,7 @@ describe('Device authorization grant (E2E)', () => {
     const grantId = stored.rows[0]?.grant_id;
     expect(grantId).toBeTypeOf('string');
 
+    await getRedis().del(buildPollIntervalKey(fixture.client.clientId, authorization.deviceCode));
     const replay = await poll(fixture, authorization.deviceCode);
     expect(replay.status).toBe(400);
     expect((replay.json as Record<string, unknown>).error).toBe('invalid_grant');
@@ -251,6 +254,7 @@ describe('Device authorization grant (E2E)', () => {
       await new Promise((resolve) => setTimeout(resolve, 25));
     }
 
+    await getRedis().del(buildPollIntervalKey(fixture.client.clientId, authorization.deviceCode));
     const absent = await poll(fixture, authorization.deviceCode);
     expect(absent.status).toBe(400);
     expect((absent.json as Record<string, unknown>).error).toBe('invalid_grant');

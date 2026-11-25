@@ -132,6 +132,8 @@ export async function createMagicLinkSession(
     secure: ctx.secure,
     maxAge: ML_SESSION_TTL * 1000, // milliseconds
     overwrite: true,
+    // The Redis lookup is the authority; the cookie is an unsigned opaque identifier.
+    signed: false,
   });
 
   logger.debug('Created tenant-bound magic link session');
@@ -156,7 +158,7 @@ export async function consumeMagicLinkSession(
   ctx: Context,
   authority: MagicLinkSessionAuthority,
 ): Promise<MagicLinkSessionData | null> {
-  const token = ctx.cookies.get(ML_SESSION_COOKIE);
+  const token = ctx.cookies.get(ML_SESSION_COOKIE, { signed: false });
   if (!token) return null;
   if (!authority.organizationId || !authority.interactionUid) return null;
 
@@ -217,7 +219,7 @@ export async function consumeMagicLinkSession(
  * @returns true if the `_ml_session` cookie exists
  */
 export function hasMagicLinkSession(ctx: Context): boolean {
-  return !!ctx.cookies.get(ML_SESSION_COOKIE);
+  return !!ctx.cookies.get(ML_SESSION_COOKIE, { signed: false });
 }
 
 /**
@@ -232,5 +234,6 @@ export function clearMagicLinkSessionCookie(ctx: Context): void {
     path: '/',
     maxAge: 0,
     overwrite: true,
+    signed: false,
   });
 }

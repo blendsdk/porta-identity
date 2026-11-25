@@ -34,6 +34,46 @@ import { parseLoginMethodsFlag, parseCommaSeparated } from '../parsers.js';
 import { clientSecretCommand } from './client-secret.js';
 import { clientServiceAccountCommand } from './client-service-account.js';
 
+/** Full RFC 8628 device authorization grant value. */
+const DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code';
+
+/** Grant values accepted by the CLI and the server contract. */
+const ALLOWED_GRANT_TYPES = [
+  'authorization_code',
+  'refresh_token',
+  'client_credentials',
+  DEVICE_CODE_GRANT,
+] as const;
+
+/** One grant value accepted by the CLI. */
+type AllowedGrantType = (typeof ALLOWED_GRANT_TYPES)[number];
+
+/** Runtime allowlist used to narrow untrusted CLI input. */
+const ALLOWED_GRANT_TYPE_SET: ReadonlySet<string> = new Set(ALLOWED_GRANT_TYPES);
+
+/** Return true when a value is a supported grant type. */
+function isAllowedGrantType(value: string): value is AllowedGrantType {
+  return ALLOWED_GRANT_TYPE_SET.has(value);
+}
+
+/** Parse a comma-separated grant list and reject empty or unknown values. */
+function parseGrantTypes(value: string | undefined): AllowedGrantType[] | undefined {
+  if (value === undefined) return undefined;
+  const grants = parseCommaSeparated(value);
+  if (grants.length === 0) throw new Error('At least one grant type is required');
+  const parsed: AllowedGrantType[] = [];
+  for (const grant of grants) {
+    if (!isAllowedGrantType(grant)) throw new Error(`Unsupported grant type: ${grant}`);
+    parsed.push(grant);
+  }
+  return parsed;
+}
+
+/** Return true when the grant set is device-only. */
+function isDeviceOnly(grants: readonly string[]): boolean {
+  return grants.includes(DEVICE_CODE_GRANT) && !grants.includes('authorization_code');
+}
+
 // ---------------------------------------------------------------------------
 // Argument type extensions
 // ---------------------------------------------------------------------------
@@ -44,7 +84,8 @@ interface ClientCreateArgs extends GlobalOptions {
   name?: string;
   type: 'confidential' | 'public';
   'application-type': 'web' | 'native' | 'spa';
-  'redirect-uris': string;
+  'redirect-uris'?: string;
+  'grant-types'?: string;
   'login-methods'?: string;
   'require-consent'?: boolean;
 }
@@ -63,6 +104,7 @@ interface ClientIdArgs extends GlobalOptions {
 interface ClientUpdateArgs extends ClientIdArgs {
   name?: string;
   'redirect-uris'?: string;
+  'grant-types'?: string;
   'login-methods'?: string;
   'require-consent'?: boolean;
 }
@@ -116,8 +158,13 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               })
               .option('redirect-uris', {
                 type: 'string',
-                demandOption: true,
-                description: 'Comma-separated redirect URIs',
+                description:
+                  'Comma-separated redirect URIs (optional only for a device-only client)',
+              })
+              .option('grant-types', {
+                type: 'string',
+                description:
+                  'Comma-separated grant types (authorization_code, refresh_token, client_credentials, urn:ietf:params:oauth:grant-type:device_code)',
               })
               .option('login-methods', {
                 type: 'string',
@@ -137,6 +184,17 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               );
 
               const sdkClient = createClient(argv);
+              const grantTypes = parseGrantTypes(argv['grant-types']);
+              const redirectUris =
+                argv['redirect-uris'] === undefined
+                  ? []
+                  : parseCommaSeparated(argv['redirect-uris']);
+              const deviceOnly = grantTypes !== undefined && isDeviceOnly(grantTypes);
+              if (!deviceOnly && redirectUris.length === 0) {
+                throw new Error(
+                  'Redirect URIs are required unless the client selects only the device authorization grant',
+                );
+              }
 
               // Resolve app slug → UUID if needed via SDK get
               let appId = argv.app;
@@ -152,7 +210,9 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 clientName: argv.name ?? 'Unnamed Client',
                 clientType: argv.type,
                 applicationType: argv['application-type'],
-                redirectUris: parseCommaSeparated(argv['redirect-uris']),
+                redirectUris,
+                ...(grantTypes !== undefined && { grantTypes }),
+                ...(deviceOnly && { responseTypes: [] }),
                 ...(loginMethods !== undefined && { loginMethods }),
                 ...(argv['require-consent'] !== undefined && {
                   requireConsent: argv['require-consent'],
@@ -240,12 +300,13 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                 printJson(result);
               } else {
                 printTable(
-                  ['ID', 'Client ID', 'Name', 'Type', 'Status', 'Created'],
+                  ['ID', 'Client ID', 'Name', 'Type', 'Grants', 'Status', 'Created'],
                   result.data.map((c) => [
                     c.id,
                     c.clientId,
                     c.clientName,
                     c.clientType,
+                    c.grantTypes.join(', '),
                     c.status,
                     formatDate(c.createdAt),
                   ]),
@@ -293,7 +354,7 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
                     ['Redirect URIs', c.redirectUris.join(', ') || '—'],
                     ['Post-logout Redirect URIs', c.postLogoutRedirectUris.join(', ') || '—'],
                     ['Grant Types', c.grantTypes.join(', ')],
-                    ['Response Types', c.responseTypes.join(', ')],
+                    ['Response Types', c.responseTypes.length > 0 ? c.responseTypes.join(', ') : '[]'],
                     ['Scope', c.scope],
                     ['Token Endpoint Authentication', c.tokenEndpointAuthMethod],
                     ['Allowed Origins', c.allowedOrigins.join(', ') || '—'],
@@ -333,7 +394,13 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               })
               .option('redirect-uris', {
                 type: 'string',
-                description: 'New comma-separated redirect URIs',
+                description:
+                  'New comma-separated redirect URIs; pass an empty string to clear them',
+              })
+              .option('grant-types', {
+                type: 'string',
+                description:
+                  'Replacement comma-separated grant types (including the full device URN)',
               })
               .option('login-methods', {
                 type: 'string',
@@ -355,13 +422,30 @@ export const clientCommand: CommandModule<GlobalOptions, GlobalOptions> = {
               const sdkClient = createClient(argv);
               const { data: current, etag } = await sdkClient.clients.get(argv['client-id']);
 
+              const requestedGrants = parseGrantTypes(argv['grant-types']);
+              const nextGrants = requestedGrants ?? current.grantTypes;
+              const deviceOnly = isDeviceOnly(nextGrants);
+              const redirectsProvided = argv['redirect-uris'] !== undefined;
+              const nextRedirects = redirectsProvided
+                ? parseCommaSeparated(argv['redirect-uris'] ?? '')
+                : current.redirectUris;
+              if (!deviceOnly && nextRedirects.length === 0) {
+                throw new Error(
+                  'Redirect URIs are required unless the resulting client is device-only',
+                );
+              }
+
               const updated = await sdkClient.clients.update(
                 current.id,
                 {
-                  clientName: argv.name,
-                  redirectUris: argv['redirect-uris']
-                    ? parseCommaSeparated(argv['redirect-uris'])
-                    : undefined,
+                  ...(argv.name !== undefined && { clientName: argv.name }),
+                  ...(requestedGrants !== undefined && { grantTypes: requestedGrants }),
+                  ...(redirectsProvided && { redirectUris: nextRedirects }),
+                  ...(deviceOnly
+                    ? { responseTypes: [] }
+                    : requestedGrants !== undefined
+                      ? { responseTypes: ['code'] }
+                      : {}),
                   ...(loginMethods !== undefined && { loginMethods }),
                   ...(argv['require-consent'] !== undefined && {
                     requireConsent: argv['require-consent'],

@@ -14,6 +14,9 @@
 import { z } from 'zod';
 import { LOGIN_METHODS, type ClientType, type ApplicationType } from './types.js';
 
+/** Full RFC 8628 device authorization grant value stored on a client. */
+export const DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code' as const;
+
 /** Client display names are required and fit the database column. */
 export const clientNameSchema = z.string().min(1).max(255);
 
@@ -36,19 +39,31 @@ export const tokenEndpointAuthMethodSchema = z.enum([
   'none',
 ]);
 
-/** Redirect URI collections use the domain's bounded absolute-URL boundary. */
-export const redirectUrisSchema = z.array(z.string().url()).min(1).max(10);
+/**
+ * Redirect URI collections use the domain's bounded absolute-URL boundary.
+ *
+ * An empty array is valid only when the compatibility validator proves the client is device-only.
+ * Keeping the outer schema empty-capable lets the conditional rule live in one place.
+ */
+export const redirectUrisSchema = z.array(z.string().url()).max(10);
 
 /** Optional redirect and origin collections share the domain's maximum count. */
 export const optionalClientUrisSchema = z.array(z.string().url()).max(10);
 
 /** OAuth grant types supported by Porta clients. */
 export const clientGrantTypesSchema = z
-  .array(z.enum(['authorization_code', 'refresh_token', 'client_credentials']))
+  .array(
+    z.enum(['authorization_code', 'refresh_token', 'client_credentials', DEVICE_CODE_GRANT]),
+  )
   .min(1);
 
-/** OIDC response types currently supported by Porta. */
-export const clientResponseTypesSchema = z.array(z.literal('code')).length(1);
+/**
+ * OIDC response types currently supported by Porta.
+ *
+ * The collection is either empty (device-only client) or exactly `['code']`. The compatibility
+ * validator enforces which grant set may use which form.
+ */
+export const clientResponseTypesSchema = z.array(z.literal('code')).max(1);
 
 /** Client scopes retain the existing free-text wire contract. */
 export const clientScopeSchema = z.string();
@@ -242,15 +257,32 @@ export function validateClientProtocolCompatibility(
   configuration: ClientProtocolConfiguration,
 ): ClientProtocolValidationResult {
   const errors: string[] = [];
-  const supportedGrants = new Set(['authorization_code', 'refresh_token', 'client_credentials']);
+  const supportedGrants = new Set([
+    'authorization_code',
+    'refresh_token',
+    'client_credentials',
+    DEVICE_CODE_GRANT,
+  ]);
+  const hasAuthorizationCode = configuration.grantTypes.includes('authorization_code');
+  const hasDeviceCode = configuration.grantTypes.includes(DEVICE_CODE_GRANT);
+  const deviceOnly = hasDeviceCode && !hasAuthorizationCode;
+
+  const redirectCountInvalid = deviceOnly
+    ? configuration.redirectUris.length > DEFAULT_MAX_REDIRECT_URIS
+    : configuration.redirectUris.length < 1 ||
+      configuration.redirectUris.length > DEFAULT_MAX_REDIRECT_URIS;
   if (
-    configuration.redirectUris.length < 1 ||
-    configuration.redirectUris.length > DEFAULT_MAX_REDIRECT_URIS ||
-    !validateRedirectUris([...configuration.redirectUris], false).isValid ||
+    redirectCountInvalid ||
+    (configuration.redirectUris.length > 0 &&
+      !validateRedirectUris([...configuration.redirectUris], false).isValid) ||
     configuration.redirectUris.some(containsControlCharacters) ||
     !containsOnlyUniqueValues(configuration.redirectUris)
   ) {
-    errors.push('redirectUris must contain 1 to 10 safe redirect URIs');
+    errors.push(
+      deviceOnly
+        ? 'redirectUris must contain at most 10 safe redirect URIs'
+        : 'redirectUris must contain 1 to 10 safe redirect URIs',
+    );
   }
   if (
     (configuration.postLogoutRedirectUris?.length ?? 0) > DEFAULT_MAX_REDIRECT_URIS ||
@@ -274,7 +306,11 @@ export function validateClientProtocolCompatibility(
   ) {
     errors.push('grantTypes contains an unsupported value');
   }
-  if (configuration.responseTypes.length !== 1 || configuration.responseTypes[0] !== 'code') {
+  if (deviceOnly) {
+    if (configuration.responseTypes.length !== 0) {
+      errors.push('device-only clients cannot have response types');
+    }
+  } else if (configuration.responseTypes.length !== 1 || configuration.responseTypes[0] !== 'code') {
     errors.push('responseTypes must contain only code');
   }
   if (configuration.clientType === 'public') {

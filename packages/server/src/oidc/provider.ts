@@ -22,7 +22,7 @@ import {
 } from './configuration.js';
 import { createAdapterFactory } from './adapter-factory.js';
 import { findAccount } from './account-finder.js';
-import { resolveOrgForProviderHook, resolveOrganizationId } from './org-resolution.js';
+import { resolveRequestOrganization } from './org-resolution.js';
 import { oidcCors } from '../middleware/oidc-cors.js';
 import { registerProtocolSecurityObservers } from './protocol-security-observer.js';
 
@@ -52,7 +52,33 @@ function clientOrganizationId(ctx: unknown): string | undefined {
   if (!isRecord(oidc)) return undefined;
   const client = oidc['client'];
   if (!isRecord(client)) return undefined;
-  return resolveOrganizationId(client['organizationId']);
+  const organizationId = client['organizationId'];
+  return typeof organizationId === 'string' && organizationId.length > 0
+    ? organizationId
+    : undefined;
+}
+
+/** Read the raw Node request carried by the provider's internal Koa context. */
+function providerRequest(ctx: unknown): unknown {
+  if (!isRecord(ctx)) return undefined;
+  const direct = ctx['req'];
+  if (direct !== undefined) return direct;
+  const request = ctx['request'];
+  if (isRecord(request)) return request['req'];
+  return undefined;
+}
+
+/**
+ * Resolve the organization that owns a provider interaction.
+ *
+ * The loaded client is the primary authority; the request organization is the fallback for routes
+ * with no loaded client. The client metadata carries `organizationId` as a plain UUID string.
+ *
+ * @param ctx - Provider internal Koa context
+ * @returns The organization identifier, or undefined when neither source is valid
+ */
+export function resolveInteractionOrganization(ctx: unknown): string | undefined {
+  return clientOrganizationId(ctx) ?? resolveRequestOrganization(providerRequest(ctx))?.id;
 }
 
 /**
@@ -89,14 +115,10 @@ export async function createOidcProvider(params: {
     // Also stores the auth-flow org ID in Redis so interaction handlers
     // can recover the validated client tenant after the URL slug is stripped.
     interactionUrl: (ctx, interaction) => {
-      // ctx here is the provider's internal Koa context, NOT the outer app's. The loaded client is
-      // the strongest organization signal: a client is valid only under its own organization's
-      // issuer. The request organization remains the fallback for routes with no loaded client.
-      type InternalRequest = { req?: unknown; request?: { req?: unknown } };
-      const internal = ctx as InternalRequest;
-      const request = internal.req ?? internal.request?.req;
-      const orgId =
-        clientOrganizationId(ctx) ?? resolveOrgForProviderHook(request)?.id;
+      // The loaded client is the strongest organization signal: a client is valid only under its
+      // own organization's issuer. The request organization remains the fallback for routes with no
+      // loaded client.
+      const orgId = resolveInteractionOrganization(ctx);
 
       if (orgId !== undefined && interaction?.uid) {
         getRedis()

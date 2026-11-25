@@ -17,13 +17,24 @@ import { getPool } from '../../../src/lib/database.js';
 import {
   DEVICE_CODE_RETENTION_SECONDS,
   DeviceCodeCollisionError,
+  DeviceCodeConflictError,
   PostgresAdapter,
 } from '../../../src/oidc/postgres-adapter.js';
-import { applyDeviceAuthorizationInterval } from '../../../src/oidc/provider.js';
+import {
+  applyDeviceAuthorizationInterval,
+  resolveInteractionOrganization,
+} from '../../../src/oidc/provider.js';
 
 /** Replace the pool with one resolving query. */
 function mockResolvedQuery(rows: Record<string, unknown>[] = []): ReturnType<typeof vi.fn> {
   const query = vi.fn().mockResolvedValue({ rows, rowCount: rows.length });
+  (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query });
+  return query;
+}
+
+/** Replace the pool with one query returning a controlled row count. */
+function mockRowCountQuery(rowCount: number): ReturnType<typeof vi.fn> {
+  const query = vi.fn().mockResolvedValue({ rows: rowCount > 0 ? [{ id: 'row' }] : [], rowCount });
   (getPool as ReturnType<typeof vi.fn>).mockReturnValue({ query });
   return query;
 }
@@ -125,6 +136,92 @@ describe('DeviceCode adapter retention', () => {
     for (const call of query.mock.calls) {
       expect(String(call[0])).toContain('expires_at > NOW()');
     }
+  });
+});
+
+describe('DeviceCode conditional confirmation write', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('guards only the pre-approval confirmation transition', async () => {
+    const query = mockRowCountQuery(1);
+    const adapter = new PostgresAdapter('DeviceCode');
+    await adapter.upsert('device-1', { inFlight: true }, 600);
+
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain('UPDATE oidc_payloads');
+    expect(sql).toContain("payload->>'inFlight' IS DISTINCT FROM 'true'");
+    expect(sql).not.toContain('INSERT INTO oidc_payloads');
+  });
+
+  it('rejects the second pre-approval transition with a re-render conflict', async () => {
+    mockRowCountQuery(0);
+    const adapter = new PostgresAdapter('DeviceCode');
+    await expect(adapter.upsert('device-1', { inFlight: true }, 600)).rejects.toBeInstanceOf(
+      DeviceCodeConflictError,
+    );
+  });
+
+  it('allows the completion save with an account and grant through the generic upsert', async () => {
+    const query = mockRowCountQuery(1);
+    const adapter = new PostgresAdapter('DeviceCode');
+    await adapter.upsert(
+      'device-1',
+      { inFlight: true, accountId: 'user-1', grantId: 'grant-1' },
+      600,
+    );
+
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain('INSERT INTO oidc_payloads');
+    expect(sql).toContain('ON CONFLICT');
+  });
+
+  it('allows a pre-approval error save and ignores it after approval', async () => {
+    const query = mockRowCountQuery(0);
+    const adapter = new PostgresAdapter('DeviceCode');
+    await expect(
+      adapter.upsert(
+        'device-1',
+        { inFlight: true, error: 'access_denied', errorDescription: 'denied' },
+        600,
+      ),
+    ).resolves.toBeUndefined();
+
+    const sql = String(query.mock.calls[0]?.[0]);
+    expect(sql).toContain("payload->>'accountId' IS NULL");
+    expect(sql).toContain("payload->>'grantId' IS NULL");
+    expect(sql).not.toContain('INSERT INTO oidc_payloads');
+  });
+});
+
+describe('interaction organization resolution', () => {
+  it('prefers the provider-shaped client organization string', () => {
+    expect(
+      resolveInteractionOrganization({
+        oidc: { client: { organizationId: 'client-organization' } },
+        req: { _portaOrganization: { id: 'request-organization' } },
+      }),
+    ).toBe('client-organization');
+  });
+
+  it('falls back to the request organization when no client is loaded', () => {
+    expect(
+      resolveInteractionOrganization({
+        req: { _portaOrganization: { id: 'request-organization' } },
+      }),
+    ).toBe('request-organization');
+    expect(
+      resolveInteractionOrganization({
+        oidc: { client: { organizationId: 42 } },
+        req: { _portaOrganization: { id: 'request-organization' } },
+      }),
+    ).toBe('request-organization');
+  });
+
+  it('returns undefined when neither source is valid', () => {
+    expect(resolveInteractionOrganization(undefined)).toBeUndefined();
+    expect(resolveInteractionOrganization({ oidc: {} })).toBeUndefined();
   });
 });
 

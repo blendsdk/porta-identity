@@ -302,7 +302,7 @@ describe('CLI Init Command', () => {
           clientType: 'public',
           applicationType: 'native',
           requirePkce: true,
-          grantTypes: ['authorization_code', 'refresh_token'],
+          grantTypes: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:device_code'],
         }),
       );
 

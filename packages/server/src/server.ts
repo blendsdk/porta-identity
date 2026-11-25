@@ -77,6 +77,12 @@ import { adminCors } from './middleware/admin-cors.js';
 import { oidcPreflightCors } from './middleware/oidc-preflight-cors.js';
 import { metricsCounter, metricsHandler } from './middleware/metrics.js';
 import { tokenRateLimiter, introspectionRateLimiter } from './middleware/token-rate-limiter.js';
+import {
+  countMalformedDeviceBody,
+  deviceAuthorizationRateLimiter,
+  deviceTokenRateLimiter,
+  deviceUserCodeRateLimiter,
+} from './middleware/device-rate-limiter.js';
 import { adminRateLimiter } from './middleware/admin-rate-limiter.js';
 import { adminMutationAudit } from './middleware/admin-mutation-audit.js';
 import { setAdminAuthProvider } from './middleware/admin-auth.js';
@@ -508,7 +514,20 @@ export function createApp(oidcProvider?: Provider): Koa {
       textLimit: '100kb',
     });
     oidcRouter.use(async (ctx, next) => {
-      await oidcBodyParser(ctx, next);
+      // Run only the parser here. Its own `next` is a sentinel, so a downstream tenant or provider
+      // error is not mistaken for a malformed body and counted a second time.
+      let parsed = false;
+      try {
+        await oidcBodyParser(ctx, async () => {
+          parsed = true;
+        });
+      } catch (error) {
+        // A malformed device submission cannot resolve a session or a code, but it must still
+        // consume the address budget before the parser error is returned to the caller.
+        if (!parsed) await countMalformedDeviceBody(ctx);
+        throw error;
+      }
+      await next();
     });
     oidcRouter.use(async (ctx, next) => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -525,6 +544,9 @@ export function createApp(oidcProvider?: Provider): Koa {
     // the client-tenant binding, and the provider callback so flooding is
     // rejected before that work. They match the real provider endpoints
     // (/:orgSlug/token and /:orgSlug/token/introspection).
+    oidcRouter.use(deviceAuthorizationRateLimiter());
+    oidcRouter.use(deviceTokenRateLimiter());
+    oidcRouter.use(deviceUserCodeRateLimiter(oidcProvider));
     oidcRouter.use(tokenRateLimiter());
     oidcRouter.use(introspectionRateLimiter());
 
@@ -582,6 +604,10 @@ export function createApp(oidcProvider?: Provider): Koa {
       // handlers can recover the issuer organization after the slug is stripped.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (ctx.req as any)._portaOrganization = ctx.state.organization;
+      // Provider hooks use the same address the outer limiters used. The provider always trusts
+      // proxy headers, while the outer app only does so when configured, so reading `ctx.ip` again
+      // inside the hook could derive a different key and skip the approval reset.
+      Reflect.set(ctx.req, '_portaRequestIp', ctx.ip);
 
       // Override CSP for OIDC provider responses.
       //

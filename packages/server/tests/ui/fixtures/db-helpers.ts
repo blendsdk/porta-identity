@@ -158,6 +158,22 @@ export interface DbHelpers {
 
   /** Expire OTP codes for a specific user by email (worker-safe) */
   expireOtpCodesForUser(email: string): Promise<void>;
+
+  /** Create a public device-only client in one organization and return its identifiers. */
+  createDeviceClient(
+    orgSlug: string,
+    applicationType?: 'web' | 'native',
+    requireConsent?: boolean,
+  ): Promise<{ clientId: string; clientName: string }>;
+
+  /** Delete a device client created by {@link createDeviceClient}. */
+  deleteDeviceClient(clientId: string): Promise<void>;
+
+  /** Move a DeviceCode payload expiry into the past while it is still retained. */
+  expireDeviceCode(deviceCode: string, secondsAgo?: number): Promise<void>;
+
+  /** Mark a DeviceCode as already consumed by attaching an account identifier. */
+  markDeviceCodeUsed(deviceCode: string, accountId: string): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -495,6 +511,102 @@ async function expireOtpCodesForUser(email: string): Promise<void> {
  * @returns DbHelpers instance ready for use in tests
  */
 export function createDbHelpers(): DbHelpers {
+/**
+ * Create a public device-only client in the test tenant.
+ *
+ * The UI suite needs a client that can start the real device authorization
+ * endpoint. Direct insertion mirrors the seeded fixtures and keeps the test
+ * independent of the Admin API surface that is exercised separately.
+ *
+ * @param orgSlug - Organization slug that owns the client
+ * @param applicationType - Registered application type; defaults to web
+ * @param requireConsent - Whether the existing consent page must be shown
+ * @returns Public client identifier and display name
+ */
+async function createDeviceClient(
+  orgSlug: string,
+  applicationType: 'web' | 'native' = 'web',
+  requireConsent = false,
+): Promise<{ clientId: string; clientName: string }> {
+  const db = getTestPool();
+  const organization = await db.query<{ id: string }>(
+    'SELECT id FROM organizations WHERE slug = $1',
+    [orgSlug],
+  );
+  const organizationId = organization.rows[0]?.id;
+  if (!organizationId) throw new Error(`Organization not found: ${orgSlug}`);
+
+  const application = await db.query<{ id: string }>('SELECT id FROM applications LIMIT 1');
+  const applicationId = application.rows[0]?.id;
+  if (!applicationId) throw new Error('No application is available for the device client');
+
+  const suffix = crypto.randomBytes(4).toString('hex');
+  const clientId = `device-ui-${suffix}`;
+  const clientName = `Device UI Client ${suffix}`;
+
+  await db.query(
+    `INSERT INTO clients (
+       organization_id, application_id, client_id, client_name, client_type, application_type,
+       redirect_uris, post_logout_redirect_uris, grant_types, response_types, scope,
+       token_endpoint_auth_method, allowed_origins, require_pkce, require_consent, status
+     ) VALUES (
+       $1, $2, $3, $4, 'public', $5,
+       '{}', '{}', ARRAY['urn:ietf:params:oauth:grant-type:device_code'], '{}',
+       'openid profile email offline_access', 'none', '{}', true, $6, 'active'
+     )`,
+    [organizationId, applicationId, clientId, clientName, applicationType, requireConsent],
+  );
+
+  return { clientId, clientName };
+}
+
+/**
+ * Delete a device client created by the UI fixture.
+ *
+ * @param clientId - Public client identifier
+ */
+async function deleteDeviceClient(clientId: string): Promise<void> {
+  await getTestPool().query('DELETE FROM clients WHERE client_id = $1', [clientId]);
+}
+
+/**
+ * Move a retained DeviceCode payload expiry into the past.
+ *
+ * The adapter keeps the row after the provider expiry so the token endpoint
+ * can report `expired_token`; the UI uses the same state for its expired page.
+ *
+ * @param deviceCode - Opaque device code identifier
+ * @param secondsAgo - How far in the past the payload expiry should be
+ */
+async function expireDeviceCode(deviceCode: string, secondsAgo = 60): Promise<void> {
+  await getTestPool().query(
+    `UPDATE oidc_payloads
+        SET payload = jsonb_set(
+              payload,
+              '{exp}',
+              to_jsonb((EXTRACT(EPOCH FROM NOW())::bigint - $2::bigint))
+            ),
+            expires_at = NOW() + interval '900 seconds'
+      WHERE type = 'DeviceCode' AND id = $1`,
+    [deviceCode, secondsAgo],
+  );
+}
+
+/**
+ * Mark a retained DeviceCode as already used.
+ *
+ * @param deviceCode - Opaque device code identifier
+ * @param accountId - Existing user identifier attached to the code
+ */
+async function markDeviceCodeUsed(deviceCode: string, accountId: string): Promise<void> {
+  await getTestPool().query(
+    `UPDATE oidc_payloads
+        SET payload = jsonb_set(payload, '{accountId}', to_jsonb($2::text))
+      WHERE type = 'DeviceCode' AND id = $1`,
+    [deviceCode, accountId],
+  );
+}
+
   return {
     createPasswordResetToken,
     createMagicLinkToken,
@@ -509,5 +621,9 @@ export function createDbHelpers(): DbHelpers {
     getOrgIdBySlug,
     expireAllOtpCodes,
     expireOtpCodesForUser,
+    createDeviceClient,
+    deleteDeviceClient,
+    expireDeviceCode,
+    markDeviceCodeUsed,
   };
 }

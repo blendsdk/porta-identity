@@ -1,4 +1,5 @@
 import { pino, stdSerializers } from 'pino';
+import type { DestinationStream, Logger } from 'pino';
 
 import { resolveJsonLogFormat } from './log-format.js';
 
@@ -37,60 +38,108 @@ export function observeOperationalLogOutput(observer: OperationalLogObserver): (
 
 const isTest = process.env.NODE_ENV === 'test';
 
-export const logger = pino({
-  level: process.env.LOG_LEVEL || (isTest ? 'silent' : 'info'),
-  transport: resolveJsonLogFormat()
-    ? undefined
-    : { target: 'pino-pretty', options: { colorize: true } },
-  serializers: {
-    err: stdSerializers.err,
-    req: stdSerializers.req,
-    res: stdSerializers.res,
-  },
-  hooks: {
-    logMethod(arguments_, method) {
-      if (operationalLogObservers.size > 0) {
-        const serialized = serializeOperationalLogArguments(arguments_);
-        for (const observer of operationalLogObservers) observer(serialized);
-      }
-      return method.apply(this, arguments_);
+/**
+ * Structured paths that must never reach a log sink.
+ *
+ * Pino replaces the value at each path with `[Redacted]` before the line is
+ * serialized. Device codes and user codes are bearer-like for the lifetime of
+ * an authorization, so top-level, nested and request-body forms are covered.
+ */
+const REDACT_PATHS = [
+  'password',
+  'token',
+  'authorization',
+  'cookie',
+  'refresh_token',
+  'client_secret',
+  'urn:porta:internal_application_id',
+  'req.headers.authorization',
+  'req.headers.cookie',
+  '*.password',
+  '*.token',
+  '*.refresh_token',
+  '*.client_secret',
+  '*.urn:porta:internal_application_id',
+  '*.authorization',
+  'email',
+  'userId',
+  'organizationId',
+  'uid',
+  'interactionUid',
+  '*.email',
+  '*.userId',
+  '*.organizationId',
+  '*.uid',
+  '*.interactionUid',
+  'device_code',
+  'user_code',
+  'deviceCode',
+  'userCode',
+  '*.device_code',
+  '*.user_code',
+  '*.deviceCode',
+  '*.userCode',
+  'req.body.device_code',
+  'req.body.user_code',
+] as const;
+
+/** Options accepted by the testable logger factory. */
+export interface CreateLoggerOptions {
+  /** Optional destination stream; when present, the pretty transport is not installed. */
+  destination?: DestinationStream;
+  /** Optional level override used by focused tests. */
+  level?: string;
+}
+
+/**
+ * Create one structured logger with the production redaction contract.
+ *
+ * The default export uses the configured transport. Tests can pass a writable
+ * destination and assert on the emitted bytes, which is the only way to prove
+ * that redaction happened before serialization.
+ *
+ * @param options - Optional destination stream and level override
+ * @returns Configured Pino logger
+ * @example
+ * const sink = new Writable({ write: (chunk, _encoding, done) => { lines.push(String(chunk)); done(); } });
+ * createLogger({ destination: sink, level: 'info' }).info({ device_code: 'secret' });
+ */
+export function createLogger(options: CreateLoggerOptions = {}): Logger {
+  const configuration = {
+    level: options.level ?? process.env.LOG_LEVEL ?? (isTest ? 'silent' : 'info'),
+    ...(options.destination === undefined
+      ? {
+          transport: resolveJsonLogFormat()
+            ? undefined
+            : { target: 'pino-pretty', options: { colorize: true } },
+        }
+      : {}),
+    serializers: {
+      err: stdSerializers.err,
+      req: stdSerializers.req,
+      res: stdSerializers.res,
     },
-  },
-  // Redact PII and sensitive fields from log output to prevent accidental
-  // exposure of credentials, tokens, and personal data. Pino replaces the
-  // value at each path with "[Redacted]" before the log line is serialized.
-  // Paths use dot-notation with wildcards so nested objects are also covered.
-  redact: {
-    paths: [
-      'password',
-      'token',
-      'authorization',
-      'cookie',
-      'refresh_token',
-      'client_secret',
-      'urn:porta:internal_application_id',
-      'req.headers.authorization',
-      'req.headers.cookie',
-      '*.password',
-      '*.token',
-      '*.refresh_token',
-      '*.client_secret',
-      '*.urn:porta:internal_application_id',
-      '*.authorization',
-      'email',
-      'userId',
-      'organizationId',
-      'uid',
-      'interactionUid',
-      '*.email',
-      '*.userId',
-      '*.organizationId',
-      '*.uid',
-      '*.interactionUid',
-    ],
-    censor: '[Redacted]',
-  },
-});
+    hooks: {
+      logMethod(arguments_: unknown[], method: (...args: unknown[]) => void) {
+        if (operationalLogObservers.size > 0) {
+          const serialized = serializeOperationalLogArguments(arguments_);
+          for (const observer of operationalLogObservers) observer(serialized);
+        }
+        return method.apply(this, arguments_);
+      },
+    },
+    redact: {
+      paths: [...REDACT_PATHS],
+      censor: '[Redacted]',
+    },
+  };
+  return options.destination === undefined
+    ? pino(configuration)
+    : pino(configuration, options.destination);
+}
+
+/** Process-wide structured logger. */
+export const logger = createLogger();
 
 /** Serialize one bounded logger invocation without letting observation break the owning request. */
 function serializeOperationalLogArguments(arguments_: unknown[]): string {

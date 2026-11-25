@@ -74,7 +74,7 @@ export function resolveOrganizationSlug(candidate: unknown): string | undefined 
  * @param request - Raw request or provider hook input
  * @returns An object carrying the organization identifier, or undefined
  */
-export function resolveOrgForProviderHook(request: unknown): { id: string } | undefined {
+export function resolveRequestOrganization(request: unknown): { id: string } | undefined {
   if (!isRecord(request)) return undefined;
   const id = resolveOrganizationId(request['_portaOrganization']);
   return id === undefined ? undefined : { id };

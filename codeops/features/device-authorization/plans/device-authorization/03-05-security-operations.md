@@ -85,7 +85,7 @@ Use fixed prefixes and hashed identifiers with a separator; never store raw code
 | User code | `ratelimit:device-user-code:{orgId}:{sha256(ip + '|' + sessionUid)[:16]}` |
 | User code per IP | `ratelimit:device-user-code:ip:{sha256(ip)[:16]}` |
 | Poll interval | `ratelimit:device-poll-last:{clientId}:{sha256(deviceCode)[:16]}` |
-| Poll per client | `ratelimit:device-poll:{clientId}:{sha256(ip)[:16]}` |
+| Poll per client | `ratelimit:device-poll:client:{clientId}:{sha256(ip)[:16]}` |
 | Poll per IP | `ratelimit:device-poll:ip:{sha256(ip)[:16]}` |
 | Authorized-audit idempotency | `audit:device-authorized:{sha256(jti)[:16]}` |
 | Rate-limit audit marker | `audit:device-rate-limit:{event}:{keyHash}:{windowStart}` |

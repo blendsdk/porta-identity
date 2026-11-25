@@ -19,8 +19,10 @@
  * tenant-specific branding for a rejected code.
  */
 
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { Context, Middleware } from 'koa';
 import type Provider from 'oidc-provider';
+import { HTML_CSP } from './security-headers.js';
 import { getClientByClientId } from '../clients/service.js';
 import {
   boundedNormalizedUserCode,
@@ -33,6 +35,9 @@ import { observeProtocolSecurityRejection } from '../oidc/protocol-security-obse
 
 /** Provider-shaped interaction UID: URL-safe nanoid characters only. */
 const RESUME_UID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
+
+/** The provider's base-20 device user-code alphabet. */
+const USER_CODE_ALPHABET = /^[BCDFGHJKLMNPQRSTVWXZ]+$/;
 
 /** The subset of the provider DeviceCode model used by the binding checks. */
 export interface DeviceCodeLookup {
@@ -92,7 +97,10 @@ function classifyUserCode(value: unknown):
   if (input.malformed) return { kind: 'malformed' };
   if (input.value === undefined || input.value.trim().length === 0) return { kind: 'passthrough' };
   const normalized = boundedNormalizedUserCode(input.value);
-  return normalized === undefined ? { kind: 'malformed' } : { kind: 'normalized', code: normalized };
+  if (normalized === undefined || !USER_CODE_ALPHABET.test(normalized)) {
+    return { kind: 'malformed' };
+  }
+  return { kind: 'normalized', code: normalized };
 }
 
 /** Read the device resume UID from the raw path while preserving its case. */
@@ -112,6 +120,58 @@ function resumeUid(ctx: RelativeRouteContext): string | undefined {
   if (segments[0]?.toLowerCase() !== 'device' || segments.length !== 2) return undefined;
   const uid = segments[1];
   return uid !== undefined && RESUME_UID_PATTERN.test(uid) ? uid : undefined;
+}
+
+/** Compare two secrets without leaking their length or prefix through timing. */
+function constantTimeEqual(left: string, right: string): boolean {
+  const leftDigest = createHash('sha256').update(left).digest();
+  const rightDigest = createHash('sha256').update(right).digest();
+  return timingSafeEqual(leftDigest, rightDigest);
+}
+
+/**
+ * Verify the provider XSRF value before the provider's re-render path runs.
+ *
+ * node-oidc-provider's re-render error handler generates a new XSRF on a brand-new session after the
+ * session middleware has already decided not to save it. That leaves a touched session without an
+ * expiry and makes the request fail. The provider remains authoritative: this check uses the same
+ * session state secret, and any request that passes is checked again by the provider.
+ *
+ * @param provider - Configured provider used to load the signed session
+ * @param ctx - Request context carrying the signed session cookie
+ * @param body - Parsed POST body carrying the submitted XSRF value
+ * @returns True only when the submitted value matches the current session secret
+ */
+async function hasValidProviderXsrf(
+  provider: Provider,
+  ctx: Context,
+  body: Record<string, unknown>,
+): Promise<boolean> {
+  const submitted = body['xsrf'];
+  if (typeof submitted !== 'string' || submitted.length === 0) return false;
+
+  try {
+    const cookieId = ctx.cookies.get(provider.cookieName('session'), { signed: true });
+    if (cookieId === undefined) return false;
+    const session = await provider.Session.find(cookieId);
+    const state = session?.state;
+    if (state === undefined) return false;
+    const secret = state['secret'];
+    if (typeof secret !== 'string' || secret.length === 0) return false;
+    return constantTimeEqual(secret, submitted);
+  } catch {
+    return false;
+  }
+}
+
+/** Send a minimal, resource-free response for an unverifiable device form. */
+function rejectInvalidForm(ctx: Context, orgSlug: string): void {
+  const entry = `/${orgSlug}/device`;
+  ctx.status = 400;
+  ctx.set('Content-Security-Policy', HTML_CSP);
+  ctx.set('Cache-Control', 'no-store');
+  ctx.type = 'text/html; charset=utf-8';
+  ctx.body = `<!DOCTYPE html><html><body><p>The request could not be verified.</p><p><a href="${entry}">Try again</a></p></body></html>`;
 }
 
 /** Send the single generic rejection response used by every binding failure. */
@@ -177,6 +237,13 @@ export function deviceTenantBinding(provider: Provider): Middleware {
       if (ctx.method === 'POST') {
         const body = ctx.request.body;
         if (!isRecord(body)) return next();
+        if (!(await hasValidProviderXsrf(provider, ctx, body))) {
+          rejectInvalidForm(
+            ctx,
+            resolveOrganizationSlug(ctx.state.organization) ?? ctx.params?.orgSlug ?? '',
+          );
+          return;
+        }
         const classified = classifyUserCode(body['user_code']);
         if (classified.kind === 'malformed') return rejectGeneric(ctx, undefined);
         if (classified.kind === 'normalized') {
@@ -196,6 +263,9 @@ export function deviceTenantBinding(provider: Provider): Middleware {
       const uid = resumeUid(ctx);
       if (uid === undefined) return rejectGeneric(ctx, undefined);
 
+      // The provider's resume action reads the interaction named by the signed cookie, not the URL
+      // UID. A request whose UID is the static `auth` segment must not pass through before the
+      // tenant check; the normal missing-interaction path rejects it generically.
       const interaction = await provider.Interaction.find(uid);
       const deviceCodeId = interaction?.deviceCode;
       if (typeof deviceCodeId !== 'string' || deviceCodeId.length === 0) {

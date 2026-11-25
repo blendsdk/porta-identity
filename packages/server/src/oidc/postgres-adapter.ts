@@ -52,6 +52,21 @@ export class DeviceCodeCollisionError extends errors.OIDCProviderError {
   }
 }
 
+/**
+ * Public error raised when another request already started approving the same code.
+ *
+ * The provider re-renders the code-entry page for this error. The error carries no code material
+ * and is deliberately a 200 response, matching the provider's own re-render states.
+ */
+export class DeviceCodeConflictError extends errors.OIDCProviderError {
+  constructor() {
+    super(200, 'invalid_request');
+    this.status = 200;
+    this.statusCode = 200;
+    this.expose = true;
+  }
+}
+
 /** Return true only for a non-array object. */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -132,13 +147,58 @@ export class PostgresAdapter {
       expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : null;
     }
 
+    const values = [id, this.name, JSON.stringify(payload), grantId, userCode, uid, expiresAt];
+    const hasAccountOrGrant = payload.accountId !== undefined || payload.grantId !== undefined;
+    const hasError = payload.error !== undefined || payload.errorDescription !== undefined;
+
+    // A confirmation sets only `inFlight`. Two requests can both pass the provider's read-side
+    // check, so the durable decision must be a conditional write. The completion save carries an
+    // account and grant and is allowed to update the winning row.
+    if (
+      this.name === 'DeviceCode' &&
+      payload.inFlight === true &&
+      !hasAccountOrGrant &&
+      !hasError
+    ) {
+      const result = await pool.query(
+        `UPDATE oidc_payloads
+            SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7
+          WHERE id = $1 AND type = $2
+            AND (expires_at IS NULL OR expires_at > NOW())
+            AND payload->>'inFlight' IS DISTINCT FROM 'true'
+          RETURNING id`,
+        values,
+      );
+      if (result.rowCount !== 1) throw new DeviceCodeConflictError();
+      return;
+    }
+
+    // The provider persists a user denial or a post-confirmation failure as `inFlight=true` plus
+    // an error. That save must succeed while the row is still unapproved; once an account or grant
+    // exists, the approval wins and the late error is ignored.
+    if (
+      this.name === 'DeviceCode' &&
+      hasError &&
+      !hasAccountOrGrant
+    ) {
+      await pool.query(
+        `UPDATE oidc_payloads
+            SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7
+          WHERE id = $1 AND type = $2
+            AND payload->>'accountId' IS NULL
+            AND payload->>'grantId' IS NULL`,
+        values,
+      );
+      return;
+    }
+
     try {
       await pool.query(
         `INSERT INTO oidc_payloads (id, type, payload, grant_id, user_code, uid, expires_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7)
          ON CONFLICT (id, type)
          DO UPDATE SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7`,
-        [id, this.name, JSON.stringify(payload), grantId, userCode, uid, expiresAt],
+        values,
       );
     } catch (error) {
       if (this.name === 'DeviceCode' && isDeviceCodeUserCodeCollision(error)) {

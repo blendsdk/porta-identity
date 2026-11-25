@@ -1,0 +1,17 @@
+{
+  "title": "Enter your device code",
+  "instructions": "Enter the code shown on the device you want to connect.",
+  "code_label": "Device code",
+  "code_placeholder": "BCDF-GHJK",
+  "continue": "Continue",
+  "invalid": "This code is invalid or has expired. Enter a new code.",
+  "confirm_title": "Confirm device",
+  "confirm_client": "You are signing in to {{clientName}}.",
+  "confirm_code": "Verify that this code matches the one on your device:",
+  "confirm_scopes": "This device will be allowed to access:",
+  "approve": "Approve",
+  "abort": "Abort",
+  "success_title": "Device connected",
+  "success_body": "{{clientName}} is now connected. You can return to your device.",
+  "rate_limited": "Too many attempts. Wait a moment and try again."
+}

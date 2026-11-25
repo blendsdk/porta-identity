@@ -55,6 +55,8 @@ export interface DeviceClientOptions {
   readonly requireConsent?: boolean;
   /** Requested scope string understood by the provider. */
   readonly scope?: string;
+  /** Organization default locale; defaults to English. */
+  readonly defaultLocale?: string;
 }
 
 /** Options for one isolated device-authorization fixture. */
@@ -116,6 +118,14 @@ export interface DeviceFixture {
   request(path: string, init?: RequestInit): Promise<Response>;
   /** Send a cookie-aware request; the response cookies are stored automatically. */
   browserRequest(path: string, init?: RequestInit): Promise<Response>;
+  /** Create an independent empty browser session for concurrency cases. */
+  newBrowser(): DeviceCookieJar;
+  /** Send a request with an explicit browser session. */
+  browserRequestWith(
+    browser: DeviceCookieJar,
+    path: string,
+    init?: RequestInit,
+  ): Promise<Response>;
 }
 
 /** Listen only on IPv4 loopback, using an operating-system-assigned free port. */
@@ -164,6 +174,11 @@ export async function readJson(response: Response): Promise<Record<string, unkno
   return body as Record<string, unknown>;
 }
 
+/** Build a request URL from a relative path or an absolute redirect target. */
+function requestUrl(origin: string, path: string): string {
+  return path.startsWith('http://') || path.startsWith('https://') ? path : `${origin}${path}`;
+}
+
 /** Read one required string response field. */
 export function readString(body: Record<string, unknown>, key: string): string {
   const value = body[key];
@@ -195,7 +210,10 @@ export function useDeviceFixture(options: DeviceFixtureOptions = {}): () => Devi
     await flushTestRedis();
     await seedBaseData();
 
-    const organization = await createTestOrganization({ name: 'Device Authorization Org' });
+    const organization = await createTestOrganization({
+      name: 'Device Authorization Org',
+      defaultLocale: options.defaultLocale ?? 'en',
+    });
     const application = await createTestApplication();
     const client = await createTestClient(organization.id, application.id, {
       clientType: options.clientType ?? 'public',
@@ -237,10 +255,10 @@ export function useDeviceFixture(options: DeviceFixtureOptions = {}): () => Devi
       user: createdUser?.user as User,
       password: createdUser?.password ?? DEFAULT_TEST_PASSWORD,
       browser,
-      request: (path, init) => fetch(`${origin}${path}`, { redirect: 'manual', ...init }),
+      request: (path, init) => fetch(requestUrl(origin, path), { redirect: 'manual', ...init }),
       browserRequest: async (path, init) => {
         const cookie = browser.header();
-        const response = await fetch(`${origin}${path}`, {
+        const response = await fetch(requestUrl(origin, path), {
           redirect: 'manual',
           ...init,
           headers: {
@@ -249,6 +267,20 @@ export function useDeviceFixture(options: DeviceFixtureOptions = {}): () => Devi
           },
         });
         browser.absorb(response);
+        return response;
+      },
+      newBrowser: () => new DeviceCookieJar(),
+      browserRequestWith: async (jar, path, init) => {
+        const cookie = jar.header();
+        const response = await fetch(requestUrl(origin, path), {
+          redirect: 'manual',
+          ...init,
+          headers: {
+            ...(init?.headers ?? {}),
+            ...(cookie === undefined ? {} : { Cookie: cookie }),
+          },
+        });
+        jar.absorb(response);
         return response;
       },
     };

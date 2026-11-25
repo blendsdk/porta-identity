@@ -76,6 +76,33 @@ locale values and expiries throughout rollback.
 These are operator-controlled steps. Porta does not automatically switch `default_locale`, restart
 the deployment, or perform the rollback.
 
+## Device Authorization Rollout
+
+Device authorization is a per-client grant, not a deployment setting. Enable it only after the
+upgrade is complete:
+
+1. Upgrade **every** Porta server instance to a release that understands
+   `urn:ietf:params:oauth:grant-type:device_code`. An older instance rejects a client whose stored
+   grant list contains the URN for every flow, including authorization code and refresh, during a
+   rolling deployment.
+2. Upgrade the SDK, CLI and Admin terminal in lockstep. Older readers reject the closed grant value
+   and cannot read a device-enabled client response.
+3. Enable the grant explicitly on each device client, and on the built-in admin CLI client if you
+   use `porta login --device-code`. New installations created by `porta init` already include it;
+   existing installations can run:
+
+   ```bash
+   porta client update <admin-client-id> \
+     --grant-types "authorization_code,refresh_token,urn:ietf:params:oauth:grant-type:device_code"
+   ```
+
+4. Verify a device-only client has `redirectUris: []` and `responseTypes: []`. Do not synthesize a
+   redirect URI; the provider rejects non-empty response types without a redirect.
+
+The device limits are fixed code constants, so no configuration rollout is required. Both device
+codes are redacted from structured logs, but a reverse proxy can still record the user code in the
+`verification_uri_complete` query string; restrict or redact proxy access logs for `/device`.
+
 ## External Bootstrap Settings and Secrets
 
 The following remain external, in environment variables or a secret manager, outside the editable

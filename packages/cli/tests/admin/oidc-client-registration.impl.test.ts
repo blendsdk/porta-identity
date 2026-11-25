@@ -107,6 +107,8 @@ describe('compact OIDC registration implementation', () => {
         clientType: 'confidential',
         applicationType: 'web',
         redirectUris: ['https://operations.example.test/callback'],
+        grantTypes: ['authorization_code', 'refresh_token'],
+        responseTypes: ['code'],
       },
     });
   });

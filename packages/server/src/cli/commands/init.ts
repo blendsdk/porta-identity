@@ -351,7 +351,11 @@ export const initCommand: CommandModule<GlobalOptions, InitOptions> = {
             'http://localhost/api/oidc/callback',
           ],
           postLogoutRedirectUris: ['http://127.0.0.1'],
-          grantTypes: ['authorization_code', 'refresh_token'],
+          grantTypes: [
+            'authorization_code',
+            'refresh_token',
+            'urn:ietf:params:oauth:grant-type:device_code',
+          ],
           scope: 'openid profile email offline_access',
           requirePkce: true,
         });

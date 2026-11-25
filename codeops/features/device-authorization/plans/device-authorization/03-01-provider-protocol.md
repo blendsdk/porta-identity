@@ -78,21 +78,30 @@ The user code uses node-oidc-provider's `base-20` alphabet
 
 ## DeviceCode Storage and Retention
 
-Migration `packages/server/migrations/039_device_authorization_user_code.sql`:
+Migration `packages/server/migrations/039_device_authorization_user_code.cjs`:
 
-```sql
--- Up Migration
-CREATE UNIQUE INDEX idx_oidc_payloads_device_user_code
-  ON oidc_payloads (user_code)
-  WHERE type = 'DeviceCode' AND user_code IS NOT NULL;
-
--- Down Migration
-DROP INDEX IF EXISTS idx_oidc_payloads_device_user_code;
+```js
+exports.up = (pgm) => {
+  pgm.noTransaction();
+  pgm.sql(<duplicate preflight>);
+  pgm.createIndex('oidc_payloads', ['user_code'], {
+    name: 'idx_oidc_payloads_device_user_code',
+    unique: true,
+    concurrently: true,
+    where: "type = 'DeviceCode' AND user_code IS NOT NULL",
+  });
+};
+exports.down = (pgm) => {
+  pgm.noTransaction();
+  pgm.sql('DROP INDEX IF EXISTS idx_oidc_payloads_device_user_code;');
+};
 ```
 
-Before creating the index, preflight existing rows for duplicate DeviceCode user codes and fail with
-a clear remediation. Use `CONCURRENTLY` if the migration runner supports it; the shared token table
-must not be blocked by a long index build. The existing generic `user_code` index remains.
+`oidc_payloads` stores every OIDC artifact, so a regular index build would take a `SHARE` lock that
+blocks token, session and grant writes. The migration therefore opts out of the runner transaction
+and builds the unique index with `CONCURRENTLY`. Before creating the index, preflight existing rows
+for duplicate DeviceCode user codes and fail with a clear remediation. The existing generic
+`user_code` index remains.
 
 `packages/server/src/oidc/postgres-adapter.ts` changes:
 
@@ -162,7 +171,7 @@ understands the URN before the grant is enabled on any client (03-03).
 | `packages/server/src/oidc/configuration.ts` | Enable `deviceFlow`, empty `deviceInfo`, `ttl.DeviceCode` |
 | `packages/server/src/oidc/provider.ts` | Add the interval listener |
 | `packages/server/src/oidc/postgres-adapter.ts` | DeviceCode retention, unique-collision error, zero-TTL guard |
-| `packages/server/migrations/039_device_authorization_user_code.sql` | Partial unique index and duplicate preflight |
+| `packages/server/migrations/039_device_authorization_user_code.cjs` | Partial unique index and duplicate preflight |
 
 ## Tests
 

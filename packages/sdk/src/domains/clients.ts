@@ -5,6 +5,7 @@
  */
 
 import type { HttpTransport } from '../transport/types.js';
+import { DEVICE_CODE_GRANT } from '../types/clients.js';
 import type {
   Client,
   CreateClientInput,
@@ -57,14 +58,20 @@ function isClient(value: unknown): value is Client {
     isStringArray(value.redirectUris) &&
     isStringArray(value.postLogoutRedirectUris) &&
     isStringArray(value.grantTypes) &&
+    value.grantTypes.length > 0 &&
     value.grantTypes.every(
       (grant) =>
         grant === 'authorization_code' ||
         grant === 'client_credentials' ||
-        grant === 'refresh_token',
+        grant === 'refresh_token' ||
+        grant === DEVICE_CODE_GRANT,
     ) &&
     isStringArray(value.responseTypes) &&
     value.responseTypes.every((responseType) => responseType === 'code') &&
+    (value.grantTypes.includes(DEVICE_CODE_GRANT) &&
+    !value.grantTypes.includes('authorization_code')
+      ? value.responseTypes.length === 0 && value.redirectUris.length <= 10
+      : value.responseTypes.length === 1 && value.redirectUris.length >= 1) &&
     typeof value.scope === 'string' &&
     (value.tokenEndpointAuthMethod === 'client_secret_basic' ||
       value.tokenEndpointAuthMethod === 'client_secret_post' ||

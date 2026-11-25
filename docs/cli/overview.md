@@ -62,6 +62,9 @@ porta login
 # Login with explicit server URL
 porta login --server https://porta.example.com:3443
 
+# Device login when no browser can reach this machine
+porta login --device-code --server https://porta.example.com:3443
+
 # Check current identity
 porta whoami
 
@@ -70,6 +73,15 @@ porta logout
 ```
 
 Credentials are stored at `~/.porta/credentials.json` with `0600` permissions.
+
+`--device-code` selects the RFC 8628 device grant instead of opening a browser. The CLI prints the
+verification URL and user code (never the device code), polls at the advertised interval and stores
+the same credential shape. The admin CLI client must have the device grant; new `porta init`
+installations include it, and existing installations can enable it with `porta client update`.
+After the token request is sent, a timeout or `5xx` is not retried: the device code is single-use and
+a replay would revoke the first token set, so the CLI asks for a new login instead. The server
+limits device polling and verification with fixed budgets documented in
+[the device authorization grant](../concepts/oidc.md#device-authorization-grant).
 
 ## Interactive Administration Shell
 

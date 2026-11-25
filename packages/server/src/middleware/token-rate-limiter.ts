@@ -28,6 +28,9 @@
 import type { Context, Middleware } from 'koa';
 import { checkRateLimit } from '../auth/rate-limiter.js';
 import type { RateLimitConfig } from '../auth/rate-limiter.js';
+import { DEVICE_CODE_GRANT } from '../clients/validators.js';
+import { relativeOidcRoute } from '../oidc/org-resolution.js';
+import { isBoundedDeviceCode } from './device-rate-limit-keys.js';
 import { logger } from '../lib/logger.js';
 
 // ---------------------------------------------------------------------------
@@ -49,6 +52,11 @@ export const TOKEN_PATH_REGEX = /^\/[a-z0-9][a-z0-9-]*\/token$/;
 /** Maximum length of a client identifier accepted for rate-limit bucketing. */
 const MAX_CLIENT_KEY_LENGTH = 255;
 
+/** Return true only for a non-array object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
 /**
  * Extract the presented OAuth client identifier for rate-limit bucketing.
  *
@@ -63,7 +71,7 @@ const MAX_CLIENT_KEY_LENGTH = 255;
  * @param ctx - Koa context whose parsed body and Authorization header are read
  * @returns The presented client identifier, or `unknown` when none is present
  */
-function presentedClientId(ctx: Context): string {
+export function presentedClientId(ctx: Context): string {
   const body = ctx.request.body as Record<string, unknown> | undefined;
   const bodyClientId = body?.['client_id'];
   if (
@@ -156,8 +164,19 @@ function denyRateLimited(ctx: Context, retryAfter: number, description: string):
 export function tokenRateLimiter(): Middleware {
   return async function tokenRateLimiterMiddleware(ctx, next) {
     // Only rate-limit POST to the token endpoint — GET, OPTIONS, etc.
-    // and all non-token paths pass through immediately.
-    if (ctx.method !== 'POST' || !TOKEN_PATH_REGEX.test(ctx.path)) {
+    // and all non-token paths pass through immediately. The shared relative path helper makes
+    // case and trailing-slash variants spend the same budget as the canonical path.
+    if (ctx.method !== 'POST' || relativeOidcRoute(ctx) !== '/token') {
+      return next();
+    }
+
+    // A device poll has its own fixed budget and soft interval. Exempt only an exact device-grant
+    // request with a non-empty device_code; malformed or ambiguous input keeps the generic limits.
+    const parsedBody = isRecord(ctx.request.body) ? ctx.request.body : undefined;
+    if (
+      parsedBody?.['grant_type'] === DEVICE_CODE_GRANT &&
+      isBoundedDeviceCode(parsedBody?.['device_code'])
+    ) {
       return next();
     }
 

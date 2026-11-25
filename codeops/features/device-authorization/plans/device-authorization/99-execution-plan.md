@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-25 13:39
-> **Progress**: 14/87 tasks (16%)
+> **Last Updated**: 2026-11-25 15:34
+> **Progress**: 70/87 tasks (80%)
 > **Execution Mode**: `--auto-commit` (exec-plan commits via the git-commit skill; this plan contains no git commands)
 > **CodeOps Artifact Schema**: 1
 
@@ -95,7 +95,7 @@ DeviceCode correctly.
 ### Step 1.2: Implementation
 
 - [x] 1.2.1 Add the shared `relativeOidcRoute`, `resolveOrganizationId` and exact bounded normalizer helpers — `packages/server/src/oidc/org-resolution.ts` ✅ (completed: 2026-11-25 13:38)
-- [x] 1.2.2 Add migration 039 with duplicate preflight and the partial unique index — `packages/server/migrations/039_device_authorization_user_code.sql` ✅ (completed: 2026-11-25 13:38)
+- [x] 1.2.2 Add migration 039 with duplicate preflight and the partial unique index — `packages/server/migrations/039_device_authorization_user_code.cjs` ✅ (completed: 2026-11-25 13:38)
 - [x] 1.2.3 Add DeviceCode retention, zero-TTL guard and custom exposed 503 collision error — `packages/server/src/oidc/postgres-adapter.ts` ✅ (completed: 2026-11-25 13:38)
 - [x] 1.2.4 Implement organization binding for entry, confirmation and resume, with UID-case preservation, the typed `ignoreSessionBinding` resume wrapper, resume-cookie check, HEAD guard and rejection observation — `packages/server/src/middleware/device-tenant.ts` ✅ (completed: 2026-11-25 13:38)
 - [x] 1.2.5 Mount the tenant binding and HEAD guards; prefer the loaded client organization in `interactionUrl` — `packages/server/src/server.ts`, `packages/server/src/oidc/provider.ts` ✅ (completed: 2026-11-25 13:38)
@@ -107,8 +107,8 @@ DeviceCode correctly.
 - [x] 1.3.1 Write adapter/retention/collision/TTL/interval implementation tests — `packages/server/tests/unit/oidc/device-authorization.impl.test.ts` ✅ (completed: 2026-11-25 13:39)
 - [x] 1.3.2 Write path/normalizer/resume implementation tests (mixed case, encoded, overlong, `ß`/`İ`/fullwidth) — `packages/server/tests/unit/oidc/org-resolution.impl.test.ts` ✅ (completed: 2026-11-25 13:39)
 - [x] 1.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 13:39)
-- [ ] 1.3.4 Run the required `oidc-provider-reviewer` specialist review and resolve findings
-- [ ] 1.3.5 Phase gate: run the narrow unit/integration/E2E suites and `pnpm test:structure`; record CI `pnpm verify` (CI)
+- [x] 1.3.4 Run the required `oidc-provider-reviewer` specialist review and resolve findings ✅ (completed: 2026-11-25 15:34)
+- [x] 1.3.5 Phase gate: run the narrow unit/integration/E2E suites and `pnpm test:structure`; record CI `pnpm verify` (CI) ✅ (completed: 2026-11-25 15:34)
 
 **Deliverables**: feature enabled only with the tenant binding; discovery and provider errors
 correct; migration/adapter retention and uniqueness correct; path/normalizer helpers tested;
@@ -130,31 +130,31 @@ concurrent-approval controls before client enablement.
 
 ### Step 2.1: Specification Tests
 
-- [ ] 2.1.1 [spec-author] Write branded-page/SSO/2FA/consent UI spec tests ST-12–ST-14 and the unknown-locale fallback ST-34 — `packages/server/tests/ui/flows/device-authorization.spec.ts`
-- [ ] 2.1.2 [spec-author] Add limiter/audit/concurrency integration spec cases ST-23–ST-27, ST-31 and the logger destination-stream redaction spec ST-28 — `packages/server/tests/integration/oidc/device-authorization.spec.test.ts`, `packages/server/tests/unit/lib/logger-device-redaction.spec.test.ts`
-- [ ] 2.1.3 [spec-author] Add the XSRF negative, scope-source and terminal-control cases — the UI/E2E/CLI files from 07
-- [ ] 2.1.4 Run the spec files and record the red phase
+- [x] 2.1.1 [spec-author] Write branded-page/SSO/2FA/consent UI spec tests ST-12–ST-14 and the unknown-locale fallback ST-34 — `packages/server/tests/ui/flows/device-authorization.spec.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.1.2 [spec-author] Add limiter/audit/concurrency integration spec cases ST-23–ST-27, ST-31 and the logger destination-stream redaction spec ST-28 — `packages/server/tests/integration/oidc/device-authorization.spec.test.ts`, `packages/server/tests/unit/lib/logger-device-redaction.spec.test.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.1.3 [spec-author] Add the XSRF negative, scope-source and terminal-control cases — the UI/E2E/CLI files from 07 ✅ (completed: 2026-11-25 14:28)
+- [x] 2.1.4 Run the spec files and record the red phase ✅ (completed: 2026-11-25 14:28)
 
 ### Step 2.2: Implementation
 
-- [ ] 2.2.1 Register the `device` i18n namespace and update the exact-namespace tests — `packages/server/src/auth/i18n.ts`, `packages/server/tests/unit/auth/invitation-locales.spec.test.ts`, `packages/server/tests/unit/lib/system-config-catalog.spec.test.ts`
-- [ ] 2.2.2 Add the page hooks, org/locale/branding/`t`/CSRF context, `deviceCode.params.scope` source, generic abort page and CSP — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/oidc/configuration.ts`
-- [ ] 2.2.3 Add the three templates and en/nl `device.json` keys — `packages/server/templates/default/pages/`, `packages/server/locales/default/`
-- [ ] 2.2.4 Add fixed constants, shared path predicate, key builders, hard-counters-first ordering and the pre-parser malformed counter — `packages/server/src/middleware/device-rate-limiter.ts`
-- [ ] 2.2.5 Exempt the device grant from the generic token limiter, use the shared path predicate there, update the existing token-limiter tests, and mount all device limiters before `oidcClientTenantBinding` — `packages/server/src/middleware/token-rate-limiter.ts`, `packages/server/tests/unit/middleware/token-rate-limiter.test.ts`, `packages/server/src/server.ts`
-- [ ] 2.2.6 Resolve the provider session UID for the user-code key (`deviceUserCodeRateLimiter(provider)`); reset only the primary counter in `successSource`; never reset the per-IP aggregate — `packages/server/src/middleware/device-rate-limiter.ts`, `packages/server/src/oidc/device-pages.ts`
-- [ ] 2.2.7 Add authorized/denied audit with hashed `jti`, NX per window, consent-entity resolution, `err.cause` classification and audit-before-render — `packages/server/src/oidc/device-pages.ts`
-- [ ] 2.2.8 Add the durable pre-approval conditional confirmation write; allow the later accountId/grantId completion save and the pre-approval error/denial save (never overwrite an approved row), and add the concurrency/denial tests — `packages/server/src/oidc/postgres-adapter.ts`
-- [ ] 2.2.9 Add Pino redaction paths and a test-only destination seam; do not add a URL sanitizer — `packages/server/src/lib/logger.ts`
-- [ ] 2.2.10 Add cleanup: purge on approval/login entry, HEAD guards, `device` reserved slug and deletion/logout verification — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/server.ts`, `packages/server/src/organizations/slugs.ts`
-- [ ] 2.2.11 Run the spec files green; fix implementation only
+- [x] 2.2.1 Register the `device` i18n namespace and update the exact-namespace tests — `packages/server/src/auth/i18n.ts`, `packages/server/tests/unit/auth/invitation-locales.spec.test.ts`, `packages/server/tests/unit/lib/system-config-catalog.spec.test.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.2 Add the page hooks, org/locale/branding/`t`/CSRF context, `deviceCode.params.scope` source, generic abort page and CSP — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/oidc/configuration.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.3 Add the three templates and en/nl `device.json` keys — `packages/server/templates/default/pages/`, `packages/server/locales/default/` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.4 Add fixed constants, shared path predicate, key builders, hard-counters-first ordering and the pre-parser malformed counter — `packages/server/src/middleware/device-rate-limiter.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.5 Exempt the device grant from the generic token limiter, use the shared path predicate there, update the existing token-limiter tests, and mount all device limiters before `oidcClientTenantBinding` — `packages/server/src/middleware/token-rate-limiter.ts`, `packages/server/tests/unit/middleware/token-rate-limiter.test.ts`, `packages/server/src/server.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.6 Resolve the provider session UID for the user-code key (`deviceUserCodeRateLimiter(provider)`); reset only the primary counter in `successSource`; never reset the per-IP aggregate — `packages/server/src/middleware/device-rate-limiter.ts`, `packages/server/src/oidc/device-pages.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.7 Add authorized/denied audit with hashed `jti`, NX per window, consent-entity resolution, `err.cause` classification and audit-before-render — `packages/server/src/oidc/device-pages.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.8 Add the durable pre-approval conditional confirmation write; allow the later accountId/grantId completion save and the pre-approval error/denial save (never overwrite an approved row), and add the concurrency/denial tests — `packages/server/src/oidc/postgres-adapter.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.9 Add Pino redaction paths and a test-only destination seam; do not add a URL sanitizer — `packages/server/src/lib/logger.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.10 Add cleanup: purge on approval/login entry, HEAD guards, `device` reserved slug and deletion/logout verification — `packages/server/src/oidc/device-pages.ts`, `packages/server/src/server.ts`, `packages/server/src/organizations/slugs.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.2.11 Run the spec files green; fix implementation only ✅ (completed: 2026-11-25 14:28)
 
 ### Step 2.3: Implementation Tests and Hardening
 
-- [ ] 2.3.1 Add accessibility/page-quality and XSRF negative coverage plus the page-hook implementation tests (form/XSRF/escaping/locale/scope) — `packages/server/tests/ui/flows/device-authorization.spec.ts`, `packages/server/tests/unit/oidc/device-pages.impl.test.ts`
-- [ ] 2.3.2 Write limiter/audit/concurrency implementation tests — `packages/server/tests/unit/middleware/device-rate-limiter.impl.test.ts`, `packages/server/tests/unit/lib/device-audit.impl.test.ts`
-- [ ] 2.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs`
-- [ ] 2.3.4 Run `pnpm test:ui` and the retained `pnpm harness:test`; record the run ids
+- [x] 2.3.1 Add accessibility/page-quality and XSRF negative coverage plus the page-hook implementation tests (form/XSRF/escaping/locale/scope) — `packages/server/tests/ui/flows/device-authorization.spec.ts`, `packages/server/tests/unit/oidc/device-pages.impl.test.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.3.2 Write limiter/audit/concurrency implementation tests — `packages/server/tests/unit/middleware/device-rate-limiter.impl.test.ts`, `packages/server/tests/unit/lib/device-audit.impl.test.ts` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 14:28)
+- [x] 2.3.4 Run `pnpm test:ui` and the retained `pnpm harness:test`; record the run ids ✅ (completed: 2026-11-25 14:28)
 - [ ] 2.3.5 Run the `oidc-provider-reviewer` review and resolve findings
 - [ ] 2.3.6 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI)
 
@@ -177,33 +177,33 @@ everywhere, and gate the fleet upgrade.
 
 ### Step 3.1: Specification Tests
 
-- [ ] 3.1.1 [spec-author] Write the integration Admin API spec tests ST-15, ST-16 and the server-validator helper regression — `packages/server/tests/integration/admin/client-device-grant.spec.test.ts`, `packages/server/tests/unit/clients/device-grant.spec.test.ts`
-- [ ] 3.1.2 [spec-author] Write SDK spec tests ST-17 — `packages/sdk/tests/domains/clients-device-grant.spec.test.ts`
-- [ ] 3.1.3 [spec-author] Write CLI client-command spec tests ST-18 — `packages/cli/tests/commands/client-device-grant.spec.test.ts`
-- [ ] 3.1.4 [spec-author] Write Admin terminal and portability spec tests ST-19, ST-32 — `packages/cli/tests/admin/oidc-client-device-grant.spec.test.ts`, `packages/server/tests/integration/admin/portability-device-grant.spec.test.ts`
-- [ ] 3.1.5 Run the spec files and record the red phase
+- [x] 3.1.1 [spec-author] Write the integration Admin API spec tests ST-15, ST-16 and the server-validator helper regression — `packages/server/tests/integration/admin/client-device-grant.spec.test.ts`, `packages/server/tests/unit/clients/device-grant.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.1.2 [spec-author] Write SDK spec tests ST-17 — `packages/sdk/tests/domains/clients-device-grant.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.1.3 [spec-author] Write CLI client-command spec tests ST-18 — `packages/cli/tests/commands/client-device-grant.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.1.4 [spec-author] Write Admin terminal and portability spec tests ST-19, ST-32 — `packages/cli/tests/admin/oidc-client-device-grant.spec.test.ts`, `packages/server/tests/integration/admin/portability-device-grant.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.1.5 Run the spec files and record the red phase ✅ (completed: 2026-11-25 15:34)
 
 ### Step 3.2: Implementation
 
-- [ ] 3.2.1 Add the server constant, grant/response-type enums and conditional response-type rule — `packages/server/src/clients/validators.ts`
-- [ ] 3.2.2 Gate the empty redirect array in create/update and extend the Admin API/service schemas — `packages/server/src/clients/service.ts`, `packages/server/src/routes/clients.ts`
-- [ ] 3.2.3 Extend SDK types and exports (grant union, response-type/empty-array input) — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/types/index.ts`, `packages/sdk/src/index.ts`
-- [ ] 3.2.4 Extend the SDK runtime response validator — `packages/sdk/src/domains/clients.ts`
-- [ ] 3.2.5 Add `--grant-types`, optional/clearable redirects and automatic empty response types — `packages/cli/src/commands/client.ts`
-- [ ] 3.2.6 Extend Admin terminal state and parser (grant union, redirect minimum 0, empty response types) — `packages/cli/src/admin/client-state.ts`, `packages/cli/src/admin/client-service.ts`
-- [ ] 3.2.7 Extend the Admin terminal Protocol editor, registration dialog and last-redirect guards — `packages/cli/src/admin/client-workspace.ts`, `client-registration-dialog.ts`, `client-authentication-dialog.ts`
-- [ ] 3.2.8 Extend the portability schema and round-trip — `packages/server/src/portability/schema.ts`
-- [ ] 3.2.9 Add the grant to the new admin CLI client and update the exact-grant tests — `packages/server/src/cli/commands/init.ts`, `packages/server/tests/unit/cli/commands/init.test.ts`, `packages/server/tests/integration/cli/init.test.ts`
-- [ ] 3.2.10 Update API, CLI, OIDC, capabilities, custom-UI and operational documentation — `docs/`
-- [ ] 3.2.11 Add the server-fleet upgrade gate/release note — release documentation
-- [ ] 3.2.12 Run the spec files green; fix implementation only
+- [x] 3.2.1 Add the server constant, grant/response-type enums and conditional response-type rule — `packages/server/src/clients/validators.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.2 Gate the empty redirect array in create/update and extend the Admin API/service schemas — `packages/server/src/clients/service.ts`, `packages/server/src/routes/clients.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.3 Extend SDK types and exports (grant union, response-type/empty-array input) — `packages/sdk/src/types/clients.ts`, `packages/sdk/src/types/index.ts`, `packages/sdk/src/index.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.4 Extend the SDK runtime response validator — `packages/sdk/src/domains/clients.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.5 Add `--grant-types`, optional/clearable redirects and automatic empty response types — `packages/cli/src/commands/client.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.6 Extend Admin terminal state and parser (grant union, redirect minimum 0, empty response types) — `packages/cli/src/admin/client-state.ts`, `packages/cli/src/admin/client-service.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.7 Extend the Admin terminal Protocol editor, registration dialog and last-redirect guards — `packages/cli/src/admin/client-workspace.ts`, `client-registration-dialog.ts`, `client-authentication-dialog.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.8 Extend the portability schema and round-trip — `packages/server/src/portability/schema.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.9 Add the grant to the new admin CLI client and update the exact-grant tests — `packages/server/src/cli/commands/init.ts`, `packages/server/tests/unit/cli/commands/init.test.ts`, `packages/server/tests/integration/cli/init.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.10 Update API, CLI, OIDC, capabilities, custom-UI and operational documentation — `docs/` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.11 Add the server-fleet upgrade gate/release note — release documentation ✅ (completed: 2026-11-25 15:34)
+- [x] 3.2.12 Run the spec files green; fix implementation only ✅ (completed: 2026-11-25 15:34)
 
 ### Step 3.3: Implementation Tests and Hardening
 
-- [ ] 3.3.1 Write conditional-redirect/response-type/terminal-parser/CLI-flag implementation tests — `packages/server/tests/unit/clients/device-grant.impl.test.ts`, `packages/cli/tests/admin/oidc-client-device-grant.impl.test.ts`
-- [ ] 3.3.2 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs`
+- [x] 3.3.1 Write conditional-redirect/response-type/terminal-parser/CLI-flag implementation tests — `packages/server/tests/unit/clients/device-grant.impl.test.ts`, `packages/cli/tests/admin/oidc-client-device-grant.impl.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 3.3.2 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 15:34)
 - [ ] 3.3.3 Run `pnpm docs:build` and `pnpm assurance:compat --select compatibility`; describe it truthfully
-- [ ] 3.3.4 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI)
+- [x] 3.3.4 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI) ✅ (completed: 2026-11-25 15:34)
 
 **Deliverables**: one consistent client contract; device-only creation with zero redirects and empty
 response types; terminal/portability/SDK/CLI parity; fleet gate; docs and lockstep notes.
@@ -223,27 +223,27 @@ the no-retry polling contract.
 
 ### Step 4.1: Specification Tests
 
-- [ ] 4.1.1 [spec-author] Write coordinator/polling/missing-support spec tests ST-21, ST-33 — `packages/cli/tests/auth/device-flow.spec.test.ts`
-- [ ] 4.1.2 [spec-author] Write device ID-token verifier spec tests ST-22 — `packages/cli/tests/auth/device-id-token.spec.test.ts`
-- [ ] 4.1.3 [spec-author] Write the command wiring/output regression and the live CLI E2E spec test ST-20; seed a granted admin CLI client for the E2E — `packages/cli/tests/commands/login-device-code.spec.test.ts`, `packages/server/tests/e2e/flows/device-cli-login.spec.test.ts`
-- [ ] 4.1.4 Run the spec files and record the red phase
+- [x] 4.1.1 [spec-author] Write coordinator/polling/missing-support spec tests ST-21, ST-33 — `packages/cli/tests/auth/device-flow.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.1.2 [spec-author] Write device ID-token verifier spec tests ST-22 — `packages/cli/tests/auth/device-id-token.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.1.3 [spec-author] Write the command wiring/output regression and the live CLI E2E spec test ST-20; seed a granted admin CLI client for the E2E — `packages/cli/tests/commands/login-device-code.spec.test.ts`, `packages/server/tests/e2e/flows/device-cli-login.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.1.4 Run the spec files and record the red phase ✅ (completed: 2026-11-25 15:34)
 
 ### Step 4.2: Implementation
 
-- [ ] 4.2.1 Implement discovery, authorization, token and credential orchestration — `packages/cli/src/auth/device-flow.ts`
-- [ ] 4.2.2 Implement the polling loop, interval/`slow_down`/429 clamp/no-retry/unknown-error/deadline/abort boundaries — `packages/cli/src/auth/device-poll.ts`
-- [ ] 4.2.3 Add `verifyDeviceIdToken` without weakening the nonce verifier; add the supplied-nonce regression — `packages/cli/src/auth/id-token-verifier.ts`
-- [ ] 4.2.4 Add `--device-code`, branching, expiry hint, terminal-control rejection and output — `packages/cli/src/commands/login.ts`, `packages/cli/src/auth/device-flow.ts`
-- [ ] 4.2.5 Update CLI overview/login documentation — `docs/cli/overview.md`, related docs
-- [ ] 4.2.6 Add the live CLI E2E against the shared server and credential cleanup — `packages/server/tests/e2e/flows/device-cli-login.spec.test.ts`
-- [ ] 4.2.7 Run the spec files green; fix implementation only
+- [x] 4.2.1 Implement discovery, authorization, token and credential orchestration — `packages/cli/src/auth/device-flow.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.2.2 Implement the polling loop, interval/`slow_down`/429 clamp/no-retry/unknown-error/deadline/abort boundaries — `packages/cli/src/auth/device-poll.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.2.3 Add `verifyDeviceIdToken` without weakening the nonce verifier; add the supplied-nonce regression — `packages/cli/src/auth/id-token-verifier.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.2.4 Add `--device-code`, branching, expiry hint, terminal-control rejection and output — `packages/cli/src/commands/login.ts`, `packages/cli/src/auth/device-flow.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.2.5 Update CLI overview/login documentation — `docs/cli/overview.md`, related docs ✅ (completed: 2026-11-25 15:34)
+- [x] 4.2.6 Add the live CLI E2E against the shared server and credential cleanup — `packages/server/tests/e2e/flows/device-cli-login.spec.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.2.7 Run the spec files green; fix implementation only ✅ (completed: 2026-11-25 15:34)
 
 ### Step 4.3: Implementation Tests and Hardening
 
-- [ ] 4.3.1 Write polling/no-retry/429-clamp/unknown-error/abort/response-bound/terminal-control implementation tests — `packages/cli/tests/auth/device-flow.impl.test.ts`
-- [ ] 4.3.2 Verify existing credential persistence and refresh compatibility with device-issued tokens
-- [ ] 4.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs`
-- [ ] 4.3.4 Phase gate: run the CLI suites, the live E2E and `pnpm test:structure`; record CI `pnpm verify` (CI)
+- [x] 4.3.1 Write polling/no-retry/429-clamp/unknown-error/abort/response-bound/terminal-control implementation tests — `packages/cli/tests/auth/device-flow.impl.test.ts` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.3.2 Verify existing credential persistence and refresh compatibility with device-issued tokens ✅ (completed: 2026-11-25 15:34)
+- [x] 4.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 15:34)
+- [x] 4.3.4 Phase gate: run the CLI suites, the live E2E and `pnpm test:structure`; record CI `pnpm verify` (CI) ✅ (completed: 2026-11-25 15:34)
 
 **Deliverables**: full CLI device login; no device-code leakage; no-retry/429/unknown-error
 behavior; live E2E evidence; existing login unchanged.

@@ -16,8 +16,15 @@ export type ClientStatus = 'active' | 'inactive';
 export type ClientType = 'public' | 'confidential';
 /** Client deployment model used for protocol defaults. */
 export type ApplicationType = 'web' | 'native' | 'spa';
+/** Full RFC 8628 device authorization grant value stored on a client. */
+export const DEVICE_CODE_GRANT = 'urn:ietf:params:oauth:grant-type:device_code' as const;
+
 /** OAuth grants supported by Porta client registrations. */
-export type GrantType = 'authorization_code' | 'client_credentials' | 'refresh_token';
+export type GrantType =
+  | 'authorization_code'
+  | 'client_credentials'
+  | 'refresh_token'
+  | typeof DEVICE_CODE_GRANT;
 /** OIDC response types supported by Porta. */
 export type ResponseType = 'code';
 /** Client-secret lifecycle state exposed by metadata responses. */

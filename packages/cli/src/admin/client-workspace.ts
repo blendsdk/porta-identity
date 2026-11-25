@@ -29,6 +29,7 @@ import { formatAdminDateTime, formatOptionalAdminDateTime } from './admin-date-t
 import type { AdminApplication } from './application-state.js';
 import { authenticationUrlRows } from './client-authentication-dialog.js';
 import type { AdminAuthenticationUrlRow } from './client-authentication-dialog.js';
+import { DEVICE_CODE_GRANT } from './client-state.js';
 import type {
   AdminClient,
   AdminClientProjection,
@@ -188,6 +189,8 @@ function protocolIsValid(
   scope: string,
 ): boolean {
   if (!grants.some(Boolean) || !validScope(scope)) return false;
+  const deviceOnly = grants[3] === true && grants[0] !== true;
+  if (!deviceOnly && client.redirectUris.length < 1) return false;
   if (client.clientType === 'public') {
     return authenticationMethod === 2 && requirePkce && !grants[1];
   }
@@ -198,7 +201,7 @@ function protocolIsValid(
 export function createAdminClientWorkspace(
   options: AdminClientWorkspaceOptions,
 ): AdminClientWorkspace {
-  const content = new Dialog({ title: 'OIDC Clients', width: 72, height: 20 });
+  const content = new Dialog({ title: 'OIDC Clients', width: 72, height: 22 });
   content.closable = false;
   content.resizable = false;
   content.zoomable = false;
@@ -368,7 +371,9 @@ export function createAdminClientWorkspace(
       disabled: () => {
         const target = selectedRow();
         return !options.capabilities.canUpdateClients || target === null ||
-          (target.kind === 'redirect' && selected.redirectUris.length === 1);
+          (target.kind === 'redirect' &&
+            selected.redirectUris.length === 1 &&
+            selected.grantTypes.includes('authorization_code'));
       },
       onClick: () => {
         const target = selectedRow.peek();
@@ -396,7 +401,12 @@ export function createAdminClientWorkspace(
   /** Edits and saves protocol values directly inside the Protocol tab. */
   const protocolSection = (projection: Exclude<AdminClientProjection, { kind: 'list' }>): View => {
     const selected = projection.client;
-    const grantNames = ['authorization_code', 'client_credentials', 'refresh_token'] as const;
+    const grantNames = [
+      'authorization_code',
+      'client_credentials',
+      'refresh_token',
+      DEVICE_CODE_GRANT,
+    ] as const;
     const authenticationNames = ['client_secret_basic', 'client_secret_post', 'none'] as const;
     const initialGrants = grantNames.map((grant) => selected.grantTypes.includes(grant));
     const initialAuthentication = authenticationNames.indexOf(selected.tokenEndpointAuthMethod);
@@ -407,7 +417,12 @@ export function createAdminClientWorkspace(
     const scope = signal(selected.scope);
     const submitted = signal(false);
     const grantChoices = new CheckGroup({
-      labels: ['Authorization code', 'Client credentials', 'Refresh token'],
+      labels: [
+        'Authorization code',
+        'Client credentials',
+        'Refresh token',
+        'Device authorization',
+      ],
       value: grants,
     });
     const scopeInput = new Input({
@@ -457,7 +472,8 @@ export function createAdminClientWorkspace(
             grantTypes: grants
               .peek()
               .flatMap((enabled, index) => (enabled ? [grantNames[index]!] : [])),
-            responseTypes: ['code'],
+            responseTypes:
+              grants.peek()[3] === true && grants.peek()[0] !== true ? [] : ['code'],
             scope: scope.peek(),
             tokenEndpointAuthMethod: authenticationNames[authenticationMethod.peek()]!,
             requirePkce: requirePkce.peek(),
@@ -467,19 +483,25 @@ export function createAdminClientWorkspace(
       },
     });
     const form = col(
-      { gap: 1 },
+      { gap: 0 },
       fixed(
         row(
           { gap: 1 },
           grow(new Text(`Client type: ${selected.clientType} (read only)`)),
-          grow(new Text('Response type: code (read only)')),
+          grow(
+            new Text(() =>
+              grants.peek()[3] === true && grants.peek()[0] !== true
+                ? 'Response type: none (device-only)'
+                : 'Response type: code',
+            ),
+          ),
         ),
         1,
       ),
       fixed(
         row(
           { gap: 2 },
-          grow(col({}, fixed(new Text('Grant types'), 1), fixed(grantChoices, 3))),
+          grow(col({}, fixed(new Text('Grant types'), 1), fixed(grantChoices, 4))),
           grow(
             col(
               {},
@@ -488,7 +510,7 @@ export function createAdminClientWorkspace(
             ),
           ),
         ),
-        4,
+        5,
       ),
       fixed(row({ gap: 1 }, fixed(new Label('Scope', scopeInput), 18), grow(scopeInput)), 1),
       fixed(
