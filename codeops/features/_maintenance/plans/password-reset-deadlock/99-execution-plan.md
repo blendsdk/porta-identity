@@ -3,6 +3,7 @@
 > **Type**: Task (lightweight) · **Feature**: _maintenance · **CodeOps Artifact Schema**: 1
 > **Progress**: 9/9 tasks (100%)
 > **Issue**: [#255](https://github.com/blendsdk/porta-identity/issues/255)
+> **Pull request**: [#256](https://github.com/blendsdk/porta-identity/pull/256)
 > **Branch**: `fix/password-reset-deadlock`
 
 ## Objective
@@ -148,6 +149,7 @@ pnpm test:structure
 | Structure | 179 passed |
 | Browser UI (CI-equivalent single worker) | 142 passed, including the account-lockout test |
 | Typecheck and lint | passed |
+| CI at `e31932d4` (runs `45707291412`, `45707324760`) | all six jobs passed: Verify Monorepo, UI Tests, OIDC Harness, Public Documentation, Production Docker Build, Production Dependency Audit |
 
 The local browser suite defaults to four workers, while CI sets one. Under four workers the reset
 tests share one account and legitimately invalidate each other's links, so that local-only
