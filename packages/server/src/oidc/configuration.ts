@@ -43,6 +43,7 @@ import {
   TENANT_USER_READ_SCOPE,
   TENANT_USER_WRITE_SCOPE,
 } from './scopes.js';
+import { DEVICE_CODE_TTL_SECONDS } from './postgres-adapter.js';
 import { resolveResourceServerInfo } from './resource-servers.js';
 import type { ResourceServerResolver } from './resource-servers.js';
 import {
@@ -89,7 +90,7 @@ const INTERNAL_APPLICATION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4
  * Device codes are intentionally short-lived and are not an operator setting. The PostgreSQL
  * adapter retains the row beyond this value so the token endpoint can report `expired_token`.
  */
-export const DEVICE_CODE_TTL_SECONDS = 600;
+export { DEVICE_CODE_TTL_SECONDS };
 
 /**
  * Fixed polling interval advertised to device clients, in seconds.

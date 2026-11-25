@@ -30,6 +30,17 @@ import { logger } from '../lib/logger.js';
  */
 export const DEVICE_CODE_RETENTION_SECONDS = 900;
 
+/** Fixed provider lifetime of a device authorization code, in seconds. */
+export const DEVICE_CODE_TTL_SECONDS = 600;
+
+/**
+ * Total window in which a device code or its audit outcome can still be observed.
+ *
+ * The audit idempotency marker must live at least as long as the retained DeviceCode row.
+ */
+export const DEVICE_CODE_AUDIT_WINDOW_SECONDS =
+  DEVICE_CODE_TTL_SECONDS + DEVICE_CODE_RETENTION_SECONDS;
+
 /** PostgreSQL unique-violation SQLSTATE. */
 const POSTGRES_UNIQUE_VIOLATION = '23505';
 
@@ -165,7 +176,9 @@ export class PostgresAdapter {
             SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7
           WHERE id = $1 AND type = $2
             AND (expires_at IS NULL OR expires_at > NOW())
+            AND consumed_at IS NULL
             AND payload->>'inFlight' IS DISTINCT FROM 'true'
+            AND payload->>'error' IS NULL
           RETURNING id`,
         values,
       );
@@ -360,33 +373,6 @@ export class PostgresAdapter {
 
     return payload;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Standalone helpers for session lifecycle management
-// ---------------------------------------------------------------------------
-
-/**
- * Delete all oidc_payloads records matching any of the given grant_ids.
- *
- * Used for cascade cleanup when a session is destroyed during explicit logout.
- * Deletes across ALL types (AccessToken, RefreshToken, Grant, etc.) in a single
- * query — the grant_id column links tokens back to their originating grant.
- *
- * This is the critical step that ensures "logout = total cleanup": when a user
- * clicks "Sign Out", all grants and tokens issued during that session are removed
- * from PostgreSQL so they can no longer be used.
- *
- * @param grantIds - Array of grant IDs whose artifacts should be deleted
- */
-export async function revokeGrantsByIds(grantIds: string[]): Promise<void> {
-  if (grantIds.length === 0) return;
-
-  const pool = getPool();
-  await pool.query(
-    'DELETE FROM oidc_payloads WHERE grant_id = ANY($1)',
-    [grantIds],
-  );
 }
 
 /**

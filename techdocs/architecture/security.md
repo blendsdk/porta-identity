@@ -676,7 +676,8 @@ organization; cross-organization clients are still rejected before an interactio
 - **Configurable TTLs** — stored in `system_config` table
 - **Database-backed authority** — PostgreSQL tracking is persisted before Redis publication; missing, expired, or revoked tracking invalidates the cached Session
 - **Live reference checks** — cached OIDC artifacts are rejected when their referenced client, account, grant, or Session authorization is no longer live in PostgreSQL
-- **Explicit logout** — destroys session and cascades grant/token deletion across Redis and PostgreSQL
+- **Explicit logout** — the provider revokes every grant and its tokens across Redis and PostgreSQL, then destroys the session
+- **Session rotation** — replaces the session identifier on a login resume without revoking grants
 - **Natural expiry** — preserves tokens for refresh flows (no cascade)
 
 ## Portability Import Authority

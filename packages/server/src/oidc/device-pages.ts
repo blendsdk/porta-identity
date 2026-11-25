@@ -29,10 +29,7 @@ import { getOrganizationById } from '../organizations/service.js';
 import type { Organization } from '../organizations/types.js';
 import { getClientByClientId } from '../clients/service.js';
 import { getUserById } from '../users/service.js';
-import { purgeExpired } from './postgres-adapter.js';
-
-/** Provider device-code and interaction lifetime used by the audit idempotency marker. */
-const DEVICE_CODE_RETENTION_SECONDS = 1500;
+import { DEVICE_CODE_AUDIT_WINDOW_SECONDS, purgeExpired } from './postgres-adapter.js';
 
 /** Maximum number of scopes rendered on a confirmation or success page. */
 const MAX_RENDERED_SCOPES = 64;
@@ -325,7 +322,7 @@ async function writeAuthorizedAudit(
   const marker = deviceAuditMarker('authorized', jti);
   let first = true;
   try {
-    first = (await getRedis().set(marker, '1', 'EX', DEVICE_CODE_RETENTION_SECONDS, 'NX')) === 'OK';
+    first = (await getRedis().set(marker, '1', 'EX', DEVICE_CODE_AUDIT_WINDOW_SECONDS, 'NX')) === 'OK';
   } catch (error) {
     // Without Redis the event is still written; a duplicate is preferable to a missing approval row.
     logger.warn({ err: error }, 'Device audit idempotency marker unavailable');
@@ -401,7 +398,7 @@ async function writeDeniedAudit(context: DevicePageContext, error: unknown): Pro
   if (marker !== undefined) {
     let first = true;
     try {
-      first = (await getRedis().set(marker, '1', 'EX', DEVICE_CODE_RETENTION_SECONDS, 'NX')) === 'OK';
+      first = (await getRedis().set(marker, '1', 'EX', DEVICE_CODE_AUDIT_WINDOW_SECONDS, 'NX')) === 'OK';
     } catch (markerError) {
       logger.warn({ err: markerError }, 'Device denial audit marker unavailable');
     }

@@ -39,7 +39,7 @@ import { oidcClientTenantBinding } from './middleware/oidc-client-tenant.js';
 import { deviceTenantBinding } from './middleware/device-tenant.js';
 import { clientSecretHash } from './middleware/client-secret-hash.js';
 import { promptLoginReset } from './middleware/prompt-login-reset.js';
-import { rejectHeadProbe } from './middleware/reject-head-probe.js';
+import { rejectHeadPostProbe, rejectHeadProbe } from './middleware/reject-head-probe.js';
 import { createOrganizationRouter } from './routes/organizations.js';
 import { createApplicationRouter } from './routes/applications.js';
 import { createResourceServerRouter } from './routes/resource-servers.js';
@@ -578,6 +578,7 @@ export function createApp(oidcProvider?: Provider): Koa {
     // Device verification pages are state-changing or resolve tenant-owned codes. Reject HEAD
     // probes explicitly because the router would otherwise run the GET handler for them.
     oidcRouter.head('/device', rejectHeadProbe);
+    oidcRouter.head('/device/auth', rejectHeadPostProbe);
     oidcRouter.head('/device/:uid', rejectHeadProbe);
 
     // A user code is resolved globally by the provider, so the request organization must match the

@@ -18,9 +18,8 @@ import {
   buildPollIntervalKey,
   buildUserCodeIpKey,
 } from '../../../src/middleware/device-rate-limiter.js';
-import { createAdapterFactory } from '../../../src/oidc/adapter-factory.js';
-import { purgeExpired, revokeGrantsByIds } from '../../../src/oidc/postgres-adapter.js';
-import { upsertSession } from '../../../src/lib/session-tracking.js';
+import { revokeConnectedApp } from '../../../src/connected-apps/service.js';
+import { PostgresAdapter, purgeExpired } from '../../../src/oidc/postgres-adapter.js';
 import {
   createTestClient,
   createTestOrganization,
@@ -131,7 +130,7 @@ async function approveStoredDeviceCode(
   );
   await getPool().query(
     `INSERT INTO oidc_payloads (id, type, payload, grant_id, expires_at)
-     VALUES ($1, 'Grant', $2::jsonb, $1, NOW() + interval '1 hour')`,
+     VALUES ($1, 'Grant', $2::jsonb, NULL, NOW() + interval '1 hour')`,
     [
       grantId,
       JSON.stringify({
@@ -445,6 +444,11 @@ describe('Device authorization grant', () => {
       expect(head.status).toBe(405);
       expect(head.headers.get('allow')).toBe('GET');
     }
+    const authHead = await current.request(`/${current.organization.slug}/device/auth`, {
+      method: 'HEAD',
+    });
+    expect(authHead.status).toBe(405);
+    expect(authHead.headers.get('allow')).toBe('POST');
   });
 
   it('rejects a mismatched provider XSRF with a valid session', async () => {
@@ -940,6 +944,75 @@ describe('Device authorization audit and concurrency', () => {
     expect(stored?.payload.error).toBeUndefined();
   });
 
+  it('keeps an approved device grant alive when the same browser reuses its session', async () => {
+    const current = fixture();
+    const browser = current.newBrowser();
+
+    const first = await authorizeDevice(current);
+    const firstBody = await readJson(first);
+    const firstCode = readString(firstBody, 'device_code');
+    const firstConfirmation = await submitConfirmation(
+      current,
+      browser,
+      readString(firstBody, 'user_code'),
+    );
+    expect(firstConfirmation.status).toBe(303);
+    const success = await completeLogin(
+      current,
+      browser,
+      firstConfirmation.headers.get('location') ?? '',
+    );
+    expect(success.status).toBe(200);
+    expect(await success.text()).toContain('Device connected');
+
+    const second = await authorizeDevice(current);
+    const secondBody = await readJson(second);
+    const secondConfirmation = await submitConfirmation(
+      current,
+      browser,
+      readString(secondBody, 'user_code'),
+    );
+    expect(secondConfirmation.status).toBe(303);
+
+    // The browser already has a provider session, so this resume must not require a login.
+    let location = secondConfirmation.headers.get('location') ?? '';
+    let reused: Response | undefined;
+    for (let hop = 0; hop < 15 && location.length > 0; hop += 1) {
+      const response = await current.browserRequestWith(browser, location);
+      if (response.status >= 300 && response.status < 400) {
+        location = response.headers.get('location') ?? '';
+        continue;
+      }
+      reused = response;
+      break;
+    }
+    expect(reused?.status).toBe(200);
+    expect(await reused?.text()).toContain('Device connected');
+
+    // Session rotation must not delete the first approval's grant or device code.
+    const firstPoll = await pollToken(current, firstCode);
+    expect(firstPoll.status).toBe(200);
+    expect(readString(await readJson(firstPoll), 'access_token').length).toBeGreaterThan(0);
+  });
+
+  it('does not let a late confirmation overwrite a recorded abort', async () => {
+    const current = fixture();
+    const authorization = await authorizeDevice(current);
+    const authorizationBody = await readJson(authorization);
+    const userCode = readString(authorizationBody, 'user_code');
+    const deviceCode = readString(authorizationBody, 'device_code');
+
+    const aborted = await submitConfirmation(current, current.browser, userCode, { abort: 'yes' });
+    expect(aborted.status).toBe(200);
+
+    const late = await submitConfirmation(current, current.newBrowser(), userCode);
+    expect(late.status).not.toBe(303);
+
+    const denied = await pollToken(current, deviceCode);
+    expect(denied.status).toBe(400);
+    expect((await readJson(denied)).error).toBe('access_denied');
+  });
+
   it('rejects a user-code request over the address budget once per window', async () => {
     const current = fixture();
     const redis = getRedis();
@@ -983,7 +1056,12 @@ describe('Device stale authority and cleanup', () => {
     const deviceCode = readString(await readJson(authorization), 'device_code');
     const grantId = await approveStoredDeviceCode(current, deviceCode);
 
-    await revokeGrantsByIds([grantId]);
+    const revoked = await revokeConnectedApp(
+      current.organization.id,
+      current.user.id,
+      grantId,
+    );
+    expect(revoked).toBe(true);
     expect(await readDeviceCodeRow(deviceCode)).toBeUndefined();
 
     const poll = await pollToken(current, deviceCode);
@@ -1048,31 +1126,16 @@ describe('Device stale authority and cleanup', () => {
     expect(['invalid_client', 'invalid_grant']).toContain(body.error);
   });
 
-  it('removes the DeviceCode when a logout cascade destroys its grant', async () => {
+  it('removes the DeviceCode when logout revokes its grant', async () => {
     const current = fixture();
     const authorization = await authorizeDevice(current);
     const deviceCode = readString(await readJson(authorization), 'device_code');
     const grantId = await approveStoredDeviceCode(current, deviceCode);
-    const sessionId = randomBytes(32).toString('base64url').slice(0, 43);
-    const Adapter = createAdapterFactory();
-    const sessionAdapter = new Adapter('Session');
-    await sessionAdapter.upsert(
-      sessionId,
-      {
-        accountId: current.user.id,
-        authorizations: { [current.client.clientId]: { grantId } },
-        kind: 'Session',
-      },
-      3600,
-    );
-    await upsertSession({
-      sessionId,
-      userId: current.user.id,
-      organizationId: current.organization.id,
-      expiresAt: new Date(Date.now() + 3_600_000),
-    });
 
-    await sessionAdapter.destroy(sessionId);
+    // The provider's end-session action calls revokeByGrantId for the DeviceCode model and then
+    // destroys the Grant itself; the bare Grant row carries no grant_id column value.
+    await new PostgresAdapter('DeviceCode').revokeByGrantId(grantId);
+    await new PostgresAdapter('Grant').destroy(grantId);
     expect(await readDeviceCodeRow(deviceCode)).toBeUndefined();
 
     const poll = await pollToken(current, deviceCode);

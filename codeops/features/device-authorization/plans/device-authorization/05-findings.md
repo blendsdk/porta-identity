@@ -35,3 +35,14 @@
 | SA-009 | 2 | MINOR | GET `/device/auth` resume | fixed — pass-through removed, integration regression |
 | PF5-001 | 5 | MINOR | harness migration oracle | fixed — the reset oracle now accepts `.sql`, `.cjs` and `.js` migrations, matching node-pg-migrate and migration 039 |
 | PF5-002 | 5 | NOTE | stale-authority status codes | verified — client/organization removal returns `invalid_client` 401, user removal or deactivation returns `invalid_grant` 400, and no token set is issued |
+| SR5-001 | 5 | CRITICAL | session rotation cascade | fixed — `HybridAdapter.destroy` no longer revokes grants; node-oidc-provider already revokes every grant on explicit logout before destroying the session, while it calls `destroy(oldId)` during a normal login resume. Regression: approve A, reuse the browser for B, poll A succeeds. Docs updated. |
+| SR5-002 | 5 | MAJOR | confirmation-after-abort CAS | fixed — the pre-approval confirmation update now also requires `consumed_at IS NULL` and `payload->>'error' IS NULL`; unit SQL assertions added |
+| SR5-003 | 5 | MAJOR | synthetic Grant shape | fixed — synthetic Grant rows use `grant_id = NULL`; logout test uses provider-equivalent `revokeByGrantId` + `Grant.destroy`; dead cascade-only helpers removed |
+| SR5-004 | 5 | MINOR | scope display bounds | accepted — the existing 64-scope/255-character presentation bound is unchanged; exceeding client scope limits is a separate contract decision |
+| SR5-005 | 5 | MINOR | HEAD `/device/auth` | fixed — explicit HEAD handler returns 405 with `Allow: POST`; integration assertion added |
+| SR5-006 | 5 | MINOR | malformed user-code response | accepted — malformed same-tenant codes fail the tenant-format guard before the branded page; the response stays a generic 404 with no code echo |
+| SR5-007 | 5 | MINOR | audit write failure | accepted — strict write failures are logged and never claim a successful audit; retries would need a new worker, which the plan forbids |
+| SR5-008 | 5 | MINOR | anonymous entry GET | accepted — the entry GET has no user-code budget by design; adding a per-IP budget is a new control outside RD-05 |
+| SR5-009 | 5 | MINOR | audit window constant | fixed — one derived `DEVICE_CODE_AUDIT_WINDOW_SECONDS` is shared by the adapter and audit marker |
+| SR5-010 | 5 | MINOR | late denial audit | accepted — a racing user decision may record a denial before a later completion wins; both audit rows describe real requests and the idempotency marker prevents duplicates |
+| SR5-011 | 5 | MAJOR | abort after confirmation claim | rejected — approved concurrent-approval policy (03-05 §Concurrent Approval, PF-014) requires the pre-approval denial/error save to bypass the `inFlight` CAS while no account/grant exists so the denial is recorded; the completion save then wins. Changing it would suppress a user denial and reverse an approved decision. Residual concurrent-tab ordering is documented and no new approval path is introduced. |

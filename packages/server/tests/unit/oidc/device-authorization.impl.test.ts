@@ -152,6 +152,8 @@ describe('DeviceCode conditional confirmation write', () => {
     const sql = String(query.mock.calls[0]?.[0]);
     expect(sql).toContain('UPDATE oidc_payloads');
     expect(sql).toContain("payload->>'inFlight' IS DISTINCT FROM 'true'");
+    expect(sql).toContain('consumed_at IS NULL');
+    expect(sql).toContain("payload->>'error' IS NULL");
     expect(sql).not.toContain('INSERT INTO oidc_payloads');
   });
 
@@ -191,6 +193,9 @@ describe('DeviceCode conditional confirmation write', () => {
     const sql = String(query.mock.calls[0]?.[0]);
     expect(sql).toContain("payload->>'accountId' IS NULL");
     expect(sql).toContain("payload->>'grantId' IS NULL");
+    // The approved concurrent-approval policy lets a user denial replace a pending confirmation
+    // claim while the code is still unapproved; only an approved row is protected.
+    expect(sql).not.toContain("payload->>'inFlight' IS DISTINCT FROM 'true'");
     expect(sql).not.toContain('INSERT INTO oidc_payloads');
   });
 });
