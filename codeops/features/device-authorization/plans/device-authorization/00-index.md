@@ -1,7 +1,7 @@
 # Device Authorization Implementation Plan
 
 > **Feature**: RFC 8628 device login for registered OIDC clients and the Porta CLI
-> **Status**: Preflight passed with notes — execution pending
+> **Status**: Complete — executed and verified (CI run 45653909802)
 > **Created**: 2026-11-25
 > **Implements**: device-authorization/RD-01, device-authorization/RD-02, device-authorization/RD-03, device-authorization/RD-04, device-authorization/RD-05
 > **Execution Mode**: `--auto-commit` (applied by exec-plan; make-plan does not commit)

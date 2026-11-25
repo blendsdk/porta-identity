@@ -2,8 +2,8 @@
 
 > **Document**: 99-execution-plan.md
 > **Parent**: [Index](00-index.md)
-> **Last Updated**: 2026-11-25 17:30
-> **Progress**: 85/87 tasks (98%)
+> **Last Updated**: 2026-11-25 17:50
+> **Progress**: 87/87 tasks (100%)
 > **Execution Mode**: `--auto-commit` (exec-plan commits via the git-commit skill; this plan contains no git commands)
 > **CodeOps Artifact Schema**: 1
 
@@ -156,7 +156,7 @@ concurrent-approval controls before client enablement.
 - [x] 2.3.3 Update the exact test-file counts in `repo-tests/monorepo/server-package.spec.test.mjs` — `repo-tests/monorepo/server-package.spec.test.mjs` ✅ (completed: 2026-11-25 14:28)
 - [x] 2.3.4 Run `pnpm test:ui` and the retained `pnpm harness:test`; record the run ids ✅ (completed: 2026-11-25 14:28)
 - [x] 2.3.5 Run the `oidc-provider-reviewer` review and resolve findings ✅ (completed: 2026-11-25 17:30)
-- [ ] 2.3.6 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI)
+- [x] 2.3.6 Phase gate: run the narrow suites and `pnpm test:structure`; record CI `pnpm verify` (CI) ✅ (completed: 2026-11-25 17:50)
 
 **Deliverables**: branded pages and generic abort state; fixed limits with session UID and
 approval-only primary reset; audit/redaction/cleanup; concurrent approval; UI/harness evidence.
@@ -283,7 +283,7 @@ final review evidence.
 - [x] 5.3.3 Run `pnpm assurance:harness --project security --profile production-security` and record the accepted gaps/exit 40 ✅ (completed: 2026-11-25 17:30)
 - [x] 5.3.4 Run `pnpm test:ui` and `pnpm harness:test`; record the run ids ✅ (completed: 2026-11-25 17:30)
 - [x] 5.3.5 Run the final `oidc-provider-reviewer` review and resolve findings ✅ (completed: 2026-11-25 17:30)
-- [ ] 5.3.6 Run `pnpm docs:build`, `pnpm test:structure` and the full `pnpm verify` CI gate; close the plan
+- [x] 5.3.6 Run `pnpm docs:build`, `pnpm test:structure` and the full `pnpm verify` CI gate; close the plan ✅ (completed: 2026-11-25 17:50)
 
 **Deliverables**: cleanup and stale authority verified; pentest matrix; production-security and
 compatibility evidence with truthful scope; UI/harness evidence; docs and CI green.

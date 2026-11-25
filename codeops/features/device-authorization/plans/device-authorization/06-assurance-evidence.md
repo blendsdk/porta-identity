@@ -16,6 +16,7 @@
 | Device CLI E2E | local | 1 test passed |
 | `pnpm harness:test` | `58c56afd-cd52-45e3-ae9c-d097fe51c740` | 6 tests passed |
 | `pnpm test:structure` | local | 179 pass, 0 fail |
+| CI full gate | run `45653909802` | **success** — all six jobs: Verify Monorepo, UI Tests, OIDC Harness, Public Documentation, Production Docker Build, Production Dependency Audit at `8d12ce29` |
 | `pnpm docs:build` | local | passed |
 
 ## Production-Security Notes
@@ -33,6 +34,13 @@ The full UI suite ran 142 tests with 141 passed. One reset-password test failed 
 timed-out lockout test was still finishing requests. The affected `reset-password.spec.ts` file
 passes 10/10 alone and 20/20 with `--repeat-each=2`; the failure is unrelated to the device flow and
 is recorded here rather than retried away. CI remains the authoritative full browser gate.
+
+## Specialist Review
+
+The final `oidc-provider-reviewer` verdict is **PASSED WITH NOTES**: no new critical or major
+finding. SR-001 (session rotation) and SR-003 (Grant fixture shape) are resolved; SR-002 is fixed;
+SR-011 is recorded as the approved concurrent-tab residual under 03-05 §Concurrent Approval. The
+remaining minor notes are accepted in the findings ledger.
 
 ## Evidence Artifacts
 
