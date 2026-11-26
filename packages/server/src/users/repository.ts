@@ -235,6 +235,21 @@ export async function updateHumanPassword(userId: string, passwordHash: string):
   return result.rowCount === 1;
 }
 
+/**
+ * Lock one account row for the duration of a password-changing transaction.
+ *
+ * Callers must already hold an active request transaction and must take this lock before any
+ * password or recovery token row. Every password change then follows one order — account first,
+ * tokens second — so two concurrent resets cannot deadlock on each other's token rows.
+ *
+ * @param userId - Internal user UUID.
+ * @returns True when the account row exists and is now locked.
+ */
+export async function lockUserForPasswordChange(userId: string): Promise<boolean> {
+  const result = await getPool().query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [userId]);
+  return result.rowCount === 1;
+}
+
 // ---------------------------------------------------------------------------
 // Update
 // ---------------------------------------------------------------------------

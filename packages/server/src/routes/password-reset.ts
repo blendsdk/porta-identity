@@ -45,7 +45,8 @@ import { resolveLocale, getTranslationFunction } from '../auth/i18n.js';
 import { renderPage } from '../auth/template-engine.js';
 import type { TemplateContext } from '../auth/template-engine.js';
 import { resolveEffectiveBranding } from '../auth/effective-branding.js';
-import { getUserById, setUserPassword } from '../users/service.js';
+import { getUserById, lockUserForPasswordChange, setUserPassword } from '../users/service.js';
+import { UserNotFoundError } from '../users/errors.js';
 import { validatePassword } from '../users/password.js';
 import { writeAuditLog, writeAuditLogInTransaction } from '../lib/audit-log.js';
 import { getDatabaseTransactionClient, runDatabaseTransaction } from '../lib/database.js';
@@ -61,7 +62,70 @@ import { resolveLoginMethods } from '../clients/resolve-login-methods.js';
 // ---------------------------------------------------------------------------
 
 /** Internal signal that a competing submission consumed the reset token first. */
-class ResetTokenAlreadyConsumedError extends Error {}
+export class ResetTokenAlreadyConsumedError extends Error {}
+
+/** Inputs required to apply one password reset inside its transaction. */
+export interface CompletePasswordResetInput {
+  /** Organization resolved from the public route. */
+  readonly organizationId: string;
+  /** Account that owns the reset token. */
+  readonly userId: string;
+  /** Identifier of the still-unconsumed token row. */
+  readonly tokenId: string;
+  /** New plaintext password after request validation. */
+  readonly password: string;
+  /** Trusted client address recorded in the completion audit event. */
+  readonly ipAddress?: string;
+}
+
+/**
+ * Apply one password reset atomically.
+ *
+ * The token consumption, password change, sibling-token invalidation, authority revocation and
+ * completion audit share one transaction. Any failure rolls back every mutation, so a partially
+ * applied recovery never leaves old tokens or sessions behind.
+ *
+ * The account row is locked before the token row. Concurrent resets for one account therefore
+ * serialize on the account row instead of locking the account and each other's tokens in opposite
+ * orders.
+ *
+ * Callers must resolve the token against the organization and validate the request before
+ * invoking this function. A competing submission that consumed the token first is reported as
+ * {@link ResetTokenAlreadyConsumedError}, which the route renders as an expired link.
+ *
+ * @param input - Account, token and validated password for this completion.
+ * @throws {@link ResetTokenAlreadyConsumedError} when another submission consumed the token first.
+ */
+export async function completePasswordReset(input: CompletePasswordResetInput): Promise<void> {
+  await runDatabaseTransaction(async () => {
+    if (!(await lockUserForPasswordChange(input.userId))) {
+      throw new UserNotFoundError(input.userId);
+    }
+    if (!(await consumePasswordResetToken(input.tokenId))) {
+      throw new ResetTokenAlreadyConsumedError();
+    }
+    await setUserPassword(input.userId, input.password);
+    await invalidateOtherPasswordResetTokens(input.userId);
+    const revoked = await revokeAffectedAuthorityInTransaction([input.userId]);
+    await registerAuthorityCleanup({
+      userIds: [input.userId],
+      grantIds: revoked.grantIds,
+      roleIds: [],
+      revokeOidcState: true,
+    });
+
+    const transaction = getDatabaseTransactionClient();
+    if (!transaction) throw new Error('Password reset requires an active transaction');
+    await writeAuditLogInTransaction(transaction, {
+      organizationId: input.organizationId,
+      userId: input.userId,
+      eventType: 'user.password_reset.completed',
+      eventCategory: 'security',
+      description: 'Password reset completed successfully',
+      ipAddress: input.ipAddress,
+    });
+  });
+}
 
 /** Extended Koa context with organization from tenant resolver */
 interface AuthContext extends Context {
@@ -548,30 +612,12 @@ async function processResetPassword(ctx: AuthContext): Promise<void> {
     // Step 5: Consume the reset token, replace the password, retire other recovery links, and
     // revoke prior authority in one transaction. Any failure rolls back every mutation, so an
     // attacker cannot keep old tokens or sessions after a partially applied recovery.
-    await runDatabaseTransaction(async () => {
-      if (!(await consumePasswordResetToken(tokenRecord.id))) {
-        throw new ResetTokenAlreadyConsumedError();
-      }
-      await setUserPassword(tokenRecord.userId, password);
-      await invalidateOtherPasswordResetTokens(tokenRecord.userId);
-      const revoked = await revokeAffectedAuthorityInTransaction([tokenRecord.userId]);
-      await registerAuthorityCleanup({
-        userIds: [tokenRecord.userId],
-        grantIds: revoked.grantIds,
-        roleIds: [],
-        revokeOidcState: true,
-      });
-
-      const transaction = getDatabaseTransactionClient();
-      if (!transaction) throw new Error('Password reset requires an active transaction');
-      await writeAuditLogInTransaction(transaction, {
-        organizationId: org.id,
-        userId: tokenRecord.userId,
-        eventType: 'user.password_reset.completed',
-        eventCategory: 'security',
-        description: 'Password reset completed successfully',
-        ipAddress: ctx.ip,
-      });
+    await completePasswordReset({
+      organizationId: org.id,
+      userId: tokenRecord.userId,
+      tokenId: tokenRecord.id,
+      password,
+      ipAddress: ctx.ip,
     });
 
     // Step 6: Send password-changed confirmation email after the authoritative commit.

@@ -3,7 +3,7 @@
 > **Feature-Set**: Porta Maintenance
 > **Status**: Active
 > **Created**: 2026-09-27
-> **Last Updated**: 2026-11-08 21:53
+> **Last Updated**: 2026-11-25 22:50
 > **Progress**: n/a (task-only feature)
 > **CodeOps Artifact Schema**: 1
 
@@ -24,3 +24,4 @@
 | T-07 | Reconcile roadmap closeout and complete active verification            | —   | [plan](plans/porta-roadmap-closeout/99-execution-plan.md)                   | Done     | ✅     | 2026-11-01 17:26 | 44/44; PR #214 merged; post-merge CI green; residuals remain user-owned                                |
 | T-08 | Remediate security scan findings #227–#237                             | —   | [plan](plans/security-scan-remediation/99-execution-plan.md)                | Done     | ✅     | 2026-11-08       | 11/11 issues closed; PR #238 merged; post-merge CI green                                             |
 | T-09 | Add OIDC provider reviewer and CodeOps catalog agents                  | —   | —                                                                           | Done     | ✅     | 2026-11-08 21:53 | oidc-provider-reviewer added; 12 catalog agents installed; agent check 12 default, 1 custom; a0d148b0, 956fa8bc |
+| T-10 | Remove the password-reset deadlock under concurrent password changes   | —   | [plan](plans/password-reset-deadlock/99-execution-plan.md)                  | Done | ✅ | 2026-11-25 22:50 | Issue #255 fixed; regression red then green; unit, integration, pentest, structure and UI green |

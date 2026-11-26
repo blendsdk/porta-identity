@@ -35,6 +35,7 @@ import type { ListUsersCursorOptions, UpdateUserData } from './repository.js';
 import {
   emailExists,
   getPasswordHash,
+  lockUserForPasswordChange as repoLockUserForPasswordChange,
   updateHumanPassword,
   incrementFailedLoginCount,
   insertUser,
@@ -454,6 +455,20 @@ export async function activateUser(
 // ---------------------------------------------------------------------------
 // Password management
 // ---------------------------------------------------------------------------
+
+/**
+ * Lock one interactive account row for a password-changing transaction.
+ *
+ * Call this before locking any password or recovery token row. A single lock order for every
+ * password change prevents concurrent resets from deadlocking on the account row and each
+ * other's token rows.
+ *
+ * @param id - Internal user UUID.
+ * @returns True when the account row exists and is now locked.
+ */
+export async function lockUserForPasswordChange(id: string): Promise<boolean> {
+  return repoLockUserForPasswordChange(id);
+}
 
 /**
  * Set a user's password.
