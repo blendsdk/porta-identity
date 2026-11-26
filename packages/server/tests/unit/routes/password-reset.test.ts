@@ -78,6 +78,7 @@ vi.mock('../../../src/auth/template-engine.js', () => ({
 vi.mock('../../../src/users/service.js', () => ({
   getUserByEmail: vi.fn(),
   getUserById: vi.fn(),
+  lockUserForPasswordChange: vi.fn().mockResolvedValue(true),
   setUserPassword: vi.fn().mockResolvedValue(undefined),
 }));
 

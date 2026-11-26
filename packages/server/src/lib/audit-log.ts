@@ -216,6 +216,14 @@ export function auditFields(actor: AuditActor | undefined, context?: AuditReques
 // Writer
 // ---------------------------------------------------------------------------
 
+/** SQL shared by every audit writer. */
+const AUDIT_INSERT_SQL = `INSERT INTO audit_log (
+  organization_id, user_id, actor_id, actor_type, actor_client_id, actor_client_name,
+  event_type, event_category, description,
+  metadata, ip_address, user_agent
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`;
+
 /**
  * Write an audit log entry to the database.
  *
@@ -233,21 +241,31 @@ export async function writeAuditLog(entry: AuditLogEntry): Promise<void> {
     try {
       const values = insertValues(entry, actor);
       const pool = getPool();
-      await pool.query(
-        `INSERT INTO audit_log (
-         organization_id, user_id, actor_id, actor_type, actor_client_id, actor_client_name,
-         event_type, event_category, description,
-         metadata, ip_address, user_agent
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-        values,
-      );
+      await pool.query(AUDIT_INSERT_SQL, values);
     } catch {
       logger.warn(
         { event: 'compatibility-audit-write-failed', eventType: entry.eventType },
         'Compatibility audit write failed',
       );
     }
+  });
+}
+
+/**
+ * Persist one audit row and propagate a database failure to the caller.
+ *
+ * Device authorization uses this writer so its idempotency marker can be removed when the row was
+ * not written; the compatibility writer above intentionally swallows failures.
+ *
+ * @param entry - Audit entry to persist
+ * @throws When the database insert fails outside an owning transaction
+ */
+export async function writeAuditLogStrict(entry: AuditLogEntry): Promise<void> {
+  const actor = normalizeActor(entry);
+  const values = insertValues(entry, actor);
+
+  await afterDatabaseCommit(async () => {
+    await getPool().query(AUDIT_INSERT_SQL, values);
   });
 }
 
@@ -268,13 +286,5 @@ export async function writeAuditLogInTransaction(
   const actor = normalizeActor(entry);
   const values = insertValues(entry, actor);
 
-  await client.query(
-    `INSERT INTO audit_log (
-       organization_id, user_id, actor_id, actor_type, actor_client_id, actor_client_name,
-       event_type, event_category, description,
-       metadata, ip_address, user_agent
-     )
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-    values,
-  );
+  await client.query(AUDIT_INSERT_SQL, values);
 }

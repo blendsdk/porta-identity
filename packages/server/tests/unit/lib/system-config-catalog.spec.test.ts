@@ -238,6 +238,7 @@ const REQUIRED_NAMESPACES = [
   'errors',
   'emails',
   'two-factor',
+  'device',
 ] as const;
 
 describe('system configuration catalog', () => {

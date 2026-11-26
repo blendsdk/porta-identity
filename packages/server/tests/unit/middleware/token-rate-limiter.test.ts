@@ -60,6 +60,8 @@ interface MockContext {
   ip: string;
   status: number;
   body: unknown;
+  params: { orgSlug?: string };
+  state: { organization?: { slug?: string } };
   request: { body: Record<string, unknown> | undefined };
   headers: Record<string, string>;
   _headers: Record<string, string>;
@@ -81,12 +83,15 @@ function createMockContext(
   requestBody?: Record<string, unknown>,
 ): MockContext {
   const responseHeaders: Record<string, string> = {};
+  const orgSlug = path.split('/').filter(Boolean)[0] ?? 'acme';
   return {
     path,
     method,
     ip,
     status: 200,
     body: null,
+    params: { orgSlug },
+    state: { organization: { slug: orgSlug } },
     request: { body: requestBody },
     headers: {},
     _headers: responseHeaders,

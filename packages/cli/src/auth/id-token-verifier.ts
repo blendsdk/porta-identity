@@ -32,6 +32,18 @@ export interface VerifyCliIdTokenRequest {
   readonly jwks: JSONWebKeySet;
 }
 
+/** Inputs for a device-flow ID token, which has no OIDC nonce. */
+export interface VerifyDeviceIdTokenRequest {
+  /** Compact ID token returned by the device token exchange. */
+  readonly token: string;
+  /** Exact discovered issuer URL. */
+  readonly issuer: string;
+  /** Public CLI client identifier. */
+  readonly clientId: string;
+  /** Issuer key set obtained from trusted discovery metadata. */
+  readonly jwks: JSONWebKeySet;
+}
+
 /** Optional context required to authenticate a refreshed ID token. */
 export type IdTokenValidationContext = Omit<VerifyCliIdTokenRequest, 'token'>;
 
@@ -58,9 +70,10 @@ function optionalString(payload: JWTPayload, claim: 'email' | 'name'): string | 
     : undefined;
 }
 
-/** Verifies signature, issuer, audience, time, nonce, and subject. */
-export async function verifyCliIdToken(
-  request: VerifyCliIdTokenRequest,
+/** Verify one ID token, optionally requiring an exact nonce. */
+async function verifyIdToken(
+  request: VerifyCliIdTokenRequest | VerifyDeviceIdTokenRequest,
+  expectedNonce: string | undefined,
 ): Promise<VerifiedIdentity> {
   try {
     const verificationTime = Math.floor(Date.now() / 1000);
@@ -77,7 +90,7 @@ export async function verifyCliIdToken(
       payload.iat > verificationTime + 60 ||
       typeof payload.exp !== 'number' ||
       payload.exp <= verificationTime ||
-      payload.nonce !== request.nonce ||
+      (expectedNonce !== undefined && payload.nonce !== expectedNonce) ||
       typeof payload.sub !== 'string' ||
       payload.sub.length === 0 ||
       payload.sub.length > 255 ||
@@ -101,6 +114,29 @@ export async function verifyCliIdToken(
   } catch {
     throw new Error('Authentication failed');
   }
+}
+
+/** Verify an authorization-code ID token, including its exact nonce. */
+export async function verifyCliIdToken(
+  request: VerifyCliIdTokenRequest,
+): Promise<VerifiedIdentity> {
+  return verifyIdToken(request, request.nonce);
+}
+
+/**
+ * Verify a device-flow ID token.
+ *
+ * The device authorization request may carry a nonce, but node-oidc-provider does not copy it to
+ * the DeviceCode, so the issued ID token has no nonce. The single-use device code and TLS bind the
+ * request; the token is still verified cryptographically.
+ *
+ * @param request - Token, issuer, audience and issuer keys
+ * @returns The verified identity
+ */
+export async function verifyDeviceIdToken(
+  request: VerifyDeviceIdTokenRequest,
+): Promise<VerifiedIdentity> {
+  return verifyIdToken(request, undefined);
 }
 
 /** Fetches and minimally validates an issuer JWKS with caller-owned cancellation. */

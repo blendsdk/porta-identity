@@ -1,0 +1,11 @@
+{{!--
+  Device authorization success page.
+
+  The page is static: it does not close the tab, redirect, or poll. The user
+  returns to the device when ready.
+
+  Context contract (set in src/oidc/device-pages.ts):
+    device.clientName : string — approved client display name
+--}}
+<h1>{{t "device.success_title"}}</h1>
+<p class="text-muted mb-4">{{t "device.success_body" clientName=device.clientName}}</p>

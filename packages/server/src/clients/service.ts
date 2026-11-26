@@ -49,6 +49,7 @@ import {
 } from './cache.js';
 import { generateClientId } from './crypto.js';
 import {
+  DEVICE_CODE_GRANT,
   validateRedirectUris,
   getDefaultGrantTypes,
   getDefaultTokenEndpointAuthMethod,
@@ -247,18 +248,24 @@ export async function createClient(
   }
   await requireControlPlaneClientAuthority(actorId, app);
 
-  // Validate redirect URIs
-  // Use non-production mode for validation (production mode enforcement
-  // is done at the API layer based on environment config)
-  const uriValidation = validateRedirectUris(input.redirectUris, false);
-  if (!uriValidation.isValid) {
-    throw new ClientValidationError(`Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`);
-  }
-
-  // Apply defaults for optional fields
+  // Apply defaults before redirect validation so a device-only selection can omit redirects.
   const grantTypes =
     input.grantTypes ?? getDefaultGrantTypes(input.clientType, input.applicationType);
-  const responseTypes = input.responseTypes ?? getDefaultResponseTypes();
+  const deviceOnly =
+    grantTypes.includes(DEVICE_CODE_GRANT) && !grantTypes.includes('authorization_code');
+
+  // Validate redirect URIs
+  // Use non-production mode for validation (production mode enforcement
+  // is done at the API layer based on environment config). A device-only client may have none.
+  if (!deviceOnly || input.redirectUris.length > 0) {
+    const uriValidation = validateRedirectUris(input.redirectUris, false);
+    if (!uriValidation.isValid) {
+      throw new ClientValidationError(`Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`);
+    }
+  }
+
+  const responseTypes =
+    input.responseTypes ?? (deviceOnly ? [] : getDefaultResponseTypes());
   const scope = input.scope ?? getDefaultScope();
   const tokenEndpointAuthMethod =
     input.tokenEndpointAuthMethod ?? getDefaultTokenEndpointAuthMethod(input.clientType);
@@ -427,8 +434,18 @@ async function applyClientUpdate(
   id: string,
   input: UpdateClientInput,
 ): Promise<{ client: Client; metadata: Record<string, unknown> }> {
-  // Validate redirect URIs if provided
-  if (input.redirectUris) {
+  const existing = await findClientById(id);
+  if (!existing) throw new ClientNotFoundError(id);
+
+  const resultingGrants = input.grantTypes ?? existing.grantTypes;
+  const deviceOnly =
+    resultingGrants.includes(DEVICE_CODE_GRANT) &&
+    !resultingGrants.includes('authorization_code');
+  const resultingResponseTypes =
+    input.responseTypes ?? (deviceOnly ? [] : existing.responseTypes);
+
+  // A device-only result may clear redirects; every other result keeps the non-empty rule.
+  if (input.redirectUris && (!deviceOnly || input.redirectUris.length > 0)) {
     const uriValidation = validateRedirectUris(input.redirectUris, false);
     if (!uriValidation.isValid) {
       throw new ClientValidationError(`Invalid redirect URIs: ${uriValidation.errors!.join('; ')}`);
@@ -445,14 +462,12 @@ async function applyClientUpdate(
     input.requirePkce,
   ].some((value) => value !== undefined);
   if (changesProtocol) {
-    const existing = await findClientById(id);
-    if (!existing) throw new ClientNotFoundError(id);
     requireCompatibleProtocol({
       clientType: existing.clientType,
       redirectUris: input.redirectUris ?? existing.redirectUris,
       postLogoutRedirectUris: input.postLogoutRedirectUris ?? existing.postLogoutRedirectUris,
-      grantTypes: input.grantTypes ?? existing.grantTypes,
-      responseTypes: input.responseTypes ?? existing.responseTypes,
+      grantTypes: resultingGrants,
+      responseTypes: resultingResponseTypes,
       tokenEndpointAuthMethod: input.tokenEndpointAuthMethod ?? existing.tokenEndpointAuthMethod,
       requirePkce: input.requirePkce ?? existing.requirePkce,
       allowedOrigins: input.allowedOrigins ?? existing.allowedOrigins,
@@ -466,7 +481,13 @@ async function applyClientUpdate(
   if (input.postLogoutRedirectUris !== undefined)
     updateData.postLogoutRedirectUris = input.postLogoutRedirectUris;
   if (input.grantTypes !== undefined) updateData.grantTypes = input.grantTypes;
-  if (input.responseTypes !== undefined) updateData.responseTypes = input.responseTypes;
+  if (input.responseTypes !== undefined) {
+    updateData.responseTypes = input.responseTypes;
+  } else if (deviceOnly && existing.responseTypes.length > 0) {
+    // A grant-only switch to device-only must clear response types; a non-empty collection would
+    // imply authorization code and the provider would reject the client.
+    updateData.responseTypes = [];
+  }
   if (input.scope !== undefined) updateData.scope = input.scope;
   if (input.tokenEndpointAuthMethod !== undefined)
     updateData.tokenEndpointAuthMethod = input.tokenEndpointAuthMethod;
@@ -485,11 +506,7 @@ async function applyClientUpdate(
     // normalized is either null or a validated array here (undefined is only
     // returned when the key is absent, which we already filtered out).
     updateData.loginMethods = normalized;
-
-    const existing = await findClientById(id);
-    if (existing) {
-      previousLoginMethods = existing.loginMethods;
-    }
+    previousLoginMethods = existing.loginMethods;
   }
 
   let client: Client;

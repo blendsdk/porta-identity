@@ -160,6 +160,9 @@ templates/default/
 │   ├── invite-expired.hbs    # Expired invitation page
 │   ├── two-factor-setup.hbs  # 2FA setup (QR code for TOTP)
 │   ├── two-factor-verify.hbs # 2FA code entry page
+│   ├── device-code.hbs       # Device code entry and generic invalid state
+│   ├── device-confirm.hbs    # Device approval/abort page
+│   ├── device-success.hbs    # Device connected page
 │   ├── logout.hbs            # Logout confirmation
 │   ├── logout-success.hbs    # Post-logout success page
 │   └── error.hbs             # Error page
@@ -252,6 +255,26 @@ When the consent page is shown depends on the client's trust and the request:
 | `method`      | `string`         | Current 2FA method (`email_otp`, `totp`, `recovery`) |
 | `maskedEmail` | `string \| null` | Masked email for OTP display                         |
 | `flash.error` | `string \| null` | Error message                                        |
+
+### Device Pages (`pages/device-*.hbs`)
+
+The device authorization pages are rendered only by Porta; a host UI does not need to implement
+code entry, confirmation or success. Login, password, magic link, 2FA and consent remain the
+existing interaction pages, so a custom login or consent template is reused unchanged.
+
+| Variable              | Type       | Description                                             |
+| --------------------- | ---------- | ------------------------------------------------------- |
+| `device.action`       | `string`   | Trusted provider code-verification action URL           |
+| `device.xsrf`         | `string`   | Provider-generated XSRF value                           |
+| `device.userCode`     | `string`   | Denormalized code shown on the device                   |
+| `device.clientName`   | `string`   | Requesting client display name                          |
+| `device.scopes`       | `string[]` | Scopes requested by the device authorization            |
+| `device.invalid`      | `boolean`  | Render the generic invalid-or-expired message           |
+| `device.rateLimited`  | `boolean`  | Render the user-code rate-limit state                   |
+| `device.retryAfter`   | `number?`  | Seconds until another attempt is allowed                |
+
+The pages never receive or render the device code, an IP address, a user agent or a raw provider
+error. Organization branding and locale resolution follow the same rules as the other pages.
 
 ### Email Templates
 
@@ -666,7 +689,7 @@ locales/default/
 │   ├── common.json
 │   ├── invitation.json
 │   ├── emails.json
-│   └── ...            # All eleven authentication namespaces
+│   └── ...            # All twelve authentication namespaces
 └── nl/
     └── ...            # Matching namespaces, keys and placeholders
 ```

@@ -160,7 +160,7 @@ describe('slugs', () => {
       const expected = [
         'admin', 'api', 'health', 'static', '.well-known',
         'login', 'logout', 'callback', 'register', 'signup',
-        'auth', 'oauth', 'oidc', 'token', 'jwks',
+        'auth', 'oauth', 'oidc', 'token', 'jwks', 'device',
         'portal', 'dashboard', 'settings', 'account', 'new',
         'favicon.ico', 'robots.txt', 'sitemap.xml',
       ];
@@ -173,7 +173,7 @@ describe('slugs', () => {
       // ReadonlySet doesn't expose add/delete at the type level,
       // but at runtime Set.prototype.add still exists — we just
       // verify the set has the expected size to confirm it's populated
-      expect(RESERVED_SLUGS.size).toBe(23);
+      expect(RESERVED_SLUGS.size).toBe(24);
     });
   });
 

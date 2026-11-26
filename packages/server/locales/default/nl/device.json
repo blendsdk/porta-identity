@@ -1,0 +1,17 @@
+{
+  "title": "Voer je apparaatcode in",
+  "instructions": "Voer de code in die op het apparaat staat dat je wilt verbinden.",
+  "code_label": "Apparaatcode",
+  "code_placeholder": "BCDF-GHJK",
+  "continue": "Doorgaan",
+  "invalid": "Deze code is ongeldig of verlopen. Voer een nieuwe code in.",
+  "confirm_title": "Apparaat bevestigen",
+  "confirm_client": "Je meldt je aan bij {{clientName}}.",
+  "confirm_code": "Controleer of deze code overeenkomt met de code op je apparaat:",
+  "confirm_scopes": "Dit apparaat krijgt toegang tot:",
+  "approve": "Goedkeuren",
+  "abort": "Annuleren",
+  "success_title": "Apparaat verbonden",
+  "success_body": "{{clientName}} is nu verbonden. Je kunt terug naar je apparaat.",
+  "rate_limited": "Te veel pogingen. Wacht even en probeer het opnieuw."
+}

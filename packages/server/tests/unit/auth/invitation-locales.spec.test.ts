@@ -28,6 +28,7 @@ const NAMESPACES = [
   'errors',
   'emails',
   'two-factor',
+  'device',
 ] as const;
 
 /**
@@ -82,7 +83,7 @@ function placeholders(text: string): string[] {
 }
 
 describe('shipped invitation locale packs', () => {
-  it.each(['en', 'nl'])('should ship exactly eleven namespaces for %s', async (locale) => {
+  it.each(['en', 'nl'])('should ship exactly twelve namespaces for %s', async (locale) => {
     const directory = new URL(`../../../locales/default/${locale}/`, import.meta.url);
     const names = (await readdir(directory)).filter((name) => name.endsWith('.json'));
     expect(names.sort()).toEqual(NAMESPACES.map((name) => `${name}.json`).sort());

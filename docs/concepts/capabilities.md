@@ -20,6 +20,7 @@ Porta is multi-tenant from the ground up. Every organization gets its own isolat
 Built on the battle-tested [node-oidc-provider](https://github.com/panva/node-oidc-provider) library, Porta supports:
 
 - **Authorization Code + PKCE** — The recommended flow for all client types
+- **Device Authorization (RFC 8628)** — Browser-approved device login for input-limited clients
 - **Client Credentials** — Machine-to-machine authentication
 - **Refresh Tokens** — Long-lived sessions with configurable TTLs
 - **Discovery** — Standard `/.well-known/openid-configuration` per organization
@@ -280,7 +281,7 @@ Porta uses a hybrid adapter strategy for optimal performance:
 | Capability             | Porta                                                     |
 | ---------------------- | --------------------------------------------------------- |
 | Multi-tenant           | ✅ Path-based org isolation                               |
-| OIDC compliant         | ✅ Authorization Code + PKCE, Client Credentials, Refresh |
+| OIDC compliant         | ✅ Authorization Code + PKCE, Device Authorization, Client Credentials, Refresh |
 | Password login         | ✅ Argon2id + NIST validation                             |
 | Magic link login       | ✅ Secure one-time email tokens                           |
 | 2FA — Email OTP        | ✅ Configurable expiry                                    |
@@ -302,7 +303,7 @@ Porta uses a hybrid adapter strategy for optimal performance:
 | Prometheus metrics     | ✅ Optional `/metrics` endpoint                           |
 | Readiness probe        | ✅ `GET /ready` with DB + Redis check                     |
 | Config safety          | ✅ Production startup validation (9 rules)                |
-| PII redaction          | ✅ Sensitive fields redacted from logs                    |
+| PII redaction          | ✅ Sensitive fields, including device and user codes, redacted from logs |
 | Graceful shutdown      | ✅ SIGTERM drain with 10s kill switch                     |
 | i18n                   | ✅ Locale-based translations                              |
 | Docker support         | ✅ Production-ready image                                 |

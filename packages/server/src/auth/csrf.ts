@@ -111,6 +111,9 @@ export function setCsrfCookie(ctx: Context, token: string): void {
     path: '/',
     secure: ctx.secure,
     overwrite: true,
+    // This cookie is self-contained and never signed. Stating it explicitly keeps the behavior
+    // stable if the outer app later configures signing keys for a different cookie.
+    signed: false,
   });
 }
 
@@ -122,5 +125,5 @@ export function setCsrfCookie(ctx: Context, token: string): void {
  * @returns The CSRF token from the cookie, or undefined if not set
  */
 export function getCsrfFromCookie(ctx: Context): string | undefined {
-  return ctx.cookies.get(CSRF_COOKIE_NAME) ?? undefined;
+  return ctx.cookies.get(CSRF_COOKIE_NAME, { signed: false }) ?? undefined;
 }

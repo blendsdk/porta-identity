@@ -52,6 +52,13 @@ export interface ClientHttpFixture extends LifecycleFixture {
     path: string,
     body?: Record<string, unknown>,
   ): Promise<Response>;
+  /** Send an authenticated request with optional headers and a GET method. */
+  requestWith(
+    actor: LifecycleActor,
+    method: 'GET' | 'PUT' | 'POST' | 'DELETE',
+    path: string,
+    options?: { body?: Record<string, unknown>; headers?: Record<string, string> },
+  ): Promise<Response>;
 }
 
 /** Non-secret client fields read independently of the HTTP response. */
@@ -158,16 +165,22 @@ export function useClientHttpFixture(): () => ClientHttpFixture {
       ...fixture,
       appAdmin,
       userAdmin,
-      request: async (actor, method, path, body) => {
+      requestWith: async (actor, method, path, options = {}) => {
         const token = actorTokens.get(actor.id);
         if (!token) throw new Error('HTTP fixture accepts only its seeded human identities');
         return fetch(`${origin}${path}`, {
           method,
           redirect: 'manual',
-          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-          body: body === undefined ? undefined : JSON.stringify(body),
+          headers: {
+            Authorization: `Bearer ${token}`,
+            ...(options.body === undefined ? {} : { 'Content-Type': 'application/json' }),
+            ...(options.headers ?? {}),
+          },
+          body: options.body === undefined ? undefined : JSON.stringify(options.body),
         });
       },
+      request: (actor, method, path, body) =>
+        current!.requestWith(actor, method, path, { body }),
     };
   });
 

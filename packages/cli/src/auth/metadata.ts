@@ -39,8 +39,10 @@ function parseAdminMetadata(value: unknown, server: URL): AdminMetadata {
     throw new Error('Authentication failed');
   }
   const expectedPath = `/${candidate.orgSlug}`;
+  const loopback =
+    issuer.hostname === 'localhost' || issuer.hostname === '127.0.0.1' || issuer.hostname === '[::1]';
   if (
-    issuer.protocol !== 'https:' ||
+    (issuer.protocol !== 'https:' && !(issuer.protocol === 'http:' && loopback)) ||
     issuer.username ||
     issuer.password ||
     issuer.origin !== server.origin ||
@@ -78,8 +80,13 @@ export async function fetchAdminMetadata(
   let selectedServer: URL;
   try {
     selectedServer = new URL(server);
+    const loopbackServer =
+      selectedServer.hostname === 'localhost' ||
+      selectedServer.hostname === '127.0.0.1' ||
+      selectedServer.hostname === '[::1]';
     if (
-      selectedServer.protocol !== 'https:' ||
+      (selectedServer.protocol !== 'https:' &&
+        !(selectedServer.protocol === 'http:' && loopbackServer)) ||
       selectedServer.username ||
       selectedServer.password ||
       !/^\/*$/.test(selectedServer.pathname) ||

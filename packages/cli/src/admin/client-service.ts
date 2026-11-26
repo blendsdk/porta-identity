@@ -12,8 +12,10 @@ import type {
   GenerateSecretInput,
   UpdateClientInput,
 } from '@portaidentity/sdk';
+import { DEVICE_CODE_GRANT } from './client-state.js';
 import type {
   AdminClient,
+  AdminClientGrantType,
   AdminClientMutationResult,
   AdminClientReadResult,
   AdminClientSecret,
@@ -110,13 +112,14 @@ function loginMethods(
 
 /** Validates the closed OAuth grant-type collection. */
 function grantTypes(value: unknown): AdminClient['grantTypes'] | undefined {
-  if (!Array.isArray(value) || value.length < 1 || value.length > 3) return undefined;
-  const grants: Array<AdminClient['grantTypes'][number]> = [];
+  if (!Array.isArray(value) || value.length < 1 || value.length > 4) return undefined;
+  const grants: AdminClientGrantType[] = [];
   for (const grant of value) {
     if (
       grant !== 'authorization_code' &&
       grant !== 'client_credentials' &&
-      grant !== 'refresh_token'
+      grant !== 'refresh_token' &&
+      grant !== DEVICE_CODE_GRANT
     ) {
       return undefined;
     }
@@ -127,7 +130,9 @@ function grantTypes(value: unknown): AdminClient['grantTypes'] | undefined {
 
 /** Validates the closed OIDC response-type collection. */
 function responseTypes(value: unknown): AdminClient['responseTypes'] | undefined {
-  if (!Array.isArray(value) || value.length !== 1 || value[0] !== 'code') return undefined;
+  if (!Array.isArray(value) || value.length > 1) return undefined;
+  if (value.length === 0) return Object.freeze([]);
+  if (value[0] !== 'code') return undefined;
   return Object.freeze(['code']);
 }
 
@@ -161,13 +166,22 @@ function isAllowedOrigin(value: string): boolean {
   }
 }
 
-/** Validates the public/confidential protocol relationships used by Porta. */
+/** Validates the public/confidential and redirect/response relationships used by Porta. */
 function hasCompatibleProtocol(
   clientType: AdminClient['clientType'],
+  redirects: AdminClient['redirectUris'],
   grants: AdminClient['grantTypes'],
+  responses: AdminClient['responseTypes'],
   authenticationMethod: AdminClient['tokenEndpointAuthMethod'],
   requirePkce: boolean,
 ): boolean {
+  const hasAuthorizationCode = grants.includes('authorization_code');
+  const deviceOnly = grants.includes(DEVICE_CODE_GRANT) && !hasAuthorizationCode;
+  if (deviceOnly) {
+    if (responses.length !== 0) return false;
+  } else if (responses.length !== 1 || responses[0] !== 'code' || redirects.length < 1) {
+    return false;
+  }
   if (clientType === 'public') {
     return (
       authenticationMethod === 'none' &&
@@ -181,7 +195,7 @@ function hasCompatibleProtocol(
 /** Projects one complete organization-owned client or rejects it. */
 function clientValue(value: unknown, organizationId: string): AdminClient | undefined {
   const candidate = objectValue(value);
-  const redirects = candidate ? stringCollection(candidate.redirectUris, 10, 2_048, 1) : undefined;
+  const redirects = candidate ? stringCollection(candidate.redirectUris, 10, 2_048, 0) : undefined;
   const logoutRedirects = candidate
     ? stringCollection(candidate.postLogoutRedirectUris, 10, 2_048)
     : undefined;
@@ -223,7 +237,9 @@ function clientValue(value: unknown, organizationId: string): AdminClient | unde
     typeof candidate.requireConsent !== 'boolean' ||
     !hasCompatibleProtocol(
       candidate.clientType,
+      redirects,
       grants,
+      responses,
       candidate.tokenEndpointAuthMethod,
       candidate.requirePkce,
     ) ||

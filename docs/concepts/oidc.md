@@ -7,6 +7,7 @@ Porta is a fully standards-compliant **OpenID Connect (OIDC)** provider built on
 | Flow | Use Case | PKCE |
 |------|----------|------|
 | Authorization Code + PKCE | SPAs, mobile apps, server-side web apps | Required for public clients |
+| Device Authorization (RFC 8628) | CLI tools, TVs, printers, and other input-limited devices | Required for public clients |
 | Client Credentials | Machine-to-machine (M2M) communication | N/A |
 | Refresh Token | Long-lived sessions with token rotation | N/A |
 
@@ -21,13 +22,68 @@ All OIDC endpoints are scoped to an organization via the org slug prefix:
 | Endpoint | Path |
 |----------|------|
 | Discovery | `/{orgSlug}/.well-known/openid-configuration` |
-| Authorization | `/{orgSlug}/auth/authorize` |
-| Token | `/{orgSlug}/auth/token` |
-| UserInfo | `/{orgSlug}/auth/userinfo` |
-| JWKS | `/{orgSlug}/auth/jwks` |
-| End Session | `/{orgSlug}/auth/end_session` |
-| Revocation | `/{orgSlug}/auth/revocation` |
-| Introspection | `/{orgSlug}/auth/introspection` |
+| Authorization | `/{orgSlug}/auth` |
+| Device authorization | `/{orgSlug}/device/auth` |
+| Device verification | `/{orgSlug}/device` |
+| Token | `/{orgSlug}/token` |
+| UserInfo | `/{orgSlug}/me` |
+| JWKS | `/{orgSlug}/jwks` |
+| End Session | `/{orgSlug}/session/end` |
+| Revocation | `/{orgSlug}/token/revocation` |
+| Introspection | `/{orgSlug}/token/introspection` |
+
+## Device Authorization Grant
+
+The device flow is disabled per client: a client must store the full grant value
+`urn:ietf:params:oauth:grant-type:device_code`. There is no organization or deployment-wide switch.
+A device-only client has no redirect URI and an empty response-type collection.
+
+```mermaid
+sequenceDiagram
+    participant Device as Input-limited device
+    participant Human as Browser
+    participant Porta
+
+    Device->>Porta: POST /{orgSlug}/device/auth
+    Porta-->>Device: device_code, user_code, verification_uri, expires_in 600, interval 5
+    Device-->>Human: Show URL and code
+    Human->>Porta: GET /{orgSlug}/device (branded, organization-scoped)
+    Human->>Porta: Enter code, approve, complete login/2FA/consent
+    loop Every 5 seconds
+        Device->>Porta: POST /{orgSlug}/token (device_code)
+        Porta-->>Device: authorization_pending or tokens
+    end
+```
+
+- The user code uses the provider's `BCDFGHJKLMNPQRSTVWXZ` base-20 alphabet and `****-****` mask.
+- The device code lasts **600 seconds**. The row is retained for a further **900 seconds** so a
+  late poll receives `expired_token` rather than `invalid_grant`.
+- The verification pages are Porta-rendered and branded per organization. Existing SSO, password,
+  magic-link, 2FA and consent policy are reused; no device-specific bypass exists.
+- A user code issued for one organization cannot be verified under another organization. Entry and
+  resume requests are bound to the code's client organization before any page or interaction.
+- A successful exchange is single-use. Presenting a consumed device code again returns
+  `invalid_grant` and revokes the first token set; clients must not retry an ambiguous exchange.
+
+### Fixed limits and audit
+
+The limits are code constants, not editable deployment settings:
+
+| Surface | Limit |
+|---|---|
+| Device authorization per client + IP | 10 per 5 minutes |
+| Device authorization per IP | 30 per 5 minutes |
+| User-code submissions per session + IP | 10 per 10 minutes |
+| User-code submissions per IP | 30 per 10 minutes |
+| Device token polls per client | 180 per 15 minutes |
+| Device token polls per IP | 600 per 5 minutes |
+
+Polling faster than the advertised interval returns `slow_down`; hard-counter exhaustion returns
+`429 rate_limit_exceeded`. Audit events are `user.device.authorized`, `user.device.denied`,
+`rate_limit.device_code` and `rate_limit.device_user_code`. Approved and denied authentication
+events do not store the device IP or user agent; the DeviceCode itself stores neither. Both codes
+are redacted from structured logs. Reverse-proxy access logs can still contain the user code in
+`verification_uri_complete`, so restrict or redact those logs at the proxy.
 
 ## Token Signing
 

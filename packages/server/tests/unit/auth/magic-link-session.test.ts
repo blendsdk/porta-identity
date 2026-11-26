@@ -113,6 +113,7 @@ describe('magic-link-session', () => {
           sameSite: 'lax',
           path: '/',
           overwrite: true,
+          signed: false,
         }),
       );
 
@@ -239,6 +240,7 @@ describe('magic-link-session', () => {
           httpOnly: true,
           maxAge: 0,
           overwrite: true,
+          signed: false,
         }),
       );
     });

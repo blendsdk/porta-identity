@@ -14,3 +14,18 @@ export function rejectHeadProbe(ctx: Context): void {
   ctx.set('Cache-Control', 'no-store');
   ctx.status = 405;
 }
+
+/**
+ * Reject HEAD on POST-only OIDC endpoints.
+ *
+ * The device authorization endpoint shares the `/device` prefix with the verification pages, so
+ * without an explicit route it would match `HEAD /device/:uid` and advertise GET. It accepts only
+ * POST, and a HEAD probe must not create an authorization request.
+ *
+ * @param ctx - Request context for an explicitly registered HEAD route.
+ */
+export function rejectHeadPostProbe(ctx: Context): void {
+  ctx.set('Allow', 'POST');
+  ctx.set('Cache-Control', 'no-store');
+  ctx.status = 405;
+}

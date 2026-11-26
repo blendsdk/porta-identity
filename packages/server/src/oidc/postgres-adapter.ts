@@ -21,6 +21,77 @@ import { errors } from 'oidc-provider';
 import { getPool } from '../lib/database.js';
 import { logger } from '../lib/logger.js';
 
+/**
+ * Extra retention applied to a DeviceCode row beyond the provider payload lifetime.
+ *
+ * The provider expires the device code after 600 seconds, but the token endpoint must still be able
+ * to distinguish `expired_token` from a code that never existed. Keeping the row for 900 additional
+ * seconds provides that answer while still removing it through {@link purgeExpired}.
+ */
+export const DEVICE_CODE_RETENTION_SECONDS = 900;
+
+/** Fixed provider lifetime of a device authorization code, in seconds. */
+export const DEVICE_CODE_TTL_SECONDS = 600;
+
+/**
+ * Total window in which a device code or its audit outcome can still be observed.
+ *
+ * The audit idempotency marker must live at least as long as the retained DeviceCode row.
+ */
+export const DEVICE_CODE_AUDIT_WINDOW_SECONDS =
+  DEVICE_CODE_TTL_SECONDS + DEVICE_CODE_RETENTION_SECONDS;
+
+/** PostgreSQL unique-violation SQLSTATE. */
+const POSTGRES_UNIQUE_VIOLATION = '23505';
+
+/** Index that enforces one DeviceCode row per normalized user code. */
+const DEVICE_CODE_USER_CODE_INDEX = 'idx_oidc_payloads_device_user_code';
+
+/**
+ * Public error raised when a generated user code collides with a retained code.
+ *
+ * Collisions are rare, but returning a generic 500 would tell the caller that something internal
+ * failed and would not invite a safe retry. The provider renders an exposed error with this status
+ * and OAuth error name, and never includes code material.
+ */
+export class DeviceCodeCollisionError extends errors.OIDCProviderError {
+  constructor() {
+    super(503, 'temporarily_unavailable');
+    // Base errors expose only 4xx responses. This condition is safe to retry and carries no data,
+    // so the generic name is intentionally visible to the client.
+    this.expose = true;
+  }
+}
+
+/**
+ * Public error raised when another request already started approving the same code.
+ *
+ * The provider re-renders the code-entry page for this error. The error carries no code material
+ * and is deliberately a 200 response, matching the provider's own re-render states.
+ */
+export class DeviceCodeConflictError extends errors.OIDCProviderError {
+  constructor() {
+    super(200, 'invalid_request');
+    this.status = 200;
+    this.statusCode = 200;
+    this.expose = true;
+  }
+}
+
+/** Return true only for a non-array object. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/** Identify the DeviceCode user-code uniqueness violation without matching unrelated errors. */
+function isDeviceCodeUserCodeCollision(error: unknown): boolean {
+  if (!isRecord(error)) return false;
+  return (
+    error['code'] === POSTGRES_UNIQUE_VIOLATION &&
+    error['constraint'] === DEVICE_CODE_USER_CODE_INDEX
+  );
+}
+
 /** OIDC adapter payload — the data node-oidc-provider stores and retrieves */
 export interface AdapterPayload {
   [key: string]: unknown;
@@ -71,18 +142,83 @@ export class PostgresAdapter {
     const userCode = payload.userCode ?? null;
     const uid = payload.uid ?? null;
 
-    // Calculate absolute expiration time using PostgreSQL interval arithmetic
-    const expiresAt = expiresIn
-      ? new Date(Date.now() + expiresIn * 1000)
-      : null;
+    // A DeviceCode row outlives the provider payload so the token endpoint can report
+    // `expired_token` during the retention window. Every re-save (confirmation/abort) refreshes the
+    // retention from that save, keeping the row available for the same grace period.
+    //
+    // A non-finite or non-positive TTL would otherwise create a never-expiring row. Device codes
+    // are short-lived credentials, so the safe fallback is the retention window itself.
+    let expiresAt: Date | null;
+    if (this.name === 'DeviceCode') {
+      const retentionSeconds =
+        Number.isFinite(expiresIn) && expiresIn > 0 ? expiresIn + DEVICE_CODE_RETENTION_SECONDS : DEVICE_CODE_RETENTION_SECONDS;
+      expiresAt = new Date(Date.now() + retentionSeconds * 1000);
+    } else {
+      // Calculate absolute expiration time using PostgreSQL interval arithmetic
+      expiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : null;
+    }
 
-    await pool.query(
-      `INSERT INTO oidc_payloads (id, type, payload, grant_id, user_code, uid, expires_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
-       ON CONFLICT (id, type)
-       DO UPDATE SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7`,
-      [id, this.name, JSON.stringify(payload), grantId, userCode, uid, expiresAt],
-    );
+    const values = [id, this.name, JSON.stringify(payload), grantId, userCode, uid, expiresAt];
+    const hasAccountOrGrant = payload.accountId !== undefined || payload.grantId !== undefined;
+    const hasError = payload.error !== undefined || payload.errorDescription !== undefined;
+
+    // A confirmation sets only `inFlight`. Two requests can both pass the provider's read-side
+    // check, so the durable decision must be a conditional write. The completion save carries an
+    // account and grant and is allowed to update the winning row.
+    if (
+      this.name === 'DeviceCode' &&
+      payload.inFlight === true &&
+      !hasAccountOrGrant &&
+      !hasError
+    ) {
+      const result = await pool.query(
+        `UPDATE oidc_payloads
+            SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7
+          WHERE id = $1 AND type = $2
+            AND (expires_at IS NULL OR expires_at > NOW())
+            AND consumed_at IS NULL
+            AND payload->>'inFlight' IS DISTINCT FROM 'true'
+            AND payload->>'error' IS NULL
+          RETURNING id`,
+        values,
+      );
+      if (result.rowCount !== 1) throw new DeviceCodeConflictError();
+      return;
+    }
+
+    // The provider persists a user denial or a post-confirmation failure as `inFlight=true` plus
+    // an error. That save must succeed while the row is still unapproved; once an account or grant
+    // exists, the approval wins and the late error is ignored.
+    if (
+      this.name === 'DeviceCode' &&
+      hasError &&
+      !hasAccountOrGrant
+    ) {
+      await pool.query(
+        `UPDATE oidc_payloads
+            SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7
+          WHERE id = $1 AND type = $2
+            AND payload->>'accountId' IS NULL
+            AND payload->>'grantId' IS NULL`,
+        values,
+      );
+      return;
+    }
+
+    try {
+      await pool.query(
+        `INSERT INTO oidc_payloads (id, type, payload, grant_id, user_code, uid, expires_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         ON CONFLICT (id, type)
+         DO UPDATE SET payload = $3, grant_id = $4, user_code = $5, uid = $6, expires_at = $7`,
+        values,
+      );
+    } catch (error) {
+      if (this.name === 'DeviceCode' && isDeviceCodeUserCodeCollision(error)) {
+        throw new DeviceCodeCollisionError();
+      }
+      throw error;
+    }
   }
 
   /**
@@ -237,33 +373,6 @@ export class PostgresAdapter {
 
     return payload;
   }
-}
-
-// ---------------------------------------------------------------------------
-// Standalone helpers for session lifecycle management
-// ---------------------------------------------------------------------------
-
-/**
- * Delete all oidc_payloads records matching any of the given grant_ids.
- *
- * Used for cascade cleanup when a session is destroyed during explicit logout.
- * Deletes across ALL types (AccessToken, RefreshToken, Grant, etc.) in a single
- * query — the grant_id column links tokens back to their originating grant.
- *
- * This is the critical step that ensures "logout = total cleanup": when a user
- * clicks "Sign Out", all grants and tokens issued during that session are removed
- * from PostgreSQL so they can no longer be used.
- *
- * @param grantIds - Array of grant IDs whose artifacts should be deleted
- */
-export async function revokeGrantsByIds(grantIds: string[]): Promise<void> {
-  if (grantIds.length === 0) return;
-
-  const pool = getPool();
-  await pool.query(
-    'DELETE FROM oidc_payloads WHERE grant_id = ANY($1)',
-    [grantIds],
-  );
 }
 
 /**

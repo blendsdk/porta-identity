@@ -37,16 +37,19 @@ Porta implements a three-point model for session and token lifecycle management:
 
 ### 1. Explicit Logout = Total Cleanup
 
-When a user actively logs out (clicks "Sign Out"), the OIDC provider calls `session.destroy()`. Porta's `HybridAdapter` intercepts this for Session models and performs a **cascade delete**:
+When a user actively logs out (clicks "Sign Out"), the OIDC provider performs the cleanup before it destroys the session:
 
-1. **Read** the session's `authorizations` to extract all `grantId` values
-2. **Delete** all grants, access tokens, and refresh tokens from PostgreSQL (`DELETE FROM oidc_payloads WHERE grant_id = ANY($1)`)
-3. **Clean up** corresponding Redis grant sets and member keys (best-effort)
-4. **Destroy** the session itself from Redis
+1. **Read** the session's `authorizations` and call `revoke(grantId)` for every grant
+2. **Delete** each grant's access tokens, refresh tokens, device codes, and other grant-bound artifacts from PostgreSQL and Redis, then destroy the Grant record itself
+3. **Destroy** the session from Redis and clear the session cookie
 
 This ensures that after logout, no tokens remain usable — the user is fully logged out across all clients.
 
-**Error handling:** If the cascade fails (e.g., database temporarily unavailable), the session is still destroyed. The user can always log out. Orphaned tokens will expire naturally via their TTLs.
+Porta does not add a second cascade in the `HybridAdapter`. The provider also calls
+`session.destroy(oldSessionId)` when it rotates the session identifier during a normal login resume or
+a client-scoped logout. Revoking grants at that point would delete every live grant each time a user
+signs in again with an existing browser session. Leaving logout cleanup to the provider keeps session
+renewal lossless and still removes all grants on explicit logout.
 
 ### 2. Natural Session Expiry = Tokens Survive
 
@@ -133,7 +136,7 @@ it works regardless of cookie-signing configuration.
 
 When a user triggers logout, they see a two-action page:
 
-- **Sign Out** — Confirms the logout, triggers session destruction with cascade delete
+- **Sign Out** — Confirms the logout; the provider revokes every grant before destroying the session
 - **Return to Application** — Cancels the logout, returns to the client's `post_logout_redirect_uri`
 
 Porta renders the logout page with localized templates.

@@ -1,6 +1,6 @@
 # API Design
 
-> **Last Updated**: 2026-11-03
+> **Last Updated**: 2026-11-24
 
 ## Overview
 
@@ -359,8 +359,35 @@ sequenceDiagram
 OIDC endpoints use standard OpenID Connect mechanisms:
 
 - **Authorization Code + PKCE** for public clients (SPAs, CLI)
+- **Device Authorization Grant** (RFC 8628) for input-constrained clients and the headless CLI
 - **Client Secret Post** for confidential clients (with SHA-256 pre-hash)
 - **Client Credentials** for machine-to-machine
+
+### Device Authorization
+
+The device grant is enabled server-side and authorized per client with
+`urn:ietf:params:oauth:grant-type:device_code`. The organization-scoped endpoints are:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| `POST` | `/:orgSlug/device/auth` | Device authorization request |
+| `GET` | `/:orgSlug/device` | User-code entry page |
+| `POST` | `/:orgSlug/device` | Code entry, confirmation or abort |
+| `GET` | `/:orgSlug/device/:uid` | Resume after login or consent |
+| `POST` | `/:orgSlug/token` | Device-code polling and exchange |
+
+The token endpoint returns `authorization_pending`, `slow_down`, `access_denied`,
+`expired_token` or `invalid_grant` from RFC 8628. DeviceCode rows live in PostgreSQL with a
+600-second lifetime and 900 seconds of expired retention. A partial unique index prevents two live
+requests from sharing a user code.
+
+Every verification and resume request must prove that the DeviceCode client belongs to the URL
+organization before the provider handles it. A mismatch returns a generic `404` and creates no
+interaction. This control is specific to Porta's path-based multi-tenant provider.
+
+The browser pages are Porta-branded and localized; login, 2FA and consent still come from the
+existing interaction routes. A device-only client may omit redirect URIs, but only when the
+authorization-code grant is absent.
 
 ### Magic-Link Callback Authority
 

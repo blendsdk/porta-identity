@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { basename, dirname, resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 
 import {
   expectedFixtureCounts,
@@ -23,12 +23,18 @@ export interface ResettableHarnessClients {
   restart(manifest: EndpointManifest, signal?: AbortSignal): Promise<void>;
 }
 
-/** Returns the sorted migration identities independently owned by the harness oracle. */
+/**
+ * Returns the sorted migration identities independently owned by the harness oracle.
+ *
+ * node-pg-migrate loads SQL files and JavaScript migrations from the same directory, so the
+ * oracle accepts both extensions. The identity excludes the extension because `pgmigrations`
+ * stores the bare name.
+ */
 function migrationNames(worktreePath: string): readonly string[] {
   return readdirSync(resolve(worktreePath, 'packages/server/migrations'))
-    .filter((name) => /^[0-9]{3}_[a-z0-9_]+\.sql$/u.test(name))
+    .filter((name) => /^[0-9]{3}_[a-z0-9_]+\.(?:sql|cjs|js)$/u.test(name))
     .sort()
-    .map((name) => basename(name, '.sql'));
+    .map((name) => name.replace(/\.(?:sql|cjs|js)$/u, ''));
 }
 
 /** Computes the stable applied-migration identity from an ordered name set. */

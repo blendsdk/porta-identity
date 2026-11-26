@@ -22,6 +22,9 @@ export { SDK_VERSION } from './version.js';
 // All entity types
 export type * from './types/index.js';
 
+// Stable protocol constants shared with the server
+export { DEVICE_CODE_GRANT } from './types/index.js';
+
 // Domain interfaces (type-only)
 export type {
   OrganizationsDomain,

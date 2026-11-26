@@ -91,15 +91,19 @@ export function resolveServerUrl(options: GlobalOptions): string {
  */
 export function normalizeServerOrigin(value: string | URL): URL {
   const url = new URL(value);
+  const loopback =
+    url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.hostname === '[::1]';
   if (
-    url.protocol !== 'https:' ||
+    (url.protocol !== 'https:' && !(url.protocol === 'http:' && loopback)) ||
     url.username ||
     url.password ||
     !/^\/*$/.test(url.pathname) ||
     url.search ||
     url.hash
   ) {
-    throw new Error('Porta server must be an HTTPS origin without credentials or a path.');
+    throw new Error(
+      'Porta server must be an HTTPS origin without credentials or a path (HTTP is allowed only on loopback).',
+    );
   }
   url.pathname = '/';
   return url;
