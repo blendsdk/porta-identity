@@ -150,6 +150,7 @@ pnpm test:structure
 | Browser UI (CI-equivalent single worker) | 142 passed, including the account-lockout test |
 | Typecheck and lint | passed |
 | CI at `e31932d4` (runs `45707291412`, `45707324760`) | all six jobs passed: Verify Monorepo, UI Tests, OIDC Harness, Public Documentation, Production Docker Build, Production Dependency Audit |
+| Merge | PR #256 merged as `5e66c0ff`; post-merge CI run `45767772131` passed; issue #255 closed on 2026-11-26 |
 
 The local browser suite defaults to four workers, while CI sets one. Under four workers the reset
 tests share one account and legitimately invalidate each other's links, so that local-only
