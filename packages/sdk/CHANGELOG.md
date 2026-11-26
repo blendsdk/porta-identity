@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-11-26
+
+### Added
+- Added verification pages, client contracts, and CLI login functionality.
+- Rendered branded device pages with existing SSO, 2FA, and consent, plus audit and redaction.
+
+### Changed
+- Implemented fixed device limits and conditional approval write logic.
+- Improved accounting for malformed input.
+
+### Removed
+- Replaced the migration 039 with new structured files.
+
 ## [1.18.0] - 2026-11-10
 
 ## Changed

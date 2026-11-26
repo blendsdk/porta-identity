@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-11-26
+
+### Added
+- Added verification pages, client contracts, and CLI login functionality, including audit and redaction features.
+
+### Changed
+- Implemented fixed device limits and conditional approval writing.
+- Improved handling of malformed input accounting.
+- Replaced migration 039 with updated documentation across multiple files.
+
 ## [1.18.0] - 2026-11-10
 
 ### Added

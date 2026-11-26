@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.19.0] - 2026-11-26
+
+## Added
+- Add verification pages, client contracts, and CLI login for enhanced user experience.
+- Enable device authorization with tenant-bound verification and a public collision error.
+
+## Changed
+- Update various locale files to improve user interface translations.
+- Adjust session management logic to ensure grants are retained across session rotations.
+
+## Fixed
+- Lock the account row before password reset tokens to prevent deadlocks during concurrent resets.
+- Ensure device approvals are hardened and session destruction is properly handled.
+
+## Test
+- Extend the integration test suite to include organization deletions, user deactivations, and security testing scenarios.
+
 ## [1.18.1] - 2026-11-18
 
 Added:
